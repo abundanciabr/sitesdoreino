@@ -3,8 +3,7 @@
 O calendário do ciclo (/admin/placar/ciclo/, 04/09/2026).
 
 Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
-tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
-admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py).
+tela (armadilhas/087). O estilo mora em admin/base.html.
 
 A tela NÃO guarda número nenhum: a curva vem do cartão compras-no-ciclo.json e
 o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
@@ -20,7 +19,7 @@ o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
   <p class="aviso borda-vermelha">
     <b>Não achei o cartão da meta.</b>
     Sem ele não há ciclo para desenhar. Isso é coisa de bastidor, não sua, e o
-    robô da próxima atualização conserta.
+    abra a edição das metas para corrigir o cartão.
   </p>
   {% elif not semanas %}
   <p class="aviso borda-amarela">

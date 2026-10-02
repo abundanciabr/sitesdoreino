@@ -1,65 +1,19 @@
-"""`/admin/placar/fechamento/` — o fim das 12 semanas, e o que a escola para de fazer.
-
-Degrau 13 do `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` (§5 e §8). O ciclo tem
-começo e fim; sem um rito de fim, ele vira um número que corre para sempre e
-ninguém nunca decide nada por causa dele.
-
-## As cinco perguntas do fechamento, e de onde cada uma sai
-
-1. **A meta bateu, e por quê?** Sai da MESMA régua do placar
-   (`placar.calcular_placar` sobre `apps/core/cartoes/compras-no-ciclo.json`). A
-   curva não é reescrita aqui: uma segunda régua discordaria da primeira no
-   primeiro ajuste de meta, e as duas teriam ar de certeza.
-2. **As medidas de direção previram a meta?** Compara o veredito das duas
-   medidas da semana (`direcao.calcular_direcao`) com o veredito do ciclo.
-3. **O que a escola PARA de fazer.** É a alma do degrau, e é o único campo
-   sem o qual `montar_o_pedido` devolve `None`: o ciclo não fecha. Um
-   fechamento que só acrescenta compromissos é uma lista que cresce para
-   sempre, e uma casa que nunca recusa nada nunca escolhe nada.
-4. **A meta seguinte**, que o robô grava no cartão e no livro.
-5. **A fase da escola**, calculada dos portões (§6.5), nunca digitada.
-
-## Os portões, e por que eles são um campo do livro
-
-O plano exige que a fase seja calculada: "cada portão é um registro com
-`evidencia` e `verificado_em`". Para isso um registro precisa poder DIZER qual
-portão ele prova, e por isso nasceu o campo `portao` no cabeçalho do livro. O
-vocabulário fechado dos oito mora em `PORTOES`, aqui embaixo. Esta tela lê só o
-cabeçalho dos registros de `apps/core/registros/` e não valida a escrita. A
-leitura é fail-open e ainda assim honesta: portão declarado com nome que não
-existe aparece na tela pelo nome, nunca sumindo.
-
-**Declarar não é provar.** Um registro com `portao` mas sem `evidencia` e sem
-`verificado_em` NÃO conta, e aparece à parte. É a mesma lei do verde do livro:
-prova conferida, ou não é verde.
-
-## Esta tela não escreve nada, e isso é desenho
-
-O que ela produz é o PEDIDO para o robô, um bloco de texto para colar numa
-sessão. Registro e cartão entram no repositório. Recarregar a página apaga o que
-foi digitado, e a tela diz isso.
-
-## O estado vazio é o estado principal, e vai ser por três meses
-
-O ciclo corrente partiu em 03/09/2026 e fecha em 15/12/2026. A tela nasce sem
-nenhum ciclo fechado. Por isso o ramo "correndo" não é o caminho triste: é o
-caminho normal, e ele mostra a prévia com os números de hoje mais o que vai
-ser perguntado no dia. O que ele NÃO faz é transformar ausência em conclusão
-(`armadilhas/271`): com a curva ainda em zero, "as medidas previram a meta"
-não é "sim", é "ainda não dá para saber", e a tela explica por quê.
-"""
+"""Fechamento persistente dos ciclos do placar, com histórico no painel."""
 
 from __future__ import annotations
 
 import datetime as dt
 
 from django.shortcuts import render
+from django.db import transaction
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from . import analista as analista_
 from .direcao import ler_registros
 from .placar import montar_o_placar, site_de
+from .models import CartaoDoPlacar, FechamentoDoCiclo, VersaoDoCartaoDoPlacar
+from django.db.models import Max
 
 #: Os oito portões antes de escalar (Scale OS 2 §60, plano §6.5): a chave que o
 #: registro escreve em `portao`, o nome na tela, e o que prova aquele portão.
@@ -102,35 +56,6 @@ PORTOES = (
 FASE_SEM_NENHUM = "achando"
 FASE_COM_ALGUNS = "provando"
 FASE_COM_TODOS = "escalando"
-
-#: O que o fechamento exige para existir. O primeiro é a lei do degrau (o ciclo
-#: não fecha sem ele); os outros dois existem porque o robô grava a meta
-#: seguinte no cartão, e um alvo em branco viraria a régua de todo o painel.
-OBRIGATORIOS = (
-    (
-        "paramos_de_fazer",
-        "o que a escola PARA de fazer",
-        "O ciclo não fecha sem isto. Um fechamento que só acrescenta é uma "
-        "lista que cresce para sempre, e uma casa que nunca recusa nada nunca "
-        "escolhe nada.",
-    ),
-    (
-        "proximo_alvo",
-        "o alvo do próximo ciclo",
-        "É o número que o robô grava no cartão da meta. Sem ele o painel "
-        "inteiro fica sem régua no dia seguinte ao fechamento.",
-    ),
-    (
-        "proxima_ate",
-        "a data em que o próximo ciclo fecha",
-        "É o outro lado da régua. Sem data, ganhando e perdendo não existem.",
-    ),
-)
-
-#: O arquivo que o robô edita para virar o ciclo. Escrito por extenso porque é
-#: ele que o pedido manda mexer, e um caminho errado ali custa uma rodada.
-CARTAO_DA_META_NO_REPOSITORIO = "services/admin/apps/core/cartoes/compras-no-ciclo.json"
-
 
 def _data(texto: object) -> dt.date | None:
     try:
@@ -343,106 +268,6 @@ def montar(
     }
 
 
-def montar_o_pedido(
-    campos, dados: dict, hoje: dt.date
-) -> tuple[str | None, list[dict]]:
-    """`(pedido, faltando)`. O pedido é `None` enquanto faltar qualquer coisa.
-
-    `faltando` traz uma ficha por campo, com `lei: True` no que é a lei do
-    degrau, para a tela distinguir "o ciclo não fecha sem isto" de "preencha
-    também isto".
-    """
-    valores = {chave: (campos.get(chave) or "").strip() for chave, _, _ in OBRIGATORIOS}
-    faltando = [
-        {
-            "campo": chave,
-            "rotulo": rotulo,
-            "porque": porque,
-            "lei": chave == OBRIGATORIOS[0][0],
-        }
-        for chave, rotulo, porque in OBRIGATORIOS
-        if not valores[chave]
-    ]
-    alvo = None
-    if valores["proximo_alvo"]:
-        try:
-            alvo = int(valores["proximo_alvo"])
-        except ValueError:
-            alvo = None
-        if alvo is None or alvo <= 0:
-            faltando.append(
-                {
-                    "campo": "proximo_alvo",
-                    "rotulo": "o alvo do próximo ciclo",
-                    "porque": "o alvo é um número de pessoas maior que zero, e "
-                    f'"{valores["proximo_alvo"]}" não é.',
-                    "lei": False,
-                }
-            )
-            alvo = None
-    proxima_ate = _data(valores["proxima_ate"]) if valores["proxima_ate"] else None
-    if valores["proxima_ate"] and (proxima_ate is None or proxima_ate <= hoje):
-        faltando.append(
-            {
-                "campo": "proxima_ate",
-                "rotulo": "a data em que o próximo ciclo fecha",
-                "porque": "a data se escreve como 2027-03-09 e tem de ser "
-                f'depois de hoje; "{valores["proxima_ate"]}" não serve.',
-                "lei": False,
-            }
-        )
-    if faltando:
-        return None, faltando
-
-    resultado = dados.get("resultado") or {}
-    fase = dados.get("fase") or {}
-    linhas = [
-        f"Fechamento do ciclo de 12 semanas do painel de gestão, {hoje.strftime('%d/%m/%Y')}.",
-        "Registre em services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta),",
-        "um registro por item.",
-        "",
-    ]
-    if dados.get("estado") != "terminou":
-        linhas += [
-            "ATENÇÃO, LEIA ANTES DE FAZER QUALQUER COISA: este ciclo AINDA NÃO",
-            f"terminou (ele fecha em {dados['ate']}). Fechá-lo agora encerra o ciclo",
-            "antes do prazo. Se isto aqui foi um ensaio, não escreva nada e avise",
-            "o mantenedor.",
-            "",
-        ]
-    linhas += [
-        "- O QUE A ESCOLA PARA DE FAZER (tipo `decisao`, autoridade: mantenedor,",
-        "  gravidade: info). É a peça obrigatória: sem ela o ciclo não fecha.",
-        f"  {valores['paramos_de_fazer']}",
-        "",
-        "- O RESULTADO DO CICLO (tipo `medicao`, autoridade: sessao, evidencia: o",
-        f"  link do PR, verificado_em: {hoje.isoformat()}).",
-        f"  Meta: {resultado.get('alvo')} pessoas até {resultado.get('ate')}."
-        f" Medido: {resultado.get('x')}. Veredito: {dados.get('veredito')}.",
-        f"  As medidas de direção: {dados['previsao']['veredito']},"
-        f" porque {dados['previsao']['porque']}",
-    ]
-    por_que = (campos.get("por_que") or "").strip()
-    if por_que:
-        linhas += [f"  Por quê, nas palavras do mantenedor: {por_que}"]
-    linhas += [
-        "",
-        "- A META SEGUINTE (tipo `decisao`, autoridade: mantenedor), e a gravação",
-        f"  dela em {CARTAO_DA_META_NO_REPOSITORIO}, no mesmo PR:",
-        f"  alvo {alvo} pessoas, partida no total de hoje, ate: {valores['proxima_ate']}.",
-        "  Remonte a curva de `semanas` junto: a soma dos alvos semanais tem de dar",
-        "  exatamente `alvo` menos `partida`, e o validador do cartão reprova se não der.",
-        "  Suba a `versao` do cartão e escreva o porquê da curva no campo `_por_que`.",
-        "",
-        f"- A FASE DA ESCOLA hoje é \"{fase.get('fase')}\","
-        f" com {fase.get('provados')} de {fase.get('total')} portões provados.",
-        "  Portão provado neste ciclo entra como registro com o campo `portao`",
-        "  (um dos oito: " + ", ".join(chave for chave, _, _ in PORTOES) + "),",
-        "  mais `evidencia` e `verificado_em`. Sem os dois, ele não conta.",
-    ]
-    return "\n".join(linhas), []
-
-
 @require_http_methods(["GET", "POST"])
 def fechamento(request):
     """A tela. Fail-OPEN na rede, como o placar: ela abre e diz o que não viu."""
@@ -455,10 +280,70 @@ def fechamento(request):
         registros=ler_registros(),
         hoje=hoje,
     )
-    campos = request.POST if request.method == "POST" else {}
+    anterior = FechamentoDoCiclo.objects.filter(partida_em=dados.get("partida_em")).first() if dados.get("partida_em") else None
+    campos = request.POST if request.method == "POST" else (anterior.dados if anterior else {})
     pediram_o_analista = campos.get("acao") == analista_.ACAO
     fechar = request.method == "POST" and not pediram_o_analista
-    pedido, faltando = montar_o_pedido(campos, dados, hoje) if fechar else (None, [])
+    faltando = []
+    encerrado = None
+    if fechar and dados.get("estado") != "sem-cartao":
+        partida = dados["partida_em"]
+        proximo_alvo = (campos.get("proximo_alvo") or "").strip()
+        proxima_ate = (campos.get("proxima_ate") or "").strip()
+        alvo = None
+        ate = None
+        if proximo_alvo or proxima_ate:
+            try:
+                alvo = int(proximo_alvo)
+            except ValueError:
+                faltando.append({"rotulo": "alvo do próximo ciclo", "porque": "Digite um número inteiro.", "lei": False})
+            ate = _data(proxima_ate)
+            if alvo is not None and alvo <= 0:
+                faltando.append({"rotulo": "alvo do próximo ciclo", "porque": "O alvo precisa ser positivo.", "lei": False})
+            if ate is None or ate <= hoje:
+                faltando.append({"rotulo": "data do próximo ciclo", "porque": "Escolha uma data futura.", "lei": False})
+            if not proximo_alvo or not proxima_ate:
+                faltando.append({"rotulo": "meta seguinte", "porque": "Preencha alvo e data juntos, ou deixe os dois vazios.", "lei": False})
+            if (dados.get("resultado") or {}).get("x") is None:
+                faltando.append({"rotulo": "valor de partida", "porque": "A contagem de compras precisa responder antes de iniciar uma nova meta.", "lei": False})
+        if not faltando:
+            foto = {
+                "responsavel": (request.admin or {}).get("id") or (request.admin or {}).get("email"),
+                "paramos_de_fazer": (campos.get("paramos_de_fazer") or "").strip(),
+                "por_que": (campos.get("por_que") or "").strip(),
+                "proximo_alvo": alvo,
+                "proxima_ate": proxima_ate or None,
+                "meta_anterior": contexto["meta"],
+                "resultado": dados.get("resultado"),
+                "veredito": dados.get("veredito"),
+                "previsao": dados.get("previsao"),
+                "fase": dados.get("fase", {}).get("fase"),
+            }
+            with transaction.atomic():
+                encerrado, _ = FechamentoDoCiclo.objects.update_or_create(
+                    partida_em=partida,
+                    defaults={"encerrado_em": hoje, "dados": foto},
+                )
+                if alvo is not None and ate is not None:
+                    linha = CartaoDoPlacar.objects.select_for_update().get(nome="compras-no-ciclo")
+                    nova_meta = dict(linha.dados)
+                    nova_meta.update({
+                        "alvo": alvo, "ate": ate.isoformat(),
+                        "partida": (dados.get("resultado") or {}).get("x"),
+                        "partida_em": hoje.isoformat(),
+                        "atualizado_por": (request.admin or {}).get("id") or (request.admin or {}).get("email"),
+                        "versao": int(nova_meta.get("versao") or 0) + 1,
+                        "desde": hoje.isoformat(),
+                    })
+                    nova_meta.pop("semanas", None)
+                    linha.dados = nova_meta
+                    linha.save(update_fields=["dados", "atualizado_em"])
+                    revisao = (linha.versoes.aggregate(n=Max("revisao"))["n"] or 0) + 1
+                    VersaoDoCartaoDoPlacar.objects.create(
+                        cartao=linha, revisao=revisao, dados=nova_meta,
+                        responsavel=(request.admin or {}).get("id") or (request.admin or {}).get("email") or "",
+                    )
+    historico = FechamentoDoCiclo.objects.order_by("-encerrado_em", "-id")
     return render(
         request,
         "admin/fechamento.html",
@@ -468,7 +353,8 @@ def fechamento(request):
             "fechamento": dados,
             "campos": campos,
             "montou": fechar,
-            "pedido": pedido,
+            "encerrado": encerrado,
+            "historico": historico,
             "faltando": faltando,
             "hoje": hoje,
             "analista": analista_.para_a_tela(
@@ -481,3 +367,6 @@ def fechamento(request):
             ),
         },
     )
+
+
+

@@ -38,7 +38,7 @@ progressiva: cada linha é um link para `plantao_ficha`, sem script nenhum.
   {% if item.reenvio and item.laudo_anterior %}
   <div class="laudo-anterior">
     <p class="miudo">Este é um reenvio. O laudo anterior devolveu com a mudança pedida:</p>
-    <p class="mudanca">{{ item.laudo_anterior.mudanca.texto }}</p>
+    {% for mudanca in item.laudo_anterior.mudancas %}<p class="mudanca">{{ mudanca.texto }}</p>{% endfor %}
   </div>
   {% endif %}
   <p><a class="botao" href="{% url 'plantao-ficha' item.envio.id %}">Dar o laudo</a></p>

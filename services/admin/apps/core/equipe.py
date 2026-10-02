@@ -100,7 +100,6 @@ RESULTADOS = {
     "situacao": "Situação atualizada.",
     "concluida": "Tarefa concluída.",
     "reaberta": "Tarefa reaberta: voltou para A fazer.",
-    "sem_impedimento": ("Para bloquear uma tarefa, escreva o impedimento. Nada mudou."),
     "situacao_desconhecida": "Não conheço essa situação. Nada mudou.",
     "associada": "Conta associada.",
     "desassociada": "Conta desassociada.",

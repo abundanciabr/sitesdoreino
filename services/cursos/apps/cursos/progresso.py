@@ -134,8 +134,6 @@ def concluir_por_gesto(progresso: Progresso) -> Progresso:
     """
     if progresso.aula.curso.progressao != Curso.Progressao.LIVRE:
         raise PortaRecusada(SO_POR_LAUDO)
-    if not pausas_registradas(progresso):
-        raise PortaRecusada(SO_COM_AS_PAUSAS)
     with transaction.atomic():
         if _concluir(progresso):
             eventos.emitir_aula_concluida(progresso.aula, ator_id=progresso.pessoa_id)

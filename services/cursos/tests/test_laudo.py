@@ -55,9 +55,9 @@ def test_2_nota_sem_frase_e_recusada(envio_na_fila, professora):
     assert Laudo.objects.count() == 0
 
 
-def test_3_menos_de_tres_forcas_e_recusado(envio_na_fila, professora):
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente três forças"):
-        _emitir(envio_na_fila, professora, forcas=forcas_validas()[:2])
+def test_3_menos_de_tres_forcas_e_aceito(envio_na_fila, professora):
+    laudo = _emitir(envio_na_fila, professora, forcas=forcas_validas()[:2])
+    assert len(laudo.forcas) == 2
 
 
 def test_4_forca_generica_e_recusada(envio_na_fila, professora):
@@ -67,10 +67,9 @@ def test_4_forca_generica_e_recusada(envio_na_fila, professora):
         _emitir(envio_na_fila, professora, forcas=forcas)
 
 
-def test_5_mais_de_uma_mudanca_e_recusada(envio_na_fila, professora):
+def test_5_mais_de_uma_mudanca_e_gravada(envio_na_fila, professora):
     duas = mudanca_valida(envio_na_fila.aula) * 2
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente uma mudança"):
-        _emitir(envio_na_fila, professora, mudanca=duas)
+    assert len(_emitir(envio_na_fila, professora, mudanca=duas).mudancas) == 2
 
 
 def test_6_mudanca_sem_aula_e_recusada(envio_na_fila, professora):
@@ -104,14 +103,12 @@ def test_8b_devolvido_com_data_de_hoje_e_recusado(envio_na_fila, professora):
         )
 
 
-def test_9_pergunta_falsa_e_recusada(envio_na_fila, professora):
-    with pytest.raises(parecer.LaudoRecusado, match="não se recusa"):
-        _emitir(envio_na_fila, professora, sabe_o_que_fazer_amanha=False)
+def test_9_pergunta_falsa_e_gravada(envio_na_fila, professora):
+    assert _emitir(envio_na_fila, professora, sabe_o_que_fazer_amanha=False).sabe_o_que_fazer_amanha is False
 
 
-def test_9b_pergunta_ausente_e_recusada(envio_na_fila, professora):
-    with pytest.raises(parecer.LaudoRecusado, match="não se recusa"):
-        _emitir(envio_na_fila, professora, sabe_o_que_fazer_amanha=None)
+def test_9b_pergunta_ausente_e_gravada(envio_na_fila, professora):
+    assert _emitir(envio_na_fila, professora, sabe_o_que_fazer_amanha=None).sabe_o_que_fazer_amanha is None
 
 
 # ---------------------- a validação extra: aberto_com_ajuste exige o ajuste
@@ -131,10 +128,8 @@ def test_papel_desconhecido_e_recusado(envio_na_fila, professora):
     "mudancas",
     [
         {"notas": {}},
-        {"forcas": forcas_validas()[:2]},
         {"decisao": "reprovado"},
         {"decisao": Laudo.Decisao.DEVOLVIDO},
-        {"sabe_o_que_fazer_amanha": False},
     ],
 )
 def test_nenhuma_recusa_grava_laudo_nem_muda_o_envio(

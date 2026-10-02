@@ -431,12 +431,12 @@ def test_forca_generica_derruba_o_rascunho_inteiro(no_plantao, client, monkeypat
     assert FORCAS_DA_IA[0] not in resposta.content.decode()
 
 
-def test_menos_de_tres_forcas_tambem_e_recusado(no_plantao, client, monkeypatch):
+def test_menos_de_tres_forcas_tambem_e_sugerido(no_plantao, client, monkeypatch):
     poucas = {**SUGESTAO_BOA, "forcas": FORCAS_DA_IA[:2]}
     dublar_a_anthropic(monkeypatch, corpo=corpo_da_anthropic(poucas))
     resposta = rascunhar(client, no_plantao)
-    assert resposta.status_code == 503
-    assert "exatamente três forças" in resposta.content.decode()
+    assert resposta.status_code == 200
+    assert RascunhoDaIA.objects.count() == 1
 
 
 # ---------------------------------------------------------------------------
@@ -702,3 +702,56 @@ def test_o_rascunho_de_outro_envio_nao_gruda_neste_laudo(
     )
     assert resposta.status_code == 302
     assert Laudo.objects.get().rascunho is None
+
+
+def test_formulario_aprova_sem_inventar_forcas_mudanca_ou_resposta_amanha(
+    no_plantao, client
+):
+    resposta = client.post(
+        reverse("plantao-ficha", args=[no_plantao.id]),
+        {
+            "nota_0": "4", "frase_0": "O bevel ficou uniforme.",
+            "nota_1": "5", "frase_1": "A proporção bateu.",
+            "decisao": "aberto",
+        },
+        HTTP_COOKIE=COOKIE,
+    )
+    assert resposta.status_code == 302
+    laudo = Laudo.objects.get()
+    assert laudo.forcas == []
+    assert laudo.mudancas == []
+    assert laudo.sabe_o_que_fazer_amanha is None
+
+
+def test_formulario_grava_varias_mudancas(no_plantao, client):
+    resposta = client.post(
+        reverse("plantao-ficha", args=[no_plantao.id]),
+        {
+            "nota_0": "4", "frase_0": "O bevel ficou uniforme.",
+            "nota_1": "5", "frase_1": "A proporção bateu.",
+            "mudanca_texto": "Rever o bevel.",
+            "mudanca_aula": str(no_plantao.aula.id),
+            "mudancas_adicionais": "E00 | Conferir a proporção.",
+            "forca_0": "O bevel ficou uniforme.",
+            "forcas_adicionais": "A silhueta está clara.\nO UV foi organizado.\nA escala está correta.",
+            "decisao": "aberto",
+        },
+        HTTP_COOKIE=COOKIE,
+    )
+    assert resposta.status_code == 302
+    assert [item["texto"] for item in Laudo.objects.get().mudancas] == [
+        "Rever o bevel.", "Conferir a proporção."
+    ]
+    assert len(Laudo.objects.get().forcas) == 4
+
+
+def test_assistente_entende_lista_de_mudancas(no_plantao):
+    itens = agente._mudancas(
+        {"mudancas": [
+            {"texto": "Rever o bevel.", "aula_numero": "E00"},
+            {"texto": "Conferir proporção.", "aula_numero": "E00"},
+        ]},
+        no_plantao.aula.curso,
+    )
+    assert len(itens) == 2
+    assert all(item["aula_id"] == str(no_plantao.aula.id) for item in itens)

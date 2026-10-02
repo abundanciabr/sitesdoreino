@@ -315,10 +315,8 @@ def avisar_os_interessados(
     própria ideia, ou tendo votado nela). Suprimir esse caso seria um ramo a mais
     e uma exceção que o guarda de atomicidade teria de conhecer.
 
-    `nota` entra como veio: é a justificativa que a equipe escreveu sabendo que
-    quem sugeriu vai ler (spec §10, e o `EXIGEM_JUSTIFICATIVA` do EVO-13). Ela
-    alcança agora todo mundo que participou da conversa, que é o ponto da
-    decisão: a resposta "não vamos fazer, e por quê" é para quem se importou.
+    `nota` entra como veio: é o texto opcional que a equipe escreveu sabendo
+    que quem sugeriu vai ler. Ela alcança todo mundo que participou da conversa.
 
     **`bulk_create` e não um laço de `create()`.** É UM `INSERT` para a plateia
     inteira, dentro de uma transação que já segura o `SELECT … FOR UPDATE` da

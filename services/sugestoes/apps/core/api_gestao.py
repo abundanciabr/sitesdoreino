@@ -15,14 +15,13 @@ O que esta superfície é, e o que ela não é:
 * **É de DOMÍNIO, não de tela.** Ela devolve os fatos de cada ideia — votos,
   plateia, estado, datas, se tem avaliação, se tem ChangeSpec — e **não** as
   colunas, os baldes ou a ordem. Quem agrupa é o Admin. Um contrato com forma de
-  tela precisaria de um Rito de Contrato (uma conversa com o mantenedor) a cada
-  ajuste de layout; um contrato com forma de domínio deixa a tela evoluir de
-  graça. A conta que NÃO sai daqui é a plateia: ela é definição desta célula
+  tela acoplaria a API a cada ajuste de layout; um contrato com forma de
+  domínio deixa a tela evoluir. A conta que NÃO sai daqui é a plateia: ela é definição desta célula
   ([INV-SUG13]) e viaja pronta, porque é a mesma gente que o sininho vai avisar.
-* **Ela não afrouxa trava nenhuma.** As três escritas passam pelos MESMOS
+* **Ela usa os caminhos existentes.** As três escritas passam pelos MESMOS
   caminhos que as telas usavam (`moderacao.registrar_mudanca_de_status`,
   `changespecs.registrar`) — histórico na mesma transação, avisos para a plateia
-  inteira, justificativa obrigatória no "não vamos fazer", e o corredor do
+  inteira, nota opcional no "não vamos fazer", e o corredor do
   ChangeSpec nos três degraus. Reimplementar aqui seria abrir uma segunda porta
   para o mesmo cofre.
 
@@ -77,10 +76,8 @@ from .gestao import (
 )
 
 # `registrar_mudanca_de_status` carrega consigo as regras que esta superfície
-# NÃO reimplementa: a justificativa obrigatória do "não vamos fazer"
-# (`EXIGEM_JUSTIFICATIVA`), o histórico na mesma transação e o leque de avisos.
+# NÃO reimplementa: o histórico na mesma transação e o leque de avisos.
 from .moderacao import (
-    JustificativaObrigatoria,
     RespostaForaDeImplementado,
     STATUS_QUE_A_EQUIPE_ESCOLHE,
     registrar_mudanca_de_status,
@@ -672,8 +669,8 @@ def _quem(payload: QuemAge):
     summary="Move a ideia de fase, com histórico e avisos",
     description=(
         "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
-        "transação, a plateia inteira recebe aviso e 'não planejado' exige "
-        "justificativa. `resposta` só vale com 'implementado': substitui por "
+        "transação e a plateia inteira recebe aviso. A nota é opcional. "
+        "`resposta` só vale com 'implementado': substitui por "
         "inteiro a resposta publicada na ideia, filtrada pela lista de "
         "permissão de HTML, e vazia apaga. Fora de 'implementado', resposta "
         "não vazia é recusada com 422 e vazia não toca na guardada. De "
@@ -699,13 +696,6 @@ def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
             "erro": (
                 "A resposta publicada na ideia só vale para a fase Implementado. "
                 "Escolha Implementado ou deixe o campo vazio."
-            )
-        }
-    except JustificativaObrigatoria:
-        return 422, {
-            "erro": (
-                "Para dizer que a ideia não será feita, escreva o porquê: quem "
-                "sugeriu vai ler essa frase."
             )
         }
     except AtorSemIdDaPlataforma:

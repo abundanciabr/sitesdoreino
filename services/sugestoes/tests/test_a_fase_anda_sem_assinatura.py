@@ -77,16 +77,14 @@ def test_a_mudanca_deixa_o_mesmo_rastro_de_sempre(equipe, planejada):
     assert OutboxEvent.objects.filter(event="sugestao.status-alterado").count() == 1
 
 
-def test_nao_planejado_continua_exigindo_justificativa(equipe, planejada):
-    """A outra recusa do mesmo ponto de estrangulamento continua de pé — o que
-    saiu foi a trava do ChangeSpec, e só ela."""
+def test_nao_planejado_aceita_nota_opcional(equipe, planejada):
     resposta = equipe.gestao.mudar_status(
         equipe, planejada, Sugestao.Status.NAO_PLANEJADO, ""
     )
 
-    assert resposta.status_code == 422, resposta.content
+    assert resposta.status_code == 200, resposta.content
     planejada.refresh_from_db()
-    assert planejada.status == PLANEJADO
+    assert planejada.status == Sugestao.Status.NAO_PLANEJADO
 
 
 # ---------------------------------------------------------------------------

@@ -260,7 +260,7 @@ def test_editar_muda_responsavel_e_registra_quem_alterou():
 
 
 @respx.mock
-def test_bloquear_exige_impedimento_e_o_mostra_no_cartao():
+def test_bloquear_aceita_impedimento_opcional_e_o_mostra_no_cartao():
     cliente = _cliente()
     tarefa = Tarefa.objects.create(titulo="TESTE Gravar a aula 3")
     destino = reverse(PAINEL) + "?visao=equipe"
@@ -269,10 +269,10 @@ def test_bloquear_exige_impedimento_e_o_mostra_no_cartao():
         reverse("tarefa_situacao", args=[tarefa.id]),
         {"situacao": "bloqueada", "impedimento": "", "next": destino},
     )
-    assert sem["Location"] == destino + "&resultado=sem_impedimento"
-    assert "escreva o impedimento" in _texto(cliente.get(sem["Location"]))
+    assert sem["Location"] == destino + "&resultado=situacao"
     tarefa.refresh_from_db()
-    assert tarefa.situacao == "a_fazer"
+    assert tarefa.situacao == "bloqueada"
+    assert tarefa.impedimento == ""
 
     com = cliente.post(
         reverse("tarefa_situacao", args=[tarefa.id]),

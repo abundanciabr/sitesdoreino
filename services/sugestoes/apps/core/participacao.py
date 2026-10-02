@@ -159,12 +159,10 @@ ETAPAS = (
 #
 # **`nao_planejado` saiu da faixa em 29/08/2026, decisão do mantenedor**, e é a
 # reversão de um design anterior: até então ela ficava, de propósito, porque a
-# equipe é OBRIGADA a escrever a justificativa desde o EVO-13
-# (`EXIGEM_JUSTIFICATIVA` em `moderacao.py`) e "quem sugeriu vai ler" era lido
-# como "vai ler NA PÁGINA". A garantia continua de pé — só que por outro canal:
-# o `Aviso` (o sininho) já entrega essa nota a quem interagiu, ANTES desta
-# mudança e independente dela (`avisos.py`). A página deixa de ser o único
-# lugar que carrega essa promessa, então ela pode parar de mostrar ideia
+# equipe escrevia a justificativa e "quem sugeriu vai ler" era lido
+# como "vai ler NA PÁGINA". O `Aviso` (o sininho) entrega a nota opcional
+# a quem interagiu (`avisos.py`). A página deixa de ser o único
+# lugar que mostra a decisão, então ela pode parar de mostrar ideia
 # recusada sem quebrar a garantia. O link direto continua abrindo — só sumiu
 # da listagem (spec do pedido: `docs/decisoes/DECISAO-arquivar-ideia.md`,
 # que trata o mesmo tema para o arquivamento).

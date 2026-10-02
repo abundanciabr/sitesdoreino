@@ -259,20 +259,19 @@ def test_promover_deixa_auditoria_da_publicacao_e_da_decisao(veredito):
 
 
 # ---------------------------------------------------------------------------
-# 2. Promover só com candidato à promoção, ou com a palavra dele
+# 2. O veredito informa a escolha sem exigir confirmação extra
 # ---------------------------------------------------------------------------
 @respx.mock
 @pytest.mark.django_db
-def test_promover_inconclusivo_sem_confirmacao_nao_publica_nem_encerra(veredito):
+def test_promover_inconclusivo_sem_confirmacao_publica_e_encerra(veredito):
     veredito["valor"] = "inconclusivo"
     rotas = _catalogo(experimentos=[_experimento()])
     r = _decidir(_dentro(), decisao="promover", variante="b")
 
-    assert r.status_code == 422
-    assert "não é conclusivo" in r.content.decode()
-    assert not rotas["gravar"].called
-    assert not rotas["publicar"].called
-    assert not rotas["encerrar"].called
+    assert r.status_code == 302
+    assert rotas["gravar"].called
+    assert rotas["publicar"].called
+    assert rotas["encerrar"].called
 
 
 @respx.mock
@@ -296,7 +295,7 @@ def test_promover_inconclusivo_com_confirmacao_publica_e_registra_a_confirmacao(
 
 @respx.mock
 @pytest.mark.django_db
-def test_a_tela_so_pede_confirmacao_quando_o_resultado_nao_e_candidato(veredito):
+def test_a_tela_nao_pede_confirmacao_para_promover(veredito):
     _catalogo(experimentos=[_experimento(), _experimento()])
     cliente = _dentro()
     url = reverse("decisao_do_experimento", args=[EXP_ID])
@@ -308,7 +307,7 @@ def test_a_tela_so_pede_confirmacao_quando_o_resultado_nao_e_candidato(veredito)
     veredito["valor"] = "coletando"
     coletando = cliente.get(url).content.decode()
     assert "Promover b" in coletando
-    assert 'name="confirmo_inconclusivo" value="sim" required' in coletando
+    assert 'name="confirmo_inconclusivo"' not in coletando
 
 
 @respx.mock
@@ -500,16 +499,15 @@ def test_sem_cracha_nenhum_gesto_escreve():
 
 @respx.mock
 @pytest.mark.django_db
-def test_sem_veredito_calculado_promover_exige_a_confirmacao(monkeypatch):
-    """Sem a tela de resultado (F9a) ou sem cálculo, o lado seguro vale."""
+def test_sem_veredito_calculado_promover_continua_disponivel(monkeypatch):
     monkeypatch.setattr(decisao_do_experimento, "_veredito", lambda s, e: None)
     rotas = _catalogo(experimentos=[_experimento()])
     cliente = _dentro()
     tela = cliente.get(reverse("decisao_do_experimento", args=[EXP_ID]))
     assert "ainda sem cálculo" in tela.content.decode()
-    assert 'name="confirmo_inconclusivo" value="sim" required' in tela.content.decode()
-    assert _decidir(cliente, decisao="promover", variante="b").status_code == 422
-    assert not rotas["publicar"].called
+    assert 'name="confirmo_inconclusivo"' not in tela.content.decode()
+    assert _decidir(cliente, decisao="promover", variante="b").status_code == 302
+    assert rotas["publicar"].called
 
 
 def test_sem_a_tela_de_resultado_o_veredito_e_desconhecido(monkeypatch):

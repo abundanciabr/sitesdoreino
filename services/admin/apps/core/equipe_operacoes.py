@@ -110,8 +110,6 @@ def validar_tarefa(dados: dict, membros, objetivos) -> list[str]:
         erros.append(erro_prazo)
     if dados["situacao"] not in Situacao.values:
         erros.append("Não conheço essa situação.")
-    if dados["situacao"] == Situacao.BLOQUEADA and not dados["impedimento"]:
-        erros.append("Para bloquear uma tarefa, escreva o impedimento.")
     return erros
 
 
@@ -210,8 +208,6 @@ def mudar_situacao(tarefa: Tarefa, situacao: str, impedimento: str, quem: str) -
     impedimento = (impedimento or "").strip()[:2000]
     if situacao not in Situacao.values:
         return "situacao_desconhecida"
-    if situacao == Situacao.BLOQUEADA and not impedimento:
-        return "sem_impedimento"
     estava_concluida = tarefa.situacao == Situacao.CONCLUIDA
     regra_da_situacao(tarefa, situacao, impedimento)
     tarefa.alterada_por = quem[:200]

@@ -24,7 +24,7 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
 <section class="laudo-anterior">
   <h2>O envio anterior</h2>
   <p class="miudo">Este é um reenvio. O laudo anterior devolveu com a mudança pedida:</p>
-  <p class="mudanca">{{ laudo_anterior.mudanca.texto }}</p>
+  {% for mudanca in laudo_anterior.mudancas %}<p class="mudanca">{{ mudanca.texto }}</p>{% empty %}<p>Nenhuma mudança foi pedida.</p>{% endfor %}
 </section>
 {% endif %}
 
@@ -97,12 +97,12 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
   <ul>{% for forca in laudo.forcas %}<li>{{ forca }}</li>{% endfor %}</ul>
   {% endif %}
 
-  {% if laudo.mudanca.texto %}
-  <h2>Uma mudança para a próxima</h2>
-  <p>{{ laudo.mudanca.texto }}</p>
+  {% if laudo.mudancas %}
+  <h2>Mudanças para a próxima</h2>
+  {% for mudanca in laudo.mudancas %}<p>{{ mudanca.texto }}</p>{% endfor %}
   {% endif %}
 
-  <div class="pedir-ajuda">
+  {% if laudo.mudancas %}<div class="pedir-ajuda">
     <h3>Travou para aplicar a mudança?</h3>
     <p>Peça ajuda no grupo da Comunidade. Abra
     <a href="/forum/comunidade">/forum/comunidade</a> e conte o que está
@@ -113,7 +113,7 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
       <li>Onde você travou, com a mensagem de erro ou a imagem do problema.</li>
       <li>O que você já tentou.</li>
     </ul>
-  </div>
+  </div>{% endif %}
 </section>
 {% endif %}
 {% endblock %}

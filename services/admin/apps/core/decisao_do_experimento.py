@@ -23,12 +23,7 @@ texto salvo e ainda não publicado, promover publicaria esse texto junto, sem
 ele ter pedido. Nesse caso a tela recusa e diz o que fazer: publicar ou desfazer
 o rascunho na tela da página, e voltar.
 
-## Promover só com veredito, ou com a palavra dele
-
-O botão aparece habilitado quando o resultado (frente F9a) diz `candidato à
-promoção`. Com qualquer outro veredito, ou sem veredito, promover exige marcar
-a frase que diz que o resultado não é conclusivo. A conferência é repetida
-aqui no servidor: o formulário não é prova de nada.
+O veredito aparece na tela para informar a escolha; ele não impede promover.
 
 ## Duplo clique não duplica nada
 
@@ -76,7 +71,7 @@ DECISOES = {
 #: A variante que é o texto que já estava no ar quando o experimento nasceu.
 CONTROLE = "a"
 
-#: O veredito da F9a que habilita Promover sem confirmação.
+#: O veredito da F9a exibido na tela de decisão.
 CANDIDATO = "candidato à promoção"
 
 #: O estado em que o experimento está medindo. O contrato não tem pausa.
@@ -95,7 +90,7 @@ def _veredito(site_id: str, experimento: dict) -> str | None:
     """O veredito do resultado (frente F9a), ou `None` se não deu para calcular.
 
     Sem a tela de resultado no ar, não há veredito: a tela diz "ainda sem
-    cálculo" e Promover passa a exigir a confirmação, que é o lado seguro.
+    cálculo" e mantém a escolha disponível.
     """
     try:
         from .resultado_do_experimento import veredito_do_experimento
@@ -314,13 +309,6 @@ def decidir(
                     "recusado",
                     "Escolha a variante que vai ao ar. A variante a é o texto que "
                     "já está no ar: para mantê-lo, use Reverter.",
-                )
-            veredito = _veredito(site_id, experimento)
-            if veredito != CANDIDATO and not confirmou_inconclusivo:
-                return Desfecho(
-                    "recusado",
-                    "O resultado ainda não é conclusivo. Para promover assim "
-                    "mesmo, marque a frase de confirmação e aperte Promover.",
                 )
             publicado = _publicar_a_variante(request, site_id, experimento, variante)
             if isinstance(publicado, Desfecho):

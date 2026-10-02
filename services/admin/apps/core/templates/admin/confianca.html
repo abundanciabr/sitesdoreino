@@ -4,9 +4,8 @@ A CONFIANÇA (/admin/placar/confianca/, 05/09/2026, degrau 11 do plano do painel
 de gestão, §6.6).
 
 Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
-tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
-admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py), e toda classe
-usada abaixo já existe lá.
+tela (armadilhas/087). O estilo mora em admin/base.html, e toda classe usada
+abaixo já existe lá.
 
 A regra que governa cada `{% if %}` desta tela: o VEREDITO vem antes de
 qualquer conta. Nenhuma frase de "está tudo em dia" pode ser desenhada num
@@ -41,7 +40,7 @@ ramo onde a medição não respondeu. Regras em apps/core/confianca.py.
       históricos desses assuntos envelhecem calados.
     </p>
     <p class="recado">
-      <b>O gesto:</b> peça a uma sessão que olhe por que esse aviso parou de sair.
+      <b>O gesto:</b> confira a origem desse aviso no painel e retome a medição.
     </p>
     {% else %}
     <p class="nota">Tudo que a plataforma conta continua chegando.</p>
@@ -149,9 +148,7 @@ ramo onde a medição não respondeu. Regras em apps/core/confianca.py.
   </p>
 
   <p class="recado espaco-16">
-    <b>O gesto:</b> a foto da semana nasce do pedido da
-    <a href="{% url 'talentos' %}">rede de talentos</a>. Conte as três etapas,
-    monte o pedido e cole numa sessão.
+    <b>O gesto:</b> <a href="{% url 'gestao_do_placar' %}">registre a foto da semana no painel</a>.
   </p>
 
   {% elif frescor.veredito == "sem-livro" %}

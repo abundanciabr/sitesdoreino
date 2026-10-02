@@ -108,12 +108,9 @@ def test_backup_recusado_cancela_candidata_sem_trocar_pin(runtime, monkeypatch):
     assert ler(m)["atual"] == A
     assert json.loads((m.PASTA / "imagens.json").read_text())["services"]["admin"]["image"].endswith(A)
 
-def test_recusa_sem_prova_ou_compatibilidade(runtime, monkeypatch):
+def test_recusa_compatibilidade_diferente_sem_exigir_suites(runtime, monkeypatch):
     m, chamadas = runtime
     monkeypatch.setenv("TAG", B)
-    with pytest.raises(ValueError, match="testes isolados"):
-        m.executar("preparar")
-    monkeypatch.setenv("PROVA_IMAGEM_SHA", B)
     monkeypatch.setenv("COMPATIBILIDADE_CONFIGURACAO", "coord-removida")
     with pytest.raises(ValueError, match="incompatível"):
         m.executar("preparar")
@@ -240,7 +237,7 @@ def test_auxiliar_morto_recusa_recuperacao(runtime, monkeypatch):
     assert ler(m)["recuperacao"]["estado"] == "falhou"
 
 
-def test_encerrar_selecao_recusada_persiste_latch_sem_tag(runtime, monkeypatch):
+def test_recuperacao_falha_registrada_sem_bloquear_publicacao_nova(runtime, monkeypatch):
     m, chamadas = runtime
     monkeypatch.delenv("TAG")
     monkeypatch.setenv("ATUAL_ESPERADA", A)
@@ -251,8 +248,8 @@ def test_encerrar_selecao_recusada_persiste_latch_sem_tag(runtime, monkeypatch):
     assert ler(m) == estado
     monkeypatch.setenv("TAG", B)
     monkeypatch.setenv("PROVA_IMAGEM_SHA", B)
-    with pytest.raises(ValueError, match="recuperação terminal"):
-        m.executar("preparar")
+    m.executar("preparar")
+    assert ler(m)["candidata"] == B
     assert not any("up" in c for c in chamadas)
 
 

@@ -185,7 +185,6 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% elif conclusao.fechado_por %}
   <p class="selo fechado">{{ conclusao.fechado_por }}</p>
   {% else %}
-  <p class="selo">Todas as pausas desta aula estão registradas.</p>
   <form method="post" action="{% url 'concluir-aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
     <button type="submit">Concluir esta aula</button>

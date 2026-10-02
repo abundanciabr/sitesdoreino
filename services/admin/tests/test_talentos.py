@@ -1,31 +1,4 @@
-"""A rede de talentos, `/admin/placar/talentos/` (degrau 17 do plano do painel).
-
-O que cada grupo de guardas protege, e por que ele existe:
-
-1. **Ausência de contagem nunca vira zero** (`armadilhas/271`). São quatro
-   estados diferentes na tela, e o teste separa os quatro: "nunca contado" (a
-   escola não contou), "não consigo olhar" (o livro não chegou), "não consigo
-   contar" (a célula `alunos` não respondeu) e "sem dados" (o cartão não tem
-   fonte nenhuma). Uma escola sem estúdio parceiro nenhum tem de ver a
-   pergunta sem resposta, e nunca um zero que parece medição.
-2. **A contagem digitada é registro do livro, não tabela.** O pedido que a
-   tela monta pede uma `medicao` com o campo `foto`, e a linha que ele escreve
-   passa no MESMO formato que `mudancas.ler_foto` lê de volta. Um pedido que
-   produzisse uma linha torta só seria descoberto pelo robô, horas depois.
-3. **A foto que vai ao livro nasce completa.** O bloco "o que mudou" da capa
-   compara a foto mais recente do livro com o que o placar mostra agora. Uma
-   foto só com as três contagens da rede seria a mais recente sem ter os
-   outros números, e o placar inteiro apareceria como "sem par" na segunda
-   seguinte. O guarda mede que o placar de hoje viaja junto.
-4. **Campo vazio não é zero.** Contar uma etapa hoje e outra na semana que vem
-   é o uso normal desta tela; gravar zero pelo campo em branco apagaria uma
-   contagem verdadeira na foto seguinte.
-5. **Entrada inválida diz o que aconteceu e o que fazer**, e não grava nada.
-6. **A tela não escreve em lugar nenhum**: o POST devolve texto, e todas as
-   chamadas que saem daqui são leituras.
-7. **O laço tem os seis passos do documento, na ordem** (Scale OS 2 §45), e a
-   última contagem de cada etapa vence a anterior, com a idade dita.
-"""
+"""Rede de talentos: leitura e gravação persistente das contagens."""
 
 from __future__ import annotations
 
@@ -38,7 +11,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.core import direcao, placar, talentos
-from apps.core.mudancas import ler_foto
+from apps.core.models import RegistroDoPlacar
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -48,6 +21,8 @@ ALUNOS = "http://alunos:8000/api/alunos"
 FILA = f"{ALUNOS}/pre-matriculas"
 ALUNOS_LISTA = f"{ALUNOS}/matriculas"
 HOJE = dt.date(2026, 9, 21)
+
+pytestmark = pytest.mark.django_db
 
 TALENTOS = "alunos-selecionados-para-a-rede"
 ESTUDIOS = "estudios-parceiros"
@@ -112,13 +87,6 @@ def _medicao(quando: str, foto: str, arquivo: str = "um-registro") -> dict:
 
 def _passo(laco: dict, chave: str) -> dict:
     return next(p for p in laco["passos"] if p["chave"] == chave)
-
-
-#: Uma linha de foto do placar, válida, para os guardas que só querem provar o
-#: bloco. Ela é obrigatória desde 07/09/2026: sem placar medido não há pedido
-#: (lei 3 de `talentos.py`), e um guarda que a omitisse estaria medindo o
-#: caminho da recusa achando que mede o do bloco.
-PLACAR = "alunos-na-plataforma=133; compras-no-ciclo=17"
 
 
 # ---------------------------------------------------------------------------
@@ -187,128 +155,34 @@ def test_sem_cartao_a_etapa_nao_mostra_numero_nenhum(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 2. A contagem digitada é registro do livro, não tabela
+# Contagens digitadas ficam no banco e aparecem depois de recarregar
 # ---------------------------------------------------------------------------
-
-
-def test_o_pedido_pede_uma_medicao_com_o_campo_foto():
-    texto = talentos.montar_o_pedido({TALENTOS: 4}, HOJE, f"{TALENTOS}=1")
-
-    assert "21/09/2026" in texto
-    assert "tipo `medicao`" in texto
-    assert "autoridade: mantenedor" in texto
-    assert f'foto: "{TALENTOS}=4"' in texto
-    assert "services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta)" in texto
-
-
-def test_o_pedido_manda_gravar_a_data_de_hoje_no_campo_quando():
-    """Sem esta linha o robô carimba o dia do PR, e a tela mente a data.
-
-    `ultima_medicao` lê `quando` para dizer "contado por você em tal dia". Um
-    PR que só entra no dia seguinte faria a tela jurar que alguém contou num
-    dia em que ninguém contou nada.
-    """
-    texto = talentos.montar_o_pedido({TALENTOS: 4}, HOJE, PLACAR)
-
-    assert "quando: 2026-09-21" in texto
-    assert "não o dia em que este" in texto
-
-
-def test_a_linha_da_foto_passa_no_formato_que_o_livro_exige():
-    texto = talentos.montar_o_pedido(
-        {TALENTOS: 4, ESTUDIOS: 2, ENCAIXES: 1}, HOJE, f"{TALENTOS}=0"
-    )
-    linha = texto.split('foto: "')[1].split('"')[0]
-
-    assert ler_foto(linha) == {TALENTOS: 4, ESTUDIOS: 2, ENCAIXES: 1}
-
-
-def test_sem_contagem_nenhuma_nao_ha_pedido():
-    assert talentos.montar_o_pedido({}, HOJE, PLACAR) is None
-
-
-# ---------------------------------------------------------------------------
-# 3. A foto que vai ao livro nasce completa
-# ---------------------------------------------------------------------------
-
-
-def test_o_pedido_leva_o_placar_junto_para_a_foto_nao_nascer_pela_metade():
-    texto = talentos.montar_o_pedido(
-        {ESTUDIOS: 2}, HOJE, "compras-no-ciclo=17; compras-no-mes=9"
-    )
-    linha = texto.split('foto: "')[1].split('"')[0]
-
-    assert ler_foto(linha) == {
-        "compras-no-ciclo": 17,
-        "compras-no-mes": 9,
-        ESTUDIOS: 2,
-    }
-
-
-def test_a_contagem_digitada_vence_o_mesmo_nome_vindo_do_placar():
-    texto = talentos.montar_o_pedido({ESTUDIOS: 5}, HOJE, f"{ESTUDIOS}=2")
-    linha = texto.split('foto: "')[1].split('"')[0]
-
-    assert ler_foto(linha) == {ESTUDIOS: 5}
-
-
-@pytest.mark.parametrize(
-    "foto_do_placar",
-    [
-        None,  # o cartão da meta faltou: `montar_o_placar` devolve mudancas None
-        "",  # o placar mediu, e não mediu nada
-        "torta demais",  # a linha não passa no formato do livro
-    ],
-)
-def test_placar_que_nao_mediu_nao_produz_meia_foto(foto_do_placar):
-    """Lei 3: a foto nasce completa, ou não nasce.
-
-    Meia foto vira a mais recente do livro sem os outros números, e na segunda
-    seguinte o placar inteiro aparece como `sem_par`. O estrago só se vê uma
-    semana depois, e ninguém liga uma coisa à outra.
-    """
-    assert talentos.montar_o_pedido({ESTUDIOS: 2}, HOJE, foto_do_placar) is None
 
 
 @respx.mock
-def test_a_tela_poe_no_bloco_um_numero_que_o_placar_mediu_de_verdade():
-    """A fiação real, e não uma string passada à mão para `montar_o_pedido`.
-
-    Sem este guarda, trocar `foto_de_hoje` por qualquer chave inexistente em
-    `talentos.py` deixaria os guardas todos verdes, e a foto sairia pela
-    metade em produção.
-    """
+def test_contagem_salva_e_consultada_em_outra_requisicao():
     _a_escola_responde()
+    cliente = _dentro()
 
-    resposta = _dentro().post(reverse("talentos"), {"estudios": "2"})
+    resposta = cliente.post(reverse("talentos"), {"talentos": "4", "estudios": "0"})
+    assert resposta.status_code == 302
+    linhas = list(RegistroDoPlacar.objects.filter(arquivo__startswith="talentos-"))
+    assert len(linhas) == 1
+    assert linhas[0].dados["quando"] == HOJE.isoformat()
+    assert linhas[0].dados["autoridade"] == DONO
+    assert f"{TALENTOS}=4" in linhas[0].dados["foto"]
+    assert f"{ESTUDIOS}=0" in linhas[0].dados["foto"]
 
-    bloco = resposta.content.decode().split("<textarea")[1].split("</textarea>")[0]
-    assert "alunos-na-plataforma=1" in bloco, "o placar de verdade viaja junto"
-    assert f"{ESTUDIOS}=2" in bloco
+    pagina = cliente.get(reverse("talentos"))
+    assert pagina.status_code == 200
+    assert _passo(pagina.context["laco"], "talentos")["valor"] == 4
+    assert _passo(pagina.context["laco"], "estudios")["valor"] == 0
 
-
-@respx.mock
-def test_sem_livro_e_sem_placar_a_tela_nao_entrega_bloco_nenhum(monkeypatch):
-    """Livro fora do ar: `o_que_mudou` devolve só o veredito, sem `foto_de_hoje`.
-
-    A tela tem de dizer que não dá para gravar agora, e por quê. O que ela não
-    pode é entregar um bloco pronto com meia foto.
-    """
-    _a_escola_responde()
-    monkeypatch.setattr(direcao, "ler_registros", lambda pasta=None: None)
-
-    html = _dentro().post(reverse("talentos"), {"estudios": "2"}).content.decode()
-    texto = " ".join(html.split())
-
-    assert "<textarea" not in html
-    assert "Não dá para gravar esta contagem agora" in html
-    assert "não mediu nada" in html
-    assert "Não consegui olhar as contagens" in html
-    assert "Isto é falha do sistema, não sua." in texto
-    assert (
-        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
-        in texto
-    )
+    cliente.post(reverse("talentos"), {"estudios": "2"})
+    assert RegistroDoPlacar.objects.filter(arquivo__startswith="talentos-").count() == 2
+    pagina = cliente.get(reverse("talentos"))
+    assert _passo(pagina.context["laco"], "talentos")["valor"] == 4
+    assert _passo(pagina.context["laco"], "estudios")["valor"] == 2
 
 
 # ---------------------------------------------------------------------------
@@ -363,64 +237,22 @@ def test_a_recusa_cita_a_etiqueta_da_tela_e_nunca_o_nome_do_cartao():
 
 
 @respx.mock
-def test_a_tela_devolve_a_recusa_e_nao_monta_pedido():
+def test_entrada_invalida_nao_grava_metade():
     _a_escola_responde()
-
-    resposta = _dentro().post(reverse("talentos"), {"estudios": "dois"})
-    html = resposta.content.decode()
-
-    assert "Não gravei nada" in html
-    assert "O pedido para o robô" not in html
-    assert "Nada para pedir" not in html, "duas respostas ao mesmo POST confundem"
-
-
-@respx.mock
-def test_um_campo_certo_e_um_errado_recusam_TUDO_e_nao_montam_meio_pedido():
-    """O caso que o guarda de um campo só não via.
-
-    Com "4" em alunas e "dois" em estúdios, a tela mandava corrigir E entregava
-    um bloco pronto com só a contagem que passou. Ele cola, e grava metade.
-    """
-    _a_escola_responde()
-
     resposta = _dentro().post(
         reverse("talentos"), {"talentos": "4", "estudios": "dois"}
     )
-    html = resposta.content.decode()
-
-    assert "Não gravei nada" in html
-    assert "O pedido para o robô" not in html
-    assert "<textarea" not in html, "recusa e bloco pronto nunca saem juntos"
-    # O bloco nem chega a ser montado: um pedido pronto guardado no contexto é
-    # uma arma carregada para a próxima tela que resolver imprimi-lo.
-    assert resposta.context["pedido"] is None
-
-
-# ---------------------------------------------------------------------------
-# 6. A tela não escreve em lugar nenhum
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-def test_o_post_devolve_o_pedido_e_so_le():
-    _a_escola_responde()
-
-    resposta = _dentro().post(reverse("talentos"), {"talentos": "4", "estudios": "2"})
-
     assert resposta.status_code == 200
-    html = resposta.content.decode()
-    assert "O pedido para o robô" in html
-    assert f"{TALENTOS}=4" in html
-    assert all(c.request.method == "GET" for c in respx.calls), "a rede só lê"
+    assert "Não gravei nada" in resposta.content.decode()
+    assert RegistroDoPlacar.objects.filter(arquivo__startswith="talentos-").count() == 0
 
 
 @respx.mock
-def test_o_post_vazio_diz_que_nao_ha_o_que_pedir():
+def test_post_vazio_diz_que_nao_ha_o_que_salvar():
     _a_escola_responde()
-
     html = _dentro().post(reverse("talentos"), {}).content.decode()
-
-    assert "Nada para pedir" in html
+    assert "Nada para salvar" in html
+    assert RegistroDoPlacar.objects.filter(arquivo__startswith="talentos-").count() == 0
 
 
 @respx.mock

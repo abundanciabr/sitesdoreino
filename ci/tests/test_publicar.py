@@ -50,7 +50,6 @@ def test_vigia_recupera_aplicacao_sem_escolher_journal_da_transicao(tmp_path, mo
     medicoes = iter([(1, "fora"), (1, "fora"), (0, "ok")])
     monkeypatch.setattr(publicar, "medir_site", lambda: next(medicoes))
     monkeypatch.setattr(publicar, "time", SimpleNamespace(sleep=lambda *_: None))
-    monkeypatch.setattr(publicar, "travar", lambda *_args, **_kwargs: os.open(os.devnull, os.O_RDONLY))
     chamados = []
     monkeypatch.setattr(publicar, "recuperar", lambda celula: chamados.append(celula) or 0)
     assert publicar.vigiar() == 0
@@ -141,119 +140,6 @@ def test_aplicacao_monta_bundle_imutavel_com_contexto_do_repositorio(tmp_path, m
     assert (final / "modules" / "origem").read_text() == str(fonte / "services")
     assert (final / "documentos_embutidos" / "pagina.md").read_text() == "conteúdo"
     assert imagem == "plataforma-aplicacao:base-x"
-    roteiro = publicar.roteiro_de_prova("aplicacao")
-    assert 'PYTHONPATH="/tmp/prova/services/$modulo"' in roteiro
-    assert "for modulo in " + " ".join(publicar.MODULOS_DA_APLICACAO) in roteiro
-    assert "CELULA=\"$modulo\" python -m pytest" in roteiro
-    assert "/app/tests" in roteiro
-    assert "python /app/prova.py" in roteiro
-
-
-def test_prova_integrada_usa_bancos_redis_distintos_das_suites_legadas(tmp_path, monkeypatch):
-    publicar = carregar("publicar_redis_prova", "infra/publicar.py")
-    comandos = []
-    monkeypatch.setattr(publicar, "rodar", lambda *args: comandos.append(args))
-
-    def executar(args, **_opcoes):
-        comandos.append(args)
-        return SimpleNamespace(returncode=0)
-
-    monkeypatch.setattr(publicar.subprocess, "run", executar)
-    with (tmp_path / "prova.log").open("w") as registro:
-        publicar.provar_produto("aplicacao", "a" * 40, "imagem:teste", tmp_path, tmp_path, registro)
-    prova = next(comando for comando in comandos if comando[:3] == ["docker", "run", "--rm"])
-    ambiente = [valor for indice, valor in enumerate(prova) if prova[indice - 1] == "-e"]
-    redis = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("REDIS_STREAMS_URL="))
-    huey = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("HUEY_REDIS_URL="))
-    prova_redis = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("PROVA_REDIS_URL="))
-    prova_huey = next(valor.split("=", 1)[1] for valor in ambiente if valor.startswith("PROVA_HUEY_URL="))
-    assert redis.endswith("/0") and huey.endswith("/1")
-    assert prova_redis.endswith("/2") and prova_huey.endswith("/3")
-    assert len({redis, huey, prova_redis, prova_huey}) == 4
-    roteiro = prova[-1]
-    assert roteiro.index("done\ncd /app\n") < roteiro.index(
-        'export REDIS_STREAMS_URL="$PROVA_REDIS_URL" HUEY_REDIS_URL="$PROVA_HUEY_URL"'
-    ) < roteiro.index("/app/tests") < roteiro.index("/app/prova.py")
-
-
-def test_ativacao_unica_espera_trava_comum_exclusiva_e_recebe_bundle(tmp_path, monkeypatch):
-    publicar = carregar("publicar_ativacao", "infra/publicar.py")
-    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
-    chamadas = []
-    monkeypatch.setattr(publicar, "travar", lambda caminho, **opcoes: (
-        chamadas.append((caminho.name, opcoes)) or len(chamadas)))
-    comum, propria, _ = publicar.travas_da_celula("aplicacao")
-    assert chamadas[0] == (".publicacao.lock", {"exclusiva": True})
-    assert chamadas[1][0] == ".publicacao-aplicacao.lock"
-
-    class Processo:
-        stdout = ["APLICACAO-ATIVADA: " + "a" * 40 + "\n"]
-
-        def wait(self):
-            return 0
-
-    def popen(comando, **opcoes):
-        chamadas.append((comando, opcoes))
-        return Processo()
-
-    monkeypatch.setattr(subprocess, "Popen", popen)
-    fonte = tmp_path / "fonte"
-    codigo = tmp_path / "versoes" / "aplicacao" / ("a" * 40)
-    with (tmp_path / "ativacao.log").open("w") as registro:
-        retorno, saida = publicar.ativar_primeira_aplicacao("a" * 40, "imagem:test", codigo,
-                                                            fonte, (comum, propria), {}, registro)
-    assert retorno == 0 and "APLICACAO-ATIVADA" in saida
-    comando, opcoes = chamadas[-1]
-    assert comando[-3:] == ["a" * 40, "imagem:test", str(codigo)]
-    assert opcoes["pass_fds"] == (comum, propria)
-    assert opcoes["env"]["FONTE_INFRA"] == str(fonte / "infra")
-
-
-@pytest.mark.parametrize("primeira", [True, False])
-def test_publicador_registra_medicao_da_primeira_ativacao_sem_duplicar_a_normal(
-    tmp_path, monkeypatch, capsys, primeira
-):
-    publicar = carregar("publicar_medicao_primeira", "infra/publicar.py")
-    monkeypatch.setattr(publicar, "RAIZ", tmp_path)
-    monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
-    monkeypatch.setattr(publicar, "TRABALHO", tmp_path / "trabalho")
-    monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
-    monkeypatch.setattr(publicar, "git", lambda *_args: "2026-10-01T12:00:00+00:00")
-    monkeypatch.setattr(publicar, "extrair", lambda *_args: None)
-    monkeypatch.setattr(publicar, "preparar_codigo", lambda *_args: (
-        tmp_path / "codigo", "imagem:teste", False, 0.0
-    ))
-    monkeypatch.setattr(publicar, "vaga_de_prova", lambda: (os.open(os.devnull, os.O_RDONLY), 0.002))
-    monkeypatch.setattr(publicar, "provar_produto", lambda *_args: 950.045)
-    monkeypatch.setattr(publicar, "travas_da_celula", lambda *_args: (
-        os.open(os.devnull, os.O_RDONLY), os.open(os.devnull, os.O_RDONLY), 0.003
-    ))
-    monkeypatch.setattr(publicar, "podar_versoes", lambda *_args: None)
-    monkeypatch.setattr(publicar, "ordem", lambda *_args: "nova")
-    estado = {"endereco": "https://meshcraft.top/",
-              "compatibilidade": {"dados": "dado", "configuracao": "config"}}
-    monkeypatch.setattr(publicar, "journal", lambda *_args: None if primeira else estado)
-    monkeypatch.setattr(publicar, "ativar_primeira_aplicacao", lambda *_args: (
-        0, "APLICACAO-ATIVADA: " + "a" * 40 + "\n"
-    ))
-    monkeypatch.setattr(publicar, "com_travas", lambda *_args: (
-        0, 'PUBLICACAO-MEDICAO: {"origem":"publicacao-local"}\nENTREGA-CONCLUIDA: aplicacao\n'
-    ))
-    inicial = {"endereco": estado["endereco"], "dados": "dado", "configuracao": "config"} if primeira else None
-    assert publicar.publicar("aplicacao", "a" * 40, pedido_em="2026-10-01T12:00:00+00:00",
-                            inicial=inicial) == 0
-    linhas = (tmp_path / "publicacoes" / "medicoes.jsonl")
-    if primeira:
-        medicao = json.loads(linhas.read_text(encoding="utf-8").strip())
-        assert medicao["pedido_em"] == "2026-10-01T12:00:00+00:00"
-        assert medicao["publicado_em"] and medicao["prova_falhou"] is False
-        assert medicao["reversao"] is False and medicao["recuperacao_segundos"] == 0
-        assert medicao["testes_segundos"] == 950.045
-        assert medicao["build_segundos"] == 0.0
-        assert medicao["espera_segundos"] == 0.005
-    else:
-        assert not linhas.exists()
-    assert capsys.readouterr().out.count("PUBLICACAO-MEDICAO:") == 1
 
 
 def test_primeira_aplicacao_agrega_compatibilidade_dos_journals_aprovados(tmp_path, monkeypatch):
@@ -294,28 +180,6 @@ def test_versao_atrasada_nao_substitui_a_mais_recente(repo):
     assert publicar.ordem("demo", c1) == "nova"
 
 
-def test_ondas_publicam_provedor_antes_do_consumidor():
-    publicar = carregar("publicar_ondas", "infra/publicar.py")
-    from ordem_de_publicacao import dependencias
-
-    deps = dependencias(ROOT, ["checkout", "pagamentos", "quiz"])
-    ondas = publicar.ondas(["checkout", "pagamentos", "quiz"])
-    posicao = {c: i for i, onda in enumerate(ondas) for c in onda}
-    for celula, provedores in deps.items():
-        for provedor in provedores & set(posicao):
-            assert posicao[provedor] < posicao[celula]
-    assert sorted(c for onda in ondas for c in onda) == ["checkout", "pagamentos", "quiz"]
-
-
-def test_prova_do_produto_mantem_exclusoes_e_dependencias_da_imagem():
-    publicar = carregar("publicar_prova", "infra/publicar.py")
-    assert "not test_central_identifica" in publicar.roteiro_de_prova("admin")
-    assert "nodejs" in publicar.roteiro_de_prova("checkout")
-    assert "safe.directory" in publicar.roteiro_de_prova("funil")
-    assert publicar.roteiro_de_prova("quiz").rstrip().endswith("python -m pytest -q -p no:cacheprovider")
-    assert "collectstatic" in publicar.comando_de_estaticos("admin", ROOT / "services/admin")
-
-
 def test_versao_existente_e_reaproveitada_sem_copiar_de_novo(repo, monkeypatch, tmp_path):
     publicar, celula, commit = repo
     sha = commit("c0")
@@ -338,10 +202,10 @@ def test_infra_reprovada_nao_inicia_publicacao_de_celula(tmp_path, monkeypatch):
     (tmp_path / "logs").mkdir()
     monkeypatch.setattr(publicar, "git", lambda *args: (
         "infra/docker-compose.yml\nservices/admin/apps/core/views.py"
-        if args[0] == "diff" else "2026-10-01T12:00:00+00:00"))
+        if args[0] == "diff" else "b" * 40 if args[0] == "rev-parse"
+        else "2026-10-01T12:00:00+00:00"))
     monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: False)
     monkeypatch.setattr(publicar, "avisar", lambda *args: None)
-    monkeypatch.setattr(publicar, "ondas", lambda celulas: [celulas])
     monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: pytest.fail("publicação iniciou sem infra"))
     assert publicar.lote("a" * 40, "b" * 40) == 1
     resultado = json.loads((tmp_path / "lotes" / ("b" * 40 + ".json")).read_text())
@@ -360,12 +224,11 @@ def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, mo
     (tmp_path / "publicacoes" / "aplicacao.json").write_text(json.dumps({"atual": "a" * 40}))
     monkeypatch.setattr(publicar, "git", lambda *args: (
         "infra/traefik/dynamic/plataforma.yml" if args[0] == "diff"
-        else "2026-10-01T12:00:00+00:00"))
+        else "b" * 40 if args[0] == "rev-parse" else "2026-10-01T12:00:00+00:00"))
     chamadas = []
     monkeypatch.setattr(publicar, "sincronizar_infra", lambda *args: pytest.fail("sincronizador antigo"))
     monkeypatch.setattr(publicar, "sincronizar_infra_aplicacao", lambda sha, _log: (
         chamadas.append(sha) or True))
-    monkeypatch.setattr(publicar, "ondas", lambda celulas: [])
     assert publicar.lote("a" * 40, "b" * 40) == 0
     assert chamadas == ["b" * 40]
 

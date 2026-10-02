@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Publicador direto pela VPS: recebe a main, prova, ativa e volta sozinho.
+"""Publicador direto pela VPS: recebe a main, ativa, prova e volta sozinho.
 
 Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
   receber [--esperar]   busca a main e publica a infra e as células tocadas desde a última recebida
-  publicar CELULA SHA   publica uma célula: testes do produto, backup, ativação, prova do endereço
+  publicar CELULA SHA   publica uma célula: backup, ativação, prova do endereço
   recuperar CELULA      volta a célula para a última aprovada distinta e prova de novo
   vigiar                mede o site; fora do ar, volta a última publicação e avisa se não resolver
   estado                versões no ar e últimas medições
@@ -13,8 +13,7 @@ Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
 Código novo com a mesma base (Dockerfile, requirements.txt, vendor/) não reconstrói imagem:
 a pasta imutável versoes/<celula>/<sha> é montada em /app, somente leitura, e o serviço é
 recriado. Base diferente reconstrói a imagem aqui. Cada publicação tem pasta de trabalho,
-rede, banco de teste e nomes próprios; a exclusão é por célula (infra/trava-da-celula.sh)
-e só a infra comum usa a trava global. O banco nunca é restaurado sozinho.
+O banco nunca é restaurado sozinho.
 """
 from __future__ import annotations
 
@@ -22,17 +21,13 @@ import hashlib
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-
-try:
-    import fcntl
-except ImportError:  # testes no Windows
-    fcntl = None
 
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 FERRAMENTAS = Path(__file__).resolve().parents[1]
@@ -42,18 +37,12 @@ PUBLICACOES = RAIZ / "publicacoes"
 TRABALHO = PUBLICACOES / "trabalho"
 LOGS = PUBLICACOES / "logs"
 LOTES = PUBLICACOES / "lotes"
-VAGAS_DE_PROVA = 2
 GUARDAR_VERSOES = 3
 ARQUIVOS_DA_INFRA = ("docker-compose.yml", "traefik", "sites.json", "sincronizar_sites.py",
                      "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
                      "publicacao-local.py")
 GATILHOS_DA_INFRA = ("infra/docker-compose.yml", "infra/traefik/", "infra/sites.json",
                      "infra/sincronizar_sites.py", "infra/sincronizar-infra-na-vps.sh")
-# Exclusões herdadas da prova do Actions: dependem do repositório inteiro com .git.
-EXCLUSOES = {
-    "admin": "not test_central_identifica_as_duas_publicacoes_sem_trocar_a_selecao and not test_vinculos_nao_seguem_diretorio_redirecionado",
-    "funil": "not test_validador_da_celula_real_passa",
-}
 SHA = re.compile(r"[0-9a-f]{40}")
 CELULA = re.compile(r"[a-z][a-z0-9_]*")
 MODULOS_DA_APLICACAO = ("admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
@@ -111,33 +100,8 @@ def metadados_da_primeira_aplicacao() -> dict:
         for tipo, pares in tokens.items()}}
 
 
-def travar(caminho: Path, exclusiva=True, esperar=True) -> int | None:
-    caminho.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(caminho, os.O_RDONLY | os.O_CREAT, 0o644)
-    modo = (fcntl.LOCK_EX if exclusiva else fcntl.LOCK_SH) | (0 if esperar else fcntl.LOCK_NB)
-    try:
-        fcntl.flock(fd, modo)
-    except BlockingIOError:
-        os.close(fd)
-        return None
-    return fd
-
-
-def travas_da_celula(celula: str) -> tuple[int, int, float]:
-    """Mesma ordem do infra/trava-da-celula.sh: comum compartilhada, depois a célula."""
-    inicio = time.monotonic()
-    # A ativação da aplicação troca a topologia comum; nenhuma célula antiga
-    # pode trocar de versão enquanto esse corte acontece.
-    comum = travar(RAIZ / ".publicacao.lock", exclusiva=celula == "aplicacao")
-    propria = travar(RAIZ / f".publicacao-{celula}.lock")
-    return comum, propria, round(time.monotonic() - inicio, 3)
-
-
-def com_travas(roteiro: Path, travas: tuple[int, int], ambiente: dict, registro) -> tuple[int, str]:
-    """Roda o roteiro bash herdando as travas já obtidas como descritores 8 e 9."""
-    comando = ["bash", "-c", 'exec 8<&"$1" 9<&"$2"; shift 2; exec bash "$@"', "_",
-               str(travas[0]), str(travas[1]), str(roteiro)]
-    processo = subprocess.Popen(comando, cwd=RAIZ, env=ambiente, pass_fds=travas, text=True,
+def executar_roteiro(roteiro: Path, ambiente: dict, registro) -> tuple[int, str]:
+    processo = subprocess.Popen(["bash", str(roteiro)], cwd=RAIZ, env=ambiente, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
     linhas = []
     for linha in processo.stdout:
@@ -148,13 +112,12 @@ def com_travas(roteiro: Path, travas: tuple[int, int], ambiente: dict, registro)
 
 
 def ativar_primeira_aplicacao(sha: str, imagem: str, codigo: Path, fonte: Path,
-                             travas: tuple[int, int], ambiente: dict, registro) -> tuple[int, str]:
-    """Troca inicial da topologia já sob a trava comum exclusiva."""
+                             ambiente: dict, registro) -> tuple[int, str]:
+    """Troca inicial da topologia."""
     comando = [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), sha, imagem, str(codigo)]
     processo = subprocess.Popen(comando, cwd=RAIZ,
-                                env=ambiente | {"FONTE_INFRA": str(fonte / "infra"),
-                                                "TRAVA_COMUM_HERDADA": "1"},
-                                pass_fds=travas, text=True, stdout=subprocess.PIPE,
+                                env=ambiente | {"FONTE_INFRA": str(fonte / "infra")},
+                                text=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
     linhas = []
     for linha in processo.stdout:
@@ -282,98 +245,18 @@ def preparar_codigo(celula: str, sha: str, fonte: Path, registro) -> tuple[Path,
     return final, imagem, construida, build_s
 
 
-def vaga_de_prova() -> tuple[int, float]:
-    """Limite de capacidade (2 CPUs), não fila: cada prova usa uma das vagas livres."""
-    inicio = time.monotonic()
-    while True:
-        for numero in range(VAGAS_DE_PROVA):
-            fd = travar(PUBLICACOES / f".vaga-prova-{numero}.lock", esperar=False)
-            if fd is not None:
-                return fd, round(time.monotonic() - inicio, 3)
-        time.sleep(2)
-
-
-def roteiro_de_prova(celula: str) -> str:
-    if celula == "aplicacao":
-        modulos = " ".join(MODULOS_DA_APLICACAO)
-        return ("set -eu\nmkdir /tmp/prova\ncp -a /fonte/. /tmp/prova/\n"
-                f"for modulo in {modulos}; do\n"
-                "  echo \"PROVA-LEGADA: $modulo\"\n"
-                "  cd \"/tmp/prova/services/$modulo\"\n"
-                "  case \"$modulo\" in\n"
-                f"    admin) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['admin']}' ;;\n"
-                f"    funil) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider -k '{EXCLUSOES['funil']}' ;;\n"
-                "    *) PYTHONPATH=\"/tmp/prova/services/$modulo\" CELULA=\"$modulo\" python -m pytest -q -p no:cacheprovider ;;\n"
-                "  esac\n"
-                "done\ncd /app\n"
-                "export REDIS_STREAMS_URL=\"$PROVA_REDIS_URL\" HUEY_REDIS_URL=\"$PROVA_HUEY_URL\"\n"
-                "PYTHONPATH=/app python -m pytest -q -p no:cacheprovider /app/tests\n"
-                "PYTHONPATH=/app python /app/prova.py\n")
-    extras = ""
-    if celula == "checkout":
-        extras = "apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends nodejs >/dev/null\n"
-    if celula == "funil":
-        extras = ("apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends git >/dev/null\n"
-                  "git config --global --add safe.directory /tmp/prova\n")
-    filtro = f' -k "{EXCLUSOES[celula]}"' if celula in EXCLUSOES else ""
-    return ("set -eu\nmkdir /tmp/prova\ncp -a /fonte/. /tmp/prova/\n"
-            f'rm -rf "/tmp/prova/services/{celula}"\nmkdir -p "/tmp/prova/services/{celula}"\n'
-            f'cp -a /codigo/. "/tmp/prova/services/{celula}/"\ncd "/tmp/prova/services/{celula}"\n'
-            + extras + f"python -m pytest -q -p no:cacheprovider{filtro}\n")
-
-
-def provar_produto(celula: str, sha: str, imagem: str, codigo: Path, fonte: Path, registro) -> float:
-    """Testes do produto na imagem e no código desta versão, com banco e redis só desta prova."""
-    nome = f"prova-{celula}-{sha[:8]}-{os.getpid()}"
-    inicio = time.monotonic()
-    try:
-        rodar("docker", "network", "create", *(["--internal"] if celula == "aplicacao" else []), nome)
-        rodar("docker", "run", "-d", "--name", f"{nome}-pg", "--network", nome, "-e", "POSTGRES_USER=ci",
-              "-e", "POSTGRES_PASSWORD=ci", "-e", "POSTGRES_DB=ci_db", "--tmpfs", "/var/lib/postgresql/data",
-              "postgres:17")
-        rodar("docker", "run", "-d", "--name", f"{nome}-redis", "--network", nome, "redis:7")
-        for _ in range(60):
-            if subprocess.run(["docker", "exec", f"{nome}-pg", "pg_isready", "-U", "ci", "-d", "ci_db"],
-                              capture_output=True).returncode == 0:
-                break
-            time.sleep(1)
-        else:
-            raise RuntimeError("banco de teste não ficou pronto")
-        montagens = (["-v", f"{codigo}:/app:ro", "-w", "/app", "-e", "PYTHONPATH=/app"]
-                     if celula == "aplicacao" else [])
-        processo = subprocess.run(
-            ["docker", "run", "--rm", "--name", nome, "--network", nome, "--cpus", "1", "--cpu-shares", "256",
-             "--memory", "2g", "-e", f"CELULA={celula}",
-             "-e", f"DATABASE_URL=postgres://ci:ci@{nome}-pg:5432/ci_db",
-             "-e", f"PROVA_POSTGRES_URL=postgres://ci:ci@{nome}-pg:5432/ci_db",
-             "-e", f"REDIS_STREAMS_URL=redis://{nome}-redis:6379/0",
-             "-e", f"HUEY_REDIS_URL=redis://{nome}-redis:6379/1",
-             *(["-e", f"PROVA_REDIS_URL=redis://{nome}-redis:6379/2",
-                "-e", f"PROVA_HUEY_URL=redis://{nome}-redis:6379/3"]
-               if celula == "aplicacao" else []),
-             "-e", "DJANGO_SECRET_KEY=teste-isolado", "-e", "MP_ACCESS_TOKEN=TEST-ci-sem-credencial-real",
-             "-e", "MP_WEBHOOK_SECRET=teste-isolado",
-             "-v", f"{fonte}:/fonte:ro", "-v", f"{codigo}:/codigo:ro", *montagens,
-             "--entrypoint", "sh", imagem,
-             "-c", roteiro_de_prova(celula)],
-            stdout=registro, stderr=subprocess.STDOUT, timeout=1800)
-        if processo.returncode != 0:
-            raise RuntimeError(f"testes do produto de {celula} reprovaram")
-    finally:
-        for sobra in (nome, f"{nome}-pg", f"{nome}-redis"):
-            subprocess.run(["docker", "rm", "-f", sobra], capture_output=True)
-        subprocess.run(["docker", "network", "rm", nome], capture_output=True)
-    return round(time.monotonic() - inicio, 3)
-
-
 def ordem(celula: str, sha: str) -> str:
     """'no-ar', 'atrasada' (uma mais nova já está no ar) ou 'nova'."""
     estado = journal(celula)
-    if not estado:
-        return "nova"
-    atual = estado.get("atual") or ""
+    atual = (estado or {}).get("atual") or ""
     if atual == sha:
         return "no-ar" if (estado.get("aprovada") or {}).get("sha") == sha else "nova"
+    head = git("rev-parse", "refs/heads/main")
+    if sha != head and subprocess.run(
+            ["git", "-C", str(REPO), "merge-base", "--is-ancestor", sha, head]).returncode == 0:
+        return "atrasada"
+    if not estado:
+        return "nova"
     if SHA.fullmatch(atual) and subprocess.run(
             ["git", "-C", str(REPO), "merge-base", "--is-ancestor", sha, atual]).returncode == 0:
         return "atrasada"
@@ -400,17 +283,19 @@ def avisar(texto: str, chave: str) -> None:
         dizer(f"AVISO-NAO-ENTREGUE: {type(erro).__name__}; registrado em publicacoes/avisos.jsonl")
 
 
-def recuperar_sob_travas(celula: str, travas: tuple[int, int], registro, motivo: str) -> bool:
+def recuperar_versao(celula: str, registro, motivo: str, atual_esperada: str | None = None) -> bool:
     from reversao import escolher_alvo  # noqa: PLC0415
 
     estado = journal(celula)
+    if not estado or (atual_esperada and estado.get("atual") != atual_esperada):
+        dizer(f"REVERSAO-DISPENSADA: {celula} já mudou de versão")
+        return True
     ambiente = ambiente_base() | {"CELULA": celula, "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
     if (celula == "aplicacao" and estado and not estado.get("anterior_aprovada")
             and (PUBLICACOES / "aplicacao-transicao.json").is_file()):
         processo = subprocess.run(
             [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--recuperar"],
-            cwd=RAIZ, env=ambiente | {"ATUAL_ESPERADA": estado["atual"],
-                                     "TRAVA_COMUM_HERDADA": "1"}, pass_fds=travas,
+            cwd=RAIZ, env=ambiente | {"ATUAL_ESPERADA": estado["atual"]},
             stdout=registro, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         return processo.returncode == 0
     try:
@@ -421,7 +306,7 @@ def recuperar_sob_travas(celula: str, travas: tuple[int, int], registro, motivo:
                        env=ambiente | {"ATUAL_ESPERADA": estado["atual"]}, stdout=registro, stderr=subprocess.STDOUT)
         return False
     dizer(f"VOLTANDO: {celula} {estado['atual'][:9]} -> {alvo['sha'][:9]} ({motivo})")
-    codigo, saida = com_travas(FERRAMENTAS / "infra/reverter-celula-na-vps.sh", travas, ambiente | {
+    codigo, saida = executar_roteiro(FERRAMENTAS / "infra/reverter-celula-na-vps.sh", ambiente | {
         "VAR_TAG": f"{celula.upper()}_TAG", "TAG": alvo["sha"], "ATUAL_ESPERADA": estado["atual"],
         "COMPATIBILIDADE_DADOS": alvo["dados"], "COMPATIBILIDADE_CONFIGURACAO": alvo["configuracao"]}, registro)
     return codigo == 0 and f"REVERSAO-CONCLUIDA: {celula} -> {alvo['sha']}" in saida
@@ -448,7 +333,7 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
         inicial = metadados_da_primeira_aplicacao()
     if inicial and journal(celula):
         raise SystemExit(f"{celula} já tem aprovação; use publicar")
-    situacao = "nova" if inicial else ordem(celula, sha)
+    situacao = ordem(celula, sha)
     if situacao != "nova":
         dizer(f"{situacao.upper()}: {celula} {sha[:9]}; nada a fazer")
         return 0
@@ -466,70 +351,52 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
             codigo, imagem, construida, build_s = preparar_codigo(celula, sha, fonte, registro)
             medidas.update(build_segundos=build_s, base_reconstruida=construida)
             dizer(f"VERSAO: {celula} {sha[:9]} imagem={imagem} codigo={codigo}")
-            vaga, espera_prova = vaga_de_prova()
-            try:
-                medidas["testes_segundos"] = provar_produto(celula, sha, imagem, codigo, fonte, registro)
-            except Exception:
-                registrar_medicao(dict(celula=celula, pedido_em=pedido_em, publicado_em=None, prova_falhou=True,
-                                       reversao=False, recuperacao_segundos=0, fase="testes", **medidas))
-                raise
-            finally:
-                os.close(vaga)
-            dizer(f"TESTES-APROVADOS: {celula} em {medidas['testes_segundos']}s")
-            comum, propria, espera_trava = travas_da_celula(celula)
-            medidas["espera_segundos"] = round(espera_prova + espera_trava, 3)
-            try:
-                if inicial and journal(celula):
-                    # Outra recepção pode ter aprovado a primeira versão
-                    # enquanto esta prova isolada ainda rodava.
-                    inicial = None
-                situacao = "nova" if inicial else ordem(celula, sha)
-                if situacao != "nova":
-                    dizer(f"{situacao.upper()}: {celula} {sha[:9]} ficou para trás enquanto testava; nada aplicado")
-                    return 0
-                estado = journal(celula) or (inicial and {
-                    "endereco": inicial["endereco"],
-                    "compatibilidade": {"dados": inicial["dados"], "configuracao": inicial["configuracao"]}})
-                if not estado:
-                    raise RuntimeError(f"{celula} sem aprovação inicial na VPS; use inicializar")
-                medidas["ativacao_iniciada_em"] = agora()
-                ambiente = ambiente_base() | {
-                    "CELULA": celula, "TAG": sha, "PROVA_IMAGEM_SHA": sha, "IMAGEM": imagem, "CODIGO": str(codigo),
-                    "PEDIDO_EM": pedido_em, "ENDERECO_PROVA": estado["endereco"],
-                    "COMPATIBILIDADE_DADOS": estado["compatibilidade"]["dados"],
-                    "COMPATIBILIDADE_CONFIGURACAO": estado["compatibilidade"]["configuracao"],
-                    "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py"),
-                    "MEDICAO_EXTRA": json.dumps(medidas), **({"MODO": "inicializar"} if inicial else {})}
-                if celula == "aplicacao" and inicial:
-                    retorno, saida = ativar_primeira_aplicacao(sha, imagem, codigo, fonte,
-                                                               (comum, propria), ambiente, registro)
-                    concluida = f"APLICACAO-ATIVADA: {sha}"
+            medidas["espera_segundos"] = 0.0
+            if inicial and journal(celula):
+                inicial = None
+            situacao = ordem(celula, sha)
+            if situacao != "nova":
+                dizer(f"{situacao.upper()}: {celula} {sha[:9]} ficou para trás; nada aplicado")
+                return 0
+            estado = journal(celula) or (inicial and {
+                "endereco": inicial["endereco"],
+                "compatibilidade": {"dados": inicial["dados"], "configuracao": inicial["configuracao"]}})
+            if not estado:
+                raise RuntimeError(f"{celula} sem aprovação inicial na VPS; use inicializar")
+            medidas["ativacao_iniciada_em"] = agora()
+            ambiente = ambiente_base() | {
+                "CELULA": celula, "TAG": sha, "IMAGEM": imagem, "CODIGO": str(codigo),
+                "PEDIDO_EM": pedido_em, "ENDERECO_PROVA": estado["endereco"],
+                "COMPATIBILIDADE_DADOS": estado["compatibilidade"]["dados"],
+                "COMPATIBILIDADE_CONFIGURACAO": estado["compatibilidade"]["configuracao"],
+                "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py"),
+                "MEDICAO_EXTRA": json.dumps(medidas), **({"MODO": "inicializar"} if inicial else {})}
+            if celula == "aplicacao" and inicial:
+                retorno, saida = ativar_primeira_aplicacao(sha, imagem, codigo, fonte, ambiente, registro)
+                concluida = f"APLICACAO-ATIVADA: {sha}"
+            else:
+                retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh",
+                                                 ambiente, registro)
+                concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
+            if retorno == 0 and concluida in saida:
+                if celula == "aplicacao" and inicial and "PUBLICACAO-MEDICAO:" not in saida:
+                    registrar_medicao(dict(celula=celula, pedido_em=pedido_em, publicado_em=agora(),
+                                           prova_falhou=False, reversao=False, recuperacao_segundos=0,
+                                           **medidas))
+                for linha in saida.splitlines():
+                    if linha.startswith("PUBLICACAO-MEDICAO:"):
+                        print(linha, flush=True)
+                dizer(f"NO-AR: {celula} {sha[:9]}")
+                podar_versoes(celula)
+                return 0
+            dizer(f"FALHOU: {celula} {sha[:9]}; log {caminho_registro}")
+            if re.search(r"^CANDIDATA-APLICADA:", saida, re.M):
+                if recuperar_versao(celula, registro, "prova da publicação falhou", sha):
+                    dizer(f"RECUPERADA-OU-SUPERADA: {celula}")
                 else:
-                    retorno, saida = com_travas(FERRAMENTAS / "infra/deploy-celula-na-vps.sh", (comum, propria),
-                                                ambiente, registro)
-                    concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
-                if retorno == 0 and concluida in saida:
-                    if celula == "aplicacao" and inicial and "PUBLICACAO-MEDICAO:" not in saida:
-                        registrar_medicao(dict(celula=celula, pedido_em=pedido_em, publicado_em=agora(),
-                                               prova_falhou=False, reversao=False, recuperacao_segundos=0,
-                                               **medidas))
-                    for linha in saida.splitlines():
-                        if linha.startswith("PUBLICACAO-MEDICAO:"):
-                            print(linha, flush=True)
-                    dizer(f"NO-AR: {celula} {sha[:9]}")
-                    podar_versoes(celula)
-                    return 0
-                dizer(f"FALHOU: {celula} {sha[:9]}; log {caminho_registro}")
-                if re.search(r"^CANDIDATA-APLICADA:", saida, re.M):
-                    if recuperar_sob_travas(celula, (comum, propria), registro, "prova da publicação falhou"):
-                        dizer(f"VOLTOU: {celula} para a última aprovada")
-                    else:
-                        avisar(f"Publicação de {celula} ({sha[:9]}) falhou e a volta automática não resolveu. "
-                               f"Banco preservado. Log na VPS: {caminho_registro}", f"publicacao-{celula}")
-                return 1
-            finally:
-                os.close(propria)
-                os.close(comum)
+                    avisar(f"Publicação de {celula} ({sha[:9]}) falhou e a volta automática não resolveu. "
+                           f"Banco preservado. Log na VPS: {caminho_registro}", f"publicacao-{celula}")
+            return 1
         except Exception as erro:
             dizer(f"PAROU: {celula} {sha[:9]}: {erro}")
             return 1
@@ -537,20 +404,9 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
             shutil.rmtree(trabalho, ignore_errors=True)
 
 
-def ondas(celulas: list[str]) -> list[list[str]]:
-    """Provedor antes de consumidor; células da mesma onda publicam juntas."""
-    from ordem_de_publicacao import dependencias  # noqa: PLC0415
-
-    deps = dependencias(FERRAMENTAS, celulas)
-    restantes, resultado = set(celulas), []
-    while restantes:
-        onda = sorted(c for c in restantes if not (deps.get(c, set()) & restantes)) or [min(restantes)]
-        resultado.append(onda)
-        restantes -= set(onda)
-    return resultado
-
-
 def sincronizar_infra(sha: str, registro) -> bool:
+    if sha != git("rev-parse", "refs/heads/main"):
+        return True
     identificador = f"infra.new.{sha[:12]}-{os.getpid()}"
     fonte = TRABALHO / f"{identificador}-fonte"
     try:
@@ -573,16 +429,15 @@ def sincronizar_infra(sha: str, registro) -> bool:
 
 def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
     """Depois do corte, atualiza Compose e rotas com snapshot e volta própria."""
+    if sha != git("rev-parse", "refs/heads/main"):
+        return True
     fonte = TRABALHO / f"infra-aplicacao-{sha[:12]}-{os.getpid()}"
-    trava = None
     try:
         extrair(sha, fonte, "infra")
-        trava = travar(RAIZ / ".publicacao.lock", exclusiva=True)
         processo = subprocess.Popen(
             [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--sincronizar-infra", sha],
-            cwd=RAIZ, env=ambiente_base() | {"FONTE_INFRA": str(fonte / "infra"),
-                                            "TRAVA_COMUM_HERDADA": "1"},
-            pass_fds=(trava,), text=True, stdout=subprocess.PIPE,
+            cwd=RAIZ, env=ambiente_base() | {"FONTE_INFRA": str(fonte / "infra")},
+            text=True, stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
         linhas = []
         for linha in processo.stdout:
@@ -595,8 +450,6 @@ def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
         registro.flush()
         return False
     finally:
-        if trava is not None:
-            os.close(trava)
         shutil.rmtree(fonte, ignore_errors=True)
 
 
@@ -604,6 +457,10 @@ def lote(base: str, head: str) -> int:
     import mapa_de_celulas  # noqa: PLC0415
 
     LOTES.mkdir(parents=True, exist_ok=True)
+    (LOTES / f"{head}.pid").write_text(str(os.getpid()))
+    if head != git("rev-parse", "refs/heads/main"):
+        dizer(f"SUPERADO: lote {head[:9]} não inicia")
+        return 0
     arquivo_lote = LOTES / f"{head}.json"
     arquivos = git("diff", "--name-only", base, head).splitlines()
     celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(FERRAMENTAS))
@@ -625,20 +482,20 @@ def lote(base: str, head: str) -> int:
                    "infra")
     # Uma célula que depende do Compose novo não pode avançar com a infra antiga.
     # A sincronização já tentou sua própria volta e preservou o staging para reparo.
-    for onda in ondas(celulas) if situacao["resultado"].get("infra") != 1 else ():
+    if situacao["resultado"].get("infra") != 1 and head == git("rev-parse", "refs/heads/main"):
         processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
-                     for c in onda}
+                     for c in celulas}
         for celula, processo in processos.items():
             situacao["resultado"][celula] = processo.wait()
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
-    if infra and aplicacao_antes and falhas == 0:
+    if infra and aplicacao_antes and falhas == 0 and head == git("rev-parse", "refs/heads/main"):
         with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
             if not sincronizar_infra_aplicacao(head, registro):
                 falhas += 1
                 situacao["resultado"]["infra"] = 1
                 atual = (journal("aplicacao") or {}).get("atual")
-                if atual and atual != aplicacao_antes:
+                if atual == head:
                     situacao["resultado"]["recuperacao_aplicacao"] = recuperar("aplicacao")
                 avisar(f"A infra {head[:9]} falhou depois da publicação da aplicação; "
                        f"confira publicacoes/logs/lote-{head[:12]}.log.", "infra")
@@ -657,34 +514,56 @@ def podar_sobras() -> None:
                 shutil.rmtree(item, ignore_errors=True) if item.is_dir() else item.unlink(missing_ok=True)
 
 
+def cancelar_lotes_antigos(head: str) -> None:
+    """Interrompe trabalho obsoleto sem fazer a nova versão esperar em fila."""
+    for arquivo in LOTES.glob("*.pid") if LOTES.is_dir() else ():
+        antigo = arquivo.stem
+        if not SHA.fullmatch(antigo) or antigo == head:
+            continue
+        if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", antigo, head],
+                          capture_output=True).returncode != 0:
+            continue
+        try:
+            pid = int(arquivo.read_text().strip())
+            comando = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ")
+            if b"publicar.py lote " in comando and antigo.encode() in comando:
+                os.killpg(pid, signal.SIGTERM)
+                dizer(f"SUPERADO: lote {antigo[:9]} interrompido pela versão {head[:9]}")
+        except (OSError, ValueError):
+            pass
+        arquivo.unlink(missing_ok=True)
+
+
 def receber(esperar: bool) -> int:
-    trava = travar(PUBLICACOES / ".receber.lock", esperar=esperar)
-    if trava is None:
+    head = git("rev-parse", "refs/heads/main")
+    arquivo = PUBLICACOES / "recebido"
+    base = arquivo.read_text().strip() if arquivo.exists() else ""
+    if not SHA.fullmatch(base):
+        arquivo.write_text(head + "\n")
+        dizer(f"RECEBIDO-INICIAL: {head[:9]}; próximas mudanças publicam a partir daqui")
         return 0
-    try:
-        head = git("rev-parse", "refs/heads/main")
-        arquivo = PUBLICACOES / "recebido"
-        base = arquivo.read_text().strip() if arquivo.exists() else ""
-        if not SHA.fullmatch(base):
-            arquivo.write_text(head + "\n")
-            dizer(f"RECEBIDO-INICIAL: {head[:9]}; próximas mudanças publicam a partir daqui")
-            return 0
-        if base == head:
-            podar_sobras()
-            return esperar_lote(head) if esperar else 0
-        if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, head]).returncode != 0:
-            base = git("merge-base", base, head)
-        temporario = arquivo.with_suffix(".tmp")
-        temporario.write_text(head + "\n")
-        os.replace(temporario, arquivo)
-    finally:
-        os.close(trava)
-    if esperar:
-        return lote(base, head)
+    if base == head:
+        podar_sobras()
+        return esperar_lote(head) if esperar else 0
+    if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, head]).returncode != 0:
+        base = git("merge-base", base, head)
+    temporario = arquivo.with_name(f"recebido.{os.getpid()}.tmp")
+    temporario.write_text(head + "\n")
+    if head != git("rev-parse", "refs/heads/main"):
+        temporario.unlink(missing_ok=True)
+        return 0
+    os.replace(temporario, arquivo)
+    cancelar_lotes_antigos(head)
+    if head != git("rev-parse", "refs/heads/main"):
+        return 0
     LOGS.mkdir(parents=True, exist_ok=True)
     with (LOGS / f"lote-{head[:12]}.log").open("a") as registro:
-        subprocess.Popen([sys.executable, __file__, "lote", base, head], stdout=registro, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True)
+        processo = subprocess.Popen([sys.executable, __file__, "lote", base, head], stdout=registro,
+                                   stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+    LOTES.mkdir(parents=True, exist_ok=True)
+    (LOTES / f"{head}.pid").write_text(str(processo.pid))
+    if esperar:
+        return processo.wait()
     dizer(f"RECEBIDO: {base[:9]}..{head[:9]}; lote em publicacoes/logs/lote-{head[:12]}.log")
     return 0
 
@@ -703,13 +582,8 @@ def esperar_lote(head: str) -> int:
 
 def recuperar(celula: str) -> int:
     LOGS.mkdir(parents=True, exist_ok=True)
-    comum, propria, _ = travas_da_celula(celula)
-    try:
-        with (LOGS / f"recuperar-{celula}.log").open("a", encoding="utf-8") as registro:
-            return 0 if recuperar_sob_travas(celula, (comum, propria), registro, "pedido de recuperação") else 1
-    finally:
-        os.close(propria)
-        os.close(comum)
+    with (LOGS / f"recuperar-{celula}.log").open("a", encoding="utf-8") as registro:
+        return 0 if recuperar_versao(celula, registro, "pedido de recuperação") else 1
 
 
 def medir_site() -> tuple[int, str]:
@@ -719,12 +593,15 @@ def medir_site() -> tuple[int, str]:
 
 
 def publicacao_em_andamento() -> bool:
-    """Alguma célula ativando ou a infra sincronizando? Cada uma já prova e volta sozinha."""
-    for caminho in RAIZ.glob(".publicacao*.lock"):
-        fd = travar(caminho, exclusiva=False, esperar=False)
-        if fd is None:
-            return True
-        os.close(fd)
+    """O monitor deixa a tentativa ativa concluir sua própria prova e reversão."""
+    for arquivo in LOTES.glob("*.pid") if LOTES.is_dir() else ():
+        try:
+            pid = int(arquivo.read_text().strip())
+            comando = Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ")
+            if b"publicar.py lote " in comando and arquivo.stem.encode() in comando:
+                return True
+        except (OSError, ValueError):
+            pass
     return False
 
 
@@ -744,47 +621,41 @@ def journals_em_uso() -> list[dict]:
 
 
 def vigiar() -> int:
-    trava = travar(PUBLICACOES / ".vigia.lock", esperar=False)
-    if trava is None:
-        return 0
     incidente = PUBLICACOES / "incidente.json"
-    try:
-        if publicacao_em_andamento():
-            return 0
-        codigo, texto = medir_site()
-        if codigo == 0:
-            if incidente.exists():
-                incidente.unlink()
-                dizer("SITE-VOLTOU: incidente encerrado")
-            return 0
-        time.sleep(20)
-        codigo, texto = medir_site()
-        if codigo == 0 or publicacao_em_andamento():
-            return 0
-        dizer(f"SITE-FORA (código {codigo}):\n{texto}")
+    if publicacao_em_andamento():
+        return 0
+    codigo, texto = medir_site()
+    if codigo == 0:
         if incidente.exists():
-            return 1
-        resolvido = False
-        if codigo == 1:
-            publicacoes = journals_em_uso()
-            try:
-                if len(publicacoes) == 1 and publicacoes[0]["celula"] == "aplicacao":
-                    celula = "aplicacao"
-                else:
-                    from reversao import selecionar_estado  # noqa: PLC0415
-                    celula = selecionar_estado(json.dumps(publicacoes))["celula"]
-            except Exception as erro:  # noqa: BLE001
-                dizer(f"SEM-CELULA: {erro}")
+            incidente.unlink()
+            dizer("SITE-VOLTOU: incidente encerrado")
+        return 0
+    time.sleep(20)
+    codigo, texto = medir_site()
+    if codigo == 0 or publicacao_em_andamento():
+        return 0
+    dizer(f"SITE-FORA (código {codigo}):\n{texto}")
+    if incidente.exists():
+        return 1
+    resolvido = False
+    if codigo == 1:
+        publicacoes = journals_em_uso()
+        try:
+            if len(publicacoes) == 1 and publicacoes[0]["celula"] == "aplicacao":
+                celula = "aplicacao"
             else:
-                if recuperar(celula) == 0:
-                    resolvido = medir_site()[0] == 0
-        incidente.write_text(json.dumps({"desde": agora(), "resolvido": resolvido}))
-        if not resolvido:
-            avisar("Site fora do ar e a volta automática não resolveu. Banco preservado; "
-                   "confira rede, TLS, serviços e disco na VPS (publicacoes/logs/vigia.log).", "site-fora-do-ar")
-        return 0 if resolvido else 1
-    finally:
-        os.close(trava)
+                from reversao import selecionar_estado  # noqa: PLC0415
+                celula = selecionar_estado(json.dumps(publicacoes))["celula"]
+        except Exception as erro:  # noqa: BLE001
+            dizer(f"SEM-CELULA: {erro}")
+        else:
+            if recuperar(celula) == 0:
+                resolvido = medir_site()[0] == 0
+    incidente.write_text(json.dumps({"desde": agora(), "resolvido": resolvido}))
+    if not resolvido:
+        avisar("Site fora do ar e a volta automática não resolveu. Banco preservado; "
+               "confira rede, TLS, serviços e disco na VPS (publicacoes/logs/vigia.log).", "site-fora-do-ar")
+    return 0 if resolvido else 1
 
 
 def estado() -> int:

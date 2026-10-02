@@ -151,6 +151,7 @@ from apps.core.funil import funil
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.gestao_do_placar import gestao_do_placar
 from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.talentos import talentos
 from apps.core.aulas import (
@@ -692,6 +693,7 @@ urlpatterns = [
     # gestão do negócio (`docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`, degrau 0):
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
     path("placar/", placar, name="placar"),
+    path("placar/editar/", gestao_do_placar, name="gestao_do_placar"),
     # O CALENDÁRIO DO CICLO (`apps/core/ciclo.py`, 04/09/2026) — as 12
     # semanas do ano de 12 semanas, mais a de preparação e a de
     # recuperação, com a meta de cada uma e o que aconteceu nela.

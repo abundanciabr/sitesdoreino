@@ -86,6 +86,7 @@ PASTA_DOS_CARTOES = "cartoes"
 
 # `apps/core/placar.py` → `apps/core` → `apps` → a raiz da célula.
 RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
+PASTA_ORIGINAL_DOS_CARTOES = Path(__file__).resolve().parent / PASTA_DOS_CARTOES
 
 #: A Meta Crucialmente Importante nº 1 (o ciclo), a barra do mês, o par que
 #: segura as duas, e o total de alunos que desceu ao andar 1.
@@ -377,6 +378,21 @@ def _data(texto: object) -> dt.date | None:
 
 def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[str]]:
     """`(cartao, problemas)`. Cartão só volta se for válido; senão, `None` + o porquê."""
+    # Uma pasta diferente é usada pelas provas de cartões recém-escritos.
+    # A pasta antiga embarcada não é mais uma segunda fonte em produção.
+    if pasta is None or pasta == PASTA_ORIGINAL_DOS_CARTOES:
+        from .models import CartaoDoPlacar
+
+        linha = CartaoDoPlacar.objects.filter(nome=nome).first()
+        if linha is None:
+            return None, [f"o cartão `{nome}` não existe no painel"]
+        cartao = linha.dados
+        problemas = validar(cartao)
+        if problemas:
+            return None, [f"cartão `{nome}`: {p}" for p in problemas]
+        if cartao.get("nome") != nome:
+            return None, [f"cartão `{nome}`: o campo `nome` diz `{cartao.get('nome')}`"]
+        return cartao, []
     pasta = pasta if pasta is not None else diretorio_dos_cartoes()
     caminho = pasta / f"{nome}.json"
     if not caminho.is_file():

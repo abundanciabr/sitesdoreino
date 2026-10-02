@@ -95,13 +95,8 @@ def _validar_rubrica(instrumento, notas: Any) -> dict:
 
 
 def validar_forcas(forcas: Any) -> list[str]:
-    """[INV-CUR-L6] Exatamente três forças, nenhuma da lista de genéricos."""
+    """Guarda apenas forças específicas que a professora decidiu apontar."""
     limpas = [str(f or "").strip() for f in (forcas or []) if str(f or "").strip()]
-    if len(limpas) != 3:
-        raise LaudoRecusado(
-            "São exatamente três forças, nem mais nem menos: cada uma "
-            "específica sobre o trabalho desta pessoa (INV-CUR-L6)."
-        )
     genericas = [f for f in limpas if f.lower() in FORCAS_GENERICAS]
     if genericas:
         raise LaudoRecusado(
@@ -111,30 +106,28 @@ def validar_forcas(forcas: Any) -> list[str]:
     return limpas
 
 
-def _validar_mudanca(curso, mudanca: Any) -> dict:
-    """[INV-CUR-L6] Exatamente uma mudança, com a aula onde se aprende, e essa
-    aula existe neste curso."""
+def _validar_mudanca(curso, mudanca: Any, *, obrigatoria: bool) -> dict | list:
+    """Valida as mudanças apontadas e preserva o formato dos laudos antigos."""
     itens = mudanca if isinstance(mudanca, list) else []
-    if len(itens) != 1:
-        raise LaudoRecusado(
-            "É exatamente uma mudança: a mais específica para a próxima "
-            "entrega, nunca uma lista (INV-CUR-L6)."
-        )
-    item = itens[0] if isinstance(itens[0], dict) else {}
-    texto = str(item.get("texto") or "").strip()
-    if not texto:
-        raise LaudoRecusado("Escreva o texto da mudança pedida.")
-    aula_id = item.get("aula_id")
-    try:
-        existe = Aula.objects.filter(pk=aula_id, curso=curso).exists()
-    except (TypeError, ValueError):
-        existe = False
-    if not existe:
-        raise LaudoRecusado(
-            "A mudança precisa apontar para uma aula que existe neste curso "
-            "(INV-CUR-L6)."
-        )
-    return {"texto": texto, "aula_id": str(aula_id)}
+    itens = [item for item in itens if isinstance(item, dict) and str(item.get("texto") or "").strip()]
+    if not itens and not obrigatoria:
+        return {}
+    if not itens:
+        raise LaudoRecusado("Ao devolver, diga o que a pessoa precisa mudar.")
+    limpas = []
+    for item in itens:
+        texto = str(item.get("texto") or "").strip()
+        aula_id = item.get("aula_id")
+        try:
+            existe = Aula.objects.filter(pk=aula_id, curso=curso).exists()
+        except (TypeError, ValueError):
+            existe = False
+        if not existe:
+            raise LaudoRecusado(
+                "Cada mudança precisa apontar para uma aula que existe neste curso."
+            )
+        limpas.append({"texto": texto, "aula_id": str(aula_id)})
+    return limpas[0] if len(limpas) == 1 else limpas
 
 
 def _medir_a_ficha_de_serie(
@@ -172,8 +165,10 @@ def _medir_a_ficha_de_serie(
 
     sugerida = sugerido.get("mudanca")
     sugerida = sugerida if isinstance(sugerida, dict) else {}
-    rascunho.mudanca_mantida = (
-        str(sugerida.get("texto") or "").strip() == mudanca["texto"]
+    mudancas = mudanca if isinstance(mudanca, list) else [mudanca]
+    rascunho.mudanca_mantida = bool(sugerida.get("texto")) and any(
+        str(sugerida.get("texto") or "").strip() == item.get("texto")
+        for item in mudancas if isinstance(item, dict)
     )
     rascunho.save(update_fields=["forcas_mantidas", "mudanca_mantida"])
 
@@ -214,7 +209,9 @@ def emitir(
     instrumento = envio.aula.instrumento
     notas_limpas = _validar_rubrica(instrumento, notas)
     forcas_limpas = validar_forcas(forcas)
-    mudanca_limpa = _validar_mudanca(envio.aula.curso, mudanca)
+    mudanca_limpa = _validar_mudanca(
+        envio.aula.curso, mudanca, obrigatoria=decisao == Laudo.Decisao.DEVOLVIDO
+    )
 
     # (4) a decisão está no vocabulário fechado. [INV-CUR-L2]: não existe uma
     # quarta decisão negativa — qualquer palavra fora das três de
@@ -251,13 +248,6 @@ def emitir(
     # (7) [INV-CUR-L7] a pergunta de amanhã de manhã: só `true` grava. `None`
     # (não respondida) e `False` (respondida negativamente) são a MESMA
     # recusa: não se registra recusa, se conversa antes de enviar o laudo.
-    if sabe_o_que_fazer_amanha is not True:
-        raise LaudoRecusado(
-            "A pergunta de amanhã de manhã não se recusa: não se registra "
-            "recusa. Sem certeza de que a pessoa sabe o que fazer amanhã, "
-            "converse antes de enviar o laudo (INV-CUR-L7)."
-        )
-
     with transaction.atomic():
         # A trava é no ENVIO (a unicidade que o `OneToOneField` de `Laudo`
         # impõe): dois cliques no mesmo segundo serializam aqui, e o segundo
@@ -282,7 +272,7 @@ def emitir(
             ajuste_feito=ajuste_limpo,
             decisao=decisao,
             data_de_retorno=data_final,
-            sabe_o_que_fazer_amanha=True,
+            sabe_o_que_fazer_amanha=sabe_o_que_fazer_amanha,
             rascunho=rascunho,
         )
         if rascunho is not None:

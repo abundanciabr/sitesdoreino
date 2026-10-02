@@ -985,17 +985,7 @@ class RascunhoDaIA(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        constraints = [
-            # Três é o número de forças da lei ([INV-CUR-L6]) e o número de
-            # campos do formulário. Uma medida de 4 mantidas de 3 sugeridas não
-            # é um número alto: é um erro de contagem, e o banco o recusa antes
-            # de ele virar uma Ficha de Série que mente.
-            models.CheckConstraint(
-                condition=models.Q(forcas_mantidas__isnull=True)
-                | models.Q(forcas_mantidas__lte=3),
-                name="forcas_mantidas_no_maximo_tres",
-            ),
-        ]
+        constraints = []
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return f"rascunho de {self.envio_id} em {self.criado_em}"
@@ -1062,7 +1052,7 @@ class Laudo(models.Model):
     ajuste_feito = models.TextField(blank=True, default="")
     decisao = models.CharField(max_length=17, choices=Decisao.choices)
     data_de_retorno = models.DateField(null=True, blank=True)
-    sabe_o_que_fazer_amanha = models.BooleanField()
+    sabe_o_que_fazer_amanha = models.BooleanField(null=True, blank=True)
     rascunho = models.ForeignKey(
         RascunhoDaIA,
         related_name="laudos",
@@ -1071,6 +1061,15 @@ class Laudo(models.Model):
         blank=True,
     )
     emitido_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def mudancas(self) -> list[dict]:
+        """Lista para a tela, incluindo laudos antigos com uma mudança em objeto."""
+        if isinstance(self.mudanca, list):
+            return [item for item in self.mudanca if isinstance(item, dict)]
+        if isinstance(self.mudanca, dict) and self.mudanca.get("texto"):
+            return [self.mudanca]
+        return []
 
     class Meta:
         constraints = [
@@ -1105,10 +1104,6 @@ class Laudo(models.Model):
             # Não é um `default=True` que o serviço poderia contornar: é a
             # LINHA INTEIRA que o banco recusa se o valor não for verdadeiro,
             # mesmo que um código futuro tente gravar a recusa.
-            models.CheckConstraint(
-                condition=models.Q(sabe_o_que_fazer_amanha=True),
-                name="pergunta_de_amanha_so_grava_true",
-            ),
         ]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell

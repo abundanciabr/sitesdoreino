@@ -121,11 +121,10 @@ def secao(corpo: str, id_da_secao: str) -> str:
 
 
 # ---------------------------------------------------- 1. o botão e a frase
-def test_sem_as_pausas_a_aula_diz_a_frase_no_lugar_do_botao(aluna_do_roblox, client):
+def test_sem_as_pausas_a_aula_permite_concluir(aluna_do_roblox, client):
     corpo = corpo_da_aula(client, "1")
     concluir_a_aula = secao(corpo, "concluir")
-    assert portas.SO_COM_AS_PAUSAS in concluir_a_aula
-    assert O_BOTAO not in concluir_a_aula
+    assert O_BOTAO in concluir_a_aula
     assert 'id="checkpoint"' not in corpo
 
 
@@ -182,19 +181,12 @@ def test_na_ultima_aula_o_recado_diz_que_era_a_ultima(aluna_do_roblox, client):
 
 
 # --------------------------------------------------------- 3. a recusa
-def test_sem_pausa_o_gesto_e_recusado_na_propria_aula(aluna_do_roblox, client):
+def test_sem_pausa_o_gesto_conclui_e_abre_a_proxima(aluna_do_roblox, client):
     abrir(client, "1")
     resposta = concluir(client, "1")
     assert resposta.status_code == 302
-    assert resposta["Location"] == (
-        f"{reverse('aula-do-curso', args=['roblox', 1, '1'])}"
-        f"?erro={quote(portas.SO_COM_AS_PAUSAS)}#concluir"
-    )
-    assert (
-        f'<p class="erro">{portas.SO_COM_AS_PAUSAS}</p>'
-        in client.get(resposta["Location"], HTTP_COOKIE=COOKIE).content.decode()
-    )
-    assert abrir(client, "2").status_code == 302
+    assert resposta["Location"].endswith("?recado=aula-concluida")
+    assert abrir(client, "2").status_code == 200
 
 
 def test_concluir_e_gesto_de_post(aluna_do_roblox, client):

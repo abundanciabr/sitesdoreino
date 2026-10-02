@@ -1,28 +1,5 @@
 {% extends "admin/base.html" %}
-{% comment %}
-O FECHAMENTO DO CICLO (/admin/placar/fechamento/, 07/09/2026, degrau 13 do
-plano do painel de gestão). As regras moram em apps/core/fechamento.py.
-
-Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
-tela (armadilhas/087). Zero atributo `style=` e zero folha própria: todas as
-classes abaixo já existem em admin/base.html, e cor que ninguém declara deixa
-a tela ilegível em silêncio (armadilhas/302, tests/test_toda_cor_usada_tem_dono).
-
-Nenhum `|filtro:variavel` nesta tela: variável ausente no ARGUMENTO de um
-filtro vira 500 (armadilhas/340). Onde há `default`, o argumento é literal.
-
-TRÊS REGRAS governam cada `{% if %}` daqui:
-
-1. O ESTADO "CORRENDO" É O PRINCIPAL, e vai ser por três meses. O ciclo partiu
-   em 03/09/2026 e fecha em 15/12/2026: a tela nasce sem nenhum ciclo fechado.
-   Ela mostra a prévia com os números de hoje e diz o que vai ser perguntado no
-   dia, em vez de guardar tudo atrás de um "ainda não".
-2. AUSÊNCIA DE DADO NUNCA VIRA CONCLUSÃO (armadilhas/271). Livro que não chegou
-   não é "nenhum portão provado"; meta semanal em zero não é "as medidas
-   previram a meta".
-3. A RECUSA É A ALMA DO DEGRAU. Sem "o que a escola para de fazer", não existe
-   pedido nenhum, e a tela diz isso em vermelho, com a lei escrita.
-{% endcomment %}
+{% comment %}Fechamento persistente do ciclo.{% endcomment %}
 {% block titulo %}O fechamento do ciclo{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -34,9 +11,7 @@ TRÊS REGRAS governam cada `{% if %}` daqui:
   </p>
 
   <p class="lei">
-    Um ciclo sem rito de fim vira um número que corre para sempre, e ninguém
-    nunca decide nada por causa dele. Nada aqui é gravado: esta tela monta o
-    pedido para o robô, e o que vale é o que chegar ao livro e ao cartão da meta.
+    O fechamento é salvo aqui. Você pode consultar os ciclos encerrados abaixo.
   </p>
 
   {% if fechamento.estado == "sem-cartao" %}
@@ -77,9 +52,7 @@ TRÊS REGRAS governam cada `{% if %}` daqui:
     fecha em {{ fechamento.ate|date:"d/m/Y" }}, e faltam
     {{ fechamento.semanas_restantes }} semana{{ fechamento.semanas_restantes|pluralize:"s" }}
     ({{ fechamento.dias_restantes }} dia{{ fechamento.dias_restantes|pluralize:"s" }}).
-    Nenhum ciclo foi fechado ainda, e isso é o esperado. O que você lê abaixo é a
-    PRÉVIA, com os números de hoje: é exatamente isto que vai estar aqui no dia
-    do fechamento, e nada abaixo é veredito final.
+    Você pode registrar o fechamento quando decidir encerrar este ciclo.
   </p>
   {% else %}
   <p class="aviso borda-vermelha">
@@ -172,9 +145,7 @@ TRÊS REGRAS governam cada `{% if %}` daqui:
   <p class="aviso borda-vermelha">
     <b>Não consegui olhar.</b> O livro de ocorrências não chegou até esta tela,
     então não sei quantos portões foram provados. Isto não é "nenhum portão":
-    é a tela sem a fonte. Isto é falha do sistema, não sua. Peça a uma sessão
-    para conferir a pasta do livro (apps/core/registros) na área administrativa e
-    recarregue esta página.
+    é a tela sem a fonte. Isto é falha do sistema, não sua. Confira os registros do placar no painel e recarregue esta página.
   </p>
   {% else %}
   <p class="recado">
@@ -221,36 +192,24 @@ TRÊS REGRAS governam cada `{% if %}` daqui:
   {% comment %}5. O FECHAMENTO PROPRIAMENTE DITO{% endcomment %}
   <h2 class="titulo-de-bloco espaco-34">4. Fechar o ciclo</h2>
   <p class="recado">
-    O fechamento é uma <b>recusa</b> antes de ser um plano. Escreva o que a
-    escola para de fazer, o alvo do próximo ciclo e a data em que ele fecha; o
-    botão monta o pedido para o robô, e é ele que escreve no livro e grava a
-    meta nova no cartão.
+    Registre o resultado e, se já souber, a meta seguinte. O fechamento fica
+    guardado mesmo que você deixe esses campos em aberto.
   </p>
   <form class="forma" method="post" action="{% url 'fechamento' %}">
     {% csrf_token %}
-    <label for="paramos_de_fazer">O que a escola PARA de fazer (obrigatório)</label>
+    <label for="paramos_de_fazer">O que a escola para de fazer (opcional)</label>
     <textarea id="paramos_de_fazer" name="paramos_de_fazer" rows="3" maxlength="1000" placeholder="por exemplo: parar de vender por mensagem uma a uma">{{ campos.paramos_de_fazer|default:'' }}</textarea>
     <label for="por_que">Por que a meta bateu, ou por que não bateu (opcional)</label>
     <textarea id="por_que" name="por_que" rows="3" maxlength="1000">{{ campos.por_que|default:'' }}</textarea>
-    <label for="proximo_alvo">O alvo do próximo ciclo, em pessoas (obrigatório)</label>
+    <label for="proximo_alvo">O alvo do próximo ciclo, em pessoas (opcional)</label>
     <input id="proximo_alvo" name="proximo_alvo" type="text" maxlength="8" value="{{ campos.proximo_alvo|default:'' }}">
-    <label for="proxima_ate">A data em que o próximo ciclo fecha, como 2027-03-09 (obrigatório)</label>
+    <label for="proxima_ate">A data em que o próximo ciclo fecha (opcional)</label>
     <input id="proxima_ate" name="proxima_ate" type="text" maxlength="10" value="{{ campos.proxima_ate|default:'' }}">
-    <button type="submit">Montar o pedido de fechamento</button>
+    <button type="submit">Salvar fechamento</button>
   </form>
 
   {% if montou %}
-    {% if pedido %}
-    <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
-    <p class="recado-fraco">
-      Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi
-      gravado aqui: o que vale é o que chegar ao livro e ao cartão. Recarregar a
-      página apaga o texto.
-    </p>
-    <div class="forma">
-      <textarea rows="20" readonly>{{ pedido }}</textarea>
-    </div>
-    {% else %}
+    {% if encerrado %}<p class="aviso borda-amarela">Fechamento salvo em {{ encerrado.encerrado_em|date:'d/m/Y' }}.</p>{% else %}
       {% for ficha in faltando %}
         {% if ficha.lei %}
         <p class="aviso borda-vermelha">
@@ -265,8 +224,20 @@ TRÊS REGRAS governam cada `{% if %}` daqui:
     {% endif %}
   {% endif %}
 
+  <h2 class="titulo-de-bloco espaco-34">Ciclos encerrados</h2>
+  {% for ciclo_encerrado in historico %}
+  <div class="cartao">
+    <b>{{ ciclo_encerrado.partida_em|date:'d/m/Y' }} a {{ ciclo_encerrado.dados.meta_anterior.ate }}</b>
+    <p>Encerrado em {{ ciclo_encerrado.encerrado_em|date:'d/m/Y' }}. Resultado: {{ ciclo_encerrado.dados.resultado.x|default_if_none:'não medido' }}. {{ ciclo_encerrado.dados.veredito }}.</p>
+    {% if ciclo_encerrado.dados.paramos_de_fazer %}<p>Paramos de fazer: {{ ciclo_encerrado.dados.paramos_de_fazer }}</p>{% endif %}
+    {% if ciclo_encerrado.dados.por_que %}<p>Por quê: {{ ciclo_encerrado.dados.por_que }}</p>{% endif %}
+    {% if ciclo_encerrado.dados.proximo_alvo %}<p>Meta seguinte: {{ ciclo_encerrado.dados.proximo_alvo }} até {{ ciclo_encerrado.dados.proxima_ate }}.</p>{% endif %}
+  </div>
+  {% empty %}<p class="recado-fraco">Ainda não há ciclos encerrados.</p>{% endfor %}
+
   {% include "admin/_analista.html" %}
 
   {% endif %}
 </div>
 {% endblock %}
+

@@ -5,11 +5,9 @@ O placar (/admin/placar/): o andar zero do painel de gestão. Reformulado em
 as duas contadas das mesmas fichas. Regras da tela em apps/core/placar.py.
 
 Bloco `comment`, e nunca `{#`: aquele comenta UMA LINHA SÓ, e escrito em várias
-o texto vaza para a tela (armadilhas/087). Guarda:
-tests/test_nenhum_comentario_vaza_para_a_tela.py.
+o texto vaza para a tela (armadilhas/087).
 
-Zero atributo `style=` aqui dentro: o estilo mora em admin/base.html, e quem
-impede a volta dele para a marcação é tests/test_estilo_nao_volta_para_a_marcacao.py.
+O estilo mora em admin/base.html.
 
 O NÚMERO só aparece dentro de `{% if meta %}`: sem cartão válido a tela diz o
 que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
@@ -19,6 +17,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
 {% block corpo %}
 <div class="envolucro">
   <h1>O placar</h1>
+  <p class="recado-fraco"><a href="{% url 'gestao_do_placar' %}">Editar metas, medições e compromissos</a></p>
   <p class="subtitulo">Quantas pessoas compraram pelo nosso site neste mês, e a meta grande por cima: estamos ganhando ou perdendo? Quem foi liberado pela sala de espera comprou em outro site e não entra nesta conta.</p>
 
   {% comment %}
@@ -88,7 +87,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     <b>O número não aparece porque falta o cartão dele.</b>
     Esta tela se recusa a mostrar um número que não tenha cartão (o que ele é,
     de onde vem, quem pode declará-lo). Nada aqui está quebrado por sua causa:
-    é coisa de bastidor, e o robô do próximo despacho conserta.
+    abra a edição dos cartões para corrigir o que falta.
   </p>
   <ul class="notas">
     {% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}
@@ -101,7 +100,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <b>A lista de alunos ainda não traz a data e a origem de cada compra.</b>
       A parte que guarda os alunos respondeu, mas sem os campos do contrato
       que separam a venda do nosso site da sala de espera. Isto não é zero: é a pergunta que ela ainda não sabe responder.
-      Quando o PR da célula de alunos pousar, esta tela passa a contar sozinha.
+      Quando a lista trouxer esses campos, esta tela passa a contar sozinha.
     </div>
     {% else %}
     <div class="aviso borda-amarela">
@@ -185,8 +184,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% if placar.veredito == "sem-alvo" %}
       <div class="aviso borda-amarela">
         <b>Sem alvo ainda: aguardando você.</b>
-        A meta precisa de um Y e de uma data. Quando você decidir, o robô grava no
-        cartão e no livro, e esta tela passa a dizer se estamos ganhando.
+        A meta precisa de um alvo e de uma data. <a href="{% url 'gestao_do_placar' %}">Defina-os no painel</a> para esta tela dizer se estamos ganhando.
       </div>
     {% elif placar.veredito == "cumprida" %}
       <div class="aviso verde"><b>Meta cumprida.</b> {{ placar.x }} já passa de {{ placar.alvo }}. Hora de fixar a próxima.</div>
@@ -346,7 +344,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% if restricao.confirmada %}
       <p class="recado"><b>Confirmada por você</b> em {{ restricao.confirmada.em }}: {{ restricao.confirmada.etapa }} (registro {{ restricao.confirmada.registro }}).</p>
     {% else %}
-      <p class="recado-fraco">A suspeita é cálculo; a restrição de verdade é <b>aguardando a sua confirmação</b> (um registro no livro, e o robô grava no cartão).</p>
+      <p class="recado-fraco">A suspeita é cálculo; a restrição de verdade aguarda sua confirmação. <a href="{% url 'gestao_do_placar' %}">Registre-a no painel</a>.</p>
     {% endif %}
 
     <ul class="notas">
@@ -427,7 +425,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif mudancas.veredito == "sem-foto" %}
     <p class="recado">
       <span class="rotulo">sem foto</span> Ainda não existe uma foto anterior do placar para comparar.
-      A primeira nasce quando a contagem da <a href="{% url 'talentos' %}">rede de talentos</a> é registrada: o pedido dela leva junto a foto do placar.
+      A primeira nasce quando você <a href="{% url 'gestao_do_placar' %}">registra a foto no painel</a>.
       Hoje o placar tem {{ mudancas.quantos_atuais }} número{{ mudancas.quantos_atuais|pluralize:"s" }} com fonte para fotografar.
     </p>
   {% else %}

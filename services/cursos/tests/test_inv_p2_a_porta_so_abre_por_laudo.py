@@ -303,18 +303,16 @@ def test_o_laudo_recusa_o_curso_livre(livre, bia):
     assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.TRANCADA
 
 
-def test_o_gesto_recusa_com_pausa_faltando(livre, bia):
+def test_o_gesto_conclui_com_pausa_faltando(livre, bia):
     um = porta(bia, aula(livre, "1"))
     RegistroDePausa.objects.create(
         pessoa=bia, pausa=um.aula.pausas.get(ordem=1), respostas={"x": "y"}
     )
-    with pytest.raises(portas.PortaRecusada, match="todas as pausas"):
-        portas.concluir_por_gesto(um)
+    portas.concluir_por_gesto(um)
     um.refresh_from_db()
-    assert um.estado == Progresso.Estado.EM_PRODUCAO
-    assert um.concluida_em is None
-    assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.TRANCADA
-    assert OutboxEvent.objects.filter(event="aula.concluida").count() == 0
+    assert um.estado == Progresso.Estado.CONCLUIDA
+    assert um.concluida_em is not None
+    assert estado_de(bia, aula(livre, "2")) == Progresso.Estado.DISPONIVEL
 
 
 def test_o_gesto_recusa_a_porta_trancada(livre, bia):

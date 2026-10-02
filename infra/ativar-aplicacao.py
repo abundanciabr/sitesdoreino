@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 """Primeiro corte para a aplicação única, com cópia e retorno da topologia anterior.
 
-Chamado pelo publicador somente depois de construir e provar a imagem isolada.
-O chamador detém a trava comum exclusiva; o script também funciona sozinho.
+Chamado pelo publicador depois de construir a imagem.
 O banco é copiado antes do primeiro boot e nunca restaurado automaticamente.
 """
 from __future__ import annotations
 
-try:
-    import fcntl
-except ImportError:  # testes de lógica no Windows; ativação roda na VPS Linux
-    fcntl = None
 import json
 import os
 from pathlib import Path
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -421,12 +417,8 @@ def sincronizar_infra(sha: str) -> None:
 
 
 def main(argumentos: list[str]) -> int:
-    trava = None
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(InterruptedError("publicação superada")))
     try:
-        if os.environ.get("TRAVA_COMUM_HERDADA") != "1":
-            caminho = RAIZ / ".publicacao.lock"
-            trava = caminho.open("a")
-            fcntl.flock(trava.fileno(), fcntl.LOCK_EX)
         if argumentos == ["--recuperar"]:
             recuperar()
         elif argumentos == ["--concluir-recuperacao"]:
@@ -441,9 +433,6 @@ def main(argumentos: list[str]) -> int:
     except Exception as erro:
         print(f"APLICACAO-FALHOU: {erro}", file=sys.stderr)
         return 1
-    finally:
-        if trava:
-            trava.close()
 
 
 if __name__ == "__main__":

@@ -5,9 +5,7 @@ A DECISÃO DO EXPERIMENTO (/admin/placar/experimentos/<id>/decisao/, 26/09/2026)
 Bloco `comment`, nunca o comentário de uma linha só (armadilhas/087). Zero
 atributo `style=`: toda classe usada abaixo já existe em admin/base.html.
 
-Três formulários, um por gesto, sem script: um botão por gesto não tem como ser
-mal entendido. Promover sem veredito `candidato à promoção` traz a frase de
-confirmação obrigatória no próprio formulário, e o servidor confere de novo.
+Três formulários, um por gesto, sem script: um botão por gesto.
 {% endcomment %}
 {% block titulo %}Decidir o experimento{% endblock %}
 {% block corpo %}
@@ -87,14 +85,6 @@ confirmação obrigatória no próprio formulário, e o servidor confere de novo
     <input type="hidden" name="decisao" value="promover">
     <input type="hidden" name="variante" value="{{ variante.variante_id }}">
     <p class="nota">Texto da variante {{ variante.variante_id }}: {{ variante.valor }}</p>
-    {% if veredito != candidato %}
-    <p>
-      <label>
-        <input type="checkbox" name="confirmo_inconclusivo" value="sim" required>
-        Sei que o resultado não é conclusivo e quero pôr a variante {{ variante.variante_id }} no ar assim mesmo.
-      </label>
-    </p>
-    {% endif %}
     <button type="submit">Promover {{ variante.variante_id }}</button>
   </form>
   {% endfor %}

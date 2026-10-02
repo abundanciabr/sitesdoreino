@@ -11,7 +11,7 @@ if [ ! -d "$REPO" ]; then
 fi
 case "${1:-}" in
   receber|publicar|operar)
-    flock "$RAIZ/codigo/.busca.lock" git -C "$REPO" fetch --quiet origin +refs/heads/main:refs/heads/main ;;
+    git -C "$REPO" fetch --quiet origin +refs/heads/main:refs/heads/main ;;
 esac
 SHA=$(git -C "$REPO" rev-parse refs/heads/main)
 if [ ! -d "$FERRAMENTAS/$SHA" ]; then

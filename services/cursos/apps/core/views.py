@@ -923,7 +923,7 @@ def _conclusao(progresso: Progresso, *, pausas_ok: bool) -> dict:
     estado de propósito ([INV-CUR-P2], "nenhuma view grava")."""
     return {
         "feita": progresso.concluida_em is not None,
-        "fechado_por": "" if pausas_ok else portas.SO_COM_AS_PAUSAS,
+        "fechado_por": "",
     }
 
 
@@ -1602,9 +1602,21 @@ def _preenchido_pela_ia(sugestao: assistente.Sugestao, envio: Envio, digitado) -
             preencher(f"nota_{indice}", item["nota"])
             preencher(f"frase_{indice}", item["frase"])
     for indice, forca in enumerate(sugestao.forcas):
-        preencher(f"forca_{indice}", forca)
+        if indice < NUMERO_DE_FORCAS:
+            preencher(f"forca_{indice}", forca)
+    if len(sugestao.forcas) > NUMERO_DE_FORCAS:
+        preencher("forcas_adicionais", "\n".join(sugestao.forcas[NUMERO_DE_FORCAS:]))
     preencher("mudanca_texto", sugestao.mudanca.get("texto", ""))
     preencher("mudanca_aula", sugestao.mudanca.get("aula_id", ""))
+    if len(sugestao.mudancas) > 1:
+        numeros = dict(envio.aula.curso.aulas.values_list("id", "numero"))
+        preencher(
+            "mudancas_adicionais",
+            "\n".join(
+                f"{numeros.get(int(item['aula_id']), '')} | {item['texto']}"
+                for item in sugestao.mudancas[1:] if item.get("aula_id", "").isdigit()
+            ),
+        )
     return campos
 
 
@@ -1631,6 +1643,7 @@ def _rascunhar_o_laudo(request, envio: Envio):
             "notas": sugestao.notas,
             "forcas": sugestao.forcas,
             "mudanca": sugestao.mudanca,
+            "mudancas": sugestao.mudancas,
             "reenvio": sugestao.reenvio,
             "bloco": sugestao.bloco,
         },
@@ -1676,12 +1689,22 @@ def _gravar_laudo(request, envio: Envio, avaliador):
     forcas = [
         request.POST.get(f"forca_{indice}", "") for indice in range(NUMERO_DE_FORCAS)
     ]
-    mudanca = [
-        {
-            "texto": request.POST.get("mudanca_texto", ""),
-            "aula_id": request.POST.get("mudanca_aula", ""),
-        }
-    ]
+    forcas.extend(request.POST.get("forcas_adicionais", "").splitlines())
+    mudanca = [{
+        "texto": request.POST.get("mudanca_texto", ""),
+        "aula_id": request.POST.get("mudanca_aula", ""),
+    }]
+    for linha in request.POST.get("mudancas_adicionais", "").splitlines():
+        if not linha.strip():
+            continue
+        numero, separador, texto = linha.partition("|")
+        aula_id = (
+            envio.aula.curso.aulas.filter(numero=numero.strip().upper())
+            .values_list("id", flat=True)
+            .first()
+            if separador else None
+        )
+        mudanca.append({"texto": texto.strip() if separador else linha.strip(), "aula_id": aula_id})
     decisao = request.POST.get("decisao", "")
     data_de_retorno = parse_date(request.POST.get("data_de_retorno") or "")
     ajuste_feito = request.POST.get("ajuste_feito", "")

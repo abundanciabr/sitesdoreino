@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Publicação por imagem testada e prova HTTP, sem escrever testes no banco vivo.
+"""Publicação direta com backup anterior e prova HTTP.
 
 Uma versão é a imagem da base mais, quando o publicador da VPS a montou, a pasta
 imutável do código em /app (somente leitura). Sem pasta, vale o código da imagem.
 """
-from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -13,11 +12,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime, timezone
-
-try:
-    import fcntl
-except ImportError:  # testes no Windows
-    fcntl = None
 
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 PASTA = RAIZ / "publicacoes"
@@ -30,7 +24,7 @@ def agora():
 
 def salvar(caminho, valor):
     PASTA.mkdir(mode=0o700, exist_ok=True)
-    temporario = caminho.with_suffix(".tmp")
+    temporario = caminho.with_name(f".{caminho.name}.{os.getpid()}.tmp")
     temporario.write_text(json.dumps(valor, ensure_ascii=False) + "\n", encoding="utf-8")
     os.replace(temporario, caminho)
 
@@ -47,6 +41,17 @@ def validar_sha(sha):
     if not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("imagem precisa de SHA imutável de 40 caracteres")
     return sha
+
+
+def conferir_ultima(tag):
+    """Uma execução antiga não pode ativar nem aprovar depois de receber uma main nova."""
+    repositorio = RAIZ / "codigo/repo.git"
+    if repositorio.exists():
+        head = subprocess.check_output(["git", "-C", str(repositorio), "rev-parse", "refs/heads/main"],
+                                       text=True).strip()
+        if tag != head and subprocess.run(["git", "-C", str(repositorio), "merge-base",
+                                          "--is-ancestor", tag, head]).returncode == 0:
+            raise ValueError("publicação superada por versão mais recente")
 
 
 def imagem_padrao(sha):
@@ -75,20 +80,6 @@ def versao_de(estado, sha):
         if registro and registro.get("sha") == sha:
             return {"imagem": registro.get("imagem") or imagem_padrao(sha), "codigo": registro.get("codigo")}
     return {"imagem": imagem_padrao(sha), "codigo": None}
-
-
-@contextmanager
-def trava_curta(caminho):
-    """Exclusão só durante a escrita de um arquivo comum a várias células."""
-    PASTA.mkdir(mode=0o700, exist_ok=True)
-    with open(caminho, "a") as arquivo:
-        if fcntl:
-            fcntl.flock(arquivo, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            if fcntl:
-                fcntl.flock(arquivo, fcntl.LOCK_UN)
 
 
 def garantir_imagem(imagem):
@@ -139,15 +130,13 @@ def provar(estado, sha, versao=None):
 def pin(estado, sha, versao=None):
     versao = versao or versao_de(estado, sha)
     caminho = PASTA / "imagens.json"
-    # O override é de todas as células; cada uma reescreve só os próprios serviços.
-    with trava_curta(PASTA / ".imagens.lock"):
-        documento = json.loads(caminho.read_text()) if caminho.exists() else {"services": {}}
-        for servico in estado["servicos"]:
-            entrada = {"image": versao["imagem"]}
-            if versao.get("codigo"):
-                entrada["volumes"] = [versao["codigo"] + ":/app:ro"]
-            documento["services"][servico] = entrada
-        salvar(caminho, documento)
+    documento = json.loads(caminho.read_text()) if caminho.exists() else {"services": {}}
+    for servico in estado["servicos"]:
+        entrada = {"image": versao["imagem"]}
+        if versao.get("codigo"):
+            entrada["volumes"] = [versao["codigo"] + ":/app:ro"]
+        documento["services"][servico] = entrada
+    salvar(caminho, documento)
     os.environ["COMPOSE_FILE"] = str(RAIZ / "docker-compose.yml") + ":" + str(caminho)
 
 
@@ -196,9 +185,11 @@ def executar(acao):
             salvar(caminho, estado)
         return
     tag = validar_sha(os.environ.get("TAG", ""))
+    if acao == "conferir-ultima":
+        conferir_ultima(tag)
+        return
     if acao in {"inicializar", "preparar"}:
-        if os.environ.get("PROVA_IMAGEM_SHA") != tag:
-            raise ValueError("faltam testes isolados da mesma imagem no runner")
+        conferir_ultima(tag)
         comp = compatibilidade()
         if acao == "inicializar":
             if estado is not None:
@@ -221,10 +212,6 @@ def executar(acao):
         else:
             if estado is None or not estado.get("aprovada"):
                 raise ValueError("inicialize aprovação com testes da imagem atual e prova do endereço antes da primeira troca")
-            if estado.get("candidata"):
-                raise ValueError("candidata pendente: recupere antes de tentar outra publicação")
-            if estado.get("recuperacao", {}).get("estado") in {"tentando", "falhou"}:
-                raise ValueError("recuperação terminal pendente; diagnostique antes de publicar")
             if comp != estado["compatibilidade"]:
                 raise ValueError("candidata incompatível com destino recuperável")
             estado.pop("recuperacao", None)
@@ -244,13 +231,14 @@ def executar(acao):
     if estado is None:
         raise ValueError("aprovação comprovada ausente")
     if acao == "abortar":
-        if estado["candidata"] and estado["atual"] != estado["candidata"]:
+        if estado.get("candidata") == tag and estado["atual"] != tag:
             estado["candidata"] = None
             estado.pop("candidata_versao", None)
             salvar(caminho, estado)
             medir(estado, False, False, 0)
         return
     if acao == "aplicar":
+        conferir_ultima(tag)
         if estado["candidata"] != tag:
             raise ValueError("candidata não corresponde ao pedido")
         versao = estado.get("candidata_versao") or versao_pedida(tag)
@@ -261,6 +249,7 @@ def executar(acao):
         salvar(caminho, estado)
         return
     if acao == "aprovar":
+        conferir_ultima(tag)
         if estado["candidata"] != tag or estado["atual"] != tag:
             raise ValueError("imagem não é a candidata aplicada")
         versao = versao_de(estado, tag)

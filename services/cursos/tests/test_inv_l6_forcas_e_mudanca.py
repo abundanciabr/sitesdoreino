@@ -40,22 +40,19 @@ def _emitir(envio, professora, **mudancas):
 
 
 # ------------------------------------------------------------- as forças
-def test_duas_forcas_e_recusado(envio_na_fila, professora):
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente três forças"):
-        _emitir(envio_na_fila, professora, forcas=forcas_validas()[:2])
+def test_duas_forcas_sao_aceitas(envio_na_fila, professora):
+    assert len(_emitir(envio_na_fila, professora, forcas=forcas_validas()[:2]).forcas) == 2
 
 
-def test_quatro_forcas_e_recusado(envio_na_fila, professora):
+def test_quatro_forcas_sao_aceitas(envio_na_fila, professora):
     quatro = forcas_validas() + ["Mais uma força específica sobre o corte."]
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente três forças"):
-        _emitir(envio_na_fila, professora, forcas=quatro)
+    assert len(_emitir(envio_na_fila, professora, forcas=quatro).forcas) == 4
 
 
 def test_forcas_vazias_contam_como_ausentes(envio_na_fila, professora):
     """Um campo em branco não é uma força a menos disfarçada: é ausência."""
     forcas = ["", "", ""]
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente três forças"):
-        _emitir(envio_na_fila, professora, forcas=forcas)
+    assert _emitir(envio_na_fila, professora, forcas=forcas).forcas == []
 
 
 @pytest.mark.parametrize(
@@ -77,15 +74,13 @@ def test_tres_forcas_especificas_sao_aceitas(envio_na_fila, professora):
 
 
 # ------------------------------------------------------------ a mudança
-def test_zero_mudancas_e_recusado(envio_na_fila, professora):
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente uma mudança"):
-        _emitir(envio_na_fila, professora, mudanca=[])
+def test_zero_mudancas_e_aceito_se_aberto(envio_na_fila, professora):
+    assert _emitir(envio_na_fila, professora, mudanca=[]).mudanca == {}
 
 
-def test_duas_mudancas_e_recusado(envio_na_fila, professora):
+def test_duas_mudancas_sao_guardadas(envio_na_fila, professora):
     duas = mudanca_valida(envio_na_fila.aula) * 2
-    with pytest.raises(parecer.LaudoRecusado, match="exatamente uma mudança"):
-        _emitir(envio_na_fila, professora, mudanca=duas)
+    assert len(_emitir(envio_na_fila, professora, mudanca=duas).mudancas) == 2
 
 
 def test_mudanca_com_aula_de_outro_curso_e_recusada(envio_na_fila, professora):
@@ -113,10 +108,9 @@ def test_mudanca_com_aula_id_nao_numerico_e_recusada(envio_na_fila, professora):
         _emitir(envio_na_fila, professora, mudanca=mudanca)
 
 
-def test_mudanca_sem_texto_e_recusada(envio_na_fila, professora):
+def test_mudanca_sem_texto_e_ausente_se_aberto(envio_na_fila, professora):
     mudanca = [{"texto": "   ", "aula_id": envio_na_fila.aula.id}]
-    with pytest.raises(parecer.LaudoRecusado, match="Escreva o texto da mudança"):
-        _emitir(envio_na_fila, professora, mudanca=mudanca)
+    assert _emitir(envio_na_fila, professora, mudanca=mudanca).mudanca == {}
 
 
 def test_mudanca_valida_e_gravada_com_o_id_como_texto(envio_na_fila, professora):

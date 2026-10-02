@@ -11,7 +11,7 @@ O que estes guardas protegem, em ordem de gravidade:
    antiga, e a lista é DERIVADA da API para que rota nova nasça medida.
 2. **O e-mail do aluno não atravessa a fronteira** — decisão do mantenedor no
    mesmo dia, mantendo a `DECISAO-EVO-01` §3.
-3. **Nenhuma trava foi afrouxada na mudança de casa**: justificativa obrigatória,
+3. **As escritas usam o mesmo caminho**: nota opcional,
    corredor do ChangeSpec e o portão do aprovador continuam recusando — agora
    pelo contrato, com a MESMA frase que a tela dizia.
 4. **A plateia que atravessa é a mesma que o sininho avisa** ([INV-SUG13] cruzando
@@ -193,10 +193,10 @@ def test_mudar_de_fase_grava_historico_e_avisa_a_plateia(
     assert Aviso.objects.filter(sugestao=sugestao).count() == 5
 
 
-def test_nao_planejado_sem_justificativa_e_recusado(
+def test_nao_planejado_sem_justificativa_e_registrado(
     client, db, par_autorizado, sugestao
 ):
-    """A regra da spec §10 continua mordendo, agora pelo contrato."""
+    """A nota vazia não impede uma decisão registrada pela equipe."""
     resposta = escrever(
         client,
         f"{IDEIAS}/{sugestao.id}/status",
@@ -208,9 +208,9 @@ def test_nao_planejado_sem_justificativa_e_recusado(
         },
     )
 
-    assert resposta.status_code == 422
-    assert "escreva o porquê" in resposta.json()["erro"]
-    assert Sugestao.objects.get(pk=sugestao.pk).status == Sugestao.Status.EM_ANALISE
+    assert resposta.status_code == 200
+    assert Sugestao.objects.get(pk=sugestao.pk).status == Sugestao.Status.NAO_PLANEJADO
+    assert HistoricoStatus.objects.get(sugestao=sugestao).nota == ""
 
 
 def test_a_fase_anda_sem_assinatura_pelo_contrato(

@@ -4,9 +4,8 @@ O LABORATÓRIO (/admin/placar/laboratorio/, 05/09/2026, degrau 12 do plano do
 painel de gestão).
 
 Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
-tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
-admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py), e toda classe
-usada abaixo já existe lá.
+tela (armadilhas/087). O estilo mora em admin/base.html, e toda classe usada
+abaixo já existe lá.
 
 Duas regras governam cada `{% if %}` desta tela:
 
@@ -41,8 +40,7 @@ mais aparece.
   <p class="aviso borda-vermelha">
     <b>Não consegui ler os experimentos da página.</b> {{ da_pagina.erro }}
     Isto não quer dizer que a página não tenha experimento. Nada mudou no site.
-    Recarregue esta tela daqui a pouco; se o aviso continuar, peça a uma sessão
-    que confira o serviço do catálogo.
+    Recarregue esta tela daqui a pouco; se o aviso continuar, confira o serviço do catálogo.
   </p>
   {% elif not da_pagina.experimentos %}
   <p class="recado">
@@ -94,9 +92,7 @@ mais aparece.
   <p class="aviso borda-vermelha">
     <b>Não consegui olhar.</b> O livro de ocorrências não chegou até esta tela,
     então ela não sabe se existem experimentos. Isto não é "nenhum experimento":
-    é a tela sem a fonte. Isto é falha do sistema, não sua. Peça a uma sessão
-    para conferir a pasta do livro (apps/core/registros) na área administrativa e
-    recarregue esta página.
+    é a tela sem a fonte. Isto é falha do sistema, não sua. Confira os registros no painel e recarregue esta página.
   </p>
 
   {% elif lab.total == 0 %}
@@ -110,9 +106,7 @@ mais aparece.
     jeito que der mais certo.
   </p>
   <p class="recado">
-    <b>Como nasce o primeiro:</b> descreva as cinco partes numa sessão. É o
-    robô que escreve o registro no livro, e a partir daí o experimento aparece
-    nesta tela como "rodando".
+    <b>Como nasce o primeiro:</b> <a href="{% url 'gestao_do_placar' %}">registre a aposta no painel</a> com problema, hipótese, métrica, guarda e prazo. Ela aparece aqui como "rodando".
   </p>
   <p class="nota">
     Enquanto nenhum experimento fechar, o número "aprendizados validados no
@@ -154,9 +148,7 @@ mais aparece.
     {% endfor %}
   </ul>
   <p class="recado">
-    <b>O gesto:</b> peça a uma sessão que escreva o resultado de cada um, mesmo
-    que o veredito seja "não deu para saber". Fechar sem conclusão vale mais do
-    que deixar a aposta aberta para sempre.
+    <b>O gesto:</b> <a href="{% url 'gestao_do_placar' %}">registre o resultado de cada um</a>, mesmo que o veredito seja "não deu para saber".
   </p>
   {% endif %}
 
@@ -178,8 +170,7 @@ mais aparece.
   </ul>
   {% else %}
   <p class="recado-fraco">
-    Nenhuma aposta em campo neste momento. A próxima nasce quando você descreve
-    a aposta a uma sessão.
+    Nenhuma aposta em campo neste momento. <a href="{% url 'gestao_do_placar' %}">Registre a próxima aposta no painel</a>.
   </p>
   {% endif %}
 
@@ -203,8 +194,7 @@ mais aparece.
     {% endif %}
     {% endfor %}
   <p class="recado">
-    <b>O gesto:</b> aposta que venceu não vira produto sozinha. Peça a uma
-    sessão que transforme o que funcionou em tarefa.
+    <b>O gesto:</b> aposta que venceu pode virar tarefa no painel da equipe.
   </p>
   <p class="nota">
     "Não deu para saber" é desfecho legítimo, e por isso tem um lugar próprio

@@ -16,27 +16,6 @@ if [ -z "${CELULA:-}" ]; then
   exit 1
 fi
 
-# Publicacao de celula: convive com outras celulas, exclui a mesma celula e espera os mutadores comuns.
-TRAVA_PUBLICACAO="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao.lock"
-command -v flock >/dev/null 2>&1 || { echo "ERRO: flock ausente; instale util-linux na VPS antes de publicar." >&2; exit 1; }
-case "${CELULA:-}" in ''|[!a-z]*|*[!a-z0-9_]*) echo "PAROU POR SEGURANÇA: a variável CELULA chegou vazia ou inválida." >&2; exit 1 ;; esac
-if ! [ "$TRAVA_PUBLICACAO" -ef "/proc/$$/fd/8" ]; then
-  if [ ! -f "$TRAVA_PUBLICACAO" ]; then
-    (umask 022; : >>"$TRAVA_PUBLICACAO") || { echo "ERRO: nao criei a trava comum; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 8<"$TRAVA_PUBLICACAO" || { echo "ERRO: nao li a trava comum; o dono deve liberar leitura sem remover o arquivo." >&2; exit 1; }
-fi
-flock --shared 8 || { echo "ERRO: nao obtive a trava comum; confira o mutador em andamento antes de repetir." >&2; exit 1; }
-TRAVA_CELULA="${PLATAFORMA_DIR:-/opt/plataforma}/.publicacao-$CELULA.lock"
-if ! [ "$TRAVA_CELULA" -ef "/proc/$$/fd/9" ]; then
-  if [ ! -f "$TRAVA_CELULA" ]; then
-    (umask 022; : >>"$TRAVA_CELULA") || { echo "ERRO: nao criei a trava da celula; confira permissoes da plataforma." >&2; exit 1; }
-  fi
-  exec 9<"$TRAVA_CELULA" || { echo "ERRO: nao li a trava da celula." >&2; exit 1; }
-fi
-flock --exclusive 9 || { echo "ERRO: nao obtive a trava da celula; confira a publicacao em andamento antes de repetir." >&2; exit 1; }
-unset TRAVA_PUBLICACAO TRAVA_CELULA
-
 ENV_DO_ADMIN="$RAIZ/env/admin.env"
 for CHAVE_DO_GATEWAY in ALUNOS_API_TOKEN TOKEN_CATALOGO; do
   VALOR_DO_GATEWAY=$(grep -m1 "^$CHAVE_DO_GATEWAY=" "$ENV_DO_ADMIN" | cut -d= -f2-) || VALOR_DO_GATEWAY=""
@@ -155,7 +134,7 @@ else
     parar_o_deploy "nao ha espaco em disco para a copia de seguranca de '$BASE'. Livre: $((LIVRE_KB / 1024)) MB. Necessario com folga: $((PRECISO_KB / 1024)) MB. A pasta dos dumps e $PASTA_DOS_DUMPS. Nada foi tocado."
   fi
 
-  CARIMBO=$(date -u +%Y%m%d-%H%M%SZ)
+  CARIMBO="$(date -u +%Y%m%d-%H%M%SZ)-${TAG:0:12}-$$"
   ARQUIVO_FINAL="$PASTA_DOS_DUMPS/$BASE-$CARIMBO.dump"
   ARQUIVO_PARCIAL="$ARQUIVO_FINAL.parcial"
 
@@ -183,6 +162,7 @@ done
 # --wait reprova o deploy se algum container não ficar de pé (ou não ficar
 python3 "$PUBLICACAO_LOCAL" aplicar
 export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
+python3 "$PUBLICACAO_LOCAL" conferir-ultima
 echo "CANDIDATA-APLICADA: $TAG"
 docker compose up -d --wait --wait-timeout 180 $SERVICOS
 docker compose ps $SERVICOS

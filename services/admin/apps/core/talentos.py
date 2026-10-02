@@ -1,75 +1,21 @@
-"""`/admin/placar/talentos/` — a rede de talentos, e o laço que ela fecha.
-
-Degrau 17 do `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`: *"contagens digitadas
-(alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de
-talentos sai do cinza"*.
-
-O laço de talentos é o quarto laço do Scale OS (documento 2, §45): mais alunas
-levam a mais talentos, que levam a mais estúdios, que levam a mais
-oportunidades, que levam a mais resultados, que aumentam o valor da escola, que
-traz mais alunas. Ele era a única parte do sistema que não existia em tela
-nenhuma. Esta tela o desenha inteiro e põe, ao lado de cada etapa, o número que
-a casa tem hoje. Sair do cinza é isto: as etapas medidas mostram o número, e as
-que não têm número dizem em português que ainda não têm, e qual é o gesto.
-
-## As três leis desta tela
-
-**1. A contagem digitada é um REGISTRO do livro, nunca uma tabela.** Ninguém
-consegue medir sozinho quantas alunas a escola escolheu, quantos estúdios
-aceitaram, quantos encaixes aconteceram: isso mora fora do sistema, numa
-conversa. Então a escola conta e digita, e o que guarda é o livro, pelo mesmo
-campo `foto` que a foto da semana já usa (`mudancas.py`, degrau 6): uma
-`medicao` com a linha `nome=valor; nome=valor`. Nenhum banco novo (plano §9),
-nenhum estado escrito à mão, e a data em que a contagem foi feita sai da data
-do registro, não de um campo que alguém preenche.
-
-**2. Esta tela não escreve nada.** O que ela produz é o PEDIDO PARA O ROBÔ: um
-bloco de texto que o mantenedor cola numa sessão, e que vira registro no livro.
-Recarregar a página apaga o que foi digitado, e isso é dito na tela: o que vale
-é o que chegar ao livro.
-
-**3. A foto que este pedido monta é COMPLETA, ou não existe.** A linha `foto`
-leva junto os números que o placar já mede sozinho hoje. O bloco "o que mudou"
-da capa compara a foto mais recente do livro com o que a tela mostra agora; uma
-foto só com as três contagens da rede seria a mais recente sem ter os outros
-números, e todo o resto do placar apareceria como "sem par" na segunda-feira
-seguinte. Por isso o pedido só se monta quando o placar mediu de verdade: se
-ele não mediu (o cartão da meta faltou, o livro não chegou), a tela recusa
-montar o bloco e diz o que fazer. Meio bloco copiado é pior do que bloco
-nenhum: o estrago só aparece na segunda seguinte, e aí ninguém liga uma coisa
-à outra.
-
-**O efeito de lado desta lei, dito em voz alta.** A foto que este pedido grava
-é completa, então ela vira a foto mais recente do livro. A comparação de
-segunda-feira passa a ser contra o dia em que a rede foi contada, e não contra
-a segunda anterior: contar a rede numa quarta encurta a janela da comparação
-seguinte para cinco dias. Isso é o preço da lei 3, e é o preço menor. A
-alternativa (marcar esta foto para a comparação semanal ignorá-la) tornaria
-inútil carregar o placar junto, e devolveria o "sem par" que a lei 3 existe
-para evitar. A tela diz isso ao mantenedor antes de ele copiar o bloco.
-
-## O que esta tela recusa
-
-Nenhum marketplace, nenhuma tabela de estúdio, nenhuma ficha de talento (plano
-§9: "nenhum marketplace automatizado: talentos começam à mão"). E nenhum número
-inventado: estúdio parceiro nenhum é zero contado ou "nunca contado", que são
-coisas diferentes e aparecem diferentes na tela.
-"""
+"""A rede de talentos e suas contagens diárias persistidas no painel."""
 
 from __future__ import annotations
 
 import datetime as dt
+import uuid
 
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
+from .models import RegistroDoPlacar
 from .mudancas import FRESCOR_PADRAO, foto_em_texto, ler_foto
 from .placar import diretorio_dos_cartoes, ler_cartao, montar_o_placar, site_de
 
 #: As três contagens que a escola digita, na ordem em que o laço gira. Cada
 #: tupla é `(campo do formulário, nome do cartão, rótulo que o mantenedor lê)`.
-#: O nome do cartão é também a chave dentro da linha `foto` do livro, e ele
+#: O nome do cartão é também a chave dentro da linha `foto` do registro, e ele
 #: NUNCA aparece em tela: quem o vê são as máquinas. O rótulo existe para que a
 #: recusa fale a mesma língua da etiqueta que ele acabou de ler no formulário,
 #: e por isso é o próprio formulário que o imprime (`talentos.html` percorre
@@ -156,13 +102,10 @@ def _data(texto: object) -> dt.date | None:
 
 
 def ultima_medicao(registros: list[dict] | None, nome: str) -> dict | None:
-    """A contagem mais recente daquele cartão no livro; `None` se não há nenhuma.
+    """A contagem mais recente daquele cartão nos registros; `None` se não há nenhuma.
 
-    Olha TODA `medicao` com `foto`, e não só a foto mais recente: uma contagem
-    da rede feita em agosto continua sendo a última que existe, mesmo que a
-    foto da semana passada não a tenha levado junto. É por isso que este módulo
-    não reusa `mudancas.ultima_foto`, que procura a foto inteira mais recente
-    para comparar duas datas iguais para todos os números.
+    Olha toda medição com foto, inclusive as contagens anteriores que não
+    aparecem na foto mais recente do placar.
     """
     melhor: dict | None = None
     for r in registros or []:
@@ -191,7 +134,7 @@ def montar(
     """Os seis passos do laço, cada um com o número que a casa tem hoje.
 
     `total_de_alunos` vem do placar (a célula `alunos` ao vivo) e pode ser
-    `None`: a porta não respondeu. `registros` `None` é o livro que não chegou
+    `None`: a porta não respondeu. `registros` `None` é os registros indisponíveis
     até esta imagem, que é outra coisa de "nenhuma contagem feita", e as duas
     aparecem diferentes na tela (`armadilhas/271`).
 
@@ -259,7 +202,7 @@ def ler_as_contagens(campos) -> tuple[dict[str, int], list[str]]:
 
     Campo vazio é campo não digitado (a escola conta uma etapa hoje e outra na
     semana que vem), e não zero: gravar zero por um campo em branco apagaria
-    uma contagem verdadeira do livro na foto seguinte.
+    uma contagem verdadeira no painel.
     """
     contagens: dict[str, int] = {}
     recusas: list[str] = []
@@ -284,74 +227,26 @@ def ler_as_contagens(campos) -> tuple[dict[str, int], list[str]]:
     return contagens, recusas
 
 
-def montar_o_pedido(
-    contagens: dict[str, int], hoje: dt.date, foto_do_placar: str | None = None
-) -> str | None:
-    """O bloco para colar numa sessão de robô; `None` se não há o que pedir.
-
-    `foto_do_placar` é a linha `cartao=valor; ...` que o placar mede agora. Ela
-    entra junto (lei 3 do topo deste arquivo): a foto que vai ao livro precisa
-    ser completa, senão ela vira a mais recente sem ter os outros números.
-
-    Placar que não mediu devolve `None`, e não meia foto. `ler_foto` diz `None`
-    tanto para a linha ausente (o cartão da meta faltou, ou o livro não chegou
-    e `o_que_mudou` devolveu só o veredito) quanto para a linha torta, e os
-    dois casos dão no mesmo: não há foto completa para gravar. Quem avisa o
-    mantenedor é a tela.
-    """
-    foto = ler_foto(foto_do_placar)
-    if not contagens or foto is None:
-        return None
-    # A contagem digitada vence o mesmo nome vindo do placar: quem contou à mão
-    # a rede sabe mais do que o placar sabe sobre ela.
+def salvar_contagem(contagens: dict[str, int], hoje: dt.date, admin: dict,
+                    foto_do_placar: str | None) -> None:
+    """Acrescenta uma medição histórica; nunca altera uma medição anterior."""
+    foto = ler_foto(foto_do_placar) or {}
     foto.update(contagens)
-    linhas = [
-        f"Contagem da rede de talentos, {hoje.strftime('%d/%m/%Y')}.",
-        "Registre em services/admin/apps/core/registros/ (molde no LEIA-ME.md da pasta),",
-        "UM registro:",
-        "",
-        "- MEDIÇÃO (tipo `medicao`, autoridade: mantenedor, gravidade: info,",
-        # `quando` é o dia em que a contagem foi FEITA, e é essa data que
-        # `ultima_medicao` lê de volta para dizer "contado por você em tal
-        # dia". Sem pedir a data aqui, o registro sai carimbado com o dia em
-        # que o PR entrou, e a tela passa a jurar que alguém contou num dia em
-        # que ninguém contou nada.
-        f"  quando: {hoje.isoformat()}, evidencia: o link do PR,",
-        f"  verificado_em: {hoje.isoformat()}), com o campo `foto` assim:",
-        f'  foto: "{foto_em_texto(foto)}"',
-        "  Título: 'Contagem da rede de talentos'.",
-        "  Detalhe: quem contou, e o que entrou na conta.",
-        f"  O `quando` é {hoje.isoformat()} mesmo, e não o dia em que este",
-        "  registro entrar: é essa data que a tela lê de volta para dizer",
-        "  quando a contagem foi feita.",
-        "",
-        "As contagens digitadas hoje:",
-    ]
-    for _campo, cartao, rotulo in DIGITADAS:
-        if cartao in contagens:
-            linhas.append(f"- {cartao} ({rotulo}): {contagens[cartao]}")
-    linhas += [
-        "",
-        "A linha `foto` acima leva junto os números que o placar mede sozinho,",
-        "e é ela que o bloco 'o que mudou' compara na segunda-feira seguinte.",
-        "Por isso esta foto passa a ser a mais recente do livro: a comparação",
-        "da próxima segunda será contra hoje, e não contra a segunda passada.",
-    ]
-    return "\n".join(linhas)
+    arquivo = "talentos-" + timezone.now().strftime("%Y%m%d%H%M%S%f") + "-" + uuid.uuid4().hex
+    dados = {
+        "arquivo": arquivo,
+        "tipo": "medicao",
+        "quando": hoje.isoformat(),
+        "titulo": "Contagem da rede de talentos",
+        "detalhe": "Contagem registrada no painel.",
+        "foto": foto_em_texto(foto),
+        "autoridade": (admin or {}).get("email") or (admin or {}).get("id"),
+    }
+    RegistroDoPlacar.objects.create(arquivo=arquivo, dados=dados)
 
 
 @require_http_methods(["GET", "POST"])
 def talentos(request):
-    """O laço desenhado. GET mostra; POST devolve o pedido para o robô.
-
-    O livro é lido UMA vez por requisição, e a leitura é a que `montar_o_placar`
-    já pagou (`contexto["registros"]`). Chamar `ler_registros()` de novo aqui
-    varreria a pasta inteira de `apps/core/registros/` uma segunda vez, com um
-    `read_text` por arquivo, para chegar exatamente à mesma lista. É a mesma
-    regra que o placar escreve para as portas de rede ("UMA leitura de cada
-    porta por requisição"), e pelo mesmo motivo: duas leituras podem discordar
-    entre si por um registro que entrou no meio.
-    """
     hoje = timezone.localdate()
     contexto = montar_o_placar(hoje, site_de(request))
     total = (contexto.get("contagem") or {}).get("total_de_alunos")
@@ -362,10 +257,9 @@ def talentos(request):
     recusas: list[str] = []
     if request.method == "POST":
         contagens, recusas = ler_as_contagens(enviados)
-    # Recusa e bloco pronto são coisas que nunca aparecem juntas: quem digita
-    # "4" e "dois" recebe a ordem de corrigir E um bloco com metade da
-    # contagem, cola, e grava metade. Por isso o pedido nem se monta.
-    pedido = None if recusas else montar_o_pedido(contagens, hoje, foto_do_placar)
+        if not recusas and contagens:
+            salvar_contagem(contagens, hoje, request.admin, foto_do_placar)
+            return redirect(request.path + "?salvo=1")
     return render(
         request,
         "admin/talentos.html",
@@ -377,9 +271,7 @@ def talentos(request):
                 for campo, _cartao, rotulo in DIGITADAS
             ],
             "recusas": recusas,
-            "pedido": pedido,
-            "montou": request.method == "POST",
-            "contou": bool(contagens),
-            "placar_nao_mediu": medidos is None,
+            "salvo": request.GET.get("salvo") == "1",
+            "vazio": request.method == "POST" and not recusas and not contagens,
         },
     )

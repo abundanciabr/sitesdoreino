@@ -127,6 +127,10 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
     Só cabeçalho: `detalhe` é concatenação de várias linhas e esta tela não o
     lê. Aqui não se valida o registro, só se lê.
     """
+    if pasta is None or pasta == diretorio_dos_registros():
+        from .models import RegistroDoPlacar
+
+        return [linha.dados for linha in RegistroDoPlacar.objects.order_by("arquivo")]
     pasta = pasta if pasta is not None else diretorio_dos_registros()
     if not pasta.is_dir():
         return None

@@ -133,23 +133,11 @@ def test_a_sentinela_do_backup_sai_antes_da_subida_dos_conteineres():
     )
 
 
-def test_a_ordem_interna_do_bloco_limpeza_espaco_dump():
-    """Limpar, depois medir o disco, depois escrever. Nesta ordem, e por motivo.
-
-    Medir o disco antes de aplicar a retenção faria o script recusar um deploy
-    que caberia perfeitamente; escrever antes de medir é o dump truncado que
-    mente no dia do desespero.
-    """
+def test_o_espaco_e_conferido_antes_do_dump_sem_exigir_apagar_copias():
+    """Confere espaço antes de escrever e preserva as cópias anteriores."""
     linhas = linhas_de_codigo(DEPLOY)
-    i_limpeza = indice_unico(linhas, r"^\s*A_APAGAR=", "a limpeza dos dumps antigos")
     i_espaco = indice_unico(linhas, r"^\s*SAIDA_DO_DF=", "a medição do espaço livre")
     i_dump = indice_unico(linhas, r"exec -T postgres pg_dump", "o comando pg_dump")
-
-    assert i_limpeza < i_espaco, (
-        "o espaço em disco está sendo medido ANTES da limpeza das cópias antigas: "
-        "assim o deploy pode ser recusado por falta de espaço que ele mesmo "
-        "liberaria um instante depois"
-    )
     assert i_espaco < i_dump, (
         "o dump está sendo escrito ANTES da conferência de espaço em disco. "
         "Disco cheio tem de virar uma mensagem clara, nunca um arquivo pela metade"

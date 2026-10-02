@@ -453,7 +453,7 @@ def test_assunto_calado_e_evento_quebrado_terminam_num_gesto():
     texto = " ".join(corpo.split())
 
     assert (
-        "peça a uma sessão que olhe por que esse aviso parou de sair" in texto
+        "confira a origem desse aviso no painel" in texto
     ), "o gesto da cobertura: pedir que um robô olhe"
     assert reverse("confianca_quebrado", args=[7]) in corpo, "o gesto: inspecionar"
 
@@ -470,7 +470,7 @@ def test_numero_sem_foto_leva_a_tela_que_monta_o_pedido_da_foto(tmp_path, monkey
     texto = " ".join(corpo.split())
 
     assert "Nunca anotados: 1." in corpo
-    assert reverse("talentos") in corpo, "o gesto do frescor: montar o pedido da foto"
+    assert reverse("gestao_do_placar") in corpo
     assert "A foto da semana é o registro semanal dos números do placar" in texto
 
 

@@ -70,6 +70,44 @@ nasce dentro de um `Livro`, sempre.
 from django.db import models
 
 
+class CartaoDoPlacar(models.Model):
+    """Definição editável de uma métrica; os JSON antigos são apenas semente."""
+
+    nome = models.CharField(max_length=150, unique=True)
+    dados = models.JSONField()
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+
+class VersaoDoCartaoDoPlacar(models.Model):
+    cartao = models.ForeignKey(CartaoDoPlacar, on_delete=models.PROTECT, related_name="versoes")
+    revisao = models.PositiveIntegerField()
+    dados = models.JSONField()
+    responsavel = models.CharField(max_length=200, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["cartao", "revisao"], name="cartao_revisao_unica")]
+
+
+class RegistroDoPlacar(models.Model):
+    """Medição, compromisso e histórico importados do livro antigo."""
+
+    arquivo = models.CharField(max_length=150, unique=True)
+    dados = models.JSONField()
+    texto_original = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+
+class FechamentoDoCiclo(models.Model):
+    """Retrato definitivo de um ciclo encerrado no painel."""
+
+    partida_em = models.DateField(unique=True)
+    encerrado_em = models.DateField()
+    dados = models.JSONField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+
 class Administrador(models.Model):
     """Um e-mail promovido pela TELA. O do env não passa por aqui."""
 

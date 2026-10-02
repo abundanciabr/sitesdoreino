@@ -475,7 +475,6 @@ FRASES = {
     "situacao": "Situação atualizada.",
     "concluida": "Tarefa concluída.",
     "reaberta": "Tarefa reaberta: voltou para A fazer.",
-    "sem_impedimento": "Para bloquear uma tarefa, escreva o impedimento. Nada mudou.",
     "situacao_desconhecida": "Não conheço essa situação. Nada mudou.",
     "compromisso_marcado": "Tarefa assumida como compromisso desta semana.",
     "compromisso_tirado": "Tarefa tirada dos compromissos desta semana.",
@@ -492,7 +491,6 @@ FRASES = {
     "comentario_longo": "O comentário passou de 500 letras. Nada foi publicado.",
 }
 CODIGOS_DE_RECUSA = {
-    "sem_impedimento",
     "situacao_desconhecida",
     "compromisso_concluida",
     "compromisso_sem_responsavel",

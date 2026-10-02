@@ -1,17 +1,5 @@
 # tests/test_inv_nao_planejado_exige_justificativa.py  # [RECEITA:R5 v1]
-"""INV-SUG08 — `nao_planejado` sem justificativa é recusado.
-
-`ESPECIFICACAO-CELULA.md` §10 é explícita: *"'não planejado' com justificativa
-obrigatória"*. É o único status com essa exigência, e o motivo é o mesmo que
-fez a `DECISAO-EVO-01` §5 proibir o "acesso negado" seco na porta: um "não
-vamos fazer" sem uma linha de explicação é a forma mais rápida de a Caixa
-ensinar aos alunos que sugerir não adianta. A pessoa escreveu o problema dela;
-o mínimo é ela ler por que a resposta foi não.
-
-A recusa acontece **antes** de qualquer escrita — nem o status muda, nem o
-histórico ganha linha. E o texto exigido é o texto que vai para o histórico:
-uma justificativa que a equipe escreve e o banco não guarda seria teatro.
-"""
+"""A nota da mudança de fase é opcional e, quando escrita, fica no histórico."""
 
 import pytest
 
@@ -27,31 +15,22 @@ def _recusar(equipe, sugestao, nota=""):
     )
 
 
-def test_sem_justificativa_a_mudanca_e_recusada_e_nada_e_escrito(equipe, sugestao):
+def test_sem_justificativa_a_mudanca_e_registrada(equipe, sugestao):
     resposta = _recusar(equipe, sugestao)
 
-    assert resposta.status_code == 422, resposta.content
+    assert resposta.status_code == 200, resposta.content
     sugestao.refresh_from_db()
-    assert sugestao.status == Sugestao.Status.EM_ANALISE
-    assert HistoricoStatus.objects.count() == 0
+    assert sugestao.status == Sugestao.Status.NAO_PLANEJADO
+    assert HistoricoStatus.objects.get().nota == ""
 
 
-def test_justificativa_so_de_espaco_nao_conta(equipe, sugestao):
-    """Senão o portão vira peneira: um espaço passaria por "texto"."""
+def test_justificativa_so_de_espaco_vira_nota_vazia(equipe, sugestao):
     resposta = _recusar(equipe, sugestao, "   \n\t  ")
 
-    assert resposta.status_code == 422, resposta.content
+    assert resposta.status_code == 200, resposta.content
     sugestao.refresh_from_db()
-    assert sugestao.status == Sugestao.Status.EM_ANALISE
-    assert HistoricoStatus.objects.count() == 0
-
-
-def test_a_recusa_diz_o_que_falta_em_portugues(equipe, sugestao):
-    """A MESMA frase que a tela dizia — ela mudou de casa, não de redação."""
-    erro = _recusar(equipe, sugestao).json()["erro"]
-
-    assert "escreva o porquê" in erro
-    assert "quem sugeriu vai ler" in erro
+    assert sugestao.status == Sugestao.Status.NAO_PLANEJADO
+    assert HistoricoStatus.objects.get().nota == ""
 
 
 def test_com_justificativa_passa_e_a_nota_fica_no_historico(equipe, sugestao):

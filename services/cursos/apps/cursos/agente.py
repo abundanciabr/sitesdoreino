@@ -110,9 +110,6 @@ TENTATIVAS = 1
 TETO_DE_CAMPO = 6000
 
 
-# Quantas forças a lei pede, e é o mesmo número do formulário ([INV-CUR-L6]).
-NUMERO_DE_FORCAS = 3
-
 # As cinco chaves do bloco fixo com que toda saída de agente desta casa termina
 # (lei §7). Elas existem para que a máquina diga o que NÃO soube: lacuna vira
 # `[LACUNA]`, escolha de sentido vira `[VERIFICAR]`, e o que é da pessoa vira
@@ -224,6 +221,7 @@ class Sugestao:
     notas: dict[str, dict[str, Any]]
     forcas: list[str]
     mudanca: dict[str, str]
+    mudancas: list[dict[str, str]]
     reenvio: str
     bloco: dict[str, str]
     cortado: bool
@@ -283,13 +281,10 @@ A entrega já está na fila de revisão e o relógio é da escola, não seu. Nã
 escreva sobre prazo, sobre atraso nem sobre quando a professora deve responder.
 
 O VALOR
-Três forças, exatamente três, cada uma específica sobre ESTE trabalho, com o \
-nome da coisa que funcionou. Elogio genérico ("ficou bom", "bonito", "legal", \
-"parabéns", "bom trabalho") é recusado pelo sistema e o rascunho inteiro é \
-jogado fora, então não escreva nenhum.
-E UMA mudança, exatamente uma, a mais específica para a próxima entrega, \
-nomeada pela aula onde ela se aprende: escolha o número de aula da lista que \
-você recebeu.
+Liste as forças específicas que observou neste trabalho. Se não houver \
+evidência, deixe a lista vazia. Evite elogio genérico.
+Liste as mudanças necessárias para a próxima entrega, se houver, e indique \
+a aula onde cada uma se aprende. Se o trabalho já atende ao pedido, use lista vazia.
 
 EM CASO DE DÚVIDA
 Nunca preencha por dedução. O que faltou na entrega vira "[LACUNA]" no bloco \
@@ -308,9 +303,9 @@ O FORMATO DA SUA RESPOSTA
 Responda com UM objeto JSON e nada mais: sem texto antes, sem texto depois, sem \
 cerca de markdown. As chaves são exatamente estas:
 {"notas": {"<nome exato do critério>": {"nota": <inteiro na escala>, "frase": \
-"<a frase observável>"}}, "forcas": ["<força 1>", "<força 2>", "<força 3>"], \
-"mudanca": {"texto": "<o que muda na próxima entrega>", "aula_numero": "<o \
-número da aula onde se aprende, como E07>"}, "reenvio": "<se for reenvio: se a \
+"<a frase observável>"}}, "forcas": ["<força observada, se houver>"], \
+"mudancas": [{"texto": "<o que muda>", "aula_numero": "<o \
+número da aula onde se aprende, como E07>"}], "reenvio": "<se for reenvio: se a \
 mudança pedida foi feita, e onde você viu isso; se não for reenvio: string \
 vazia>", "resumo": "<duas linhas do que você preparou>", "lacunas": "<o que \
 faltou na entrega, ou 'nada'>", "a_verificar": "<o que a professora precisa \
@@ -431,12 +426,12 @@ def _o_laudo_anterior(anterior: Laudo | None) -> str:
     """
     if anterior is None:
         return "ESTE É O PRIMEIRO ENVIO: não há laudo anterior, e a chave reenvio deve vir como string vazia."
-    mudanca = anterior.mudanca if isinstance(anterior.mudanca, dict) else {}
+    mudancas = anterior.mudancas
     forcas = "; ".join(anterior.forcas or [])
     return "\n".join(
         [
             "ESTE É UM REENVIO. O LAUDO ANTERIOR PEDIU:",
-            f"Mudança: {mudanca.get('texto', '(não escrita)')}",
+            "Mudanças: " + ("; ".join(item.get("texto", "") for item in mudancas) or "(nenhuma)"),
             f"Forças apontadas na volta passada: {forcas or '(nenhuma)'}",
             "Na chave reenvio, diga se essa mudança foi feita e onde você viu "
             "isso na entrega. Se não der para saber sem abrir o arquivo, "
@@ -589,7 +584,7 @@ def _forcas(objeto: dict) -> list[str]:
     cruas = objeto.get("forcas")
     cruas = cruas if isinstance(cruas, list) else []
     try:
-        return validar_forcas(cruas[:NUMERO_DE_FORCAS])
+        return validar_forcas(cruas)
     except LaudoRecusado as motivo:
         logger.warning("assistente de laudo: força recusada na origem (%s)", motivo)
         raise AgenteIndisponivel(FORCA_GENERICA.format(motivo=motivo)) from motivo
@@ -611,6 +606,17 @@ def _mudanca(objeto: dict, curso) -> dict[str, str]:
     numero = str(crua.get("aula_numero") or "").strip().upper()
     aula = curso.aulas.filter(numero=numero).values_list("id", flat=True).first()
     return {"texto": texto, "aula_id": str(aula) if aula else ""}
+
+
+def _mudancas(objeto: dict, curso) -> list[dict[str, str]]:
+    """Aceita a lista atual e o objeto único dos rascunhos anteriores."""
+    cruas = objeto.get("mudancas")
+    if not isinstance(cruas, list):
+        cruas = [objeto.get("mudanca")]
+    return [
+        limpa for item in cruas if isinstance(item, dict)
+        if (limpa := _mudanca({"mudanca": item}, curso))["texto"]
+    ]
 
 
 def _bloco(objeto: dict) -> dict[str, str]:
@@ -679,10 +685,12 @@ def rascunhar(envio: Envio, *, laudo_anterior: Laudo | None = None) -> Sugestao:
         resposta.usage.input_tokens,
         resposta.usage.output_tokens,
     )
+    mudancas = _mudancas(objeto, envio.aula.curso)
     return Sugestao(
         notas=_notas(objeto, envio.aula),
         forcas=_forcas(objeto),
-        mudanca=_mudanca(objeto, envio.aula.curso),
+        mudanca=mudancas[0] if mudancas else {"texto": "", "aula_id": ""},
+        mudancas=mudancas,
         reenvio=str(objeto.get("reenvio") or "").strip(),
         bloco=_bloco(objeto),
         cortado=resposta.stop_reason == "max_tokens",

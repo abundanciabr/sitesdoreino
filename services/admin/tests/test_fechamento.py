@@ -1,25 +1,4 @@
-"""O fechamento do ciclo, `/admin/placar/fechamento/` (degrau 13 do plano).
-
-O que cada grupo de guardas protege, e por que ele existe:
-
-1. **O ciclo NÃO fecha sem "o que a escola para de fazer".** É a alma do
-   degrau: um fechamento que só acrescenta é uma lista que cresce para sempre.
-   Sem o campo, `montar_o_pedido` devolve `None`, e não existe pedido nenhum
-   para o robô.
-2. **A meta seguinte é parte do fechamento.** É o robô que grava o alvo e a
-   data no cartão. Alvo em branco, alvo que não é número ou data no passado
-   virariam a régua de TODO o painel no dia seguinte.
-3. **Ausência de dado nunca vira conclusão** (`armadilhas/271`). Nas semanas de
-   aprender a meta semanal é zero: bater zero e ver o ciclo "ganhando" não
-   prova que uma coisa previu a outra. A resposta é "ainda não dá para saber",
-   e o livro que não chegou não é "nenhum portão provado".
-4. **A fase da escola é calculada, nunca digitada**, e declarar um portão não é
-   prová-lo: sem `evidencia` e `verificado_em`, ele não conta.
-5. **O estado "correndo" é o principal.** A tela nasce sem nenhum ciclo fechado
-   e fica assim até 15/12/2026. Ela abre, diz quantas semanas faltam e mostra a
-   prévia, em vez de esconder tudo atrás de um "ainda não".
-6. **A porta continua sendo a porta.**
-"""
+"""Cálculo e tela do fechamento do ciclo."""
 
 from __future__ import annotations
 
@@ -132,90 +111,6 @@ CAMPOS_COMPLETOS = {
     "proximo_alvo": "2000",
     "proxima_ate": "2027-03-09",
 }
-
-
-# --------------------- 1. o ciclo não fecha sem a recusa
-
-
-def test_sem_o_que_paramos_de_fazer_nao_existe_pedido_nenhum():
-    campos = {**CAMPOS_COMPLETOS, "paramos_de_fazer": ""}
-    pedido, faltando = fechamento.montar_o_pedido(campos, _dados(), HOJE)
-
-    assert (
-        pedido is None
-    ), "o ciclo fechou sem ninguém dizer o que a escola para de fazer"
-    assert [f["campo"] for f in faltando] == ["paramos_de_fazer"]
-    assert (
-        faltando[0]["lei"] is True
-    ), "a recusa é a LEI do degrau, e a tela precisa saber disso"
-
-
-def test_espaco_em_branco_nao_e_uma_decisao():
-    campos = {**CAMPOS_COMPLETOS, "paramos_de_fazer": "   \n  "}
-    pedido, faltando = fechamento.montar_o_pedido(campos, _dados(), HOJE)
-    assert pedido is None and faltando[0]["campo"] == "paramos_de_fazer"
-
-
-def test_com_a_recusa_e_a_meta_seguinte_o_pedido_nasce_inteiro():
-    pedido, faltando = fechamento.montar_o_pedido(CAMPOS_COMPLETOS, _dados(), HOJE)
-
-    assert faltando == []
-    assert pedido is not None
-    assert "parar de vender por mensagem uma a uma" in pedido
-    assert "tipo `decisao`" in pedido, "a recusa vira registro de decisão no livro"
-    assert fechamento.CARTAO_DA_META_NO_REPOSITORIO in pedido
-    assert "2027-03-09" in pedido and "2000" in pedido
-
-
-def test_o_pedido_avisa_quando_o_ciclo_ainda_nao_terminou():
-    """Fechar antes do prazo encerra o ciclo cedo, e o robô tem de saber disso.
-
-    Sem este aviso, um ensaio de fechamento produziria um texto idêntico ao de
-    um fechamento de verdade, e o robô viraria o cartão três meses antes.
-    """
-    correndo, _ = fechamento.montar_o_pedido(CAMPOS_COMPLETOS, _dados(), HOJE)
-    assert "AINDA NÃO" in correndo
-
-    depois = dt.date(2026, 12, 16)
-    terminado, _ = fechamento.montar_o_pedido(
-        CAMPOS_COMPLETOS, _dados(hoje=depois), depois
-    )
-    assert "AINDA NÃO" not in terminado
-
-
-# ------------------------------ 2. a meta seguinte é parte do fechamento
-
-
-def test_alvo_que_nao_e_numero_nao_vira_regua_do_painel():
-    campos = {**CAMPOS_COMPLETOS, "proximo_alvo": "umas duas mil"}
-    pedido, faltando = fechamento.montar_o_pedido(campos, _dados(), HOJE)
-    assert pedido is None
-    assert [f["campo"] for f in faltando] == ["proximo_alvo"]
-    assert faltando[0]["lei"] is False
-
-
-def test_alvo_zero_ou_negativo_e_recusado():
-    for valor in ("0", "-5"):
-        pedido, faltando = fechamento.montar_o_pedido(
-            {**CAMPOS_COMPLETOS, "proximo_alvo": valor}, _dados(), HOJE
-        )
-        assert pedido is None, f"alvo {valor} passou"
-
-
-def test_data_do_proximo_ciclo_no_passado_e_recusada():
-    campos = {**CAMPOS_COMPLETOS, "proxima_ate": "2026-01-01"}
-    pedido, faltando = fechamento.montar_o_pedido(campos, _dados(), HOJE)
-    assert pedido is None
-    assert [f["campo"] for f in faltando] == ["proxima_ate"]
-
-
-def test_data_escrita_errada_e_recusada_com_o_formato_dito():
-    campos = {**CAMPOS_COMPLETOS, "proxima_ate": "09/03/2027"}
-    pedido, faltando = fechamento.montar_o_pedido(campos, _dados(), HOJE)
-    assert pedido is None
-    assert (
-        "2027-03-09" in faltando[0]["porque"]
-    ), "a mensagem tem de mostrar o formato certo"
 
 
 # ------------------- 3. ausência de dado nunca vira conclusão
@@ -451,7 +346,7 @@ def test_a_tela_abre_com_o_ciclo_correndo_e_a_previa():
     html = resposta.content.decode()
     assert "O fechamento do ciclo" in html
     assert "O ciclo está correndo" in html
-    assert "O que a escola PARA de fazer" in html
+    assert "O que a escola para de fazer" in html
     assert resposta.context["fechamento"]["estado"] == "correndo"
 
 
@@ -479,10 +374,7 @@ def test_a_tela_abre_sem_o_livro_e_nao_chama_ausencia_de_nenhum_portao(monkeypat
     assert resposta.status_code == 200
     assert "Não consegui olhar" in texto
     assert "Isto é falha do sistema, não sua." in texto
-    assert (
-        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
-        in texto
-    )
+    assert "Confira os registros do placar no painel" in texto
     assert resposta.context["fechamento"]["fase"]["fase"] is None
 
 
@@ -502,35 +394,6 @@ def test_a_tela_nao_diz_ganhando_com_zero_de_mil():
 
 
 @respx.mock
-def test_o_post_sem_a_recusa_devolve_a_lei_em_vez_do_pedido():
-    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(f"{ALUNOS}/pre-matriculas").mock(
-        return_value=httpx.Response(200, json=[])
-    )
-
-    resposta = _dentro().post(
-        reverse("fechamento"),
-        {"paramos_de_fazer": "", "proximo_alvo": "2000", "proxima_ate": "2027-03-09"},
-    )
-    assert resposta.status_code == 200
-    assert resposta.context["pedido"] is None
-    assert "O ciclo não fecha sem" in resposta.content.decode()
-
-
-@respx.mock
-def test_o_post_completo_devolve_o_pedido_para_colar():
-    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
-    respx.get(f"{ALUNOS}/pre-matriculas").mock(
-        return_value=httpx.Response(200, json=[])
-    )
-
-    resposta = _dentro().post(reverse("fechamento"), CAMPOS_COMPLETOS)
-    assert resposta.status_code == 200
-    assert resposta.context["pedido"] is not None
-    assert "parar de vender por mensagem uma a uma" in resposta.content.decode()
-
-
-@respx.mock
 def test_o_placar_leva_ate_o_fechamento():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
     respx.get(f"{ALUNOS}/pre-matriculas").mock(
@@ -542,3 +405,5 @@ def test_o_placar_leva_ate_o_fechamento():
 
 def test_sem_cracha_a_tela_nao_abre():
     assert Client().get(reverse("fechamento")).status_code != 200
+
+

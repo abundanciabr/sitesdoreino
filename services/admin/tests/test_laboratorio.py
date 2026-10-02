@@ -250,10 +250,7 @@ def test_a_tela_diz_que_nao_olhou_quando_o_livro_nao_veio(monkeypatch):
 
     assert "Não consegui olhar." in corpo
     assert "Isto é falha do sistema, não sua." in texto
-    assert (
-        "Peça a uma sessão para conferir a pasta do livro (apps/core/registros)"
-        in texto
-    )
+    assert "Confira os registros no painel" in texto
     assert "Ainda não há nenhum experimento" not in corpo, (
         "a tela afirmou que não há experimentos sem ter conseguido ler o livro: "
         "é o falso-verde que este ramo existe para impedir"
@@ -273,9 +270,7 @@ def test_a_tela_nasce_vazia_explicando_o_que_e_um_experimento(monkeypatch):
     assert resposta.status_code == 200
     assert "Ainda não há nenhum experimento" in corpo
     assert "o problema que dói hoje" in corpo and "a hipótese" in corpo
-    assert (
-        "descreva as cinco partes numa sessão" in texto
-    ), "o vazio termina no gesto que cria o primeiro"
+    assert reverse("gestao_do_placar") in corpo
 
 
 @respx.mock
@@ -296,12 +291,8 @@ def test_a_tela_mostra_os_quatro_grupos_e_os_gestos(monkeypatch):
     assert "Passaram do prazo e ninguém escreveu o resultado" in corpo
     assert "Venceu (1)" in corpo and "Perdeu (0)" in corpo
     assert "Não deu para saber (1)" in corpo
-    assert (
-        "peça a uma sessão que escreva o resultado de cada um" in texto
-    ), "o gesto de fechar o que venceu de prazo"
-    assert (
-        "Peça a uma sessão que transforme o que funcionou em tarefa" in texto
-    ), "o gesto de virar tarefa o que venceu"
+    assert "registre o resultado de cada um" in texto
+    assert "pode virar tarefa no painel da equipe" in texto
 
 
 @respx.mock

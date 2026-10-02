@@ -2760,7 +2760,17 @@
       "gesto": false,
       "titulo": "O placar",
       "descricao": "A barra do mês (quantas pessoas viraram alunas neste mês), a meta grande do ciclo por cima, com a resposta ganhando ou perdendo, e a restrição desta semana: o único gargalo da jornada que, se melhorar, move a meta. É o andar zero do painel de gestão do negócio, medido ao vivo na parte que guarda os alunos.",
-      "observacao": "O número só aparece se existir o cartão dele em painel/cartoes/ (o que é, de onde vem, quem pode declará-lo). Plano: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md."
+      "observacao": "Metas, medições e compromissos ficam no banco e podem ser atualizados em /admin/placar/editar/."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/editar/",
+      "endereco": "/admin/placar/editar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Editar o placar",
+      "descricao": "Atualizar metas e registrar medições, compromissos e decisões no painel, com o histórico preservado no banco."
     },
     {
       "celula": "admin",
@@ -2771,7 +2781,7 @@
       "gesto": false,
       "titulo": "O calendário do ciclo",
       "descricao": "As 12 semanas do ciclo, mais a de preparação e a de recuperação, com a meta de vendas de cada uma, a meta acumulada e o que aconteceu de verdade em cada semana já fechada. É a régua que o placar usa para dizer se você está ganhando ou perdendo.",
-      "observacao": "As metas semanais moram no cartão da meta (painel/cartoes/compras-no-ciclo.json), e a soma delas é conferida contra a meta grande: as duas nunca podem discordar."
+      "observacao": "As metas semanais ficam no banco junto à meta do ciclo e podem ser editadas no painel."
     },
     {
       "celula": "admin",
@@ -2867,7 +2877,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "O fechamento do ciclo",
-      "descricao": "O fim das 12 semanas, em quatro perguntas: a meta bateu ou não, as duas medidas da semana previram isso ou não, o que a escola PARA de fazer, e qual é a meta seguinte. No fim, o pedido para o robô, que escreve tudo no livro e grava a meta nova no cartão.",
+      "descricao": "Fecha e salva o resultado do ciclo no painel. As anotações e a meta seguinte são opcionais; o fechamento fica disponível para consulta depois.",
       "observacao": "O ciclo não fecha sem a decisão do que a escola para de fazer: sem ela a tela não monta pedido nenhum. A fase da escola (achando, provando, escalando) é calculada dos portões provados no livro, nunca digitada. Enquanto o ciclo estiver correndo, a tela mostra a prévia com os números de hoje e diz que nada ali é veredito final. Degrau 13 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §8)."
     },
     {
@@ -2879,7 +2889,7 @@
       "gesto": false,
       "titulo": "A rede de talentos",
       "descricao": "O caminho que leva uma aluna da escola até um trabalho num estúdio, desenhado do começo ao fim, com o número de cada etapa ao lado. Três etapas acontecem fora do sistema (alunas escolhidas, estúdios parceiros, trabalhos já começados) e a escola digita a contagem delas aqui. Nos trabalhos, a mesma aluna em dois trabalhos conta duas vezes, como o cartão `encaixes-com-estudio` define.",
-      "observacao": "A tela não grava nada: ela devolve um bloco de texto para colar numa sessão de robô, e a contagem vira registro do livro (tipo medicao, campo foto). Etapa sem contagem diz 'nunca contado', que não é zero. Degrau 17 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §8)."
+      "observacao": "As contagens são gravadas no banco pelo próprio painel. Etapa sem contagem diz 'nunca contado', que não é zero."
     },
     {
       "celula": "admin",

@@ -2,7 +2,7 @@
 
 Escopo do EVO-13, e só ele. O que a `ESPECIFICACAO-CELULA.md` §10 chama de MVP
 **do lado de quem modera**: ver a fila do quadro com votos e status, mudar o
-status (gravando histórico), recusar `nao_planejado` sem justificativa e
+status (gravando histórico), aceitar nota opcional e
 registrar a avaliação interna de produto.
 
 **A fronteira deste arquivo é o crachá, e ela é mecânica.** Toda rota daqui
@@ -66,12 +66,6 @@ STATUS_QUE_A_EQUIPE_ESCOLHE = (
     Sugestao.Status.NAO_PLANEJADO,
 )
 
-# Spec §10: *"'não planejado' com justificativa obrigatória"*. É o único status
-# que exige nota, e o motivo é o mesmo que fez a §5 da DECISAO-EVO-01 proibir o
-# "acesso negado" seco: um "não vamos fazer" sem uma linha de explicação é a
-# forma mais rápida de a Caixa ensinar aos alunos que sugerir não adianta.
-EXIGEM_JUSTIFICATIVA = frozenset({Sugestao.Status.NAO_PLANEJADO})
-
 # A escala das três notas da avaliação interna saiu daqui em 30/08/2026, junto
 # com a tela que a impunha: quem conversa com a pessoa agora é o Admin
 # (`services/admin/apps/core/caixa.py`, `NOTA_MINIMA`/`NOTA_MAXIMA`), e é lá que
@@ -83,10 +77,6 @@ SEM_CRACHA = (
     "Esta parte da Caixa é da equipe. Sua sessão está aberta, mas o seu e-mail "
     "não está na lista de quem modera."
 )
-
-
-class JustificativaObrigatoria(Exception):
-    """`nao_planejado` sem nota. Recusado ANTES de qualquer escrita."""
 
 
 class RespostaForaDeImplementado(Exception):
@@ -129,9 +119,6 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=No
     produzam duas linhas de histórico em ordem, e não uma sobrescrevendo a
     outra com um `status_anterior` que nunca existiu.
 
-    [INVARIANTE 3] A justificativa é conferida **antes** de abrir a transação:
-    recusa não precisa de rollback.
-
     Repare no que NÃO está aqui: nenhum caminho de correção. `HistoricoStatus`
     é append-only nos três degraus do EVO-11 (instância, queryset e trigger no
     Postgres) — corrigir é registrar de novo, e é isso que uma segunda chamada
@@ -154,11 +141,6 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por, resposta=No
     `None` é quem chama sem conhecer o campo: a guardada fica como está.
     """
     nota = (nota or "").strip()
-    if status_novo in EXIGEM_JUSTIFICATIVA and not nota:
-        raise JustificativaObrigatoria(
-            "Para marcar como “Não planejado” é preciso escrever o porquê — "
-            "quem sugeriu vai ler essa justificativa (spec §10)."
-        )
     entrega = status_novo == Sugestao.Status.IMPLEMENTADO
     if resposta is not None:
         resposta = resposta_em_html_seguro(resposta)

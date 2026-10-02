@@ -136,8 +136,15 @@ def o_frescor(pasta: Path, registros: list[dict] | None, hoje: dt.date) -> dict:
 
     anotados = ultima_anotacao(registros)
     linhas: list[dict] = []
-    for caminho in sorted(pasta.glob("*.json")):
-        nome = caminho.stem
+    from .placar import PASTA_ORIGINAL_DOS_CARTOES
+
+    if pasta == PASTA_ORIGINAL_DOS_CARTOES:
+        from .models import CartaoDoPlacar
+
+        nomes = CartaoDoPlacar.objects.order_by("nome").values_list("nome", flat=True)
+    else:
+        nomes = [caminho.stem for caminho in sorted(pasta.glob("*.json"))]
+    for nome in nomes:
         cartao, problemas = ler_cartao(nome, pasta)
         if cartao is None:
             linhas.append(

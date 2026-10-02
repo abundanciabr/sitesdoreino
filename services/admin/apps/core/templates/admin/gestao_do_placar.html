@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Editar o placar{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar ao placar</a>
+  <h1>Editar o placar</h1>
+  <p class="subtitulo">Metas, medições e compromissos são salvos aqui e aparecem nas telas do painel.</p>
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  {% if salvo %}<p class="aviso borda-amarela">Alteração salva.</p>{% endif %}
+  <h2 class="titulo-de-bloco">Metas e cartões</h2>
+  <form class="forma" method="get">
+    <label for="escolher-cartao">Cartão</label>
+    <select id="escolher-cartao" name="cartao">
+      {% for opcao in cartoes %}<option value="{{ opcao.nome }}"{% if cartao.nome == opcao.nome %} selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}
+    </select>
+    <button type="submit">Abrir cartão</button>
+  </form>
+  {% if cartao %}
+  <form class="forma" method="post">
+    {% csrf_token %}<input type="hidden" name="acao" value="cartao"><input type="hidden" name="nome" value="{{ cartao.nome }}">
+    <label for="pergunta">Pergunta da métrica</label><input id="pergunta" name="pergunta" value="{{ cartao.dados.pergunta }}">
+    <label for="alvo">Alvo</label><input id="alvo" name="alvo" type="number" value="{{ cartao.dados.alvo|default_if_none:'' }}">
+    <label for="partida">Valor de partida</label><input id="partida" name="partida" type="number" value="{{ cartao.dados.partida|default_if_none:'' }}">
+    <label for="partida_em">Data de partida</label><input id="partida_em" name="partida_em" type="date" value="{{ cartao.dados.partida_em|default_if_none:'' }}">
+    <label for="ate">Data do alvo</label><input id="ate" name="ate" type="date" value="{{ cartao.dados.ate|default_if_none:'' }}">
+    <label for="alvo_do_mes">Alvo do mês, se houver</label><input id="alvo_do_mes" name="alvo_do_mes" type="number" value="{{ cartao.dados.alvo_do_mes|default_if_none:'' }}">
+    <label for="meta_semanal">Meta semanal, se houver</label><input id="meta_semanal" name="meta_semanal" type="number" value="{{ cartao.dados.meta_semanal|default_if_none:'' }}">
+    {% if cartao.dados.semanas %}
+    <h3 class="titulo-da-conta">Metas de cada semana</h3>
+    {% for semana in cartao.dados.semanas %}
+      <p class="recado">Semana {{ semana.n }}{% if semana.rotulo %} — {{ semana.rotulo }}{% endif %}</p>
+      <label for="semana-{{ forloop.counter0 }}-de">Começa</label><input id="semana-{{ forloop.counter0 }}-de" name="semana_{{ forloop.counter0 }}_de" type="date" value="{{ semana.de }}">
+      <label for="semana-{{ forloop.counter0 }}-ate">Termina</label><input id="semana-{{ forloop.counter0 }}-ate" name="semana_{{ forloop.counter0 }}_ate" type="date" value="{{ semana.ate }}">
+      <label for="semana-{{ forloop.counter0 }}-alvo">Meta de compras</label><input id="semana-{{ forloop.counter0 }}-alvo" name="semana_{{ forloop.counter0 }}_alvo" type="number" value="{{ semana.alvo }}">
+    {% endfor %}
+    {% endif %}
+    <label for="acao-do-cartao">O que fazer com o resultado</label><textarea id="acao-do-cartao" name="orientacao" rows="3">{{ cartao.dados.acao }}</textarea>
+    <label for="por-que">Por que mudou</label><textarea id="por-que" name="_por_que" rows="3">{{ por_que_do_cartao }}</textarea>
+    <button type="submit">Salvar cartão</button>
+  </form>
+  {% if versoes_do_cartao %}
+  <h3 class="titulo-da-conta">Histórico deste cartão</h3>
+  <ul class="notas">{% for versao in versoes_do_cartao %}<li>Revisão {{ versao.revisao }}, {{ versao.criado_em|date:'d/m/Y H:i' }}{% if versao.responsavel %}, por {{ versao.responsavel }}{% endif %}: alvo {{ versao.dados.alvo|default_if_none:'sem alvo' }}, até {{ versao.dados.ate|default_if_none:'sem data' }}.</li>{% endfor %}</ul>
+  {% endif %}
+  {% endif %}
+  <h2 class="titulo-de-bloco">Medições e compromissos</h2>
+  <p class="recado">Abra um registro para corrigir os campos dele, ou crie um novo. O histórico importado permanece disponível.</p>
+  <form class="forma" method="get"><label for="escolher-registro">Registro existente</label><select id="escolher-registro" name="registro"><option value="">Novo registro</option>{% for opcao in registros %}<option value="{{ opcao.arquivo }}"{% if registro.arquivo == opcao.arquivo %} selected{% endif %}>{{ opcao.dados.quando }} — {{ opcao.dados.titulo }}</option>{% endfor %}</select><button type="submit">Abrir registro</button></form>
+  <form class="forma" method="post">
+    {% csrf_token %}<input type="hidden" name="acao" value="registro"><input type="hidden" name="arquivo" value="{{ registro.arquivo|default:'' }}">
+    <label for="tipo">Tipo</label><select id="tipo" name="tipo"><option value="medicao"{% if registro.dados.tipo == 'medicao' %} selected{% endif %}>Medição</option><option value="compromisso"{% if registro.dados.tipo == 'compromisso' %} selected{% endif %}>Compromisso</option><option value="decisao"{% if registro.dados.tipo == 'decisao' %} selected{% endif %}>Decisão</option></select>
+    <label for="quando">Data</label><input id="quando" name="quando" type="date" value="{{ registro.dados.quando|default:'' }}" required>
+    <label for="titulo">Título</label><input id="titulo" name="titulo" value="{{ registro.dados.titulo|default:'' }}" required>
+    <label for="detalhe">Detalhes</label><textarea id="detalhe" name="detalhe" rows="4">{{ registro.dados.detalhe|default:'' }}</textarea>
+    <label for="foto">Medição ou foto</label><input id="foto" name="foto" value="{{ registro.dados.foto|default:'' }}">
+    <label for="vence_em_dias">Compromisso vence em quantos dias</label><input id="vence_em_dias" name="vence_em_dias" type="number" value="{{ registro.dados.vence_em_dias|default_if_none:'' }}">
+    <label for="responde_a">Responde ao registro</label><input id="responde_a" name="responde_a" value="{{ registro.dados.responde_a|default:'' }}">
+    <label for="problema">Problema</label><input id="problema" name="problema" value="{{ registro.dados.problema|default:'' }}">
+    <label for="hipotese">Hipótese</label><input id="hipotese" name="hipotese" value="{{ registro.dados.hipotese|default:'' }}">
+    <label for="metrica">Métrica</label><input id="metrica" name="metrica" value="{{ registro.dados.metrica|default:'' }}">
+    <label for="guarda">Guarda</label><input id="guarda" name="guarda" value="{{ registro.dados.guarda|default:'' }}">
+    <label for="veredito">Veredito</label><input id="veredito" name="veredito" value="{{ registro.dados.veredito|default:'' }}">
+    <label for="portao">Portão</label><input id="portao" name="portao" value="{{ registro.dados.portao|default:'' }}">
+    <label for="evidencia">Evidência</label><input id="evidencia" name="evidencia" value="{{ registro.dados.evidencia|default:'' }}">
+    <label for="verificado_em">Conferida em</label><input id="verificado_em" name="verificado_em" type="date" value="{{ registro.dados.verificado_em|default:'' }}">
+    <button type="submit">Salvar registro</button>
+  </form>
+</div>
+{% endblock %}
