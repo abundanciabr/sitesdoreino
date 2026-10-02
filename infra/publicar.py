@@ -2,14 +2,15 @@
 """Publicador direto pela VPS: recebe a main, ativa, prova e volta sozinho.
 
 Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
-  receber [--esperar]   busca a main e publica a infra e as células tocadas desde a última recebida
+  receber               busca a main e publica a infra e as células tocadas desde a última recebida
   publicar CELULA SHA   publica uma célula: backup, ativação, prova do endereço
   recuperar CELULA      volta a célula para a última aprovada distinta e prova de novo
-  vigiar                mede o site; fora do ar, volta a última publicação e avisa se não resolver
+  vigiar                mede o site; fora do ar, religa, volta a versão uma vez e avisa se não resolver
   estado                versões no ar e últimas medições
   backup                cópia de todas as bases (infra/backup-do-banco.sh); o cron roda uma vez por dia
-  inicializar CELULA SHA ENDERECO DADOS CONFIGURACAO   primeira aprovação de célula sem journal
   operar ...            operações de produto (infra/operar.py)
+
+Sem journal, a primeira publicação que abre o endereço vira a aprovada.
 
 Código novo com a mesma base (Dockerfile, requirements.txt, vendor/) não reconstrói imagem:
 a pasta imutável versoes/<celula>/<sha> é montada em /app, somente leitura, e o serviço é
@@ -30,6 +31,11 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # só existe na VPS
+    fcntl = None
+
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 FERRAMENTAS = Path(__file__).resolve().parents[1]
 REPO = RAIZ / "codigo" / "repo.git"
@@ -39,19 +45,13 @@ TRABALHO = PUBLICACOES / "trabalho"
 LOGS = PUBLICACOES / "logs"
 LOTES = PUBLICACOES / "lotes"
 GUARDAR_VERSOES = 3
-ARQUIVOS_DA_INFRA = ("docker-compose.yml", "traefik", "sites.json", "sincronizar_sites.py",
-                     "provisionar-usuario-ponte.sh", "instalar-provisionador-usuario-ponte.sh",
-                     "publicacao-local.py")
 GATILHOS_DA_INFRA = ("infra/docker-compose.yml", "infra/traefik/", "infra/sites.json",
-                     "infra/sincronizar_sites.py", "infra/sincronizar-infra-na-vps.sh",
-                     "infra/provisionar-usuario-ponte.sh",
+                     "infra/sincronizar_sites.py", "infra/provisionar-usuario-ponte.sh",
                      "infra/instalar-provisionador-usuario-ponte.sh",
                      "infra/publicacao-local.py")
 SHA = re.compile(r"[0-9a-f]{40}")
 CELULA = re.compile(r"[a-z][a-z0-9_]*")
-MODULOS_DA_APLICACAO = ("admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
-                        "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
-                        "metricas", "notificacoes", "pagamentos", "pages", "quiz", "sugestoes")
+ENDERECO = "https://meshcraft.top/"
 
 sys.path.insert(0, str(FERRAMENTAS / "ci"))
 
@@ -82,47 +82,9 @@ def journal(celula: str) -> dict | None:
     return json.loads(caminho.read_text()) if caminho.exists() else None
 
 
-def metadados_da_primeira_aplicacao() -> dict:
-    """Reaproveita compatibilidade já aprovada no site antes da unificação."""
-    tokens = {"dados": [], "configuracao": []}
-    faltantes = []
-    for modulo in MODULOS_DA_APLICACAO:
-        estado = journal(modulo) or {}
-        aprovada = estado.get("aprovada") or {}
-        for tipo in tokens:
-            if tipo == "dados" and modulo == "funil":
-                continue
-            token = aprovada.get(tipo) or (estado.get("compatibilidade") or {}).get(tipo)
-            if token:
-                tokens[tipo].append(f"{modulo}:{token}")
-            else:
-                faltantes.append(f"{modulo}:{tipo}")
-    if faltantes:
-        raise RuntimeError("compatibilidade aprovada ausente em " + ", ".join(faltantes))
-    return {"endereco": "https://meshcraft.top/", **{
-        tipo: f"unificada-{tipo}-" + hashlib.sha256("\n".join(pares).encode()).hexdigest()[:16]
-        for tipo, pares in tokens.items()}}
-
-
 def executar_roteiro(roteiro: Path, ambiente: dict, registro) -> tuple[int, str]:
     processo = subprocess.Popen(["bash", str(roteiro)], cwd=RAIZ, env=ambiente, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-    linhas = []
-    for linha in processo.stdout:
-        linhas.append(linha)
-        registro.write(linha)
-        registro.flush()
-    return processo.wait(), "".join(linhas)
-
-
-def ativar_primeira_aplicacao(sha: str, imagem: str, codigo: Path, fonte: Path,
-                             ambiente: dict, registro) -> tuple[int, str]:
-    """Troca inicial da topologia."""
-    comando = [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), sha, imagem, str(codigo)]
-    processo = subprocess.Popen(comando, cwd=RAIZ,
-                                env=ambiente | {"FONTE_INFRA": str(fonte / "infra")},
-                                text=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
     linhas = []
     for linha in processo.stdout:
         linhas.append(linha)
@@ -267,13 +229,6 @@ def ordem(celula: str, sha: str) -> str:
     return "nova"
 
 
-def registrar_medicao(linha: dict) -> None:
-    PUBLICACOES.mkdir(mode=0o700, exist_ok=True)
-    with (PUBLICACOES / "medicoes.jsonl").open("a", encoding="utf-8") as arquivo:
-        arquivo.write(json.dumps(linha) + "\n")
-    print("PUBLICACAO-MEDICAO: " + json.dumps(linha), flush=True)
-
-
 def avisar(texto: str, chave: str) -> None:
     """Aviso ao mantenedor (e-mail pelo canal da mensageria) quando a volta automática não resolveu."""
     try:
@@ -287,39 +242,36 @@ def avisar(texto: str, chave: str) -> None:
         dizer(f"AVISO-NAO-ENTREGUE: {type(erro).__name__}; registrado em publicacoes/avisos.jsonl")
 
 
-def recuperar_versao(celula: str, registro, motivo: str, atual_esperada: str | None = None) -> bool:
-    from reversao import escolher_alvo  # noqa: PLC0415
+def escolher_alvo(estado: dict) -> dict | None:
+    """Para onde voltar: a aprovada; se ela é a que está no ar, a aprovada anterior."""
+    aprovada = estado.get("aprovada") or {}
+    alvo = estado.get("anterior_aprovada") if aprovada.get("sha") == estado.get("atual") else aprovada
+    if alvo and SHA.fullmatch(alvo.get("sha") or "") and alvo["sha"] != estado.get("atual"):
+        return alvo
+    return None
 
+
+def recuperar_versao(celula: str, registro, motivo: str, atual_esperada: str | None = None) -> bool:
     estado = journal(celula)
     if not estado or (atual_esperada and estado.get("atual") != atual_esperada):
         dizer(f"REVERSAO-DISPENSADA: {celula} já mudou de versão")
         return True
-    ambiente = ambiente_base() | {"CELULA": celula, "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
-    if (celula == "aplicacao" and estado and not estado.get("anterior_aprovada")
-            and (PUBLICACOES / "aplicacao-transicao.json").is_file()):
-        processo = subprocess.run(
-            [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--recuperar"],
-            cwd=RAIZ, env=ambiente | {"ATUAL_ESPERADA": estado["atual"]},
-            stdout=registro, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-        return processo.returncode == 0
-    try:
-        alvo = escolher_alvo(estado)
-    except Exception as erro:  # noqa: BLE001
-        dizer(f"SEM-DESTINO: {celula}: {erro}")
-        subprocess.run(["python3", ambiente["PUBLICACAO_LOCAL"], "encerrar-recuperacao"], cwd=RAIZ,
-                       env=ambiente | {"ATUAL_ESPERADA": estado["atual"]}, stdout=registro, stderr=subprocess.STDOUT)
+    alvo = escolher_alvo(estado)
+    if alvo is None:
+        dizer(f"SEM-DESTINO: {celula} não tem versão aprovada diferente da que está no ar")
         return False
     dizer(f"VOLTANDO: {celula} {estado['atual'][:9]} -> {alvo['sha'][:9]} ({motivo})")
+    ambiente = ambiente_base() | {"CELULA": celula, "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
     codigo, saida = executar_roteiro(FERRAMENTAS / "infra/reverter-celula-na-vps.sh", ambiente | {
-        "VAR_TAG": f"{celula.upper()}_TAG", "TAG": alvo["sha"], "ATUAL_ESPERADA": estado["atual"],
-        "COMPATIBILIDADE_DADOS": alvo["dados"], "COMPATIBILIDADE_CONFIGURACAO": alvo["configuracao"]}, registro)
+        "VAR_TAG": f"{celula.upper()}_TAG", "TAG": alvo["sha"], "ATUAL_ESPERADA": estado["atual"]}, registro)
     return codigo == 0 and f"REVERSAO-CONCLUIDA: {celula} -> {alvo['sha']}" in saida
 
 
 def podar_versoes(celula: str) -> None:
     estado = journal(celula) or {}
     manter = {Path(v["codigo"]).name for v in (estado.get("atual_versao"), estado.get("aprovada"),
-                                               estado.get("anterior_aprovada"), estado.get("candidata_versao"))
+                                               estado.get("anterior_aprovada"), estado.get("antes_da_anterior"),
+                                               estado.get("candidata_versao"))
               if v and v.get("codigo")}
     pasta = VERSOES / celula
     versoes = sorted((p for p in pasta.iterdir() if p.is_dir() and SHA.fullmatch(p.name)),
@@ -329,14 +281,10 @@ def podar_versoes(celula: str) -> None:
             shutil.rmtree(antiga, ignore_errors=True)
 
 
-def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict | None = None) -> int:
+def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
     if not CELULA.fullmatch(celula) or not SHA.fullmatch(sha):
         raise SystemExit("célula ou SHA inválido")
     git("cat-file", "-e", f"{sha}^{{commit}}")
-    if celula == "aplicacao" and inicial is None and not journal(celula):
-        inicial = metadados_da_primeira_aplicacao()
-    if inicial and journal(celula):
-        raise SystemExit(f"{celula} já tem aprovação; use publicar")
     situacao = ordem(celula, sha)
     if situacao != "nova":
         dizer(f"{situacao.upper()}: {celula} {sha[:9]}; nada a fazer")
@@ -356,37 +304,20 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
             medidas.update(build_segundos=build_s, base_reconstruida=construida)
             dizer(f"VERSAO: {celula} {sha[:9]} imagem={imagem} codigo={codigo}")
             medidas["espera_segundos"] = 0.0
-            if inicial and journal(celula):
-                inicial = None
             situacao = ordem(celula, sha)
             if situacao != "nova":
                 dizer(f"{situacao.upper()}: {celula} {sha[:9]} ficou para trás; nada aplicado")
                 return 0
-            estado = journal(celula) or (inicial and {
-                "endereco": inicial["endereco"],
-                "compatibilidade": {"dados": inicial["dados"], "configuracao": inicial["configuracao"]}})
-            if not estado:
-                raise RuntimeError(f"{celula} sem aprovação inicial na VPS; use inicializar")
+            estado = journal(celula) or {}
             medidas["ativacao_iniciada_em"] = agora()
             ambiente = ambiente_base() | {
                 "CELULA": celula, "TAG": sha, "IMAGEM": imagem, "CODIGO": str(codigo),
-                "PEDIDO_EM": pedido_em, "ENDERECO_PROVA": estado["endereco"],
-                "COMPATIBILIDADE_DADOS": estado["compatibilidade"]["dados"],
-                "COMPATIBILIDADE_CONFIGURACAO": estado["compatibilidade"]["configuracao"],
+                "PEDIDO_EM": pedido_em, "ENDERECO_PROVA": estado.get("endereco") or ENDERECO,
                 "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py"),
-                "MEDICAO_EXTRA": json.dumps(medidas), **({"MODO": "inicializar"} if inicial else {})}
-            if celula == "aplicacao" and inicial:
-                retorno, saida = ativar_primeira_aplicacao(sha, imagem, codigo, fonte, ambiente, registro)
-                concluida = f"APLICACAO-ATIVADA: {sha}"
-            else:
-                retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh",
-                                                 ambiente, registro)
-                concluida = f"INICIALIZACAO-CONCLUIDA: {celula}:{sha}" if inicial else f"ENTREGA-CONCLUIDA: {celula}"
-            if retorno == 0 and concluida in saida:
-                if celula == "aplicacao" and inicial and "PUBLICACAO-MEDICAO:" not in saida:
-                    registrar_medicao(dict(celula=celula, pedido_em=pedido_em, publicado_em=agora(),
-                                           prova_falhou=False, reversao=False, recuperacao_segundos=0,
-                                           **medidas))
+                "MEDICAO_EXTRA": json.dumps(medidas)}
+            retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh",
+                                             ambiente, registro)
+            if retorno == 0 and f"ENTREGA-CONCLUIDA: {celula}" in saida:
                 for linha in saida.splitlines():
                     if linha.startswith("PUBLICACAO-MEDICAO:"):
                         print(linha, flush=True)
@@ -406,29 +337,6 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None, inicial: dict 
             return 1
         finally:
             shutil.rmtree(trabalho, ignore_errors=True)
-
-
-def sincronizar_infra(sha: str, registro) -> bool:
-    if sha != git("rev-parse", "refs/heads/main"):
-        return True
-    identificador = f"infra.new.{sha[:12]}-{os.getpid()}"
-    fonte = TRABALHO / f"{identificador}-fonte"
-    try:
-        extrair(sha, fonte, "infra")
-        envio = RAIZ / identificador
-        envio.mkdir()
-        for nome in ARQUIVOS_DA_INFRA:
-            origem = fonte / "infra" / nome
-            (shutil.copytree if origem.is_dir() else shutil.copy2)(origem, envio / nome)
-        processo = subprocess.run(["bash", str(fonte / "infra/sincronizar-infra-na-vps.sh")], cwd=RAIZ,
-                                  env=ambiente_base() | {"STAGING": identificador}, text=True,
-                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-        registro.write(processo.stdout)
-        ok = processo.returncode == 0 and "SINCRONIZACAO-CONCLUIDA" in processo.stdout
-        dizer(("INFRA-NO-AR: " if ok else f"INFRA-FALHOU (pasta {envio} preservada): ") + sha[:9])
-        return ok
-    finally:
-        shutil.rmtree(fonte, ignore_errors=True)
 
 
 def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
@@ -457,43 +365,56 @@ def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
         shutil.rmtree(fonte, ignore_errors=True)
 
 
-def lote(base: str, head: str) -> int:
-    import mapa_de_celulas  # noqa: PLC0415
+def arquivos_do_lote(base: str, head: str) -> list[str]:
+    """O que muda do que está no ar até o HEAD, mais o recebido desde a última vez.
 
+    Um lote interrompido por uma versão mais nova não perde nada: o seguinte compara
+    com a versão no ar, não só com a última recebida.
+    """
+    arquivos = set(git("diff", "--name-only", base, head).splitlines())
+    no_ar = (journal("aplicacao") or {}).get("atual") or ""
+    if SHA.fullmatch(no_ar) and no_ar != head:
+        try:
+            arquivos |= set(git("diff", "--name-only", no_ar, head).splitlines())
+        except RuntimeError:
+            pass
+    return sorted(arquivos)
+
+
+def lote(base: str, head: str) -> int:
     LOTES.mkdir(parents=True, exist_ok=True)
     (LOTES / f"{head}.pid").write_text(str(os.getpid()))
+    # Trava própria do lote: um por vez; o mais velho já foi interrompido pelo receber.
+    with (LOTES / ".lote.lock").open("a") as trava:
+        if fcntl:
+            fcntl.flock(trava, fcntl.LOCK_EX)
+        return lote_travado(base, head)
+
+
+def lote_travado(base: str, head: str) -> int:
     if head != git("rev-parse", "refs/heads/main"):
-        dizer(f"SUPERADO: lote {head[:9]} não inicia")
+        dizer(f"SUPERADO: lote {head[:9]} não inicia; a versão mais nova publica o que ele trazia")
         return 0
     arquivo_lote = LOTES / f"{head}.json"
-    arquivos = git("diff", "--name-only", base, head).splitlines()
-    celulas = mapa_de_celulas.celulas_do_diff(arquivos, mapa_de_celulas.carregar(FERRAMENTAS))
-    if "aplicacao" in celulas:
-        celulas = ["aplicacao"]
+    arquivos = arquivos_do_lote(base, head)
+    # A aplicação publica quando muda código, pacote ou conteúdo do site.
+    celulas = ["aplicacao"] if any(a.startswith(("services/", "packages/", "documentos/")) for a in arquivos) else []
     infra = any(a.startswith(GATILHOS_DA_INFRA) for a in arquivos)
-    aplicacao_antes = (journal("aplicacao") or {}).get("atual")
     pedido_em = git("log", "-1", "--format=%cI", head)
     situacao = {"base": base, "head": head, "infra": infra, "celulas": celulas, "inicio": agora(),
                 "resultado": {}, "estado": "publicando"}
     arquivo_lote.write_text(json.dumps(situacao))
     dizer(f"LOTE {base[:9]}..{head[:9]}: infra={infra} celulas={celulas}")
     falhas = 0
-    with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
-        if infra and not aplicacao_antes and "aplicacao" not in celulas and not sincronizar_infra(head, registro):
-            falhas += 1
-            situacao["resultado"]["infra"] = 1
-            avisar(f"A sincronização da infra {head[:9]} falhou na VPS; confira publicacoes/logs/lote-{head[:12]}.log.",
-                   "infra")
-    # Uma célula que depende do Compose novo não pode avançar com a infra antiga.
-    # A sincronização já tentou sua própria volta e preservou o staging para reparo.
-    if situacao["resultado"].get("infra") != 1 and head == git("rev-parse", "refs/heads/main"):
+    if head == git("rev-parse", "refs/heads/main"):
         processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
                      for c in celulas}
         for celula, processo in processos.items():
             situacao["resultado"][celula] = processo.wait()
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
-    if infra and aplicacao_antes and falhas == 0 and head == git("rev-parse", "refs/heads/main"):
+    # A infra sincroniza com a versão que ficou no ar; a sincronização volta sozinha se o endereço não abrir.
+    if infra and journal("aplicacao") and head == git("rev-parse", "refs/heads/main"):
         with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
             if not sincronizar_infra_aplicacao(head, registro):
                 falhas += 1
@@ -538,7 +459,7 @@ def cancelar_lotes_antigos(head: str) -> None:
         arquivo.unlink(missing_ok=True)
 
 
-def receber(esperar: bool) -> int:
+def receber() -> int:
     head = git("rev-parse", "refs/heads/main")
     arquivo = PUBLICACOES / "recebido"
     base = arquivo.read_text().strip() if arquivo.exists() else ""
@@ -548,7 +469,7 @@ def receber(esperar: bool) -> int:
         return 0
     if base == head:
         podar_sobras()
-        return esperar_lote(head) if esperar else 0
+        return 0
     if subprocess.run(["git", "-C", str(REPO), "merge-base", "--is-ancestor", base, head]).returncode != 0:
         base = git("merge-base", base, head)
     temporario = arquivo.with_name(f"recebido.{os.getpid()}.tmp")
@@ -566,22 +487,8 @@ def receber(esperar: bool) -> int:
                                    stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
     LOTES.mkdir(parents=True, exist_ok=True)
     (LOTES / f"{head}.pid").write_text(str(processo.pid))
-    if esperar:
-        return processo.wait()
     dizer(f"RECEBIDO: {base[:9]}..{head[:9]}; lote em publicacoes/logs/lote-{head[:12]}.log")
     return 0
-
-
-def esperar_lote(head: str) -> int:
-    arquivo = LOTES / f"{head}.json"
-    for _ in range(3600):
-        if arquivo.exists():
-            situacao = json.loads(arquivo.read_text())
-            if situacao.get("estado") == "concluido":
-                dizer(f"LOTE {head[:9]} já concluído: {situacao['resultado']}")
-                return 1 if situacao.get("falhas") else 0
-        time.sleep(1)
-    return 1
 
 
 def recuperar(celula: str) -> int:
@@ -590,10 +497,28 @@ def recuperar(celula: str) -> int:
         return 0 if recuperar_versao(celula, registro, "pedido de recuperação") else 1
 
 
-def medir_site() -> tuple[int, str]:
-    processo = subprocess.run([sys.executable, str(FERRAMENTAS / "ci/vigia_do_site.py")], capture_output=True,
-                              text=True, cwd=FERRAMENTAS, timeout=300)
-    return processo.returncode, (processo.stdout + processo.stderr)[-1500:]
+def site_abre() -> bool:
+    """A página inicial responde 200, como no navegador."""
+    processo = subprocess.run(["curl", "--silent", "--location", "--max-time", "30", "--output", "/dev/null",
+                               "--write-out", "%{http_code}", ENDERECO], capture_output=True, text=True)
+    return processo.stdout.strip() == "200"
+
+
+def religar_aplicacao() -> None:
+    """Liga o contêiner parado ou reinicia o de pé, na mesma versão, e espera o site até 3 min."""
+    ids = rodar("docker", "ps", "-aq", "--filter", "label=com.docker.compose.project=plataforma",
+                "--filter", "label=com.docker.compose.service=aplicacao").split()
+    if not ids:
+        dizer("SEM-CONTEINER: a aplicacao não existe; só a volta de versão recria")
+        return
+    for conteiner in ids:
+        ligado = rodar("docker", "inspect", "--format", "{{.State.Running}}", conteiner) == "true"
+        dizer(f"{'REINICIANDO' if ligado else 'RELIGANDO'}: aplicacao {conteiner[:12]}")
+        rodar("docker", "restart" if ligado else "start", conteiner)
+    for _ in range(36):
+        if site_abre():
+            return
+        time.sleep(5)
 
 
 def publicacao_em_andamento() -> bool:
@@ -625,41 +550,52 @@ def journals_em_uso() -> list[dict]:
 
 
 def vigiar() -> int:
-    incidente = PUBLICACOES / "incidente.json"
+    """Fora do ar: religa a aplicacao; depois volta a versão, uma vez; depois avisa e só religa."""
+    PUBLICACOES.mkdir(parents=True, exist_ok=True)
+    with (PUBLICACOES / ".vigia.lock").open("a") as trava:
+        try:
+            fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 0
+        return vigiar_uma_vez()
+
+
+def vigiar_uma_vez() -> int:
+    caminho = PUBLICACOES / "incidente.json"
     if publicacao_em_andamento():
         return 0
-    codigo, texto = medir_site()
-    if codigo == 0:
-        if incidente.exists():
-            incidente.unlink()
+    aberto = site_abre()
+    if not aberto:
+        time.sleep(20)
+        aberto = site_abre()
+    if aberto or publicacao_em_andamento():
+        if caminho.exists():
+            caminho.unlink()
             dizer("SITE-VOLTOU: incidente encerrado")
         return 0
-    time.sleep(20)
-    codigo, texto = medir_site()
-    if codigo == 0 or publicacao_em_andamento():
+    incidente = json.loads(caminho.read_text()) if caminho.exists() else {"desde": agora()}
+    dizer(f"SITE-FORA: {ENDERECO} não respondeu 200 duas vezes, com 20 s entre elas")
+    try:
+        religar_aplicacao()
+    except RuntimeError as erro:
+        dizer(f"RELIGAR-FALHOU: {erro}")
+    if site_abre():
+        caminho.unlink(missing_ok=True)
+        dizer("SITE-VOLTOU: depois de religar a aplicacao")
         return 0
-    dizer(f"SITE-FORA (código {codigo}):\n{texto}")
-    if incidente.exists():
-        return 1
-    resolvido = False
-    if codigo == 1:
-        publicacoes = journals_em_uso()
-        try:
-            if len(publicacoes) == 1 and publicacoes[0]["celula"] == "aplicacao":
-                celula = "aplicacao"
-            else:
-                from reversao import selecionar_estado  # noqa: PLC0415
-                celula = selecionar_estado(json.dumps(publicacoes))["celula"]
-        except Exception as erro:  # noqa: BLE001
-            dizer(f"SEM-CELULA: {erro}")
-        else:
-            if recuperar(celula) == 0:
-                resolvido = medir_site()[0] == 0
-    incidente.write_text(json.dumps({"desde": agora(), "resolvido": resolvido}))
-    if not resolvido:
-        avisar("Site fora do ar e a volta automática não resolveu. Banco preservado; "
+    if not incidente.get("voltou"):
+        incidente["voltou"] = (journal("aplicacao") or {}).get("atual") or "sem-versao"
+        caminho.write_text(json.dumps(incidente))
+        if recuperar("aplicacao") == 0 and site_abre():
+            caminho.unlink(missing_ok=True)
+            dizer("SITE-VOLTOU: depois de voltar a versão")
+            return 0
+    if not incidente.get("avisado"):
+        avisar("Site fora do ar. O vigia religou a aplicação e voltou a versão, e não resolveu. Banco preservado; "
                "confira rede, TLS, serviços e disco na VPS (publicacoes/logs/vigia.log).", "site-fora-do-ar")
-    return 0 if resolvido else 1
+        incidente["avisado"] = agora()
+    caminho.write_text(json.dumps(incidente))
+    return 1
 
 
 def estado() -> int:
@@ -685,7 +621,7 @@ def main(argv: list[str]) -> int:
         return 2
     acao, resto = argv[0], argv[1:]
     if acao == "receber":
-        return receber("--esperar" in resto)
+        return receber()
     if acao == "publicar" and len(resto) in (2, 4):
         pedido = resto[3] if len(resto) == 4 and resto[2] == "--pedido-em" else None
         return publicar(resto[0], resto[1], pedido)
@@ -693,8 +629,6 @@ def main(argv: list[str]) -> int:
         return lote(*resto)
     if acao == "recuperar" and len(resto) == 1:
         return recuperar(resto[0])
-    if acao == "inicializar" and len(resto) == 5:
-        return publicar(resto[0], resto[1], inicial=dict(zip(("endereco", "dados", "configuracao"), resto[2:])))
     if acao == "vigiar":
         return vigiar()
     if acao == "estado":

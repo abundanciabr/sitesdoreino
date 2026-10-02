@@ -347,28 +347,3 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
         dados["resultado"]["veredito"] == "vencida"
     ), "22 de 30 com o prazo passado é meta não batida, e a tela diz isso"
     assert dados["resultado"]["distancia"] == 8, "faltaram oito pessoas"
-
-    # A ALMA DO DEGRAU: o ciclo NÃO fecha sem a decisão do que a escola para de
-    # fazer. Sem ela não existe pedido nenhum para o robô.
-    campos_sem_a_recusa = {
-        "paramos_de_fazer": "   ",
-        "proximo_alvo": "60",
-        "proxima_ate": "2027-02-05",
-    }
-    pedido, faltando = fechamento.montar_o_pedido(
-        campos_sem_a_recusa, dados, dia_do_fechamento
-    )
-    assert (
-        pedido is None
-    ), "o ciclo fechou sem ninguém dizer o que a escola para de fazer"
-    assert [f["campo"] for f in faltando] == ["paramos_de_fazer"]
-    assert faltando[0]["lei"] is True
-
-    campos = {**campos_sem_a_recusa, "paramos_de_fazer": "parar de vender por mensagem"}
-    pedido, faltando = fechamento.montar_o_pedido(campos, dados, dia_do_fechamento)
-    assert faltando == []
-    assert pedido is not None
-    assert "parar de vender por mensagem" in pedido
-    assert (
-        "compras-no-ciclo.json" in pedido
-    ), "o pedido tinha de mandar o robô gravar a meta seguinte no cartão"

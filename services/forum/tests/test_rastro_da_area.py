@@ -116,7 +116,7 @@ def test_arquivar_e_reabrir_gravam_uma_linha_com_quem_quando_e_por_que(
 
 
 @pytest.mark.parametrize("acao", ["arquivar", "reabrir"])
-def test_arquivar_ou_reabrir_sem_motivo_e_recusado_e_nada_muda(
+def test_arquivar_ou_reabrir_sem_motivo_passa_e_o_rastro_diz_que_nao_houve_motivo(
     client, env, monkeypatch, duvidas, professora, acao
 ):
     duvidas.ativa = acao == "arquivar"
@@ -125,10 +125,9 @@ def test_arquivar_ou_reabrir_sem_motivo_e_recusado_e_nada_muda(
 
     resposta = na_area(client, duvidas, acao=acao, motivo="   ")
 
-    assert resposta.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in resposta.content.decode()
-    assert Area.objects.get(pk=duvidas.pk).ativa == (acao == "arquivar")
-    assert not RegistroDeModeracao.objects.exists()
+    assert resposta.status_code == 302
+    assert Area.objects.get(pk=duvidas.pk).ativa == (acao == "reabrir")
+    assert linhas()[-1].motivo == moderacao.MOTIVO_EM_BRANCO
 
 
 # ------------------------------------------------------------ editar a área
@@ -146,16 +145,10 @@ def test_renomear_guarda_o_nome_de_antes_e_o_de_depois_sem_pedir_motivo(
     assert linha.motivo == ""
 
 
-def test_abrir_ao_mundo_uma_area_fechada_exige_motivo_e_guarda_o_antes_e_o_depois(
+def test_abrir_ao_mundo_uma_area_fechada_guarda_o_motivo_o_antes_e_o_depois(
     client, env, monkeypatch, duvidas, professora
 ):
     como(monkeypatch, professora, categoria="cadastrado")
-
-    recusa = editar(client, duvidas, visibilidade="publica")
-    assert recusa.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in recusa.content.decode()
-    assert Area.objects.get(pk=duvidas.pk).visibilidade == Area.Visibilidade.ALUNOS
-    assert not RegistroDeModeracao.objects.exists()
 
     resposta = editar(client, duvidas, visibilidade="publica", motivo=MOTIVO)
     assert resposta.status_code == 302
@@ -170,18 +163,15 @@ def test_abrir_ao_mundo_uma_area_fechada_exige_motivo_e_guarda_o_antes_e_o_depoi
     )
 
 
-def test_mudar_quem_escreve_exige_motivo(client, env, monkeypatch, duvidas, professora):
+def test_mudar_quem_escreve_sem_motivo_passa_e_fica_no_rastro(
+    client, env, monkeypatch, duvidas, professora
+):
     como(monkeypatch, professora, categoria="cadastrado")
 
-    recusa = editar(client, duvidas, quem_escreve="aluno")
-    assert recusa.status_code == 400
-    assert Area.objects.get(pk=duvidas.pk).quem_escreve == Area.QuemEscreve.EQUIPE
-    assert not RegistroDeModeracao.objects.exists()
-
-    assert (
-        editar(client, duvidas, quem_escreve="aluno", motivo=MOTIVO).status_code == 302
-    )
+    assert editar(client, duvidas, quem_escreve="aluno").status_code == 302
+    assert Area.objects.get(pk=duvidas.pk).quem_escreve == Area.QuemEscreve.ALUNO
     linha = unica_linha()
+    assert linha.motivo == moderacao.MOTIVO_EM_BRANCO
     assert linha.acao == Acao.MUDAR_ACESSO_DA_AREA
     assert linha.detalhe == (
         f'quem escreve de "{Area.QuemEscreve.EQUIPE.label}" '

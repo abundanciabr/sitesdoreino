@@ -135,10 +135,10 @@ ERRO_VAGA_CHEIA = (
     "Todas as vagas do grupo estão ocupadas, então ninguém entrou. Remova alguém "
     "ou aumente as vagas na edição do grupo."
 )
-ERRO_MOTIVO_VAZIO = (
-    "Escreva o motivo da entrada, por exemplo a turma ou o pedido que a pessoa "
-    "fez no fórum."
-)
+# O motivo de todo gesto é opcional. O rastro da moderação e o vínculo
+# guardam sempre uma frase (o banco recusa o rastro vazio), então o gesto
+# feito sem motivo fica com esta.
+MOTIVO_EM_BRANCO = "Sem motivo informado."
 ERRO_MOTIVO_LONGO = f"O motivo passou de {MOTIVO_MAXIMO} letras. Uma linha basta."
 ERRO_PESSOA_DESCONHECIDA = (
     "Não achei ninguém com esse e-mail no fórum. Confira o e-mail; se estiver "
@@ -147,13 +147,6 @@ ERRO_PESSOA_DESCONHECIDA = (
 ERRO_JA_E_MEMBRO = "Essa pessoa já está no grupo."
 ERRO_VINCULO_INEXISTENTE = "Essa pessoa já não está no grupo. Recarregue a página."
 
-# O RASTRO DA MODERAÇÃO (TAR-847, 27/09/2026). O motivo fica guardado junto do
-# gesto, e é ele que responde ao aluno que pergunta o que houve.
-ERRO_MOTIVO_DA_ACAO = (
-    "Este gesto pede um motivo. Escreva em uma linha por que está fazendo isso "
-    "(por exemplo: link fora da lista permitida) e tente de novo. O motivo fica "
-    "no histórico da moderação que a equipe consulta."
-)
 ERRO_DESTINO_INVALIDO = (
     "Escolha outro grupo de prática ativo para onde a pessoa vai. Recarregue a "
     "página se a lista parecer desatualizada."
@@ -249,10 +242,10 @@ def _salvar_com_a_rede_do_banco(objeto, *rastro: RegistroDeModeracao) -> str:
 
 
 def _ler_o_motivo(request, *, exigido: bool) -> tuple[str, str]:
-    """O motivo do gesto. Devolve (motivo, erro)."""
+    """O motivo do gesto. Devolve (motivo, erro). Em branco não recusa nada."""
     motivo = (request.POST.get("motivo") or "").strip()
     if exigido and not motivo:
-        return motivo, ERRO_MOTIVO_DA_ACAO
+        motivo = MOTIVO_EM_BRANCO
     if len(motivo) > MOTIVO_MAXIMO:
         return motivo, ERRO_MOTIVO_LONGO
     return motivo, ""
@@ -573,9 +566,7 @@ def _contexto_do_grupo(ator, grupo, *, erro="", email="", motivo="") -> dict:
 
 def _adicionar_membro(request, ator, grupo) -> str:
     email = (request.POST.get("email") or "").strip().lower()
-    motivo = (request.POST.get("motivo") or "").strip()
-    if not motivo:
-        return ERRO_MOTIVO_VAZIO
+    motivo = (request.POST.get("motivo") or "").strip() or MOTIVO_EM_BRANCO
     if len(motivo) > MOTIVO_MAXIMO:
         return ERRO_MOTIVO_LONGO
     pessoa = Pessoa.objects.filter(email=email).first() if email else None

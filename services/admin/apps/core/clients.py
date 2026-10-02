@@ -1679,8 +1679,8 @@ class EncomendasClient:
 
     TIMEOUT = 4.0
     OK = "ok"
-    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, motivo curto
-    #: demais, autor vazio, ou chave fora do vocabulário fechado.
+    #: A célula respondeu e RECUSOU: valor fora do tipo da chave, autor vazio,
+    #: ou chave fora do vocabulário fechado.
     RECUSADO = "recusado"
     #: O par tem o crachá de LEITURA e pediu para gravar. Nome próprio, e não um
     #: `RECUSADO` reaproveitado, porque a cura é outra e é um passo do
@@ -1748,6 +1748,8 @@ class EncomendasClient:
         self, chave: str, valor: str, motivo: str, quem: str
     ) -> "tuple[str, str]":
         """Acrescenta uma linha nova ao histórico da chave. Devolve (situação, frase).
+
+        `motivo` pode vir vazio: vai vazio, e nunca um texto inventado aqui.
 
         **Nunca reescreve a linha que está valendo**, e isso não é promessa deste
         arquivo: o `UPDATE` é recusado por gatilho no PostgreSQL do outro lado. O

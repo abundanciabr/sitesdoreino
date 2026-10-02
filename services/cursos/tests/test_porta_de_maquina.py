@@ -69,7 +69,11 @@ OS_CAMPOS_DA_LISTA = {
 # três de instrumento, a do bloco (TAR-221), a do Revisor de coerência
 # (TAR-245, degrau 3.1), as quatro do CURSO (TAR-266) e as duas de aulas
 # avulsas (TAR-334) e a edição da aula avulsa (TAR-342).
-AS_VINTE_OPERACOES = {
+#
+# É a lista das que EXISTEM e precisam continuar existindo, e não o total: o
+# contrato pode ganhar operação nova sem mexer aqui (o cadeado de toda operação
+# é medido na fonte por `test_toda_operacao_exige_credencial_na_fonte`).
+AS_OPERACOES_QUE_PRECISAM_EXISTIR = {
     "listSiteLessons",
     "getSiteLesson",
     "putSiteLesson",
@@ -90,6 +94,10 @@ AS_VINTE_OPERACOES = {
     "listStandaloneLessons",
     "createStandaloneLesson",
     "updateStandaloneLesson",
+    # A moderação dos comentários e o resumo da fila de revisão.
+    "listLessonComments",
+    "setLessonCommentVisibility",
+    "getLessonReviewQueueSummary",
 }
 # O bloco viaja dentro de toda aula, e desde a TAR-221 ele leva o que o
 # mantenedor escreve: é assim que quem grava por `putBlock` lê de volta o que
@@ -930,11 +938,8 @@ def test_export_openapi_traz_as_operacoes_do_editor_e_da_moderacao():
         for item in documento["paths"].values()
         for operacao in item.values()
     ]
-    assert set(ids) == AS_VINTE_OPERACOES | {
-        "listLessonComments",
-        "setLessonCommentVisibility",
-        "getLessonReviewQueueSummary",
-    }
+    # As que existem continuam existindo. Operação nova entra sem mexer aqui.
+    assert AS_OPERACOES_QUE_PRECISAM_EXISTIR <= set(ids)
     # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
     # documento inválido que o freeze compara sem reclamar: o caminho novo
     # ficou com o nome canônico, o antigo ganhou o dele.

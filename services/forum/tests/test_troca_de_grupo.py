@@ -104,17 +104,16 @@ def test_sem_vaga_no_destino_nada_muda_na_origem(
     assert not RegistroDeModeracao.objects.exists()
 
 
-def test_sem_motivo_a_troca_e_recusada(
+def test_sem_motivo_a_troca_passa(
     client, env, monkeypatch, grupo, outro_grupo, ana, professora
 ):
     vinculo = vincular(grupo, ana, professora)
     como(monkeypatch, professora, categoria="cadastrado")
     resposta = trocar(client, grupo, vinculo, outro_grupo, motivo="  ")
-    assert resposta.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in resposta.content.decode()
+    assert resposta.status_code == 302
     vinculo.refresh_from_db()
-    assert vinculo.ate is None
-    assert not ativos(outro_grupo).exists()
+    assert vinculo.ate is not None
+    assert ativos(outro_grupo).filter(pessoa=ana).exists()
 
 
 @pytest.mark.parametrize("destino", ["o_mesmo", "area_de_alunos", "inexistente"])

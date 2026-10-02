@@ -619,6 +619,13 @@ def para_html(markdown: str, *, documento=None) -> str:
     linhas = markdown.splitlines()
     i = 0
 
+    def endereco_na_tela(endereco: str) -> str:
+        if documento is not None and not documento.no_ar and endereco.startswith(
+            ("/midia/", f"{PREFIXO_PUBLICO}/")
+        ):
+            return "/admin" + endereco
+        return endereco
+
     def fechar_paragrafo() -> None:
         nonlocal paragrafo
         if paragrafo:
@@ -706,7 +713,7 @@ def para_html(markdown: str, *, documento=None) -> str:
         arquivo = _MIDIA.match(nua)
         if arquivo:
             fechar_blocos()
-            partes.append(_midia_html(arquivo.group(1), arquivo.group(2)))
+            partes.append(_midia_html(arquivo.group(1), endereco_na_tela(arquivo.group(2))))
             i += 1
             continue
 
@@ -715,7 +722,7 @@ def para_html(markdown: str, *, documento=None) -> str:
             endereco = endereco_do_arquivo(documento, semente.group(2))
             if endereco:
                 fechar_blocos()
-                partes.append(_midia_html(semente.group(1), endereco))
+                partes.append(_midia_html(semente.group(1), endereco_na_tela(endereco)))
                 i += 1
                 continue
 

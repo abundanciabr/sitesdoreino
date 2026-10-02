@@ -293,13 +293,27 @@ def test_todo_motivo_e_uma_frase_em_portugues_que_diz_o_que_falta():
         assert len(rotulo.split()) >= 5, f"{valor}: o motivo é curto demais"
 
 
-def test_devolver_sem_motivo_e_recusado_pela_regra(portfolio_com_peca):
+def test_devolver_sem_motivo_grava_a_orientacao(portfolio_com_peca):
+    """O motivo é opcional: quem não escolhe devolve com a orientação escrita."""
     pedido = conferencia.pedir(portfolio_com_peca())
 
-    with pytest.raises(conferencia.ConferenciaRecusada) as recusa:
-        conferencia.devolver(pedido=pedido, conferido_por=MONITORA, motivo="")
+    conferencia.devolver(
+        pedido=pedido,
+        conferido_por=MONITORA,
+        feedback_melhorar="Teste a proporção das rodas.",
+    )
 
-    assert "sem um deles" in str(recusa.value)
+    pedido.refresh_from_db()
+    assert pedido.estado == EstadoDoPedido.DEVOLVIDO
+    assert pedido.motivo_da_devolucao == MotivoDaDevolucao.ORIENTACAO
+
+
+def test_devolver_sem_motivo_e_sem_orientacao_nao_devolve_nada(portfolio_com_peca):
+    pedido = conferencia.pedir(portfolio_com_peca())
+
+    with pytest.raises(conferencia.ConferenciaRecusada, match="Escreva a orientação"):
+        conferencia.devolver(pedido=pedido, conferido_por=MONITORA)
+
     pedido.refresh_from_db()
     assert pedido.estado == EstadoDoPedido.EM_ANALISE
 
@@ -687,7 +701,28 @@ def test_a_equipe_devolve_pela_tela_com_motivo(
     assert pedido.motivo_da_devolucao == MotivoDaDevolucao.PECA_QUE_NAO_ABRE
 
 
-def test_devolver_sem_motivo_pela_tela_nao_devolve(
+def test_devolver_sem_motivo_pela_tela_devolve_com_a_orientacao(
+    da_equipe, site_declarado, portfolio_com_peca
+):
+    pedido = conferencia.pedir(portfolio_com_peca("aluno-1"))
+
+    resposta = Client().post(
+        "/equipe/decidir",
+        {
+            "pedido": pedido.pk,
+            "gesto": "devolver",
+            "feedback_proximo_passo": "Mostre uma vista lateral.",
+        },
+        **como(),
+    )
+
+    assert resposta.status_code == 302
+    pedido.refresh_from_db()
+    assert pedido.estado == EstadoDoPedido.DEVOLVIDO
+    assert pedido.motivo_da_devolucao == MotivoDaDevolucao.ORIENTACAO
+
+
+def test_devolver_pela_tela_sem_motivo_e_sem_orientacao_nao_devolve(
     da_equipe, site_declarado, portfolio_com_peca
 ):
     pedido = conferencia.pedir(portfolio_com_peca("aluno-1"))

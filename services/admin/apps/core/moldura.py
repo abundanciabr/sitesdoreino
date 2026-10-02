@@ -48,14 +48,12 @@ lista das seções que a área administrativa tem, e ela só muda quando uma se�
 nasce ou morre, o que é mudança de código. Ligar os dois faria o mantenedor
 conseguir apagar a própria navegação do bastidor pelo bastidor.
 
-## `SECOES` é escrita à mão, e o guarda é quem a impede de apodrecer
+## `SECOES` é escrita à mão
 
 Mesma escolha de `ROTAS_PUBLICAS` em `apps/core/rodape.py`, pelo mesmo motivo:
 o rótulo curto ("Pontos", "Menu do site") é uma decisão de linguagem para um
-leigo, e não sai por regra de nenhum arquivo. O que sai por regra é a LISTA, e
-`tests/test_moldura_do_admin.py` a compara com as seções que o mapa do site
-(`mapa-do-site.json`, o arquivo que `/admin/mapa/` serve) declara. Seção nova na
-área reprova o PR até ganhar nome aqui.
+leigo, e não sai por regra de nenhum arquivo. Seção nova na área só aparece no
+menu quando ganha nome aqui.
 
 **O `href` sai de `reverse()`, nunca do endereço escrito no mapa.** O mapa diz
 `/admin/escola/`, que é o endereço PÚBLICO; esta célula roda sob `SCRIPT_NAME` e
@@ -141,9 +139,8 @@ URL_DO_SITE = "/"
 #    célula (a `funil`), que esta não conhece e não monta. Enfiá-lo em `SECOES`
 #    estouraria em `NoReverseMatch` e o item sumiria da tela em silêncio, que é
 #    exatamente o pulo que `secoes_do_menu` faz para link quebrado.
-# 2. **O guarda mede `SECOES` contra o mapa desta área.** Um item de outra
-#    célula ali dentro faria a conta não fechar, e a saída para o guarda seria
-#    afrouxá-lo — que é como um portão morre.
+# 2. **`SECOES` é só desta área.** Um item de outra célula ali dentro não
+#    pertence à lista de seções da administração.
 #
 # Ele nunca acende: você não está NO site enquanto está aqui dentro.
 SAIDA_PARA_O_SITE = {"href": URL_DO_SITE, "rotulo": "Ver o site", "aqui": False}

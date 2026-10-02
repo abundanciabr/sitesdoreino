@@ -382,7 +382,7 @@ def test_simulacao_alteracao_com_versao_velha_e_recusada():
     assert tarefa.titulo == "Mudada por outra pessoa"
 
 
-def test_o_robo_so_mexe_no_compromisso_da_propria_pessoa():
+def test_o_robo_assume_e_tira_compromisso_de_qualquer_tarefa_da_equipe():
     livia = _pessoa("Lívia", LIVIA)
     arameu = MembroDaEquipe.objects.get(nome="Arameu")
     do_arameu = Tarefa.objects.create(titulo="Do Arameu", responsavel=arameu)
@@ -394,11 +394,19 @@ def test_o_robo_so_mexe_no_compromisso_da_propria_pessoa():
     alheia = json.loads(
         ferramentas.executar(ctx, "c1", "marcar_compromisso", json.dumps({"tarefa_id": do_arameu.id}))
     )
-    assert "só essa pessoa assume ou tira" in alheia["erro"]
+    assert alheia["tarefa"]["compromisso_desta_semana"] is True
     propria = json.loads(
         ferramentas.executar(ctx, "c2", "marcar_compromisso", json.dumps({"tarefa_id": dela.id}))
     )
     assert propria["tarefa"]["compromisso_desta_semana"] is True
+    assert set(Compromisso.objects.values_list("tarefa_id", flat=True)) == {do_arameu.id, dela.id}
+
+    tirada = json.loads(
+        ferramentas.executar(
+            ctx, "c3", "marcar_compromisso", json.dumps({"tarefa_id": do_arameu.id, "tirar": True})
+        )
+    )
+    assert tirada["tarefa"]["compromisso_desta_semana"] is False
     assert list(Compromisso.objects.values_list("tarefa_id", flat=True)) == [dela.id]
 
 

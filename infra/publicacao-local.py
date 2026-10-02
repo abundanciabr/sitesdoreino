@@ -3,6 +3,8 @@
 
 Uma versão é a imagem da base mais, quando o publicador da VPS a montou, a pasta
 imutável do código em /app (somente leitura). Sem pasta, vale o código da imagem.
+Sem journal, `preparar` cria um e a primeira versão que abre o endereço vira a aprovada.
+O journal guarda três aprovadas: `aprovada`, `anterior_aprovada` e `antes_da_anterior`.
 """
 import json
 import os
@@ -89,18 +91,9 @@ def garantir_imagem(imagem):
         comando("docker", "pull", imagem)
 
 
-def compatibilidade():
-    valores = {chave: os.environ.get(env, "") for chave, env in
-               (("dados", "COMPATIBILIDADE_DADOS"), ("configuracao", "COMPATIBILIDADE_CONFIGURACAO"))}
-    if any(not re.fullmatch(r"[A-Za-z0-9_.:-]{1,120}", valor) for valor in valores.values()):
-        raise ValueError("informe compatibilidade de dados e configuração sem segredos")
-    return valores
-
-
 def provar(estado, sha, versao=None):
-    versao = versao or versao_de(estado, sha)
-    servicos = estado["servicos"]
-    for servico in servicos:
+    """Contêiner de pé e saudável, e a página inicial responde 200."""
+    for servico in estado["servicos"]:
         container = compose("ps", "-q", servico)
         if not container:
             raise ValueError("serviço sem container: " + servico)
@@ -109,15 +102,6 @@ def provar(estado, sha, versao=None):
             raise ValueError("serviço parado durante a prova: " + servico)
         if situacao.get("Health", {}).get("Status", "healthy") != "healthy":
             raise ValueError("serviço sem saúde durante a prova: " + servico)
-        imagem = comando("docker", "inspect", "--format", "{{.Image}}", container)
-        esperada = comando("docker", "image", "inspect", "--format", "{{.Id}}", versao["imagem"])
-        if not imagem or imagem != esperada:
-            raise ValueError("imagem aplicada diverge da imagem testada: " + servico)
-        if versao.get("codigo"):
-            montagens = json.loads(comando("docker", "inspect", "--format", "{{json .Mounts}}", container))
-            if not any(m.get("Destination") == "/app" and m.get("Source") == versao["codigo"]
-                       and m.get("RW") is False for m in montagens):
-                raise ValueError("código montado diverge do código testado: " + servico)
     endereco = estado["endereco"]
     if not re.fullmatch(r"https://[^\s/@?#]+(?:/[^\s?#]*)?", endereco):
         raise ValueError("endereço da prova precisa ser HTTPS sem credenciais ou query")
@@ -140,93 +124,31 @@ def pin(estado, sha, versao=None):
     os.environ["COMPOSE_FILE"] = str(RAIZ / "docker-compose.yml") + ":" + str(caminho)
 
 
-def subir_antes_da_aprovacao(estado, versao):
-    """Célula sem journal: sobe a versão já testada pelo publicador antes da primeira prova."""
-    inicial = PASTA / f".inicial-{CELULA}.json"
-    entrada = {"image": versao["imagem"], **({"volumes": [versao["codigo"] + ":/app:ro"]} if versao.get("codigo") else {})}
-    salvar(inicial, {"services": {servico: entrada for servico in estado["servicos"]}})
-    anterior = os.environ.get("COMPOSE_FILE")
-    os.environ["COMPOSE_FILE"] = (anterior or str(RAIZ / "docker-compose.yml")) + ":" + str(inicial)
-    try:
-        compose("up", "-d", "--wait", "--wait-timeout", "180", *estado["servicos"])
-    finally:
-        if anterior is None:
-            os.environ.pop("COMPOSE_FILE", None)
-        else:
-            os.environ["COMPOSE_FILE"] = anterior
-        inicial.unlink(missing_ok=True)
-
-
 def executar(acao):
     global CELULA
-    if acao == "conferir-infra":
-        for journal in sorted(PASTA.glob("*.json")):
-            if journal.name in {"imagens.json", "recuperacao-terminal.json"}:
-                continue
-            estado = json.loads(journal.read_text())
-            CELULA = estado["celula"]
-            provar(estado, estado["atual"], versao_de(estado, estado["atual"]))
-        return
-    if acao == "encerrar-recuperacao-global" or (acao == "encerrar-recuperacao" and not CELULA):
-        terminal = PASTA / "recuperacao-terminal.json"
-        if not terminal.exists():
-            salvar(terminal, {"estado": "falhou", "motivo": "selecao_indeterminada", "verificada_em": agora()})
-        return
     if not re.fullmatch(r"[a-z][a-z0-9_]*", CELULA):
         raise ValueError("célula inválida")
     caminho = PASTA / (CELULA + ".json")
     estado = json.loads(caminho.read_text()) if caminho.exists() else None
-    if acao == "encerrar-recuperacao":
-        if estado is None or estado["atual"] != os.environ.get("ATUAL_ESPERADA"):
-            raise ValueError("versão mudou ou journal ausente ao encerrar recuperação")
-        if not estado.get("recuperacao"):
-            estado["recuperacao"] = {"origem": estado["atual"], "alvo": None,
-                                     "estado": "falhou", "motivo": "seleção recusada"}
-            salvar(caminho, estado)
-        return
     tag = validar_sha(os.environ.get("TAG", ""))
     if acao == "conferir-ultima":
         conferir_ultima(tag)
         return
-    if acao in {"inicializar", "preparar"}:
+    if acao == "preparar":
         conferir_ultima(tag)
-        comp = compatibilidade()
-        if acao == "inicializar":
-            if estado is not None:
-                raise ValueError("aprovação inicial já existe; não sobrescrever")
-            servicos = [s for s in compose("config", "--services").splitlines()
-                        if s == CELULA or s.startswith(CELULA + "-")]
-            if not servicos:
-                raise ValueError("célula sem serviços")
-            estado = {"celula": CELULA, "atual": tag, "candidata": None,
-                      "aprovada": None, "anterior_aprovada": None, "compatibilidade": comp,
-                      "servicos": servicos, "endereco": os.environ.get("ENDERECO_PROVA", ""),
-                      "publicada_em": agora()}
-            versao = versao_pedida(tag)
-            if os.environ.get("IMAGEM"):
-                subir_antes_da_aprovacao(estado, versao)
-            provar(estado, tag, versao)
-            estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **comp, **versao)
-            estado["atual_versao"] = versao
-            pin(estado, tag, versao)
-        else:
-            if estado is None or not estado.get("aprovada"):
-                raise ValueError("inicialize a versão atual com prova do endereço antes da primeira troca")
-            if comp != estado["compatibilidade"]:
-                raise ValueError("candidata incompatível com destino recuperável")
-            estado.pop("recuperacao", None)
-            estado["servicos"] = [s for s in compose("config", "--services").splitlines()
-                                  if s == CELULA or s.startswith(CELULA + "-")]
-            if not estado["servicos"]:
-                raise ValueError("célula sem serviços no Compose atual")
-            estado["candidata"] = tag
-            estado["candidata_versao"] = versao_pedida(tag)
-            estado["pedido_em"] = os.environ.get("PEDIDO_EM") or agora()
-            estado["endereco"] = os.environ.get("ENDERECO_PROVA") or estado["endereco"]
-            print("ALVO-APROVADO: " + estado["aprovada"]["sha"])
+        servicos = [s for s in compose("config", "--services").splitlines()
+                    if s == CELULA or s.startswith(CELULA + "-")]
+        if not servicos:
+            raise ValueError("célula sem serviços no Compose atual")
+        estado = estado or {"celula": CELULA, "atual": None, "aprovada": None, "anterior_aprovada": None}
+        estado.pop("recuperacao", None)
+        estado["servicos"] = servicos
+        estado["candidata"] = tag
+        estado["candidata_versao"] = versao_pedida(tag)
+        estado["pedido_em"] = os.environ.get("PEDIDO_EM") or agora()
+        estado["endereco"] = os.environ.get("ENDERECO_PROVA") or estado.get("endereco")
+        print("ALVO-APROVADO: " + ((estado.get("aprovada") or {}).get("sha") or "nenhum, primeira publicação"))
         salvar(caminho, estado)
-        if acao == "inicializar":
-            (PASTA / "recuperacao-terminal.json").unlink(missing_ok=True)
         return
     if estado is None:
         raise ValueError("aprovação comprovada ausente")
@@ -259,27 +181,23 @@ def executar(acao):
             estado["prova_falhou"] = True
             salvar(caminho, estado)
             raise
-        if estado["aprovada"]["sha"] != tag:
+        if estado.get("aprovada") and estado["aprovada"]["sha"] != tag:
+            estado["antes_da_anterior"] = estado.get("anterior_aprovada")
             estado["anterior_aprovada"] = estado["aprovada"]
-        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **estado["compatibilidade"], **versao)
+        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **versao)
         estado["candidata"] = None
         estado.pop("candidata_versao", None)
         salvar(caminho, estado)
-        (PASTA / "recuperacao-terminal.json").unlink(missing_ok=True)
         medir(estado, False, False, 0, estado["aprovada"]["verificada_em"])
         return
     if acao != "recuperar":
         raise ValueError("ação desconhecida")
-    if estado.get("recuperacao"):
-        raise ValueError("tentativa automática já executada; diagnostique e comunique o incidente")
     if estado["atual"] != os.environ.get("ATUAL_ESPERADA"):
         raise ValueError("versão mudou desde a detecção")
-    alvo = next((a for a in (estado["aprovada"], estado["anterior_aprovada"])
+    alvo = next((a for a in (estado.get("aprovada"), estado.get("anterior_aprovada"))
                  if a and a["sha"] == tag and tag != estado["atual"]), None)
-    if alvo is None or any(alvo[c] != estado["compatibilidade"][c] for c in ("dados", "configuracao")):
-        raise ValueError("destino distinto aprovado e compatível ausente")
-    if compatibilidade() != estado["compatibilidade"]:
-        raise ValueError("compatibilidade mudou desde a detecção")
+    if alvo is None:
+        raise ValueError("destino aprovado distinto do que está no ar ausente")
     origem = estado["atual"]
     estado["recuperacao"] = {"origem": origem, "alvo": tag, "estado": "tentando"}
     salvar(caminho, estado)
@@ -297,8 +215,13 @@ def executar(acao):
         provar(estado, tag, versao)
         estado["candidata"] = None
         estado.pop("candidata_versao", None)
-        estado["aprovada"] = alvo
-        estado["anterior_aprovada"] = None
+        if estado["aprovada"]["sha"] != tag:
+            # Voltou para a anterior: a que estava antes dela passa a ser a próxima volta.
+            estado["aprovada"] = alvo
+            estado["anterior_aprovada"] = estado.get("antes_da_anterior")
+            estado["antes_da_anterior"] = None
+        if (estado.get("anterior_aprovada") or {}).get("sha") == tag:
+            estado["anterior_aprovada"] = None
         estado["recuperacao"]["estado"] = "concluida"
         salvar(caminho, estado)
         medir(estado, True, True, round(time.monotonic() - inicio, 3), agora())
@@ -306,7 +229,7 @@ def executar(acao):
         estado["recuperacao"]["estado"] = "falhou"
         salvar(caminho, estado)
         medir(estado, True, True, round(time.monotonic() - inicio, 3))
-        print("RECUPERACAO-TERMINAL: falhou; mantenedor deve diagnosticar rede, configuração, disco e dependências. Banco preservado.", file=sys.stderr)
+        print("RECUPERACAO-FALHOU: a volta não abriu o site; o vigia religa e avisa. Banco preservado.", file=sys.stderr)
         raise
 
 

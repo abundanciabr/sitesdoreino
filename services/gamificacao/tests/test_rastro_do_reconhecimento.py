@@ -11,8 +11,8 @@ O QUE ESTE ARQUIVO TRAVA:
    frase dele, e a referência da origem, nunca o texto da prova privada.
 2. **Mudar o critério sobe a versão**, por qualquer caminho, e a concessão
    antiga continua dizendo a regra antiga.
-3. **Revogar, corrigir e restaurar são gestos da equipe, com motivo**, e cada
-   um vira uma linha nova no histórico. A concessão nunca é apagada, e o
+3. **Revogar, corrigir e restaurar são gestos da equipe, com nome**, e cada
+   um vira uma linha nova no histórico (o motivo é opcional). A concessão nunca é apagada, e o
    histórico não se edita nem se apaga (quem recusa é o banco).
 4. **Revogar estorna o XP por linha negativa**, não reabre concessão
    automática, e a reentrega do mesmo evento continua sem duplicar.
@@ -254,11 +254,23 @@ def test_a_contribuicao_aceita_deixa_a_regra_e_a_origem_na_medalha():
 # ------------------------------------------- 2. revogar
 
 
-def test_revogar_exige_motivo_e_nao_muda_nada_sem_ele():
+def test_revogar_sem_motivo_funciona_e_o_historico_guarda_quem():
     concessao = _conceder(_mao_amiga())
 
-    with pytest.raises(ValidacaoRecusada, match="motivo"):
-        revogar(concessao=concessao, quem_id=PROFESSORA, motivo="   ")
+    revogar(concessao=concessao, quem_id=PROFESSORA, motivo="   ")
+
+    concessao.refresh_from_db()
+    assert concessao.estado == Estado.REVOGADA
+    revogada = concessao.historico.get(gesto=Gesto.REVOGADA)
+    assert revogada.quem_id == PROFESSORA
+    assert revogada.motivo == ""
+
+
+def test_revogar_sem_nome_e_recusado_e_nao_muda_nada():
+    concessao = _conceder(_mao_amiga())
+
+    with pytest.raises(ValidacaoRecusada, match="nome"):
+        revogar(concessao=concessao, quem_id="", motivo="Engano.")
 
     concessao.refresh_from_db()
     assert concessao.estado == Estado.CONCEDIDA
@@ -336,11 +348,14 @@ def test_revogar_nao_reabre_a_conta_automatica_nem_a_reentrega():
     assert Concessao.objects.get(conquista=medalha).estado == Estado.REVOGADA
 
 
-def test_ninguem_mexe_na_propria_medalha():
+def test_a_equipe_pode_mexer_na_propria_medalha():
     concessao = _conceder(_mao_amiga(), pessoa_id=PROFESSORA)
 
-    with pytest.raises(ValidacaoRecusada, match="própria"):
-        revogar(concessao=concessao, quem_id=PROFESSORA, motivo="Quero tirar.")
+    revogar(concessao=concessao, quem_id=PROFESSORA, motivo="Quero tirar.")
+
+    concessao.refresh_from_db()
+    assert concessao.estado == Estado.REVOGADA
+    assert concessao.historico.get(gesto=Gesto.REVOGADA).quem_id == PROFESSORA
 
 
 def test_a_medalha_revogada_nao_conta_na_familia():
@@ -412,7 +427,6 @@ def test_corrigir_troca_a_origem_e_a_antiga_fica_no_historico():
     [
         ("", "Troca.", "referência"),
         ("contribuicao:12", "Troca.", "mesma"),
-        ("contribuicao:15", "", "motivo"),
         ("x" * 65, "Troca.", "64"),
     ],
 )
@@ -428,6 +442,22 @@ def test_corrigir_recusa_o_que_nao_corrige_nada(origem_nova, motivo, trecho):
         )
 
     assert concessao.historico.count() == 1
+
+
+def test_corrigir_sem_motivo_funciona_e_a_antiga_fica_no_historico():
+    concessao = _conceder(_mao_amiga(), origem="contribuicao:12")
+
+    corrigir(
+        concessao=concessao,
+        quem_id=PROFESSORA,
+        origem_nova="contribuicao:15",
+    )
+
+    concessao.refresh_from_db()
+    assert concessao.origem_event_id == "contribuicao:15"
+    correcao = concessao.historico.get(gesto=Gesto.CORRIGIDA)
+    assert correcao.origem_anterior == "contribuicao:12"
+    assert correcao.motivo == ""
 
 
 def test_a_medalha_retirada_nao_se_corrige():
@@ -614,7 +644,7 @@ def test_a_equipe_ve_o_rastro_e_revoga_pela_tela(monkeypatch):
     assert "Ajudas contadas duas vezes." in depois
 
 
-def test_a_recusa_volta_para_a_tela_em_portugues(monkeypatch):
+def test_o_gesto_sem_motivo_funciona_pela_tela(monkeypatch):
     concessao = _conceder(_mao_amiga())
     _entrar_como(monkeypatch, PROFESSORA)
 
@@ -625,7 +655,23 @@ def test_a_recusa_volta_para_a_tela_em_portugues(monkeypatch):
     )
 
     assert resposta.status_code == 200
-    assert "motivo" in resposta.content.decode()
+    concessao.refresh_from_db()
+    assert concessao.estado == Estado.REVOGADA
+    assert concessao.historico.get(gesto=Gesto.REVOGADA).motivo == ""
+
+
+def test_a_recusa_volta_para_a_tela_em_portugues(monkeypatch):
+    concessao = _conceder(_mao_amiga())
+    _entrar_como(monkeypatch, PROFESSORA)
+
+    resposta = Client().post(
+        "/interno/reconhecimentos/gesto",
+        {"gesto": "corrigir", "concessao": concessao.pk, "origem": ""},
+        follow=True,
+    )
+
+    assert resposta.status_code == 200
+    assert "referência certa da origem" in resposta.content.decode()
     concessao.refresh_from_db()
     assert concessao.estado == Estado.CONCEDIDA
 

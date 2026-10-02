@@ -1,12 +1,15 @@
 """Forças e mudanças opcionais em trabalho aprovado, sem quantidade fixa.
 
-As forças escritas ainda precisam ser específicas; cada mudança escrita
-aponta para uma aula do curso. Laudos antigos com uma mudança seguem legíveis.
+As forças escritas ainda precisam ser específicas; uma aula indicada na
+mudança precisa pertencer ao curso. Laudos antigos seguem legíveis.
 """
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import pytest
+from django.utils import timezone
 
 from apps.cursos import laudo as parecer
 from apps.cursos.models import Laudo
@@ -71,6 +74,28 @@ def test_zero_mudancas_e_aceito_se_aberto(envio_na_fila, professora):
 def test_duas_mudancas_sao_guardadas(envio_na_fila, professora):
     duas = mudanca_valida(envio_na_fila.aula) * 2
     assert len(_emitir(envio_na_fila, professora, mudanca=duas).mudancas) == 2
+
+
+def test_devolucao_com_orientacao_sem_aula_e_aceita(envio_na_fila, professora):
+    laudo = _emitir(
+        envio_na_fila,
+        professora,
+        mudanca=[{"texto": "Revisar a entrega com a professora.", "aula_id": ""}],
+        decisao=Laudo.Decisao.DEVOLVIDO,
+        data_de_retorno=timezone.localdate() + timedelta(days=1),
+    )
+    assert laudo.mudancas == [{"texto": "Revisar a entrega com a professora."}]
+
+
+def test_devolucao_continua_exigindo_orientacao(envio_na_fila, professora):
+    with pytest.raises(parecer.LaudoRecusado, match="diga o que"):
+        _emitir(
+            envio_na_fila,
+            professora,
+            mudanca=[{"texto": " ", "aula_id": ""}],
+            decisao=Laudo.Decisao.DEVOLVIDO,
+            data_de_retorno=timezone.localdate() + timedelta(days=1),
+        )
 
 
 def test_mudanca_com_aula_de_outro_curso_e_recusada(envio_na_fila, professora):

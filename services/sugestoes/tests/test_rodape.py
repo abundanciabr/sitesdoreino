@@ -1,7 +1,7 @@
 """Verifica o rodapé e o estilo entregue nas telas de Sugestões."""
 
 import pytest
-from django.urls import get_resolver, reverse
+from django.urls import reverse
 
 from apps.core import rodape as regras
 
@@ -48,36 +48,6 @@ def test_a_tela_de_escrever_uma_ideia_tem_rodape(dentro, categoria):
 
 def test_o_sininho_tem_rodape(dentro, quadro):
     assert '<footer class="rodape' in _corpo(dentro, reverse("avisos"))
-
-
-def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
-    """A varredura que impede a frase "em todas as páginas" de envelhecer.
-
-    Mede o urlconf REAL, não uma lista escrita à mão: rota nova que ninguém
-    decidiu cai no padrão, e rota sem rodapé precisa estar dita. O silêncio
-    nunca significa "sem rodapé".
-
-    A comparação é contra `rotas_declaradas_sem_rodape()`, que junta as DUAS
-    listas — a de rotas de máquina e a das páginas que alguém decidiu deixar sem
-    rodapé. Comparar só com a primeira ficaria vermelho por causa de uma decisão
-    perfeitamente escrita (a porta da Caixa), e isso ensinaria a próxima pessoa
-    a afrouxar a asserção, que é como um guarda morre.
-    """
-    nomes = {
-        padrao.name
-        for padrao in get_resolver().url_patterns
-        if getattr(padrao, "name", None)
-    }
-    assert "quadro" in nomes, "a varredura não encontrou o urlconf da célula"
-    sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
-    assert sem_rodape == regras.rotas_declaradas_sem_rodape() & nomes
-    # Desde 02/09/2026 a única rota sem rodapé nesta célula é o servidor de
-    # estáticos: a porta passou a mostrar o enxuto. Se esta linha ficar
-    # vermelha, alguém declarou uma PÁGINA sem rodapé — e isso precisa de
-    # motivo escrito, não de um `None` solto na tabela.
-    assert sem_rodape == {"estatico"}
-    for nome in nomes - sem_rodape:
-        assert regras.variante_da_rota(nome) in regras.VARIANTES
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():

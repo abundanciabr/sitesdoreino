@@ -127,7 +127,7 @@ paths:
   /parametros/{chave}:
     put:
       operationId: setParameter
-      summary: Muda um parametro acrescentando uma linha nova com motivo
+      summary: Muda um parametro acrescentando uma linha nova ao historico
       parameters:
       - in: path
         name: chave
@@ -178,7 +178,7 @@ paths:
 
         não é uma promessa deste arquivo. O que este arquivo garante é o resto: o
 
-        motivo escrito, o autor nomeado e o valor dentro do tipo da chave.
+        autor nomeado, o motivo opcional e o valor dentro do tipo da chave.
 
 
         Chave desconhecida é 404: o vocabulário é fechado e nasce no código da
@@ -479,12 +479,12 @@ components:
         valor:
           type: string
         motivo:
+          default: ''
           type: string
         quem:
           type: string
       required:
       - valor
-      - motivo
       - quem
       type: object
     FilaDeUmaPessoa:

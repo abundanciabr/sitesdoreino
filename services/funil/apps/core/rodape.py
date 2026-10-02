@@ -9,9 +9,8 @@ dela responde às três.
 **Por que a decisão mora aqui, e não dentro do template.** Um `{% if %}` por
 página espalhado pelos templates seria a regra escrita em quatro lugares, e
 página nova nasceria sem rodapé sem ninguém perceber. Aqui a regra é UMA tabela,
-o padrão vale para toda rota que não aparece nela, e o teste-guarda
-(`tests/test_rodape.py`) varre o urlconf inteiro: rota nova sem decisão explícita
-herda o padrão, e isso é visível.
+o padrão vale para toda rota que não aparece nela: rota nova sem decisão
+explícita herda o padrão, e isso é visível.
 
 **Por que os textos ainda saem do catálogo de tradução, e não de um banco.** A
 `funil` é a única célula sem banco (é vitrine pura), então "o mantenedor edita o

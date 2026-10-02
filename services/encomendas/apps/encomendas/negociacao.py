@@ -83,7 +83,6 @@ SEM_PROPOSTA_DE_PE = "sem_proposta_de_pe"
 SEM_ACORDO = "sem_acordo"
 SEM_PAGAMENTO_CONFIRMADO = "sem_pagamento_confirmado"
 SEM_AUTOR = "sem_autor"
-SEM_MOTIVO = "sem_motivo"
 
 # Os motivos escritos no histórico, para a mediação de daqui a seis meses ter o
 # que ler. Nenhum inventa autor: `ator_id` vazio quer dizer "foi o relógio".
@@ -436,7 +435,7 @@ def aceitar_a_proposta(
     este arquivo, é um gatilho do PostgreSQL (`encomendas_o_acordo_e_pedra`),
     que recusa o `UPDATE` venha ele de uma tela futura, de uma migração de dados
     ou de um `psql` de madrugada. Mudar depois só por mediação, com autor e
-    motivo registrados (`mudar_por_mediacao`).
+    motivo, se houver, registrados (`mudar_por_mediacao`).
 
     `quem` é obrigatório, e é o §7 em código: enquanto a única origem for
     `escola`, quem abre o projeto e quem aceita a proposta é a mesma equipe, e o
@@ -544,7 +543,7 @@ def mudar_por_mediacao(
     *,
     site_id: str,
     quem: str,
-    motivo: str,
+    motivo: str = "",
     valor_cents: int | None = None,
     prazo_dias: int | None = None,
     entregaveis=None,
@@ -559,14 +558,13 @@ def mudar_por_mediacao(
     quatro colunas, o que quer dizer que "só por mediação" não é uma frase num
     documento.
 
-    Autor e motivo são obrigatórios. Uma mudança de acordo sem os dois é
-    exatamente a mediação que ninguém consegue explicar seis meses depois, que é
-    o que o §7 pede para não acontecer.
+    O autor é obrigatório: uma mudança de acordo sem nome é a mediação em que
+    ninguém sabe quem mexeu, que é o que o §7 pede para não acontecer. O motivo é
+    opcional: se vier, entra na linha de `em_mediacao`; se não vier, a linha fica
+    do mesmo jeito, com autor, data e o estado de antes e de depois.
     """
     if not quem:
         return Desfecho(feito=False, razao=SEM_AUTOR)
-    if not motivo:
-        return Desfecho(feito=False, razao=SEM_MOTIVO)
     projeto = (
         Encomenda.objects.select_for_update()
         .filter(pk=encomenda_id, site_id=site_id)

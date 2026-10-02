@@ -267,17 +267,10 @@ def test_adicionar_e_tirar_do_grupo_ficam_registrados(
     assert saida.area == grupo
 
 
-def test_trocar_o_responsavel_exige_motivo_e_guarda_quem_saiu_e_quem_entrou(
+def test_trocar_o_responsavel_guarda_o_motivo_quem_saiu_e_quem_entrou(
     client, env, monkeypatch, grupo, professora, dono
 ):
     como(monkeypatch, professora, categoria="cadastrado")
-    recusa = no_grupo(client, grupo, responsavel=dono.pk)
-    assert recusa.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in recusa.content.decode()
-    grupo.refresh_from_db()
-    assert grupo.responsavel == professora
-    assert not RegistroDeModeracao.objects.exists()
-
     resposta = no_grupo(client, grupo, responsavel=dono.pk, motivo="Lia de férias")
     assert resposta.status_code == 302
     grupo.refresh_from_db()
@@ -299,65 +292,31 @@ def test_mudar_as_vagas_fica_registrado_com_o_numero_de_antes(
     assert "10" in linha.detalhe and "12" in linha.detalhe
 
 
-# ------------------------------------------------------------ o motivo obrigatório
+# ------------------------------------------------------------ o motivo em branco
 
 
-@pytest.mark.parametrize(
-    "gesto",
-    ["tirar_do_ar", "restaurar", "mover", "editar_titulo_alheio"],
-)
-def test_gesto_na_conversa_sem_motivo_e_recusado_e_nada_muda(
-    client, env, monkeypatch, conversa, outro_grupo, professora, gesto
+def test_tirar_do_ar_sem_motivo_passa_e_o_rastro_diz_que_nao_houve_motivo(
+    client, env, monkeypatch, conversa, professora
 ):
-    dados = {
-        "tirar_do_ar": {"acao": "tirar_do_ar"},
-        "restaurar": {"acao": "restaurar"},
-        "mover": {
-            "acao": "salvar",
-            "titulo": conversa.titulo,
-            "area_id": outro_grupo.pk,
-        },
-        "editar_titulo_alheio": {"acao": "salvar", "titulo": "Outro título bom"},
-    }[gesto]
     como(monkeypatch, professora, categoria="cadastrado")
-    resposta = na_conversa(client, conversa, motivo="   ", **dados)
+    resposta = na_conversa(client, conversa, motivo="   ", acao="tirar_do_ar")
 
-    assert resposta.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in resposta.content.decode()
-    depois = Topico.objects.get(pk=conversa.pk)
-    assert (depois.estado, depois.titulo, depois.area_id) == (
-        conversa.estado,
-        conversa.titulo,
-        conversa.area_id,
-    )
-    assert not RegistroDeModeracao.objects.exists()
+    assert resposta.status_code == 302
+    linha = unica_linha()
+    assert linha.motivo == moderacao.MOTIVO_EM_BRANCO
 
 
-@pytest.mark.parametrize("acao", ["salvar", "tirar_do_ar", "restaurar"])
-def test_gesto_na_mensagem_alheia_sem_motivo_e_recusado(
-    client, env, monkeypatch, conversa, professora, acao
-):
-    mensagem = mensagem_de(conversa)
-    como(monkeypatch, professora, categoria="cadastrado")
-    resposta = na_mensagem(client, mensagem, acao=acao, texto="mudado")
-
-    assert resposta.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in resposta.content.decode()
-    depois = Mensagem.objects.get(pk=mensagem.pk)
-    assert (depois.texto, depois.removida_em) == (mensagem.texto, None)
-    assert not RegistroDeModeracao.objects.exists()
-
-
-def test_tirar_do_grupo_sem_motivo_e_recusado(
+def test_tirar_do_grupo_sem_motivo_passa(
     client, env, monkeypatch, grupo, ana, professora
 ):
     vinculo = vincular(grupo, ana, professora)
     como(monkeypatch, professora, categoria="cadastrado")
     resposta = gerir(client, grupo, acao="remover", vinculo_id=vinculo.pk)
-    assert resposta.status_code == 400
-    assert moderacao.ERRO_MOTIVO_DA_ACAO in resposta.content.decode()
+    assert resposta.status_code == 302
     vinculo.refresh_from_db()
-    assert vinculo.ate is None
+    assert vinculo.ate is not None
+    saida = RegistroDeModeracao.objects.get(acao=Acao.REMOVER_MEMBRO)
+    assert saida.motivo == moderacao.MOTIVO_EM_BRANCO
 
 
 def test_editar_a_propria_mensagem_nao_pede_motivo(

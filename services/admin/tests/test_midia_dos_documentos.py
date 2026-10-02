@@ -27,6 +27,7 @@ aqui não havia `FileField` nenhum nesta casa. O que este arquivo trava:
    não come (`DECISAO-o-editor-de-documentos` §3).
 """
 
+from io import BytesIO
 from pathlib import Path
 
 import httpx
@@ -35,11 +36,14 @@ import respx
 from django.conf import settings
 from django.core import signing
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.handlers.asgi import ASGIRequest
+from django.http import Http404
 from django.test import Client
 from django.urls import get_resolver
 
 from apps.auditoria.models import Registro
-from apps.core import midia
+from apps.core import documentos, midia
+from apps.core.porta import PortaAdministrativa
 from apps.core.models import Documento, Midia
 
 BASE = "http://identidade:8000/interno"
@@ -109,6 +113,26 @@ def _enviar(cliente, documento, nome_do_arquivo, conteudo, tipo_dito="image/png"
             "ordem": "10",
             "arquivo": SimpleUploadedFile(nome_do_arquivo, conteudo, tipo_dito),
         },
+    )
+
+
+def _pedido_asgi_de_midia(caminho, cookie=""):
+    return ASGIRequest(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": caminho,
+            "root_path": "/admin",
+            "query_string": b"",
+            "headers": [(b"cookie", cookie.encode())] if cookie else [],
+        },
+        BytesIO(),
+    )
+
+
+def _porta_da_midia(guardada):
+    return PortaAdministrativa(
+        lambda request: midia.midia_servir(request, guardada.sorteio, guardada.nome)
     )
 
 
@@ -320,6 +344,91 @@ def test_o_editor_local_ve_arquivo_de_documento_ainda_privado(documento):
 
     assert resposta.status_code == 200
     assert b"".join(resposta.streaming_content) == PNG
+
+
+@respx.mock
+def test_sessao_de_administrador_ve_midia_privada_no_endereco_do_editor(documento, settings):
+    settings.FORCE_SCRIPT_NAME = "/admin"
+    guardada = midia.gravar_bytes(documento, PNG, "foto.png", DONO)
+    respx.get(SESSAO).mock(return_value=httpx.Response(200, json={
+        "autenticado": True, "id": "admin-1", "nome_exibido": "Admin", "email": DONO,
+    }))
+    pedido = _pedido_asgi_de_midia(
+        f"/admin/midia/{guardada.sorteio}/{guardada.nome}", COOKIE
+    )
+    assert pedido.path_info == f"/midia/{guardada.sorteio}/{guardada.nome}"
+
+    resposta = _porta_da_midia(guardada)(pedido)
+
+    assert resposta.status_code == 200
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+def test_cracha_local_ve_midia_privada_no_endereco_do_editor(documento, settings):
+    settings.FORCE_SCRIPT_NAME = "/admin"
+    guardada = midia.gravar_bytes(documento, PNG, "foto.png", DONO)
+    cookie = signing.TimestampSigner().sign_object(
+        {"id": "id-local", "nome": "Fulano", "email": DONO}
+    )
+    pedido = _pedido_asgi_de_midia(
+        f"/admin/midia/{guardada.sorteio}/{guardada.nome}",
+        f"{settings.ADMIN_LOCAL_COOKIE_NAME}={cookie}",
+    )
+
+    resposta = _porta_da_midia(guardada)(pedido)
+
+    assert resposta.status_code == 200
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+@respx.mock
+def test_visitante_e_aluno_nao_leem_midia_privada_no_editor(documento, settings):
+    settings.FORCE_SCRIPT_NAME = "/admin"
+    guardada = midia.gravar_bytes(documento, PNG, "foto.png", DONO)
+    endereco = f"/admin/midia/{guardada.sorteio}/{guardada.nome}"
+
+    assert _porta_da_midia(guardada)(_pedido_asgi_de_midia(endereco)).status_code == 302
+    respx.get(SESSAO).mock(return_value=httpx.Response(200, json={
+        "autenticado": True, "id": "aluno-1", "nome_exibido": "Aluno",
+        "email": "aluno@exemplo.com",
+    }))
+    assert _porta_da_midia(guardada)(_pedido_asgi_de_midia(endereco, COOKIE)).status_code == 404
+
+
+def test_midia_publica_continua_anonima_e_privada_nao_vaza(documento, settings, monkeypatch):
+    settings.FORCE_SCRIPT_NAME = "/admin"
+    guardada = midia.gravar_bytes(documento, PNG, "foto.png", DONO)
+    endereco = f"/midia/{guardada.sorteio}/{guardada.nome}"
+    porta = _porta_da_midia(guardada)
+    monkeypatch.setattr(porta.identidade, "sessao_completa", lambda _: pytest.fail(
+        "mídia pública não pode consultar identidade"
+    ))
+
+    with pytest.raises(Http404):
+        porta(_pedido_asgi_de_midia(endereco, COOKIE))
+    documento.publico = True
+    documento.save(update_fields=["publico"])
+    resposta = porta(_pedido_asgi_de_midia(endereco, COOKIE))
+
+    assert resposta.status_code == 200
+    assert b"".join(resposta.streaming_content) == PNG
+
+
+def test_corpo_privado_usa_endereco_do_editor_sem_mudar_markdown(documento):
+    guardada = midia.gravar_bytes(documento, PNG, "foto.png", DONO)
+    endereco = f"/midia/{guardada.sorteio}/{guardada.nome}"
+    for corpo in (f"![Foto]({endereco})", "![Foto](arquivo:foto.png)"):
+        html = documentos.para_html(corpo, documento=documento)
+        assert f'<img src="/admin{endereco}"' in html
+        assert f'<a href="/admin{endereco}" download>' in html
+        assert endereco in corpo or corpo == "![Foto](arquivo:foto.png)"
+
+    documento.publico = True
+    documento.save(update_fields=["publico"])
+    for corpo in (f"![Foto]({endereco})", "![Foto](arquivo:foto.png)"):
+        html = documentos.para_html(corpo, documento=documento)
+        assert f'<img src="{endereco}"' in html
+        assert f'<img src="/admin{endereco}"' not in html
 
 
 @respx.mock

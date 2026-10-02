@@ -1694,12 +1694,13 @@ def _gravar_laudo(request, envio: Envio, avaliador):
         if not linha.strip():
             continue
         numero, separador, texto = linha.partition("|")
-        aula_id = (
-            envio.aula.curso.aulas.filter(numero=numero.strip().upper())
-            .values_list("id", flat=True)
-            .first()
-            if separador else None
-        )
+        aula_id = None
+        if separador and numero.strip():
+            aula_id = (
+                envio.aula.curso.aulas.filter(numero=numero.strip().upper())
+                .values_list("id", flat=True)
+                .first()
+            ) or numero.strip()
         mudanca.append({"texto": texto.strip() if separador else linha.strip(), "aula_id": aula_id})
     decisao = request.POST.get("decisao", "")
     data_de_retorno = parse_date(request.POST.get("data_de_retorno") or "")

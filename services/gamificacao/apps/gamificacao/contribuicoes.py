@@ -115,11 +115,11 @@ def publicar(
     quem_pode: str,
     criterios: list[str],
     responsavel_id: str,
-    responsavel_nome: str,
     vagas: int,
+    responsavel_nome: str = "",
     medalha: ConquistaDefinicao | None = None,
 ) -> TarefaComunitaria:
-    """A escola publica o que precisa. Sem os cinco campos, a tarefa não nasce.
+    """A escola publica o que precisa; o nome do responsável pode vir do espelho.
 
     Quem PODE publicar (a view recusa quem não é da equipe antes de chegar
     aqui) é diferente de quem PODE ser o responsável pela aceitação: isso é
@@ -131,7 +131,6 @@ def publicar(
         "o título": titulo,
         "o que entregar": o_que_entregar,
         "quem pode participar": quem_pode,
-        "quem responde pela aceitação": responsavel_nome,
     }
     faltando = [nome for nome, valor in campos.items() if not (valor or "").strip()]
     criterios = [c.strip() for c in criterios if c and c.strip()]
@@ -161,6 +160,19 @@ def publicar(
         raise ContribuicaoRecusada(
             "Quem responde pela aceitação precisa ser alguém da equipe da escola."
         )
+    nome_do_espelho = (
+        Pessoa.objects.filter(pk=responsavel_id)
+        .values_list("nome_exibido", flat=True)
+        .first()
+    )
+    identificacao = f"Membro da equipe ({responsavel_id})"
+    if len(identificacao) > 120:
+        identificacao = "Membro da equipe"
+    nome_resolvido = (
+        responsavel_nome.strip()
+        or (nome_do_espelho or "").strip()
+        or identificacao
+    )
     if not isinstance(vagas, int) or not 1 <= vagas <= VAGAS_NO_MAXIMO:
         raise ContribuicaoRecusada(
             f"As vagas vão de 1 a {VAGAS_NO_MAXIMO}: quantas contribuições a "
@@ -181,7 +193,7 @@ def publicar(
         quem_pode=quem_pode.strip(),
         criterios=criterios,
         responsavel_id=responsavel_id,
-        responsavel_nome=responsavel_nome.strip(),
+        responsavel_nome=nome_resolvido,
         vagas=vagas,
         medalha=medalha,
     )

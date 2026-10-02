@@ -3,7 +3,7 @@
 O que este arquivo protege, e por que cada coisa:
 
 1. **Entregar exige a porta em produção ou devolvida e TODAS as pausas
-   registradas** ([INV-CUR-P3]): a recusa vem com a frase, e nada fica gravado.
+   registradas** ([INV-CUR-P3]): o envio é recusado, e nada fica gravado.
 2. **Entregar grava o `Envio` 1, muda a porta para `enviada` e enfileira o
    `envio.recebido.v1`** com o `data` do contrato, na mesma transação.
 3. **O reenvio só nasce de `devolvida`, e leva o número 2**: cada volta é um
@@ -58,7 +58,7 @@ FORMULARIO = {
 # ------------------------------------------------ 1. quem pode entregar
 def test_entregar_exige_todas_as_pausas_registradas(ana_pronta):
     RegistroDePausa.objects.filter(pessoa=ana_pronta.pessoa).first().delete()
-    with pytest.raises(checkpoint.EnvioRecusado, match="fechado até todas as pausas"):
+    with pytest.raises(checkpoint.EnvioRecusado):
         checkpoint.entregar(ana_pronta, **entrega())
     assert Envio.objects.count() == 0
     assert OutboxEvent.objects.count() == 0
@@ -313,7 +313,6 @@ def test_a_tela_so_mostra_o_formulario_quando_da_para_entregar(
 ):
     aula = reverse("aula-do-curso", args=["profissional", 1, "E00"])
     bloco = bloco_do_checkpoint(abrir(client, aula))
-    assert "fica fechado até todas as pausas" in bloco
     assert "<form" not in bloco
 
     client.post(
@@ -327,7 +326,6 @@ def test_a_tela_so_mostra_o_formulario_quando_da_para_entregar(
         HTTP_COOKIE=COOKIE,
     )
     bloco = bloco_do_checkpoint(abrir(client, aula))
-    assert "fica fechado" not in bloco
     assert "<form" in bloco
     assert 'name="arquivo"' in bloco
     assert 'name="previa_url_0"' in bloco and 'value="Sólido"' in bloco

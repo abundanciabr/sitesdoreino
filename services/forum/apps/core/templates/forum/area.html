@@ -48,7 +48,7 @@ rotas de `apps/core/moderacao.py`.
       {% if area.visibilidade == "turma" %}
         {% include "forum/_campos_do_grupo.html" with curso_id=area.curso_id responsavel_id=area.responsavel_id vagas=area.vagas %}
       {% endif %}
-      <label for="motivo-area">Motivo da mudança (obrigatório ao mudar quem enxerga ou quem escreve{% if area.visibilidade == "turma" %} ou ao trocar o responsável{% endif %})</label>
+      <label for="motivo-area">Motivo da mudança (opcional)</label>
       <input id="motivo-area" name="motivo" maxlength="200">
       <p class="sub" style="margin:10px 0 0">
         Área aberta ao mundo é sempre só a escola falando. É a regra que protege
@@ -74,7 +74,7 @@ rotas de `apps/core/moderacao.py`.
         {% csrf_token %}
         <input type="hidden" name="acao" value="{% if area.ativa %}arquivar{% else %}reabrir{% endif %}">
         <label for="motivo-arquivo">Motivo</label>
-        <input id="motivo-arquivo" name="motivo" maxlength="200" required placeholder="Ex.: turma de setembro encerrada">
+        <input id="motivo-arquivo" name="motivo" maxlength="200" placeholder="Ex.: turma de setembro encerrada">
         <button type="submit">{% if area.ativa %}Arquivar esta área{% else %}Reabrir esta área{% endif %}</button>
       </form>
     </details>
@@ -145,7 +145,7 @@ nunca aparece: sem login não há de quem guardar a marca de leitura.
           <input type="hidden" name="de_onde" value="area">
           <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
           <label for="motivo-ar{{ topico.pk }}">Motivo</label>
-          <input id="motivo-ar{{ topico.pk }}" name="motivo" maxlength="200" required placeholder="Ex.: link fora da lista permitida">
+          <input id="motivo-ar{{ topico.pk }}" name="motivo" maxlength="200" placeholder="Ex.: link fora da lista permitida">
           <button type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
         </form>
       </details>

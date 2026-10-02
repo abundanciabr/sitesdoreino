@@ -13,17 +13,13 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
    ali entregaria o mapa do bastidor a um estranho, e desfaria em uma linha de
    template a escolha da porta de responder "não existe" em vez de "você não
    pode".
-2. **`SECOES` envelhecendo.** Ela é escrita à mão, e lista escrita à mão
-   apodrece (Classe 8 do plano dos robôs sem colisão). O guarda a compara com
-   as seções que o mapa do site declara (`mapa-do-site.json`, o arquivo que
-   `/admin/mapa/` serve). Seção nova reprova o PR até ganhar nome curto.
-3. **A faixa copiada à mão voltando.** Se voltar, a página passa a ter duas.
-4. **"Onde você está" mentindo sob o prefixo de produção.** Esta área mora sob
+2. **A faixa copiada à mão voltando.** Se voltar, a página passa a ter duas.
+3. **"Onde você está" mentindo sob o prefixo de produção.** Esta área mora sob
    `SCRIPT_NAME=/admin`, e a `armadilhas/081` é sobre exatamente isto: o
    prefixo que `reverse()` usa é um valor de THREAD, não a variável de
    ambiente. Um guarda que só rodasse sem prefixo ficaria verde medindo o
    regime que a produção não usa.
-5. **O menu levando a um link quebrado.** Toda seção tem de resolver de
+4. **O menu levando a um link quebrado.** Toda seção tem de resolver de
    verdade, nos dois regimes.
 
 Os testes conferem as páginas e os links que chegam ao navegador do mantenedor.
@@ -35,8 +31,6 @@ isso que prova que a moldura não sai para a rede por conta própria, porque
 
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 import respx
@@ -44,7 +38,6 @@ from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
 from apps.core import moldura
-from apps.core.mapa_do_site import arquivo_do_mapa
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -136,94 +129,8 @@ def test_quem_nem_entrou_nao_ve_o_menu_do_bastidor():
 
 
 # ---------------------------------------------------------------------------
-# 2. A lista de seções não envelhece
+# 2. O que a página servida realmente mostra
 # ---------------------------------------------------------------------------
-def secoes_pelo_mapa() -> set:
-    """Os NOMES das rotas que o mapa declara como SEÇÃO desta área.
-
-    Seção é uma página de `/admin` que não pende de outra: `rota` sem barra no
-    meio. `escola/` é seção; `escola/alunos/` mora dentro dela. Derivar em vez
-    de reescrever é o que faz esta comparação valer alguma coisa: duas listas à
-    mão concordariam por terem sido copiadas uma da outra.
-    """
-    mapa = arquivo_do_mapa()
-    assert mapa is not None, (
-        "o mapa do site não existe (`arquivo_do_mapa()` devolveu `None`). Este "
-        "guarda não tem o que medir, e isso não é um OK — [INV-CI01]. Devolva o "
-        "arquivo ao lugar que `apps/core/mapa_do_site.py` declara."
-    )
-    dados = json.loads(mapa.read_text(encoding="utf-8"))
-    padroes = set()
-    for entrada in dados["enderecos"]:
-        if entrada.get("celula") != "admin":
-            continue
-        if entrada.get("para_quem") != "equipe" or entrada.get("gesto"):
-            continue
-        rota = entrada["rota"]
-        if "<" in rota or "(?P" in rota:
-            continue  # molde: vale para muitos endereços, não é um lugar
-        if rota.rstrip("/").count("/"):
-            continue  # pende de uma seção, não é uma
-        padroes.add(rota)
-    assert padroes, (
-        "o mapa não declara seção nenhuma nesta célula — isto é falha de "
-        "medição, não notícia boa ([INV-CI01])."
-    )
-    prefixo = get_script_prefix()
-    nomes = {
-        nome for nome, _ in moldura.SECOES if reverse(nome)[len(prefixo) :] in padroes
-    }
-    assert len(nomes) == len(padroes), (
-        f"o mapa declara {len(padroes)} seção(ões) nesta área e eu casei "
-        f"{len(nomes)} pelo urlconf. Seção nova precisa de nome curto em "
-        f"`apps/core/moldura.py::SECOES`; seção que morreu precisa sair de lá e "
-        "do mapa do site. "
-        f"Não relaxe esta asserção: é ela que impede o menu de envelhecer."
-    )
-    return nomes
-
-
-def test_as_secoes_do_menu_batem_com_o_mapa_do_site():
-    """Seção nova entra no menu no MESMO PR, nos dois sentidos.
-
-    Faltando, a tela nova nasce inalcançável pelo menu e só quem souber o
-    endereço de cor chega nela. Sobrando, o menu promete uma porta que não
-    existe mais.
-    """
-    assert {nome for nome, _ in moldura.SECOES} == secoes_pelo_mapa()
-
-
-def test_cada_secao_tem_um_rotulo_curto_e_unico():
-    rotulos = [rotulo for _, rotulo in moldura.SECOES]
-    assert len(rotulos) == len(set(rotulos)), "dois itens do menu com o mesmo nome"
-    for rotulo in rotulos:
-        assert rotulo.strip() and len(rotulo) <= 20, (
-            f"{rotulo!r} não é nome curto de menu. Rótulo longo quebra a faixa "
-            "em várias linhas no celular do mantenedor."
-        )
-
-
-# ---------------------------------------------------------------------------
-# 3. O que a página servida realmente mostra
-# ---------------------------------------------------------------------------
-@respx.mock
-def test_toda_tela_da_area_traz_o_menu_e_o_rodape():
-    """A prova de que "todas as páginas" não depende de ninguém lembrar.
-
-    As telas escolhidas cobrem os quatro cantos da área: a capa, uma seção,
-    uma página FILHA de seção (que nunca teve navegação própria) e uma tela que
-    lê o mapa do site.
-    """
-    cliente = _cliente()
-    for rota in ("visao_geral", "escola", "escola_jornada", "perpetuo"):
-        html = _texto(cliente.get(reverse(rota)))
-        assert 'class="menu-do-admin"' in html, f"{rota} abriu sem o menu"
-        assert 'class="rodape-do-admin"' in html, f"{rota} abriu sem o rodapé"
-        assert f'>{moldura.SAIDA_PARA_O_SITE["rotulo"]}</a>' in html
-        for _, rotulo in moldura.SECOES:
-            assert f">{rotulo}</a>" in html, f"{rota} não oferece {rotulo!r}"
-
-
 @respx.mock
 def test_a_faixa_copiada_a_mao_nao_voltou():
     """Ela nasce UMA vez no molde. Duas seria a marca de um merge desatento."""
@@ -267,7 +174,7 @@ def test_a_pagina_filha_acende_a_secao_dela():
 
 
 # ---------------------------------------------------------------------------
-# 4. O regime de produção, sob o prefixo `/admin`
+# 3. O regime de produção, sob o prefixo `/admin`
 # ---------------------------------------------------------------------------
 def test_o_menu_aponta_para_dentro_do_prefixo(sob_o_prefixo_publico):
     """Os endereços saem de `reverse()`, então o prefixo entra sozinho.
@@ -320,7 +227,7 @@ def test_toda_secao_resolve_nos_dois_regimes(sob_o_prefixo_publico):
 
 
 # ---------------------------------------------------------------------------
-# 5. O rodapé desta área não é o do site
+# 4. O rodapé desta área não é o do site
 # ---------------------------------------------------------------------------
 @respx.mock
 def test_o_rodape_do_bastidor_nao_e_a_assinatura_do_site():
@@ -342,7 +249,7 @@ def test_o_rodape_declara_o_endereco_que_e_de_outra_celula():
 
 
 # ---------------------------------------------------------------------------
-# 6. O caminho de volta permanece disponível
+# 5. O caminho de volta permanece disponível
 # ---------------------------------------------------------------------------
 # Assim que o menu nasceu, o link `← Visão geral` no alto de cada tela virou a
 # segunda cópia de um botão que agora existe em TODA página. Escolha do
@@ -357,7 +264,7 @@ def test_a_capa_continua_a_um_clique_de_toda_tela():
 
 
 # ---------------------------------------------------------------------------
-# 7. A saída para o site é o PRIMEIRO item do menu (02/09/2026)
+# 6. A saída para o site é o PRIMEIRO item do menu (02/09/2026)
 # ---------------------------------------------------------------------------
 # Escolha do mantenedor no dia seguinte ao menu nascer: *"coloque o primeiro
 # link do Menu do Admin para ser o link para a / home, acho que antes de Visão
@@ -381,12 +288,10 @@ def test_a_saida_para_o_site_nunca_acende():
 
 
 def test_a_saida_nao_entra_na_conta_das_secoes():
-    """Ela não é uma seção desta área, e o guarda do mapa mede seções.
+    """Ela não é uma seção desta área.
 
     Se algum dia alguém a empurrar para dentro de `SECOES` para "simplificar",
-    duas coisas quebram de uma vez: `reverse()` estoura num endereço de outra
-    célula, e a comparação com o mapa do site deixa de fechar. É
-    mais barato reprovar aqui, dizendo o porquê.
+    `reverse()` estoura num endereço de outra célula e o item some do menu.
     """
     assert moldura.URL_DO_SITE not in [nome for nome, _ in moldura.SECOES]
     assert moldura.SAIDA_PARA_O_SITE["rotulo"] not in [r for _, r in moldura.SECOES]

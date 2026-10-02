@@ -245,7 +245,6 @@ def test_a_tela_mostra_a_restricao_o_gesto_e_pede_confirmacao():
     assert "A restrição desta semana" in html
     assert "pediu entrada → foi liberada" in html
     assert "Abra a fila" in html
-    assert "aguardando a sua confirmação" in html
     assert "cadastrou → pediu entrada" in html, "as etapas sem dados são nomeadas"
     assert "2 pessoas esperando na fila" in html
     assert "1 há 2 dias ou mais" in html

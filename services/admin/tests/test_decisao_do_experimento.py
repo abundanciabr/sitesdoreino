@@ -276,20 +276,16 @@ def test_promover_inconclusivo_sem_confirmacao_publica_e_encerra(veredito):
 
 @respx.mock
 @pytest.mark.django_db
-def test_promover_inconclusivo_com_confirmacao_publica_e_registra_a_confirmacao(
-    veredito,
-):
+def test_promover_inconclusivo_publica_sem_pedir_confirmacao(veredito):
     veredito["valor"] = "inconclusivo"
     rotas = _catalogo(experimentos=[_experimento()])
-    r = _decidir(
-        _dentro(), decisao="promover", variante="b", confirmo_inconclusivo="sim"
-    )
+    r = _decidir(_dentro(), decisao="promover", variante="b")
 
     assert r.status_code == 302
     assert rotas["publicar"].call_count == 1
     assert (
         Registro.objects.get(acao=Registro.DECIDIR_EXPERIMENTO).detalhe
-        == "promover b com resultado não conclusivo"
+        == "promover b"
     )
 
 

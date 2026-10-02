@@ -57,12 +57,8 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models.functions import Length
 
-# O `CHECK (char_length(motivo) >= 15)` do `Parametro` precisa de `__length`, e o
-# Django nao registra essa transformacao de fabrica. Registrar aqui e o caminho
-# que a propria documentacao do Django indica; a alternativa seria `RunSQL` na
-# migracao, que sairia do vocabulario do ORM e some do `makemigrations` de quem
-# vier depois. O efeito e do processo desta celula, e ela e a unica que roda
-# neste container.
+# A migração inicial usa `motivo__length`; o lookup precisa continuar registrado
+# para bancos novos percorrerem o histórico de migrações antes de removê-lo.
 models.TextField.register_lookup(Length)
 
 # ---------------------------------------------------------------------------
@@ -1625,13 +1621,6 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
     "piso_por_nivel.avancado": ("centavos", "Piso sugerido do nível avançado"),
 }
 
-# O tamanho mínimo do motivo, do `MudancaDeParametro` do contrato em papel. Não é
-# número de negócio (não está na lei §6): é a régua de "escreveu por quê", e ela
-# existe porque um histórico com motivo "ajuste" não responde nada seis meses
-# depois.
-TAMANHO_MINIMO_DO_MOTIVO = 15
-
-
 class ParametroAusente(RuntimeError):
     """Falta no banco um parâmetro da lei §6 que alguém precisa ler.
 
@@ -1673,7 +1662,7 @@ class Parametro(models.Model):
     # marcar uma mudança para valer a partir de um instante escolhido, e a
     # leitura por `agora` depende disso ser um dado, não o relógio do INSERT.
     desde = models.DateTimeField()
-    motivo = models.TextField()
+    motivo = models.TextField(blank=True)
     # Id da plataforma de quem mudou. Vazio só na semente, que não tem pessoa
     # atrás: quem semeia é a instalação da célula.
     quem = id_da_plataforma()
@@ -1702,10 +1691,6 @@ class Parametro(models.Model):
             ),
             models.CheckConstraint(
                 condition=~models.Q(valor=""), name="parametro_tem_valor"
-            ),
-            models.CheckConstraint(
-                condition=models.Q(motivo__length__gte=TAMANHO_MINIMO_DO_MOTIVO),
-                name="mudanca_de_parametro_tem_motivo_escrito",
             ),
         ]
 

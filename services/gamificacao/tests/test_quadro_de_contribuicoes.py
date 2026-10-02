@@ -647,8 +647,59 @@ def test_a_equipe_publica_pela_tela_com_csrf(monkeypatch):
     tarefa = TarefaComunitaria.objects.get()
     assert tarefa.autor_id == PROFESSORA
     assert tarefa.responsavel_id == MONITOR
+    assert tarefa.responsavel_nome == "Monitor Beto"
     assert tarefa.criterios == ["Cada link tem um comentário", "Nada de link quebrado"]
     assert tarefa.vagas == 3 and tarefa.aberta
+
+
+def test_publicar_sem_redigitar_nome_usa_nome_ja_conhecido(monkeypatch):
+    _entrar_como(monkeypatch, PROFESSORA)
+    Pessoa.objects.create(
+        id_da_plataforma=MONITOR,
+        email="monitor@exemplo.test",
+        nome_exibido="Monitor Beto",
+    )
+    formulario = Client().get("/interno/contribuicoes").content.decode()
+    assert f'value="{MONITOR}"' in formulario
+    assert f"Monitor Beto ({MONITOR})" in formulario
+
+    resposta = Client().post(
+        "/interno/contribuicoes/gesto",
+        {
+            "gesto": "publicar",
+            "titulo": "Organizar referências",
+            "o_que_entregar": "Lista comentada.",
+            "quem_pode": "Alunos da escola.",
+            "criterios": "Links funcionam",
+            "responsavel_id": MONITOR,
+            "vagas": "1",
+        },
+    )
+
+    assert resposta.status_code == 302
+    assert TarefaComunitaria.objects.get().responsavel_nome == "Monitor Beto"
+
+
+def test_publicar_sem_nome_conhecido_mostra_identificacao_honesta(monkeypatch):
+    _entrar_como(monkeypatch, PROFESSORA)
+
+    resposta = Client().post(
+        "/interno/contribuicoes/gesto",
+        {
+            "gesto": "publicar",
+            "titulo": "Organizar referências",
+            "o_que_entregar": "Lista comentada.",
+            "quem_pode": "Alunos da escola.",
+            "criterios": "Links funcionam",
+            "responsavel_id": MONITOR,
+            "vagas": "1",
+        },
+    )
+
+    assert resposta.status_code == 302
+    assert TarefaComunitaria.objects.get().responsavel_nome == (
+        f"Membro da equipe ({MONITOR})"
+    )
 
 
 def test_o_responsavel_precisa_ser_da_equipe(monkeypatch):

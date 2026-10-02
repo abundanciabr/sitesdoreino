@@ -15,7 +15,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 SCRIPTS_AUTOMATICOS = (
     RAIZ / "infra" / "deploy-celula-na-vps.sh",
-    RAIZ / "infra" / "sincronizar-infra-na-vps.sh",
     RAIZ / "infra" / "backup-do-banco.sh",
 )
 

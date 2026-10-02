@@ -751,18 +751,18 @@ def test_a_falha_da_ia_nao_apaga_a_tela_nem_o_que_foi_digitado(monkeypatch):
 
 
 @respx.mock
-def test_o_botao_de_montar_o_pedido_continua_fazendo_o_que_fazia():
+def test_o_botao_de_fechar_continua_fazendo_o_que_fazia():
     """O analista não roubou o POST do fechamento, e o dele não fecha o ciclo."""
     _a_escola_responde()
     cliente = _dentro()
 
     montou = cliente.post(reverse("fechamento"), CAMPOS_DO_FECHAMENTO)
-    assert montou.context["pedido"] is not None
+    assert montou.context["montou"] is True
     assert montou.context["analista"]["pediram"] is False
 
     perguntou = cliente.post(
         reverse("fechamento"), {"acao": "analista", **CAMPOS_DO_FECHAMENTO}
     )
-    assert perguntou.context["pedido"] is None
+    assert perguntou.context["montou"] is False
     assert perguntou.context["analista"]["pediram"] is True
     assert all(chamada.request.method == "GET" for chamada in respx.calls)

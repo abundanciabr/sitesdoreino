@@ -1099,9 +1099,9 @@ class HistoricoDaConcessao(models.Model):
 
     A primeira linha nasce com a concessão (`concedida`), pela porta única
     `validacao.conceder()`. As outras são gestos da equipe, e cada uma diz quem,
-    quando, por quê, o estado de antes e o de depois; a correção diz também a
-    referência de antes e a de depois. O banco recusa gesto da equipe sem nome
-    e sem motivo.
+    quando, o estado de antes e o de depois, e o porquê se a pessoa quis dizê-lo;
+    a correção diz também a referência de antes e a de depois. O banco recusa
+    gesto da equipe sem nome. O motivo é opcional.
     """
 
     class Gesto(models.TextChoices):
@@ -1129,9 +1129,8 @@ class HistoricoDaConcessao(models.Model):
         ordering = ["registrado_em", "id"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(gesto="concedida")
-                | (~models.Q(quem_id="") & ~models.Q(motivo="")),
-                name="gesto_da_equipe_diz_quem_e_por_que",
+                condition=models.Q(gesto="concedida") | ~models.Q(quem_id=""),
+                name="gesto_da_equipe_diz_quem",
             ),
         ]
 
@@ -1464,9 +1463,9 @@ class TarefaComunitaria(models.Model):
     automática cai pela própria conta, e dá-la por tarefa desmentiria o critério
     que `/conquistas/medalhas` mostra.
 
-    `responsavel_nome` existe porque esta célula não sabe nome de ninguém: o
-    espelho `Pessoa` guarda o id opaco, e mostrar um id ao aluno não diz quem
-    vai olhar o trabalho dele.
+    `responsavel_nome` congela o texto que o aluno vê: usa o nome de exibição
+    do espelho `Pessoa` quando disponível, ou uma identificação honesta da
+    equipe; quem publica ainda pode escrever um nome para exibição.
     """
 
     site_id = id_do_site()

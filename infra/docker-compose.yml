@@ -75,10 +75,11 @@ services:
       - letsencrypt:/letsencrypt
     # O gateway recebe DOIS valores, e só eles: os tokens que os roteadores da
     # entrada privada injetam. Ele nunca recebe o `admin.env` inteiro. Quem os
-    # exporta é `sincronizar-infra-na-vps.sh`, lendo o env real da VPS.
+    # exporta é `ativar-aplicacao.py`, lendo o env real da VPS. Sem eles, a
+    # entrada privada recusa e o resto do site segue no ar.
     environment:
-      ALUNOS_API_TOKEN: ${ALUNOS_API_TOKEN:?defina ALUNOS_API_TOKEN em env/admin.env}
-      TOKEN_CATALOGO: ${TOKEN_CATALOGO:?defina TOKEN_CATALOGO em env/admin.env}
+      ALUNOS_API_TOKEN: ${ALUNOS_API_TOKEN:-}
+      TOKEN_CATALOGO: ${TOKEN_CATALOGO:-}
     networks: [edge]
 
   postgres:

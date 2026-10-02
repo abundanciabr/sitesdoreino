@@ -745,6 +745,45 @@ def test_formulario_grava_varias_mudancas(no_plantao, client):
     assert len(Laudo.objects.get().forcas) == 4
 
 
+def test_formulario_devolve_com_orientacao_sem_aula(no_plantao, client):
+    resposta = client.post(
+        reverse("plantao-ficha", args=[no_plantao.id]),
+        {
+            "nota_0": "4", "frase_0": "O bevel ficou uniforme.",
+            "nota_1": "5", "frase_1": "A proporção bateu.",
+            "mudanca_texto": "Conversar sobre a apresentação final.",
+            "mudanca_aula": "",
+            "mudancas_adicionais": "Ajustar a legenda da peça.",
+            "decisao": "devolvido",
+            "data_de_retorno": (
+                timezone.localdate() + dt.timedelta(days=2)
+            ).isoformat(),
+        },
+        HTTP_COOKIE=COOKIE,
+    )
+    assert resposta.status_code == 302
+    assert Laudo.objects.get().mudancas == [
+        {"texto": "Conversar sobre a apresentação final."},
+        {"texto": "Ajustar a legenda da peça."},
+    ]
+
+
+def test_formulario_recusa_aula_adicional_inexistente(no_plantao, client):
+    resposta = client.post(
+        reverse("plantao-ficha", args=[no_plantao.id]),
+        {
+            "nota_0": "4", "frase_0": "O bevel ficou uniforme.",
+            "nota_1": "5", "frase_1": "A proporção bateu.",
+            "mudanca_texto": "Revisar apresentação.",
+            "mudancas_adicionais": "E99 | Ajustar legenda.",
+            "decisao": "aberto",
+        },
+        HTTP_COOKIE=COOKIE,
+    )
+    assert resposta.status_code == 422
+    assert Laudo.objects.count() == 0
+
+
 def test_assistente_entende_lista_de_mudancas(no_plantao):
     itens = agente._mudancas(
         {"mudancas": [

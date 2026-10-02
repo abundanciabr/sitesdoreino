@@ -283,7 +283,6 @@ def test_setparameter_acrescenta_uma_linha_e_nao_toca_na_anterior(
             {"valor": "4", "motivo": "um motivo suficientemente longo", "quem": "p1"},
             404,
         ),
-        ("relogio_da_oferta", {"valor": "4", "motivo": "ajuste", "quem": "p1"}, 400),
         (
             "relogio_da_oferta",
             {
@@ -312,14 +311,42 @@ def test_setparameter_acrescenta_uma_linha_e_nao_toca_na_anterior(
 def test_setparameter_recusa_o_que_a_tabela_nao_aceitaria(
     client, tokens, site, semeado, chave, corpo, codigo
 ):
-    """Chave fora do vocabulário, motivo curto, valor fora do tipo e mudança sem
-    autor. As quatro recusas acontecem ANTES do banco, com frase em português,
+    """Chave fora do vocabulário, valor fora do tipo e mudança sem
+    autor. As recusas acontecem ANTES do banco, com frase em português,
     porque o `IntegrityError` que o banco daria não diz o que fazer."""
     resposta = chamar(
         client, "put", f"{BASE}/parametros/{chave}", corpo, token=TOKEN_DE_ESCRITA
     )
     assert resposta.status_code == codigo, resposta.content
     assert Parametro.objects.filter(site_id=SITE_PADRAO, chave=chave).count() <= 1
+
+
+@pytest.mark.parametrize("motivo", [None, "", "ajuste"])
+def test_setparameter_aceita_motivo_ausente_vazio_ou_curto_e_preserva_historico(
+    client, tokens, site, semeado, motivo
+):
+    corpo = {"valor": "4", "quem": "prof-1"}
+    if motivo is not None:
+        corpo["motivo"] = motivo
+    resposta = chamar(
+        client,
+        "put",
+        f"{BASE}/parametros/relogio_da_oferta",
+        corpo,
+        token=TOKEN_DE_ESCRITA,
+    )
+    assert resposta.status_code == 200, resposta.content
+    esperado = motivo or ""
+    assert resposta.json()["motivo"] == esperado
+    assert resposta.json()["quem"] == "prof-1"
+    historico = list(
+        Parametro.objects.filter(site_id=SITE_PADRAO, chave="relogio_da_oferta")
+        .order_by("desde")
+        .values_list("valor", "motivo", "quem")
+    )
+    assert len(historico) == 2
+    assert historico[0][0] == "3"
+    assert historico[1] == ("4", esperado, "prof-1")
 
 
 def test_getqueuestanding_de_quem_nao_tem_perfil_e_200_com_existe_falso(

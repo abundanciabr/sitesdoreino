@@ -21,7 +21,6 @@ RAIZ = Path(__file__).resolve().parents[2]
 DINAMICO = RAIZ / "infra" / "traefik" / "dynamic" / "entrada-privada.yml"
 ESTATICO = RAIZ / "infra" / "traefik" / "traefik.yml"
 COMPOSE = RAIZ / "infra" / "docker-compose.yml"
-SINCRONIZADOR = RAIZ / "infra" / "sincronizar-infra-na-vps.sh"
 
 AS_QUATRO_LEITURAS = {
     ("GET", "/alunos/api/alunos/pre-matriculas", ("status", "aguardando")),
@@ -109,43 +108,6 @@ def test_o_entrypoint_privado_existe_e_nao_e_publico():
     assert entradas["privada"]["address"] == ":8443"
 
 
-def test_a_sincronizacao_sonda_a_entrada_privada_antes_de_dizer_concluida():
-    texto = SINCRONIZADOR.read_text(encoding="utf-8")
-    assert "127.0.0.1:8443" in texto, (
-        "container em `running` não prova que a rota existe; a sonda é o que prova."
-    )
-    assert texto.index("sonda da entrada privada") < texto.index("SINCRONIZACAO-CONCLUIDA: $STAMP"), (
-        "a sonda tem de acontecer ANTES da sentinela, senão a sincronização "
-        "fica verde sem a porta funcionar."
-    )
-    for _, caminho, _ in (lida(r) for r in regras()):
-        assert caminho in texto, f"a sonda não prova {caminho}"
-
-
-def test_a_sonda_exige_404_no_que_esta_fora_da_lista():
-    texto = SINCRONIZADOR.read_text(encoding="utf-8")
-    assert "-X POST" in texto and '"404"' in texto, (
-        "sem provar a recusa, uma lista positiva quebrada passa despercebida."
-    )
-
-
-# ---------------------------------------------------------------------------
-# O Traefik lê o arquivo ANTES do YAML: os testes acima, não.
-#
-# Em 15/09/2026 a publicação da fase 2 derrubou o roteamento público inteiro,
-# com 404 em TODOS os hosts, e nenhum dos testes acima viu. O motivo é que eles
-# medem o resultado de `yaml.safe_load`, que descarta comentários, enquanto o
-# provedor de arquivo do Traefik renderiza o texto CRU como template Go antes
-# de interpretar o YAML. Um `{{ ... }}` dentro de um comentário é ação de
-# template para ele. O que derrubou foi uma linha que documentava o ensaio:
-#
-#     #   - `{{ env }}` funciona no provedor de arquivo, ...
-#
-# `env` sem argumento reprova o template, o arquivo inteiro é recusado, e o
-# provedor `file` cai junto com ele, levando `plataforma.yml` e a raiz do site.
-# Medido com `traefik:v3.4` de verdade: com essa linha, ZERO roteadores sobem;
-# sem ela, `funil@file` e os demais sobem.
-# ---------------------------------------------------------------------------
 ACAO_DE_TEMPLATE = re.compile(r"\{\{(.*?)\}\}", re.DOTALL)
 INJECAO_DE_VARIAVEL = re.compile(r'^\s*env\s+"[A-Z0-9_]+"\s*$')
 PASTA_DINAMICA = RAIZ / "infra" / "traefik" / "dynamic"

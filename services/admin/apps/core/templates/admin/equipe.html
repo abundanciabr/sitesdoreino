@@ -144,7 +144,7 @@
           </form>
           {% endif %}
           <a class="botao-pequeno" href="{% url 'tarefa_editar' tarefa.id %}">Editar</a>
-          {% if tarefa.situacao != 'concluida' and membro and tarefa.responsavel_id == membro.id %}
+          {% if tarefa.situacao != 'concluida' and tarefa.responsavel_id %}
           <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ endereco_atual }}">
