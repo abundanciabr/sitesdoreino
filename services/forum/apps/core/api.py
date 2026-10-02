@@ -220,7 +220,7 @@ def list_recent_topics(request, limite: int = 10):
     description=(
         "As contas da parte publica do forum, para a area administrativa\n"
         "mostrar o tamanho da comunidade sem ler o banco de outra celula\n"
-        "(Lei 3).\n"
+        "(célula não importa código nem lê banco de outra).\n"
         "\n"
         "SO O PUBLICO, de proposito: contagem de area trancada e informacao\n"
         "sobre area trancada. Quem precisar do numero de dentro vera na tela\n"

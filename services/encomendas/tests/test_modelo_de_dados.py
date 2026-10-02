@@ -97,7 +97,7 @@ def test_site_id_em_toda_entidade():
             faltando.append(modelo.__name__)
 
     assert faltando == [], (
-        f"tabela sem `site_id`: {faltando}. Lei 9 / [INV-P11]. Se a tabela nova "
+        f"tabela sem `site_id`: {faltando}. multissítio, site é dado / [INV-P11]. Se a tabela nova "
         "é mesmo de plataforma inteira, acrescente-a a `SEM_SITE_ID` com o "
         "motivo escrito, no MESMO PR: a exceção precisa ser visível."
     )
@@ -113,7 +113,7 @@ def test_a_fronteira_de_site_da_pessoa_mora_no_perfil():
     }
     assert ("pessoa", "site_id") in chaves, (
         "o `PerfilProfissional` deixou de separar os sites. Sem esta unicidade, "
-        "a exceção de `Pessoa` vira um vazamento entre escolas (Lei 9)."
+        "a exceção de `Pessoa` vira um vazamento entre escolas (multissítio, site é dado)."
     )
 
 

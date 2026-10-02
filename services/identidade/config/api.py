@@ -19,7 +19,7 @@ api = NinjaAPI(
     description=(
         "Superfície de MÁQUINA da identidade do site. Existe por uma razão só:\n"
         "qualquer célula precisa saber quem é a pessoa em qualquer página, e o\n"
-        "cookie de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e\n"
+        "cookie de sessão é assinado e resolvido AQUI (muralha de dados, célula não lê banco de outra — o banco e\n"
         "o segredo não saem desta célula).\n"
         "\n"
         "Lei do assunto: docs/decisoes/DECISAO-celula-de-identidade.md. A\n"

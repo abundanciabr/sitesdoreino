@@ -25,7 +25,7 @@ paths:
         existe `GET /pre-matriculas`. Duas perguntas diferentes, duas portas.
 
         `site_id` opcional: ausente = todas as escolas, e cada linha diz de qual
-        veio. O painel do dono e plataforma-inteira (Lei 9).
+        veio. O painel do dono e plataforma-inteira (multissítio, site é dado).
 
         PII: devolve o WhatsApp, e continua sendo PORTA DE PAINEL — a mesma
         familia de `GET /pre-matriculas`. A lei da fila §5 diz que o numero sai
@@ -232,7 +232,7 @@ paths:
           description: |
             OPCIONAL desde 28/08/2026 (DECISAO-categorias-de-usuario). Ausente
             = a fila de TODAS as escolas, e cada linha diz de qual veio.
-            A plataforma e uma, as lojas sao N (Lei 9): o painel do dono e
+            A plataforma e uma, as lojas sao N (multissítio, site é dado): o painel do dono e
             plataforma-inteira, e exigir que ele soubesse o codigo interno de
             uma escola para ver quem espera seria pedir que ele guardasse um
             identificador opaco. Passando o parametro, filtra — o comportamento

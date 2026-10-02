@@ -22,7 +22,7 @@ api = NinjaAPI(
         "está lendo. Nenhuma rota aqui devolve e-mail — o destinatário é sempre o id\n"
         "da PLATAFORMA (DECISAO-EVO-01 §3).\n"
         "\n"
-        'Toda rota exige `site_id` (CONSTITUICAO.md Lei 9 — "site_id acompanha toda\n'
+        'Toda rota exige `site_id` (multissítio, site é dado — "site_id acompanha toda\n'
         'entidade pública"; decisão confirmada em 27/08/2026, na mesma sessão da\n'
         "Fase 4): os avisos de uma pessoa são sempre os do site de onde a chamada\n"
         "vem, nunca um apanhado de todo site que ela já tiver tocado. `notificacao.\n"

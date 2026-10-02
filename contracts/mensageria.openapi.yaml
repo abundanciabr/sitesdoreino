@@ -127,7 +127,7 @@ paths:
         `versao_publicada` e nula enquanto a jornada so tiver rascunho.
 
 
-        `site_id` e obrigatorio (CONSTITUICAO Lei 9): sem ele, 422.
+        `site_id` e obrigatorio (multissítio, site é dado): sem ele, 422.
 
         '
   /jornadas/{slug}:

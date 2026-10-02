@@ -5,7 +5,7 @@ info:
   description: |
     Superfície de MÁQUINA da identidade do site. Existe por uma razão só:
     qualquer célula precisa saber quem é a pessoa em qualquer página, e o
-    cookie de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e
+    cookie de sessão é assinado e resolvido AQUI (muralha de dados, célula não lê banco de outra — o banco e
     o segredo não saem desta célula).
 
     Lei do assunto: docs/decisoes/DECISAO-celula-de-identidade.md. A

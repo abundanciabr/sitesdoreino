@@ -133,7 +133,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--site",
             required=True,
-            help="o site_id que recebe as linhas (Lei 9: uma fabrica, N lojas)",
+            help="o site_id que recebe as linhas (multissítio, site é dado: uma fabrica, N lojas)",
         )
 
     def handle(self, *args, **opcoes):

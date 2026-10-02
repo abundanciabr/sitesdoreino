@@ -65,7 +65,7 @@ def test_nenhuma_foreign_key_aponta_para_fora_da_celula():
                 forasteiras.append(f"{modelo._meta.label}.{campo.name} -> {alvo.label}")
 
     assert not forasteiras, (
-        "FK saindo do banco da célula (Lei 3 / spec §8): "
+        "FK saindo do banco da célula (sem FK para fora da célula / spec §8): "
         + ", ".join(forasteiras)
         + ". Referência a dado de outra célula é SNAPSHOT em coluna opaca "
         "(o que `Quadro.site_id` e `Quadro.produto_id` já são), nunca FK."

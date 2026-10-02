@@ -139,7 +139,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--site",
             required=True,
-            help="o site_id que recebe o curso (Lei 9: uma fabrica, N lojas)",
+            help="o site_id que recebe o curso (multissítio, site é dado: uma fabrica, N lojas)",
         )
 
     @transaction.atomic

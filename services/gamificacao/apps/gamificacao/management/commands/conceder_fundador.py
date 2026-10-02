@@ -162,7 +162,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--site",
             required=True,
-            help="o site_id da escola que concede (Lei 9: uma fábrica, N lojas)",
+            help="o site_id da escola que concede (multissítio, site é dado: uma fábrica, N lojas)",
         )
         # Sem `required=True` de propósito: a recusa escrita à mão explica POR QUE
         # a lista não é derivável, e essa explicação é a coisa mais importante

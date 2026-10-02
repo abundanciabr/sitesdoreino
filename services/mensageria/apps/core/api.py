@@ -330,7 +330,7 @@ def _passos_da_versao(versao) -> List[PassoSaida]:
         "\n"
         "`versao_publicada` e nula enquanto a jornada so tiver rascunho.\n"
         "\n"
-        "`site_id` e obrigatorio (CONSTITUICAO Lei 9): sem ele, 422.\n"
+        "`site_id` e obrigatorio (multissítio, site é dado): sem ele, 422.\n"
     ),
 )
 def listar_jornadas(request, site_id: str = ""):

@@ -9,7 +9,7 @@ info:
 
     quem é a pessoa em qualquer página, e o cookie de sessão é assinado e
 
-    resolvido AQUI (Lei 2, Lei 3 — o banco e o segredo não saem desta
+    resolvido AQUI (muralha de dados, célula não lê banco de outra — o banco e o segredo não saem desta
 
     célula). Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md.
 
@@ -20,7 +20,7 @@ info:
 
     mantenedor: uma porta só). O Admin pergunta e escreve por aqui porque
 
-    pela Lei 3 nenhuma célula lê o banco de outra. A resposta carrega os
+    nenhuma célula lê o banco de outra. A resposta carrega os
 
     FATOS de cada ideia — nunca colunas nem ordenação, que são da tela — e
 
