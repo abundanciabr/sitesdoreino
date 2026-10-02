@@ -115,7 +115,7 @@
       {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
       <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
       <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado role="status"></span></p>
-      <textarea readonly rows="4" data-todos class="dica" aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
+      <textarea readonly rows="4" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
 {% endfor %}</textarea>
       {% for item in links %}
         <div class="link">
