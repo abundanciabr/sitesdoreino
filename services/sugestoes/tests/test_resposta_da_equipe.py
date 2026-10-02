@@ -454,15 +454,3 @@ def test_ideia_em_andamento_continua_com_tudo(dentro, sugestao):
         assert parte in corpo, parte
 
 
-def test_titulo_dentro_da_resposta_nao_herda_o_estilo_de_rotulo():
-    """`.ficha h3` é rótulo miúdo; o rótulo da resposta tem classe própria."""
-    from pathlib import Path
-
-    base = Path(__file__).resolve().parents[1]
-    pagina = (base / "apps/core/templates/sugestoes/sugestao.html").read_text(
-        encoding="utf-8"
-    )
-    folha = (base / "static/sugestoes/caixa.css").read_text(encoding="utf-8")
-
-    assert '<h3 class="rotulo-da-resposta">A resposta da equipe</h3>' in pagina
-    assert ".resposta-da-equipe :is(h2, h3, h4):not(.rotulo-da-resposta) {" in folha

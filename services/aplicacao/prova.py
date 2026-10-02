@@ -1,6 +1,6 @@
 """Ensaio isolado da troca: 17 bancos legados, registry único e HTTP.
 
-Executado pelo publicador antes da ativação, com PostgreSQL e Redis descartáveis.
+Pode ser executado com PostgreSQL e Redis descartáveis.
 Nunca lê env nem banco de produção.
 """
 

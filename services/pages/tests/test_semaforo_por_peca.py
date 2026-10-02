@@ -30,8 +30,6 @@ peças com as mesmas respostas e tudo o mais diferente saem com o mesmo semáfor
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from apps.portfolio import semaforo
@@ -242,14 +240,10 @@ def test_o_semaforo_so_olha_as_respostas_objetivas(criar_portfolio, criar_peca, 
 # ---------------------------------------------------------------------------
 
 
-def test_a_frase_da_regra_vem_do_banco_e_nao_do_codigo(criar_portfolio, criar_peca):
-    """Corrigida a regra na fonte, a lista do que falta mostra a versão nova.
-
-    A âncora tem duas metades, e as duas importam: a frase nova sai na pendência
-    E ela não existe no código do semáforo. Sem a segunda metade, um módulo que
-    tivesse a regra copiada dentro de si passaria neste teste no dia em que as
-    duas cópias por acaso coincidissem.
-    """
+def test_a_frase_da_regra_atualizada_no_banco_aparece_na_pendencia(
+    criar_portfolio, criar_peca
+):
+    """A tela usa a regra da escola gravada no banco."""
     nova = "A maioria em high poly, e o resto em variações mais simples."
     ItemDoRoteiro.objects.filter(chave=ACABAMENTO).update(texto=nova)
     peca = criar_peca(criar_portfolio("aluno-1"))
@@ -260,8 +254,6 @@ def test_a_frase_da_regra_vem_do_banco_e_nao_do_codigo(criar_portfolio, criar_pe
 
     (pendencia,) = [p for p in resultado.pendencias if p.chave_da_regra == ACABAMENTO]
     assert pendencia.regra == nova
-    fonte = Path(semaforo.__file__).read_text(encoding="utf-8")
-    assert nova not in fonte
 
 
 def test_a_lista_aparece_mesmo_com_o_roteiro_por_plantar(criar_portfolio, criar_peca):

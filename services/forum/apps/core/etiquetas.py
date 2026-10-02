@@ -60,12 +60,10 @@ logger = logging.getLogger("forum.etiquetas")
 #
 # Por isso o fórum guarda o mapa, com as frases escritas à mão em português.
 #
-# **A saída bonita seria acrescentar `titulo` ao contrato, e ela está PROIBIDA
-# aqui.** Duas razões, e as duas valem para quem ler isto no futuro:
+# Acrescentar `titulo` ao contrato mudaria o formato e ainda deixaria
+# uma decisão de idioma ambígua:
 #
-#   1. Mexer em `contracts/` é Rito de Contrato, com o mantenedor presente
-#      (`RITOS.md` §3). Não se faz dentro de um lote de trabalho paralelo.
-#   2. O contrato manda SLUG de propósito, e está escrito lá: o site serve três
+#   - O contrato manda SLUG de propósito, e está escrito lá: o site serve três
 #      idiomas, e transmitir "Modelador" congelaria o idioma de quem escreveu.
 #      Quem lê é quem traduz — que é exatamente o que este mapa faz.
 #

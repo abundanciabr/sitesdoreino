@@ -14,11 +14,9 @@
 # (`ci/cerca-de-celula.sh`) proíbe juntar os dois no mesmo PR, então a ordem é a
 # única variável livre.
 #
-# O QUE SE LÊ ANTES DE CONGELAR O QUE ELE IMPRIME (`armadilhas/324`): o
-# `info.description` do documento e o `summary`/`description` de cada operação
+# O `info.description` do documento e o `summary`/`description` de cada operação
 # são a única parte do contrato escrita para uma PESSOA, e nenhuma máquina
-# confere se eles descrevem o que o código faz. Depois do congelamento, corrigir
-# uma frase dessas exige outro Rito de Contrato.
+# confere se eles descrevem o que o código faz.
 #
 # `management/` e `commands/` não levam `__init__.py`, de propósito: pacote de
 # namespace funciona para comandos do Django, e a `gamificacao` já roda assim

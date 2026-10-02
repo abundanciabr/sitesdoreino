@@ -21,11 +21,11 @@ normalização: há uma chamada.
 
 UMA OPERAÇÃO SÓ, E ELA SÓ LÊ
 -----------------------------
-Não há verbo que promova nem que remova administrador, e a ausência é decisão:
+Não há verbo que promova nem que remova administrador:
 o conjunto de tokens desta casa é plano, então todo par que ganha o token para
 ler ganharia junto o poder de escrever (`armadilhas/318`). Nascendo
-somente-leitura, essa conta não existe. Acrescentar escrita aqui é Rito de
-Contrato novo, e muda o cálculo: exigiria um segundo grau de token.
+somente-leitura, essa conta não existe. Uma futura operação de escrita exigiria
+um segundo grau de token.
 
 `e_administrador: false` É RESPOSTA, NUNCA ERRO
 ------------------------------------------------

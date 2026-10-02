@@ -775,20 +775,19 @@ paths:
     # A operacao `delete` (deleteEnrollment) MORREU AQUI em 29/08/2026, e a
     # ausencia dela e a lei: `docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md`.
     #
-    # O mantenedor decidiu que o cadastro de um aluno NUNCA e apagado — quem sai
+    # O cadastro de um aluno não é apagado — quem sai
     # vira ex-aluno (`PATCH` com `status: encerrada`), a ficha fica, e quem quiser
     # voltar pede entrada de novo pela fila. A porta que apagava saiu junto com o
-    # botao porque um botao removido volta com uma linha de template; uma porta
-    # removida do contrato exige o Rito §3 e a etiqueta `contrato-remocao`.
+    # botao porque um botao removido volta com uma linha de template.
     #
     # ISTO REVERTE a `DECISAO-administradores-e-apagar.md` §4, de 28/08/2026, que
     # criou a porta como "o direito da pessoa de sumir do sistema". Esse direito
     # continua existindo em lei (LGPD); o que deixa de existir e o caminho de UM
-    # CLIQUE para exerce-lo. Pedido formal de exclusao passa a ser raro, manual e
-    # com rito — e a lei nova escreve isso em vez de deixar a ausencia muda.
+    # CLIQUE para exerce-lo. Os direitos formais de exclusao previstos na LGPD
+    # permanecem; a interface nao oferece um botao para apagar a ficha.
     #
     # Consumidor: so a celula `admin` chamava, e ela parou de chamar ANTES desta
-    # remocao (PR #468) — consumidor primeiro, como manda o Rito §3.
+    # remoção (#468).
     patch:
       operationId: updateEnrollment
       summary: Mudar o estado de um aluno, ou corrigir os dados dele

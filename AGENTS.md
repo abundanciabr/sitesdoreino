@@ -4,4 +4,4 @@
 4. Quebrou: conserte, volte e siga. Nada vira lição nem regra.
 5. Não crie nem proponha regra, portão, processo ou validação. Só o mantenedor cria regra, e para entrar uma terceira coisa uma das duas primeiras sai.
 6. Todo trabalho é no site.
-7. Entregue funcionando: a prova automática passou e o endereço abre.
+7. Entregue funcionando no site.

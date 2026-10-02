@@ -498,16 +498,7 @@ def test_item_apontando_para_molde_e_recusado_mesmo_por_post_montado_a_mao():
 
 
 def test_a_tela_oferece_a_plateia_de_equipe():
-    """A quarta opção da tela, e o rótulo dela.
-
-    Guarda de tela. O que compara as TRÊS listas (o contrato, o validador do
-    catálogo e esta tela) mora em `ci/tests/test_plateias_do_menu.py`, porque
-    ele atravessa células e nenhuma delas é dona da pergunta.
-
-    O rótulo fala de EQUIPE, e não de administradores: quem decide é a lista
-    `IDENTIDADE_STAFF_EMAILS`, que normalmente tem o mesmo conteúdo da lista de
-    quem entra em `/admin` — mas são decisões separadas de propósito.
-    """
+    """A quarta opção da tela, e o rótulo dela."""
     from apps.core.menu import PLATEIAS
 
     rotulos = dict(PLATEIAS)

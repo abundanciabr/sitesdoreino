@@ -1,36 +1,35 @@
-# Contratos — a Muralha nº 4
+# Contratos
 
-Os arquivos desta pasta são **a fronteira oficial entre células**. Depois de ratificados
-(Portão do brief da Fase 0), eles congelam:
+Esta pasta contém os formatos de integração entre as células do site.
 
-1. **Nenhum agente altera `contracts/`** em sessão normal. Mudança = Rito de Contrato
-   (RITOS.md §3): PR de `contracts/`, label `contrato`, aprovação do mantenedor
-   (CODEOWNERS), provedor implementa primeiro com retrocompatibilidade, consumidores em
-   PRs seguintes.
+## Compatibilidade HTTP
 
-   **Exceção medida, não teórica (Fase 4 do sininho, 27/08/2026):** um contrato HTTP
-   NOVO (uma célula saindo de `freeze: not-applicable` para `freeze: required`) não é
-   "só `contracts/`" — `ci/contract_freeze.py::auditar_manifesto` exige que
-   `ci/manifesto-de-contratos.json` mude no MESMO PR, ou reprova a divergência entre o
-   que está declarado e o que existe em disco. O PR do Rito, nesse caso, é
-   `contracts/` **+** essa uma linha do manifesto — não um PR à parte. Eventos
-   (`contracts/eventos/*.json`) não têm essa exigência: o manifesto só existe para os
-   `*.openapi.yaml`.
-   **Extensão aditiva junto ao provedor (mandato de 29/09/2026):** pode acompanhar
-   código do mesmo provedor quando acrescenta operações e definições, preserva
-   integralmente as anteriores e passa o freeze vivo com a sonda de autenticação.
-   A cerca executa essas provas; mudança de tipo, remoção, drift, outro provedor ou
-   instrumento ausente recusam. `contrato-remocao` não autoriza esta exceção.
-2. **O CI compara o schema vivo com o congelado** (`ci/freeze-de-contrato.sh`) e reprova
-   drift — mudar o código não muda o contrato "por acidente".
-3. **Consumidor desenvolve contra o mock, nunca contra o provedor:**
-   `npx @stoplight/prism-cli mock contracts/pagamentos.openapi.yaml -p 4010`
-   O agente do checkout constrói o fluxo inteiro sem nunca rodar — nem ler — pagamentos.
-4. **Eventos são versionados no nome** (`*.v1.json`). Mudança breaking ⇒ nasce `v2`,
-   `v1` continua sendo emitido até o último consumidor migrar. Renomear campo "porque
-   achou melhor" não existe.
-5. **Envelope canônico de evento:** `{event, version, event_id (uuid), occurred_at, data}`.
-   Consumo idempotente por `event_id` é lei para toda célula consumidora.
-6. **Autenticação:** APIs internas usam Bearer estático **por par** (checkout→pagamentos
-   ≠ funil→leads). Sem sessão, sem fallback.
-7. **Dinheiro é `amount_cents` inteiro** em todo contrato. Float de dinheiro é proibido.
+1. `ci/freeze-de-contrato.sh` compara o schema HTTP com o congelado. O manifesto
+   `ci/manifesto-de-contratos.json` registra quais schemas participam dessa
+   prova; um schema marcado como obrigatório precisa estar declarado nele.
+2. Extensões aditivas preservam operações e definições existentes. Remoções,
+   mudanças incompatíveis ou diferenças entre schema, manifesto e serviço
+   aparecem na prova de compatibilidade.
+
+3. Consumidores podem desenvolver e exercitar a integração pelo mock do schema:
+
+```sh
+npx @stoplight/prism-cli mock contracts/pagamentos.openapi.yaml -p 4010
+```
+
+## Eventos
+
+4. Eventos têm versão no nome do arquivo, como `*.v1.json`. Uma mudança
+   incompatível usa uma nova versão; consumidores existentes continuam podendo
+   ler a versão que já utilizam durante a migração.
+
+5. O envelope de evento é `{event, version, event_id, occurred_at, data}`.
+   Consumidores usam `event_id` para tornar o processamento idempotente.
+
+## Autenticação e valores
+
+6. APIs internas usam Bearer estático distinto para cada par de serviços. Não
+   há sessão nem autenticação alternativa.
+
+7. Valores monetários usam `amount_cents` como inteiro; contratos não
+   representam dinheiro com ponto flutuante.

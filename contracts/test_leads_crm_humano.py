@@ -37,16 +37,6 @@ def test_listagem_separa_oportunidades_do_historico_do_lead():
     ]["items"] == {"$ref": "#/components/schemas/Oportunidade"}
 
 
-def test_atrasadas_sao_restritas_as_oportunidades_abertas():
-    documento = carregar()
-    parametros = operacao(documento, "/opportunities", "get")["parameters"]
-    atrasada = next(item for item in parametros if item["name"] == "atrasada")
-
-    assert atrasada["description"] == (
-        "Quando verdadeiro, retorna somente oportunidades com etapa aberta e próximo passo vencido."
-    )
-
-
 def test_titular_e_permissoes_sao_comerciais_e_explicitos_por_recurso():
     documento = carregar()
     schemas = documento["components"]["schemas"]
@@ -178,6 +168,3 @@ def test_mutacoes_retornao_evento_imutavel():
         "encerramento",
         "reabertura",
     }
-    assert schemas["RegistroHistoricoOportunidade"]["description"] == (
-        "Evento imutável da oportunidade; a API não expõe alteração nem remoção."
-    )

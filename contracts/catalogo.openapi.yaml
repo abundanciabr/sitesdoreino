@@ -752,9 +752,8 @@ components:
           description: |-
             Os textos da seção, um por slot. O mapa é LIVRE aqui e o vocabulário é
             FECHADO dentro do `catalogo`, que recusa slot desconhecido na gravação.
-            Enumerar os slots no contrato faria cada frase nova de copy custar um Rito
-            de Contrato; não validar em lugar nenhum faria nascer `div_47_text`. Por
-            isso a validação mora no provedor.
+            O mapa de slots permanece flexível no contrato; o provedor valida os
+            nomes conhecidos e recusa slots desconhecidos.
 
             O vocabulário que o `catalogo` valida hoje, na ordem da ferramenta 73:
 

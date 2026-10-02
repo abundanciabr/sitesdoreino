@@ -1496,7 +1496,7 @@ class Acordo(models.Model):
 # **Os VALORES não moram neste arquivo**, e a ausência é a lei §3.8 em ação:
 # eles nascem em `management/commands/semear_parametros.py`, entram no banco e
 # mudam por linha nova, sem PR. Se um dia um número da lei §6 voltar a viver em
-# código, isso é o critério de morte 5 da lei §9 — pare e reabra a decisão.
+# código, os valores deixariam de ser parâmetros persistidos no banco.
 # Guarda: `tests/test_parametros_sao_dado.py`.
 CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
     "relogio_da_oferta": ("horas", "Horas úteis que o aluno tem para responder"),

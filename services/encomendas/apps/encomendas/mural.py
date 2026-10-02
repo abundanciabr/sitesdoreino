@@ -62,10 +62,8 @@ resolve dois alunos tocando "Pegar" no mesmo segundo.
 
 A ORDEM DA LISTA É SÓ A ANTIGUIDADE
 ------------------------------------
-Os mais antigos primeiro, e nada mais. Qualquer outra chave (destaque, peso,
-relevância, preço, nível) é a SEGUNDA REGRA DE ORDEM que o critério de morte 2
-da lei §9 proíbe: pare e reabra a decisão com o mantenedor antes de acrescentar
-termo a esta chave.
+Os mais antigos primeiro, e nada mais. A ordenação usa apenas a antiguidade
+da encomenda; destaque, peso, relevância, preço e nível não entram na chave.
 
 O QUE NÃO É DESTE DEGRAU
 -------------------------

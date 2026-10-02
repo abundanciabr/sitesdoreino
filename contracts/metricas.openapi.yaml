@@ -3,19 +3,14 @@
 # plataforma (contadores históricos, cobertura de rastreio, eventos mortos, e
 # as conquistas derivadas deles).
 #
-# CONGELADO EM 04/09/2026 (Rito de Contrato, RITOS.md §3), com o mantenedor
-# presente. Mudar este arquivo é o mesmo rito: PR só de `contracts/`, etiqueta
-# `contrato`, provedor primeiro, consumidores em PRs seguintes. O portão que faz
-# valer é `ci/contract_freeze.py`.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
-# EMENDADO EM 05/09/2026, pelo mesmo rito, com o mantenedor presente: nasceram
+# Em 05/09/2026, nasceram
 # `countMilestones` e `listMilestones`, a porta de leitura dos MARCOS (degrau 9
-# do plano). Ele autorizou nominalmente, em pergunta estruturada, com estas
-# palavras: "Abre agora, nesta conversa".
+# do plano). As duas operações foram acrescentadas sem alterar as existentes.
 #
-# EMENDADO EM 26/09/2026, por mandato prévio por faixa (Lista B,
-# `docs/decisoes/MANDATO-POR-FAIXA.md`, cerca `contracts/`, aditivos
-# autorizados pelo mantenedor na sessão de 26/09/2026): nasceu `countFunnel`,
+# Em 26/09/2026, nasceu `countFunnel`,
 # a leitura do funil de vendas (visita, seção alcançada, clique no checkout,
 # lead capturado, pedido atribuído, pedido pago) por dia e por variante de
 # experimento (F6 do sistema de experimentos, DESENHO-COMUM.md e a Emenda 1
@@ -30,7 +25,7 @@
 #    errado é um fato NOVO, que entra pela fila de eventos (Redis Streams),
 #    nunca por HTTP. As duas ações que MUDAM a fila de eventos mortos (tentar de
 #    novo, descartar com motivo) nascerão como operações próprias, e serão uma
-#    emenda deste contrato pelo mesmo rito.
+#    uma extensão futura deste contrato.
 #
 # 2. **Nenhum dado pessoal sai por aqui, porque nenhum entra.** A célula guarda
 #    ids opacos e o corpo cru do evento que a célula emissora publicou. Para

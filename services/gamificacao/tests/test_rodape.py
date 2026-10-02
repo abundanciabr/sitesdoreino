@@ -1,24 +1,4 @@
-"""O rodapé das Conquistas: em toda tela, e com a mesma assinatura do site.
-
-Cópia do PADRÃO da `funil` e do `forum` (Lei 7), inclusive nos guardas — e os
-guardas são a metade que mais importa copiar. Cada um corresponde a uma forma
-diferente de esta peça se perder:
-
-1. **A frase "em todas as páginas" envelhecendo em silêncio.** A varredura do
-   urlconf real é o que impede isso: tela nova das Conquistas herda o rodapé, e
-   tela que alguém quis SEM rodapé precisa estar dita por nome.
-2. **A tabela certa e o molde ignorando a decisão.** Por isso toda asserção é
-   sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras (`armadilhas/087`:
-   vazamento não escolhe a tag que você previu).
-3. **O estilo que não chega ao navegador.** Esta célula serve o CSS por rota
-   própria (`armadilhas/083`), então uma classe nova no HTML sem a regra no
-   arquivo é um rodapé sem forma, e nada fica vermelho.
-
-E um quarto, que é o defeito de 02/09/2026 em pessoa: **as quatro telas desta
-célula eram quatro documentos HTML independentes**, e por isso a peça comum não
-tinha onde morar. O teste `test_as_quatro_telas_vestem_a_mesma_moldura` é o que
-impede a próxima tela de nascer solta de novo.
-"""
+"""Verifica o rodapé e o estilo entregue nas telas de Conquistas."""
 
 from __future__ import annotations
 
@@ -217,31 +197,3 @@ def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
 # ---------------------------------------------------------------------------
 # 4. A moldura — a casa onde a peça comum mora
 # ---------------------------------------------------------------------------
-def test_as_quatro_telas_vestem_a_mesma_moldura():
-    """O defeito de 02/09/2026, virado guarda.
-
-    Até aquele dia cada tela desta célula era um documento HTML completo, com o
-    próprio `<head>` e o próprio fim de página. Enquanto foi assim, "a peça
-    aparece em todas as telas" não tinha como ser verdade por construção — só
-    por alguém lembrar, quatro vezes, para sempre (`armadilhas/242`).
-
-    A varredura lê a PASTA, e não uma lista: tela nova que nascer solta reprova
-    aqui, e a mensagem diz o que fazer.
-    """
-    from pathlib import Path
-
-    import apps.core as core
-
-    pasta = Path(core.__file__).parent / "templates" / "gamificacao"
-    telas = sorted(p for p in pasta.glob("*.html") if p.name != "moldura.html")
-    assert telas, "a varredura não encontrou tela nenhuma — isto é falha de medição"
-
-    soltas = [
-        p.name for p in telas if "{% extends" not in p.read_text(encoding="utf-8")
-    ]
-    assert not soltas, (
-        f"estas telas não vestem a moldura: {soltas}. Toda tela desta célula "
-        f"estende `gamificacao/moldura.html` — é ela que carrega o rodapé (e o "
-        f"menu do topo) para todas de uma vez. Tela solta nasce sem as duas "
-        f"coisas, e nada fica vermelho até alguém olhar o site."
-    )

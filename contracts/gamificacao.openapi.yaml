@@ -2,22 +2,20 @@
 # CONTRATO DA CÉLULA `gamificacao` — a porta de MÁQUINA do Sistema de Formação
 # de Criadores (XP, níveis, Sequência, missões, Cristais, celebrações).
 #
-# CONGELADO EM 30/08/2026, na Sessão B (Rito de Contrato, RITOS.md §3), com o
-# mantenedor presente. Mudar este arquivo é o mesmo rito: PR só de `contracts/`,
-# etiqueta `contrato`, provedor primeiro, consumidores em PRs seguintes. O
-# portão que faz valer é `ci/contract_freeze.py`.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
-# EMENDA DE 01/09/2026 (Rito de Contrato, com o mantenedor presente): entraram
+# Em 01/09/2026, entraram
 # `listAchievementSwitches` e `setAchievementSwitch`, o segundo interruptor da
 # tela dele. Crescimento puro — nenhuma operação, campo ou nome mudou, e por
 # isso nenhum consumidor precisa migrar.
 #
-# EMENDA DE 02/09/2026 (Rito de Contrato, com o mantenedor presente): entraram
+# Em 02/09/2026, entraram
 # `listLevelSwitches` e `setLevelSwitch`, o TERCEIRO interruptor da tela dele, e
 # o único que não paga nada. Crescimento puro, como o anterior: nenhuma
 # operação, campo ou nome mudou, e nenhum consumidor precisa migrar.
 #
-# EMENDA DE 03/09/2026 (Rito de Contrato, com o mantenedor presente): entrou
+# Em 03/09/2026, entrou
 # `listStudentStandings`, o quadro de pontos que a tela nova em
 # `/admin/escola/` desenha — a turma ordenada por XP, com nível, última
 # atividade e as conquistas de cada aluno. Crescimento puro, como as três
@@ -48,7 +46,7 @@
 # por onde ligar. Havia botão para as regras e para as conquistas; para a
 # escada, nada.
 #
-# AS DUAS PERGUNTAS QUE ESTE RITO RESPONDEU, as duas de produto:
+# Duas decisões de produto registradas para estas operações:
 #
 #   1. *Ligar um degrau reconhece quem já tem o XP dele?* SIM, e aqui a resposta
 #      é quase forçada pela natureza da coisa: degrau não paga, é a RÉGUA com
@@ -67,25 +65,18 @@
 # título de um degrau é dado que ele edita. O que o ALUNO lê continua saindo de
 # `getMyStatus` e da tela da própria célula.
 #
-# A PERGUNTA QUE O RITO RESPONDEU não foi a forma da porta (ela é gêmea da dos
-# interruptores de regra), e sim uma de PRODUTO: *ligar uma conquista reconhece
-# quem já cumpriu o critério antes?* A resposta dele foi SIM, com o custo dito
+# A decisão de produto foi que ligar uma conquista reconhece quem já cumpriu
+# o critério antes. A resposta foi SIM, com o custo dito
 # na hora — no dia de ligar, um punhado de medalhas sai de uma vez, com os
 # pontos delas. É por isso que estas duas operações não têm `vigente_desde`: nas
 # regras de pontuação aquele carimbo impede pagar o passado; aqui ele impediria
 # a "Primeira obra" de quem já fez a primeira obra, e ninguém faz duas estreias.
 #
-# LEI DO ASSUNTO: `docs/decisoes/DECISAO-gamificacao.md`.
-# PLANO: `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §4 (eventos e contrato).
+# Referências de produto: `docs/decisoes/DECISAO-gamificacao.md` e
+# `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §4 (eventos e contrato).
 #
-# ORDEM DA ESCADA — leia antes de "consertar" alguma coisa aqui: este contrato
-# foi congelado no PR 4 da escada do §6, e a IMPLEMENTAÇÃO dele é o PR 16 (a
-# porta de máquina: `config/api.py`, `export_openapi`, testes de 401 em todas as
-# operações). É contrato-primeiro deliberado: as duas operações abaixo são o que
-# o fórum e o funil vão consumir, e escrevê-las antes do motor é o que impede a
-# célula de nascer com uma superfície improvisada. Enquanto o PR 16 não chega, a
-# linha desta célula em `ci/manifesto-de-contratos.json` guarda o motivo por
-# escrito — ela não pode ser `freeze: required` antes de existir o que exportar.
+# Este schema descreve as operações usadas pelo fórum e pelo funil. O manifesto
+# marca o freeze como obrigatório quando existe uma API viva para comparar.
 #
 # AS TRÊS INVARIANTES QUE ATRAVESSAM TODAS AS OPERAÇÕES:
 #
@@ -101,7 +92,7 @@
 #      antes, no Rito que trouxe `jornada.passo`.) A MESMA frase morta continua
 #      em `contracts/forum.openapi.yaml` e em
 #      `contracts/eventos/forum.topico-criado.v1.json`: é dívida do `forum`, sai
-#      no próximo Rito DELE, e não se corrige de carona daqui.
+#      a descrição pertence ao contrato de jornadas e é mantida lá.
 #   2. NUNCA SAI XP BRUTO DE OUTRA PESSOA — PARA UM ALUNO. `getPublicProfiles`
 #      devolve nível e título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`.
 #      Placar de XP entre alunos não existe nesta plataforma, e a porta é onde
@@ -113,8 +104,7 @@
 #      mesma lição que `contracts/eventos/notificacao.devida.v1.json` já carrega
 #      ("os dados da frase, nunca a frase").
 #
-# DECISÃO B DA SESSÃO B — ESTÁ AQUI PARA VOCÊ NÃO "CONSERTAR":
-# a etiqueta do aluno é visível para TODO MUNDO, inclusive visitante não logado.
+# A etiqueta pública do aluno é visível para todos, inclusive visitantes não logados.
 # Por isso `getPublicProfiles` responde a chamador SEM SESSÃO DE PESSOA (o
 # Bearer do par continua obrigatório — ele prova QUEM CHAMA, nunca quem é a
 # pessoa). Hoje isso não expõe aluno nenhum, porque a única área pública do
@@ -122,13 +112,11 @@
 # que houver área pública com post de aluno. Não é descuido, é decisão do
 # mantenedor em 30/08/2026.
 #
-# OS INTERRUPTORES DA ECONOMIA (Rito de Contrato de 31/08/2026, com o mantenedor
-# presente) — `listEconomySwitches` e `setEconomySwitch`.
+# Os interruptores da economia são `listEconomySwitches` e `setEconomySwitch`.
 #
-# Elas existem para que o critério de morte nº 5 da lei NÃO aconteça: *"ajustar a
-# economia passar a exigir PR de código"* obriga a parar e reabrir a decisão. A
-# economia inteira nasce `ativa=False` (`semear_economia`), e até aqui ligar uma
-# regra significava um agente editar o semeador e esperar um deploy — ou seja, a
+# Elas permitem ajustar a economia pela tela, sem alterar código e aguardar um
+# deploy. A economia inteira nasce `ativa=False` (`semear_economia`), e até aqui
+# ligar uma regra significava editar o semeador — ou seja, a
 # economia era código com aparência de dado. Estas duas operações são o que torna
 # a §10.5 verdade: `UPDATE` + versão + data, pela tela do mantenedor.
 #
@@ -139,9 +127,9 @@
 # sobre a lista DELA — o mesmo desenho de `/admin/menu/`, que lê e grava o menu
 # no `catalogo` sem guardar cópia.
 #
-# `impedimentos` MERECE A LEITURA antes de alguém "simplificar" o schema: uma
-# regra pode estar ligada e ainda assim não fazer número nenhum se mexer, e sem
-# este campo a tela mostraria um zero que parece defeito dela. Os três motivos
+# `impedimentos` descreve por que uma regra pode estar ligada e ainda assim não
+# gerar pontos. Sem este campo, a tela mostraria um zero que parece defeito.
+# Os três motivos
 # são fatos da célula, não opinião: `sem-produtor` (ninguém publica o assunto),
 # `sem-credito` (chega, mas esta célula não sabe de quem é o ponto — hoje o quiz,
 # que identifica por e-mail) e `cristais-sem-efeito` (a regra promete Cristais e
@@ -153,9 +141,8 @@
 # `/api/gamificacao/eu`, e é isso que está congelado abaixo (`servers` + `paths`,
 # o mesmo formato de `alunos`, `catalogo` e `notificacoes`). O comentário de
 # `services/gamificacao/config/urls.py`, escrito na gênese, previa a porta em
-# `/interno/` (o formato de `identidade` e `forum`). Quem implementar o PR 16
-# segue ESTE arquivo — mudar o endereço depois é Rito de Contrato, não
-# preferência de sessão.
+# `/interno/` (o formato de `identidade` e `forum`). A API atual usa os caminhos
+# declarados neste arquivo.
 # =============================================================================
 openapi: 3.1.0
 info:

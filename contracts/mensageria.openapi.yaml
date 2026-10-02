@@ -2,13 +2,11 @@
 # CONTRATO DA CÉLULA `mensageria` — a porta de MÁQUINA das sequências de
 # mensagens (as jornadas).
 #
-# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
-# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
-# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
-# este arquivo com o que a célula EXPORTA de verdade — divergência reprova.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
-# NASCEU DE UM RITO COM O MANTENEDOR PRESENTE, em 04/09/2026 (registro do livro
-# `20260904-070`), como a lei exige. É o degrau 6d da escada do §7 de
+# Criado em 04/09/2026 (registro do livro `20260904-070`), este schema é o
+# degrau 6d da escada do §7 de
 # `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md`, e ele destrava a tela do
 # degrau 7 (`/admin/escola/jornadas/`, TAR-078) — que parou antes da primeira
 # linha de código porque entre a `admin` e o `mensageria_db` não existia caminho
@@ -20,12 +18,12 @@
 # dia sem que ninguém do outro lado saiba — e essa frase só é mecânica por causa
 # deste arquivo.
 #
-# AS DUAS DECISÕES DO MANTENEDOR NO RITO, que estão dentro do que segue:
+# As duas decisões de produto registradas para esta interface:
 #
 #   1. A TELA TEM O INTERRUPTOR. `setJourneyActive` liga e desliga uma
 #      sequência, e entrou ANTES deste congelamento porque, depois dele,
-#      acrescentar operação é outro Rito. Até então ligar uma jornada só
-#      acontecia por um comando de terminal, que ele não roda.
+#      a operação permite ligar uma jornada pela tela, sem depender de um
+#      comando de terminal.
 #   2. QUEM ESTÁ NO MEIO TERMINA COMO ENTROU. Corrigir uma frase publica versão
 #      NOVA, e a correção vale para quem entrar depois — versão publicada é
 #      imutável por gatilho no Postgres, não por disciplina de código. Desligar

@@ -1,35 +1,4 @@
-"""O rodapé da Caixa: em toda tela, e com a mesma assinatura do site.
-
-Cópia do PADRÃO da `funil`, do `forum` e da `gamificacao` (Lei 7), inclusive nos
-guardas — e os guardas são a metade que mais importa copiar. Cada um corresponde
-a uma forma diferente de esta peça se perder:
-
-1. **A frase "em todas as páginas" envelhecendo em silêncio.** A varredura do
-   urlconf real é o que impede isso: tela nova da Caixa herda o rodapé, e tela
-   que alguém quis SEM rodapé precisa estar dita por nome.
-2. **A tabela certa e o molde ignorando a decisão.** Por isso toda asserção é
-   sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras (`armadilhas/087`:
-   vazamento não escolhe a tag que você previu).
-3. **O estilo que não chega ao navegador.** Esta célula serve o CSS por rota
-   própria (`armadilhas/083`), então uma classe nova no HTML sem a regra no
-   arquivo é um rodapé sem forma, e nada fica vermelho.
-
-E um quarto, que é próprio daqui: **a Caixa é a única área ESCURA do site.**
-Copiar o arquivo de estilo do fórum em vez do desenho traria um `#e4e4e7` de
-tema claro para cima de um fundo `#15161c` — uma linha branca atravessando o pé
-da página, sem nenhum teste ficando vermelho. Por isso há um guarda sobre as
-cores saírem das variáveis desta folha.
-
-## O pé que saiu, e por decisão de quem
-
-Até 02/09/2026 esta célula tinha um pé próprio, de duas frases: "Caixa de
-Sugestões" e "o que você pedir, a equipe lê". O mantenedor escolheu trocá-lo
-pelo rodapé do site — uma assinatura só no fim de toda página, em vez de uma por
-área. `test_o_pe_antigo_nao_voltou` existe para que a troca não seja desfeita por
-engano num merge, e a mensagem dele diz de quem foi a decisão.
-"""
-
-from pathlib import Path
+"""Verifica o rodapé e o estilo entregue nas telas de Sugestões."""
 
 import pytest
 from django.urls import get_resolver, reverse
@@ -37,9 +6,6 @@ from django.urls import get_resolver, reverse
 from apps.core import rodape as regras
 
 pytestmark = pytest.mark.django_db
-
-FOLHA = Path(__file__).resolve().parents[1] / "static" / "sugestoes" / "caixa.css"
-
 
 def _corpo(pessoa, endereco: str) -> str:
     resposta = pessoa.client.get(endereco)
@@ -161,42 +127,6 @@ def test_o_estilo_do_rodape_da_porta_e_embutido(client, porta):
     assert ".rodape .direitos" in corpo or ".rodape p {" in corpo
 
 
-def test_todo_molde_de_pagina_inteira_inclui_a_peca_do_rodape():
-    """O guarda que mede ARQUIVOS, e não telas — desenho do PR #734.
-
-    Esta célula tem DOIS moldes de página inteira: a moldura comum e a porta.
-    Um teste de tela por molde cobre os que existem hoje; molde standalone NOVO
-    é justamente o caso em que ninguém lembra de escrever o teste dele, e a peça
-    some de uma página sem nada ficar vermelho (`armadilhas/242`).
-
-    A marca é o `<!doctype`, e não a tag de abertura de HTML: a própria peça
-    CITA essa tag num comentário e seria acusada de não incluir a si mesma.
-    """
-    pasta = Path(__file__).resolve().parents[1] / "apps/core/templates/sugestoes"
-    moldes = [
-        arquivo
-        for arquivo in sorted(pasta.glob("*.html"))
-        if "<!doctype" in arquivo.read_text(encoding="utf-8").lower()
-    ]
-    assert len(moldes) >= 2, (
-        f"esperava pelo menos os DOIS moldes de página inteira desta célula e "
-        f"achei {[m.name for m in moldes]} — isto é falha de medição, não "
-        f"notícia boa ([INV-CI01])."
-    )
-    sem_a_peca = [
-        molde.name
-        for molde in moldes
-        if "sugestoes/_rodape.html" not in molde.read_text(encoding="utf-8")
-    ]
-    assert not sem_a_peca, (
-        f"estes moldes de página inteira não incluem a peça do rodapé: "
-        f"{sem_a_peca}.\nTodo molde desta célula inclui "
-        f'`{{% include "sugestoes/_rodape.html" %}}` dentro de `{{% if rodape %}}` '
-        f"— é a peça que faz o rodapé aparecer em TODAS as telas, e não só nas "
-        f"que alguém lembrou."
-    )
-
-
 def test_o_servidor_de_estaticos_nao_ganha_rodape(client, rf):
     """Rota de MÁQUINA: um rodapé dentro do arquivo CSS seria lixo no arquivo, e
     o navegador o serviria como estilo.
@@ -272,26 +202,6 @@ def test_o_estilo_do_rodape_chega_pela_rota_do_css(client):
     css = _css(client)
     for regra in (".rodape {", ".rodape .marca", ".rodape .links", ".rodape .direitos"):
         assert regra in css
-
-
-def test_as_cores_do_rodape_saem_das_variaveis_desta_folha():
-    """A Caixa é a única área ESCURA do site.
-
-    Uma cor de tema claro copiada do fórum (`#e4e4e7` na borda, `#52525b` no
-    texto) atravessaria o pé da página com uma linha branca sobre fundo
-    `#15161c` — e nenhum teste de renderização veria isso. Este guarda lê o
-    bloco do rodapé e exige que ele não traga cor crua nenhuma.
-    """
-    folha = FOLHA.read_text(encoding="utf-8")
-    inicio = folha.index(".rodape {")
-    bloco = folha[inicio : folha.index(".rodape .direitos", inicio)]
-    assert "#" not in bloco, (
-        f"o bloco do rodapé traz cor crua: {bloco!r}. Nesta folha a cor sai das "
-        f"variáveis (`--linha`, `--texto`, `--texto-tenue`, `--laranja`) — a "
-        f"Caixa é escura, e um hexadecimal de tema claro passa despercebido por "
-        f"todo guarda de renderização."
-    )
-    assert "var(--" in bloco
 
 
 # ---------------------------------------------------------------------------

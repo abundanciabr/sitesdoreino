@@ -6,8 +6,7 @@ from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que outra célula
 # porá no env dela, e é o mesmo que o rascunho em papel do contrato já previa
-# (`servers: /api/encomendas`). Este valor entra no congelado do degrau 2.8, e a
-# partir de lá mudá-lo é Rito de Contrato (`RITOS.md` §3), nunca edição aqui.
+# (`servers: /api/encomendas`). Os consumidores usam esse endereço no contrato.
 #
 # ATENCAO, e aqui esta célula é como o `forum` e a `gamificacao`, e diferente da
 # `identidade`: esta porta É alcançável pela borda pública, em

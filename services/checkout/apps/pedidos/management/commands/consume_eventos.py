@@ -64,8 +64,8 @@ MAX_ENTREGAS = 5  # na 5ª entrega não se reprocessa: fila morta
 # cada um quando o aviso chega na versão 1, como um caminho dentro do evento
 # (`data.<campo>`) ou como o valor literal que o v1 não carregava.
 #
-# Aviso novo, ou versão nova de um aviso, entra pelo Rito de Contrato e por uma
-# linha aqui. O que não estiver nesta tabela estoura em vez de ser engolido.
+# A tabela relaciona as versões aceitas de cada aviso. O que não estiver nela
+# estoura em vez de ser engolido.
 AVISOS = {
     "pagamento.aprovado": {
         "versoes": (1, 2),

@@ -1,26 +1,11 @@
 # apps/core/management/commands/export_openapi.py  # [RECEITA:R1 v1]
 #
-# Cópia do PADRÃO de `gamificacao`/`notificacoes`/`pages` (Lei 3: copia-se o
-# padrão entre células, nunca se importa código de uma na outra). As três
-# funções de limpeza existem porque o django-ninja emite ruído que o contrato
-# escrito à mão não tem, e o freeze compara os dois byte a byte: "ruído
-# cosmético" reprova o CI exatamente como uma divergência real.
+# Este comando exporta a OpenAPI viva do Django Ninja. As funções de limpeza
+# abaixo normalizam diferenças de serialização para que `ci/contract_freeze.py`
+# possa comparar a saída com o schema em `contracts/`.
 #
-# AQUI A ORDEM FOI A INVERSA DA QUE `armadilhas/228` RECOMENDA, e não por
-# descuido. O PR do Rito de Contrato desta célula (#1238) foi aberto antes deste
-# e ficou VERMELHO de propósito: `ci/celulas.yml` atribui `painel/` à `admin`, e
-# o recibo do livro que todo PR carrega mora em `painel/`, então o próprio PR do
-# Rito acorda o `ci-celula (admin)` e cobra um freeze que ainda não tinha o que
-# exportar. A cerca (`ci/cerca-de-celula.sh`) proíbe congelar e implementar no
-# mesmo PR, então a saída foi esta: o contrato espera, e este comando (com a
-# porta) é o próximo PR da célula, exatamente como a `228` manda consertar quem
-# já congelou fora de ordem.
-#
-# O QUE SE LÊ ANTES DE CONGELAR O QUE ELE IMPRIME (`armadilhas/324`): o
-# `info.description` do documento e o `summary`/`description` de cada operação
-# são a única parte do contrato escrita para uma PESSOA, e nenhuma máquina
-# confere se eles descrevem o que o código faz. Depois do congelamento, corrigir
-# uma frase dessas exige outro Rito de Contrato.
+# O `info.description`, `summary` e `description` também são conteúdo visível
+# para pessoas; devem descrever o comportamento atual da API.
 #
 # `management/` e `commands/` não levam `__init__.py`, de propósito: pacote de
 # namespace funciona para comandos do Django, e a `gamificacao` já roda assim

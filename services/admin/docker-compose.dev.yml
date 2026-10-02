@@ -1,6 +1,5 @@
 # =============================================================================
-# DEV DA CÉLULA, ISOLADA: só ela e seu banco. O agente sobe ISTO — nunca a
-# plataforma inteira. As outras células nem existem aqui.
+# DEV DA CÉLULA, ISOLADA: só ela e seu banco. As outras células nem existem aqui.
 #
 # Duas escolhas herdadas da `sugestoes` (ver LICOES.md dela), e o motivo:
 #   - `name: dev-admin` (e não `dev-celula`): o nome do projeto é o namespace

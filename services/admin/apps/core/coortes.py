@@ -31,8 +31,8 @@ existe, em porta congelada nenhuma, a tradução de um para o outro — e
 `countMilestones` devolve contagens, nunca ids, então nem uma varredura por
 fora resolveria.
 
-Somar os dois vocabulários é o que o contrato proíbe em voz alta (regra 7) e o
-que a `armadilhas/303` chama de medir a coisa errada com precisão. Uma tabela
+Somar os dois vocabulários compararia matrículas com pessoas e mediria a coisa
+errada com precisão (`armadilhas/303`). Uma tabela
 que dissesse "a coorte de setembro escreveu 4 vezes no fórum" estaria
 comparando matrículas com pessoas, e ninguém veria o erro, porque o número
 pareceria certo.
@@ -58,8 +58,7 @@ saídas, porque parece medição.
   entrada, que pertence ao checkout, congelado por decisão do mantenedor de
   22/08/2026.
 - **A foto ao longo do tempo (D7, D30, D90, D180, D365).** Guardar foto exige
-  tabela e operação novas na memória, e operação nova em contrato congelado é
-  Rito de Contrato com o mantenedor presente.
+  tabela e operação novas na memória; hoje não há essa fonte de dados.
 
 ## As três regras do cálculo
 

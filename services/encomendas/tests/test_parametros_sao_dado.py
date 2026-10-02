@@ -18,8 +18,7 @@ Este arquivo é esse teste-guarda, e ele tem três dentes:
    2.3 e 2.4 (o motor e os relógios), onde a tentação de escrever
    `timedelta(hours=3)` em vez de ler `relogio_da_oferta` é máxima.
 
-Se um número da lei §6 voltar a viver em código, isso é o **critério de morte 5**
-da lei §9: pare e reabra a decisão com o mantenedor.
+Os testes distinguem os valores persistidos no banco de constantes no motor.
 """
 
 import ast

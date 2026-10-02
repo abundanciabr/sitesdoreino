@@ -1,6 +1,5 @@
 # =============================================================================
-# DEV DA CÉLULA, ISOLADA: só ela e seu banco. O agente sobe ISTO — nunca a
-# plataforma inteira. As outras células nem existem aqui.
+# DEV DA CÉLULA, ISOLADA: só ela e seu banco. As outras células nem existem aqui.
 #
 # Duas escolhas fora do molde, e o motivo de cada uma (ver LICOES.md):
 #   - `name: dev-sugestoes` (as demais células usam `dev-celula`): o nome do

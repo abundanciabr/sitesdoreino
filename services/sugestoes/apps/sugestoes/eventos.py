@@ -1,10 +1,9 @@
 # apps/sugestoes/eventos.py  # [RECEITA:R3 v1]
 """Os quatro fatos que a Caixa afirma — e o único lugar que monta o `data`.
 
-Lei deste arquivo: `contracts/eventos/sugestao.*.v1.json`, congelados pelo Rito
-de Contrato (RITOS.md §3, PR #128) com o mantenedor presente. Nada aqui inventa
-campo, renomeia campo ou acrescenta campo "que seria útil" — divergir do
-contrato é parar e avisar, nunca editar `contracts/`.
+Os formatos dos eventos estão em `contracts/eventos/sugestao.*.v1.json`.
+Os campos emitidos aqui seguem esses formatos para manter a compatibilidade
+com as células consumidoras.
 
 **Por que os construtores moram todos aqui, e não espalhados nas views.** O
 `data` de cada evento é a superfície que as outras células vão ler por anos. Se

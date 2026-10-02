@@ -1,10 +1,8 @@
 # =============================================================================
 # CONTRATO DA CÉLULA `cursos` — a porta de MÁQUINA da sala de aula.
 #
-# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
-# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
-# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
-# este arquivo com o que a célula EXPORTA de verdade — divergência reprova.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
 # POR QUE ESTE CONTRATO EXISTE: o texto das aulas é obra não lançada do
 # mantenedor e mora SÓ no banco desta célula (o repositório é público,
@@ -13,8 +11,7 @@
 # editor nascer contra o mock (prism) sem nunca ler o código da cursos, e o
 # que impede a porta de mudar "por acidente" debaixo dele.
 #
-# NASCEU DO EXPORT, não de cabeça: `python manage.py export_openapi` em
-# services/cursos, no ramo do PR #1135.
+# Este schema é gerado por `python manage.py export_openapi` em `services/cursos`.
 #
 # O QUE O RITO DE 05/09/2026 ACRESCENTOU, e por quê: decisão do mantenedor de
 # que o endereço da sala de aula carrega o CURSO e a PARTE, com as palavras
@@ -25,8 +22,8 @@
 # bloco da aula recusa com 404 em vez de devolver a aula, porque um endereço
 # que aponta certo para a aula errada é pior do que um endereço quebrado.
 #
-# AS QUATRO OPERAÇÕES ANTIGAS CONTINUAM VIVAS, e isso é retrocompatibilidade
-# do Rito (provedor primeiro, consumidor depois): o editor do Admin que está
+# As quatro operações antigas continuam disponíveis para compatibilidade com
+# o editor do Admin que está
 # no ar hoje as chama. Elas resolvem a aula só pelo site e por isso NÃO sabem
 # de curso; os `operationId` delas passaram a dizer isso no nome
 # (`listSiteLessons`, `getSiteLesson`, `putSiteLesson`, `publishSiteLesson`),
@@ -68,15 +65,14 @@
 #
 # `nome` e `boss_titulo` NÃO entram em `required` no `BlocoSchema`, e isso é
 # deliberado: campo obrigatório novo num schema que já existia quebra quem
-# consome pelo contrato antigo, e `ci/contrato_aditivo.py` reprova o Rito por
+# consome pelo contrato antigo, e `ci/contrato_aditivo.py` sinaliza a mudança
 # isso (`armadilhas/202`, medida aqui em 06/09/2026). O valor emitido não
 # muda, porque o modelo sempre tem os dois; muda o que o contrato EXIGE de
 # quem valida. No corpo de `putBlock` os dois SÃO obrigatórios, e ali pode:
-# `BlocoParaGravarSchema` nasceu neste Rito e não tinha consumidor antes.
+# `BlocoParaGravarSchema` foi acrescentado sem consumidor anterior.
 #
-# NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1233, que é o
-# provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
-# entrar na main, e isso é o portão funcionando (`armadilhas/243`).
+# `manage.py export_openapi` gera o schema; `contrato-check` compara-o com este
+# arquivo (`armadilhas/243`).
 #
 # O QUE O RITO DE 06/09/2026 (o segundo do dia) ACRESCENTOU: a peça
 # `videoaula_em_texto`, pedida pelo mantenedor com estas palavras: "cada
@@ -95,9 +91,8 @@
 # último. É mudança ADITIVA: quem consome pelo contrato anterior continua
 # lendo as 18 que já lia.
 #
-# NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1239, que é o
-# provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
-# entrar na main (`armadilhas/243`).
+# `manage.py export_openapi` gera o schema; `contrato-check` compara-o com este
+# arquivo (`armadilhas/243`).
 # =============================================================================
 #
 # O QUE O RITO DE 07/09/2026 ACRESCENTOU, e por quê: decisão do mantenedor,
@@ -112,9 +107,9 @@
 # ou `livre` (a próxima aula abre quando o aluno conclui a anterior). Os
 # números de aula deixaram de ser só E00..E32 e EB, os blocos vão de A a Z, e
 # a prosa de `putBlock` e do documento foi reescrita para dizer isso. Nada foi
-# removido nem renomeado: mudança aditiva, provedor primeiro (PR #1349).
+# removido nem renomeado: mudança aditiva que preserva os campos anteriores.
 #
-# EMENDA DO MESMO DIA (07/09/2026, segundo Rito): o revisor do PR #1349 mostrou
+# Em 07/09/2026, uma revisão mostrou
 # que "nome de bloco só preenche onde está vazio" apagava em silêncio o nome
 # de um bloco cuja letra mudasse de posição. A regra virou: em
 # `putCourseStructure`, `nome` e `boss_titulo` do bloco NULOS ou AUSENTES não
@@ -1803,7 +1798,7 @@ components:
 
         ele o campo nasce em `required` no documento congelado, e
 
-        `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigatório
+        `ci/contrato_aditivo.py` sinaliza a incompatibilidade de um campo obrigatório
 
         novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida
 
@@ -1811,9 +1806,9 @@ components:
 
         dois, com `default=""` no banco. Muda só o que o contrato EXIGE de quem
 
-        valida. Não tire os defaults para "deixar igual aos outros três": os
+        valida. Os defaults preservam a compatibilidade com consumidores que
 
-        outros três nasceram com o contrato, estes chegaram depois.'
+        usam o contrato anterior; os outros três campos já tinham default.'
       properties:
         letra:
           type: string

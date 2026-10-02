@@ -227,9 +227,8 @@ def _progresso_da_tela(status: "dict | None") -> "dict | None":
     `xp / (xp + falta)` — "quanto do caminho até o próximo degrau já foi
     andado, contando desde zero" — e não "quanto deste degrau já foi vencido".
     As duas crescem juntas e as duas chegam a 100% no mesmo instante (quando
-    falta 0); a segunda exigiria um campo que o contrato não tem, e pedi-lo
-    seria Rito de Contrato. Não "conserte" isto subtraindo um piso que não
-    viaja por aqui.
+    falta 0); a segunda exigiria o piso do degrau atual, que não viaja no
+    contrato desta consulta.
     """
     if not status or not status.get("autenticado"):
         return None
@@ -413,9 +412,8 @@ class AtorDaRequisicao:
         paga a consulta em página que não desenha o quadrinho, que hoje é toda
         página menos a home.
 
-        Guardas dos dois níveis:
-        `tests/test_quadrinho_de_progresso.py`. Sem eles, a preguiça é desfeita
-        de boa-fé pelo próximo agente que "simplificar" esta classe.
+        Os dois níveis de carregamento são medidos em
+        `tests/test_quadrinho_de_progresso.py`.
         """
         if not self:
             return None

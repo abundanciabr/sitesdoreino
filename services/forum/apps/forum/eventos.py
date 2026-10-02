@@ -5,9 +5,9 @@ Até 01/09/2026 ele era MUDO. Tinha gente conversando, dúvidas sendo resolvidas
 e nada disso virava ponto para ninguém: a medalha "Mão amiga" (cinco respostas
 aceitas) não tinha como cair, porque ninguém contava. Este arquivo é a voz.
 
-**Nada aqui inventa contrato.** Os quatro assuntos foram congelados na Sessão B
-de 30/08/2026, com o mantenedor presente, e estão em `contracts/eventos/forum.*`.
-Divergir deles é parar e avisar, nunca editar `contracts/`.
+Os formatos dos quatro assuntos estão em `contracts/eventos/forum.*`.
+Os eventos emitidos aqui seguem esses formatos para manter a compatibilidade
+com as células consumidoras.
 
 AS QUATRO REGRAS QUE ESTE ARQUIVO CUMPRE
 -----------------------------------------

@@ -5,7 +5,7 @@ info:
   description: |
     Única célula da plataforma com credenciais Mercado Pago (INV-P8).
     Consumida exclusivamente pelo checkout, via token Bearer dedicado por par.
-    CONGELÁVEL: após ratificação, qualquer mudança exige o Rito de Contrato (RITOS.md §3).
+    A API é descrita neste schema e verificada por `ci/contract_freeze.py`.
     Rotas públicas via gateway: SOMENTE /webhooks/mp/*. Todo o resto vive na rede interna Docker.
 servers:
   - url: http://pagamentos:8000/api/pagamentos

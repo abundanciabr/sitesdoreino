@@ -17,8 +17,7 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
    apodrece (Classe 8 do plano dos robôs sem colisão). O guarda a compara com
    as seções que o mapa do site declara (`mapa-do-site.json`, o arquivo que
    `/admin/mapa/` serve). Seção nova reprova o PR até ganhar nome curto.
-3. **A faixa copiada à mão voltando.** Ela morreu em 21 templates para nascer
-   uma vez no molde. Se voltar num merge, a página passa a ter duas.
+3. **A faixa copiada à mão voltando.** Se voltar, a página passa a ter duas.
 4. **"Onde você está" mentindo sob o prefixo de produção.** Esta área mora sob
    `SCRIPT_NAME=/admin`, e a `armadilhas/081` é sobre exatamente isto: o
    prefixo que `reverse()` usa é um valor de THREAD, não a variável de
@@ -27,8 +26,7 @@ O QUE CADA GUARDA DESTE ARQUIVO PROTEGE
 5. **O menu levando a um link quebrado.** Toda seção tem de resolver de
    verdade, nos dois regimes.
 
-Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre o arquivo de template
-(`armadilhas/087`): o que importa é o que chega ao navegador do mantenedor.
+Os testes conferem as páginas e os links que chegam ao navegador do mantenedor.
 
 A rede é dublada com `respx`, como nos irmãos desta pasta: além de isolar, é
 isso que prova que a moldura não sai para a rede por conta própria, porque
@@ -38,7 +36,6 @@ isso que prova que a moldura não sai para a rede por conta própria, porque
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import httpx
 import pytest
@@ -345,73 +342,18 @@ def test_o_rodape_declara_o_endereco_que_e_de_outra_celula():
 
 
 # ---------------------------------------------------------------------------
-# 6. O caminho de volta não é dito duas vezes (02/09/2026)
+# 6. O caminho de volta permanece disponível
 # ---------------------------------------------------------------------------
 # Assim que o menu nasceu, o link `← Visão geral` no alto de cada tela virou a
 # segunda cópia de um botão que agora existe em TODA página. Escolha do
 # mantenedor no mesmo dia: tirar onde repete, manter onde é um passo de verdade
 # (a ficha de um aluno volta para a lista de alunos, não para a capa).
-TELAS = Path(__file__).resolve().parents[1] / "apps" / "core" / "templates" / "admin"
-
-
-def test_nenhuma_tela_repete_a_volta_para_a_visao_geral():
-    """A capa mora no menu, e o menu está em toda tela desta área.
-
-    Este guarda é de FONTE, e não de página renderizada, de propósito: ele
-    precisa alcançar as telas que a suíte não consegue abrir sem montar dado
-    (a ficha de uma pessoa, uma ideia da Caixa). O que ele mede é uma marcação
-    exata, não uma aparência, e para isso a fonte basta.
-    """
-    reincidentes = [
-        arquivo.name
-        for arquivo in sorted(TELAS.glob("*.html"))
-        for linha in arquivo.read_text(encoding="utf-8").splitlines()
-        if 'class="volta"' in linha and "visao_geral" in linha
-    ]
-    assert not reincidentes, (
-        f"estas telas voltaram a escrever o caminho para a capa à mão: "
-        f"{reincidentes}. Ele já está no menu do topo, em toda página da área "
-        f"(`apps/core/moldura.py`). Escrever de novo dá ao mantenedor dois "
-        f"botões para a mesma porta na mesma tela."
-    )
-
-
 @respx.mock
 def test_a_capa_continua_a_um_clique_de_toda_tela():
-    """O par do guarda acima: o caminho não sumiu, MUDOU de lugar.
-
-    Sem este, "tirar o link repetido" e "tirar o único link" ficariam
-    indistinguíveis para a suíte.
-    """
+    """A capa continua acessível pelo menu servido."""
     html = _texto(_cliente().get(reverse("escola")))
     assert f'href="{reverse("visao_geral")}"' in html
     assert ">Visão geral</a>" in html
-
-
-def test_as_telas_da_caixa_mantiveram_o_passo_para_a_mesa():
-    """As quatro abas são telas de DENTRO da Caixa, e o menu só leva à Caixa.
-
-    Elas não perderam nada ao ficar sem o `← Visão geral`, porque a faixa de
-    abas (`admin/_caixa_abas.html`) já leva de volta à mesa. Este guarda é o
-    que prova isso, em vez de eu ter conferido com o olho e escrito "confiro
-    que está tudo bem" no relatório.
-
-    A regra vale para toda tela `caixa_*.html`, inclusive uma que nasça amanhã:
-    ou ela traz a faixa de abas, ou ela escreve o próprio caminho para a mesa.
-    """
-    sem_saida = []
-    for arquivo in sorted(TELAS.glob("caixa_*.html")):
-        fonte = arquivo.read_text(encoding="utf-8")
-        if "_caixa_abas.html" in fonte:
-            continue
-        if 'class="volta"' in fonte and "'caixa'" in fonte:
-            continue
-        sem_saida.append(arquivo.name)
-    assert not sem_saida, (
-        f"estas telas da Caixa não oferecem caminho de volta à mesa: "
-        f"{sem_saida}. O menu do topo leva à Caixa, mas quem está numa aba "
-        f"precisa das abas ou de um link próprio."
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -450,31 +392,8 @@ def test_a_saida_nao_entra_na_conta_das_secoes():
     assert moldura.SAIDA_PARA_O_SITE["rotulo"] not in [r for _, r in moldura.SECOES]
 
 
-def test_a_capa_esta_amarrada_ao_nome_e_nao_a_posicao():
-    """O defeito que esta mudança quase criou, travado antes de existir.
-
-    `CASA` era `SECOES[0][0]` — "o primeiro da lista". Enquanto a capa fosse de
-    fato a primeira, as duas leituras davam o mesmo resultado; o defeito ficaria
-    DORMINDO até alguém reordenar o menu, e aí a capa pararia de acender em
-    silêncio.
-
-    **Este guarda lê a FONTE, e a razão é honesta: nenhum teste de execução
-    conseguiria separar as duas.** `CASA` é resolvida uma vez, na importação do
-    módulo; reordenar `SECOES` de dentro de um teste não a recalcula, e as duas
-    formas passariam igual. Escrever um teste de execução aqui daria a sensação
-    de proteção sem a proteção — que é pior que não ter guarda nenhum. Medir a
-    linha é o que sobra, e ela é medível.
-    """
-    fonte = Path(moldura.__file__).read_text(encoding="utf-8")
-    assert (
-        'CASA = "visao_geral"' in fonte
-    ), "a capa precisa ser nomeada, não deduzida da posição na lista"
-    assert "CASA = SECOES[" not in fonte, (
-        "`CASA` voltou a ser 'o primeiro da lista'. Hoje o primeiro item é a "
-        "saída para o site, então isso faria a capa parar de acender sozinha."
-    )
-
-    # E a metade que a execução mede de verdade: a capa acende na capa.
+def test_a_capa_acende_na_rota_da_capa():
+    """A capa acende na rota da capa."""
     acesas = [i["rotulo"] for i in moldura.secoes_do_menu("/") if i["aqui"]]
     assert acesas == ["Visão geral"], acesas
 

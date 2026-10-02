@@ -38,8 +38,7 @@ O QUE ESTE ARQUIVO **NÃO** FAZ
 -------------------------------
 **Não avisa quem teve o pedido devolvido**, e a ausência é decisão, não
 esquecimento. Só BOA NOTÍCIA vira carta (lei da célula), e o contrato congelado
-de `notificacao.devida` não tem assunto para "seu pedido voltou" — inventar um
-exigiria Rito de Contrato com o mantenedor. Quem conta é a TELA do aluno, que
+de `notificacao.devida` não tem assunto para "seu pedido voltou". Quem conta é a TELA do aluno, que
 mostra o estado do pedido e o que falta. Enquanto essa tela não existir (degrau
 13), a devolução é silenciosa, e isto está dito no registro do livro em vez de
 escondido aqui.

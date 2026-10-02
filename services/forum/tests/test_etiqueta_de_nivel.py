@@ -8,9 +8,8 @@ abrir** porque um enfeite não pôde ser desenhado.
    não foi provisionado, que é o estado real de hoje). A conversa tem de abrir
    igual, com 200, e é este o guarda mais importante do arquivo.
 2. **A chamada em LOTE ser desfeita.** Uma página com N autores faz UMA
-   consulta. Este desenho é desfeito de boa-fé pelo próximo agente que achar
-   mais legível perguntar dentro do laço, e sem um guarda nada fica vermelho:
-   a tela continua idêntica, só que com vinte saltos de rede em vez de um.
+   consulta. Perguntar dentro do laço manteria a tela visualmente igual, mas
+   acrescentaria vinte saltos de rede em vez de um.
 3. **Um rótulo ser CHUTADO a partir do slug.** `titulo_slug` perde acento e
    junta as palavras com hífen; desfazê-lo dá "Aprendiz De Atelie". Slug que
    não está no mapa de `apps/core/etiquetas.py` desenha só "Nv 7".

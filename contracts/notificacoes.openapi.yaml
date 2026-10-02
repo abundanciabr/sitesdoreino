@@ -302,12 +302,12 @@ paths:
       summary: Manda um aviso de teste para os aparelhos de uma pessoa, a pedido dela
       description: |
         A porta que responde "o aviso saiu daqui, e para quantos aparelhos".
-        Rito de Contrato de 03/09/2026, com o mantenedor presente.
+        Criada em 03/09/2026.
 
         **Por que ela existe:** em 02/09/2026 o botão de ligar os avisos
         falhava no navegador do mantenedor e o servidor estava verde. Não havia
         como distinguir "o aviso não foi enviado" de "o aviso foi enviado e não
-        chegou" sem alguém entrar na VPS, e o agente não entra (Lei 5). Um
+        chegou" sem acesso ao servidor. Um
         envio que a pessoa dispara na hora, e que devolve um número, encerra
         essa classe de dúvida sem SSH nenhum.
 
@@ -318,8 +318,7 @@ paths:
         sucesso não sabe dizer isso. Fora daqui, a regra continua de pé: carta
         de fato do projeto nasce de evento, sempre.
 
-        **Ela cria carta no sininho**, como qualquer outro assunto (escolha do
-        mantenedor neste rito, contra a alternativa de só piscar na tela).
+        **Ela cria carta no sininho**, como qualquer outro assunto.
         Assim um teste prova as DUAS metades de uma vez, e um aviso que não
         chega ao celular ainda deixa rastro de que saiu daqui — que é
         exatamente o rastro que faltou no caso que criou esta porta.

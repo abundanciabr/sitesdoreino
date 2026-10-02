@@ -5,10 +5,9 @@ Até 29/08/2026 ela não afirmava nenhum: só escutava (o consumer de pagamento)
 Ganhou voz para poder cumprir uma promessa — *"você é avisado quando a sua
 situação muda"* —, e o primeiro fato que ela diz é a carta de liberação.
 
-Lei do assunto: `contracts/eventos/notificacao.devida.v1.json`, congelado no
-Rito de Contrato do PR #524, com o mantenedor presente. Nada aqui inventa
-campo, renomeia campo ou acrescenta campo "que seria útil" — divergir do
-contrato é parar e avisar, nunca editar `contracts/`.
+O formato do evento está em `contracts/eventos/notificacao.devida.v1.json`.
+Os campos emitidos aqui seguem esse formato para manter a compatibilidade
+com as células consumidoras.
 
 **Por que o construtor mora aqui, e não solto no `services.py`.** O `data` de
 um evento é a superfície que outras células vão ler por anos. Se cada ponto de

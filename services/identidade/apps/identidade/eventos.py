@@ -5,10 +5,10 @@ Ganhou voz para que o pedido mais óbvio do mantenedor — *"após o cadastro,
 mandar uma mensagem de boas-vindas"* — tivesse o que escutar
 (`PLANO-SEQUENCIAS-DE-MENSAGENS` §2, degrau 1).
 
-Lei do assunto: `contracts/eventos/identidade.pessoa-cadastrada.v1.json`,
-congelado no Rito de Contrato de 31/08/2026 com o mantenedor presente. Nada
-aqui inventa campo, renomeia campo ou acrescenta campo "que seria útil" —
-divergir do contrato é parar e avisar, nunca editar `contracts/`.
+O formato do evento está em
+`contracts/eventos/identidade.pessoa-cadastrada.v1.json`. Os campos emitidos
+aqui seguem esse formato para manter a compatibilidade com as células
+consumidoras.
 
 **Nenhum `data` carrega PII.** Nem nome, nem e-mail, nem provedor: só o id
 opaco da plataforma e o site. Quem precisar falar com a pessoa PERGUNTA a esta

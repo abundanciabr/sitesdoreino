@@ -9,8 +9,8 @@ melhorar o que não é o gargalo é encher um cano furado.
 
 Aqui se mede a jornada da **sala de espera**: **cadastrou → pediu entrada →
 foi liberada → entrou pela primeira vez**. Os nomes das passagens são os que a
-célula `alunos` dá às próprias peças (`pre-matriculas`), e trocá-los é Rito de
-Contrato dela, não texto de painel.
+célula `alunos` dá às próprias peças (`pre-matriculas`); o painel usa esses
+nomes para representar as etapas da jornada.
 
 O que este módulo **não** é, e até 05/09/2026 dizia ser: o caminho da venda
 que leva à Meta 1. O mantenedor corrigiu a premissa naquele dia, com estas
@@ -49,8 +49,8 @@ O Scale OS 1.2 §51 é claro: a IA propõe "suspeita"; o humano promove a
    seguintes não têm dados. Isso é resposta, não vazio.
 
 A confirmação mora no cartão (`confirmada`: etapa, data e o registro do
-livro que a declara), gravada por PR quando o mantenedor decide. A régua no
-cartão, o fato no livro, como o alvo da meta.
+livro que a declara). A régua fica no cartão, o fato no livro, como o alvo da
+meta.
 """
 
 from __future__ import annotations

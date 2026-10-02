@@ -1,6 +1,6 @@
 # =============================================================================
 # DEV DA CÉLULA, ISOLADA. funil é stateless (sem banco) — sem serviço `db`.
-# O agente sobe ISTO — nunca a plataforma inteira. As outras células nem existem aqui.
+# As outras células nem existem aqui.
 # =============================================================================
 name: dev-celula
 services:

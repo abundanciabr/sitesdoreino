@@ -1,16 +1,11 @@
 # =============================================================================
 # CONTRATO DA CÉLULA `pages`: a porta de MÁQUINA da casa das Páginas do aluno.
 #
-# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
-# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
-# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
-# este arquivo com o que a célula EXPORTA de verdade, e divergência reprova.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
-# NASCEU DO EXPORT, não de cabeça: `python manage.py export_openapi` em
-# `services/pages`, no ramo do PR #1151, que é a porta. Congelar um arquivo
-# escrito à mão que ninguém serve trava o `make ci` da célula em todo PR
-# seguinte (`armadilhas/228` e `243`; a `304` documenta isso como o erro
-# clássico de plano escrito fora desta casa).
+# Este schema corresponde à saída de `python manage.py export_openapi` em
+# `services/pages`.
 #
 # POR QUE ESTE CONTRATO EXISTE: a lei da obra diz que a peça tem UMA casa. O
 # portfólio não guarda cópia de medalha, a gamificação não guarda cópia de
@@ -20,10 +15,8 @@
 # discordassem ninguém saberia qual está certa.
 #
 # UMA OPERAÇÃO SÓ, e a estreiteza é decisão: nada mais entra porque nada mais
-# tem consumidor declarado hoje. O contrato desta casa é ADITIVO (crescer é
-# livre, remover exige autorização explícita), então nascer largo seria
-# congelar operação que ninguém chama e depois precisar de outro Rito para
-# tirá-la.
+# tem consumidor declarado hoje. A superfície pequena evita congelar operações
+# sem consumidor.
 #
 # O QUE NUNCA SAI DAQUI, e é a invariante que atravessa a operação: só id
 # opaco viaja. Nem link, nem legenda, nem apelido, nem e-mail, nem nome. E
@@ -79,7 +72,7 @@ info:
 
     largo seria congelar operacao que ninguem chama e depois precisar de
 
-    um Rito de Contrato para tira-la.
+    uma mudança incompatível para removê-la.
 
 
     O Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie
@@ -151,7 +144,7 @@ paths:
 components:
   schemas:
     PortfolioDoAluno:
-      description: O que sai. Campo novo aqui e mudanca de contrato (RITOS.md secao 3).
+      description: O que sai. Campos seguem o schema publicado pela API.
       properties:
         portfolio_id:
           type: string

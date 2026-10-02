@@ -71,6 +71,41 @@ def test_meta_e_registro_sao_editados_no_painel():
     assert RegistroDoPlacar.objects.get(dados__titulo="Telefonar para as alunas").dados["responsavel"] == "dono@example.com"
 
 
+def test_registro_invalido_preserva_o_formulario_sem_gravar():
+    rf = RequestFactory()
+    pedido = rf.post("/admin/placar/editar/", {
+        "acao": "registro", "tipo": "compromisso", "quando": "2026-10-02",
+        "titulo": "Ligar para três alunas", "detalhe": "Confirmar as matrículas",
+        "foto": "compras-no-ciclo=3", "vence_em_dias": "amanhã",
+        "responde_a": "registro-anterior",
+    })
+    pedido.admin = {"email": "dono@example.com"}
+    resposta = gestao_do_placar(pedido)
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    for preenchido in (
+        "Ligar para três alunas", "Confirmar as matrículas", "compras-no-ciclo=3",
+        "amanhã", "registro-anterior", "2026-10-02",
+    ):
+        assert preenchido in html
+    assert not RegistroDoPlacar.objects.filter(dados__titulo="Ligar para três alunas").exists()
+    existente = RegistroDoPlacar.objects.create(
+        arquivo="medicao-existente", dados={"tipo": "medicao", "titulo": "Antes"}
+    )
+    revisao = rf.post("/admin/placar/editar/", {
+        "acao": "registro", "arquivo": existente.arquivo, "tipo": "medicao",
+        "quando": "2026-10-03", "titulo": "Título corrigido",
+        "detalhe": "Texto revisado", "vence_em_dias": "prazo inválido",
+    })
+    revisao.admin = pedido.admin
+    html = gestao_do_placar(revisao).content.decode()
+    assert 'name="arquivo" value="medicao-existente"' in html
+    assert "Título corrigido" in html and "Texto revisado" in html
+    assert "prazo inválido" in html
+    existente.refresh_from_db()
+    assert existente.dados["titulo"] == "Antes"
+
+
 def test_fechamento_grava_campos_opcionais_e_nova_meta():
     rf = RequestFactory()
     pedido = rf.post("/admin/placar/fechamento/", {

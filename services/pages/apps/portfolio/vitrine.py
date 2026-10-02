@@ -17,7 +17,7 @@ from django.utils import timezone
 from apps.portfolio.models import EstadoDoLink, Peca, Portfolio
 from apps.core.enderecos import PREFIXO, RESERVADOS
 
-#: O prefixo do endereço PÚBLICO. Leia o cabeçalho deste módulo antes de mexer.
+#: O prefixo do endereço público é compartilhado com a área privada.
 PREFIXO_PUBLICO = PREFIXO
 
 #: O tamanho do apelido é o da coluna (`Portfolio.apelido`), e não um número

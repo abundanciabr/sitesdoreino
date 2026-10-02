@@ -1,6 +1,5 @@
 # =============================================================================
-# DEV DA CÉLULA, ISOLADA: só ela e seu banco. O agente sobe ISTO — nunca a
-# plataforma inteira. As outras células nem existem aqui.
+# DEV DA CÉLULA, ISOLADA: só ela e seu banco. As outras células nem existem aqui.
 #
 # Mesmas duas escolhas fora do molde que a `sugestoes` (ver o LICOES.md dela):
 #   - `name: dev-identidade`: o nome do projeto é o namespace dos containers;

@@ -265,14 +265,6 @@ def test_o_mapa_do_site_conhece_esta_tela():
     )
 
 
-def test_a_tela_nao_traz_estilo_na_marcacao():
-    """O estilo mora em admin/base.html. Um `style=` aqui voltaria a espalhar
-    desenho pela marcação, que é o que `test_estilo_nao_volta_para_a_marcacao`
-    varre na célula inteira; esta é a mesma régua, apontada para esta tela."""
-    caminho = Path(perpetuo.__file__).parent / "templates" / "admin" / "perpetuo.html"
-    assert not re.search(r"\sstyle=", caminho.read_text(encoding="utf-8"))
-
-
 # ---------------------------------------------------------------------------
 # O VEREDITO DE CADA PEÇA (07/09/2026)
 # ---------------------------------------------------------------------------

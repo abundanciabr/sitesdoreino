@@ -6,11 +6,9 @@ dizia nada a ninguém: ganhar só acontecia se o aluno resolvesse abrir a tela p
 conta própria. Este arquivo é o degrau 9 da escada
 (`docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §6) — a voz.
 
-Lei do assunto: `contracts/eventos/notificacao.devida.v1.json`, congelado no
-Rito de Contrato de 26/08/2026 e ampliado com os quatro assuntos desta célula na
-Sessão B de 30/08/2026, com o mantenedor presente. **Nada aqui inventa campo,
-renomeia campo ou acrescenta campo "que seria útil"** — divergir do contrato é
-parar e avisar, nunca editar `contracts/`.
+O formato compartilhado está em `contracts/eventos/notificacao.devida.v1.json`
+e inclui os quatro assuntos desta célula. Os campos emitidos aqui seguem esse
+formato para manter a compatibilidade com as células consumidoras.
 
 AS QUATRO REGRAS QUE ESTE ARQUIVO EXISTE PARA CUMPRIR
 ------------------------------------------------------

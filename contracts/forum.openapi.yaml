@@ -1,10 +1,8 @@
 # =============================================================================
 # CONTRATO DA CÉLULA `forum` — a porta de MÁQUINA do fórum da escola.
 #
-# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
-# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
-# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
-# este arquivo com o que a célula EXPORTA de verdade — divergência reprova.
+# A compatibilidade deste schema com a API viva é conferida por
+# `ci/contract_freeze.py`.
 #
 # POR QUE ESTE CONTRATO EXISTE, e não é papelada: o veredito da consultoria de
 # 28/08/2026 (ponto 4) exigiu que "o resto da plataforma nunca dependa

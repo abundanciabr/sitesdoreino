@@ -17,6 +17,7 @@ def gestao_do_placar(request):
     responsavel = (request.admin or {}).get("id") or (request.admin or {}).get("email")
     erro = ""
     edicao_do_cartao = None
+    edicao_do_registro = None
     salvo = request.GET.get("salvo") == "1"
     selecionado = request.GET.get("cartao", "compras-no-ciclo")
     if request.method == "POST":
@@ -112,11 +113,22 @@ def gestao_do_placar(request):
                         arquivo=arquivo, defaults={"dados": dados}
                     )
                     return redirect("/admin/placar/editar/?salvo=1")
+            if erro:
+                arquivo = request.POST.get("arquivo", "").strip()
+                anterior = RegistroDoPlacar.objects.filter(arquivo=arquivo).first() if arquivo else None
+                preenchido = dict(anterior.dados) if anterior else {}
+                for campo in (
+                    "tipo", "quando", "titulo", "detalhe", "foto", "vence_em_dias",
+                    "responde_a", "problema", "hipotese", "metrica", "guarda",
+                    "veredito", "portao", "evidencia", "verificado_em",
+                ):
+                    preenchido[campo] = request.POST.get(campo, "")
+                edicao_do_registro = RegistroDoPlacar(arquivo=arquivo, dados=preenchido)
     cartoes = list(CartaoDoPlacar.objects.order_by("nome"))
     atual = next((c for c in cartoes if c.nome == selecionado), None)
     if atual is not None and edicao_do_cartao is not None:
         atual.dados = edicao_do_cartao
-    registro = RegistroDoPlacar.objects.filter(arquivo=request.GET.get("registro", "")).first()
+    registro = edicao_do_registro or RegistroDoPlacar.objects.filter(arquivo=request.GET.get("registro", "")).first()
     return render(request, "admin/gestao_do_placar.html", {
         "admin": request.admin, "erro": erro, "salvo": salvo,
         "cartoes": cartoes, "cartao": atual,

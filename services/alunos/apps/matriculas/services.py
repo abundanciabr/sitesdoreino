@@ -387,8 +387,8 @@ def decidir_na_fila(
     O QUE ESTE GUARDA NÃO ALCANÇA, e está dito na cara: a matrícula que nasce do
     EVENTO de pagamento. `pagamento.aprovado.v1` não carrega `product_id`
     (`contracts/eventos/`), então `handlers.py` grava `""` — e essa linha nasce
-    `ativa` sem curso sem passar por aqui. Fechar isso é Rito de Contrato no
-    evento, que é de outra célula. Ver [INV-ALU-C1] em `INVARIANTES.md`.
+    `ativa` sem curso sem passar por aqui. O evento precisaria carregar
+    `product_id` para preencher esse dado. Ver [INV-ALU-C1] em `INVARIANTES.md`.
     """
     if decisao == "liberar" and not product_id:
         return None, "sem-curso"

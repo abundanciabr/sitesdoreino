@@ -263,12 +263,9 @@ def documento_admin(request, nome):
 class FonteAusente:
     """Por que um número de aluno ainda não aparece nesta tela.
 
-    São dois motivos, e a diferença entre eles é a diferença entre um passo de
-    uma linha e um rito de contrato. Escrito como constante nomeada, e não como
-    texto solto no template, porque é essa distinção que a
-    `PLANO-AREA-ADMIN.md` §4.6b cobra em voz alta: lá, uma seção nasceu
-    prometendo "visitas" porque alguém supôs que o dado estava em algum lugar —
-    e não estava.
+    São dois motivos: a API pode existir e ainda faltar a esta tela, ou o dado
+    pode não ter uma operação que o entregue. A constante nomeada deixa essa
+    diferença clara para o painel.
 
     **Correção de 28/08/2026, e ela é a razão de este texto existir:** a
     primeira versão desta tela declarou que a fila de espera "não existe em
@@ -283,13 +280,12 @@ class FonteAusente:
     #: A célula `alunos` JÁ entrega esta lista, por porta que já está no
     #: contrato congelado. O que falta é desta área conseguir bater nela: o par
     #: de tokens `admin→alunos` (um passo de provisionamento na VPS) e a página
-    #: que lê e mostra. Nenhuma decisão nova, nenhum rito.
+    #: que lê e mostra.
     PORTA_PRONTA = "porta-pronta"
 
     #: O dado existe guardado, mas NENHUMA porta o entrega em lista — hoje a
     #: `alunos` só responde sobre um aluno de cada vez, pelo e-mail. Somar
-    #: exige operação nova no contrato congelado dela: Rito §3 + PR na célula
-    #: dona.
+    #: exige uma operação que retorne a lista.
     SEM_OPERACAO = "sem-operacao"
 
 
@@ -306,9 +302,8 @@ class FonteAusente:
 # esperando aprovação" quando a verdade é "não consegui perguntar". Guarda:
 # `tests/test_painel_da_escola.py`.
 #
-# `fonte` nomeia a porta REAL da `contracts/alunos.openapi.yaml`, e não é
-# enfeite: é o que impede a próxima sessão de repetir o erro de 28/08 e
-# declarar inexistente uma operação que está no contrato congelado há um dia.
+# `fonte` nomeia a porta real de `contracts/alunos.openapi.yaml`, para distinguir
+# uma operação existente de um dado que ainda não pode ser consultado em lista.
 TIPOS_DE_ALUNO = (
     {
         "slug": "aguardando-aprovacao",

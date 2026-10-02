@@ -1,6 +1,5 @@
 # =============================================================================
-# DEV DA CÉLULA, ISOLADA: só ela, seu banco e seu redis. O agente sobe ISTO —
-# nunca a plataforma inteira. As outras células nem existem aqui.
+# DEV DA CÉLULA, ISOLADA: só ela, seu banco e seu redis. As outras células nem existem aqui.
 # =============================================================================
 name: dev-celula
 services:

@@ -5,9 +5,8 @@ from apps.core.api import router as gamificacao_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker — é o endereço que outra célula
-# porá no env dela. O valor está CONGELADO em `contracts/gamificacao.openapi.yaml`
-# (Sessão B, 30/08/2026); mudá-lo é Rito de Contrato (RITOS.md §3), nunca edição
-# aqui.
+# porá no env dela. O valor corresponde ao endereço em
+# `contracts/gamificacao.openapi.yaml` usado pelos consumidores.
 #
 # ENDEREÇO — a divergência conhecida, resolvida a favor do contrato: o
 # comentário de `config/urls.py`, escrito na gênese, previa esta porta em

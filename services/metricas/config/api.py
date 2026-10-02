@@ -17,14 +17,8 @@ from apps.fatos.api import router as fatos_router
 # separar, a palavra "interno" não distinguiria nada, e o formato majoritário é
 # o que fica.
 #
-# CONGELAR ESTE VALOR É O RITO DE CONTRATO (`RITOS.md` §3), e é PR à parte, com
-# a etiqueta `contrato` e o mantenedor presente. Este PR NÃO cria
-# `contracts/metricas.openapi.yaml` e NÃO mexe em `ci/manifesto-de-contratos.json`:
-# contrato em disco obriga a linha do manifesto a virar `required`, e `required`
-# antes de a porta existir deixa o `make ci` da célula em ERROR no PR seguinte,
-# longe de quem causou. Foi o que custou uma rodada à `gamificacao`
-# (`armadilhas/228` e `243`), e é por isso que a ordem aqui é porta primeiro,
-# contrato depois.
+# O manifesto de contratos marca como `required` os contratos em disco.
+# Este endereço corresponde à porta servida pela célula na rede interna.
 #
 # QUEM FECHA A PORTA É O BEARER, e nesta célula ele não é o único cadeado: sem
 # rota no Traefik, `metricas:8000` não é alcançável da internet. A topologia

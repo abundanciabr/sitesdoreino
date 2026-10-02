@@ -6,10 +6,9 @@ para cumprir uma promessa escrita no corredor assinado (critério AC-17): a
 gamificação acende o marco do portfólio na trilha quando o selo sai, **sem
 pagar XP**, e ela só ESCUTA. Quem acende é o degrau 15, nunca este arquivo.
 
-Lei do assunto: `contracts/eventos/pages.portfolio.conferido.v1.json`,
-congelado no Rito de Contrato do PR #1154, com o mantenedor presente. Nada aqui
-inventa campo, renomeia campo nem acrescenta campo "que seria útil": divergir
-do congelado é parar e avisar, nunca editar `contracts/`.
+O formato do evento está em
+`contracts/eventos/pages.portfolio.conferido.v1.json`. Os campos emitidos aqui
+seguem esse formato para manter a compatibilidade com as células consumidoras.
 
 DOIS EVENTOS SAEM DO MESMO SIM, E ELES DIZEM COISAS DIFERENTES
 ---------------------------------------------------------------

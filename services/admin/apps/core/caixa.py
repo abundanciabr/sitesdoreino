@@ -1,18 +1,14 @@
 # apps/core/caixa.py — a gestão das ideias dos alunos, dentro do Admin
 """As três telas que conduzem a Caixa de Sugestões, agora em `/admin/caixa/`.
 
-Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md` (28/08/2026).
-Decisão do mantenedor, na frase dele: *"não vamos espalhar painéis ou gestão por
-aí, tudo será em /admin"*. As telas nasceram na célula `sugestoes` e mudaram de
-casa; o desenho é o mesmo, escolhido por ele entre quatro modelos
-(`docs/paineis/painel-da-caixa-de-sugestoes/`).
+Contexto de produto: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`
+(28/08/2026). As telas nasceram na célula `sugestoes` e agora ficam em `/admin`;
+o desenho está descrito em `docs/paineis/painel-da-caixa-de-sugestoes/`.
 
 **Todo o agrupamento mora aqui, e nenhum fato.** A Caixa responde os FATOS de
 cada ideia — votos, plateia, estado, datas, se tem avaliação, se tem ChangeSpec —
-e este módulo decide colunas, ordem e o que é pendência. A divisão não é gosto:
-com o agrupamento do outro lado, cada ajuste de layout viraria mudança de
-contrato, e mudança de contrato aqui custa um Rito, isto é, uma conversa com o
-mantenedor.
+e este módulo decide colunas, ordem e o que é pendência. Assim, ajustes de layout
+ficam no painel sem alterar o contrato que entrega os fatos.
 
 **A exceção são os três números de GENTE** (`pessoas_esperando`,
 `silencio_medio_em_dias`, `pessoas_em_silencio_demais`), que viajam prontos

@@ -70,7 +70,7 @@ Isso é o comportamento desejado, e tem guarda próprio
 `/<padrão>/` recriaria a duplicação de endereço que o D1 foi revisto para
 eliminar.
 
-    Nota para quem vier depois: até 27/08/2026 este bloco afirmava
+    Até 27/08/2026 este bloco afirmava
     `/en/cadastro/ -> 302 /en/cadastro` e `/pt-br/ -> 404`. As duas linhas
     estavam erradas — `en` é o padrão (mora na raiz nua) e `pt-br` é
     prefixado, de modo que `/pt-br/` responde 200. O erro veio de raciocinar

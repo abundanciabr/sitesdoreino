@@ -46,8 +46,7 @@ from config.api import api
 # contrato foi congelado na Sessão B de 30/08/2026 com
 # `servers: http://gamificacao:8000/api/gamificacao` (o formato de `alunos`,
 # `catalogo` e `notificacoes`), e o cabeçalho do contrato registra a divergência
-# de propósito, resolvendo-a: **o contrato vence**. Trocar o endereço depois é
-# Rito de Contrato (RITOS.md §3), não preferência de sessão.
+# de propósito, resolvendo-a: o endereço servido corresponde ao contrato.
 #
 # O que a gênese acertou, e continua valendo: nesta célula o caminho FICA
 # DEBAIXO do prefixo roteado. `meshcraft.top/conquistas/api/gamificacao/…` é
@@ -74,8 +73,7 @@ urlpatterns = [
     #
     # A área da equipe mora AQUI, e não na célula `admin`, por duas razões
     # escritas na TAR-089: a lei manda que quem autoriza nesta célula seja esta
-    # célula, e pôr a tela na `admin` exigiria abrir a porta de máquina
-    # congelada — um Rito de Contrato com o mantenedor para uma tela interna.
+    # célula; pôr a tela na `admin` exigiria uma nova operação na porta de máquina.
     path("marcos", marcos, name="marcos"),
     path("marcos/enviar", enviar_prova, name="enviar-prova"),
     path("interno", interno, name="interno"),

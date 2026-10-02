@@ -164,8 +164,7 @@ def test_uma_pergunta_por_pagina_e_nao_uma_por_leitura(
 
 # ---------------------------------------------------------------------------
 # (b) Visitante anônimo NÃO paga consulta de rede nenhuma
-#     Este é o DESENHO da property preguiçosa. Sem guarda, ele é desfeito de
-#     boa-fé pelo próximo agente que "simplificar" o middleware.
+#     A property preguiçosa só consulta a rede após identificar alguém.
 # ---------------------------------------------------------------------------
 def test_visitante_anonimo_nao_paga_consulta_de_rede(
     client, rede, gamificacao_configurada
