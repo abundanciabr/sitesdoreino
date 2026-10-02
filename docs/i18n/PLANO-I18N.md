@@ -64,7 +64,7 @@ agente futuro copiá-los — está no §6.
 meshcraft.top/cadastro          → inglês (padrão do site, SEM prefixo)
 meshcraft.top/pt-br/cadastro    → português do Brasil
 meshcraft.top/es/cadastro       → espanhol
-meshcraft.top/en/cadastro       → 404 (o padrão não tem prefixo — uma forma só)
+meshcraft.top/en/cadastro       → 301 para /cadastro (o padrão não tem prefixo — uma forma só)
 ```
 
 **O argumento revogado, preservado porque é o custo que se paga:** o D1 original
@@ -81,10 +81,16 @@ Regras de borda (a "matriz HTTP", toda ela vira teste):
   idioma padrão do site. Sem redirecionamento no meio ⇒ **método nenhum é
   perdido**: `POST /leads` e `POST /cadastro` funcionam (na matriz antiga eram
   404, porque um 302 converteria POST em GET e descartaria o corpo).
-- **Prefixo do idioma PADRÃO** (`/en`, `/en/`, `/en/cadastro`): **404**. A regra
-  vem **antes de todas as outras** no resolver, inclusive antes da guarda de
-  rota de máquina — senão `/en/healthz` viraria um caminho para a sonda
-  (`armadilhas/086`).
+- **Prefixo do idioma PADRÃO** (`/en`, `/en/`, `/en/cadastro`; no meshcraft de
+  produção, onde o padrão é o português, `/pt-br/notificacoes`): **301** para o
+  mesmo caminho sem o prefixo, query preservada, `Cache-Control: max-age=300`
+  (desde 02/10/2026; antes era 404). Vale para qualquer caminho, inclusive o de
+  outra célula (`/pt-br/forms/sugestoes/` → `/forms/sugestoes/`), porque todo
+  `/<idioma>/…` cai no catch-all do funil. Só GET/HEAD: POST segue **404** (301
+  o refaria como GET e perderia o corpo). A caixa errada do padrão (`/PT-BR/`,
+  `/pt_br/`) vai ao mesmo lugar. A regra vem **antes de todas as outras** no
+  resolver, e rota de máquina continua 404 mesmo aqui — senão `/en/healthz`
+  viraria um caminho para a sonda (`armadilhas/086`).
 - **Prefixo de idioma não-padrão habilitado** (`/pt-br/…`, `/es/…`): **200**,
   como sempre. `/pt-br` sem barra ⇒ **302** para `/pt-br/` (uma forma canônica
   por página); só GET/HEAD, query preservada, `Cache-Control: max-age=300`
@@ -92,7 +98,8 @@ Regras de borda (a "matriz HTTP", toda ela vira teste):
 - **Caixa e forma:** só minúsculo com hífen é válido (`/pt-br/`). Segmento que
   **normaliza** para um idioma habilitado (minúsculo, `_`→`-`) mas não é ele —
   `/pt-BR/`, `/PT-BR/`, `/pt_br/`, `/EN/`, `/Es/` — ⇒ **404 fail-closed**, nunca
-  redirecionamento. Nada nunca linkou para essas formas.
+  redirecionamento. Nada nunca linkou para essas formas. (Exceção: o idioma
+  PADRÃO, acima, que redireciona à forma nua.)
 - **Prefixo desconhecido** (`/fr/cadastro`, `/de/`): **404** — agora porque o
   urlconf não tem a rota, não porque uma regex adivinhou. A antiga
   `RE_FORMA_DE_IDIOMA` recusava **qualquer** primeiro segmento de 2-3 letras,

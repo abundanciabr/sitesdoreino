@@ -112,18 +112,25 @@ def test_a_raiz_de_um_idioma_nao_e_tocada(cliente, rede, idioma):
 
 
 def test_o_idioma_padrao_nao_ganha_um_prefixo_inventado(cliente, rede):
-    """O D1 revisto pôs o idioma PADRÃO na raiz nua: `/<padrão>/` não existe, e
-    o middleware não pode dar existência a ele.
+    """O D1 revisto pôs o idioma PADRÃO na raiz nua: `/<padrão>/` não serve
+    página nenhuma, e o middleware não pode dar existência a ele.
 
-    Sem este guarda, um dia alguém "conserta" o 404 de `/en/cadastro/` e volta a
-    servir o mesmo conteúdo em dois endereços — que é exatamente a duplicação
-    que o D1 foi revisto para eliminar.
+    Desde 02/10/2026 o prefixo do padrão responde 301 para a forma nua, em vez
+    de 404. Sem este guarda, um dia alguém "conserta" o redirect para servir
+    `/en/cadastro/` direto, e volta o mesmo conteúdo em dois endereços — que é
+    exatamente a duplicação que o D1 foi revisto para eliminar.
     """
-    for caminho in (f"/{PADRAO}", f"/{PADRAO}/", f"/{PADRAO}/cadastro/"):
-        assert pegar(cliente, caminho).status_code == 404, (
-            f"{caminho} deixou de ser 404: o idioma padrão ganhou um prefixo, e "
-            "agora a mesma página vive em dois endereços"
+    for caminho, nu in (
+        (f"/{PADRAO}", "/"),
+        (f"/{PADRAO}/", "/"),
+        (f"/{PADRAO}/cadastro/", "/cadastro/"),
+    ):
+        resposta = pegar(cliente, caminho)
+        assert resposta.status_code == 301, (
+            f"{caminho} devolveu {resposta.status_code}: o idioma padrão ganhou "
+            "um prefixo, e agora a mesma página vive em dois endereços"
         )
+        assert resposta["Location"] == nu
 
 
 # ---------------------------------------------------------------------------

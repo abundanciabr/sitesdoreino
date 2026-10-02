@@ -64,7 +64,7 @@ def com_i18n(rede):
 
 # ---------------------------------------------------------------------------
 # Matriz HTTP (D1, REVISTO em 25/08/2026) — toda ela vira teste.
-# O idioma PADRÃO mora na raiz nua; `/{padrão}/…` é 404; os outros idiomas
+# O idioma PADRÃO mora na raiz nua; `/{padrão}/…` é 301 para a nua; os outros idiomas
 # seguem prefixados, exatamente como antes.
 # ---------------------------------------------------------------------------
 def test_raiz_serve_o_idioma_padrao_em_uma_requisicao(client, rede, com_i18n):
@@ -137,15 +137,99 @@ def test_post_leads_em_site_multilingue_funciona(client, rede, com_i18n):
     assert resp.json()["created"] is True
 
 
-@pytest.mark.parametrize("caminho", ["/en", "/en/", "/en/cadastro", "/en/login"])
-def test_prefixo_do_idioma_padrao_e_404(client, rede, com_i18n, caminho):
-    # Decisão do mantenedor (25/08/2026): `/en/…` não redireciona, deixa de
-    # existir. Uma forma canônica por página, sem gêmea.
+@pytest.mark.parametrize(
+    "caminho, nu",
+    [
+        ("/en", "/"),
+        ("/en/", "/"),
+        ("/en/cadastro", "/cadastro"),
+        ("/en/login", "/login"),
+        ("/en/cadastro?ref=email&x=1", "/cadastro?ref=email&x=1"),
+        ("/EN/cadastro", "/cadastro"),
+        ("/en/forms/sugestoes/", "/forms/sugestoes/"),  # outra célula
+        ("/en//golpista.example", "/golpista.example"),  # nunca `//` (outro site)
+        ("/en/\\golpista.example", "/golpista.example"),
+    ],
+)
+def test_prefixo_do_idioma_padrao_redireciona_para_a_nua(
+    client, rede, com_i18n, caminho, nu
+):
+    # Decisão do mantenedor (25/08/2026): `/en/…` não serve página, uma forma
+    # canônica por página, sem gêmea. Desde 02/10/2026 ela responde 301 para a
+    # forma nua (era 404), com a query intacta, para qualquer caminho.
+    resp = client.get(caminho, HTTP_HOST=HOST_A)
+    assert resp.status_code == 301
+    assert resp["Location"] == nu
+    assert resp["Cache-Control"] == "max-age=300"
+
+
+def test_prefixo_do_idioma_padrao_em_head_tambem_redireciona(client, rede, com_i18n):
+    resp = client.head("/en/cadastro", HTTP_HOST=HOST_A)
+    assert resp.status_code == 301
+    assert resp["Location"] == "/cadastro"
+
+
+def test_prefixo_do_idioma_padrao_nao_redireciona_post(client, rede, com_i18n):
+    # 301 num POST o refaria como GET e perderia o corpo em silêncio.
+    assert client.post("/en/leads", {}, HTTP_HOST=HOST_A).status_code == 404
+
+
+@pytest.mark.parametrize("caminho", ["/en/healthz", "/en/sitemap.xml", "/en/static/x.js"])
+def test_prefixo_do_idioma_padrao_em_rota_de_maquina_segue_404(
+    client, rede, com_i18n, caminho
+):
     assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404
 
 
-@pytest.mark.parametrize("prefixo", ["pt-BR", "PT-BR", "pt_br", "EN", "Es"])
+# O meshcraft de produção (infra/sites.json): o padrão é o PORTUGUÊS, sem
+# prefixo, e o inglês é que vive em `/en/`. `/pt-br/…` (a URL que a pessoa
+# adivinha, ou que um link antigo guardou) levava a 404; agora vai à página.
+SITE_A_PADRAO_PT = {**SITE_A_MULTILINGUE, "default_language": "pt-br"}
+
+
+@pytest.fixture
+def com_padrao_pt(rede):
+    for host in (HOST_A, HOST_PREVIEW):
+        rede.get(f"{CATALOGO}/sites/by-host/{host}").mock(
+            return_value=httpx.Response(200, json=SITE_A_PADRAO_PT)
+        )
+    return rede
+
+
+@pytest.mark.parametrize(
+    "caminho, nu",
+    [
+        ("/pt-br", "/"),
+        ("/pt-br/", "/"),
+        ("/pt-br/notificacoes", "/notificacoes"),
+        ("/pt-br/notificacoes?pagina=2", "/notificacoes?pagina=2"),
+        ("/pt-BR/notificacoes", "/notificacoes"),
+        ("/pt_br/notificacoes", "/notificacoes"),
+        ("/pt-br/forms/sugestoes/", "/forms/sugestoes/"),  # outra célula
+        ("/pt-br/api/checkout/orders", "/api/checkout/orders"),
+    ],
+)
+def test_pt_br_padrao_redireciona_301_para_a_nua(
+    client, rede, com_padrao_pt, caminho, nu
+):
+    resp = client.get(caminho, HTTP_HOST=HOST_A)
+    assert resp.status_code == 301
+    assert resp["Location"] == nu
+
+
+def test_pt_br_padrao_nao_atrapalha_os_outros_idiomas(client, rede, com_padrao_pt):
+    # `/en/` continua servindo inglês, e a raiz nua continua sendo o português.
+    en = client.get("/en/", HTTP_HOST=HOST_A)
+    assert en.status_code == 200
+    assert b'<html lang="en"' in en.content
+    pt = client.get("/", HTTP_HOST=HOST_A)
+    assert pt.status_code == 200
+    assert b'<html lang="pt-BR"' in pt.content
+
+
+@pytest.mark.parametrize("prefixo", ["pt-BR", "PT-BR", "pt_br", "Es"])
 def test_caixa_ou_forma_nao_minuscula_e_404(client, rede, com_i18n, prefixo):
+    # (O padrão, `en`, é a exceção: a caixa errada dele vai à forma nua, acima.)
     resp = client.get(f"/{prefixo}/", HTTP_HOST=HOST_A)
     assert resp.status_code == 404  # fail-closed: nada nunca linkou essas formas
 

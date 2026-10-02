@@ -145,7 +145,8 @@ def caminho_publico(cfg: dict, codigo: str, caminho_sem_prefixo: str) -> str:
 
     O idioma **padrão** do site mora na raiz, sem prefixo (`/cadastro` = inglês no
     meshcraft); todo outro idioma leva o seu código (`/pt-br/cadastro`). A forma
-    prefixada do padrão — `/en/cadastro` — não existe: é 404 no resolver.
+    prefixada do padrão — `/en/cadastro` — não serve página: o resolver a
+    redireciona (301) para a forma sem prefixo.
 
     Toda URL pública desta célula sai daqui, e só daqui: canonical, hreflang,
     x-default, seletor de idioma, sitemap e link interno (`{% url_i18n %}`).

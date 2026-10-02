@@ -2,10 +2,16 @@
 # (PLANO-I18N §2 D1 — matriz HTTP; site sem idiomas = fluxo de hoje).
 #
 # D1 REVISTO em 25/08/2026 (docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md):
-# o idioma PADRÃO do site é servido na raiz nua, sem prefixo; `/{padrão}/…` é 404.
+# o idioma PADRÃO do site é servido na raiz nua, sem prefixo. Desde 02/10/2026
+# `/{padrão}/…` não é mais 404: responde 301 para o mesmo caminho sem o prefixo.
 import time
+from urllib.parse import quote
 
-from django.http import Http404, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpResponsePermanentRedirect,
+    HttpResponseRedirect,
+)
 from django.utils import translation
 from django.utils.cache import patch_vary_headers
 
@@ -630,10 +636,23 @@ class SiteResolutionMiddleware:
         # Primeiro de todos, e isso importa: se este ramo viesse depois da
         # decapagem, `/en/healthz` seria reescrito para `/healthz` e devolveria a
         # sonda com 200 (armadilhas/086 — middleware que reescreve caminho tem
-        # DOIS caminhos na mesma requisição). Morrendo aqui, morre para toda rota
-        # de máquina de uma vez, inclusive a que nascer amanhã.
-        if segmento == cfg["default"]:
-            raise Http404(f"o idioma padrão não tem prefixo: {caminho}")
+        # DOIS caminhos na mesma requisição). Aqui nada é reescrito: ou vira
+        # redirect para a forma sem prefixo, ou morre 404 — e rota de máquina
+        # morre, para toda rota de máquina de uma vez, inclusive a que nascer
+        # amanhã.
+        #
+        # Desde 02/10/2026 o prefixo do padrão (`/pt-br/notificacoes` no
+        # meshcraft) leva a quem digitou ou guardou o endereço à página certa:
+        # 301 para o mesmo caminho sem o prefixo. Vale para QUALQUER caminho,
+        # inclusive os de outras células (`/pt-br/forms/sugestoes/`): todo
+        # `/pt-br/...` cai no catch-all do funil (nenhum roteador do Traefik,
+        # nem o `service_for_path` da aplicação, casa o prefixo de idioma), e
+        # é o redirect que o manda ao lugar onde a outra célula atende. A
+        # caixa errada (`/PT-BR/`, `/pt_br/`) do padrão segue o mesmo caminho:
+        # nada nunca linkou essas formas, mas redirecionar custa uma linha e
+        # leva a pessoa onde ela queria ir.
+        if _forma_canonica(segmento) == cfg["default"]:
+            return self._sem_prefixo_do_padrao(request, caminho, resto)
 
         # ── 2. Idioma não-padrão habilitado: serve prefixado ───────────────
         if segmento in cfg["idiomas"]:
@@ -658,6 +677,7 @@ class SiteResolutionMiddleware:
 
         # ── 3. Idioma habilitado escrito na forma errada: 404 fail-closed ────
         # /PT-BR/, /pt_br/, /EN/, /Es/ — nunca redirect, nunca fallback (D1).
+        # (A forma errada do idioma PADRÃO não chega aqui: o ramo 1 a redireciona.)
         if _forma_canonica(segmento) in cfg["idiomas"]:
             raise Http404(f"forma não canônica de idioma: {segmento}")
 
@@ -671,6 +691,26 @@ class SiteResolutionMiddleware:
         # porque o 302 do caminho nu converteria POST em GET e descartaria o
         # corpo em silêncio).
         return self._servir(request, site, cfg, cfg["default"], caminho)
+
+    def _sem_prefixo_do_padrao(self, request, caminho: str, resto: str):
+        """`/{padrão}/x?q` → 301 `/x?q`; método que não seja GET/HEAD e rota de
+        máquina seguem 404.
+
+        POST não redireciona: o navegador o refaria como GET e o corpo se
+        perderia em silêncio (a mesma razão do `/pt-br` sem barra). Rota de
+        máquina nunca se localiza (D6): `/pt-br/healthz` continua não existindo.
+        """
+        # Barras e contrabarras do começo saem: `/pt-br//evil.com` não pode
+        # virar o `//evil.com` de um redirect para outro site.
+        destino = "/" + resto.lstrip("/\\")
+        if request.method not in METODOS_SEGUROS or destino.startswith(
+            ROTAS_DE_MAQUINA
+        ):
+            raise Http404(f"o idioma padrão não tem prefixo: {caminho}")
+        # `path_info` chega decodificado; o Location precisa do caminho codificado.
+        return self._redirect(
+            quote(destino, safe="/:@!$&'()*+,;="), request, permanente=True
+        )
 
     def _servir(self, request, site, cfg, codigo: str, caminho_sem_prefixo: str):
         """Serve uma página NUM idioma — o mesmo preparo para os ramos 2 e 4.
@@ -743,10 +783,11 @@ class SiteResolutionMiddleware:
         return resposta
 
     @staticmethod
-    def _redirect(destino: str, request) -> HttpResponseRedirect:
+    def _redirect(destino: str, request, permanente: bool = False):
         query = request.META.get("QUERY_STRING", "")
         if query:
             destino = f"{destino}?{query}"
-        resposta = HttpResponseRedirect(destino)
+        classe = HttpResponsePermanentRedirect if permanente else HttpResponseRedirect
+        resposta = classe(destino)
         resposta["Cache-Control"] = CACHE_DO_REDIRECT
         return resposta

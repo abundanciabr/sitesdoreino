@@ -242,8 +242,10 @@ def test_caminho_nu_e_a_porta_no_idioma_padrao(client, rede):
 
     assert resp.status_code == 200
     assert f'<html lang="{SITE_MESH["default_language"]}"' in resp.content.decode()
-    # E a forma prefixada do padrão não existe mais.
-    assert client.get("/en/login", HTTP_HOST=HOST_MESH).status_code == 404
+    # E a forma prefixada do padrão não serve página: manda para a nua.
+    resp = client.get("/en/login", HTTP_HOST=HOST_MESH)
+    assert resp.status_code == 301
+    assert resp["Location"] == "/login"
 
 
 def test_site_monolingue_nao_tem_pagina_de_entrada(client, rede):
