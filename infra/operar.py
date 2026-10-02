@@ -25,6 +25,7 @@ import importlib.util
 import io
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -557,12 +558,50 @@ def op_vigia_do_cadeado(ctx: Contexto, valores: dict) -> int:
 # ---------------------------------------------------------------------------
 # provisionar
 # ---------------------------------------------------------------------------
-PROVISIONADORES_COM_HOST = frozenset((
-    "cursos", "encomendas", "gamificacao", "pages", "pares-da-prancheta",
-))
-PROVISIONADORES_COM_VALOR_OBRIGATORIO = {
-    "email": 1, "sugestoes": 2, "equipe-da-gamificacao": 1,
-}
+# O roteiro diz o que recebe na PRÓPRIA linha de uso: a primeira linha de comentário do
+# topo no formato `#   bash /tmp/x.sh ARGUMENTOS` (pode vir depois de `curl ... && `).
+# Cada palavra depois do nome do arquivo é um argumento:
+#   - um host de verdade (`meshcraft.top`, minúsculo e com ponto): o roteiro recebe
+#     endereço; sem --argumento vai esse mesmo host, e com --argumento vai um só, válido;
+#   - qualquer outra palavra (`SEU_LOGIN_SMTP`, `"ID_DO_GOOGLE"`): valor obrigatório,
+#     o operador tem de informar;
+#   - entre colchetes (`[meshcraft.top]`, `[voce@gmail.com]`): opcional.
+# Sem linha de uso, o roteiro não recebe nada. Roteiro novo não mexe em lista nenhuma.
+LINHA_DE_USO = re.compile(r"^#\s+(?:curl\b.*?&&\s*)?bash\s+/tmp/[\w.-]+\.sh(?P<resto>.*)$")
+HOST_LITERAL = re.compile(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+")
+LINHAS_PARA_ACHAR_O_USO = 100
+
+
+@dataclass(frozen=True)
+class UsoDoRoteiro:
+    host: str | None = None  # o host da linha de uso, se o roteiro recebe endereço
+    obrigatorios: int = 0    # quantos valores o operador tem de informar
+
+
+def uso_do_roteiro(script: Path) -> UsoDoRoteiro:
+    try:
+        linhas = script.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return UsoDoRoteiro()
+    for linha in linhas[:LINHAS_PARA_ACHAR_O_USO]:
+        achou = LINHA_DE_USO.match(linha.rstrip())
+        if not achou:
+            continue
+        try:
+            palavras = shlex.split(achou.group("resto"), comments=True)
+        except ValueError:
+            palavras = achou.group("resto").split()
+        host, obrigatorios = None, 0
+        for palavra in palavras:
+            opcional = palavra.startswith("[") and palavra.endswith("]")
+            if opcional:
+                palavra = palavra[1:-1]
+            if host is None and HOST_LITERAL.fullmatch(palavra):
+                host = palavra
+            elif not opcional:
+                obrigatorios += 1
+        return UsoDoRoteiro(host, obrigatorios)
+    return UsoDoRoteiro()
 
 
 def op_provisionar(ctx: Contexto, valores: dict) -> int:
@@ -577,15 +616,15 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
             print("  " + achado.name[len("provisionar-"):-len(".sh")])
         return 1
     argumentos = list(valores.get("argumento") or [])
-    if alvo in PROVISIONADORES_COM_HOST:
+    uso = uso_do_roteiro(script)
+    if uso.host:
         if not argumentos:
-            argumentos = ["meshcraft.top"]
+            argumentos = [uso.host]
         elif len(argumentos) != 1 or not re.fullmatch(REGEX_HOST, argumentos[0]):
             print(f"{MARCA_DE_PARADA}: informe um único host válido para {script.name}.")
             return 1
-    minimo = PROVISIONADORES_COM_VALOR_OBRIGATORIO.get(alvo, 0)
-    if len(argumentos) < minimo:
-        print(f"{MARCA_DE_PARADA}: {script.name} precisa de {minimo} argumento(s) que ainda não foram informados.")
+    if len(argumentos) < uso.obrigatorios:
+        print(f"{MARCA_DE_PARADA}: {script.name} precisa de {uso.obrigatorios} argumento(s) que ainda não foram informados.")
         return 1
     return _provisionar(ctx, alvo, script, argumentos)
 

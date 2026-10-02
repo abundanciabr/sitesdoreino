@@ -18,7 +18,10 @@
 # usuário do pipeline. O H20 (`provisionar-identidade.sh`) deu certo de PRIMEIRA
 # exatamente por ter virado script + uma linha curta de invocação.
 #
-# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só). O e-mail é opcional; a sintaxe
+# abaixo marca isso com colchetes, que NÃO vão na hora de colar:
+#   bash /tmp/p.sh [voce@gmail.com]
+# A linha pronta para colar:
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-aprovadores.sh -o /tmp/p.sh && bash /tmp/p.sh voce@gmail.com
 #
 # O E-MAIL PODE SER ARGUMENTO, E ISSO É DELIBERADO. A `armadilhas/090` proíbe

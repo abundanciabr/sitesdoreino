@@ -12,7 +12,7 @@
 # Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só):
-#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh meshcraft.top
 #
 # O NOME DO ARQUIVO FICOU MAIS ESTREITO QUE O CONTEÚDO, e ele fica assim de
 # propósito: o endereço acima já está escrito no rodapé de

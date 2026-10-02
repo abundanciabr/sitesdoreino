@@ -44,3 +44,24 @@ def test_host_publico_chega_a_execucao_com_o_arquivo_certo(tmp_path, monkeypatch
                         lambda ctx, alvo, arquivo, argumentos: chamadas.append((alvo, arquivo, argumentos)) or 0)
     assert operar.main(["provisionar", "--alvo", "cursos"], _ctx(tmp_path, [])) == 0
     assert chamadas == [("cursos", script, ["meshcraft.top"])]
+
+
+def test_os_roteiros_de_verdade_dizem_na_linha_de_uso_o_que_recebem():
+    host = {"cursos", "encomendas", "gamificacao", "pages", "pares-da-prancheta"}
+    obrigatorios = {"email": 1, "sugestoes": 2, "equipe-da-gamificacao": 1}
+    roteiros = sorted((RAIZ / "infra").glob("provisionar-*.sh"))
+    assert roteiros
+    for roteiro in roteiros:
+        alvo = roteiro.name[len("provisionar-"):-len(".sh")]
+        uso = operar.uso_do_roteiro(roteiro)
+        assert uso.host == ("meshcraft.top" if alvo in host else None), alvo
+        assert uso.obrigatorios == obrigatorios.get(alvo, 0), alvo
+
+
+def test_roteiro_de_verdade_com_valor_obrigatorio_recusa_sem_ele(tmp_path, capsys):
+    chamadas: list = []
+    for alvo, minimo in (("email", 1), ("sugestoes", 2), ("equipe-da-gamificacao", 1)):
+        assert operar.main(["provisionar", "--alvo", alvo], _ctx(tmp_path, chamadas)) == 1
+        assert f"precisa de {minimo} argumento(s)" in capsys.readouterr().out
+    assert chamadas == []
+    assert not (tmp_path / "publicacoes").exists()

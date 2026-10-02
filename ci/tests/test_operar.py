@@ -236,6 +236,11 @@ def test_script_ausente_ou_com_sintaxe_quebrada_nao_roda(fazer_ctx, tmp_path, ca
 # --------------------------------------------------------------------------- provisionar
 
 
+def _com_uso(linha_de_uso: str, corpo: str) -> str:
+    """Um roteiro como os de verdade: o topo diz, num comentário, como se chama."""
+    return f"#!/usr/bin/env bash\n# COMO EXECUTAR NA VPS:\n#   {linha_de_uso}\n{corpo}\n"
+
+
 @pytest.fixture
 def copia_com_provisionadores(tmp_path):
     raiz = tmp_path / "copia"
@@ -245,10 +250,15 @@ def copia_com_provisionadores(tmp_path):
     (infra / "provisionar-pede-valor.sh").write_text('LOGIN="${1:-}"\n', encoding="utf-8")
     (infra / "provisionar-pede-todos.sh").write_text('echo "$@"\n', encoding="utf-8")
     (infra / "provisionar-conta.sh").write_text('[ "$#" -eq 0 ]\n', encoding="utf-8")
-    (infra / "provisionar-cursos.sh").write_text('HOST="${1:-}"\n', encoding="utf-8")
-    (infra / "provisionar-email.sh").write_text('LOGIN="${1:-}"\n', encoding="utf-8")
-    (infra / "provisionar-sugestoes.sh").write_text('ID="${1:-}"; STAFF="${2:-}"\n', encoding="utf-8")
-    (infra / "provisionar-equipe-da-gamificacao.sh").write_text('echo "$@"\n', encoding="utf-8")
+    (infra / "provisionar-cursos.sh").write_text(
+        _com_uso("curl -fsSL https://exemplo/c.sh -o /tmp/c.sh && bash /tmp/c.sh meshcraft.top", 'HOST="${1:-}"'),
+        encoding="utf-8")
+    (infra / "provisionar-email.sh").write_text(
+        _com_uso("bash /tmp/p.sh SEU_LOGIN_SMTP", 'LOGIN="${1:-}"'), encoding="utf-8")
+    (infra / "provisionar-sugestoes.sh").write_text(
+        _com_uso('bash /tmp/p.sh "ID_DO_GOOGLE" "email@staff"', 'ID="${1:-}"; STAFF="${2:-}"'), encoding="utf-8")
+    (infra / "provisionar-equipe-da-gamificacao.sh").write_text(
+        _com_uso("bash /tmp/e.sh seu-email@exemplo.com", 'echo "$@"'), encoding="utf-8")
     return raiz
 
 
@@ -303,6 +313,77 @@ def test_provisionar_host_conhecido_e_argumentos_em_lista(fazer_ctx, copia_com_p
     ctx.processo = processos
     assert operar.main(["provisionar", "--alvo", "pede-todos", "--argumento", "um", "--argumento", "dois"], ctx) == 0
     assert processos.rodadas()[0]["comando"][-2:] == ["um", "dois"]
+
+
+def _roteiro_novo(copia, nome, linha_de_uso, corpo='echo "$@"'):
+    (copia / "infra" / f"provisionar-{nome}.sh").write_text(_com_uso(linha_de_uso, corpo), encoding="utf-8")
+
+
+def test_roteiro_novo_que_pede_endereco_funciona_sem_lista_nenhuma(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao,
+):
+    _roteiro_novo(copia_com_provisionadores, "escola-nova",
+                  "curl -fsSL https://exemplo/n.sh -o /tmp/n.sh && bash /tmp/n.sh outra-escola.exemplo.top")
+    script = copia_com_provisionadores / "infra" / "provisionar-escola-nova.sh"
+    ctx = fazer_ctx(raiz=copia_com_provisionadores, ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+
+    ctx.processo = processos = Processos()  # sem --argumento: vai o host da própria linha de uso
+    assert operar.main(["provisionar", "--alvo", "escola-nova"], ctx) == 0
+    assert processos.rodadas()[0]["comando"] == ["bash", str(script), "outra-escola.exemplo.top"]
+
+    ctx.processo = processos = Processos()  # com --argumento: vai o pedido, se for um host
+    assert operar.main(["provisionar", "--alvo", "escola-nova", "--argumento", "meshcraft.top"], ctx) == 0
+    assert processos.rodadas()[0]["comando"][-1] == "meshcraft.top"
+
+    ctx.processo = processos = Processos()  # e só um host: nada de shell no meio
+    assert operar.main(["provisionar", "--alvo", "escola-nova", "--argumento", "a.top; id"], ctx) == 1
+    assert operar.main(["provisionar", "--alvo", "escola-nova", "--argumento", "a.top", "--argumento", "b.top"], ctx) == 1
+    assert processos.chamadas == []
+
+
+def test_roteiro_novo_que_pede_valor_obrigatorio_recusa_quando_falta(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao, capsys,
+):
+    _roteiro_novo(copia_com_provisionadores, "pede-dois", 'bash /tmp/n.sh "LOGIN" outro_valor')
+    ctx = fazer_ctx(raiz=copia_com_provisionadores, ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+
+    ctx.processo = processos = Processos()
+    for dados in ([], ["--argumento", "so-um"]):
+        assert operar.main(["provisionar", "--alvo", "pede-dois", *dados], ctx) == 1
+        assert "precisa de 2 argumento(s) que ainda não foram informados" in capsys.readouterr().out
+    assert processos.chamadas == []
+
+    assert operar.main(["provisionar", "--alvo", "pede-dois", "--argumento", "um", "--argumento", "dois"], ctx) == 0
+    assert processos.rodadas()[0]["comando"][-2:] == ["um", "dois"]
+
+
+def test_roteiro_novo_com_valor_opcional_roda_com_ou_sem_ele(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao,
+):
+    _roteiro_novo(copia_com_provisionadores, "talvez", "bash /tmp/n.sh [quem@exemplo.com]")
+    ctx = fazer_ctx(raiz=copia_com_provisionadores, ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+
+    ctx.processo = processos = Processos()
+    assert operar.main(["provisionar", "--alvo", "talvez"], ctx) == 0
+    assert operar.main(["provisionar", "--alvo", "talvez", "--argumento", "quem@exemplo.com"], ctx) == 0
+    assert [r["comando"][2:] for r in processos.rodadas()] == [[], ["quem@exemplo.com"]]
+
+
+@pytest.mark.parametrize("texto, esperado", [
+    ("#!/usr/bin/env bash\necho oi\n", operar.UsoDoRoteiro()),
+    ("# derrubaria a sessão. Com `bash /tmp/p.sh` o exit morre no filho\n# e (`bash /tmp/p.sh\n# meshcraft.top`) é só texto.\n",
+     operar.UsoDoRoteiro()),
+    ("[ -f \"$X\" ] || X=1\n#   bash /tmp/p.sh meshcraft.top\n", operar.UsoDoRoteiro("meshcraft.top")),
+    ("#   curl -fsSL https://e/p.sh -o /tmp/p.sh && bash /tmp/p.sh Login 'dois valores'\n",
+     operar.UsoDoRoteiro(None, 2)),
+    ("#   bash /tmp/p.sh [meshcraft.top] LOGIN # comentário solto\n#   bash /tmp/p.sh outro valor\n",
+     operar.UsoDoRoteiro("meshcraft.top", 1)),
+])
+def test_uso_do_roteiro_e_lido_da_primeira_linha_de_uso(tmp_path, texto, esperado):
+    arquivo = tmp_path / "provisionar-x.sh"
+    arquivo.write_text(texto, encoding="utf-8")
+    assert operar.uso_do_roteiro(arquivo) == esperado
+    assert operar.uso_do_roteiro(tmp_path / "nao-existe.sh") == operar.UsoDoRoteiro()
 
 
 def test_provisionar_rejeita_host_invalido_antes_do_backup(fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao):

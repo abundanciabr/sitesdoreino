@@ -27,7 +27,7 @@
 # ponto de uso. O presente mudou, e a linha entrou atrás do código que a lê.
 #
 # COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
-#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pages.sh -o /tmp/p.sh && bash /tmp/p.sh
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pages.sh -o /tmp/p.sh && bash /tmp/p.sh meshcraft.top
 #
 # O argumento do host é OPCIONAL e só serve para desempatar: com um site ativo
 # no catálogo ele é dispensável, e com mais de um o roteiro PARA, lista os que
