@@ -51,14 +51,14 @@ def test_links_reais_incluem_geral_segmentos_e_preservam_origens(quiz):
     assert resposta.status_code == 200
     dados = json.loads(resposta.content)
     # vídeo sem VSL ainda entra (abre com aviso); IA sem chave fica de fora.
-    assert dados["total"] == 9
+    assert dados["total"] == 12
     assert (
         len(
             {(item["version_key"], item["fmt"], item["seg"]) for item in dados["links"]}
         )
-        == 9
+        == 12
     )
-    assert {item["fmt"] for item in dados["links"]} == {"text", "calc", "video"}
+    assert {item["fmt"] for item in dados["links"]} == {"text", "calc", "video", "ai"}
     assert {item["seg"] for item in dados["links"]} == {"", "iniciante", "avancado"}
     assert {item["version_key"] for item in dados["links"]} == {"B2"}
     geral = next(
@@ -179,9 +179,11 @@ def test_links_filtram_segmentos_e_geral_e_o_link_sem_segmento(quiz):
 
 
 @override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
-def test_conversa_por_ia_vira_link_quando_a_chave_existe(quiz, monkeypatch):
+def test_conversa_por_ia_sempre_vira_link_e_avisa_se_a_chave_falta(quiz, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     sem = json.loads(links(pedido("/admin/crivo/links?site_id=painel-site"), quiz.slug).content)
-    assert "ai" not in {item["fmt"] for item in sem["links"]}
+    assert sem["ia_ligada"] is False
     monkeypatch.setenv("ANTHROPIC_API_KEY", "chave-de-teste")
     com = json.loads(links(pedido("/admin/crivo/links?site_id=painel-site"), quiz.slug).content)
-    assert "ai" in {item["fmt"] for item in com["links"]}
+    assert com["ia_ligada"] is True
+    assert [i["url"] for i in sem["links"]] == [i["url"] for i in com["links"]]

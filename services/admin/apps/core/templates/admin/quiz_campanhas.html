@@ -58,6 +58,7 @@
         <div class="opcoes">
           {% for chave, nome in formatos %}<label><input type="checkbox" name="fmt" value="{{ chave }}"{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %} checked{% endif %}> {{ nome }}</label>{% endfor %}
         </div>
+        {% if not ia_ligada %}<p class="dica">"Conversa com IA": enquanto a chave da IA não estiver ligada no site, a página faz as mesmas perguntas em botões, sem a IA.</p>{% endif %}
       </fieldset>
       <fieldset>
         <legend>Para quem é o anúncio?</legend>

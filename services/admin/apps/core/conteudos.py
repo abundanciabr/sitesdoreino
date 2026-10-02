@@ -485,6 +485,7 @@ def quiz_campanhas(request, slug: str):
             "slug": slug,
             "versoes": versoes,
             "formatos": [(f, FORMATOS_LEGIVEIS[f]) for f in formatos],
+            "ia_ligada": todos.get("ia_ligada", True),
             "segmentos": segmentos,
             "origens": ORIGENS,
             "meios": MEIOS,

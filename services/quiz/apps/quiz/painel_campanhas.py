@@ -102,7 +102,7 @@ def links(request, slug):
             return _error(f"Versão ativa indisponível: {', '.join(faltam)}.", 422)
     from .conversa import _chave
 
-    # A conversa por IA só vira link quando a chave do provedor está no servidor.
+    # Sem a chave do provedor a conversa por IA ainda abre, com as perguntas fixas.
     ia_ligada = bool(_chave())
     itens = []
     vistos = set()
@@ -122,8 +122,6 @@ def links(request, slug):
                 try:
                     resolvida = resolver_experiencia(versao, formato, segmento or None)
                 except Http404:
-                    continue
-                if resolvida["fmt"] == "ai" and not ia_ligada:
                     continue
                 identidade = (versao.key, resolvida["fmt"], segmento)
                 if identidade in vistos:
@@ -158,5 +156,6 @@ def links(request, slug):
             "quiz_slug": quiz.slug,
             "links": itens,
             "total": len(itens),
+            "ia_ligada": ia_ligada,
         }
     )
