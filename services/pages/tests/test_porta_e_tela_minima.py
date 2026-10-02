@@ -39,7 +39,7 @@ from tests.conftest import ANA, COOKIE, dublar_matricula, dublar_sessao
 
 # O que só quem entrou pode ler. Escrito por extenso, e não lido do template:
 # um teste que lesse a mesma fonte que o código passaria com o template vazio.
-FRASE_DA_PRANCHETA = "O que você quer criar?"
+FRASE_DA_PRANCHETA = "Monte seu portfólio para ganhar dinheiro com 3D"
 
 
 def bater(caminho: str = "/", *, cookie: str | None = None):

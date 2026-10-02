@@ -64,7 +64,7 @@ CHAVE = "tres-tipos-escolhidos"
 # `aria-pressed` do botão é o que um leitor de tela anuncia. Escrita por
 # extenso, e não montada a partir do template: um teste que lesse a mesma fonte
 # que o código passaria com a tela vazia.
-FRASE_DA_JORNADA = "O que você quer criar?"
+FRASE_DA_JORNADA = "Monte seu portfólio para ganhar dinheiro com 3D"
 
 
 def texto(resposta) -> str:
@@ -169,8 +169,8 @@ def test_a_prancheta_orienta_e_nunca_tranca(aluno_ana):
     saida = texto(abrir())
 
     assert ItemDeConferencia.objects.count() == 0
-    assert "Escolher uma direção" in saida
-    assert "Escolher o que publicar" in saida
+    assert "Escolher o que oferecer" in saida
+    assert "Buscar clientes ou compradores" in saida
     assert "Criar meu projeto sem quiz" in saida
 
 
