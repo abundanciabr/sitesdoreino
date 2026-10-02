@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `identidade` NA VPS — o passo do mantenedor (H20).
+# PROVISIONAR A CÉLULA `identidade` NA VPS — operação da plataforma (H20).
 # Cria o par banco+role isolado, escreve o env real da célula e registra os
 # tokens dos DOIS pares consumidores (funil→identidade, sugestoes→identidade).
 #
@@ -12,7 +12,7 @@
 # bancas (25/08/2026) apontou que o H20 estava indo pelo caminho antigo — e que
 # o texto dele só existia dentro de uma conversa, não no repositório.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-identidade.sh -o /tmp/p.sh && bash /tmp/p.sh
 #
 # NÃO PERGUNTA NADA, e isso é de propósito: as credenciais do Google já estão

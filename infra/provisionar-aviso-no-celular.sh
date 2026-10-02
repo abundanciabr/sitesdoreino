@@ -3,7 +3,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR O AVISO NA TELA DO CELULAR — o passo do mantenedor.
+# LIGAR O AVISO NA TELA DO CELULAR — operação da plataforma.
 #
 # Desde 31/08/2026 a plataforma inteira sabe mandar aviso para o celular de
 # quem instalou o app: a célula `notificacoes` guarda o aparelho e envia, e o
@@ -11,7 +11,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # a CHAVE VAPID, que é o que prova aos servidores da Google, da Apple e da
 # Mozilla que o aviso saiu mesmo deste site.
 #
-# ENV NÃO VIAJA POR PIPELINE (INV-P8, Lei 5) — por isso este passo é seu.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-aviso-no-celular.sh -o /tmp/p.sh && bash /tmp/p.sh

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LIGAR A LISTA DE APROVADORES DA CAIXA DE SUGESTÕES — o passo do mantenedor.
+# LIGAR A LISTA DE APROVADORES DA CAIXA DE SUGESTÕES — operação da plataforma.
 #
 # Desde 25/08/2026 só quem está em `SUGESTOES_APROVADORES` pode mandar uma ideia
 # da Caixa para desenvolvimento. A célula lê a variável no PONTO DE USO e é
@@ -8,10 +8,7 @@
 # não rodar, o botão de aprovar não existe para pessoa alguma — a Caixa continua
 # servindo normalmente, mas nenhuma ideia anda.
 #
-# ENV NÃO VIAJA POR PIPELINE (INV-P8, Lei 5). O `deploy-infra.yml` diz de si
-# mesmo que JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso esta
-# linha só existe se o mantenedor a puser na VPS — e por isso este arquivo
-# existe: para esse passo ser UMA linha e não um texto para colar.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # POR QUE SCRIPT VERSIONADO, e não um bloco colado no terminal:
 # em 24/08/2026 um passo entregue como bloco de colar falhou TRÊS vezes seguidas
@@ -21,7 +18,7 @@
 # usuário do pipeline. O H20 (`provisionar-identidade.sh`) deu certo de PRIMEIRA
 # exatamente por ter virado script + uma linha curta de invocação.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-aprovadores.sh -o /tmp/p.sh && bash /tmp/p.sh voce@gmail.com
 #
 # O E-MAIL PODE SER ARGUMENTO, E ISSO É DELIBERADO. A `armadilhas/090` proíbe

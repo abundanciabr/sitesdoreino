@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DEIXAR A PRANCHETA PRONTA, o passo do mantenedor, numa linha só.
+# DEIXAR A PRANCHETA PRONTA, operação da plataforma, numa linha só.
 #
 # A Prancheta do aluno (`/pages`, degrau 06 de PLANO-PORTFOLIO-DO-ALUNO.md)
 # pergunta à `identidade` QUEM é a pessoa (com e-mail), pergunta à `alunos` se
@@ -8,10 +8,8 @@
 # site. São três pares consumidor->provedor, e os três já existem no CÓDIGO
 # (`services/pages/apps/core/clients.py` e `.../menu.py`). Além deles, a célula
 # precisa saber DE QUE ESCOLA esta instalação é, para gravar a marcação do aluno
-# no lado certo da fronteira (`SITE_ID`, lido por `.../views.py`). O que falta
-# em todos os casos é a metade da VPS: credencial não viaja por esteira (INV-P8,
-# Lei 5), e o `deploy-infra.yml` diz de si mesmo que JAMAIS toca `infra/env/`.
-# Por isso este passo é seu, e por isso este arquivo existe: para ser UMA linha.
+# no lado certo da fronteira (`SITE_ID`, lido por `.../views.py`).
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh

@@ -35,7 +35,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # levaria quarenta ideias de aluno de uma vez. Com ela, o disparo distraído
 # encontra quarenta onde esperava duas e para antes de tocar em qualquer linha.
 #
-# COMO O MANTENEDOR RODA (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
+# COMO EXECUTAR NA VPS (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/esvaziar-caixa.sh -o /tmp/e.sh && bash /tmp/e.sh meshcraft.top 2
 #
 # Se o seu prompt começa com `PS C:\>`, você está no PC e este script não é

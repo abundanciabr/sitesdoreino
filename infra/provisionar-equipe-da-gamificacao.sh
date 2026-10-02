@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# QUEM É DA EQUIPE DA ESCOLA — o passo do mantenedor para abrir a fila de marcos.
+# QUEM É DA EQUIPE DA ESCOLA — operação da plataforma para abrir a fila de marcos.
 #
 # A fila de validação (`/conquistas/interno`) é onde a equipe confere as provas
 # que os alunos mandam de um marco real. Ela é FAIL-CLOSED por desenho: sem uma
 # lista de pessoas no env da célula, ninguém entra — nem o mantenedor.
 #
-# Por que este passo é seu e não da esteira: a lista é de IDS DE PESSOAS REAIS,
-# que só existem no banco de produção, e env de produção não viaja pelo Git
-# (INV-P8, Lei 5; o `deploy-infra.yml` diz de si mesmo que JAMAIS toca
-# `infra/env/` nem `/opt/plataforma/env/`).
+# A lista usa IDs de pessoas do banco de produção. O executor consulta
+# esses IDs na VPS e este roteiro grava a configuração local.
 #
 # COMO RODAR (dentro da VPS, uma linha só, com o e-mail de quem entra na lista):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-equipe-da-gamificacao.sh -o /tmp/e.sh && bash /tmp/e.sh seu-email@exemplo.com

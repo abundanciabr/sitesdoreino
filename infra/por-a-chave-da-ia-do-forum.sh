@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LIGAR A IA QUE RASCUNHA RESPOSTA NO FÓRUM — o passo do mantenedor.
+# LIGAR A IA QUE RASCUNHA RESPOSTA NO FÓRUM — operação da plataforma.
 # Guarda a chave da Anthropic no env do fórum e recarrega a célula.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/por-a-chave-da-ia-do-forum.sh -o /tmp/ia.sh && bash /tmp/ia.sh
 #
 # ELE PERGUNTA A CHAVE, com digitação invisível, e essa é a decisão que dá nome

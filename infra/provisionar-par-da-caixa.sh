@@ -3,15 +3,12 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR A CAIXA DE SUGESTÕES DENTRO DO ADMIN — o passo do mantenedor.
+# LIGAR A CAIXA DE SUGESTÕES DENTRO DO ADMIN — operação da plataforma.
 #
 # `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md` (28/08/2026) mudou a
 # gestão das ideias para `/admin/caixa/`. Pela Lei 3 o Admin não lê o banco da
-# Caixa: ele PERGUNTA, pelo contrato congelado. Perguntar exige credencial, e
-# credencial não viaja por esteira (INV-P8, Lei 5): o `deploy-infra.yml` diz de
-# si mesmo que JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso este
-# passo é seu, e por isso este arquivo existe — para ele ser UMA linha, e não um
-# texto para colar.
+# Caixa: ele PERGUNTA, pelo contrato congelado.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-da-caixa.sh -o /tmp/p.sh && bash /tmp/p.sh

@@ -27,7 +27,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # `quadro_atual`). Uma migration que chutasse o valor amarraria toda a Caixa ao
 # site errado em silêncio — o erro exato que o fail-closed existe para impedir.
 #
-# COMO O MANTENEDOR RODA (DENTRO da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (DENTRO da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-caixa.sh -o /tmp/s.sh && bash /tmp/s.sh meshcraft.top
 #
 # O HOST É ARGUMENTO porque a plataforma é multissítio (Lei 9): em 27/08/2026 a

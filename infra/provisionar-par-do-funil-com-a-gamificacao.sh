@@ -3,17 +3,14 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR O QUADRINHO DE PROGRESSO NA HOME — o passo do mantenedor.
+# LIGAR O QUADRINHO DE PROGRESSO NA HOME — operação da plataforma.
 #
 # A home de meshcraft.top passou a mostrar, para quem entrou, o degrau da pessoa
 # na trilha da escola e o quanto falta para o próximo (degrau 20 do
 # PLANO-CELULA-GAMIFICACAO). O progresso é DADO DA GAMIFICAÇÃO e mora lá: o
 # `funil` pergunta pela porta de máquina (`getMyStatus`), sem guardar cópia
-# nenhuma deste lado. Falar com outra célula exige credencial, e credencial não
-# viaja por esteira (INV-P8, Lei 5): o `deploy-infra.yml` diz de si mesmo que
-# JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso este passo é
-# seu, e por isso este arquivo existe: para ele ser UMA linha, e não um texto
-# para colar.
+# nenhuma deste lado.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-do-funil-com-a-gamificacao.sh -o /tmp/p.sh && bash /tmp/p.sh

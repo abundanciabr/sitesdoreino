@@ -7,7 +7,7 @@
 # no catalogo, e toda matricula que ja existe passar a dizer de qual curso a
 # pessoa e aluna.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha so, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha so, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/cadastrar-os-dois-cursos.sh -o /tmp/cursos.sh && bash /tmp/cursos.sh
 #
 #   O prompt tem de comecar com `deploy@srv...` ou `root@srv...`. Se comecar

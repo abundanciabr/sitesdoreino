@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `admin` NA VPS — o passo do mantenedor (H21).
+# PROVISIONAR A CÉLULA `admin` NA VPS — operação da plataforma (H21).
 # Cria o par banco+role isolado, escreve o env real da célula e registra o
 # token do par `admin→identidade` nos DOIS lados.
 #
@@ -13,7 +13,7 @@
 # mergeado ANTES de o mantenedor ser chamado: a linha abaixo busca o script na
 # `main`, e um script que ainda não está lá não pode ser executado.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-admin.sh -o /tmp/p.sh && bash /tmp/p.sh
 #
 # NÃO PERGUNTA NADA, e isso é de propósito: a lista de quem entra na área

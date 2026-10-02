@@ -34,7 +34,7 @@
 #
 # NAO REINICIA NADA, nao toca env, nao escreve segredo, nao toca no Docker.
 #
-# COMO O MANTENEDOR RODA (DENTRO da VPS, uma linha so):
+# COMO EXECUTAR NA VPS (DENTRO da VPS, uma linha so):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/fechar-porta-lateral.sh -o /tmp/f.sh && sudo bash /tmp/f.sh
 #
 # A linha comeca com `curl`, e o prompt tem de estar como `deploy@srv...` ou

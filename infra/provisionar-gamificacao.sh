@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `gamificacao` NA VPS — o passo do mantenedor.
+# PROVISIONAR A CÉLULA `gamificacao` NA VPS — operação da plataforma.
 # Cria o par banco+role isolado, descobre o site no catálogo, escreve o env real
 # da célula e abre o par de conversa que ela precisa (identidade).
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-gamificacao.sh -o /tmp/g.sh && bash /tmp/g.sh meshcraft.top
 #
 # POR QUE ESTE ARQUIVO EXISTE, e não um bloco colado no terminal: em 24/08/2026

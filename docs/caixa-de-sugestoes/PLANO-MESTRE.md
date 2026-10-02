@@ -1,5 +1,9 @@
 # PLANO MESTRE — Caixa de Sugestões
 
+> **Plano datado de agosto de 2026.** Trechos que exigem ChangeSpec aprovado
+> ou assinatura antes da implementação foram revogados em 06/09/2026.
+> Para trabalho atual, vale `AGENTS.md`.
+
 > Criado em 22/08/2026, a partir de `ESPECIFICACAO-CELULA.md` (a célula),
 > `FORMATO-CHANGESPEC.md` (o corredor sugestão→código) e dos protótipos visuais
 > `prototipo-v1.html` / `prototipo-v2.html`.

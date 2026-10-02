@@ -28,7 +28,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # PESSOAS têm alguma. É a resposta à pergunta do mantenedor, e ela sai antes de
 # qualquer linha ser tocada. Só depois vem o passo que apaga.
 #
-# COMO O MANTENEDOR RODA (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
+# COMO EXECUTAR NA VPS (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/limpar-avisos-orfaos.sh -o /tmp/o.sh && bash /tmp/o.sh
 #
 # Se o seu prompt começa com `PS C:\>`, você está no PC e este script não é

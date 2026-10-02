@@ -3,15 +3,13 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR A ETIQUETA DE NÍVEL NO FÓRUM — o passo do mantenedor.
+# LIGAR A ETIQUETA DE NÍVEL NO FÓRUM — operação da plataforma.
 #
 # Desde 01/09/2026 a página de uma conversa do fórum mostra, ao lado do nome de
 # quem escreveu, o degrau dele na escola: "Nv 7 · Artesão". O número e o título
 # moram na célula `gamificacao`, e o fórum os pergunta a ela por HTTP. Falar com
-# outra célula exige credencial, e credencial não viaja por esteira (INV-P8,
-# Lei 5): o `deploy-infra.yml` diz de si mesmo que JAMAIS toca `infra/env/` nem
-# `/opt/plataforma/env/`. Por isso este passo é seu, e por isso este arquivo
-# existe: para ele ser UMA linha, e não um texto para colar.
+# outra célula exige credencial,
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-do-forum-com-a-gamificacao.sh -o /tmp/p.sh && bash /tmp/p.sh

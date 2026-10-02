@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `pages` NA VPS, o passo do mantenedor.
+# PROVISIONAR A CÉLULA `pages` NA VPS, operação da plataforma.
 #
 # `pages` é a casa das Páginas do aluno: o portfólio, a Prancheta e a vitrine
 # pública que o aluno manda ao cliente (PLANO-PORTFOLIO-DO-ALUNO.md, corredor
@@ -26,7 +26,7 @@
 # `services/pages/apps/core/views.py::site_atual()` passou a ler a variável no
 # ponto de uso. O presente mudou, e a linha entrou atrás do código que a lê.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pages.sh -o /tmp/p.sh && bash /tmp/p.sh
 #
 # O argumento do host é OPCIONAL e só serve para desempatar: com um site ativo

@@ -3,16 +3,13 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR O PAINEL NA MEDIÇÃO — o passo do mantenedor.
+# LIGAR O PAINEL NA MEDIÇÃO — operação da plataforma.
 #
 # A célula `metricas` (o livro de fatos) guarda a HISTÓRIA dos números da escola,
 # e a `admin` é quem os MOSTRA. Pela Lei 3 o Admin não lê o banco da medição: ele
 # PERGUNTA, pela porta de leitura, com o contrato congelado
-# (`contracts/metricas.openapi.yaml`). Perguntar exige credencial, e credencial
-# não viaja por esteira (INV-P8, Lei 5): o `deploy-infra.yml` diz de si mesmo que
-# JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso este passo é seu,
-# e por isso este arquivo existe — para ele ser UMA linha, e não um texto para
-# colar.
+# (`contracts/metricas.openapi.yaml`).
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-da-medicao.sh -o /tmp/p.sh && bash /tmp/p.sh

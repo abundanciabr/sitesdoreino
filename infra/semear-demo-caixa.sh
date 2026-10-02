@@ -27,7 +27,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # mais ser apagada — nesse caso o comando ARQUIVA (some do quadro do aluno do
 # mesmo jeito) e diz na tela quantas caíram nesse caminho.
 #
-# COMO O MANTENEDOR RODA (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
+# COMO EXECUTAR NA VPS (DENTRO da VPS — prompt `deploy@srv…` ou `root@srv…`):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-demo-caixa.sh -o /tmp/d.sh && bash /tmp/d.sh criar meshcraft.top
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-demo-caixa.sh -o /tmp/d.sh && bash /tmp/d.sh remover meshcraft.top
 #

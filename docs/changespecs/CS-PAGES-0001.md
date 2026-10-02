@@ -1,6 +1,9 @@
 # CS-PAGES-0001 — O portfólio do aluno: roteiro, curadoria, conferência da escola e o link para mandar ao cliente
 
-## PORTÃO DE VALIDADE — confira ANTES de mandar para aprovação
+> **Registro de escopo de 2026.** O portão, a assinatura e os campos abaixo
+> não condicionam trabalho autorizado hoje; vale `AGENTS.md`.
+
+## Conferências propostas na época
 
 - [x] **`FORA DO ESCOPO` não está vazio.**
 - [x] **`CÉLULAS PROIBIDAS` lista cada célula do sistema fora da responsável, uma por uma.**

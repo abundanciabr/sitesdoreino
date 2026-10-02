@@ -1,5 +1,10 @@
 # DECISÃO — quem aprova o ChangeSpec, e quem fica sabendo que a ideia andou
 
+> **Registro histórico de 25/08/2026.** A exigência de aprovação de ChangeSpec
+> para executar trabalho ou mudar o status da Caixa foi revogada em 06/09/2026.
+> Os trechos abaixo preservam a decisão da época, sem autoridade operacional
+> sobre pedidos atuais. Vale `AGENTS.md`.
+
 > **Tomada pelo mantenedor em 25/08/2026**, em sessão, com as opções e os custos
 > na mesa. Este documento é **lei** para os despachos do Lote 4 em diante.
 > Complementa `FORMATO-CHANGESPEC.md` §1 e §5 e a `ESPECIFICACAO-CELULA.md` §10.

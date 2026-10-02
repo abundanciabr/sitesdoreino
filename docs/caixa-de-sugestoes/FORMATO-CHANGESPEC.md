@@ -1,4 +1,10 @@
-# ChangeSpec — Formato e Regras v1
+# ChangeSpec — formato histórico v1
+
+> Registro do desenho de agosto de 2026, sem autoridade para exigir aprovação,
+> outra sessão, campos obrigatórios ou imutabilidade. Para trabalho atual,
+> prevalece `AGENTS.md`: execute o pedido autorizado; peça a palavra do
+> mantenedor apenas para gastar dinheiro real, apagar dados ou expor segredos.
+> A trava de status da Caixa foi revogada em 06/09/2026 (§5).
 
 Formato do documento que fica entre a decisão de produto e a implementação por agente. Complementa `ESPECIFICACAO-CELULA.md`.
 
@@ -6,7 +12,9 @@ Formato do documento que fica entre a decisão de produto e a implementação po
 
 O ChangeSpec traduz uma decisão de produto já tomada num corredor operacional que um agente de IA executa sem interpretar escopo livremente.
 
-Regra não negociável: quem escreve e aprova o ChangeSpec não é o mesmo agente ou sessão que vai implementá-lo. Um agente pode ajudar a redigir o rascunho, mas a aprovação final é humana — registrada no campo `APROVADO_POR`. Se o mesmo agente que desenha o próprio escopo também o implementa, a propriedade de segurança que justifica esse documento desaparece: ele vira uma formalidade que o agente preenche para si mesmo.
+Na proposta original, outro agente ou sessão redigia o documento e o mantenedor
+assinava `APROVADO_POR`. Essa separação deixou de ser condição para implementar
+um pedido autorizado.
 
 ## 2. De onde nasce um ChangeSpec
 
@@ -17,42 +25,44 @@ Sugestao (linguagem do aluno)
     → agente implementa
 ```
 
-Todo ChangeSpec referencia pelo menos um `suggestion_id` real da célula de sugestões. Se nasceu de várias sugestões mescladas, ou de um padrão identificado em várias sugestões (fase de clustering, mais adiante), referencia todas.
+Quando o documento registrar uma sugestão da Caixa, o `suggestion_id` ajuda a
+ligar a obra à origem. Trabalhos pedidos diretamente não dependem desse número.
 
 **O caminho inteiro, com as estações que vêm antes e depois desta, está em
 [`DA-IDEIA-A-OBRA.md`](DA-IDEIA-A-OBRA.md)** (01/09/2026). Sugestão grande passa
-por um estudo de viabilidade ANTES do ChangeSpec: sem ele, o corredor é escrito
-sobre suposições do que a plataforma sabe fazer, e a escada desaba no meio.
+por um estudo de viabilidade no desenho original. Esse estudo pode registrar
+premissas úteis, mas não condiciona o início de trabalho autorizado.
 
 A decisão de produto — o passo do meio — agora tem um lugar concreto: `AvaliacaoInterna.decisao_produto`, na célula de sugestões. É onde a tradução de "problema do aluno" para "vamos resolver assim" fica registrada antes de virar ChangeSpec — uma linha, não um documento novo.
 
-## 3. Campos obrigatórios
+## 3. Campos do modelo histórico
 
 - **CHANGE-ID** — `CS-{celula}-{sequencial}`, ex: `CS-PORTFOLIO-0001`
 - **ORIGEM** — suggestion_id(s) da célula de sugestões
 - **PROBLEMA** — reescrito em linguagem de produto; nunca a frase literal do aluno
 - **EVIDÊNCIAS** — total de votos, autores únicos, comentários relevantes, puxados dos eventos da Célula de Sugestões
 - **OBJETIVO** — o que muda para o aluno quando isso for entregue
-- **FORA DO ESCOPO** — lista explícita do que não será construído nesta entrega. Campo obrigatório, não pode ficar vazio
+- **FORA DO ESCOPO** — lista do que não seria construído nesta entrega, no modelo de 2026
 - **CÉLULA(S) RESPONSÁVEL(IS)** — qual célula (ou células) este ChangeSpec autoriza a tocar
 - **CONTRATOS PERMITIDOS** — contratos inter-célula que o agente pode chamar, por nome
 - **CÉLULAS PROIBIDAS** — toda célula do sistema fora de CÉLULA RESPONSÁVEL, listada célula por célula, nunca resumida como "nenhuma outra"
 - **CRITÉRIOS DE ACEITAÇÃO** — AC-01, AC-02... cada um verificável objetivamente, não uma sensação
-- **TESTES OBRIGATÓRIOS** — o que precisa ter teste automatizado antes do merge
+- **TESTES OBRIGATÓRIOS** — nome dado aos testes previstos no modelo de 2026
 - **RISCO E ROLLBACK** — como desfazer se algo sair errado em produção
 - **DEFINITION OF DONE** — checklist final
 - **APROVADO_POR** — nome e data; vazio até aprovação humana explícita
 
-## 4. Regras de validade
+## 4. Critérios históricos, sem efeito de bloqueio
 
-Um ChangeSpec não está pronto para um agente pegar enquanto:
+O modelo antigo considerava o ChangeSpec incompleto quando:
 
 - `FORA DO ESCOPO` estiver vazio — se não dá para dizer o que fica de fora, não houve escopo de verdade
 - `CÉLULAS PROIBIDAS` não listar cada célula do sistema fora de `CÉLULA RESPONSÁVEL`, uma por uma
 - algum item de `CRITÉRIOS DE ACEITAÇÃO` não for verificável objetivamente — "melhorar a experiência" não é AC; "aluno publica portfólio e recebe URL pública em até 3 cliques" é
 - `APROVADO_POR` estiver vazio
 
-Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar durante a implementação, nasce `CS-PORTFOLIO-0001-v2`, com um campo `SUBSTITUI` apontando para o anterior — o mesmo princípio do histórico append-only da célula de sugestões, aplicado aqui.
+Esses critérios e a versão `-v2` eram convenções desse modelo. O documento pode
+ser corrigido quando o escopo mudar; o histórico do Git guarda a versão anterior.
 
 ## 5. Gatilho no pipeline de status — REVOGADO em 06/09/2026
 
@@ -68,14 +78,14 @@ workflow, nenhum robô e nenhuma tarefa da fila leem `em_desenvolvimento`, entã
 a trava guardava um rótulo de roadmap, e não um gatilho de máquina. Quem
 despacha robô nesta casa é a fila (`ci/fila.py`), que não conhece a Caixa.
 
-**O que continua valendo:** registrar um ChangeSpec segue sendo de quem está em
-`SUGESTOES_APROVADORES`, e o registro segue append-only — o §4 inteiro está de
-pé. O que saiu foi a EXIGÊNCIA, nunca a memória do que foi autorizado. Religar é
-reaplicar o `reverse_sql` da migration
-`services/sugestoes/apps/sugestoes/migrations/0014_a_fase_anda_sem_assinatura.py`,
-e devolver os dois degraus Python.
+O registro histórico de aprovações da Caixa permanece. Ele não condiciona a
+execução de trabalho autorizado nem a mudança de status. O §4 acima também é
+histórico.
 
-**Quem pode aprovar, decidido em 25/08/2026 — lei em [`DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`](DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md).** O `APROVADO_POR` do §1 deixou de ser só prosa: a célula reconhece como aprovador **apenas** quem estiver em `SUGESTOES_APROVADORES` (variável de ambiente da VPS, hoje só o mantenedor), e a lista vazia é **fail-closed** — ninguém aprova, nada entra em desenvolvimento. Ser da equipe (`SUGESTOES_STAFF_EMAILS`) **não basta**: moderar e autorizar desenvolvimento são papéis diferentes. E a célula **não lê o repositório em runtime**: ela guarda o registro do ChangeSpec (id, aprovador, data, link), não confere o documento — a garantia é "alguém autorizado afirmou, e ficou registrado quem e quando".
+O desenho anterior da aprovação está em
+[`DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`](DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md).
+A célula não lê este documento em runtime; a existência de um registro não
+confere o conteúdo do arquivo.
 
 ## 6. Exemplo preenchido
 

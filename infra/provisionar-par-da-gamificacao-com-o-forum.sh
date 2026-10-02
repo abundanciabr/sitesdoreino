@@ -3,16 +3,13 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# DEIXAR A PARTE DAS CONQUISTAS PERGUNTAR AO FÓRUM — o passo do mantenedor.
+# DEIXAR A PARTE DAS CONQUISTAS PERGUNTAR AO FÓRUM — operação da plataforma.
 #
 # Os Destaques da semana são alguém da equipe escolhendo até três trabalhos por
 # semana e escrevendo por que escolheu. Para escolher é preciso VER, e ver quer
 # dizer ler o TÍTULO da conversa. O título mora no fórum, e a parte das
-# conquistas precisa perguntar por ele. Falar com outra célula exige credencial,
-# e credencial não viaja por esteira (INV-P8, Lei 5): o `deploy-infra.yml` diz
-# de si mesmo que JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso
-# este passo é seu, e por isso este arquivo existe: para ele ser UMA linha, e
-# não um texto para colar.
+# conquistas precisa perguntar por ele.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-da-gamificacao-com-o-forum.sh -o /tmp/p.sh && bash /tmp/p.sh

@@ -245,6 +245,10 @@ def copia_com_provisionadores(tmp_path):
     (infra / "provisionar-pede-valor.sh").write_text('LOGIN="${1:-}"\n', encoding="utf-8")
     (infra / "provisionar-pede-todos.sh").write_text('echo "$@"\n', encoding="utf-8")
     (infra / "provisionar-conta.sh").write_text('[ "$#" -eq 0 ]\n', encoding="utf-8")
+    (infra / "provisionar-cursos.sh").write_text('HOST="${1:-}"\n', encoding="utf-8")
+    (infra / "provisionar-email.sh").write_text('LOGIN="${1:-}"\n', encoding="utf-8")
+    (infra / "provisionar-sugestoes.sh").write_text('ID="${1:-}"; STAFF="${2:-}"\n', encoding="utf-8")
+    (infra / "provisionar-equipe-da-gamificacao.sh").write_text('echo "$@"\n', encoding="utf-8")
     return raiz
 
 
@@ -275,12 +279,12 @@ def test_provisionar_funciona_no_retorno_legado(fazer_ctx, copia_com_provisionad
     assert processos.rodadas()[0]["comando"][0] == "bash"
 
 
-@pytest.mark.parametrize("alvo", ["pede-valor", "pede-todos", "conta"])
-def test_provisionar_recusa_o_que_pede_valor_ao_mantenedor(fazer_ctx, copia_com_provisionadores, alvo, capsys):
+@pytest.mark.parametrize("alvo", ["email", "sugestoes", "equipe-da-gamificacao"])
+def test_provisionar_recusa_valor_realmente_ausente(fazer_ctx, copia_com_provisionadores, alvo, capsys):
     processos = Processos()
     assert operar.main(["provisionar", "--alvo", alvo], fazer_ctx(processos, raiz=copia_com_provisionadores)) == 1
     assert processos.chamadas == []
-    assert "só o mantenedor conhece" in capsys.readouterr().out
+    assert "argumento(s) que ainda não foram informados" in capsys.readouterr().out
 
 
 def test_provisionar_alvo_inexistente_lista_os_nomes(fazer_ctx, copia_com_provisionadores, capsys):
@@ -289,17 +293,48 @@ def test_provisionar_alvo_inexistente_lista_os_nomes(fazer_ctx, copia_com_provis
     assert "livre" in saida and "pede-valor" in saida
 
 
-def test_no_repositorio_real_ha_provisionador_que_roda_e_outro_que_e_recusado(fazer_ctx, plataforma_da_aplicacao):
-    # A mesma regra do workflow: os que citam $@, $# ou ${1:- ficam de fora.
-    todos = sorted((ROOT / "infra").glob("provisionar-*.sh"))
-    pedem = [p for p in todos if operar.re.search(r"\$\{1:-|\$@|\$#", p.read_text(encoding="utf-8"))]
-    assert pedem and len(pedem) < len(todos)
-    livre = next(p for p in todos if p not in pedem)
-    alvo = livre.name[len("provisionar-"):-len(".sh")]
-    ctx = fazer_ctx(Processos(), ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
-    assert operar.main(["provisionar", "--alvo", alvo], ctx) == 0
-    recusado = pedem[0].name[len("provisionar-"):-len(".sh")]
-    assert operar.main(["provisionar", "--alvo", recusado], fazer_ctx(Processos())) == 1
+def test_provisionar_host_conhecido_e_argumentos_em_lista(fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao):
+    processos = Processos()
+    ctx = fazer_ctx(processos, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.main(["provisionar", "--alvo", "cursos"], ctx) == 0
+    assert processos.rodadas()[0]["comando"] == ["bash", str(copia_com_provisionadores / "infra" / "provisionar-cursos.sh"), "meshcraft.top"]
+    processos = Processos()
+    ctx.processo = processos
+    assert operar.main(["provisionar", "--alvo", "pede-todos", "--argumento", "um", "--argumento", "dois"], ctx) == 0
+    assert processos.rodadas()[0]["comando"][-2:] == ["um", "dois"]
+
+
+def test_provisionar_rejeita_host_invalido_antes_do_backup(fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao):
+    processos = Processos()
+    ctx = fazer_ctx(processos, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    assert operar.main(["provisionar", "--alvo", "cursos", "--argumento", "meshcraft.top; id"], ctx) == 1
+    assert processos.chamadas == []
+    assert list((plataforma_da_aplicacao / "publicacoes").iterdir()) == [plataforma_da_aplicacao / "publicacoes" / "aplicacao.json"]
+
+
+def test_provisionar_valor_explicito_chega_sem_eco_no_operador(
+    fazer_ctx, copia_com_provisionadores, plataforma_da_aplicacao, capsys,
+):
+    processos = Processos()
+    ctx = fazer_ctx(processos, raiz=copia_com_provisionadores,
+                    ambiente={"PLATAFORMA_DIR": str(plataforma_da_aplicacao)})
+    valor = "id-publico-por-exemplo"
+    assert operar.main(["provisionar", "--alvo", "email", "--argumento", valor], ctx) == 0
+    assert processos.rodadas()[0]["comando"][-1] == valor
+    assert valor not in capsys.readouterr().out
+
+
+def test_executor_oculta_argumento_que_o_script_imprime(capsys):
+    valor = "id-publico-por-exemplo"
+    codigo, saida = operar.executar_processo(
+        [sys.executable, "-c", "import sys; print(sys.argv[1])", valor],
+        env={"PATH": "/usr/bin"}, timeout=10, redigir=(valor,),
+    )
+    assert codigo == 0
+    assert valor not in saida
+    assert valor not in capsys.readouterr().out
 
 
 def test_provisionar_falhou_restaura_env_e_reprova_app(

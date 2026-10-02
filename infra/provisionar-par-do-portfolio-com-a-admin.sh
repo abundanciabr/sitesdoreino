@@ -3,7 +3,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# ABRIR A FILA DA CONFERÊNCIA DO PORTFÓLIO — o passo do mantenedor.
+# ABRIR A FILA DA CONFERÊNCIA DO PORTFÓLIO — operação da plataforma.
 #
 # Quem confere o portfólio do aluno é TODO ADMINISTRADOR DA ESCOLA. Foi decisão
 # dele, em 06/09/2026: até ali a permissão morava numa lista de pessoas escrita
@@ -13,10 +13,8 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 #
 # Para obedecer a isso, a célula `pages` PERGUNTA à célula `admin` se a pessoa é
 # administradora (`contracts/admin.openapi.yaml`, operação `isAdministrator`).
-# Perguntar exige credencial, e credencial não viaja por esteira (INV-P8,
-# Lei 5): o `deploy-infra.yml` diz de si mesmo que JAMAIS toca `infra/env/` nem
-# `/opt/plataforma/env/`. Por isso este passo é seu, e por isso este arquivo
-# existe — para ele ser UMA linha, e não um texto para colar.
+#
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-par-do-portfolio-com-a-admin.sh -o /tmp/a.sh && bash /tmp/a.sh

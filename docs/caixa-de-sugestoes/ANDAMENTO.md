@@ -1,5 +1,9 @@
 # ANDAMENTO — Caixa de Sugestões
 
+> **Fotografia de 26/08/2026.** Menções abaixo à assinatura obrigatória de
+> ChangeSpec e à trava de status descrevem o fluxo anterior a 06/09/2026.
+> Não bloqueiam trabalho autorizado; vale `AGENTS.md`.
+
 > **Para você, mantenedor.** Uma página, sem jargão: o que já está no ar, o que
 > está sendo feito agora e o que espera na fila. Toda sessão que trabalhar na
 > Caixa atualiza esta página **e** o painel no fechamento — se os dois

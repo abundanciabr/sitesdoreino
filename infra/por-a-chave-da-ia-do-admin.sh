@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LEVAR A CHAVE DA IA ATE A AREA ADMINISTRATIVA, o passo do mantenedor.
+# LEVAR A CHAVE DA IA ATE A AREA ADMINISTRATIVA, operação da plataforma.
 # Copia a chave da Anthropic (e o workspace dela, quando existe) de
 # `env/forum.env` para `env/admin.env` e recria a celula `admin` para ela reler
 # o arquivo.
@@ -11,7 +11,7 @@
 # Nada mais na area administrativa muda por causa disto: quem ja usa
 # `/admin/` nao ve diferenca nenhuma nas outras telas.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha so, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha so, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/por-a-chave-da-ia-do-admin.sh -o /tmp/ia-admin.sh && bash /tmp/ia-admin.sh
 #
 #   O prompt tem de comecar com `deploy@srv...` ou `root@srv...`. Se comecar

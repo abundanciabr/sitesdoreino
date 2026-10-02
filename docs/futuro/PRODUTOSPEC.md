@@ -4,10 +4,14 @@
 > funil, quiz, checkout, alunos e mensageria — ou seja, da Fase D concluída.
 > **Decisão de sequência:** arquitetura sólida, alinhada à Lei 3 e à Lei 9 —
 > generaliza "site é dado" para "produto/curso é dado". Adiado
-> deliberadamente, não descartado. Revisar como Portão 0 de um brief formal
+> deliberadamente, não descartado. Na época, previa-se um Portão 0 de um brief formal
 > ("Fase F — ProdutoSpec") depois que a Fase D produzir um curso real
 > construído à mão — o formato exato do spec deve ser desenhado olhando para
 > um sistema que já funciona, não para um que ainda não existe.
+
+> **Registro histórico:** este plano não impõe Portão 0 nem revisão prévia do
+> mantenedor a trabalho autorizado hoje. Reavalie suas premissas no site atual;
+> `AGENTS.md` prevalece.
 
 ---
 

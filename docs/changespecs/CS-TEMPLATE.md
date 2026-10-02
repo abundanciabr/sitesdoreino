@@ -1,28 +1,22 @@
 <!--
 =============================================================================
-MOLDE DE CHANGESPEC — COPIE ESTE ARQUIVO, NÃO O EDITE.
+MOLDE HISTÓRICO DE CHANGESPEC — uso opcional.
 
     cp docs/changespecs/CS-TEMPLATE.md docs/changespecs/CS-{CELULA}-{NNNN}.md
 
-Lei do formato: docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md (§3 campos, §4
-validade, §5 gatilho). Quem assina: docs/caixa-de-sugestoes/
-DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md. Como se nomeia: README.md
-desta pasta.
+O formato de agosto de 2026 não exige campos, assinatura, outra sessão ou
+imutabilidade para trabalho atual. AGENTS.md prevalece.
 
-Apague TODOS os comentários `<!-- … -->` ao preencher. Um molde que sobrevive
-dentro do documento final é um documento que ninguém leu até o fim.
+Se usar este molde, adapte ou retire os comentários que não ajudarem.
 =============================================================================
 -->
 
 # CS-{CELULA}-{NNNN} — {título curto em linguagem de produto}
 
-## PORTÃO DE VALIDADE — confira ANTES de mandar para aprovação
+## Referências do modelo antigo (opcionais)
 
 <!--
-São as quatro regras do §4 do formato. Um ChangeSpec que falha em qualquer uma
-delas NÃO está pronto para um agente pegar — e um molde que deixasse passar um
-ChangeSpec inválido seria pior que molde nenhum, porque daria a aparência do
-processo sem a propriedade que o processo garante.
+Os itens abaixo descrevem o desenho de agosto de 2026. Não bloqueiam a execução.
 -->
 
 - [ ] **`FORA DO ESCOPO` não está vazio.** Se não dá para dizer o que fica de
@@ -33,10 +27,6 @@ processo sem a propriedade que o processo garante.
 - [ ] **Todo item de `CRITÉRIOS DE ACEITAÇÃO` é verificável objetivamente.**
       "Melhorar a experiência" não é AC. "Aluno publica portfólio e recebe URL
       pública em até 3 cliques" é.
-- [ ] **`APROVADO_POR` está preenchido** com nome e data de uma pessoa que
-      está em `SUGESTOES_APROVADORES` (hoje: só o mantenedor). Lista vazia ⇒
-      ninguém aprova ⇒ nada entra em desenvolvimento. É fail-closed de
-      propósito.
 
 ---
 
@@ -49,18 +39,15 @@ acento; `{NNNN}` com quatro dígitos, contado por célula, a partir de 0001. -->
 
 ## SUBSTITUI
 
-<!-- Só existe em versão nova (`-v2`, `-v3`). O §4 do formato: ChangeSpec
-aprovado NÃO se edita; escopo que muda vira arquivo novo apontando para o
-anterior, e o anterior fica onde está. Apague esta seção inteira se este é o
-primeiro. -->
+<!-- Referência opcional a uma versão anterior; edições também podem ser feitas
+no mesmo arquivo, com histórico no Git. -->
 
 —
 
 ## ORIGEM
 
-<!-- `suggestion_id`(s) REAIS da Célula de Sugestões — o número que aparece na
-URL da ideia. Se nasceu de várias sugestões mescladas, ou de um padrão visto em
-várias, liste TODAS. ChangeSpec sem origem é escopo inventado. -->
+<!-- Se nasceu de sugestão da Caixa, cite o suggestion_id. Pedido direto não
+precisa dessa origem. -->
 
 suggestion_id …
 
@@ -88,7 +75,7 @@ campo errado. -->
 
 ## FORA DO ESCOPO
 
-<!-- OBRIGATÓRIO, e não pode ficar vazio (§4). Liste o que NÃO será construído
+<!-- Se útil, liste o que NÃO será construído
 nesta entrega — inclusive o que parece "óbvio que não". O que não estiver aqui
 o agente pode entender como aberto. -->
 
@@ -105,10 +92,7 @@ CHANGE-ID. -->
 
 ## CONTRATOS PERMITIDOS
 
-<!-- Os contratos inter-célula que o agente pode chamar, POR NOME. Contrato que
-não está aqui não pode ser chamado — e contrato que ainda não existe não se
-inventa dentro de um despacho: nasce pelo Rito de Contrato (RITOS.md §3), com o
-mantenedor presente, e NUNCA dentro de um lote. -->
+<!-- Contratos inter-célula pertinentes ao trabalho. -->
 
 -
 
@@ -129,7 +113,7 @@ não participou desta conversa. -->
 - **AC-01:**
 - **AC-02:**
 
-## TESTES OBRIGATÓRIOS
+## Testes previstos no modelo de 2026
 
 <!-- O que precisa ter teste automatizado ANTES do merge. Escreva o que o teste
 deve conseguir REPROVAR, não o que ele deve confirmar: um guarda que nunca
@@ -145,8 +129,7 @@ como desfazer", isso é uma decisão a tomar antes, não depois. -->
 
 ## DEFINITION OF DONE
 
-<!-- Checklist final. As três primeiras linhas valem para qualquer célula desta
-casa e não se apagam. -->
+<!-- Exemplo histórico de checklist; ajuste ao trabalho real e a AGENTS.md. -->
 
 - [ ] Todos os AC acima com teste automatizado, e cada guarda provado por
       mutação (quebre o código de propósito; se a suíte continuar verde, o
@@ -159,12 +142,6 @@ casa e não se apagam. -->
 
 ## APROVADO_POR
 
-<!-- VAZIO até a aprovação humana explícita. Não preencha com "a equipe", "o
-time" nem com o nome de um agente. Nome de pessoa e data (DD/MM/AAAA), e essa
-pessoa precisa estar em `SUGESTOES_APROVADORES`.
+<!-- Registro histórico opcional; não condiciona a execução. -->
 
-Enquanto esta linha estiver vazia, a ideia NÃO sai de PLANEJADO — a trava é
-mecânica, em três degraus (ponto de estrangulamento, `Sugestao.save()` e um
-trigger no Postgres). Não adianta contornar; adianta colher a assinatura. -->
-
-_(vazio — sem isto, o ChangeSpec não está pronto para nenhum agente pegar)_
+_(se houver registro)_

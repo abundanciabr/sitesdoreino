@@ -132,7 +132,7 @@ def configuracao(
     if faltam:
         raise AvisoFalhou(
             "env/mensageria.env sem " + ", ".join(faltam) + ": o e-mail da plataforma "
-            "não está provisionado (infra/provisionar-email.sh é passo do mantenedor)."
+            "não está provisionado; execute infra/provisionar-email.sh na VPS com a configuração SMTP disponível."
         )
     try:
         porta = int(smtp.get("SMTP_PORT") or "587")

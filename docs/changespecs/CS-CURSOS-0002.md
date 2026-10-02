@@ -1,5 +1,8 @@
 # CS-CURSOS-0002 — Guia de portfólio com checklist: a reta final deixa de travar
 
+> **Registro superado de 2026.** O portão, a assinatura e os campos abaixo
+> não condicionam trabalho autorizado hoje; vale `AGENTS.md`.
+
 > ## SUPERADO. NÃO ASSINE ESTE DOCUMENTO.
 >
 > Substituído por [`CS-PAGES-0001.md`](CS-PAGES-0001.md) em 05/09/2026, antes de
@@ -15,7 +18,7 @@
 > O corpo abaixo fica intacto, como registro do que foi escrito. A ideia 21 se
 > assina pelo `CS-PAGES-0001`.
 
-## PORTÃO DE VALIDADE — confira ANTES de mandar para aprovação
+## Conferências propostas na época
 
 - [x] **`FORA DO ESCOPO` não está vazio.**
 - [x] **`CÉLULAS PROIBIDAS` lista cada célula do sistema fora da responsável, uma por uma.**

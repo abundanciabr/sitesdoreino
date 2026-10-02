@@ -1,5 +1,9 @@
 # DA IDEIA A OBRA — o caminho inteiro de uma sugestão, em sete estações
 
+> **Registro do fluxo desenhado em 01/09/2026.** As estações abaixo são contexto
+> histórico, não etapas obrigatórias. A assinatura de ChangeSpec e a trava de
+> status foram revogadas em 06/09/2026. Pedidos atuais seguem `AGENTS.md`.
+
 > **Para a sessão que acabou de receber "o aluno pediu X, faça acontecer".**
 > Nascido em 01/09/2026, depois que a sugestão do Ricardo ("guias de portfólio
 > com check-list") custou quarenta comandos de leitura antes da primeira linha
@@ -73,14 +77,14 @@ que foi pedido com nome continua proibido; protótipo descartável também.
 
 O exemplo real e completo: [`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`](../decisoes/PLANO-PORTFOLIO-DO-ALUNO.md).
 
-## Estação 3 — O que só o mantenedor decide
+## Estação 3 — Bifurcações do plano de 2026
 
-O estudo termina com bifurcações, e a sessão responsável leva a decisão ao
-mantenedor **numa pergunta estruturada só, na hora** (`CLAUDE.md`).
+O estudo antigo reservava bifurcações ao mantenedor. Hoje, só gastar dinheiro
+real, apagar dados ou expor segredos exige sua palavra (`AGENTS.md`).
 As três que aparecem quase sempre:
 
-- **a fronteira**: célula nova ou dentro de uma existente. É decisão de
-  arquitetura, e o `RUNBOOK-LOTES.md` §7 proíbe que um lote a tome sozinho;
+- **a fronteira**: célula nova ou dentro de uma existente; o plano antigo
+  reservava essa decisão ao mantenedor;
 - **o que custa dinheiro ou credencial**: armazenamento pago, provedor de
   e-mail, serviço externo;
 - **o que muda o produto**: o que a escola promete ao aluno, e o que ela não
@@ -91,33 +95,32 @@ declarada, nunca fique parado esperando.
 
 ## Estação 4 — O corredor da Caixa
 
-A ideia só entra em construção com o corredor formado, e a tranca é do banco,
-não da tela: `avaliar` → `planejado` → **ChangeSpec assinado** →
-`em_desenvolvimento`. Formato e regras de validade em
+A proposta antiga ligava construção a `avaliar` → `planejado` →
+**ChangeSpec assinado** → `em_desenvolvimento`. Essa exigência foi revogada em
+06/09/2026. O formato histórico está em
 [`FORMATO-CHANGESPEC.md`](FORMATO-CHANGESPEC.md); os corredores já assinados em
 `docs/changespecs/`; as telas em `/admin/caixa/`.
 
 Duas coisas que a sessão precisa saber e costumam surpreender:
 
-- **quem assina é só quem está em `SUGESTOES_APROVADORES`** (variável da VPS), e
-  lista vazia é fail-closed: ninguém aprova, nada entra
+- o antigo registro de aprovação da Caixa usava
+  `SUGESTOES_APROVADORES`; ele não bloqueia a execução
   (`DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`);
 - **o ChangeSpec cita o `suggestion_id` real**, e o número se lê na URL da
   ideia. Um corredor sem origem é um plano que ninguém pediu.
 
-## Estação 5 — A escada vira fila
+## Estação 5 — A escada virava fila (histórico)
 
-Cada degrau da escada do estudo vira **uma tarefa no balcão**, encadeada:
+Em 2026, cada degrau da escada do estudo virava tarefa no balcão. O comando
+abaixo usava `ci/fila.py`, já removido; não o execute no site atual:
 
 ```bash
 python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> \
   --evidencia-exigida "..." --despacho "..." --depende-de TAR-NNN
 ```
 
-Regras que já são lei e não se reinventam aqui: tarefa se pega no balcão e
-nunca de memória (`RITOS.md` §5), a bancada vem antes do balcão, e o brief de
-cada agente sai do [`MODELO-DESPACHO.md`](MODELO-DESPACHO.md) — com as
-armadilhas daquela tarefa injetadas, não o catálogo inteiro.
+O fluxo antigo pegava tarefas no balcão (`RITOS.md` §5) e produzia o brief de
+cada agente a partir do [`MODELO-DESPACHO.md`](MODELO-DESPACHO.md).
 
 ## Estação 6 — Os lotes
 

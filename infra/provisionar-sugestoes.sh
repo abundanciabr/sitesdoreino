@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `sugestoes` NA VPS — o passo do mantenedor (Lote 2 da
+# PROVISIONAR A CÉLULA `sugestoes` NA VPS — operação da plataforma (Lote 2 da
 # Caixa de Sugestões). Cria o par banco+role isolado, escreve o env real da
 # célula e registra o token do par sugestoes→alunos.
 #
@@ -12,7 +12,7 @@
 # de invocação elimina os dois modos de falha: a colagem é curta demais para
 # quebrar, e o `exit` acontece dentro de um bash filho.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-sugestoes.sh -o /tmp/p.sh && bash /tmp/p.sh "ID_DO_GOOGLE" "email@staff"
 #
 # O SEGREDO DO GOOGLE **NÃO** É ARGUMENTO — o script pergunta, e a digitação é

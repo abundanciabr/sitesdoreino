@@ -1,5 +1,9 @@
 # Célula de Sugestões — Especificação Técnica v1
 
+> **Especificação histórica de 2026.** Descrições de aprovação obrigatória,
+> ChangeSpec ou etapas de despacho não têm autoridade sobre trabalho atual.
+> A trava de status foi revogada em 06/09/2026; vale `AGENTS.md`.
+
 Caixa de Sugestões: célula de Voice of Customer / Product Discovery reutilizável por qualquer produto da plataforma (curso, comunidade, plataforma geral).
 
 ## 1. Propósito
@@ -168,7 +172,7 @@ As células de gamificação, notificação e analytics assinam esses eventos e 
 - `AvaliacaoInterna` nunca é lida ou escrita por um endpoint que o aluno acessa.
 - Nenhum model desta célula tem ForeignKey apontando para fora do banco da própria célula.
 - **(V1.1 — vale quando o merge existir)** Merge de sugestão é transacional: ator que votou nas duas sugestões não vira dois votos; comentários e histórico da sugestão mesclada são preservados, nunca apagados; a URL da sugestão mesclada continua resolvendo, redirecionando para a canônica. *A marcação foi acrescentada em 25/08/2026 (EVO-41): o merge é V1.1 pela §10, mas esta linha estava sem ressalva e a DoD do §11 exigia "todas as da §8" — as três afirmações não cabiam juntas, e a DoD ficava impossível de cumprir ao pé da letra. O que existe hoje é o portão que impede FINGIR que mesclou: `status = mesclado` não entra pela tela de status, com teste-guarda.*
-- `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado referenciando aquele `suggestion_id` — ver `FORMATO-CHANGESPEC.md`, seção 5.
+- Registro histórico: até 06/09/2026, `Sugestao.status` só saía de `PLANEJADO` para `EM_DESENVOLVIMENTO` com ChangeSpec aprovado. Essa exigência foi revogada — ver `FORMATO-CHANGESPEC.md`, seção 5.
 
 ## 9. Modos de falha a considerar
 

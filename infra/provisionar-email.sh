@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LIGAR O E-MAIL DE VERDADE — o passo do mantenedor.
+# LIGAR O E-MAIL DE VERDADE — operação da plataforma.
 #
 # Até 02/09/2026 esta plataforma NUNCA mandou um e-mail: o código dizia
 # "Stub: loga o envio" e voltava sem erro, e a ficha de auditoria anotava
@@ -9,10 +9,7 @@
 # nenhum e-mail sai E NENHUMA LINHA É MARCADA COMO ENVIADA. Nada quebra: a
 # plataforma continua avisando pelo sininho, como sempre fez.
 #
-# ENV NÃO VIAJA POR PIPELINE (INV-P8, Lei 5). O `deploy-infra.yml` diz de si
-# mesmo que JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso estas
-# linhas só existem se o mantenedor as puser na VPS — e por isso este arquivo
-# existe: para esse passo ser UMA linha, e não um texto para colar.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # O PROVEDOR É O BREVO, escolha do mantenedor em 02/09/2026 entre três opções
 # com o custo de cada uma na mesa (o painel dele é em português, e quem vai
@@ -20,7 +17,7 @@
 # trocar de empresa, é rodar esta mesma linha com outro host e outro login, sem
 # tocar em código nenhum.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-email.sh -o /tmp/p.sh && bash /tmp/p.sh SEU_LOGIN_SMTP
 #
 # Ele vai PERGUNTAR a chave, com digitação invisível. Opcionalmente:

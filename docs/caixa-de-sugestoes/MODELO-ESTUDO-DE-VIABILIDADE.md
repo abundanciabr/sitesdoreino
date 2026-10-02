@@ -1,5 +1,9 @@
 # MODELO — estudo de viabilidade de uma sugestão
 
+> **Modelo histórico opcional.** As ordens de etapas e comandos abaixo
+> pertencem ao fluxo de 2026 e não condicionam trabalho autorizado hoje.
+> Confira o estado atual do site e siga `AGENTS.md`.
+
 > Estação 2 de [`DA-IDEIA-A-OBRA.md`](DA-IDEIA-A-OBRA.md). Copie tudo abaixo da
 > linha, preencha os `<campos>`, apague as instruções em itálico e salve em
 > `docs/decisoes/PLANO-<assunto>.md`.

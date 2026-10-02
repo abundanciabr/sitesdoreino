@@ -1,5 +1,9 @@
 # MODELO DE DESPACHO — Caixa de Sugestões
 
+> **Modelo histórico opcional.** As etapas, papéis e aprovações abaixo
+> pertencem ao fluxo de 2026 e não condicionam trabalho autorizado hoje.
+> Confira o estado atual do site e siga `AGENTS.md`.
+
 > Template padrão para todo despacho desta iniciativa. A sessão responsável
 > preenche os `<campos>`, apaga as instruções em itálico e entrega ao executor.
 > Herdado do formato da casa (ver `docs/decisoes/DESPACHO-04-deploy-infra.md`

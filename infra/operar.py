@@ -192,6 +192,7 @@ def executar_processo(
     timeout: float,
     juntar: bool = True,
     cwd: str | None = None,
+    redigir: tuple[str, ...] = (),
 ) -> tuple[int, str]:
     """Roda `comando` (lista, nunca shell) e devolve (código, saída), ecoando ao vivo.
 
@@ -231,6 +232,9 @@ def executar_processo(
     partes: list[str] = []
     try:
         for linha in processo.stdout:
+            for valor in redigir:
+                if valor:
+                    linha = linha.replace(valor, "[argumento oculto]")
             partes.append(linha)
             sys.stdout.write(linha)
             sys.stdout.flush()
@@ -272,7 +276,8 @@ def chaves_do_gateway(ctx: Contexto) -> dict:
     return achadas
 
 
-def rodar_script(ctx: Contexto, script: Path, extra: dict, prazo: int) -> int:
+def rodar_script(ctx: Contexto, script: Path, extra: dict, prazo: int,
+                 argumentos: list[str] | None = None) -> int:
     """O que o workflow fazia: o script existe, passa em `bash -n`, roda, e a saída confere."""
     nome = f"infra/{script.name}"
     if not script.is_file():
@@ -283,7 +288,9 @@ def rodar_script(ctx: Contexto, script: Path, extra: dict, prazo: int) -> int:
     if sintaxe != 0:
         print(f"{MARCA_DE_PARADA}: {nome} não passa em `bash -n`.")
         return 1
-    codigo, saida = ctx.processo(["bash", str(script)], env=env, timeout=prazo)
+    comando = ["bash", str(script), *(argumentos or [])]
+    opcoes = {"redigir": tuple(argumentos)} if argumentos and ctx.processo is executar_processo else {}
+    codigo, saida = ctx.processo(comando, env=env, timeout=prazo, **opcoes)
     if codigo == 0 and parou_por_seguranca(saida):
         print(f"operar: {nome} saiu 0 mas disse {MARCA_DE_PARADA}; conta como falha.")
         return 1
@@ -560,6 +567,14 @@ def op_vigia_do_cadeado(ctx: Contexto, valores: dict) -> int:
 # ---------------------------------------------------------------------------
 # provisionar
 # ---------------------------------------------------------------------------
+PROVISIONADORES_COM_HOST = frozenset((
+    "cursos", "encomendas", "gamificacao", "pages", "pares-da-prancheta",
+))
+PROVISIONADORES_COM_VALOR_OBRIGATORIO = {
+    "email": 1, "sugestoes": 2, "equipe-da-gamificacao": 1,
+}
+
+
 def op_provisionar(ctx: Contexto, valores: dict) -> int:
     alvo = valores["alvo"]
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]*", alvo):
@@ -571,13 +586,19 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
         for achado in sorted((ctx.raiz / "infra").glob("provisionar-*.sh")):
             print("  " + achado.name[len("provisionar-"):-len(".sh")])
         return 1
-    # Script que pede valor do mantenedor não roda por aqui: o valor é segredo ou decisão.
-    if re.search(r"\$\{1:-|\$@|\$#", script.read_text(encoding="utf-8")):
-        print(f"{MARCA_DE_PARADA}: {script.name} espera um valor que só o mantenedor conhece.")
-        print("Esta operação roda só os provisionadores que não pedem nada.")
+    argumentos = list(valores.get("argumento") or [])
+    if alvo in PROVISIONADORES_COM_HOST:
+        if not argumentos:
+            argumentos = ["meshcraft.top"]
+        elif len(argumentos) != 1 or not re.fullmatch(REGEX_HOST, argumentos[0]):
+            print(f"{MARCA_DE_PARADA}: informe um único host válido para {script.name}.")
+            return 1
+    minimo = PROVISIONADORES_COM_VALOR_OBRIGATORIO.get(alvo, 0)
+    if len(argumentos) < minimo:
+        print(f"{MARCA_DE_PARADA}: {script.name} precisa de {minimo} argumento(s) que ainda não foram informados.")
         return 1
     if fcntl is None:  # testes Windows; a operação real roda em Linux
-        return _provisionar_sob_trava(ctx, alvo, script)
+        return _provisionar_sob_trava(ctx, alvo, script, argumentos)
     trava = Path(ctx.plataforma) / ".publicacao.lock"
     try:
         with trava.open("a+b") as arquivo:
@@ -590,7 +611,7 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
             valor_anterior = ctx.ambiente.get("TRAVA_COMUM_HERDADA")
             ctx.ambiente["TRAVA_COMUM_HERDADA"] = "1"
             try:
-                return _provisionar_sob_trava(ctx, alvo, script)
+                return _provisionar_sob_trava(ctx, alvo, script, argumentos)
             finally:
                 if valor_anterior is None:
                     ctx.ambiente.pop("TRAVA_COMUM_HERDADA", None)
@@ -606,7 +627,8 @@ def op_provisionar(ctx: Contexto, valores: dict) -> int:
         return 1
 
 
-def _provisionar_sob_trava(ctx: Contexto, alvo: str, script: Path) -> int:
+def _provisionar_sob_trava(ctx: Contexto, alvo: str, script: Path,
+                          argumentos: list[str] | None = None) -> int:
     ambiente = Path(ctx.plataforma) / "env"
     publicacoes = Path(ctx.plataforma) / "publicacoes"
     if not ambiente.is_dir():
@@ -628,7 +650,7 @@ def _provisionar_sob_trava(ctx: Contexto, alvo: str, script: Path) -> int:
         print(f"{MARCA_DE_PARADA}: não consegui preservar os env antes de provisionar ({type(erro).__name__}).")
         return 1
 
-    codigo = rodar_script(ctx, script, {}, PRAZO_PADRAO)
+    codigo = rodar_script(ctx, script, {}, PRAZO_PADRAO, argumentos)
     if codigo == 0:
         return 0
 
@@ -754,11 +776,12 @@ OPERACOES: dict[str, Operacao] = {
         ),
         Operacao(
             "provisionar",
-            "roda infra/provisionar-<alvo>.sh, só os que não pedem nenhum valor",
+            "roda infra/provisionar-<alvo>.sh com argumentos públicos em lista",
             "sim: escreve env e recarrega células (cada provisionador é idempotente)",
             op_provisionar,
             (Param("alvo", 'nome do provisionador, sem "provisionar-" e sem ".sh"', obrigatorio=True,
-                   regex=r"[a-z0-9][a-z0-9-]*"),),
+                   regex=r"[a-z0-9][a-z0-9-]*"),
+             Param("argumento", "argumento público do script; repita a opção para vários valores")),
         ),
         _script("semear-areas-do-forum", "cria as primeiras áreas do fórum", "idempotente, aditivo"),
         _script(
@@ -839,6 +862,7 @@ def construir_parser(op: Operacao) -> argparse.ArgumentParser:
         parser.add_argument(
             bandeira, dest=param.nome, default=param.padrao, required=param.obrigatorio,
             choices=param.escolhas, type=_validador(param), help=param.ajuda,
+            **({"action": "append"} if op.nome == "provisionar" and param.nome == "argumento" else {}),
         )
     return parser
 

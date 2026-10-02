@@ -3,16 +3,14 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR AS QUATRO CONVERSAS DA SALA DE AULA, o passo do mantenedor.
+# LIGAR AS QUATRO CONVERSAS DA SALA DE AULA, operação da plataforma.
 #
 # A sala do aluno (`/cursos`, degrau 1.8 de PLANO-CELULA-CURSOS.md §10) pergunta
 # à `identidade` QUEM é a pessoa (com e-mail), pergunta à `alunos` se ela TEM
 # MATRÍCULA e pede ao `catalogo` o MENU do topo. E o editor de aulas do Admin
 # (degrau 1.5) grava o conteúdo do curso na `cursos` pela porta de máquina. São
-# quatro pares consumidor->provedor, e os quatro já existem no CÓDIGO. O que
-# falta é a metade da VPS: credencial não viaja por esteira (INV-P8, Lei 5), o
-# `deploy-infra.yml` diz de si mesmo que JAMAIS toca `infra/env/`. Por isso
-# este passo é seu, e por isso este arquivo existe: para ser UMA linha.
+# quatro pares consumidor->provedor, e os quatro já existem no CÓDIGO.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-sala-de-aula.sh -o /tmp/s.sh && bash /tmp/s.sh

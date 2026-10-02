@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PROVISIONAR A CÉLULA `metricas` NA VPS — o passo do mantenedor.
+# PROVISIONAR A CÉLULA `metricas` NA VPS — operação da plataforma.
 # Cria o par banco+role isolado e escreve o env real da célula. Só isso: esta
 # célula não conversa com nenhuma outra por API, então não há par de token para
 # abrir, e não pergunta o site ao catálogo, porque o site de cada fato vem
 # DENTRO do próprio evento.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha só):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-metricas.sh -o /tmp/m.sh && bash /tmp/m.sh
 #
 # POR QUE ESTE ARQUIVO EXISTE, e não um bloco colado no terminal: em 24/08/2026

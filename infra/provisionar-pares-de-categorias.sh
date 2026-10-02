@@ -3,15 +3,12 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR AS CINCO CATEGORIAS DE USUÁRIO — o passo do mantenedor.
+# LIGAR AS CINCO CATEGORIAS DE USUÁRIO — operação da plataforma.
 #
 # `docs/decisoes/DECISAO-categorias-de-usuario.md` (28/08/2026) manda a home e a
 # área administrativa pararem de adivinhar o que uma pessoa é e passarem a
-# PERGUNTAR à célula `alunos`. Perguntar exige credencial, e credencial não
-# viaja por esteira (INV-P8, Lei 5): o `deploy-infra.yml` diz de si mesmo que
-# JAMAIS toca `infra/env/` nem `/opt/plataforma/env/`. Por isso este passo é
-# seu, e por isso este arquivo existe — para ele ser UMA linha, e não um texto
-# para colar.
+# PERGUNTAR à célula `alunos`.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-de-categorias.sh -o /tmp/p.sh && bash /tmp/p.sh

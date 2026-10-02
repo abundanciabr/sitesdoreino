@@ -3,17 +3,14 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR O AVISO DE LIBERAÇÃO — o passo do mantenedor.
+# LIGAR O AVISO DE LIBERAÇÃO — operação da plataforma.
 #
 # Decisão dele em 29/08/2026: quem está na fila passa a receber um aviso no
 # sininho quando o acesso é liberado. Para endereçar essa carta é preciso o id
 # de plataforma da pessoa, e só a `identidade` sabe traduzir e-mail em id
 # (`findPersonByEmail`, Rito de Contrato do PR #524).
 #
-# Perguntar exige credencial, e credencial não viaja por esteira (Lei 5): o
-# `deploy-infra.yml` diz de si mesmo que JAMAIS toca `infra/env/` nem
-# `/opt/plataforma/env/`. Por isso este passo é seu, e por isso este arquivo
-# existe — para ele ser UMA linha, e não um texto para colar.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-aviso-de-liberacao.sh -o /tmp/p.sh && bash /tmp/p.sh

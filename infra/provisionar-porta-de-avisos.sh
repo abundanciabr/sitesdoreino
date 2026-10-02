@@ -3,7 +3,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 [ -f "$FONTE_OPERACAO" ] || FONTE_OPERACAO="$(dirname "${BASH_SOURCE[0]}")/operacao-aplicacao.sh"
 . "$FONTE_OPERACAO"
 # =============================================================================
-# LIGAR O SINO À CAIXA CENTRAL DE AVISOS — o passo do mantenedor.
+# LIGAR O SINO À CAIXA CENTRAL DE AVISOS — operação da plataforma.
 #
 # Desde 27/08/2026 a porta de consulta da célula `notificacoes` está pronta e
 # no ar (Fase 4/5/6 do sininho), e DUAS células já sabem chamá-la: o `funil`
@@ -12,7 +12,7 @@ FONTE_OPERACAO="${PLATAFORMA_DIR:-/opt/plataforma}/codigo/ferramentas/atual/infr
 # credenciais — nada quebra enquanto este script não rodar, o sino só continua
 # invisível e a tela de avisos continua avisando que não consegue buscar.
 #
-# ENV NÃO VIAJA POR PIPELINE (INV-P8, Lei 5) — por isso este passo é seu.
+# Este roteiro configura os arquivos env diretamente na VPS.
 #
 # COMO RODAR (dentro da VPS, uma linha só, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-porta-de-avisos.sh -o /tmp/p.sh && bash /tmp/p.sh

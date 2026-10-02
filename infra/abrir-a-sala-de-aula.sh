@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# ABRIR A SALA DE AULA, o passo do mantenedor.
+# ABRIR A SALA DE AULA, operação da plataforma.
 # Poe no env da celula `cursos` quem entra no plantao e a chave da IA, recria a
 # celula para ela reler o arquivo, e semeia o ESQUELETO do curso (1 curso, 12
 # blocos, 34 aulas, 13 instrumentos) para a lista de aulas deixar de nascer
 # vazia.
 #
-# COMO O MANTENEDOR RODA (dentro da VPS, uma linha so, SEM argumentos):
+# COMO EXECUTAR NA VPS (dentro da VPS, uma linha so, SEM argumentos):
 #   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/abrir-a-sala-de-aula.sh -o /tmp/sala.sh && bash /tmp/sala.sh
 #
 #   O prompt tem de comecar com `deploy@srv...` ou `root@srv...`. Se comecar
