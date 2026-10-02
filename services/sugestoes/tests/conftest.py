@@ -387,7 +387,7 @@ class Rede:
     # em `tests/test_volume_das_cartas.py` e
     # `tests/test_inv_carta_endereca_pelo_id_da_plataforma.py`) — encenar essa
     # rede inteira de novo aqui só para reconstruir o que o `Aviso` já tem em
-    # mãos seria duplicar verdade, o pecado que a Lei 3 proíbe. Em vez disso,
+    # mãos seria duplicar verdade, o pecado de duplicar-e-divergir. Em vez disso,
     # o dublê lê e escreve DIRETO na tabela local: é o comportamento
     # OBSERVÁVEL da caixa central (o que `GET /avisos` devolveria depois de
     # a carta chegar e ser lida de volta), sem reimplementar o relay.

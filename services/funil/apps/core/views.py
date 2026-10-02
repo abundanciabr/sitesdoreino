@@ -90,7 +90,7 @@ def servir_estatico(request, path):
     domínios, as landings carregavam esse `<script>` mesmo assim, e a ilha
     Alpine quebrava no `api.post(...)` — em silêncio para o visitante. A célula
     checkout resolveu o MESMO problema assim em 22/08/2026 e está verde em
-    produção desde então; aqui se copia o padrão, não o arquivo (Lei 7).
+    produção desde então; aqui se copia o padrão, não o arquivo (cada célula com os próprios arquivos).
 
     Duas escolhas que parecem detalhe e são o fix:
 
@@ -181,7 +181,7 @@ SLOTS_COM_LUGAR_PROPRIO = (
 #: Os slots de corpo que ABREM a seção quando existem; os outros parágrafos
 #: saem em ordem alfabética logo atrás. Duas palavras, e não uma segunda cópia
 #: da lista de slots do catálogo: lista repetida é lista que diverge no
-#: primeiro nome novo (Lei 3).
+#: primeiro nome novo (duplicar-e-divergir).
 SLOTS_QUE_ABREM_O_CORPO = ("subheadline", "texto")
 
 
@@ -764,7 +764,7 @@ def entrar(request):
     Leis: DECISAO-onde-mora-a-sessao e, desde 25/08/2026,
     DECISAO-celula-de-identidade. Ela leva ao Google; a sessão nasce do outro
     lado, na célula `identidade`. **Esta view não abre sessão nenhuma e não lê
-    cookie nenhum** — quem faz isso é quem tem a chave e o banco (Lei 2, Lei 3).
+    cookie nenhum** — quem faz isso é quem tem a chave e o banco (muralha de dados: célula não lê banco de outra).
 
     O `?next=` diz à `identidade` aonde devolver a pessoa depois de entrar —
     a home do idioma desta página. E o `?erro=` é a volta do vocabulário de

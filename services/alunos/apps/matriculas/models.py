@@ -306,7 +306,7 @@ class OutboxEvent(models.Model):
 
     Nasceu em 29/08/2026, junto com a voz da célula: até então ela só ESCUTAVA
     (o consumer de pagamento). O padrão é copiado da `sugestoes` — nunca o
-    arquivo, e nunca por import cruzado (Lei 7): um relay diferente por célula
+    arquivo, e nunca por import cruzado (cada célula com os próprios arquivos): um relay diferente por célula
     significaria N modos de falha diferentes para o mesmo problema.
 
     Mora AQUI, e não num app novo, pela mesma decisão de orçamento da vizinha:

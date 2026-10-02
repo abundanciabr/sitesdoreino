@@ -20,7 +20,7 @@ def tokens_de_publicacao() -> set[str]:
 class bearerAuth(HttpBearer):
     """Aceita os tokens estáticos do PAR consumidor, nos dois graus desta porta.
 
-    Cópia do PADRÃO de `identidade`/`forum`/`gamificacao` (Lei 3: copia-se o
+    Cópia do PADRÃO de `identidade`/`forum`/`gamificacao` (copia-se o
     padrão entre células, nunca se importa código de uma na outra). Nome da
     classe em minúsculas de propósito: o freeze de contrato exige que a chave de
     `components.securitySchemes` seja `bearerAuth`, e o django-ninja usa o nome

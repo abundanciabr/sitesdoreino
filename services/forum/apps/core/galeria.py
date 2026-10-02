@@ -147,7 +147,7 @@ def candidatas(pessoa_id: str, site_id: str) -> list[dict]:
     """As candidatas desta pessoa nesta escola, na forma do contrato.
 
     Os cinco filtros são a operação inteira, e cada um responde por um modo de
-    vazamento: autoria (trabalho de outra pessoa), escola (Lei 9), área (a
+    vazamento: autoria (trabalho de outra pessoa), escola (multissítio: site é dado), área (a
     exceção é a vitrine, nunca a área de turma), estado (o que a moderação já
     tirou do ar) e consentimento em pé (o gesto do dono).
 

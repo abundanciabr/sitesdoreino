@@ -9,7 +9,7 @@ não reclama de nada (`armadilhas/030`, §4.11).
 
 Fila intra-célula = Huey. Comunicação ENTRE células = eventos (R3/R4), nunca
 uma célula enfileirando task na outra. Molde: `services/sugestoes/config/huey.py`,
-copiado e nunca importado (Lei 7).
+copiado e nunca importado (cada célula com os próprios arquivos).
 """
 
 import os

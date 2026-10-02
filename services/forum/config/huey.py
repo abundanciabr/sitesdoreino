@@ -2,7 +2,7 @@
 """A instância única do Huey desta célula — a fila intra-célula.
 
 Cópia do PADRÃO das vizinhas (`alunos`, `sugestoes`, `checkout`, `quiz`,
-`mensageria`), nunca do arquivo (Lei 7): `settings.HUEY` aponta para cá e
+`mensageria`), nunca do arquivo (cada célula com os próprios arquivos): `settings.HUEY` aponta para cá e
 `huey.contrib.djhuey` está em `INSTALLED_APPS`. É essa dupla que dá o
 entrypoint canônico `python manage.py run_huey`, o único que faz
 `django.setup()` e o autodiscover de `tasks.py`. Subir o `huey_consumer`

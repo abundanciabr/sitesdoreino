@@ -5,7 +5,7 @@
 produção há semanas, e os que nasceram dele (`quiz`, `checkout`, `sugestoes`).
 Não é falta de imaginação: um relay diferente por célula significaria cinco
 modos de falha diferentes para o mesmo problema. Molde:
-`services/sugestoes/apps/sugestoes/tasks.py`, copiado e nunca importado (Lei 7).
+`services/sugestoes/apps/sugestoes/tasks.py`, copiado e nunca importado (cada célula com os próprios arquivos).
 
 **A ORDEM é intocável: publica no stream ANTES de marcar `published_at`.** Se o
 processo morrer entre as duas escritas, o pior caso é REPUBLICAR, e o transporte

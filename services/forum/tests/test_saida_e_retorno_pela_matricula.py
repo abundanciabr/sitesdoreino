@@ -11,7 +11,7 @@ só mede o que já existe.
 As categorias reais de matrícula (`contracts/alunos.openapi.yaml`,
 `getStudentStanding`): `pausado` é a ficha `suspensa`, `ex_aluno` é a ficha
 `encerrada`, e só `aluno` abre a porta. O fórum não lê o banco da `alunos`
-(Lei 3 da Constituição) - a fonte da verdade sobre os nomes é o contrato
+(célula não lê banco de outra) - a fonte da verdade sobre os nomes é o contrato
 congelado que esta célula já consome.
 """
 

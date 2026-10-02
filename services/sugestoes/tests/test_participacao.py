@@ -363,7 +363,7 @@ def test_sem_quadro_semeado_a_caixa_diz_o_que_falta(dentro):
 
 
 def test_com_dois_quadros_a_celula_para_em_vez_de_escolher_um(dentro, quadro):
-    """Escolher "o primeiro" seria inventar um site padrão em silêncio (Lei 9)."""
+    """Escolher "o primeiro" seria inventar um site padrão em silêncio (multissítio: site é dado)."""
     from apps.sugestoes.models import Quadro
 
     Quadro.objects.create(site_id="outro-site", nome="Quadro de outro site")

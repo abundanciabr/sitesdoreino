@@ -334,7 +334,7 @@ def quadro_atual():
     honesta é a fail-closed da casa, a mesma do INV-P11: **um** quadro serve;
     zero ou dois **param**, com a mensagem dizendo o que falta. Escolher "o
     primeiro" seria esta célula inventando um site padrão em silêncio — o erro
-    exato que a Lei 9 proíbe.
+    exato que o multissítio proíbe.
 
     Quando o CONV-SITE chegar, muda esta função e nada mais.
     """

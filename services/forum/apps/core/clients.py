@@ -2,7 +2,7 @@
 
 Duas conversas, e a divisão de trabalho é lei:
 **a `identidade` prova QUEM É; a `alunos` diz em que CATEGORIA a pessoa está.**
-O fórum não lê banco de ninguém (Lei 3) — pergunta por HTTP, pelo contrato
+O fórum não lê banco de ninguém — pergunta por HTTP, pelo contrato
 congelado, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de

@@ -15,7 +15,7 @@ degraus 07, 08, 10 e 13 leem por ela.
 `self.all()` deixa estes testes vermelhos na asserção, e não na construção. A
 saída está no corpo do PR.
 
-O mesmo par de testes cobre a Lei 9 / [INV-P11] pelo outro lado: dois alunos com
+O mesmo par de testes cobre o multissítio / [INV-P11] pelo outro lado: dois alunos com
 o MESMO id em escolas diferentes não se veem, que é o caso que uma filtragem só
 por aluno deixaria passar em silêncio.
 """
@@ -62,7 +62,7 @@ def test_o_estado_de_um_aluno_nao_aparece_para_outro(criar_portfolio, criar_esta
 
 
 def test_o_mesmo_id_de_aluno_em_outra_escola_nao_atravessa(criar_portfolio):
-    """Lei 9: o id do aluno é da plataforma, e ele estuda nas duas escolas.
+    """Multissítio: o id do aluno é da plataforma, e ele estuda nas duas escolas.
 
     Filtrar só por aluno devolveria os dois portfólios, e o de uma escola
     apareceria na outra sem nada acusar.

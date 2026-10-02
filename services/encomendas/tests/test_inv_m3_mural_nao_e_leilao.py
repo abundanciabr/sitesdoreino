@@ -266,7 +266,7 @@ def test_quem_nao_e_elegivel_nao_pega_nem_com_o_projeto_livre(
 
 
 def test_o_projeto_de_outro_site_nao_se_pega(dois_no_mural, criar_projeto_no_mural):
-    """Lei 9 / [INV-P11]: a fronteira de site vale também no gesto."""
+    """Multissítio / [INV-P11]: a fronteira de site vale também no gesto."""
     ana, _ = dois_no_mural
     de_fora = criar_projeto_no_mural(site_id="escola-b")
 

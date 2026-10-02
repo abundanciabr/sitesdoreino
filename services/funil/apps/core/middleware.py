@@ -28,7 +28,7 @@ TTL_SEGUNDOS = 60
 # Cache por cabeçalho `Cookie` inteiro, e não pelo cookie de sessão isolado: o
 # `funil` NÃO conhece o nome do cookie da outra célula, e não deve conhecer —
 # saber o nome é o primeiro passo para tentar ler o conteúdo, que é justamente
-# o que a Lei 3 proíbe. Ele repassa o cabeçalho opaco e pergunta.
+# o que a regra "célula não lê banco de outra" proíbe. Ele repassa o cabeçalho opaco e pergunta.
 _CACHE_DE_SESSAO: dict = {}
 TTL_DA_SESSAO = 60
 # Teto de segurança: sem ele, um robô mandando cookies diferentes a cada
@@ -689,7 +689,7 @@ class SiteResolutionMiddleware:
         # monolíngue (os domínios antigos) segue byte-idêntico ao de antes.
         # `site["id"]` já está resolvido nesta altura ([INV-P11], `__call__`
         # acima) — é o `site_id` que a Fase 5 do sino precisa para perguntar à
-        # `notificacoes` (ela escopa por site: CONSTITUICAO.md Lei 9).
+        # `notificacoes` (ela escopa por site, multissítio: site é dado).
         request.ator = AtorDaRequisicao(
             request.META.get("HTTP_COOKIE", ""),
             site["id"],

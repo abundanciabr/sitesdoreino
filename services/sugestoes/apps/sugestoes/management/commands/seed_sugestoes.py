@@ -2,7 +2,7 @@
 """Quadro padrão de um site — idempotente: rodar duas vezes não duplica nada.
 
 `--site-id` é **obrigatório e não tem default** de propósito. O ID do site é
-cunhado pelo catálogo (CONV-SITE resolve o Host uma vez por requisição, Lei 9);
+cunhado pelo catálogo (CONV-SITE resolve o Host uma vez por requisição, multissítio: site é dado);
 um default aqui seria esta célula inventando um site_id e descobrindo a
 divergência só quando o primeiro evento não correlacionasse com nada. É a mesma
 forma do `seed_quiz` da célula `quiz`.

@@ -2,7 +2,7 @@
    O ROSTO DA CAIXA (EVO-30) — folha de estilo desta célula, e de nenhuma outra
    =========================================================================
    Referência visual: docs/caixa-de-sugestoes/prototipo-v2.html (somente-leitura).
-   Lei 7 — zonas quentes nascem vazias: não existe CSS compartilhado nesta
+   Cada célula com os próprios arquivos: não existe CSS compartilhado nesta
    plataforma; copia-se o PADRÃO, nunca o arquivo.
 
    Duas divergências deliberadas do protótipo, e as duas são de risco:
@@ -271,7 +271,7 @@ textarea { resize: vertical; min-height: 72px; }
    vale gastar movimento para dizer "pode escrever".
 
    O gêmeo dele mora no fórum (`services/forum/.../_mascote.html`): mesmo
-   PADRÃO, arquivo próprio, como manda a Lei 7 — as duas células não
+   PADRÃO, arquivo próprio, como manda "cada célula com os próprios arquivos" — as duas células não
    compartilham folha nem template.
 
    **Ele é feito de `<div>`, e não de SVG como todo ícone desta casa**, e isto é

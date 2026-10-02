@@ -39,7 +39,7 @@ FORCE_SCRIPT_NAME = (
 )  # célula dona do próprio prefixo
 
 # Atrás do Traefik. Esta célula responde em qualquer host servido pela
-# plataforma (Lei 9 — um deploy, N domínios); a defesa de host, se um dia for
+# plataforma (multissítio — um deploy, N domínios); a defesa de host, se um dia for
 # preciso prendê-la a um só, mora no gateway, não aqui.
 ALLOWED_HOSTS = ["*"]
 
@@ -197,7 +197,7 @@ TOKEN_DO_EDITOR_FORUM = os.environ.get("TOKENS_ACEITOS_ADMIN", "")
 #
 # Sao dois envs para o mesmo par, de proposito: `TOKENS_ACEITOS_GAMIFICACAO`
 # abre a porta e `TOKENS_DA_GALERIA_GAMIFICACAO` concede o degrau. E o desenho
-# de `TOKENS_COMPLETOS` na `identidade`, copiado como PADRAO (Lei 3).
+# de `TOKENS_COMPLETOS` na `identidade`, copiado como PADRAO.
 #
 # Env ausente => conjunto VAZIO => 403 para todo mundo. Fail-closed.
 TOKENS_DA_GALERIA = {

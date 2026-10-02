@@ -406,7 +406,7 @@ def test_a_tela_desenha_lista_numerada_lista_com_asterisco_e_italico():
 
     O texto que o mantenedor mandou tem as três, e sem elas os sete pontos do
     método dele virariam um parágrafo com números soltos no meio. Um segundo
-    renderizador "do livro" seria o pecado 3 da Lei 3: o mesmo texto desenhado
+    renderizador "do livro" seria o pecado de duplicar-e-divergir: o mesmo texto desenhado
     de dois jeitos em duas telas da mesma área.
     """
     cliente = _dentro()

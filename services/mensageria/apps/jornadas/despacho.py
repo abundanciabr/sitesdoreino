@@ -21,7 +21,7 @@ outra porta. Nenhum dos dois grava `enviada` para algo que não saiu.
 
 POR QUE A CARTA VAI POR EVENTO, E NÃO POR ESCRITA DIRETA
 ---------------------------------------------------------
-O sininho é OUTRA célula, e ninguém escreve no banco alheio (Lei 3). O caminho é
+O sininho é OUTRA célula, e ninguém escreve no banco alheio (célula não lê banco de outra). O caminho é
 `notificacao.devida.v1`, que já existe e já é consumido por ela — nenhum contrato
 novo, nenhum Rito. O §4.3 explica por que o e-mail, quando chegar, não precisará
 de evento nenhum: ele mora dentro desta célula.

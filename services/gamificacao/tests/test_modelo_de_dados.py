@@ -61,14 +61,14 @@ def _conquista(**campos):
 
 
 # ---------------------------------------------------------------------------
-# Lei 9 / [INV-P11] — a fronteira de site
+# multissítio / [INV-P11] — a fronteira de site
 # ---------------------------------------------------------------------------
 
 
 def test_site_id_em_toda_entidade():
     """Nenhuma tabela nova entra nesta célula sem fronteira de site.
 
-    Lei 9: um deploy, N lojas. Dado de um site que aparece em outro é o
+    Multissítio: um deploy, N lojas. Dado de um site que aparece em outro é o
     vazamento clássico de multi-tenant, e ele é silencioso até acontecer em
     público.
     """
@@ -345,7 +345,7 @@ def test_o_dia_do_lancamento_e_o_dia_de_sao_paulo():
 
 def test_um_perfil_por_pessoa_por_site(aluno):
     PerfilJogador.objects.create(pessoa=aluno, site_id="escola-a")
-    # Site diferente é perfil diferente, e isso é a Lei 9 funcionando.
+    # Site diferente é perfil diferente, e isso é o multissítio funcionando.
     PerfilJogador.objects.create(pessoa=aluno, site_id="escola-b")
 
     with pytest.raises(IntegrityError) as erro:

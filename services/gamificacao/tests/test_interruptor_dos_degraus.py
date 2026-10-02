@@ -109,7 +109,7 @@ def test_desligar_volta_atras_e_sobe_a_versao():
 
 
 def test_degrau_de_outra_escola_nao_e_encontrado():
-    """Lei 9: um deploy, N domínios. O número do degrau só existe dentro do
+    """Multissítio: um deploy, N domínios. O número do degrau só existe dentro do
     site, e é o par (site, nivel) que o banco torna único."""
     _degrau(1, 0, "Aprendiz", site=OUTRA)
 

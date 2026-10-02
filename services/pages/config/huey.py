@@ -16,7 +16,7 @@ extenso em `config/settings.py`, no bloco do `DATABASES` (`armadilhas/170`).
 
 Fila intra-célula = Huey. Comunicação ENTRE células = eventos, nunca uma célula
 enfileirando task na outra. Molde: `services/cursos/config/huey.py`, copiado e
-nunca importado (Lei 3).
+nunca importado (célula não importa código de outra).
 """
 
 import os

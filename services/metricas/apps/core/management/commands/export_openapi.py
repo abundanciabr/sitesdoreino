@@ -1,6 +1,6 @@
 # apps/core/management/commands/export_openapi.py  # [RECEITA:R1 v1]
 #
-# Cópia do PADRÃO de `mensageria`/`gamificacao`/`alunos` (Lei 3: copia-se o
+# Cópia do PADRÃO de `mensageria`/`gamificacao`/`alunos` (copia-se o
 # padrão entre células, nunca se importa código de uma na outra). As três
 # funções de limpeza existem porque o django-ninja emite ruído que um contrato
 # escrito à mão não tem, e o freeze compara os dois byte a byte: "ruído

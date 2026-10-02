@@ -365,7 +365,7 @@ def test_toda_chave_do_mapa_e_mesmo_o_slug_do_seu_rotulo():
 
     Conferido de fora, com o `slugify` de verdade: os dez títulos da lista
     `NIVEIS` de `semear_economia.py` passam por aqui, um a um, e batem. A lista
-    da outra célula NÃO é importada (Lei 3), então este guarda prova a forma do
+    da outra célula NÃO é importada (célula não importa código de outra), então este guarda prova a forma do
     mapa; quem prova o conteúdo é o comentário que aponta a fonte.
     """
     from django.utils.text import slugify

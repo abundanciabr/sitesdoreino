@@ -17,7 +17,7 @@ POR QUE ELE NÃO SABE O QUE É UMA "IDEIA"
 -----------------------------------------
 Ele recebe um assunto, o NOME de um parâmetro e uma lista de valores. Nada
 aqui menciona sugestão, ideia ou Caixa: quem sabe quais ideias foram apagadas é
-a célula que as apagou, e é ela que entrega a lista (Lei 3 — nenhuma célula
+a célula que as apagou, e é ela que entrega a lista (nenhuma célula
 alcança o banco da outra, nem o vocabulário dela).
 
 O efeito colateral é bom: no dia em que outra célula apagar o fato por trás de

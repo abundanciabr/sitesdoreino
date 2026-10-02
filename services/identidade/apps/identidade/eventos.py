@@ -34,7 +34,7 @@ PESSOA_CADASTRADA = "identidade.pessoa-cadastrada"
 class EventoForaDaTransacao(Exception):
     """`emitir()` chamado sem transação aberta — o evento não seria transacional.
 
-    Levantar aqui é a Lei 1 aplicada: em vez de confiar que todo ponto de
+    Levantar aqui é o princípio 'mecanismo, não documento' aplicado: em vez de confiar que todo ponto de
     emissão futuro se lembre do `atomic`, a própria função recusa a escrita. Um
     evento gravado em autocommit sobrevive ao rollback do fato que o justifica,
     e aí a plataforma inteira passa a acreditar em algo que não aconteceu — o

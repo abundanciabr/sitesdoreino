@@ -133,7 +133,7 @@ def test_status_nao_muda_se_o_evento_nao_puder_ser_emitido(caixa):
 
 @pytest.mark.django_db(transaction=True)
 def test_emitir_fora_de_transacao_e_recusado():
-    """Lei 1: em vez de confiar que todo ponto de emissão futuro se lembre do
+    """Mecanismo, não documento: em vez de confiar que todo ponto de emissão futuro se lembre do
     `atomic`, a função recusa a escrita.
 
     Precisa de `transaction=True` para significar alguma coisa: no `django_db`

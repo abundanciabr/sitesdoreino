@@ -17,7 +17,7 @@ cada um por si, já custaram um incidente em algum lugar deste projeto:
    comando seria "re-executável" só na intenção.
 5. **Id que o espelho não conhece não vira linha inventada.** Fabricar uma
    `Pessoa` a partir de um id opaco exigiria fabricar um e-mail, e um e-mail
-   fabricado é uma segunda verdade sobre quem é a pessoa (Lei 2).
+   fabricado é uma segunda verdade sobre quem é a pessoa (muralha de dados).
 
 E, desde 01/09/2026, um sexto fato, que é a ponte do `--emails` (§7 lá embaixo):
 **"não consegui perguntar" nunca vira "perguntei e não existe".** As duas frases

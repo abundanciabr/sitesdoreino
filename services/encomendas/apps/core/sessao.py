@@ -13,7 +13,7 @@ com o id, e ele é de EXIBIÇÃO. Quem decide o que alguém pode fazer aqui é
 `apps/core/plantao.py`, sobre uma lista desta célula, fail-closed.
 
 Molde: `services/gamificacao/apps/core/sessao.py`, copiado e não importado
-(Lei 3). O que esta célula acrescenta é a terceira pergunta, e são estas três
+(célula não importa código de outra). O que esta célula acrescenta é a terceira pergunta, e são estas três
 que fazem `celulas.yml` passar a `consome: [alunos, identidade]` no MESMO PR
 (`armadilhas/224`):
 

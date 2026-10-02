@@ -1,7 +1,7 @@
 # tests/test_api.py  # [RECEITA:R1 v1]
 """As três rotas da porta de consulta — Fase 4 do sininho
 (`contracts/notificacoes.openapi.yaml`, Rito de Contrato de 27/08/2026,
-emendado no mesmo dia para exigir `site_id` — CONSTITUICAO.md Lei 9).
+emendado no mesmo dia para exigir `site_id` — multissítio: site é dado).
 
 Um arquivo só para as três (`GET /resumo`, `GET /avisos`,
 `POST /marcar-lidas`), em vez de um por rota: as três dividem o mesmo par de
@@ -171,7 +171,7 @@ def test_resumo_e_isolado_por_site(client, par_autorizado):
 
     Decisão do mantenedor (27/08/2026): "cada site mostra só os avisos que
     vieram dele". Sem isto, `destinatario_id` sozinho somaria os dois sites
-    e a Lei 9 (CONSTITUICAO.md — "site_id acompanha toda entidade pública")
+    e o multissítio ("site_id acompanha toda entidade pública")
     estaria escrita e não cumprida.
     """
     outro_site = "outro-site-de-teste"

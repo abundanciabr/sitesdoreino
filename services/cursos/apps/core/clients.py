@@ -10,7 +10,7 @@ Três conversas, e a divisão de trabalho é lei:
   de navegação: qualquer tropeço vira "sem menu", nunca tela quebrada
   (fail-OPEN).
 
-A sala não lê banco de ninguém (Lei 3): pergunta por HTTP, pelo contrato
+A sala não lê banco de ninguém: pergunta por HTTP, pelo contrato
 congelado, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de

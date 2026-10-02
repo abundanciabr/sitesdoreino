@@ -24,7 +24,7 @@ POR QUE O TEXTO MORA NESTA CÉLULA, E NÃO É PEDIDO À `admin`
 O corredor assinado é explícito: os contratos permitidos desta casa são o da
 `identidade`, o da `alunos` e os eventos `pages.portfolio.*`, e **nenhum outro
 contrato novo** (`CS-PAGES-0001.md`, seção "Contratos permitidos"). Pedir o
-guia à `admin` por HTTP seria um contrato novo, e ler o banco dela seria a Lei 3
+guia à `admin` por HTTP seria um contrato novo, e ler o banco dela seria a muralha de dados
 quebrada. Então o roteiro é DADO desta casa, no banco desta casa, e o guia longo
 continua sendo a leitura corrida na biblioteca de documentos. As duas peças
 falam a mesma língua porque saem da mesma professora, e a tela liga uma na

@@ -2,7 +2,7 @@
 
 Esta é a lógica pura, sem Redis, e é ela que os testes exercitam. O laço que
 lê o stream vive em `management/commands/consume_eventos.py`, no molde
-[RECEITA:R4 v1] que as cinco células consumidoras já seguem (Lei 3: copia-se o
+[RECEITA:R4 v1] que as cinco células consumidoras já seguem (copia-se o
 padrão entre células, nunca se importa código de uma na outra).
 
 ## Quatro decisões que valem a leitura

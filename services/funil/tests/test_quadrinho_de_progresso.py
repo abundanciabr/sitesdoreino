@@ -136,7 +136,7 @@ def test_o_cookie_viaja_opaco_e_o_par_se_identifica(
 
     O `Bearer` prova QUEM CHAMA (esta célula); o `Cookie` prova quem é a
     PESSOA, e atravessa opaco — o funil não sabe o nome do cookie da outra
-    célula e não deve saber (Lei 3).
+    célula e não deve saber (célula não importa código nem lê banco de outra).
     """
     logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
 

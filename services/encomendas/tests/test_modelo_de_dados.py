@@ -11,7 +11,7 @@ PostgreSQL recusa.
 
 Aqui isso protege três coisas concretas: o dinheiro de terceiros (a confirmação
 de pagamento com autor), a justiça da fila (uma oferta pendente por encomenda e
-por aluno) e a fronteira entre escolas (Lei 9).
+por aluno) e a fronteira entre escolas (multissítio: site é dado).
 """
 
 from datetime import datetime, timedelta, timezone as fuso
@@ -77,14 +77,14 @@ def cria_encomenda(**campos_extras):
 
 
 # ---------------------------------------------------------------------------
-# Lei 9 / [INV-P11] — a fronteira de site
+# multissítio / [INV-P11] — a fronteira de site
 # ---------------------------------------------------------------------------
 
 
 def test_site_id_em_toda_entidade():
     """Nenhuma tabela nova entra nesta célula sem fronteira de site.
 
-    Lei 9: um deploy, N lojas. Dado de um site que aparece em outro é o
+    Multissítio: um deploy, N lojas. Dado de um site que aparece em outro é o
     vazamento clássico de multi-tenant, e ele é silencioso até acontecer em
     público.
     """
@@ -123,7 +123,7 @@ def test_um_perfil_por_pessoa_por_site(pessoa, perfil):
 
 
 def test_a_mesma_pessoa_tem_um_perfil_em_cada_site(pessoa, perfil):
-    """A trava é POR SITE, não por pessoa: a Lei 9 é uma fábrica, N lojas."""
+    """A trava é POR SITE, não por pessoa: o multissítio é uma fábrica, N lojas."""
     outro = PerfilProfissional.objects.create(pessoa=pessoa, site_id="escola-b")
     assert outro.pk != perfil.pk
 

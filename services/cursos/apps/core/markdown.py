@@ -1,7 +1,7 @@
 """O renderizador de Markdown da casa, para o texto das peças de uma aula.
 
 **Cópia de `services/admin/apps/core/documentos.py::para_html`, nunca importada**
-(Lei 3: célula não importa código de célula). É o MESMO subconjunto que a área
+(célula não importa código de célula). É o MESMO subconjunto que a área
 de documentos e a Biblioteca do Livro desenham, e é de propósito: o texto de
 uma aula entra pelo editor do Admin (degrau 1.5), e um segundo renderizador
 "da sala" desenharia o mesmo Markdown de dois jeitos em duas telas. Se um dia

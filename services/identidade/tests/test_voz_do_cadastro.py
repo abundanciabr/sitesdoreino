@@ -112,7 +112,7 @@ def test_o_evento_nao_carrega_dado_pessoal_nenhum():
 
 @pytest.mark.django_db(transaction=True)
 def test_emitir_fora_de_transacao_estoura():
-    """A Lei 1 aplicada: em vez de confiar que todo ponto de emissão futuro se
+    """O princípio 'mecanismo, não documento' aplicado: em vez de confiar que todo ponto de emissão futuro se
     lembre do `atomic`, a própria função recusa a escrita."""
     with pytest.raises(eventos.EventoForaDaTransacao):
         eventos.pessoa_cadastrada(site_id=SITE, pessoa_id="idt-1")

@@ -53,7 +53,7 @@ class Notificacao(models.Model):
             # `site_id` e `destinatario_id` lideram juntos o índice. As três rotas da porta de
             # consulta (Fase 4) sempre filtram pelos dois juntos: "cada site
             # mostra só os avisos que vieram dele" (decisão do mantenedor,
-            # 27/08/2026, CONSTITUICAO.md Lei 9). Um índice liderado só por
+            # 27/08/2026, multissítio: site é dado). Um índice liderado só por
             # `destinatario_id` chegou a existir por algumas horas neste PR,
             # entre uma versão do contrato sem `site_id` e a emenda que passou
             # a exigi-lo — `EXPLAIN ANALYZE` mediu essa versão (não suposição:
@@ -145,7 +145,7 @@ class NotificacaoArquivada(models.Model):
             # Mesma correção e mesmo motivo do índice de `Notificacao`: as
             # três rotas da porta de consulta filtram por `site_id` E
             # `destinatario_id` juntos (decisão do mantenedor, 27/08/2026,
-            # CONSTITUICAO.md Lei 9) — os dois lideram o índice.
+            # multissítio: site é dado) — os dois lideram o índice.
             models.Index(
                 fields=["site_id", "destinatario_id", "-criado_em"],
                 name="notif_arquivo_da_pessoa",
@@ -202,7 +202,7 @@ class InscricaoPush(models.Model):
         indexes = [
             # O caminho quente é um só: "os aparelhos DESTA pessoa NESTE site",
             # perguntado uma vez por carta que chega. Mesma dupla que lidera o
-            # índice da caixa, e pelo mesmo motivo (Lei 9: nada atravessa sites).
+            # índice da caixa, e pelo mesmo motivo (multissítio: nada atravessa sites).
             models.Index(
                 fields=["site_id", "destinatario_id"], name="notif_aparelhos_da_pessoa"
             ),

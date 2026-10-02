@@ -771,7 +771,7 @@ def test_nenhum_dado_pessoal_chega_a_tela_nem_por_acidente():
 @pytest.mark.django_db
 @respx.mock
 def test_toda_chamada_leva_o_site_id():
-    """CONSTITUICAO Lei 9. Sem `site_id` a porta responde 422, e chutar um site
+    """Multissítio: site é dado. Sem `site_id` a porta responde 422, e chutar um site
     mostraria as sequências de outro domínio."""
     _mock_site()
     lista = _mock_lista(ativa=True)

@@ -27,7 +27,7 @@ NOME do erro do httpx, nunca o texto dele, que pode trazer a URL, e a URL da
 **Nada aqui é lido no import** (`armadilhas/097`): as quatro variáveis dos dois
 pares são lidas no ponto de uso, e a falta de qualquer uma desiste sem tocar a
 rede. O molde é `services/forum/apps/core/clients.py`, copiado, não importado
-(Lei 3).
+(célula não importa código de outra).
 """
 
 from __future__ import annotations

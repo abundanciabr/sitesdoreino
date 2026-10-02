@@ -11,11 +11,11 @@ MOSTRAR", diz o próprio contrato do evento). A metade que a gamificação guard
 **As duas metades se encontram pelo par (site, tópico).** O fórum devolve `id`;
 `ConversaAberta.topico_id` guarda esse mesmo id como texto. Nada além disso é
 copiado para cá: título, texto e nome de exibição são do fórum, e uma cópia
-local deles seria uma segunda verdade que ninguém mantém (Lei 2).
+local deles seria uma segunda verdade que ninguém mantém (muralha de dados).
 
 O molde é `apps/core/sessao.py`, o cliente da `identidade` desta mesma célula, e
 `services/forum/apps/core/clients.py` antes dele — copiado, nunca importado
-(Lei 3).
+(célula não importa código de outra).
 
 **A POSTURA DIANTE DA FALHA É ABERTA, e é a mesma de `quem_e`.** Fórum fora do
 ar, par não provisionado ou resposta fora do contrato devolvem **lista vazia**,

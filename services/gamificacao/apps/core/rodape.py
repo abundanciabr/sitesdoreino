@@ -1,8 +1,7 @@
 # apps/core/rodape.py
 """O rodapé das Conquistas: quem mostra, qual dos rodapés, e o que cada um leva.
 
-**Cópia do PADRÃO das células `funil` e `forum`, nunca do arquivo delas** (Lei 7
-do Caminho Dourado). O rodapé do site nasceu na `funil` em 31/08/2026 (PR #705)
+**Cópia do PADRÃO das células `funil` e `forum`, nunca do arquivo delas** (cada célula com os próprios arquivos). O rodapé do site nasceu na `funil` em 31/08/2026 (PR #705)
 e chegou ao fórum no mesmo dia (PR #711). Esta célula nasceu ANTES dessa peça
 existir e por isso ficou de fora — o mantenedor abriu `/conquistas/` em
 02/09/2026 e viu uma página sem menu e sem rodapé, sozinha no meio do site.

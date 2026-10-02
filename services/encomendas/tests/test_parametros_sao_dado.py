@@ -193,7 +193,7 @@ def test_a_semente_nao_pisa_em_cima_da_mudanca_do_dono(db):
 
 
 def test_a_semente_e_por_site(db):
-    """Lei 9: uma fábrica, N lojas. Semear a escola A não semeia a escola B."""
+    """Multissítio: uma fábrica, N lojas. Semear a escola A não semeia a escola B."""
     semear(site="escola-a")
     assert Parametro.objects.filter(site_id="escola-b").count() == 0
 

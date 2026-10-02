@@ -7,7 +7,7 @@ existe porque regra que vive só em Python é promessa: basta um
 sem ninguém saber (`armadilhas/023`, `RETROSPECTIVA-FASE-D.md` §2). Este arquivo
 confere que o PostgreSQL recusa.
 
-Aqui isso protege três coisas concretas: a fronteira entre escolas (Lei 9), a
+Aqui isso protege três coisas concretas: a fronteira entre escolas (multissítio: site é dado), a
 privacidade do aluno (a vitrine é opt-in, AC-13) e a honestidade do selo da
 escola (data e autor juntos, plano §6.2).
 """
@@ -55,7 +55,7 @@ def modelos_desta_app():
 def test_nenhuma_chave_estrangeira_aponta_para_fora_desta_app():
     """O critério AC-02, medido no esquema e não na intenção.
 
-    O banco desta célula não enxerga o das outras (Lei 2, Muralha 2). Quem é a
+    O banco desta célula não enxerga o das outras (muralha de dados). Quem é a
     pessoa se pergunta à `identidade`; se ela tem matrícula, à `alunos`. Uma
     chave estrangeira para lá não é só proibida: ela é impossível de satisfazer,
     e o dia em que alguém a escrevesse a migração quebraria em produção.
@@ -112,7 +112,7 @@ def test_nenhum_campo_guarda_nota_estrela_ranking_ou_voto():
 
 
 # ---------------------------------------------------------------------------
-# Lei 9 / [INV-P11] — a fronteira de site, e um portfólio por aluno
+# multissítio / [INV-P11] — a fronteira de site, e um portfólio por aluno
 # ---------------------------------------------------------------------------
 
 

@@ -263,7 +263,7 @@ def inscrever_aparelho(
 def esquecer_aparelho(*, site_id: str, endpoint: str) -> bool:
     """Apaga um aparelho. Devolve se ele existia. Apagar o que não existe é 200.
 
-    Escopado por `site_id` como toda operação desta casa (Lei 9): um endpoint
+    Escopado por `site_id` como toda operação desta casa (multissítio: site é dado): um endpoint
     é de um site, e pedir para esquecer o de outro não pode funcionar por
     acidente de colisão.
     """

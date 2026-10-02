@@ -2016,7 +2016,7 @@ LIMITE_DO_TEXTO = 200_000
 
 #: O nome do estado, como a `alunos` o chama no contrato. Literal aqui pelo
 #: mesmo motivo de `contar_a_escola`: esta célula não importa código da vizinha
-#: (Lei 3), e o vocabulário do contrato é o que as duas compartilham.
+#: (célula não importa código de outra), e o vocabulário do contrato é o que as duas compartilham.
 AGUARDANDO = "aguardando"
 
 #: Quantas liberações caminham juntas. Sequencial, a fila de uma turma inteira

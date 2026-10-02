@@ -12,7 +12,7 @@ Três conversas, e a divisão de trabalho é lei:
 nem exibido.** Ele chega na resposta da `identidade`, vai nas duas perguntas e
 morre ali: nenhuma tela desta casa o mostra, e nenhuma tabela o grava.
 
-A casa não lê banco de ninguém (Lei 3): pergunta por HTTP, pelo contrato
+A casa não lê banco de ninguém: pergunta por HTTP, pelo contrato
 congelado, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
@@ -22,7 +22,7 @@ falha é o CAMINHO que precisa dela, com o nome da variável na mensagem, e a
 porta fecha em vez de abrir.
 
 Molde: `services/cursos/apps/core/clients.py`, copiado e nunca importado
-(Lei 3).
+(célula não importa código de outra).
 """
 
 from __future__ import annotations

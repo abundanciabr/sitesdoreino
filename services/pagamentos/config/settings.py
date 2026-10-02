@@ -24,7 +24,7 @@ FORCE_SCRIPT_NAME = (
 )  # célula dona do próprio prefixo
 
 # Atrás do Traefik; única rota pública é /api/pagamentos/webhooks/mp/* (sem
-# resolução de site — os webhooks vivem num domínio de operações único, Lei 9).
+# resolução de site — os webhooks vivem num domínio de operações único, multissítio: site é dado).
 ALLOWED_HOSTS = ["*"]
 
 # Tokens estáticos aceitos, um por par consumidor (TOKENS_ACEITOS_CHECKOUT etc.):

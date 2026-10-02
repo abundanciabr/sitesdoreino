@@ -123,7 +123,7 @@ SESSION_COOKIE_NAME = "meshcraft_sessao"
 # célula pode PERGUNTAR quem é (config/api.py) — nunca ler o cookie.
 # Não é `SESSION_COOKIE_DOMAIN`: alcance de CAMINHO (um host, todas as páginas)
 # é o que o site precisa; alcance de DOMÍNIO espalharia o cookie por
-# subdomínios que não são desta plataforma (Lei 9: cada host tem a sua sessão).
+# subdomínios que não são desta plataforma (multissítio: cada host tem a sua sessão).
 SESSION_COOKIE_PATH = "/"
 
 # `Lax` é OBRIGATÓRIO aqui, não preferência: a volta do Google é uma navegação

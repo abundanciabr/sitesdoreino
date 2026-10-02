@@ -617,7 +617,7 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
 
 
 def sites_com_parametros() -> tuple[str, ...]:
-    """Os sites em que esta célula tem régua para trabalhar (Lei 9: uma fábrica, N lojas).
+    """Os sites em que esta célula tem régua para trabalhar (multissítio: uma fábrica, N lojas).
 
     A lista sai do BANCO, e não de uma configuração: um site cujos parâmetros
     nunca foram semeados não tem relógio nem elegibilidade, e o tique não deve

@@ -2,7 +2,7 @@
 """O mesmo menu do site, também aqui.
 
 **Cópia do PADRÃO das células `funil`, `forum` e `sugestoes`, nunca do arquivo
-delas** (Lei 7 do Caminho Dourado), e pelo mesmo motivo do rodapé
+delas** (cada célula com os próprios arquivos), e pelo mesmo motivo do rodapé
 (`apps/core/rodape.py`): quando o mantenedor mudar o menu na tela dele, todos os
 lugares mudam juntos, porque todos leem o MESMO dado.
 

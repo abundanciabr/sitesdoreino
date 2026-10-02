@@ -195,7 +195,7 @@ def fechar_reconciliacao(
 
 def tentativas_do_site(platform_site_id: str) -> QuerySet[PaymentAttempt]:
     """O caminho de leitura desta tabela. Toda consulta nasce presa a um site:
-    uma loja não enxerga a tentativa de pagamento da loja vizinha (Lei 9)."""
+    uma loja não enxerga a tentativa de pagamento da loja vizinha (multissítio: site é dado)."""
     return PaymentAttempt.objects.filter(platform_site_id=platform_site_id)
 
 

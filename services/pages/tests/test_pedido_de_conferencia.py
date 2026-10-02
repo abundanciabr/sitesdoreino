@@ -176,7 +176,7 @@ def test_o_pedido_aparece_na_fila_da_equipe(portfolio_com_peca):
 
 
 def test_a_fila_de_uma_escola_nao_mostra_o_pedido_de_outra(portfolio_com_peca):
-    """Lei 9: a equipe de uma escola nunca vê o pedido de outra."""
+    """Multissítio: a equipe de uma escola nunca vê o pedido de outra."""
     conferencia.pedir(portfolio_com_peca("aluno-1", site_id=OUTRO_SITE))
 
     assert list(conferencia.fila_da_equipe(SITE)) == []
@@ -723,7 +723,7 @@ def test_quem_nao_e_da_equipe_nao_decide_nada(
 def test_a_equipe_nao_alcanca_o_pedido_de_outra_escola(
     da_equipe, site_declarado, portfolio_com_peca
 ):
-    """Lei 9 na ESCRITA: a fila de uma escola não decide pela outra."""
+    """Multissítio na ESCRITA: a fila de uma escola não decide pela outra."""
     pedido = conferencia.pedir(portfolio_com_peca("aluno-1", site_id=OUTRO_SITE))
 
     resposta = Client().post(

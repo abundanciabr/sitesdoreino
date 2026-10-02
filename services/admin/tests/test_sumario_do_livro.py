@@ -17,7 +17,7 @@ congelado. O que cada promessa custa, se cair:
    preservou. É a promessa mais cara do arquivo: um importador que apaga o que
    o mantenedor escreveu perde meses de trabalho que só existem naquele banco.
 3. **PREVER não grava nada** e **IMPORTAR grava pela porta de máquina**, nunca
-   no banco direto (esta célula não tem o banco da `cursos`, Lei 3).
+   no banco direto (esta célula não tem o banco da `cursos`: célula não lê banco de outra).
 4. **Encomenda em que nada mudaria não é enviada**: sem isso, importar duas
    vezes subiria a versão das 34 sem trocar uma letra.
 5. **Encomenda que a porta não deixou LER não é gravada.** Gravar sem saber o

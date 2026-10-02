@@ -2,7 +2,7 @@
 """INV-SUG02 — `HistoricoStatus` é append-only.
 
 Spec §8: nenhuma linha é editada ou apagada depois de criada; correção é um
-registro NOVO. O invariante é imposto em três degraus (Lei 1), e cada degrau
+registro NOVO. O invariante é imposto em três degraus (mecanismo, não documento), e cada degrau
 tem o seu teste aqui — porque um degrau sozinho tem porta dos fundos:
 
 1. `save()` na instância        — pega `obj.campo = x; obj.save()`

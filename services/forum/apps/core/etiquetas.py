@@ -5,7 +5,7 @@ Até aqui o progresso do aluno só existia para quem abrisse `/conquistas` de
 propósito. O fórum é o lugar da escola com mais gente passando, e é aqui que o
 nível encontra quem nunca foi procurá-lo.
 
-**Cópia do PADRÃO de `apps/core/menu.py`, nunca do arquivo dele** (Lei 3): um
+**Cópia do PADRÃO de `apps/core/menu.py`, nunca do arquivo dele**: um
 cliente que fala com outra célula, com cache por TTL curto, teto de tamanho, e
 que falha sempre para o mesmo lado. Lá o lado seguro é "sem menu"; aqui é
 **"sem etiqueta"**.

@@ -9,7 +9,7 @@ pergunta que nenhum teste responde: **em produção, agora, quanto falta?**
 
 Por que a resposta não é "zero" no dia seguinte ao deploy, e isso é o desenho:
 a migration `0006` não preenche linha antiga nenhuma (não há de onde derivar o
-dado sem pedir à `identidade` a lista de gente dela — Lei 3). Cada linha antiga
+dado sem pedir à `identidade` a lista de gente dela — célula não lê banco de outra). Cada linha antiga
 ganha o id **na próxima entrada da pessoa**, então este número desce sozinho,
 no ritmo em que as pessoas voltam. Um número que não desce em semanas é o
 sintoma de que a frente 2 de `apps/core/sessao.py::cunhar_ou_recuperar` parou de

@@ -2,7 +2,7 @@
 """O mesmo menu do site, também aqui.
 
 **Cópia do PADRÃO das células `funil`, `forum`, `sugestoes` e `gamificacao`,
-nunca do arquivo delas** (Lei 3), e pelo mesmo motivo do rodapé
+nunca do arquivo delas**, e pelo mesmo motivo do rodapé
 (`apps/core/rodape.py`): quando o mantenedor mudar o menu na tela dele, todos os
 lugares mudam juntos, porque todos leem o MESMO dado.
 

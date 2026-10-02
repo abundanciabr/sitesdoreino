@@ -128,7 +128,7 @@ def test_um_curso_por_slug_por_site(curso):
 
 
 def test_o_mesmo_slug_em_outro_site_e_outro_curso(curso):
-    """Lei 9: uma fábrica, N lojas. O slug é único POR SITE, não na plataforma."""
+    """Multissítio: uma fábrica, N lojas. O slug é único POR SITE, não na plataforma."""
     outro = cria_curso(site_id="escola-b", slug=curso.slug)
     assert outro.pk != curso.pk
 
@@ -549,7 +549,7 @@ def test_semear_nao_pisa_em_cima_de_edicao_humana(esqueleto):
 
 
 def test_a_semente_e_por_site(esqueleto):
-    """Lei 9: semear a escola A não semeia a escola B; os instrumentos são de
+    """Multissítio: semear a escola A não semeia a escola B; os instrumentos são de
     plataforma inteira e por isso não se repetem."""
     assert Curso.objects.filter(site_id="escola-b").count() == 0
     call_command("semear_esqueleto", site="escola-b", stdout=StringIO())

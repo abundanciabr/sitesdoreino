@@ -51,7 +51,7 @@ link nenhum: ele faz o dono concluir que o site quebrou.
 ## De onde vem o VEREDITO, e por que ele também não mora aqui
 
 Mesma lei, aplicada ao número. Nenhuma contagem nasce neste arquivo: cada peça
-pergunta à célula dona, pelo contrato congelado dela (Lei 3), e traduz a
+pergunta à célula dona, pelo contrato congelado dela (célula não lê banco de outra), e traduz a
 resposta em uma das quatro palavras do vocabulário fechado abaixo. Uma segunda
 contagem montada aqui divergiria da tela dona no primeiro estado novo, e o
 mantenedor leria a que abrisse primeiro sem saber que a outra discorda.

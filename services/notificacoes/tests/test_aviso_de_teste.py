@@ -166,7 +166,7 @@ def test_dois_testes_seguidos_sao_distinguiveis(client, par_autorizado, envio):
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_o_teste_nao_alcanca_o_aparelho_de_outro_site(client, par_autorizado, envio):
-    """Lei 9: nada atravessa sites, nem um teste."""
+    """Multissítio: nada atravessa sites, nem um teste."""
     inscrever(site_id="outro-site")
 
     resposta = pedir(client)

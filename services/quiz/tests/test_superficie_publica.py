@@ -39,7 +39,7 @@ O QUE É NECESSÁRIO ATRÁS DO TRAEFIK, E O QUE NÃO É
 ---------------------------------------------------
 `CSRF_TRUSTED_ORIGINS` **não** é necessário: ele serve para aceitar origens
 DIFERENTES do host da requisição, e aqui o formulário e o POST são sempre do
-mesmo host (Lei 9: um deploy, N domínios, cada um falando consigo mesmo).
+mesmo host (multissítio: um deploy, N domínios, cada um falando consigo mesmo).
 
 `SECURE_PROXY_SSL_HEADER` **é**, e sem ele nenhum POST legítimo passaria em
 produção. O TLS termina no Traefik e o uvicorn recebe `http`; o navegador manda
@@ -289,7 +289,7 @@ def test_https_atras_do_traefik_aceita_a_origem_do_proprio_site(navegador, quiz_
 
 def test_o_cookie_de_csrf_sai_com_o_nome_desta_celula(navegador, quiz_a):
     """Um `csrftoken` genérico colide com o das outras células no MESMO domínio
-    (Lei 9: um host, N células sob prefixos, e o navegador guarda cookie por
+    (multissítio: um host, N células sob prefixos, e o navegador guarda cookie por
     nome, domínio e caminho)."""
     navegador.get(f"/{quiz_a.slug}/", HTTP_HOST=HOST)
 

@@ -145,7 +145,7 @@ def test_liberar_alguem_da_fila_escreve_a_carta():
 
 @pytest.mark.django_db(transaction=True)
 def test_emitir_fora_de_transacao_e_recusado():
-    """A Lei 1 aplicada: em vez de confiar que todo ponto de emissão futuro se
+    """O princípio 'mecanismo, não documento' aplicado: em vez de confiar que todo ponto de emissão futuro se
     lembre do `atomic`, a própria função recusa a escrita.
 
     `transaction=True` é o que torna este guarda possível: o `django_db` normal

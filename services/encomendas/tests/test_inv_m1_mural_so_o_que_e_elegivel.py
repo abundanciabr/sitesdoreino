@@ -160,7 +160,7 @@ def test_o_projeto_ja_reservado_some_do_mural_de_todo_mundo(
 
 
 def test_o_mural_e_por_site(dois_no_mural, criar_projeto_no_mural):
-    """Lei 9 / [INV-P11]: projeto de um site nunca aparece no Mural de outro."""
+    """Multissítio / [INV-P11]: projeto de um site nunca aparece no Mural de outro."""
     ana, _ = dois_no_mural
     criar_projeto_no_mural(site_id="escola-b")
 

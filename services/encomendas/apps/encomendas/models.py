@@ -20,7 +20,7 @@ tratar como verdade:
    valor vigente **em `agora`**, e por isso um parâmetro mudado às 15h não
    reescreve uma oferta feita às 14h (lei §3.8).
 3. **Nenhum dado de um site aparece em outro.** `site_id` em toda entidade
-   (Lei 9 / [INV-P11]), e a coluna denormalizada não pode mentir: a `Oferta` só
+   (multissítio / [INV-P11]), e a coluna denormalizada não pode mentir: a `Oferta` só
    aponta para encomenda e perfil DO MESMO SITE, por chave estrangeira composta
    (`armadilhas/274`).
 
@@ -267,7 +267,7 @@ class Pessoa(models.Model):
     contra o espelho. Esta célula não consome evento nenhum (`celulas.yml`:
     `consome: []`), e o e-mail de que `getStudentStanding` precisa chega na
     própria requisição, vindo da sessão, no instante em que a pergunta é feita.
-    Copiar um dado alheio que não se usa é a Lei 2 ao contrário: uma segunda
+    Copiar um dado alheio que não se usa é a muralha de dados ao contrário: uma segunda
     verdade que ninguém mantém. A constituição desta célula já dizia isto com
     todas as letras — *"`Pessoa` é espelho mínimo (id da plataforma, nome de
     exibição)"*.

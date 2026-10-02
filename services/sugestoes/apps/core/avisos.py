@@ -131,7 +131,7 @@ ASSUNTO_PORTFOLIO = "pages.portfolio-conferido"
 #:
 #: **Este mapa é um ESPELHO, e vai envelhecer.** A escada mora na tabela
 #: `NIVEIS` de `gamificacao/management/commands/semear_economia.py`, célula que
-#: esta aqui não pode ler em tempo de execução (Lei 3, e a constituição da
+#: esta aqui não pode ler em tempo de execução (célula não lê banco de outra, e a constituição da
 #: `sugestoes` lista `gamificacao` como proibida até de ler). O espelho é aceito
 #: porque a divergência é INÓCUA por construção: nível renomeado ou nível novo
 #: cai no fallback e a frase continua verdadeira, com o número. O que nunca pode
@@ -219,7 +219,7 @@ class AvisoForaDaTransacao(Exception):
     """`avisar_os_interessados()` chamada sem transação aberta.
 
     Mesma forma — e mesmo motivo — do `EventoForaDaTransacao` do EVO-20
-    (`apps/sugestoes/eventos.py`), que é a Lei 1 aplicada: em vez de confiar que
+    (`apps/sugestoes/eventos.py`), que é o princípio 'mecanismo, não documento' aplicado: em vez de confiar que
     todo ponto futuro de mudança de status se lembre do `atomic`, a própria
     função recusa a escrita. Um aviso gravado em autocommit sobrevive ao rollback
     do fato que o justifica — e aí a Caixa passa a dizer ao aluno que a ideia

@@ -84,7 +84,7 @@ def test_nao_liga_regra_de_pontuacao_nenhuma():
 
 
 def test_nao_encosta_na_escada_de_outra_escola():
-    """Lei 9: um deploy, N domínios. Ligar a escada de um site é ligar UM site."""
+    """Multissítio: um deploy, N domínios. Ligar a escada de um site é ligar UM site."""
     _degraus()
     _degraus(site=OUTRA)
 

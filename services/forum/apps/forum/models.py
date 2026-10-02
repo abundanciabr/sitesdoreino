@@ -87,7 +87,7 @@ class Pessoa(models.Model):
     dizer "quem escreveu isto" sem uma chamada de rede por mensagem exibida.
 
     O padrão é o mesmo da Caixa de Sugestões (`services/sugestoes`), e a razão
-    de não guardar mais que isto é a Lei 2: dado de outra célula copiado sem
+    de não guardar mais que isto é a muralha de dados: dado de outra célula copiado sem
     necessidade vira uma segunda verdade que ninguém mantém.
     """
 
@@ -504,7 +504,7 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     cair, porque ninguém contava.
 
     O padrão é copiado das cinco células que já o rodam, nunca o arquivo e nunca
-    por import cruzado (Lei 3): um relay diferente por célula significaria N
+    por import cruzado (célula não importa código de outra): um relay diferente por célula significaria N
     modos de falha diferentes para o mesmo problema.
 
     `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é
@@ -562,7 +562,7 @@ class ConsentimentoDaGaleria(models.Model):
     topico = models.OneToOneField(
         Topico, related_name="consentimento_da_galeria", on_delete=models.CASCADE
     )
-    # A escola em que o gesto aconteceu (Lei 9: `site_id` acompanha toda
+    # A escola em que o gesto aconteceu (multissítio: `site_id` acompanha toda
     # entidade pública). A candidata só sai no pedido desta mesma escola.
     site_id = models.CharField(max_length=64)
     # O domínio em que o aluno estava. É o que monta a `url_canonica` do

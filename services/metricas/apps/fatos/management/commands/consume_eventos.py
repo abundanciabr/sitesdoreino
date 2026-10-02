@@ -3,7 +3,7 @@
 Roda como processo supervisionado, ao lado do container web, e é a única boca
 de entrada do livro de fatos. O molde é o das cinco células consumidoras
 (`alunos`, `checkout`, `leads`, `mensageria`, `gamificacao`), com as mesmas
-constantes de reentrega — copiar o padrão é Lei 3, e divergir nos números
+constantes de reentrega — copia-se o padrão, nunca o arquivo, e divergir nos números
 tornaria impossível comparar o comportamento de duas células em incidente.
 
 ## As cinco adaptações desta célula, declaradas em vez de silenciosas

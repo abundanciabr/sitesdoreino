@@ -1,7 +1,7 @@
 # apps/core/auth.py
 """Quem CHAMA esta porta, e com que grau. Duas perguntas, não uma.
 
-O molde é `services/gamificacao/apps/core/auth.py` (Lei 3: copia-se o padrão
+O molde é `services/gamificacao/apps/core/auth.py` (copia-se o padrão
 entre células, nunca se importa código de uma na outra). O que NÃO foi copiado
 de lá é a premissa, e a diferença é a razão deste arquivo ter duas funções em
 vez de uma.

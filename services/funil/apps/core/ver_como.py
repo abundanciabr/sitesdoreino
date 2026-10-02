@@ -11,7 +11,7 @@ A LINHA QUE ESTE ARQUIVO NÃO CRUZA, E É A RAZÃO DE ELE SER PEQUENO
 ------------------------------------------------------------------
 **O disfarce muda o que as telas MOSTRAM. Ele não muda nada do que a pessoa
 PODE.** Não é uma limitação a ser removida um dia: é a `DECISAO-onde-mora-a-
-sessao` §4 e a Lei 4 da constituição. Autorização é fail-closed, na célula dona
+sessao` §4. Autorização é fail-closed, na célula dona
 do recurso, conferindo a lista dela. Um "ver como" que mexesse nisso seria uma
 vitrine passando a decidir acesso — a doença de que este projeto se vacinou.
 

@@ -370,7 +370,7 @@ def test_o_formulario_nao_alcanca_a_peca_de_outro_aluno(
 def test_a_peca_da_outra_escola_nao_e_respondida_daqui(
     estante, criar_portfolio, criar_peca
 ):
-    """Lei 9: a mesma aluna na escola vizinha, e a peça de lá não atravessa."""
+    """Multissítio: a mesma aluna na escola vizinha, e a peça de lá não atravessa."""
     de_outra_escola = criar_peca(
         criar_portfolio(ANA["id"], site_id="escola-b"),
         link="https://exemplo.test/escola-b.png",

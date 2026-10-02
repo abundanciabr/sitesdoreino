@@ -315,7 +315,7 @@ def _site_desta_requisicao(request) -> "dict | None":
     """O site vem do HOST desta própria requisição, sem seletor.
 
     Mesmo padrão de `apps/core/sequencias.py` e `apps/core/avisos.py`: toda
-    operação de aula da porta é escopada por `site_id` (CONSTITUICAO Lei 9), e
+    operação de aula da porta é escopada por `site_id` (multissítio: site é dado), e
     sem ele a porta responde 422 em vez de uma lista vazia que pareceria
     resposta.
     """
@@ -739,7 +739,7 @@ def _falha(desfecho: str) -> dict:
 def _sem_site(request, status: int = 503):
     """O catálogo não respondeu, então não sei de qual escola são as aulas.
 
-    Sem `site_id` a porta responde 422 (Lei 9), e chutar um site seria pior que
+    Sem `site_id` a porta responde 422 (multissítio: site é dado), e chutar um site seria pior que
     não abrir: mostraria as aulas de outro domínio.
     """
     return render(

@@ -1,7 +1,7 @@
 """O rodapé da sala de aula: a mesma assinatura do site, em toda página.
 
 **Cópia do PADRÃO de `services/gamificacao/apps/core/rodape.py`, nunca do
-arquivo** (Lei 3). A peça nasceu na `funil` em 31/08/2026 e a `gamificacao`
+arquivo**. A peça nasceu na `funil` em 31/08/2026 e a `gamificacao`
 foi ao ar sem ela: o mantenedor viu a única área do site sem menu e sem rodapé
 (`armadilhas/242` e `/286`). Esta célula nasce com as duas, pelo processador
 de contexto, e `ci/tests/test_pecas_comuns_em_toda_celula_publica.py` mede.

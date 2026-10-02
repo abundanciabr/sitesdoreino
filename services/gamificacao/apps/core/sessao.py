@@ -12,7 +12,7 @@ cabo-de-guerra invisível: abrir a página de conquistas deslogaria do site, e
 vice-versa, sem erro em lugar nenhum (`armadilhas/143`).
 
 O molde é `services/forum/apps/core/clients.py`, o consumidor de referência da
-plataforma, copiado e não importado (Lei 3). Para desenhar as PÁGINAS basta
+plataforma, copiado e não importado (célula não importa código de outra). Para desenhar as PÁGINAS basta
 `getSession`: a gamificação precisa do **id opaco**, e `quem_e` nunca pede o
 e-mail.
 

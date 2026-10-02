@@ -406,7 +406,7 @@ def _desenhar(request, curso: str, colado: str, contexto: dict, status: int = 20
 def _sem_site(request, curso: str, colado: str):
     """O catálogo não respondeu, então não sei de qual escola é este curso.
 
-    Sem `site_id` a porta responde 422 (Lei 9), e chutar um site seria pior que
+    Sem `site_id` a porta responde 422 (multissítio: site é dado), e chutar um site seria pior que
     não abrir: mexeria na estrutura do curso de outro domínio.
     """
     return _desenhar(request, curso, colado, {"sem_site": True}, status=503)

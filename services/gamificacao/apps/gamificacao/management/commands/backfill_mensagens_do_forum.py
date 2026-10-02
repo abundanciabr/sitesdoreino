@@ -6,7 +6,7 @@ POR QUE ESTE COMANDO É SEPARADO DE `backfill_pontos_do_forum`
 desta célula (`ConversaAberta`/`AjudaAceita`, escritas independente de a
 regra estar ligada), então o backfill delas lê só o próprio banco. Mensagem
 não tem espelho — a única fonte é o `Mensagem` do fórum, célula dona do fato
-(Lei 3). Este comando não lê banco alheio: ele recebe o histórico já
+(célula não lê banco de outra). Este comando não lê banco alheio: ele recebe o histórico já
 exportado, em JSON, por `exportar_mensagens_para_backfill` (célula
 `forum`) — o pipeline encadeia as duas saídas no mesmo host
 (`infra/backfill-mensagens-do-forum.sh`), sem porta nova entre as células.

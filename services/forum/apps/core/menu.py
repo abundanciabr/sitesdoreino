@@ -1,8 +1,7 @@
 # apps/core/menu.py — o menu do topo, resolvido para ESTA página do fórum
 """O mesmo menu do site, também aqui.
 
-**Cópia do PADRÃO da célula `funil`, nunca do arquivo dela** (Lei 7 do Caminho
-Dourado), e pelo mesmo motivo do rodapé (`apps/core/rodape.py`): quando o
+**Cópia do PADRÃO da célula `funil`, nunca do arquivo dela** (cada célula com os próprios arquivos), e pelo mesmo motivo do rodapé (`apps/core/rodape.py`): quando o
 mantenedor mudar o menu na tela dele, os dois lugares mudam juntos, porque os
 dois leem o MESMO dado.
 

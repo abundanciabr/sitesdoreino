@@ -35,7 +35,7 @@ mecanismo neste arquivo, e um teste que reprova a publicação:
 
 `site_id` EM TODA ENTIDADE, COM UMA EXCEÇÃO DECLARADA
 -----------------------------------------------------
-Lei 9 / [INV-P11]: o `site_id` acompanha toda entidade pública. Aqui ele está em
+Multissítio / [INV-P11]: o `site_id` acompanha toda entidade pública. Aqui ele está em
 todas, **menos em `Pessoa`** — e a exceção é do desenho, não do esquecimento: o
 espelho copia a identidade da PLATAFORMA, que é uma só por pessoa em todos os
 sites (quem a emite é a célula `identidade`). A fronteira de site desta célula
@@ -129,7 +129,7 @@ class Pessoa(models.Model):
     a célula `alunos`. Esta tabela guarda o mínimo para a gamificação conseguir
     dizer "de quem é este XP" sem uma chamada de rede por linha exibida.
 
-    Guardar mais que isto violaria a Lei 2: dado de outra célula copiado sem
+    Guardar mais que isto violaria a muralha de dados: dado de outra célula copiado sem
     necessidade vira uma segunda verdade que ninguém mantém. Em particular, aqui
     **não** entram idade, data de nascimento nem nome real: a escola é 18+ (lei
     §9, emendada em 30/08/2026) e nenhuma regra desta célula depende de saber
@@ -1629,7 +1629,7 @@ class ConversaAberta(models.Model):
     da semana nasceria morto sem ninguém entender por quê.
 
     **Nunca o título, nunca o texto.** Quem é dono da conversa é o fórum; copiar
-    o texto dele para cá criaria uma segunda verdade que ninguém mantém (Lei 2),
+    o texto dele para cá criaria uma segunda verdade que ninguém mantém (muralha de dados),
     e ela envelheceria no primeiro título editado. `area_id` viaja no evento e
     também não é copiado: o recorte por área vem de `area_slug`, que a resposta
     do fórum já traz.

@@ -1,8 +1,7 @@
 # apps/core/rodape.py
 """O rodapé do fórum: quem mostra, qual dos rodapés, e o que cada um leva.
 
-**Cópia do PADRÃO da célula `funil`, nunca do arquivo dela** (Lei 7 do Caminho
-Dourado). O rodapé do site nasceu lá em 31/08/2026 (PR #705); o mantenedor
+**Cópia do PADRÃO da célula `funil`, nunca do arquivo dela** (cada célula com os próprios arquivos). O rodapé do site nasceu lá em 31/08/2026 (PR #705); o mantenedor
 escolheu, no mesmo dia, trazer o mesmo rodapé para o fórum antes de a tela do
 painel existir. As duas células têm a mesma FORMA de propósito: quando o painel
 mandar nos textos, ele vai mandar nos dois pelo mesmo desenho.

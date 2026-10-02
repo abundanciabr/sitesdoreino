@@ -233,7 +233,7 @@ class IdentidadeClient:
     Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O site não lê
     o cookie de sessão: ele **pergunta** quem é o dono dele. O cookie é assinado
     com a chave da `identidade` e aponta para uma linha no banco DELA — o `funil`
-    não tem chave nem banco (Lei 2, Lei 3). Perguntar é a única forma legal, e é
+    não tem chave nem banco (muralha de dados: célula não lê banco de outra). Perguntar é a única forma legal, e é
     também a que faz a identidade poder mudar de casa um dia sem que este
     arquivo mude: troca-se o endereço no env.
 
@@ -493,7 +493,7 @@ class NotificacoesClient:
     Fase 5 de `docs/notificacoes/PLANO-MESTRE.md` — **falha ABERTA, sem
     exceção**: *"notificações fora do ar ⇒ o site mostra o nome sem sino e a
     página abre normal"*. Cópia peça por peça do padrão de
-    `IdentidadeClient.obter_sessao` (Lei 7 — copia-se o PADRÃO, nunca o
+    `IdentidadeClient.obter_sessao` (copia-se o PADRÃO, nunca o
     arquivo): mesma forma de ler config, mesmo timeout curto, mesma separação
     entre `httpx.HTTPError` e `ValueError` no `.json()`.
 
@@ -898,8 +898,7 @@ def _inteiro_ou_nulo(valor):
 class GamificacaoClient:
     """`contracts/gamificacao.openapi.yaml`, operação `getMyStatus` — leitura pura.
 
-    Cópia peça por peça do padrão de `NotificacoesClient.obter_resumo` (Lei 3 —
-    copia-se o PADRÃO, nunca o arquivo): mesma forma de ler config no ponto de
+    Cópia peça por peça do padrão de `NotificacoesClient.obter_resumo` (copia-se o PADRÃO, nunca o arquivo): mesma forma de ler config no ponto de
     uso, mesmo timeout curto, mesma separação entre `httpx.HTTPError` e o
     `ValueError` do `.json()`. **Falha ABERTA, sem exceção**: a gamificação fora
     do ar custa o quadrinho de progresso, nunca a home.

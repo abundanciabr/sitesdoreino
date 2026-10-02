@@ -82,7 +82,7 @@ def _tipo(nome, quantidade=1, dias=0, recebido="2026-09-04T14:58:00+00:00"):
 
 
 def test_sem_site_nao_pergunta_nada():
-    """Sem saber o site, a pergunta seria sobre a escola errada (Lei 9)."""
+    """Sem saber o site, a pergunta seria sobre a escola errada (multissítio: site é dado)."""
     assert medicao.a_memoria(None, AGORA, ClienteFalso())["veredito"] == "sem-site"
 
 

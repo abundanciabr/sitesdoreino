@@ -2,7 +2,7 @@
 
 Mesmo padrão de duble do Redis que `test_voz_do_cadastro.py` já usa para o
 relay da outbox (`RedisDublado`/`monkeypatch.setattr("redis.from_url", ...)`)
-— copiado como PADRÃO, não como arquivo (Lei 3)."""
+— copiado como PADRÃO, não como arquivo."""
 
 import pytest
 

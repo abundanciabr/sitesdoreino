@@ -232,7 +232,7 @@ class PaymentAttempt(models.Model):
     intent = models.ForeignKey(
         Intent, on_delete=models.PROTECT, related_name="tentativas"
     )
-    # Copiado do Intent na abertura: a leitura isolada por site (Lei 9) não
+    # Copiado do Intent na abertura: a leitura isolada por site (multissítio: site é dado) não
     # pode depender de um join para acontecer.
     platform_site_id = models.CharField(max_length=255)
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)

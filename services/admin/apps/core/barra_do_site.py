@@ -25,7 +25,7 @@ Quem confere que a lista de rotas públicas não envelheceu é
 
 Esta célula fala com o `catalogo` desde 31/08/2026 — é ela quem grava o menu. O
 `CatalogoClient` de `apps/core/clients.py` é reusado aqui (mesma célula, não é
-Lei 3), então a biblioteca de documentos ganha o menu **sem nenhum passo novo de
+importação de código de outra célula), então a biblioteca de documentos ganha o menu **sem nenhum passo novo de
 provisionamento na VPS**.
 
 O que este arquivo acrescenta ao cliente é o CACHE. A tela de configuração

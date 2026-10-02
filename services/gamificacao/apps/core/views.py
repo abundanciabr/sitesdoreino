@@ -161,7 +161,7 @@ def servir_estatico(request, caminho: str):
     porque só o primeiro carrega o prefixo público** — `/static/gamificacao.css`
     em `meshcraft.top` é endereço do `funil`, não desta célula.
 
-    Copiado de `services/forum/apps/core/views.py`, não importado: Lei 3, célula
+    Copiado de `services/forum/apps/core/views.py`, não importado: célula
     não importa código de célula.
     """
     raiz = (Path(settings.BASE_DIR) / "static").resolve()

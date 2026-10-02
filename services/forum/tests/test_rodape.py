@@ -1,6 +1,6 @@
 """O rodapé do fórum: em toda tela, e com a mesma assinatura do site.
 
-Cópia do PADRÃO da `funil` (Lei 7), inclusive nos guardas — e os guardas são a
+Cópia do PADRÃO da `funil` (cada célula com os próprios arquivos), inclusive nos guardas — e os guardas são a
 metade que mais importa copiar. Cada um corresponde a uma forma diferente de
 esta peça se perder:
 

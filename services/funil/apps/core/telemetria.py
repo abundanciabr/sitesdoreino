@@ -21,7 +21,7 @@ não.
 
 O ENVELOPE É O DO RELAY DAS OUTRAS, copiado e não importado
 -----------------------------------------------------------
-Código de outra célula não atravessa a fronteira (CONSTITUICAO.md). O que
+Código de outra célula não atravessa a fronteira (célula não importa código de outra). O que
 atravessa é a FORMA: `{event, version, event_id, occurred_at, data}` dentro de
 um campo `json`, no stream `eventos.<nome-do-evento>` **sem versão no nome** —
 a versão viaja no envelope, e pôr `v1` no nome do stream faria de toda evolução

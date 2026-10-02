@@ -6,7 +6,7 @@ DO SITE, como os idiomas e a oferta padrão. As células públicas (funil, forum
 já perguntam "quem é este host?" ao catálogo uma vez por requisição, com cache
 de 60s. Pendurar o menu nessa resposta faz o dado novo chegar às telas sem
 nenhum salto de rede a mais, sem célula nova, e sem ninguém ler o banco de
-ninguém (Lei 3).
+ninguém (célula não lê banco de outra).
 
 A forma segue o precedente de `languages` (PLANO-I18N D3): JSON validado por
 uma função ÚNICA, chamada pelo `save()` do model e pelo `update()` do

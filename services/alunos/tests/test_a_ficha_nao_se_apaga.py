@@ -276,7 +276,7 @@ def test_ja_foi_aluno_nao_e_ja_teve_ficha(client, auth):
     parcial `matricula_unica_na_fila_por_site_e_email` impede duas linhas em
     espera no mesmo site — quem é recusado e pede de novo reaproveita a própria
     linha (`entrar_na_fila`). Fichas de fila repetidas para a mesma pessoa só
-    existem entre escolas diferentes, e a plataforma é multi-escola (Lei 9).
+    existem entre escolas diferentes, e a plataforma é multi-escola (multissítio: site é dado).
     """
     criar(site_id="escola-b", order_id="pre:r1", status=Matricula.STATUS_RECUSADA)
     criar(site_id="escola-c", order_id="pre:r2", status=Matricula.STATUS_RECUSADA)

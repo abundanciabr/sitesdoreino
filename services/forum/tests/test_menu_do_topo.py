@@ -1,6 +1,6 @@
 """O menu do topo no fórum: o MESMO menu do site, lido do mesmo lugar.
 
-Cópia do PADRÃO da `funil` (Lei 7), inclusive nos guardas. Cada um corresponde
+Cópia do PADRÃO da `funil` (cada célula com os próprios arquivos), inclusive nos guardas. Cada um corresponde
 a uma forma diferente de isto dar errado:
 
 1. **O fórum cair porque o catálogo caiu.** Um menu é enfeite de navegação; o

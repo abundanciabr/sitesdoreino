@@ -694,8 +694,8 @@ def responder_peca(request):
 # O aluno manda o portfólio, e uma PESSOA da escola olha. É a fila humana, no
 # molde vivo da fila de marcos (`/conquistas/interno`, célula `gamificacao`):
 # prazo em dias úteis, o mais urgente em cima, aceite em um clique e devolução
-# com motivo de lista fechada. Copia-se o PADRÃO entre células, nunca o código
-# (Lei 3), e a regra em si mora em `apps/portfolio/conferencia.py`.
+# com motivo de lista fechada. Copia-se o PADRÃO entre células, nunca o código,
+# e a regra em si mora em `apps/portfolio/conferencia.py`.
 #
 # **A porta desta área é a porta da casa**, com outra régua: `/equipe` passa
 # pelo mesmo middleware, que troca a pergunta da matrícula pela lista do env
@@ -959,7 +959,7 @@ def vitrine_publica(request, apelido: str):
     endereço é justamente o que o aluno escolhe e divulga.
 
     **Sem `SITE_ID` no env não há página.** A fronteira de escola entra na
-    consulta (Lei 9), e servir a primeira linha que o banco devolvesse poria os
+    consulta (multissítio: site é dado), e servir a primeira linha que o banco devolvesse poria os
     alunos de duas escolas do mesmo lado dela no dia em que a segunda chegasse.
     A dívida é a mesma da Prancheta, e está por extenso em `site_atual`.
     """

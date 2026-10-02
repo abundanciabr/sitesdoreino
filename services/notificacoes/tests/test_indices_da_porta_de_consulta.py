@@ -1,13 +1,13 @@
 # tests/test_indices_da_porta_de_consulta.py  # [RECEITA:R1 v1]
 """Os índices de `models.py` casam com a query que a Fase 4 realmente faz —
-MEDIDO com `EXPLAIN ANALYZE`, não suposto (CONSTITUICAO.md Lei 6: "qualquer
+MEDIDO com `EXPLAIN ANALYZE`, não suposto (prova que pode falhar: "qualquer
 alegação arquitetural vem com o comando que a falsificaria").
 
 **Por que este arquivo existe.** No meio deste PR, uma versão do contrato sem
 `site_id` levou a trocar os índices de `Notificacao`/`NotificacaoArquivada`
 para liderar só por `destinatario_id` — apostando (certo, NA HORA) que a
 leitura não filtraria por site. A emenda de 27/08/2026 que tornou `site_id`
-obrigatório também (decisão do mantenedor, CONSTITUICAO.md Lei 9: "cada site
+obrigatório também (decisão do mantenedor, multissítio: "cada site
 mostra só os avisos que vieram dele") mudou isso, e a aposta perdeu — sem que
 nenhum teste existente notasse: com poucas linhas (o caso comum de dev/CI), o
 Postgres troca de plano sem custo perceptível, e nada mais neste repositório

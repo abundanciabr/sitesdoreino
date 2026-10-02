@@ -13,7 +13,7 @@ O caminho de toda requisição de gente:
     cookie (opaco) → identidade responde quem é → staff? → tem matrícula?
                    → Ator(linha LOCAL, papel das listas LOCAIS)
 
-**A linha local é snapshot, casado por e-mail** (Virtude da Lei 3: snapshots
+**A linha local é snapshot, casado por e-mail** (a virtude de copiar dados: snapshots
 são sagrados): `Identidade` desta célula continua existindo, com as mesmas 6
 FKs de autoria apontando para ela — foi isso que fez a mudança de casa custar
 ZERO migração de dado em produção. A mesma pessoa entrando pelo site recupera

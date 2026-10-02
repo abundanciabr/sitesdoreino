@@ -120,7 +120,7 @@ CSP_DA_MOLDURA = "frame-ancestors 'self'"
 
 #: O `<script>` embutido da página de FORA, para o hash do CSP. Mesma regex de
 #: `mapa_do_site.py` e `livro.py`, letra por letra:
-#: divergir aqui seria a Lei 3 (duplicar e divergir) escondida numa expressão
+#: divergir aqui seria o pecado de duplicar e divergir escondido numa expressão
 #: regular.
 _SCRIPT_EMBUTIDO = re.compile(
     rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE

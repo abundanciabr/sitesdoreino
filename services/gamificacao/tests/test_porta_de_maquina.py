@@ -253,7 +253,7 @@ def test_ninguem_conhecido_responde_200_com_mapa_vazio():
 
 
 def test_perfil_de_OUTRO_site_nao_aparece():
-    """Lei 9 — uma fábrica, N lojas. A etiqueta é do site desta instalação."""
+    """Multissítio — uma fábrica, N lojas. A etiqueta é do site desta instalação."""
     montar_o_cenario()
     outra = Pessoa.objects.create(
         id_da_plataforma="p_de_outra_loja", email="b@exemplo.com"

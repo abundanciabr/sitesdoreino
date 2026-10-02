@@ -5,8 +5,8 @@ from apps.core.api import router as notificacoes_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker (o par consumidor vive nela),
-# nunca para a borda pública — esta célula não tem rota no Traefik (Lei 2 da
-# CONSTITUICAO: API interna não tem rota pública).
+# nunca para a borda pública — esta célula não tem rota no Traefik (muralha de execução:
+# API interna não tem rota pública).
 api = NinjaAPI(
     title="Notificações API",
     version="1.0.0",

@@ -2,7 +2,7 @@
 """O mesmo menu do site, também aqui.
 
 **Cópia do PADRÃO das células `funil` e `forum`, nunca do arquivo delas**
-(Lei 7 do Caminho Dourado): quando o mantenedor mudar o menu na tela dele, os
+(cada célula com os próprios arquivos): quando o mantenedor mudar o menu na tela dele, os
 três lugares mudam juntos, porque os três leem o MESMO dado.
 
 O dado é o menu do site, que mora no `catalogo` e chega por `getSiteByHost`.

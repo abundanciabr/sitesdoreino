@@ -385,7 +385,7 @@ def test_o_rollback_da_transacao_nao_deixa_NENHUM_aviso_orfao(
 def test_avisar_os_interessados_recusa_ser_chamada_fora_de_uma_transacao(
     sugestao, plateia
 ):
-    """Lei 1: em vez de confiar que todo ponto futuro lembre do `atomic`, a
+    """Mecanismo, não documento: em vez de confiar que todo ponto futuro lembre do `atomic`, a
     própria função recusa a escrita — como `eventos.emitir()` desde o EVO-20.
 
     `transaction=True` é obrigatório aqui: no `django_db` padrão TODO teste já

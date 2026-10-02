@@ -1,13 +1,13 @@
 # tests/test_inv_sem_fk_para_fora.py  # [RECEITA:R5 v1]
 """INV-SUG03 — nenhuma FK desta célula aponta para fora do banco dela.
 
-Spec §8 e Lei 3. Não é preferência de estilo: com um database e um role
+Spec §8 e a muralha de dados. Não é preferência de estilo: com um database e um role
 Postgres **por célula** (`infra/provisionamento-postgres.sql`, medido na
 `AUDITORIA-AS-IS.md` Q1), o Postgres simplesmente não sustenta uma constraint
 de FK entre bancos diferentes. Uma FK escrita para fora não vira lentidão —
 vira migration que não aplica.
 
-Este é o guarda que impede a Lei 3 de ser furada **por acidente** daqui em
+Este é o guarda que impede a muralha de dados de ser furada **por acidente** daqui em
 diante: ele varre os models de verdade, não uma lista mantida à mão. FK nova
 para `django.contrib.*` ou para qualquer app que não seja desta célula reprova
 sem ninguém precisar lembrar da regra.

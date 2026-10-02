@@ -19,7 +19,7 @@ uma decisão explícita, uma vez, com trilha de auditoria própria
 (`origem_event_id` começa com `backfill:`, nunca se confunde com um evento
 real) e um registro no livro do projeto contando exatamente o que foi pago.
 
-DE ONDE VEM O DADO, SEM LER O BANCO DE OUTRA CÉLULA (Lei 3)
+DE ONDE VEM O DADO, SEM LER O BANCO DE OUTRA CÉLULA
 -------------------------------------------------------------
 `ConversaAberta` e `AjudaAceita` (`models.py`) são escritas pelos handlers do
 fórum **independente de a regra de pontuação estar ligada** — é assim que a

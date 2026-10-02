@@ -46,7 +46,7 @@ FORCE_SCRIPT_NAME = (
 )  # célula dona do próprio prefixo
 
 # Atrás do Traefik. Esta célula responde em qualquer host servido pela
-# plataforma (Lei 9 — um deploy, N domínios); a defesa de host, se um dia for
+# plataforma (multissítio — um deploy, N domínios); a defesa de host, se um dia for
 # preciso prendê-la a um só, mora no gateway, não aqui.
 ALLOWED_HOSTS = ["*"]
 

@@ -676,7 +676,7 @@ def site_de(request) -> str | None:
 
     [INV-P11] e o mesmo caminho de `menu.py` e `avisos.py`: o site sai do
     domínio pelo qual a requisição chegou, nunca de um id guardado aqui. Quem
-    precisa dele é a memória (a `metricas` conta por site, Lei 9); o resto do
+    precisa dele é a memória (a `metricas` conta por site, multissítio: site é dado); o resto do
     placar não precisa, e por isso a falha aqui não estraga a tela — vira a
     frase "não sei de qual site perguntar" numa linha só.
     """

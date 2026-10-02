@@ -43,7 +43,7 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 #
 # `CSRF_TRUSTED_ORIGINS` NÃO entra: ele existe para aceitar origens DIFERENTES
 # do host da requisição, e aqui formulário e POST são sempre do mesmo host
-# (Lei 9: um deploy, N domínios, cada um falando consigo mesmo).
+# (multissítio: um deploy, N domínios, cada um falando consigo mesmo).
 #
 # Nome próprio, e não o `csrftoken` de fábrica: no mesmo domínio moram várias
 # células sob prefixos, e o navegador guarda cookie por (nome, domínio,

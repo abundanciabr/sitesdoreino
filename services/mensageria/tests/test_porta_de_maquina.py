@@ -11,7 +11,7 @@ AS QUATRO COISAS QUE ESTE ARQUIVO PROVA
    operação, e a lista de operações é MEDIDA do schema vivo, nunca digitada.
 2. **O grau a mais é de verdade.** Quem só lê leva 403 ao tentar publicar. Este
    é o guarda que justifica os dois conjuntos de token existirem.
-3. **A fronteira de site fecha (Lei 9).** Jornada de outro site é 404, e
+3. **A fronteira de site fecha (multissítio: site é dado).** Jornada de outro site é 404, e
    inscrição de outro site é 404 mesmo com o UUID certo em mãos.
 4. **Publicar é criar versão nova, e a antiga não se mexe.** É o que faz as duas
    promessas do plano conviverem, e o cenário abaixo tem uma inscrição parada na
@@ -310,7 +310,7 @@ def test_listar_entregas_traz_O_QUE_NAO_SAIU_com_o_motivo():
 
 
 def test_entregas_de_inscricao_de_OUTRO_SITE_e_404_mesmo_com_o_uuid_certo():
-    """Lei 9 com o id em mãos. Sem esta conferência, quem tivesse o UUID leria a
+    """Multissítio com o id em mãos. Sem esta conferência, quem tivesse o UUID leria a
     inscrição de outra escola pela porta da sua."""
     cenario = montar_o_cenario(site=OUTRO_SITE)
     assert (
@@ -807,7 +807,7 @@ def test_desligar_NAO_TIRA_ninguem_que_ja_esta_dentro_e_a_resposta_diz_quantos()
 
 
 def test_o_interruptor_de_jornada_de_outro_site_e_404():
-    """Lei 9 no interruptor: com o cracha da sua escola nao se liga a de outra.
+    """Multissítio no interruptor: com o cracha da sua escola nao se liga a de outra.
 
     O guarda exerce os DOIS lados de proposito. Sem o pedido que da 200, ele
     ficaria verde tambem no dia em que a operacao sumisse da porta, porque

@@ -154,7 +154,7 @@ def _linha(curso: dict, produtos: "dict | None") -> dict:
 def _sem_site(request):
     """O catálogo não respondeu, então não sei de qual escola são os cursos.
 
-    Sem `site_id` a porta responde 422 (Lei 9), e chutar um site seria pior que
+    Sem `site_id` a porta responde 422 (multissítio: site é dado), e chutar um site seria pior que
     não abrir: mostraria os cursos de outro domínio.
     """
     return render(request, TELA, {"admin": request.admin, "sem_site": True}, status=503)

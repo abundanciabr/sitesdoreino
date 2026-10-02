@@ -1,6 +1,6 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
 # Fala SÓ o que está no contrato congelado da identidade
-# (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (Lei 3).
+# (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (célula não lê banco de outra).
 import datetime as dt
 import logging
 import os
@@ -407,7 +407,7 @@ class AlunosClient:
         levanta** — quem chama é uma view, e a página tem de abrir.
 
         `site_id` fica de fora porque o painel do dono é plataforma-inteira
-        (Lei 9), e cada linha já diz de qual escola veio
+        (multissítio: site é dado), e cada linha já diz de qual escola veio
         (`DECISAO-categorias-de-usuario`).
         """
         return self._buscar("/pre-matriculas", {"status": status})
@@ -796,7 +796,7 @@ class CaixaClient:
 
     Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`. A gestão
     mudou de casa para `/admin/caixa/` em 28/08/2026 (*"tudo será em /admin"*), e
-    pela Lei 3 esta célula não lê o banco da Caixa: ela pergunta.
+    esta célula não lê o banco da Caixa (célula não lê banco de outra): ela pergunta.
 
     **Fail-OPEN na leitura, como a `AlunosClient` — e pelo mesmo motivo.** A
     Caixa fora do ar deixa a tela com um aviso honesto e a página abre igual;
@@ -1052,7 +1052,7 @@ class CatalogoClient:
 
     Fala só o que está no contrato congelado (`contracts/catalogo.openapi.yaml`,
     operações `getSiteByHost`, `getSiteMenu` e `putSiteMenu`). Nunca lê o banco
-    dele (Lei 3).
+    dele (célula não lê banco de outra).
 
     **Fail-OPEN na leitura, e a mensagem é honesta.** O par de tokens
     `admin→catalogo` é um passo de provisionamento na VPS (o env mora só na VPS,
@@ -1490,7 +1490,7 @@ class GamificacaoClient:
 
     Fala só o que está no contrato congelado (`contracts/gamificacao.openapi.yaml`,
     operações `listEconomySwitches` e `setEconomySwitch`, do Rito de 31/08/2026).
-    Nunca lê o banco dela (Lei 3), e **nunca guarda uma cópia** das regras aqui:
+    Nunca lê o banco dela (célula não lê banco de outra), e **nunca guarda uma cópia** das regras aqui:
     a economia é dado da `gamificacao`, e o mesmo fato em dois lugares é a lei
     anti-duplicação do `CLAUDE.md` sendo quebrada — no dia em que as duas
     discordassem, esta tela mostraria uma coisa e o motor pagaria outra.
@@ -1647,7 +1647,7 @@ class EncomendasClient:
 
     Fala só o que a porta de máquina da `encomendas` expõe (`getParameters` e
     `setParameter`, em `services/encomendas/apps/core/api.py`). Nunca lê o banco
-    dela (Lei 3), e **nunca guarda uma cópia** de parâmetro nenhum aqui: o valor
+    dela (célula não lê banco de outra), e **nunca guarda uma cópia** de parâmetro nenhum aqui: o valor
     de um parâmetro é dado da `encomendas`, e o mesmo fato em dois lugares é a
     lei anti-duplicação do `CLAUDE.md` sendo quebrada. No dia em que os dois
     discordassem, esta tela mostraria um prazo e o aluno cumpriria outro.
@@ -1879,7 +1879,7 @@ class MedicaoClient:
     """contracts/metricas.openapi.yaml — `listCoverage` e `listDeadLetters`.
 
     A `metricas` é o LIVRO DE FATOS da plataforma: ela guarda o que aconteceu,
-    para esta tela poder dizer o que MUDOU e não só o que é. Pela Lei 3 o Admin
+    para esta tela poder dizer o que MUDOU e não só o que é. Como célula não lê banco de outra, o Admin
     não lê o banco dela (o papel `admin_user` sequer o enxerga); pergunta por
     aqui, com o Bearer do par provisionado.
 
@@ -2145,7 +2145,7 @@ class MensageriaClient:
 
     Fala só o que está no contrato congelado (`contracts/mensageria.openapi.yaml`,
     Rito de Contrato de 04/09/2026, com o mantenedor presente). Nunca lê o
-    `mensageria_db` (Lei 3), e **nunca guarda uma cópia** de nada aqui: a
+    `mensageria_db` (célula não lê banco de outra), e **nunca guarda uma cópia** de nada aqui: a
     sequência é dado da `mensageria`, e o mesmo fato em dois lugares é a lei
     anti-duplicação do `CLAUDE.md` sendo quebrada. No dia em que os dois
     discordassem, esta tela mostraria um texto e o aluno receberia outro.
@@ -2377,7 +2377,7 @@ class CursosClient:
     degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as operações do editor,
     e das aulas SEMPRE as que sabem de curso (`listLessons`, `getLesson`,
     `putLesson`, `publishLesson`, `checkLesson`, sob `/cursos/{curso}/aulas`).
-    Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
+    Nunca lê o `cursos_db` (célula não lê banco de outra), e **nunca guarda uma cópia** de
     nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
     texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
     e o único lugar em que esse texto existe é o banco da `cursos`

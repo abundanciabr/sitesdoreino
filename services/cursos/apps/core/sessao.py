@@ -117,7 +117,7 @@ def _produtos_deste_site(matriculas: list[dict]) -> frozenset[str]:
 
     Duas peneiras, e cada uma existe por um motivo próprio:
 
-    **A da escola** ([INV-P11], Lei 9): matrícula de outra escola não abre a
+    **A da escola** ([INV-P11], multissítio): matrícula de outra escola não abre a
     sala desta. Sem `SITE_ID` no env não há escola para comparar, e o conjunto
     sai vazio — a sala já responde por esse caso antes de chegar aqui, e sair
     vazio é o desfecho fechado de qualquer forma.

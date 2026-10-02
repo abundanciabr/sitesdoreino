@@ -6,7 +6,7 @@ POR QUE ELA EXISTE
 mantenedor presente: *"existe para que o resto da plataforma dependa do CONTRATO
 e nunca do motor de XP"*. Sem esta porta, quem quisesse estampar "Nv 7 ·
 Modelador" ao lado do nome de um autor no fórum leria o banco desta célula, e
-trocar o motor viraria projeto (Lei 3).
+trocar o motor viraria projeto (célula não lê banco de outra).
 
 AS TRÊS INVARIANTES QUE ATRAVESSAM AS DUAS OPERAÇÕES
 ----------------------------------------------------

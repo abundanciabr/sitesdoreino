@@ -94,7 +94,7 @@ class Evento(models.Model):
     #: publicar?", e derivar isso com `LIKE` em toda consulta é caro e frágil.
     celula = models.CharField(max_length=60)
 
-    #: `data.site_id`: a plataforma serve mais de um site (Lei 9).
+    #: `data.site_id`: a plataforma serve mais de um site (multissítio: site é dado).
     site_id = models.CharField(max_length=60)
 
     #: `ator_id` do envelope: o id de PLATAFORMA de quem causou o fato, vazio

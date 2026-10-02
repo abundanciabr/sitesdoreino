@@ -40,7 +40,7 @@ DEBUG = os.environ.get("DEBUG", "0") == "1"
 FORCE_SCRIPT_NAME = os.environ.get("SCRIPT_NAME") or None
 
 # Atrás do Traefik. Esta célula responde em qualquer host servido pela
-# plataforma (Lei 9 — um deploy, N domínios).
+# plataforma (multissítio — um deploy, N domínios).
 ALLOWED_HOSTS = ["*"]
 
 # O TLS termina no Traefik: para o uvicorn, a requisição chega em http.
@@ -100,7 +100,7 @@ CSRF_COOKIE_SECURE = not DEBUG
 # ---------------------------------------------------------------------------
 # A `metricas` é provedora a partir do degrau 7.4: a `admin` lê os contadores
 # históricos, a cobertura e a fila de eventos mortos por `/api/metricas/`,
-# porque pela Lei 3 nenhuma célula lê o banco de outra.
+# porque nenhuma célula lê o banco de outra.
 #
 # Env ausente ⇒ conjunto VAZIO ⇒ toda chamada é recusada com 401. Fail-closed
 # por construção, e sem derrubar o boot: a célula sobe, o `/healthz` responde, o

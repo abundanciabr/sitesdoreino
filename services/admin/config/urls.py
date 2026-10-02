@@ -632,7 +632,7 @@ urlpatterns = [
     # dele: "nao vamos espalhar paineis ou gestao por ai, tudo sera em /admin".
     # Lei: docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
     #
-    # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
+    # Esta celula nao le o banco da Caixa (celula nao le banco de outra): ela pergunta, pelo
     # contrato congelado (contracts/sugestoes.openapi.yaml).
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
@@ -837,7 +837,7 @@ urlpatterns = [
     # com ponto não casa a rota, então não há caminho para pedir outra coisa à
     # porta de máquina da `mensageria` por este endereço. A segunda cerca está
     # do outro lado, onde jornada de outro site é 404 mesmo com o slug certo na
-    # mão (CONSTITUICAO Lei 9).
+    # mão (multissítio: site é dado).
     re_path(
         r"^escola/jornadas/(?P<slug>[a-z0-9-]+)/$",
         sequencia,
@@ -853,7 +853,7 @@ urlpatterns = [
     # O número da aula é curto e fechado ("E00" a "E32" e "EB", vocabulário do
     # contrato); o padrão `[A-Za-z0-9]+` é a cerca desta ponta, e a segunda está
     # do outro lado, onde aula de outro site é 404 mesmo com o número certo
-    # (CONSTITUICAO Lei 9). O slug do instrumento segue a cerca das sequências.
+    # (multissítio: site é dado). O slug do instrumento segue a cerca das sequências.
     #
     # O CURSO E A PARTE VIAJAM NO ENDEREÇO (05/09/2026, TAR-211). Pedido do
     # mantenedor: "quero que ao compartilhar uma aula o link da mesma seja útil

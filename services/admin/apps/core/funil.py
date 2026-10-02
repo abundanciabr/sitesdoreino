@@ -8,7 +8,7 @@ contato, fizeram o pedido e pagaram.
 ## De onde sai cada número
 
 De `countFunnel` da `metricas`, uma chamada por abertura, sempre pela memória e
-nunca pelo banco de ninguém (Lei 3). Cada degrau conta VISITANTES DISTINTOS na
+nunca pelo banco de ninguém (célula não lê banco de outra). Cada degrau conta VISITANTES DISTINTOS na
 janela: a mesma pessoa que abriu a página três vezes é uma pessoa. E cada
 degrau é contado sozinho, não "quem passou pelo anterior e também por este";
 por isso uma taxa acima de 100% pode acontecer, e a tela diz isso em vez de a

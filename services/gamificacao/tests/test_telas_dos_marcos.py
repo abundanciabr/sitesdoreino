@@ -259,7 +259,7 @@ def test_devolver_pela_tela_exige_motivo_da_lista(monkeypatch):
 
 
 def test_a_equipe_de_uma_escola_nao_alcanca_o_pedido_de_outra(monkeypatch):
-    """A fronteira de site é Lei 9, e uma tela é o lugar mais fácil de esquecê-la."""
+    """A fronteira de site é o multissítio, e uma tela é o lugar mais fácil de esquecê-la."""
     _entrar_como(monkeypatch, PROFESSOR)
     _da_equipe(monkeypatch, PROFESSOR)
     marco = ConquistaDefinicao.objects.create(

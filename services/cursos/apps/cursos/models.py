@@ -33,7 +33,7 @@ de máquina (degrau 1.3).
 
 A FRONTEIRA DE SITE MORA NO `Curso`
 ------------------------------------
-`site_id` (Lei 9 / [INV-P11]) fica no `Curso`, e só nele: bloco, aula, peça e
+`site_id` (multissítio / [INV-P11]) fica no `Curso`, e só nele: bloco, aula, peça e
 pausa pertencem a um curso, e é por ele que se pergunta de que site são. O
 `Instrumento` é de plataforma inteira, de propósito: os 13 cartões são os mesmos
 em toda escola.
@@ -884,7 +884,7 @@ class Envio(models.Model):
 
 
 # ---------------------------------------------------------------------------
-# 11. A OUTBOX: molde byte a byte de `services/sugestoes` (Lei 7: copiado)
+# 11. A OUTBOX: molde byte a byte de `services/sugestoes` (cada célula com os próprios arquivos: copiado)
 # ---------------------------------------------------------------------------
 
 

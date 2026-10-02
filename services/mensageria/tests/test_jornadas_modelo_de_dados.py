@@ -286,7 +286,7 @@ def test_a_projecao_do_aluno_e_uma_linha_por_pessoa_e_site():
 
 
 def test_o_site_id_esta_em_toda_entidade_de_entrada_do_app():
-    """Lei 9 / [INV-P11], e as exceções DECLARADAS.
+    """Multissítio / [INV-P11], e as exceções DECLARADAS.
 
     Quatro tabelas guardam `site_id` direto: são as que alguém consulta pelo id
     da pessoa ou pelo site. As outras cinco chegam ao site por uma corrente de

@@ -41,7 +41,7 @@ diferentes.
 
 Rota de máquina não ganha cookie. A lista vem de `middleware.ROTAS_DE_MAQUINA`
 em vez de ser reescrita aqui, porque duas listas com o mesmo propósito divergem
-(Lei 3): a rota de máquina que nascer amanhã já entra isenta. `Set-Cookie` numa
+(duplicar-e-divergir): a rota de máquina que nascer amanhã já entra isenta. `Set-Cookie` numa
 resposta de `/static/` é cache envenenado esperando acontecer, e num
 `/sitemap.xml` é um número de visitante gasto com um robô.
 

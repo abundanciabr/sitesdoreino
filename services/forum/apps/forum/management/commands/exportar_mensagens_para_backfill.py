@@ -7,7 +7,7 @@ A gamificação sabe pagar `forum-mensagem` retroativo (comando
 histórico: ao contrário de `forum-topico-criado` e `forum-resposta-aceita`
 (que têm tabela-espelho DENTRO da gamificação, escrita independente da regra
 estar ligada — `ConversaAberta`/`AjudaAceita`), não existe espelho de
-mensagem nenhum. O fato só existe aqui, no fórum — dono dele por Lei 3.
+mensagem nenhum. O fato só existe aqui, no fórum — dono dele (célula não lê banco de outra).
 
 Este comando NUNCA credita nada, nunca escreve, nunca chama outra célula.
 Ele só LÊ a própria tabela `Mensagem` e imprime JSON no stdout — o operador

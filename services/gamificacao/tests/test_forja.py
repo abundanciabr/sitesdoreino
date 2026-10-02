@@ -475,7 +475,7 @@ def test_o_servico_recusa_a_peca_que_nao_e_sua():
 
 
 def test_a_forja_de_outra_ESCOLA_tambem_e_intocavel():
-    """A fronteira de site é Lei 9, e uma tela é o lugar mais fácil de esquecê-la."""
+    """A fronteira de site é o multissítio, e uma tela é o lugar mais fácil de esquecê-la."""
     pessoa = _pessoa()
     abrir(pessoa=pessoa, site_id="outra-escola", nome="Chapéu")
 

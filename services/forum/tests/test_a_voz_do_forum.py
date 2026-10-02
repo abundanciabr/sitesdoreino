@@ -241,7 +241,7 @@ def test_tirar_do_ar_anuncia_o_estorno(monkeypatch):
 
 @pytest.mark.django_db(transaction=True)
 def test_emitir_fora_da_transacao_e_recusado():
-    """A Lei 1 aplicada: a própria função recusa, em vez de confiar na memória.
+    """O princípio 'mecanismo, não documento' aplicado: a própria função recusa, em vez de confiar na memória.
 
     `transaction=True` é o que torna este guarda possível: o `django_db` normal
     envolve cada teste numa transação, e dentro dela `in_atomic_block` é sempre

@@ -40,7 +40,7 @@ mais não passe despercebido, e o guarda valida o envelope real contra o arquivo
 do contrato, nunca contra uma cópia do formato dentro do teste.
 
 Molde: `services/alunos/apps/matriculas/eventos.py` e
-`services/cursos/apps/cursos/eventos.py`, copiados e nunca importados (Lei 3).
+`services/cursos/apps/cursos/eventos.py`, copiados e nunca importados (célula não importa código de outra).
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ ASSUNTO_DO_SELO = "pages.portfolio-conferido"
 class EventoForaDaTransacao(Exception):
     """`emitir()` chamado sem transação aberta, e aí o evento não é transacional.
 
-    Levantar aqui é a Lei 1 aplicada: em vez de confiar que todo ponto de
+    Levantar aqui é o princípio 'mecanismo, não documento' aplicado: em vez de confiar que todo ponto de
     emissão futuro se lembre do `atomic`, a própria função recusa a escrita. Um
     evento gravado em autocommit sobrevive ao rollback do fato que o justifica,
     e a plataforma inteira passa a acreditar em algo que não aconteceu. É o modo

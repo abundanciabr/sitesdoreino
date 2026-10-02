@@ -5,8 +5,7 @@ até esta fase) porque leitura não carrega o mesmo risco de invariante
 transacional — não há `F()`, não há `atomic()`, só consulta.
 
 Lei do desenho: `contracts/notificacoes.openapi.yaml` (congelado, Rito de
-Contrato de 27/08/2026, emendado no mesmo dia para exigir `site_id` — Lei 9 da
-CONSTITUICAO) e `docs/decisoes/DECISAO-fase-4-do-sininho.md`. A tradução HTTP
+Contrato de 27/08/2026, emendado no mesmo dia para exigir `site_id` — multissítio: site é dado) e `docs/decisoes/DECISAO-fase-4-do-sininho.md`. A tradução HTTP
 mora em `apps/core/api.py` — aqui é só a pergunta ao banco.
 
 **Por que `pagina_de_avisos` lê DUAS tabelas.** O arquivamento
@@ -24,7 +23,7 @@ aplicada à lista.
 **Toda consulta aqui filtra por `site_id` E `destinatario_id` juntos.** Os
 avisos de uma pessoa são sempre os do site de onde a chamada vem — nunca um
 apanhado de todo site que ela já tiver tocado (decisão do mantenedor,
-confirmada em 27/08/2026, mesmo dia da Fase 4; `CONSTITUICAO.md` Lei 9). Os
+confirmada em 27/08/2026, mesmo dia da Fase 4; multissítio: site é dado). Os
 índices de `models.py` lideram pelas DUAS colunas de propósito — ver a nota
 lá.
 """

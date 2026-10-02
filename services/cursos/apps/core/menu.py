@@ -1,7 +1,7 @@
 """O menu do topo, resolvido para ESTA página da sala de aula.
 
 **Cópia do PADRÃO de `services/gamificacao/apps/core/menu.py`, nunca do
-arquivo** (Lei 3). Quando o mantenedor mudar o menu na tela dele
+arquivo**. Quando o mantenedor mudar o menu na tela dele
 (`/admin/menu/`), todas as áreas mudam juntas, porque todas leem o MESMO dado:
 o menu do site, que mora no `catalogo` e chega por `getSiteByHost`.
 

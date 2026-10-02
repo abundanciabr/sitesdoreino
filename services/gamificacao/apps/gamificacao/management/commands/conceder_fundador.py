@@ -104,7 +104,7 @@ pode ser acrescentado amanhã sem ninguém precisar lembrar o que já rodou.
 Id que ainda não existe no espelho local é REPORTADO, nunca inventado: criar
 `Pessoa` aqui a partir de um id opaco exigiria fabricar um e-mail, e um e-mail
 fabricado é uma segunda verdade sobre quem é a pessoa, que é exatamente o que a
-Lei 2 proíbe. A pessoa aparece no espelho sozinha, no primeiro XP ou na primeira
+muralha de dados proíbe. A pessoa aparece no espelho sozinha, no primeiro XP ou na primeira
 visita, e aí basta rodar o comando de novo.
 """
 

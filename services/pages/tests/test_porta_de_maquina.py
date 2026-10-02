@@ -91,7 +91,7 @@ def test_o_portfolio_de_um_aluno_nunca_sai_na_resposta_de_outro(
 
 
 def test_o_portfolio_de_outro_site_nao_responde(criar_portfolio):
-    """A fronteira de site (Lei 9) vale na porta de máquina como vale na tela."""
+    """A fronteira de site (multissítio: site é dado) vale na porta de máquina como vale na tela."""
     criar_portfolio("aluno-1", site_id="escola-b")
     assert pedir(caminho("aluno-1", site_id="escola-a")).status_code == 404
 

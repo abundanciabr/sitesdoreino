@@ -10,7 +10,7 @@ caminho nenhum, e a TAR-078 parou antes da primeira linha de código por causa
 disso (`armadilhas/311`). Esta porta é o caminho.
 
 O caminho de baixo continua fechado, e por Postgres e não por regra: o papel
-`admin_user` não enxerga o `mensageria_db` (Lei 3, pecado 2). Quem quiser estes
+`admin_user` não enxerga o `mensageria_db` (célula não lê banco de outra). Quem quiser estes
 dados passa por aqui, com Bearer, ou não passa.
 
 O QUE A TELA PRECISA RESPONDER, E QUE VIRA AS SEIS OPERAÇÕES
@@ -44,7 +44,7 @@ AS TRÊS INVARIANTES DESTA PORTA
    precisar do nome pergunta a ela, que é onde esse dado mora numa linha só
    (`DECISAO-EVO-01` §3). Esta célula sequer guarda o e-mail: ela o pede na hora
    do envio.
-2. **Toda operação é escopada por `site_id`.** CONSTITUICAO Lei 9. Uma jornada
+2. **Toda operação é escopada por `site_id`.** Multissítio: site é dado. Uma jornada
    de outro site é 404, não uma lista a mais — e a `Inscricao` de outro site é
    404 mesmo com o UUID certo na mão.
 3. **Escrever CONTEÚDO significa publicar versão nova.** Não existe caminho para
@@ -256,7 +256,7 @@ class EstadoDaJornadaSaida(Schema):
 # AS PEÇAS QUE TODA OPERAÇÃO REUSA
 # ---------------------------------------------------------------------------
 def _site_id(valor: str | None) -> str:
-    """`site_id` é obrigatório em toda operação (Lei 9), e ausência é 422.
+    """`site_id` é obrigatório em toda operação (multissítio: site é dado), e ausência é 422.
 
     Nunca um padrão silencioso: um fallback aqui misturaria as sequências de
     dois sites na mesma tela, e ninguém veria a mistura acontecer.
@@ -496,7 +496,7 @@ def listar_entregas(request, inscricao_id: UUID, site_id: str = ""):
     WhatsApp barrado são três resultados independentes. Barrada não se perde:
     ela guarda o `motivo` e o `reagendado_para`.
 
-    O `site_id` é conferido mesmo com o UUID em mãos (Lei 9): id de outro site é
+    O `site_id` é conferido mesmo com o UUID em mãos (multissítio: site é dado): id de outro site é
     404, e não uma linha a mais na tela de quem não devia vê-la.
     """
     site = _site_id(site_id)

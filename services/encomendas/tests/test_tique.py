@@ -203,7 +203,7 @@ def test_o_crontab_do_tique_aceita_qualquer_minuto():
 
 
 def test_o_batimento_varre_cada_site_instalado(semeado, criar_perfil, criar_encomenda):
-    """Lei 9 (uma fábrica, N lojas) chegando ao tique.
+    """Multissítio (uma fábrica, N lojas) chegando ao tique.
 
     Duas escolas no mesmo banco: a que tem parâmetros é varrida, e o resultado
     vem por site. Um tique que varresse "a tabela toda" misturaria as filas de

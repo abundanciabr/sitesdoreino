@@ -24,7 +24,7 @@ justamente para que um campo a mais não passe despercebido. Quem precisar do
 detalhe pergunta a esta célula na hora de mostrar.
 
 Molde: `services/sugestoes/apps/sugestoes/eventos.py`, copiado e nunca importado
-(Lei 7). A diferença que importa: aqui `emitir()` já pendura o relay no commit
+(cada célula com os próprios arquivos). A diferença que importa: aqui `emitir()` já pendura o relay no commit
 da transação, porque todo ponto de emissão desta célula quer exatamente isso, e
 um ponto novo que esquecesse o `on_commit` deixaria o evento esperando o
 batimento de um minuto sem ninguém perceber.
@@ -49,7 +49,7 @@ CHECKPOINT_DEVOLVIDO = "checkpoint.devolvido"
 class EventoForaDaTransacao(Exception):
     """`emitir()` chamado sem transação aberta: o evento não seria transacional.
 
-    Levantar aqui é a Lei 1 aplicada ao INV-P6: em vez de confiar que todo
+    Levantar aqui é o princípio 'mecanismo, não documento' aplicado ao INV-P6: em vez de confiar que todo
     ponto de emissão futuro se lembre do `atomic`, a própria função recusa a
     escrita. Um evento gravado em autocommit sobrevive ao rollback do fato que
     o justifica, e aí a plataforma inteira passa a acreditar em algo que não

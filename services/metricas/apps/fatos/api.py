@@ -10,7 +10,7 @@ O passado está neste banco, e entre o placar e ele não existia caminho nenhum.
 Esta porta é o caminho.
 
 O caminho de baixo continua fechado, e por Postgres, não por regra: o papel
-`admin_user` não enxerga o `metricas_db` (Lei 3, e o provisionamento fecha o
+`admin_user` não enxerga o `metricas_db` (célula não lê banco de outra, e o provisionamento fecha o
 banco ao público). Quem quiser estes números passa por aqui, com Bearer, ou
 não passa.
 
@@ -55,7 +55,7 @@ tela que as usa. Porta de escrita sem tela é superfície aberta que ninguém
 olha, e esta célula é o lugar onde uma superfície aberta seria mais cara: o
 que se escreve aqui vira número no painel.
 
-A FRONTEIRA DE SITE (Lei 9), E A ÚNICA EXCEÇÃO HONESTA
+A FRONTEIRA DE SITE (multissítio: site é dado), E A ÚNICA EXCEÇÃO HONESTA
 ------------------------------------------------------
 `countFacts` e `listCoverage` exigem `site_id`: a plataforma serve mais de um
 site, e um número somado entre sites não é número de ninguém.

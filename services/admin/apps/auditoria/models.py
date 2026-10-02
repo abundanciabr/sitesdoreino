@@ -430,7 +430,7 @@ class Registro(models.Model):
 
     # SOBRE O QUÊ. `alvo` é o id da linha na `alunos` — um identificador opaco
     # de OUTRA célula, guardado como texto de propósito: não é chave estrangeira
-    # e não pode virar uma (Lei 3), e o dia em que aquela linha for embora esta
+    # e não pode virar uma (célula não lê banco de outra), e o dia em que aquela linha for embora esta
     # continua contando o que aconteceu.
     alvo = models.CharField(max_length=64)
     # Sem PII do aluno: nem nome, nem telefone. Para saber de quem se trata,

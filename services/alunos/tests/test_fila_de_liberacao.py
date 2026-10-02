@@ -501,7 +501,7 @@ def test_a_fila_SEM_site_id_deixou_de_ser_erro_por_decisao(client, auth):
     """Este teste afirmava 422 até 28/08/2026, e a mudança é DELIBERADA.
 
     A `DECISAO-categorias-de-usuario` (Rito de Contrato, mantenedor presente)
-    tornou `site_id` opcional: o painel do dono é plataforma-inteira (Lei 9), e
+    tornou `site_id` opcional: o painel do dono é plataforma-inteira (multissítio: site é dado), e
     exigir dele o código interno de uma escola para ver quem espera seria pedir
     que ele guardasse um identificador opaco.
 
@@ -722,7 +722,7 @@ def test_as_portas_da_fila_exigem_token(client, metodo, url):
 # ------------------------------------------------- a fila de TODAS as escolas
 #
 # `DECISAO-categorias-de-usuario` (28/08/2026): o painel do dono é
-# plataforma-inteira (Lei 9), então `site_id` na query virou OPCIONAL — ausente
+# plataforma-inteira (multissítio: site é dado), então `site_id` na query virou OPCIONAL — ausente
 # = todas — e passou a vir em toda linha da resposta.
 
 

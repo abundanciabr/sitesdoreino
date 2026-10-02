@@ -8,9 +8,9 @@ que este desenho veio, e é para cá que a responsabilidade mudou de casa.
 **O e-mail do SITE vive aqui e em nenhum outro lugar.** As células que
 precisam dele para AUTORIZAR (a Caixa confere matrícula e staff) o recebem
 pela resposta completa da API interna, sob token do par com o degrau a mais
-(`TOKENS_COMPLETOS_*`) — nunca lendo este banco (Lei 3). O que as células
+(`TOKENS_COMPLETOS_*`) — nunca lendo este banco (célula não lê banco de outra). O que as células
 guardam do lado delas é snapshot próprio, casado por e-mail — snapshots são
-sagrados (Virtude da Lei 3), e é isso que fez a mudança de casa custar zero
+sagrados (a virtude de copiar dados), e é isso que fez a mudança de casa custar zero
 migração de dado em produção.
 """
 
@@ -86,7 +86,7 @@ class OutboxEvent(models.Model):
     que escutar (`PLANO-SEQUENCIAS-DE-MENSAGENS` §2).
 
     O padrão é copiado da `alunos` — nunca o arquivo, e nunca por import
-    cruzado (Lei 7): um relay diferente por célula significaria N modos de
+    cruzado (cada célula com os próprios arquivos): um relay diferente por célula significaria N modos de
     falha diferentes para o mesmo problema.
 
     `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é

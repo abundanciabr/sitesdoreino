@@ -753,7 +753,7 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
     ).order_by("enrolled_at")
     # [CATEGORIAS] `site_id` ausente = TODAS as escolas
     # (`DECISAO-categorias-de-usuario`, 28/08/2026). O painel do dono é
-    # plataforma-inteira (Lei 9), e exigir dele o código interno de uma escola
+    # plataforma-inteira (multissítio: site é dado), e exigir dele o código interno de uma escola
     # para ver quem espera seria pedir que ele guardasse um identificador opaco.
     #
     # O filtro é aplicado DEPOIS, e só quando veio: escrever

@@ -335,7 +335,7 @@ def test_as_ofertas_da_mesma_rodada_expiram_no_mesmo_instante(
 
 
 def test_o_motor_de_um_site_nao_enxerga_o_outro(semeado, criar_perfil, criar_encomenda):
-    """Lei 9 / [INV-P11]: nenhum dado de um site aparece em outro.
+    """Multissítio / [INV-P11]: nenhum dado de um site aparece em outro.
 
     A escola B tem o aluno mais antigo e com menos entregas do mundo. Ele não
     recebe a encomenda da escola A — e o banco recusaria a linha de qualquer

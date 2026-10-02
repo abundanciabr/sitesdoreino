@@ -125,7 +125,7 @@ def publicada(*, site_id: str, apelido: str) -> Portfolio | None:
     que desligou hoje de manhã e escola diferente saem por aqui com a mesma
     resposta, e quem chama não tem como tratá-los diferente sem querer.
 
-    **A fronteira de site entra na consulta** (Lei 9): o apelido é único por
+    **A fronteira de site entra na consulta** (multissítio: site é dado): o apelido é único por
     escola, e sem o `site_id` duas alunas chamadas `ana` em escolas diferentes
     disputariam a mesma página.
     """

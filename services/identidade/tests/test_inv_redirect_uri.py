@@ -75,7 +75,7 @@ def test_sem_o_x_forwarded_proto_o_esquema_seria_http(db):
 
 
 def test_o_dominio_vem_da_requisicao_e_nunca_e_cravado_no_codigo(db):
-    """Multissítio (Lei 9): a célula não conhece domínio nenhum.
+    """Multissítio: a célula não conhece domínio nenhum.
 
     Um domínio cravado aqui faria o login de um site vazar para o endereço de
     outro. Note que o Google só aceita o endereço cadastrado — este guarda

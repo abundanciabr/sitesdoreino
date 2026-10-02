@@ -302,6 +302,6 @@ def test_sem_a_janela_semeada_o_motor_nao_oferece_nada(
 
 
 def test_a_janela_de_outro_site_nao_serve_de_relogio(semeado):
-    """Lei 9: a escola B sem semente não empresta a régua da A."""
+    """Multissítio: a escola B sem semente não empresta a régua da A."""
     with pytest.raises(ParametroAusente):
         relogio.Janela.do_banco(proximo_local(9), site_id="escola-b")

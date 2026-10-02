@@ -16,7 +16,7 @@ AS SETE COISAS QUE ESTE ARQUIVO PROVA
 3. **O dia é o de São Paulo.** Um fato das 22h30 do dia 30 conta no dia 30, e
    não no dia 1 do mês seguinte. É a conta que decide em que mês uma pessoa
    entrou, e é a mesma que o placar faz do outro lado (`armadilhas/099`).
-4. **A fronteira de site fecha (Lei 9).** Fato de outro site não entra em
+4. **A fronteira de site fecha (multissítio: site é dado).** Fato de outro site não entra em
    contagem nem em cobertura, nem por engano nem por soma.
 5. **Ausência não vira zero.** Dia sem fato não aparece na contagem, e assunto
    que nunca chegou não aparece na cobertura. É a diferença entre "medi e deu

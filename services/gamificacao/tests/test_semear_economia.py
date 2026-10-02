@@ -92,7 +92,7 @@ def test_a_semeadura_e_idempotente_e_nao_pisa_em_edicao_humana():
 
 @pytest.mark.django_db
 def test_cada_site_recebe_a_propria_economia():
-    """Lei 9: uma fábrica, N lojas. A escola A não herda os números da B."""
+    """Multissítio: uma fábrica, N lojas. A escola A não herda os números da B."""
     _semear("escola-a")
     _semear("escola-b")
 
@@ -100,7 +100,7 @@ def test_cada_site_recebe_a_propria_economia():
     # duas escolas recebem a MESMA economia inteira, e isso continua verdade a
     # cada regra nova. Um `== 6` cravado transformava toda regra acrescentada
     # numa falsa falha aqui — e o dia em que alguém "consertasse" o número sem
-    # olhar, a promessa da Lei 9 pararia de ser medida.
+    # olhar, a promessa do multissítio pararia de ser medida.
     from apps.gamificacao.management.commands.semear_economia import REGRAS
 
     assert RegraDePontuacao.objects.filter(site_id="escola-a").count() == len(REGRAS)

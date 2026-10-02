@@ -2,7 +2,7 @@
 """O rodapé da Caixa: quem mostra, qual dos rodapés, e o que cada um leva.
 
 **Cópia do PADRÃO das células `funil`, `forum` e `gamificacao`, nunca do arquivo
-delas** (Lei 7 do Caminho Dourado). O rodapé do site nasceu na `funil` em
+delas** (cada célula com os próprios arquivos). O rodapé do site nasceu na `funil` em
 31/08/2026 (PR #705) e chegou ao fórum no mesmo dia; as Conquistas o ganharam em
 02/09. A Caixa era a última área do site com um pé só dela.
 

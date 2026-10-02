@@ -128,7 +128,7 @@ def apelido(texto: str) -> str:
 
     **Mora aqui, e não na tela que a usa**, desde 04/09/2026: a Biblioteca do
     Livro passou a montar endereço pela mesma regra, e duas cópias dela seriam
-    o pecado 3 da Lei 3 (duplicar-e-divergir) no lugar mais fácil de divergir
+    o pecado de duplicar-e-divergir no lugar mais fácil de divergir
     em silêncio — uma tela aceitando um endereço que a outra recusa. Este
     módulo já é a casa do formato do endereço (`RE_NOME`), então é a casa desta
     função também.
@@ -481,7 +481,7 @@ def endereco_do_arquivo(documento: "Documento", pedido: str) -> str | None:
 # Biblioteca do Livro (`apps/core/livro.py`) desenha o texto do mantenedor com
 # esta mesma função, e três marcas nasceram desse pedido: lista numerada, item
 # de lista com `*`, e itálico. Um segundo renderizador "do livro" seria o
-# pecado 3 da Lei 3 — duplicar-e-divergir —, e a divergência apareceria do
+# pecado de duplicar-e-divergir, e a divergência apareceria do
 # jeito pior: o mesmo texto desenhado de dois jeitos em duas telas da mesma
 # área. As três marcas não tiram nada de quem já escrevia documentos; elas
 # passam a formatar o que antes caía em parágrafo cru.

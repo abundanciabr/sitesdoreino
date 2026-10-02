@@ -1,6 +1,6 @@
 """O menu do topo na Caixa: o MESMO menu do site, lido do mesmo lugar.
 
-Cópia do PADRÃO da `funil` e do `forum` (Lei 7), inclusive nos guardas. Cada um
+Cópia do PADRÃO da `funil` e do `forum` (cada célula com os próprios arquivos), inclusive nos guardas. Cada um
 corresponde a uma forma diferente de isto dar errado:
 
 1. **A Caixa cair porque o catálogo caiu.** Um menu é enfeite de navegação; a

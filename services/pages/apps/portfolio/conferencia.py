@@ -19,7 +19,7 @@ dos marcos, em `/conquistas/interno`, na célula `gamificacao`. Três estados,
 prazo em dias úteis, devolução com motivo de lista fechada, o mais urgente em
 cima. Este módulo é esse MESMO desenho, reescrito para o portfólio.
 
-Copia-se o PADRÃO entre células, nunca o código (Lei 3): importar
+Copia-se o PADRÃO entre células, nunca o código: importar
 `apps.gamificacao.validacao` daqui amarraria duas casas pelo banco de uma
 terceira. E não se inventa um segundo desenho: um jeito novo de fazer a mesma
 coisa custa uma segunda tela para a equipe aprender, uma segunda regra de prazo
@@ -208,7 +208,7 @@ def pedido_da_escola(site_id: str, numero: str) -> PedidoDeConferencia | None:
     Em qualquer estado, e não só em análise, de propósito: quem clica num
     pedido que outra pessoa acabou de responder precisa ouvir quem respondeu e
     quando, e não um "não encontrado" que o faria procurar o pedido sumido. A
-    fronteira que continua de pé é a do SITE (Lei 9).
+    fronteira que continua de pé é a do SITE (multissítio: site é dado).
     """
     if not numero.isdigit():
         return None
@@ -482,7 +482,7 @@ def fila_da_equipe(site_id: str):
     esperando por nós?". Passar a fila por uma porta feita para responder a
     primeira pergunta devolveria os pedidos do próprio monitor, e só eles.
 
-    **A fronteira que continua de pé é a do SITE** (Lei 9): a equipe de uma
+    **A fronteira que continua de pé é a do SITE** (multissítio: site é dado): a equipe de uma
     escola nunca vê o pedido de outra, e é por isso que o `site_id` é
     obrigatório aqui em vez de opcional.
 

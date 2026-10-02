@@ -184,7 +184,7 @@ def test_a_carta_casa_com_o_contrato_congelado():
 
 @pytest.mark.django_db(transaction=True)
 def test_a_carta_recusa_nascer_fora_da_transacao():
-    """A Lei 1 aplicada: a própria função recusa, em vez de confiar na memória.
+    """O princípio 'mecanismo, não documento' aplicado: a própria função recusa, em vez de confiar na memória.
 
     `transaction=True` é o que torna este guarda possível: o `django_db` normal
     envolve cada teste numa transação, e dentro dela `in_atomic_block` é sempre

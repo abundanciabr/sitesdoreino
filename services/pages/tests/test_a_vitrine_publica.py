@@ -281,7 +281,7 @@ def test_a_vitrine_nao_parece_conferida_so_pelo_selo_global_antigo(
 def test_a_vitrine_de_outra_escola_nao_abre_com_o_mesmo_apelido(
     client, criar_portfolio, criar_peca, site_declarado
 ):
-    """Lei 9: o apelido é único por SITE, e a fronteira vale na página pública."""
+    """Multissítio: o apelido é único por SITE, e a fronteira vale na página pública."""
     de_outra_escola = criar_portfolio(
         "p_zeca", site_id=OUTRO_SITE, apelido="zeca", publicada=True
     )

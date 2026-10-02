@@ -607,7 +607,7 @@ def test_braco_ainda_sem_visitante_conta_como_zero_quando_ha_coleta():
     assert "inconclusivo (amostra insuficiente)" in html
 
 
-# O cliente fala o contrato congelado (Lei 2): o countFunnel que a tela chama é
+# O cliente fala o contrato congelado (muralha de contrato): o countFunnel que a tela chama é
 # o do contrato da `metricas`, com os parâmetros que ela manda.
 # ---------------------------------------------------------------------------
 

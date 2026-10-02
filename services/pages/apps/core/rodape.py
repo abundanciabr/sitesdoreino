@@ -2,7 +2,7 @@
 """O rodapé da casa das Páginas: quem mostra, qual dos rodapés, e o que ele leva.
 
 **Cópia do PADRÃO das células `funil`, `forum` e `gamificacao`, nunca do arquivo
-delas** (Lei 3). O rodapé do site nasceu na `funil` em 31/08/2026, chegou ao
+delas**. O rodapé do site nasceu na `funil` em 31/08/2026, chegou ao
 fórum no mesmo dia e às Conquistas em 02/09, depois de o mantenedor abrir
 `/conquistas/` e ver a única área do site sem menu e sem rodapé.
 

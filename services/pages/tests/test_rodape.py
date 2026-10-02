@@ -1,6 +1,6 @@
 """O rodapé da casa das Páginas: em toda tela, e com a assinatura do site.
 
-Cópia do PADRÃO da `funil`, do `forum` e da `gamificacao` (Lei 3), inclusive nos
+Cópia do PADRÃO da `funil`, do `forum` e da `gamificacao` (copia-se o padrão), inclusive nos
 guardas, e os guardas são a metade que mais importa copiar. Cada um corresponde
 a uma forma diferente de esta peça se perder:
 

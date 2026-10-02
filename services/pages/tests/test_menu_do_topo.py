@@ -1,7 +1,7 @@
 """O menu do topo na casa das Páginas: o MESMO menu do site, do mesmo lugar.
 
 Cópia do PADRÃO da `funil`, do `forum`, da `sugestoes` e da `gamificacao`
-(Lei 3), inclusive nos guardas. Cada um corresponde a uma forma diferente de
+(copia-se o padrão), inclusive nos guardas. Cada um corresponde a uma forma diferente de
 isto dar errado:
 
 1. **A Prancheta cair porque o catálogo caiu.** Um menu é enfeite de navegação;

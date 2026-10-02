@@ -92,7 +92,7 @@ def servir_estatico(request, caminho):
     está SOZINHA atrás do Traefik: não há nginx, CDN nem router `/static` no
     gateway. `armadilhas/083` mediu isso ao vivo no `funil` em 24/08/2026, e a
     solução provada (viva em `checkout` e `funil`) é esta rota — copiada como
-    PADRÃO, nunca como arquivo (Lei 7).
+    PADRÃO, nunca como arquivo (cada célula com os próprios arquivos).
 
     Serve do diretório-FONTE (`STATICFILES_DIRS[0]`), nunca de `STATIC_ROOT`:
     o `collectstatic --noinput || true` do Dockerfile falha em TODO build (não

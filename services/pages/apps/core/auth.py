@@ -6,7 +6,7 @@ from ninja.security import HttpBearer
 class bearerAuth(HttpBearer):
     """Aceita os tokens estáticos de `TOKENS_ACEITOS`, um por par consumidor.
 
-    Cópia do PADRÃO de `identidade`/`forum`/`cursos` (Lei 3: copia-se o padrão
+    Cópia do PADRÃO de `identidade`/`forum`/`cursos` (copia-se o padrão
     entre células, nunca se importa código de uma na outra). Nome da classe em
     minúsculas de propósito: o freeze de contrato exige que a chave de
     `components.securitySchemes` seja `bearerAuth`, e o django-ninja usa o nome

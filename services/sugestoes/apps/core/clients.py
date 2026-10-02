@@ -9,7 +9,7 @@ PERGUNTAR, pelo contrato congelado (`contracts/identidade.openapi.yaml`,
 operação `getSessionFull` — a resposta COM e-mail, que esta célula precisa
 para conferir as listas DELA).
 
-**Lei 3:** a `sugestoes` NUNCA lê banco alheio. Pergunta por HTTP, pelo
+**Célula não lê banco de outra:** a `sugestoes` NUNCA lê banco alheio. Pergunta por HTTP, pelo
 contrato, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
@@ -97,7 +97,7 @@ class IdentidadeClient:
     o erro caro (a lição veio da outra ponta desta mesma pergunta): o `Bearer`
     do par prova **quem chama**; o cabeçalho `Cookie`, repassado OPACO, prova
     **quem é a pessoa** do outro lado do navegador. O cookie nunca é
-    interpretado aqui — esta célula não tem a chave que o assina (Lei 2).
+    interpretado aqui — esta célula não tem a chave que o assina (muralhas da célula).
 
     Por que a resposta completa, e não a `getSession` que o `funil` usa: esta
     célula precisa do **e-mail** para conferir as listas DELA (matrícula na
@@ -317,7 +317,7 @@ class NotificacoesClient:
     Lei do assunto: `docs/decisoes/DECISAO-fase-4-do-sininho.md` (Escolha 2) e
     `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3 — a tela de avisos da Caixa
     passa a ler daqui. Cópia peça por peça do padrão de
-    `services/funil/apps/core/clients.py::NotificacoesClient` (Lei 3: copia-se
+    `services/funil/apps/core/clients.py::NotificacoesClient` (copia-se
     o PADRÃO, nunca o arquivo por import cruzado entre células): `.get()` no
     ponto de uso (nunca `os.environ[...]`, nunca `exigir()` — ver abaixo o
     porquê), timeout curto e explícito, `httpx.HTTPError` separado de

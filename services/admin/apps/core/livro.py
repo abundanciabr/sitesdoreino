@@ -206,8 +206,8 @@ def _slug_de_livro_livre(desejado: str) -> str:
 #: O `Livro` que a migração `0012` cria para capítulos órfãos, e o mesmo que
 #: `_livro_do_formulario`/`_livro_padrao_para_upload` criam quando ainda não
 #: existe NENHUM `Livro` no banco. Um nome só, aqui e na migração: dois lugares
-#: inventando "o livro padrão" com nomes diferentes é a Lei 3 (duplicar e
-#: divergir) no lugar mais fácil de esquecer.
+#: inventando "o livro padrão" com nomes diferentes é o pecado de duplicar e
+#: divergir no lugar mais fácil de esquecer.
 SLUG_DO_LIVRO_PADRAO = "meu-livro"
 TITULO_DO_LIVRO_PADRAO = "Meu livro (edite o título)"
 
@@ -299,7 +299,7 @@ def _ler(nome: str) -> TextoDoLivro:
 #: O `<script>` embutido de `livro_ler.html` — os controles de fonte, tema e
 #: "onde você parou". Mesma regex de `mapa_do_site.py` e `documento_em_pagina.py`,
 #: letra por letra: as telas hasheiam o mesmo jeito, e
-#: divergir aqui seria a Lei 3 (duplicar e divergir) escondida numa expressão
+#: divergir aqui seria o pecado de duplicar e divergir escondido numa expressão
 #: regular.
 _SCRIPT_EMBUTIDO = re.compile(
     rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE

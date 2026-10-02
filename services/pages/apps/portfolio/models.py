@@ -13,7 +13,7 @@ que o resto pôde tratar como verdade:
 1. **Nenhuma chave estrangeira sai do banco desta célula** (critério AC-02).
    O id do aluno e o id do site são texto OPACO: quem sabe quem é a pessoa é a
    `identidade`, quem sabe se ela tem matrícula é a `alunos`, e o banco daqui
-   não enxerga o das outras (Lei 2, Muralha 2).
+   não enxerga o das outras (muralha de dados).
 2. **A marcação da lista de conferência mora no BANCO, por aluno.** Nunca em
    `request.session` (o [INV-P12] proíbe, e `armadilhas/143` conta o preço) e
    nunca no navegador: o AC-06 exige que a marcação atravesse APARELHOS, e
@@ -24,7 +24,7 @@ que o resto pôde tratar como verdade:
 
 POR QUE NENHUMA TABELA FILHA GUARDA `site_id` NEM `aluno_id`
 ------------------------------------------------------------
-A fronteira de site (Lei 9 / [INV-P11]) e a fronteira de aluno moram no
+A fronteira de site (multissítio / [INV-P11]) e a fronteira de aluno moram no
 `Portfolio`, e SÓ nele. `Peca`, `ItemDeConferencia`, `EstadoDoAluno` e
 `PedidoDeConferencia` chegam às duas pela chave estrangeira local.
 
@@ -179,7 +179,7 @@ class Portfolio(models.Model):
 
     **O apelido é o endereço que o aluno manda ao cliente no chat**, então ele
     obedece à forma de endereço web e é único DENTRO do site: dois sites podem
-    ter o mesmo apelido sem se ver, que é a Lei 9 em uma linha.
+    ter o mesmo apelido sem se ver, que é o multissítio em uma linha.
     """
 
     site_id = models.CharField(max_length=64, db_index=True)
@@ -647,7 +647,7 @@ class PedidoDeConferencia(models.Model):
     molde vivo da fila de marcos (`services/gamificacao`, tela
     `/conquistas/interno`): mesmos três estados, mesmo prazo em dias úteis,
     mesma devolução com motivo de lista fechada. Copia-se o PADRÃO entre
-    células, nunca o código (Lei 3), e copiar um desenho que gente de verdade
+    células, nunca o código, e copiar um desenho que gente de verdade
     já usou vale mais que inventar um segundo jeito de fazer a mesma coisa.
 
     **A DEVOLUÇÃO EXIGE MOTIVO, e essa é metade do critério AC-11.** Devolver
@@ -906,7 +906,7 @@ class ItemDoRoteiro(models.Model):
 # A OUTBOX: a voz desta célula, nascida no degrau 12 (critério AC-12)
 # ---------------------------------------------------------------------------
 # Molde: `services/cursos/apps/cursos/models.py`, copiado e nunca importado
-# (Lei 3). Um relay diferente por célula seria um modo de falha diferente por
+# (célula não importa código de outra). Um relay diferente por célula seria um modo de falha diferente por
 # célula para o mesmo problema.
 
 

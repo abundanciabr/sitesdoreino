@@ -14,7 +14,7 @@ from apps.core.auth import bearerAuth
 # roteia o prefixo inteiro da Caixa, `…/forms/sugestoes/interno/sessao` TAMBÉM
 # resolve pela borda pública. Quem fecha essa porta hoje é o Bearer do par
 # (401 sem token, e o conjunto de tokens nasce vazio). A trava de verdade — uma
-# regra de negação no gateway — é um degrau acima na Lei 1 e mora em `infra/`,
+# regra de negação no gateway — é um degrau acima na escada de "mecanismo, não documento" e mora em `infra/`,
 # fora do alcance de um PR de célula; está registrada como dívida no
 # `LICOES.md` desta célula.
 api = NinjaAPI(

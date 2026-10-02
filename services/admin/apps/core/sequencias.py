@@ -265,7 +265,7 @@ def _site_desta_requisicao(request) -> "dict | None":
 
     Mesmo padrão de `apps/core/avisos.py` e `apps/core/menu.py::_carregar`: quem
     abre esta tela num domínio vê as sequências DAQUELE domínio. Toda operação
-    da porta é escopada por `site_id` (CONSTITUICAO Lei 9), e sem ele a porta
+    da porta é escopada por `site_id` (multissítio: site é dado), e sem ele a porta
     responde 422 em vez de uma lista vazia que pareceria resposta.
     """
     return CatalogoClient().site_por_host(request.get_host().split(":")[0].lower())
@@ -519,7 +519,7 @@ def _sem_mensageria(request, molde: str, status: int = 200):
 def _sem_site(request, status: int = 200):
     """O catálogo não respondeu, então não sei de qual escola são as sequências.
 
-    Sem `site_id` a porta responde 422 (Lei 9), e chutar um site seria pior que
+    Sem `site_id` a porta responde 422 (multissítio: site é dado), e chutar um site seria pior que
     não abrir: mostraria as sequências de outro domínio.
     """
     return render(

@@ -707,7 +707,7 @@ class OutboxEvent(models.Model):
     """Uma linha por carta que este motor afirma ao resto da plataforma.
 
     O padrão é copiado da `identidade` e da `alunos` — nunca o arquivo, e nunca
-    por import cruzado (Lei 7): um relay diferente por célula significaria N
+    por import cruzado (cada célula com os próprios arquivos): um relay diferente por célula significaria N
     modos de falha diferentes para o mesmo problema.
 
     **POR QUE ELA MORA EM `apps/jornadas` E NÃO EM `apps/eventos`**, que é onde

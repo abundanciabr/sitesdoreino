@@ -514,7 +514,7 @@ def test_duplo_clique_simultaneo_gera_uma_tentativa_e_uma_chamada() -> None:
 
 @pytest.mark.smoke_card
 def test_tentativa_de_um_site_nunca_e_lida_por_outro() -> None:
-    """Lei 9: `site_id` acompanha toda entidade. Uma loja não enxerga a
+    """Multissítio: `site_id` acompanha toda entidade. Uma loja não enxerga a
     tentativa de pagamento da loja vizinha, nem pelo identificador interno,
     nem pela referência do provedor."""
     minha = executar_tentativa(

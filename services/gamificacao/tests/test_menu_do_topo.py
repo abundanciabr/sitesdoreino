@@ -1,6 +1,6 @@
 """O menu do topo nas Conquistas: o MESMO menu do site, lido do mesmo lugar.
 
-Cópia do PADRÃO da `funil`, do `forum` e da `sugestoes` (Lei 7), inclusive nos
+Cópia do PADRÃO da `funil`, do `forum` e da `sugestoes` (cada célula com os próprios arquivos), inclusive nos
 guardas. Cada um corresponde a uma forma diferente de isto dar errado:
 
 1. **As Conquistas caírem porque o catálogo caiu.** Um menu é enfeite de

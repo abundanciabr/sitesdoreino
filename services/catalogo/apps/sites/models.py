@@ -113,7 +113,7 @@ class SiteQuerySet(models.QuerySet):
 
 
 class Site(models.Model):
-    """Registro canônico do multissítio (Lei 9). Host não cadastrado nunca
+    """Registro canônico do multissítio (site é dado). Host não cadastrado nunca
     resolve para um site — é 404 em quem consome (INV-P11)."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

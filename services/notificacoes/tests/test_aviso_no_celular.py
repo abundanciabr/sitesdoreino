@@ -135,7 +135,7 @@ def test_esquecer_apaga_e_e_idempotente():
 
 @pytest.mark.django_db
 def test_esquecer_nao_alcanca_o_aparelho_de_outro_site():
-    """Lei 9: nada atravessa sites, nem para apagar."""
+    """Multissítio: nada atravessa sites, nem para apagar."""
     inscrever()
 
     assert esquecer_aparelho(site_id="outro-site", endpoint=ENDERECO) is False
@@ -305,7 +305,7 @@ def test_o_que_viaja_e_dado_nunca_frase_pronta(envio):
 
 @pytest.mark.django_db
 def test_o_aviso_nao_atravessa_sites(envio):
-    """Lei 9 de novo, agora no envio: a mesma pessoa em dois sites tem dois
+    """Multissítio de novo, agora no envio: a mesma pessoa em dois sites tem dois
     conjuntos de aparelhos, e um aviso de um site nunca acorda o outro."""
     inscrever()
     inscrever(site_id="outro-site", endpoint=OUTRO_ENDERECO)

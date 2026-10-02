@@ -12,8 +12,8 @@ POR QUE ESTE MÓDULO EXISTE
 --------------------------
 Para que a conta seja feita UMA vez. Quem a usa são as duas portas desta
 célula: a de máquina (`apps/core/api.py`, onde a regra nasceu na TAR-203) e a
-sala do aluno (`apps/core/views.py`). Duplicar e divergir é o terceiro pecado
-da Lei 3, e aqui ele teria a forma mais cara possível: um endereço que a porta
+sala do aluno (`apps/core/views.py`). Duplicar e divergir é o pecado de dar ao
+comportamento mais de uma casa, e aqui ele teria a forma mais cara possível: um endereço que a porta
 de máquina recusa e a sala aceita mostraria ao aluno a aula ERRADA com o
 número CERTO na barra do navegador, sem erro em lugar nenhum.
 

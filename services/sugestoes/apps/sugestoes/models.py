@@ -14,7 +14,7 @@ escrever código (`AUDITORIA-AS-IS.md`, Q3 e tabela de divergências nº 2):
    `UUIDField` aqui criaria uma fronteira que não casa com a casa e obrigaria
    uma conversão silenciosa em cada consumidor.
 2. **`tenant_id` chama-se `site_id`.** "Tenant" não existe no vocabulário desta
-   plataforma; site existe (Lei 9), é resolvido do Host uma vez por requisição
+   plataforma; site existe (multissítio: site é dado), é resolvido do Host uma vez por requisição
    (CONV-SITE) e viaja nos eventos (INV-P11).
 
 O que **não** mora aqui, de propósito: endpoint (EVO-12) e fluxo de login
@@ -185,7 +185,7 @@ class Sugestao(models.Model):
         Categoria, related_name="sugestoes", on_delete=models.PROTECT
     )
     # FK de verdade, e não campo opaco: `Identidade` mora NESTA célula e NESTE
-    # banco. A Lei 3 proíbe FK cruzando banco de célula — dentro dele, a
+    # banco. A muralha de dados proíbe FK cruzando banco de célula — dentro dele, a
     # integridade referencial é de graça. O atributo continua se chamando
     # `autor_id` (Django cria a coluna `autor_id` para a FK `autor`) e continua
     # sendo texto opaco, porque `Identidade.id` é texto opaco.
@@ -357,7 +357,7 @@ class RegistroAppendOnly(models.Model):
 class HistoricoStatus(RegistroAppendOnly):
     """Append-only: nenhuma linha é editada ou apagada depois de criada.
 
-    A regra é imposta em **três degraus** (Lei 1 — empurrar a regra escada
+    A regra é imposta em **três degraus** (mecanismo, não documento — empurrar a regra escada
     acima até onde ela fisicamente puder ir):
 
     1. `save()` recusa a segunda gravação da mesma linha;
@@ -552,7 +552,7 @@ class Aviso(models.Model):
       tela dele nunca mostre quem moderou é a linha dele não ter esse dado.
 
     É a mesma lição que fez a `AvaliacaoInterna` nascer em tabela separada, e é
-    a Virtude da Lei 3: *copiar dados — snapshots são sagrados*. `status_novo` e
+    a virtude de *copiar dados — snapshots são sagrados*. `status_novo` e
     `nota` aqui não são espelho de estado mutável; são o retrato do que mudou
     naquele instante, exatamente como a linha do histórico.
 
@@ -589,7 +589,7 @@ class Aviso(models.Model):
       dia em que a pessoa desvota, o aviso continua dizendo a verdade: *quando
       isto aconteceu, você tinha votado*.
 
-    A segunda ganha porque é a Virtude da Lei 3 aplicada ao mesmo dado — e
+    A segunda ganha porque é a virtude de copiar dados aplicada ao mesmo dado — e
     porque a alternativa quebra a regra que esta classe inteira encarna
     (*snapshots são sagrados*). Há guarda: `test_o_vinculo_sobrevive_ao_desvoto`.
     """

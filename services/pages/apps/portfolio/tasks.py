@@ -169,7 +169,7 @@ def reconferencia_diaria() -> dict[str, int]:
 # O RELAY DA OUTBOX (degrau 12, critério AC-12): o segundo batimento da casa
 # ---------------------------------------------------------------------------
 # Molde: `services/cursos/apps/cursos/tasks.py`, copiado e nunca importado
-# (Lei 3). Não é falta de imaginação: um relay diferente por célula significa
+# (célula não importa código de outra). Não é falta de imaginação: um relay diferente por célula significa
 # um modo de falha diferente por célula para o mesmo problema.
 #
 # **A ORDEM é intocável: publica no fio ANTES de marcar `published_at`.** Se o
