@@ -12,8 +12,8 @@ Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
 
 Sem journal, a primeira publicação que abre o endereço vira a aprovada.
 
-Código novo com a mesma base (Dockerfile, requirements.txt, vendor/ e packages/) não reconstrói
-imagem: a pasta imutável versoes/aplicacao/<sha> é montada em /app, somente leitura, e o serviço é
+Código novo com a mesma base (Dockerfile e requirements.txt da aplicação, e packages/) não
+reconstrói imagem: a pasta imutável versoes/aplicacao/<sha> é montada em /app, somente leitura, e o serviço é
 recriado. Base diferente reconstrói a imagem aqui. Cada publicação tem pasta de trabalho,
 O banco nunca é restaurado sozinho.
 """
@@ -108,18 +108,14 @@ def extrair(sha: str, destino: Path, *caminhos: str) -> None:
 
 
 def hash_da_base(celula: str, sha: str) -> str:
-    """O que exige reconstruir a imagem: Dockerfile, requirements.txt, vendor/ e packages/."""
-    listagem = git("ls-tree", "-r", sha, "--", "services", "packages")
-    linhas = [linha for linha in listagem.splitlines()
-              if "\tservices/aplicacao/Dockerfile" in linha
-              or re.search(r"\tservices/[^/]+/requirements\.txt$", linha)
-              or re.search(r"\tservices/[^/]+/vendor/", linha)
-              or "\tpackages/" in linha]
-    if not any("\tservices/aplicacao/Dockerfile" in linha for linha in linhas):
+    """O que exige reconstruir a imagem: o Dockerfile e o requirements.txt da aplicação, e packages/."""
+    listagem = git("ls-tree", "-r", sha, "--", "services/aplicacao/Dockerfile",
+                   "services/aplicacao/requirements.txt", "packages")
+    if "	services/aplicacao/Dockerfile" not in listagem:
         raise RuntimeError(f"aplicacao sem Dockerfile em {sha}")
-    if not any("\tservices/aplicacao/requirements.txt" in linha for linha in linhas):
+    if "	services/aplicacao/requirements.txt" not in listagem:
         raise RuntimeError(f"aplicacao sem requirements.txt em {sha}")
-    return hashlib.sha256("\n".join(linhas).encode()).hexdigest()[:16]
+    return hashlib.sha256(listagem.encode()).hexdigest()[:16]
 
 
 def imagem_existe(imagem: str) -> bool:

@@ -222,9 +222,7 @@ def raiz_do_repo(inicio: Path | None = None) -> Path:
     raise ErroDeInstrumentacao(
         "raiz do repositório não resolvida",
         "Nenhuma via de resolução produziu uma raiz verificável:\n"
-        + "\n".join(f"  - {t}" for t in tentativas)
-        + "\n\nSem raiz não há como localizar contracts/ — e não localizar o "
-        "contrato NÃO é o mesmo que não haver contrato.",
+        + "\n".join(f"  - {t}" for t in tentativas),
     )
 
 
