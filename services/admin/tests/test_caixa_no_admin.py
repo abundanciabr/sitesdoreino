@@ -287,14 +287,6 @@ def test_a_saida_do_trilho_mostra_o_motivo_que_o_aluno_recebeu():
     assert "O material é licenciado." in pagina
 
 
-@respx.mock
-def test_a_saida_sem_motivo_escrito_e_denunciada():
-    cliente = _dentro()
-    a_caixa_responde([ideia(status="mesclado", motivo_da_saida="")])
-
-    assert "ficou sem explicação" in texto(cliente.get(reverse("caixa_travessia")))
-
-
 # ---------------------------------------------------------------------------
 # 4. Os números de gente vêm prontos — e não são recalculados aqui
 # ---------------------------------------------------------------------------

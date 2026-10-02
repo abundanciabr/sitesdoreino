@@ -296,9 +296,9 @@ def test_o_motivo_da_entrada_e_opcional(
     assert resposta.status_code == 302
     vinculo = MembroDoGrupo.objects.get(grupo=grupo, pessoa=ana)
     assert vinculo.ate is None
-    assert vinculo.motivo == moderacao.MOTIVO_DA_ENTRADA_EM_BRANCO
+    assert vinculo.motivo == moderacao.MOTIVO_EM_BRANCO
     linha = RegistroDeModeracao.objects.get(vinculo=vinculo)
-    assert linha.motivo == moderacao.MOTIVO_DA_ENTRADA_EM_BRANCO
+    assert linha.motivo == moderacao.MOTIVO_EM_BRANCO
 
 
 def test_vaga_cheia_recusa(client, env, monkeypatch, professora, ana, bia):

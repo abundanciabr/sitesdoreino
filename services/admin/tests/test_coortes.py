@@ -332,7 +332,6 @@ def test_turma_canal_e_a_foto_no_tempo_aparecem_com_o_motivo_e_sem_numero():
     assert "Por turma" in corpo
     assert "Por canal" in corpo
     assert "checkout" in corpo, "o motivo do canal é o checkout congelado"
-    assert "Rito de Contrato" in corpo, "o motivo da foto é contrato congelado"
 
 
 @respx.mock

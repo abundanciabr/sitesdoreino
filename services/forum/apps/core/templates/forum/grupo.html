@@ -27,7 +27,7 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
         <input type="hidden" name="acao" value="remover">
         <input type="hidden" name="vinculo_id" value="{{ membro.pk }}">
         <label for="motivo-saida{{ membro.pk }}">Motivo da saída</label>
-        <input id="motivo-saida{{ membro.pk }}" name="motivo" maxlength="200" required>
+        <input id="motivo-saida{{ membro.pk }}" name="motivo" maxlength="200">
         <button type="submit" aria-label="Tirar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} do grupo">Tirar do grupo</button>
       </form>
       {% if destinos %}
@@ -40,7 +40,7 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
             {% for destino in destinos %}<option value="{{ destino.pk }}">{{ destino.nome }} ({{ destino.ocupadas }} de {{ destino.vagas }} vaga{{ destino.vagas|pluralize }})</option>{% endfor %}
           </select>
           <label for="motivo-troca{{ membro.pk }}">Motivo da troca</label>
-          <input id="motivo-troca{{ membro.pk }}" name="motivo" maxlength="200" required>
+          <input id="motivo-troca{{ membro.pk }}" name="motivo" maxlength="200">
           <button type="submit" aria-label="Trocar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} de grupo">Trocar de grupo</button>
         </form>
       {% else %}
