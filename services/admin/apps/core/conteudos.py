@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import base64
 import copy
+import hashlib
 import os
 import json
 import re
@@ -342,7 +344,7 @@ def conteudo_editar(request, tipo: str, slug: str):
             ]
             contexto["total_perguntas"] = len(contexto["perguntas"])
             contexto["total_faixas"] = len(contexto["faixas"])
-    return render(request, "admin/conteudo_editar.html", contexto)
+    return _com_csp_do_script(render(request, "admin/conteudo_editar.html", contexto))
 
 
 FILTROS_CAMPANHA = (
@@ -482,6 +484,28 @@ def _quiz_do_formulario(request):
     return {"title": title, "questions": questions, "bands": bands}
 
 
+_SCRIPT_EMBUTIDO = re.compile(
+    rb"<script(?![^>]*src=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
+)
+
+
+def _com_csp_do_script(resposta):
+    """O script do estúdio entra no CSP pelo hash exato dos bytes dele, como
+    em `equipe_acesso` e `agentes`, nunca por `unsafe-inline`."""
+    from apps.core.porta import PortaAdministrativa
+
+    scripts = "".join(
+        " 'sha256-" + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode() + "'"
+        for m in _SCRIPT_EMBUTIDO.finditer(resposta.content)
+    )
+    resposta["Content-Security-Policy"] = (
+        f"default-src 'self'; script-src 'self'{scripts}; "
+        f"style-src 'self'{PortaAdministrativa.hashes_de_estilo(resposta)}; "
+        "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'self'"
+    )
+    return resposta
+
 def _editor_com_erro(request, tipo, slug, mensagem, status, erros=None):
     """Mantém os campos enviados na tela quando a gravação é recusada."""
     contexto = {
@@ -532,7 +556,9 @@ def _editor_com_erro(request, tipo, slug, mensagem, status, erros=None):
         ]
         contexto["total_perguntas"] = nq
         contexto["total_faixas"] = nf
-    return render(request, "admin/conteudo_editar.html", contexto, status=status)
+    return _com_csp_do_script(
+        render(request, "admin/conteudo_editar.html", contexto, status=status)
+    )
 
 
 def _documento_enviado(request, slug):

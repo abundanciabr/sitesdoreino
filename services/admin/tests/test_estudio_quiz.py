@@ -136,6 +136,12 @@ def test_tela_mostra_estudio_duplicar_previa_e_modo_avancado(documento):
     ):
         assert trecho in html, trecho
     assert '"publicadas": ["B2"]' in html
+    # o script do estúdio roda sob o CSP do admin pelo hash, sem unsafe-inline
+    import base64, hashlib, re
+    corpo = re.search(rb"<script>(.*?)</script>", pagina.content, re.DOTALL).group(1)
+    hash_ = base64.b64encode(hashlib.sha256(corpo).digest()).decode()
+    assert f"'sha256-{hash_}'" in pagina["Content-Security-Policy"]
+    assert "unsafe-inline" not in pagina["Content-Security-Policy"]
 
 
 @respx.mock
