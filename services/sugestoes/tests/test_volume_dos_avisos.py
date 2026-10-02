@@ -33,7 +33,6 @@ import pytest
 from django.db import transaction
 from django.test.utils import CaptureQueriesContext
 from django.db import connection
-from django.urls import reverse
 
 from apps.core.avisos import avisar_os_interessados
 from apps.sugestoes.models import Aviso, Sugestao
@@ -154,51 +153,4 @@ def test_a_jornada_inteira_de_mudar_status_nao_cresce_com_a_plateia(
         f"mudar o status custou {poucas} consultas com {2 * PEQUENA + 1} "
         f"interessados e {muitas} com {2 * GRANDE + 1} — o custo da moderação não "
         "pode depender de quanta gente votou na ideia.\n" + "\n".join(sql_muitas)
-    )
-
-
-def test_ler_a_pagina_de_avisos_nao_paga_consulta_pelo_vinculo(
-    equipe, dentro, quadro, categoria, aluno, plateia
-):
-    """A outra metade da decisão "coluna × derivar na leitura", medida.
-
-    O vínculo derivado na leitura custaria, além de mudar de valor com o tempo
-    (`test_o_vinculo_sobrevive_ao_desvoto`), uma pergunta às tabelas de voto e
-    comentário POR AVISO listado — ou um `JOIN` a mais na consulta da página. A
-    coluna custa zero: a página com dez avisos faz o mesmo número de consultas
-    que a página com um.
-
-    Este é o lado do custo que a decisão põe na mesa; o outro é o da verdade.
-    """
-    poucos = [
-        _uma_sugestao(quadro, categoria, aluno, f"Ideia curta {n}") for n in range(1)
-    ]
-    muitos = [
-        _uma_sugestao(quadro, categoria, aluno, f"Ideia longa {n}") for n in range(10)
-    ]
-
-    def _mexer(sugestoes):
-        for sugestao in sugestoes:
-            Aviso.objects.create(
-                destinatario=dentro.identidade,
-                sugestao=sugestao,
-                status_anterior=Sugestao.Status.EM_ANALISE,
-                status_novo=Sugestao.Status.PLANEJADO,
-                vinculo=Aviso.Vinculo.VOTO,
-            )
-
-    _mexer(poucos)
-
-    def _abrir():
-        assert dentro.client.get(reverse("avisos")).status_code == 200
-
-    com_um, _ = _contar(_abrir)
-    _mexer(muitos)
-    com_onze, sql = _contar(_abrir)
-
-    assert Aviso.objects.count() == 11
-    assert com_um == com_onze, (
-        f"a página de avisos passou de {com_um} para {com_onze} consultas ao "
-        "crescer de 1 para 11 avisos — o vínculo é coluna justamente para não "
-        "cobrar isso.\n" + "\n".join(sql)
     )

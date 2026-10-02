@@ -26,7 +26,7 @@ def _set_cookie_de_sessao(resposta):
 def test_paginas_de_participacao_nao_escrevem_o_cookie_do_site(
     dentro, quadro, sugestao, matricula, rede
 ):
-    for caminho in (reverse("entrar"), reverse("quadro"), reverse("avisos")):
+    for caminho in (reverse("entrar"), reverse("quadro")):
         resposta = dentro.client.get(caminho)
         assert _set_cookie_de_sessao(resposta) is None, (
             f"{caminho} emitiu Set-Cookie meshcraft_sessao — a Caixa está "

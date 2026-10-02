@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 
-from apps.core.avisos import marcar_lido, marcar_tudo_lido, ver_avisos
+from apps.core.avisos import ver_avisos
 from apps.core.mudou_de_casa import mudou_de_casa
 from apps.core.participacao import (
     comentar,
@@ -71,20 +71,9 @@ urlpatterns = [
     path("sugestoes/<int:sugestao_id>/votar", votar, name="votar"),
     path("sugestoes/<int:sugestao_id>/desvotar", desvotar, name="desvotar"),
     path("sugestoes/<int:sugestao_id>/comentarios", comentar, name="comentar"),
-    # O sininho (EVO-21). Prefixo próprio, como a moderação: `/avisos` é do
-    # ALUNO e só dele — cada rota daqui enxerga exclusivamente os avisos de quem
-    # está na sessão (apps/core/avisos.py). Marcar como lido é POST, e não GET,
-    # porque muda estado: um GET seria marcado como lido por qualquer
-    # pré-carregamento de link do navegador.
-    #
-    # `<str:aviso_id>`, não `<int:...>` — desde a Fase 3/4 do sininho o `id` de
-    # um aviso é o valor OPACO que `GET /avisos` devolve (a caixa central,
-    # `contracts/notificacoes.openapi.yaml`), não mais o pk local desta célula.
-    # Tratá-lo como inteiro seria a Caixa inventando uma forma que a porta de
-    # fora não promete.
+    # `/avisos` mudou de casa: redireciona para a página única `/notificacoes`.
+    # As rotas de marcar como lido saíram junto: quem marca é aquela página.
     path("avisos", ver_avisos, name="avisos"),
-    path("avisos/marcar-tudo", marcar_tudo_lido, name="marcar_todos_avisos_lidos"),
-    path("avisos/<str:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
     # A GESTÃO MUDOU DE CASA (28/08/2026, no mesmo dia em que nasceu aqui).
     # Ela mora em /admin/caixa/ por decisão do mantenedor — uma porta só. Lei:
     # docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.

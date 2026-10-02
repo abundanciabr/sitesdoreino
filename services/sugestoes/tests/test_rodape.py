@@ -46,10 +46,6 @@ def test_a_tela_de_escrever_uma_ideia_tem_rodape(dentro, categoria):
     assert '<footer class="rodape' in _corpo(dentro, reverse("nova_sugestao"))
 
 
-def test_o_sininho_tem_rodape(dentro, quadro):
-    assert '<footer class="rodape' in _corpo(dentro, reverse("avisos"))
-
-
 def test_rota_que_ninguem_decidiu_herda_o_padrao():
     assert regras.variante_da_rota("uma-tela-que-nascer-amanha") == "completo"
 
@@ -152,7 +148,7 @@ def test_pagina_declarada_sem_rodape_nao_desenha_footer_nenhum(
 ):
     monkeypatch.setitem(regras.REGRA_POR_ROTA, "quadro", None)
     assert "<footer" not in _corpo(dentro, reverse("quadro"))
-    assert "<footer" in _corpo(dentro, reverse("avisos"))
+    assert "<footer" in _corpo(dentro, reverse("sugestao", args=[sugestao.id]))
 
 
 def test_o_ano_dos_direitos_vem_do_servidor(dentro, sugestao):

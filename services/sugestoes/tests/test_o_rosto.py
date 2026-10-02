@@ -312,69 +312,6 @@ def test_a_borda_publica_entrega_a_folha_de_estilo(sob_prefixo):
     assert b"--laranja" in b"".join(resposta.streaming_content)
 
 
-# ---------------------------------------------------------------------------
-# O sino VESTIDO (EVO-31): a mesma lógica do EVO-21, com a cara do quadro
-# ---------------------------------------------------------------------------
-
-
-def test_a_pagina_de_avisos_fala_a_lingua_do_quadro(dentro, aviso):
-    """A vestimenta, medida pelas peças que ela empresta do quadro.
-
-    O aviso deixou de ser um parágrafo solto e virou cartão: selo de status (a
-    mesma peça do card da grade), a mudança desenhada como `de → para`, e a nota
-    da equipe dentro de uma `.ficha` — a peça que a página da sugestão já usa
-    para o texto da equipe. Um teste que só olhasse o texto continuaria verde com
-    a página crua de antes.
-    """
-    corpo = dentro.client.get(reverse("avisos")).content.decode()
-
-    assert 'class="avisos"' in corpo, "a lista de avisos não virou a pilha de cartões"
-    assert 'class="aviso nao-lido"' in corpo, "o não-lido não se anuncia na moldura"
-    assert f'class="selo selo-{aviso.status_novo}"' in corpo
-    assert 'class="ficha"' in corpo, "a nota da equipe ficou fora da ficha"
-    assert 'rel="stylesheet"' in corpo
-
-
-def test_a_pagina_de_avisos_nao_mostra_o_painel_explicativo(dentro, aviso):
-    corpo = dentro.client.get(reverse("avisos")).content.decode()
-
-    assert "Como isto funciona" not in corpo
-    assert "Você é avisado, sempre" not in corpo
-    assert "Ver o roadmap" not in corpo
-
-
-def test_o_aviso_leva_para_a_ideia_e_o_lido_some_da_lista_de_nao_lidos(dentro, aviso):
-    """O cartão é caminho, não recado morto: dele se chega à ideia.
-
-    E a segunda metade é o comportamento do EVO-21 continuando de pé por baixo
-    da roupa nova — marcar como lido tira a marca da tela, não só do banco.
-    """
-    corpo = dentro.client.get(reverse("avisos")).content.decode()
-    assert f'href="{reverse("sugestao", args=[aviso.sugestao.id])}"' in corpo
-    assert ">novo<" in corpo
-
-    dentro.client.post(reverse("marcar_aviso_lido", args=[aviso.id]))
-    depois = dentro.client.get(reverse("avisos")).content.decode()
-
-    # O cartão continua na página; o que sai dele é a marca de novo. Afirmar só
-    # a AUSÊNCIA de `nao-lido` seria verdade também numa página que não tivesse
-    # cartão nenhum — a asserção positiva é o que impede esse falso-verde.
-    assert 'class="aviso"' in depois, "o aviso lido perdeu o cartão"
-    assert 'class="aviso nao-lido"' not in depois
-    assert ">novo<" not in depois
-    assert "Marcar como lido" not in depois
-    assert aviso.sugestao.titulo in depois, "o aviso lido sumiu da lista"
-
-
-def test_o_sino_continua_contando_no_trilho_da_propria_pagina_de_avisos(dentro, aviso):
-    """A página de avisos permanece funcional sem duplicar o sino."""
-    corpo = dentro.client.get(reverse("avisos")).content.decode()
-
-    assert 'class="avisos"' in corpo
-    assert 'use href="#i-sino"' not in corpo
-    assert 'href="/notificacoes"' not in corpo
-
-
 def test_quem_nao_entrou_nao_alcanca_o_rosto(client, sugestao):
     """O rosto não afrouxou nada: continua valendo que a Caixa é de quem tem
     matrícula, inclusive para só olhar (`DECISAO-EVO-01` §2)."""

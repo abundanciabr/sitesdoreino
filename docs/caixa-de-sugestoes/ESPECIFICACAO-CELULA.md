@@ -24,7 +24,6 @@ Fora do escopo, por design:
 - cálculo de XP ou gamificação — a célula de gamificação consome eventos
 - disparo de email, push ou WhatsApp — a célula de notificação consome eventos
 - geração do ChangeSpec — pertence a um processo/documento separado
-- qualquer leitura ou escrita direta no banco de outra célula
 
 ## 3. Pressupostos de arquitetura
 

@@ -68,7 +68,7 @@ def apagar_definitivamente(sugestao: Sugestao, quem=None, agora=None) -> bool:
     # Esta é a cópia LOCAL do recado. A que a pessoa realmente lê hoje mora na
     # caixa central (`notificacoes`), e o contrato congelado dela só sabe
     # listar e marcar como lida — não retirar. Por isso o sumiço visível é
-    # feito na leitura (`avisos.py::_sobre_ideia_apagada`), e esta linha é a
+    # feito na leitura (página `/notificacoes`, na célula `funil`), e esta linha é a
     # metade que ESTA célula consegue destruir de verdade. As duas juntas são
     # o mínimo para a promessa da `DECISAO-apagar-ideia.md` valer também para
     # quem recebeu o aviso; o que falta para ela valer inteira é uma operação

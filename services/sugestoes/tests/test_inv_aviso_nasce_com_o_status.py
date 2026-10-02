@@ -42,7 +42,7 @@ from django.urls import reverse
 
 from apps.core.avisos import AvisoForaDaTransacao, avisar_os_interessados
 from apps.sugestoes import eventos
-from apps.sugestoes.models import Aviso, HistoricoStatus, Sugestao, Voto
+from apps.sugestoes.models import Aviso, HistoricoStatus, OutboxEvent, Sugestao, Voto
 
 pytestmark = pytest.mark.django_db
 
@@ -233,23 +233,25 @@ def test_o_vinculo_sobrevive_ao_desvoto(equipe, entrar_como, sugestao):
         "o aviso mudou de explicação porque a pessoa desvotou — o `Aviso` é "
         "snapshot, nunca espelho de estado mutável."
     )
-    corpo = votante.client.get(reverse("avisos")).content.decode()
-    assert "Ideia em que você votou" in corpo
 
 
-def test_a_pagina_mostra_de_onde_veio_cada_aviso(equipe, dentro, sugestao, plateia):
-    """A tela distingue "sua ideia" de "ideia em que você votou/comentou".
-
-    Medido no corpo renderizado, e não no contexto: vazamento e ausência não
-    escolhem a variável que o teste imaginou (armadilhas/087).
+def test_o_aviso_e_a_carta_dizem_de_onde_veio_cada_um(equipe, dentro, sugestao):
+    """O vínculo viaja na linha `Aviso` e na carta: "voto" para quem votou,
+    nunca "autor" (que é de quem escreveu a ideia).
     """
     Voto.objects.create(sugestao=sugestao, autor=dentro.identidade)
     _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO, "vamos fazer")
 
-    corpo = dentro.client.get(reverse("avisos")).content.decode()
-
-    assert "Ideia em que você votou" in corpo, corpo[-1500:]
-    assert "Sua ideia" not in corpo, "o aviso de plateia se apresentou como do autor"
+    aviso = Aviso.objects.get(destinatario=dentro.identidade)
+    assert aviso.vinculo == Aviso.Vinculo.VOTO
+    assert not Aviso.objects.filter(
+        destinatario=dentro.identidade, vinculo=Aviso.Vinculo.AUTOR
+    ).exists()
+    carta = OutboxEvent.objects.get(
+        event=eventos.NOTIFICACAO_DEVIDA,
+        payload__destinatario_id=dentro.identidade.id_da_plataforma,
+    )
+    assert carta.payload["parametros"]["vinculo"] == Aviso.Vinculo.VOTO
 
 
 def test_moderar_nao_e_interagir_e_o_aviso_nao_vai_por_isso(equipe, sugestao):

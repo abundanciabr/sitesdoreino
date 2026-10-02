@@ -40,6 +40,10 @@ pytestmark = pytest.mark.django_db
 # crachá. Quem faz o porteiro ali é a própria view, que reabre `ses.resolver` e
 # só age no estado SEM_MATRICULA — e isso é medido de fora, para um anônimo, em
 # `test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila`.
+#
+# `avisos` virou só um redirecionamento para `/notificacoes` (página da célula
+# `funil`): não renderiza nada nem toca a rede, e quem exige a sessão é o destino.
+# `tests/test_avisos_vai_para_notificacoes.py` mede o que ele entrega a um anônimo.
 PUBLICAS = {
     "entrar",
     "entrar_google",
@@ -47,6 +51,7 @@ PUBLICAS = {
     "pedir_entrada",
     "sair",
     "estatico",
+    "avisos",
     None,
 }
 

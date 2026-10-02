@@ -26,7 +26,8 @@ quem já está com a sessão aberta. Há guarda para isso.
   `mesclado` existe no model e continua sem ninguém escrevendo nele — e a lista
   `STATUS_QUE_A_EQUIPE_ESCOLHE` abaixo o exclui de propósito, para que ele não
   entre pela porta dos fundos de um `<select>`.
-- **A lista de avisos do aluno e o marcar-como-lido.** Moram em
+- **A lista de avisos do aluno e o marcar-como-lido.** Moram na página
+  `/notificacoes` da célula `funil`. A escrita do `Aviso` fica em
   `apps/core/avisos.py` (EVO-21; leque aberto no EVO-42). O que ESTE arquivo faz
   é a metade que não podia morar em outro lugar: os avisos de todos os
   interessados nascem dentro do mesmo `transaction.atomic()` da mudança de

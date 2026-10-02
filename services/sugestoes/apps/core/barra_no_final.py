@@ -34,7 +34,7 @@ escolheu 302 (`PLANO-I18N` D1).
 
 **Só GET e HEAD.** Um 302 num POST vira GET no navegador e o corpo do
 formulário é descartado em silêncio — o pior modo de falha possível numa célula
-cujas rotas de escrita (`votar`, `comentar`, `marcar_aviso_lido`) são todas
+cujas rotas de escrita (`votar`, `desvotar`, `comentar`) são todas
 POST. Método diferente cai fora e recebe o 404 honesto.
 
 **A rota nua tem de existir.** `path("healthz")` e as rotas de máquina não são

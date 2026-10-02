@@ -94,7 +94,7 @@ def test_o_botao_do_roadmap_no_trilho_leva_o_prefixo_e_a_ancora(
     em todas de uma vez — como o link do sino quebraria."""
     pessoa, _ = quadro_com_marco
 
-    for endereco in ("/", "/avisos", "/sugestoes/nova"):
+    for endereco in ("/", "/sugestoes/nova"):
         corpo = pessoa.client.get(endereco).content.decode()
         assert (
             f'href="{PREFIXO}/#roadmap"' in corpo
