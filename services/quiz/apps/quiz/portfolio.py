@@ -363,6 +363,20 @@ def _plano(respostas, proposta=None):
     elif acrescentar == "nao":
         primeira = "Organizar os trabalhos existentes; nenhuma peça nova agora."
     proximos = [nomes[item] for item in respostas.get("proximas_pecas", [])]
+    if not proximos:
+        proximos = (
+            [
+                "Outro cabelo no seu estilo",
+                "Uma roupa 3D (Layered Clothing)",
+                "Um chapéu ou acessório de cabeça",
+            ]
+            if caminho in {"ugc_clientes", "marketplace", "explorar"}
+            else [
+                "Um objeto para uma experiência Roblox",
+                "Uma espada ou arma para o jogo",
+                "Um animal para uma experiência Roblox",
+            ]
+        )
     formatos = {
         "imagens": "imagens claras de vários ângulos",
         "descricao": "descrição do trabalho e do que pode ser entregue",
