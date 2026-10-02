@@ -471,7 +471,7 @@ services:
   # entra aqui, no molde do `sugestoes-relay`, com `<<: *processo`.
   #
   # O banco `forum_db` e o par `forum_user` NAO nascem daqui: quem os cria e
-  # `infra/provisionar-forum.sh`, rodado pelo mantenedor DENTRO da VPS antes
+  # `infra/provisionar-forum.sh`, rodado DENTRO da VPS antes
   # desta entrega. Sem ele este servico sobe e morre em crashloop no `migrate`
   # do CMD (licao H18) — e e por isso que aquele passo vem antes deste PR na
   # escada da §7 da lei.
@@ -523,7 +523,7 @@ services:
   # `alunos-relay`. Com os dois, a celula OUVE e FALA.
   #
   # O banco `gamificacao_db` e o par `gamificacao_user` NAO nascem daqui: quem os
-  # cria e `infra/provisionar-gamificacao.sh`, rodado pelo mantenedor DENTRO da
+  # cria e `infra/provisionar-gamificacao.sh`, rodado DENTRO da
   # VPS antes desta entrega. Sem ele este servico sobe e morre em crashloop no
   # `migrate` do CMD (licao H18) — e e por isso que aquele passo vem antes deste
   # PR na escada do §6 do plano.
@@ -560,9 +560,9 @@ services:
   # REDIS_STREAMS_URL VEM DAQUI, E NAO DO ENV DA CELULA, e a diferenca em
   # relacao as outras celulas consumidoras e deliberada. Naquelas o valor esta
   # no `env/<celula>.env`, escrito pelo provisionamento. Aqui o provisionamento
-  # JA RODOU, na mao do mantenedor, em 31/08/2026 — e o script nao escreveu esta
+  # JA RODOU na VPS em 31/08/2026 — e o script nao escreveu esta
   # chave porque a celula ainda nao consumia evento nenhum. Acrescenta-la la
-  # agora custaria um SEGUNDO passo manual dele, para uma variavel que nao e
+  # agora custaria um SEGUNDO passo de provisionamento, para uma variavel que nao e
   # segredo e vale igual em toda a plataforma: e topologia deste compose, nao
   # configuracao desta celula. O `infra/env/gamificacao.env.exemplo` diz isso
   # por escrito, para ninguem procurar a chave la e concluir que ela sumiu.
@@ -599,7 +599,7 @@ services:
   # As duas variaveis vem DAQUI e nao do env da celula, pela mesma razao ja
   # escrita no `gamificacao-consumer`: o `infra/provisionar-gamificacao.sh`
   # rodou em 31/08/2026, quando esta celula nao consumia nem publicava evento
-  # nenhum, e voltar a escrever nele custaria um passo manual do mantenedor por
+  # nenhum, e voltar a escrever nele custaria um passo de provisionamento por
   # valores que nao sao segredo e valem igual em toda a plataforma. Sao
   # topologia deste compose, nao configuracao da celula.
   #
@@ -662,7 +662,7 @@ services:
         condition: service_healthy
 
   # A sala de aula (DECISAO-celula-de-cursos.md, 04/09/2026). Degrau 1.7 da
-  # escada de PLANO-CELULA-CURSOS.md §10: o passo H do mantenedor
+  # escada de PLANO-CELULA-CURSOS.md §10: o passo H
   # (infra/provisionar-cursos.sh) já rodou na VPS antes deste PR — é o
   # PORTÃO deste degrau, e é o que faz `env/cursos.env` existir com
   # `SITE_ID` preenchido antes de o container tentar subir.
@@ -691,7 +691,7 @@ services:
   # gravada no bloco `gamificacao-consumer`: o provisionamento
   # (`infra/provisionar-cursos.sh`) ja rodou, em 05/09/2026, antes de a
   # celula consumir ou emitir evento nenhum, e escrever isto exigiria um
-  # SEGUNDO passo manual do mantenedor para duas variaveis que nao sao
+  # SEGUNDO passo de provisionamento para duas variaveis que nao sao
   # segredo e valem igual em toda a plataforma. `infra/env/cursos.env.exemplo`
   # ja diz isto por escrito, para ninguem procurar a chave la.
   #
@@ -717,8 +717,8 @@ services:
         condition: service_healthy
 
   # A casa das Paginas do aluno e do portfolio (corredor CS-PAGES-0001, degrau
-  # 05 da escada de PLANO-PORTFOLIO-DO-ALUNO.md secao 5). O passo manual do
-  # mantenedor (infra/provisionar-pages.sh) ja rodou na VPS antes deste PR: e o
+  # 05 da escada de PLANO-PORTFOLIO-DO-ALUNO.md secao 5). O provisionamento
+  # (infra/provisionar-pages.sh) ja rodou na VPS antes deste PR: e o
   # PORTAO deste degrau, e e ele que faz `env/pages.env` existir com
   # `DATABASE_URL` e `SCRIPT_NAME=/pages` antes de o container tentar subir.
   # Sem banco, `DATABASE_URL` e fail-hard e o container entra em crashloop
@@ -785,9 +785,9 @@ services:
   #
   # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/pages.env`, pela MESMA razao
   # gravada nos blocos `gamificacao-consumer` e `cursos-relay`: o
-  # provisionamento (`infra/provisionar-pages.sh`) ja rodou na mao do mantenedor
+  # provisionamento (`infra/provisionar-pages.sh`) ja rodou na VPS
   # antes de esta celula ter trabalho de fundo, e acrescentar as chaves la agora
-  # custaria um SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha
+  # custaria um SEGUNDO provisionamento (que, neste roteiro, ROTACIONA a senha
   # do banco e a chave do Django) para dois enderecos que nao sao segredo e
   # valem igual em toda a plataforma. E topologia deste compose, nao
   # configuracao da celula. O `infra/env/pages.env.exemplo` diz isso por
@@ -819,7 +819,7 @@ services:
 
   # A Fila do Primeiro Dolar, o marketplace de encomendas 3D
   # (DECISAO-fila-do-primeiro-dolar.md; degrau 2.10 da escada §7, TAR-128). O
-  # passo manual do mantenedor (infra/provisionar-encomendas.sh) ja rodou na
+  # provisionamento (infra/provisionar-encomendas.sh) ja rodou na
   # VPS em 04/09/2026: e o PORTAO deste degrau, e e ele que faz
   # `env/encomendas.env` existir com `DATABASE_URL`, `SCRIPT_NAME=/encomendas`
   # e `SITE_ID` antes de o container tentar subir. Sem banco, `DATABASE_URL` e
@@ -854,8 +854,8 @@ services:
   #
   # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/encomendas.env`, pela MESMA razao
   # gravada nos blocos `cursos-relay` e `pages-relay`: o provisionamento ja
-  # rodou na mao do mantenedor, e acrescentar as chaves la agora custaria um
-  # SEGUNDO passo manual dele (que, neste roteiro, ROTACIONA a senha do banco e
+  # rodou na VPS, e acrescentar as chaves la agora custaria um
+  # SEGUNDO provisionamento (que, neste roteiro, ROTACIONA a senha do banco e
   # a chave do Django) para dois enderecos que nao sao segredo e valem igual em
   # toda a plataforma. E topologia deste compose, nao configuracao da celula. O
   # `infra/env/encomendas.env.exemplo` ja diz isso por escrito, para ninguem

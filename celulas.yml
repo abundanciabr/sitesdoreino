@@ -43,7 +43,7 @@ celulas:
     # `notificacoes` desde 03/09/2026: a tela /admin/avisos/ manda um aviso de
     # teste pela porta de maquina (POST /aviso-de-teste, Rito de Contrato de
     # 03/09/2026), para o mantenedor saber se o canal de avisos do celular esta
-    # funcionando sem precisar entrar na VPS (Lei 5). Nao guarda nada aqui: le a
+    # funcionando sem precisar entrar na VPS. Nao guarda nada aqui: le a
     # resposta e mostra.
     # `mensageria` desde 04/09/2026: as SEQUENCIAS de mensagens da escola sao
     # dado da mensageria e moram la. A tela /admin/escola/jornadas/ le os
