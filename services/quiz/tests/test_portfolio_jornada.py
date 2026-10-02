@@ -30,7 +30,9 @@ def test_entrada_retomada_isolamento_e_nova_tentativa(client, site_a, site_b, se
     primeira = post(client, f"{BASE}/exploracoes", body, **AUTH)
     assert primeira.status_code == 201
     eid = primeira.json()["id"]
-    assert primeira.json()["versao"] == "1"
+    assert primeira.json()["versao"] == "2"
+    assert primeira.json()["fluxo_versao"] == "comercial"
+    assert primeira.json()["etapa"] == "ponto_partida"
     assert len(primeira.json()["propostas"]) == 3
     assert post(client, f"{BASE}/exploracoes", body, **AUTH).json()["id"] == eid
     atual = client.get(
@@ -137,7 +139,7 @@ def test_catalogo_versionado_sem_mudar_exploracao_aberta(client, site_a, setting
     url = f"{BASE}/catalogo?site_id={site_a.id}"
     inicial = client.get(url, **AUTH)
     assert inicial.status_code == 200
-    assert len(inicial.json()["projetos"]) == 12
+    assert len(inicial.json()["projetos"]) == 17
     eid = post(
         client,
         f"{BASE}/exploracoes",
@@ -155,7 +157,7 @@ def test_catalogo_versionado_sem_mudar_exploracao_aberta(client, site_a, setting
     antigo = client.get(
         f"{BASE}/exploracoes/{eid}?site_id={site_a.id}&aluno_id=ana", **AUTH
     )
-    assert antigo.json()["versao"] == "1"
+    assert antigo.json()["versao"] == "2"
     assert all(p["titulo"] != "Título da escola" for p in antigo.json()["propostas"])
     novo = post(
         client,
@@ -182,7 +184,7 @@ def test_catalogo_versionado_sem_mudar_exploracao_aberta(client, site_a, setting
 def test_referencia_do_catalogo_abre_como_svg(client, site_a, settings):
     settings.TOKENS_ACEITOS_PAGES = "pages-token"
     catalogo = client.get(f"{BASE}/catalogo?site_id={site_a.id}", **AUTH).json()
-    referencia = catalogo["projetos"][0]["referencia"]
+    referencia = next(p["referencia"] for p in catalogo["projetos"] if p["referencia"])
     caminho = referencia.removeprefix("/quiz")
     resposta = client.get(caminho, HTTP_HOST=site_a.host)
     assert resposta.status_code == 200
@@ -222,9 +224,9 @@ def test_escolhas_do_aluno_prevalecem_e_interesse_limita_sugestoes(
     assert all(por_chave[p["chave"]]["familia"] == "veiculos" for p in propostas)
     for proposta in propostas:
         base = por_chave[proposta["chave"]]
-        assert proposta["primeira_entrega"] == base["versao_pequena"]
+        assert proposta["primeira_entrega"] == base["titulo"]
         assert proposta["servico"] == "Meu serviço de veículos"
-        assert proposta["apresentacao"] == "Mostrar meu processo no Roblox"
+        assert "Mostrar meu processo no Roblox" in proposta["apresentacao"]
         assert proposta["primeira_acao"] == "Esboçar rodas"
     retomada = client.get(
         f"{BASE}/exploracoes/{eid}?site_id={site_a.id}&aluno_id=ana", **AUTH

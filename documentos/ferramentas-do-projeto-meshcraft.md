@@ -466,17 +466,17 @@ Tudo o que será construído: o que cada ferramenta é, para quem, o que resolve
 
 **Origem.** F6·L2, seção 6.
 
-### 30. O Meu Estúdio: portfólio, dossiê e vitrines
+### 30. Meu portfólio: projetos, trabalhos e página pública
 
-**O que é.** As 35 Páginas (Página 0 imutável, o cubo com a data; 1 a 32; B; a carta), o dossiê automático por lição (envios, laudos, registros, quiz), e as três vitrines públicas geradas (1.0 na E10, 2.0 na E21, 3.0 na E31).
+**O que existe hoje.** [Meu portfólio](https://meshcraft.top/portfolio/) (`https://meshcraft.top/portfolio/`) permite explorar no quiz, desenvolver uma ideia, aproveitar modelos ou criar um projeto sem quiz. [Meus trabalhos](https://meshcraft.top/portfolio/trabalhos) (`https://meshcraft.top/portfolio/trabalhos`) organiza imagens, apresentação, seleção e feedback. O aluno escolhe o que publicar em `https://meshcraft.top/portfolio/apelido`, trocando `apelido` pelo seu. A escola considera a intenção declarada e orienta uma próxima tentativa. O portfólio demonstra um serviço que o aluno consegue oferecer, no contexto do curso “Ganhar os Primeiros Dólares com Roblox”.
 
-**Resolve.** Portfólio que ninguém monta; provar o que se sabe.
+**Quiz de montagem comercial.** O aluno informa experiência em modelagem 3D (iniciante, intermediário, avançado ou não sabe dizer), andamento no curso e trabalhos existentes. Escolhe como pretende buscar renda: encomendas para criadores Roblox, produção UGC para clientes, itens próprios no Marketplace ou exploração dessas possibilidades. O resultado compõe um portfólio com serviço ou produto, público, trabalhos escolhidos, uma primeira peça quando necessária, apresentação, continuidade e próxima ação. Uma encomenda para cliente e a venda de item próprio no Marketplace são caminhos distintos. A recomendação da escola de 3 cabelos, 3 roupas 3D (Layered Clothing) e 3 chapéus ou acessórios de cabeça é uma meta desejável até o final do curso para quem segue essa direção, não requisito inicial ou condição de publicação. Detalhes para o aluno estão no [guia do portfólio](https://meshcraft.top/admin/documentos/guia-do-portfolio) (`https://meshcraft.top/admin/documentos/guia-do-portfolio`).
 
-**Exemplo.** A Vitrine 2.0 abre com o campo "por que este e não outro" e as listagens da loja; um cliente vê as Páginas 12 a 18 e a resposta de orçamento sem entrar na plataforma.
+**Histórico do desenho de 05/09.** As 35 páginas e as três vitrines automáticas descritas na versão anterior pertencem ao planejamento daquela data; não são requisitos do portfólio atual nem capacidades comprovadas por este documento. A orientação vigente é a do guia acima.
 
-**Vive em.** `alunos` ou `avaliacao` (decisão pendente); exportável em PDF, do aluno para sempre.
+**Vive em.** `pages` (projetos, trabalhos, apresentação e feedback) e `quiz` (exploração e catálogo de propostas). A experiência atual preserva as tentativas e projetos anteriores; o aluno pode continuar uma tentativa antiga ou iniciar outra.
 
-**Origem.** F6·L2, seção 7.
+**Origem.** F6·L2, seção 7 (desenho histórico); jornada autoral e orientação da escola atualizadas em 02/10/2026.
 
 ### 31. O cliente simulado
 

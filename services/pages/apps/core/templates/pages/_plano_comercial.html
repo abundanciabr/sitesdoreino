@@ -1,0 +1,11 @@
+{% if plano %}<section aria-label="Composição do meu portfólio" class="j-section">
+<p class="j-note">{{ plano.momento }} {{ plano.por_que }}</p>
+<div class="j-grid"><article class="j-card"><h2>1. Como pretendo ganhar dinheiro</h2><p>{{ plano.servico }}</p><p><strong>Para quem:</strong> {{ plano.publico }}</p></article>
+<article class="j-card"><h2>2. Trabalhos que já escolhi</h2><ul>{% for trabalho in plano.trabalhos_existentes %}<li>{{ trabalho }}</li>{% empty %}<li>Vou começar pela primeira peça abaixo.</li>{% endfor %}</ul></article>
+<article class="j-card"><h2>3. Primeira peça a criar ou acrescentar</h2><p>{{ plano.primeira_peca }}</p></article>
+<article class="j-card"><h2>4. Como apresentar cada trabalho</h2><ul>{% for item in plano.apresentacao %}<li>{{ item }}</li>{% endfor %}</ul>{% if plano.objetivo_apresentacao %}<p><strong>O que quero demonstrar:</strong> {{ plano.objetivo_apresentacao }}</p>{% endif %}</article>
+<article class="j-card"><h2>5. Composição inicial</h2><ul>{% for item in plano.composicao_inicial %}<li>{{ item }}</li>{% endfor %}</ul></article>
+<article class="j-card"><h2>6. O que posso acrescentar depois</h2><ul>{% for item in plano.proximos_trabalhos %}<li>{{ item }}</li>{% endfor %}</ul>{% if plano.meta_escola %}<p>{{ plano.meta_escola }}</p>{% endif %}</article>
+<article class="j-card"><h2>7. Como divulgar</h2><p>{{ plano.divulgacao }}</p></article>
+<article class="j-card"><h2>8. Minha próxima ação</h2><p>{{ plano.proxima_acao }}</p></article></div>
+<div class="j-actions"><a class="j-btn secundario" href="{% url 'pecas' %}">Meus trabalhos</a><a href="{% url 'apresentacao_publica' %}">Preparar minha página pública</a></div></section>{% endif %}
