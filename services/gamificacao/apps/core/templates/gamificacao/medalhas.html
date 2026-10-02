@@ -34,7 +34,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
       {% if linha.medalha.descricao %}<p class="passo">{{ linha.medalha.descricao }}</p>{% endif %}
       <p class="criterio"><strong>Como ganhar:</strong> {{ linha.criterio }}</p>
       {% if linha.retirada %}
-        <p class="selo">Retirada pela equipe em {{ linha.retirada.registrado_em|date:"d/m/Y" }}. Motivo: {{ linha.retirada.motivo }}</p>
+        <p class="selo">Retirada pela equipe em {{ linha.retirada.registrado_em|date:"d/m/Y" }}.{% if linha.retirada.motivo %} Motivo: {{ linha.retirada.motivo }}{% endif %}</p>
         <p class="miudo">Você a conquistou em {{ linha.concessao.concedida_em|date:"d/m/Y" }}, e isso continua na sua história. Se você discorda, fale com a equipe: só ela devolve.</p>
       {% elif linha.concessao %}
         <p class="selo">Conquistada em {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>

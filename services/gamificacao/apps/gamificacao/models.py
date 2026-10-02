@@ -1099,9 +1099,9 @@ class HistoricoDaConcessao(models.Model):
 
     A primeira linha nasce com a concessão (`concedida`), pela porta única
     `validacao.conceder()`. As outras são gestos da equipe, e cada uma diz quem,
-    quando, por quê, o estado de antes e o de depois; a correção diz também a
-    referência de antes e a de depois. O banco recusa gesto da equipe sem nome
-    e sem motivo.
+    quando, o estado de antes e o de depois, e o porquê se a pessoa quis dizê-lo;
+    a correção diz também a referência de antes e a de depois. O banco recusa
+    gesto da equipe sem nome. O motivo é opcional.
     """
 
     class Gesto(models.TextChoices):
@@ -1129,9 +1129,8 @@ class HistoricoDaConcessao(models.Model):
         ordering = ["registrado_em", "id"]
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(gesto="concedida")
-                | (~models.Q(quem_id="") & ~models.Q(motivo="")),
-                name="gesto_da_equipe_diz_quem_e_por_que",
+                condition=models.Q(gesto="concedida") | ~models.Q(quem_id=""),
+                name="gesto_da_equipe_diz_quem",
             ),
         ]
 

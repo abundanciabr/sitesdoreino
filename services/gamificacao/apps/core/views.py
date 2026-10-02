@@ -751,8 +751,8 @@ def _publicar(request, autor_id: str, site: str):
 def interno_reconhecimentos(request):
     """Cada conquista concedida, com a regra do dia, a origem e a história inteira.
 
-    É aqui que a equipe retira, devolve ou corrige uma conquista, sempre com
-    motivo. A porta é a mesma da fila dos marcos, fail-CLOSED por
+    É aqui que a equipe retira, devolve ou corrige uma conquista; o motivo é
+    opcional e, se vier, fica na história. A porta é a mesma da fila dos marcos, fail-CLOSED por
     `IDS_DA_EQUIPE`, e quem não está na lista leva o mesmo 403 com a razão.
     """
     pessoa_id, site = _pessoa_e_site(request)
@@ -777,7 +777,7 @@ def interno_reconhecimentos(request):
 
 @require_POST
 def decidir_reconhecimento(request):
-    """Retirar, devolver ou corrigir uma conquista, com o motivo escrito.
+    """Retirar, devolver ou corrigir uma conquista; o motivo escrito é opcional.
 
     Quem decide é quem a sessão diz que é, conferido na lista da equipe; a
     concessão é procurada DENTRO da escola desta instalação, e a de outra escola

@@ -322,28 +322,22 @@ def _carta_da_conquista(concessao: Concessao) -> None:
 def _travar_para_o_gesto(
     concessao: Concessao, quem_id: str, motivo: str
 ) -> tuple[Concessao, str]:
-    """Relê a concessão travada e confere quem e por quê. Chamar dentro de transação."""
+    """Relê a concessão travada e confere quem. Chamar dentro de transação.
+
+    O motivo é opcional: se vier, fica na história; se não vier, a linha fica do
+    mesmo jeito, com quem mexeu, quando e o estado de antes e de depois.
+    """
     motivo = (motivo or "").strip()
     if not quem_id:
         raise ValidacaoRecusada(
             "toda decisão tem nome. Sem o id de quem decidiu, a história desta "
             "conquista não responderia 'quem mexeu aqui?'."
         )
-    if not motivo:
-        raise ValidacaoRecusada(
-            "Escreva o motivo. Ele fica guardado na história desta conquista, e é "
-            "ele que responde 'por quê?' para quem olhar depois."
-        )
     concessao = (
         Concessao.objects.select_for_update()
         .select_related("conquista")
         .get(pk=concessao.pk)
     )
-    if quem_id == concessao.pessoa_id:
-        raise ValidacaoRecusada(
-            "Ninguém mexe na própria conquista. Outra pessoa da equipe precisa "
-            "decidir esta."
-        )
     return concessao, motivo
 
 
@@ -402,7 +396,7 @@ def _mover_o_xp(concessao: Concessao, linha: HistoricoDaConcessao, sinal: int) -
     recalcular(concessao.pessoa_id, concessao.site_id, celebrar=False)
 
 
-def revogar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
+def revogar(*, concessao: Concessao, quem_id: str, motivo: str = "") -> Concessao:
     """A equipe retira a conquista. A linha fica, e a história diz por quê.
 
     A pessoa deixa de ter a conquista em toda tela e em toda conta
@@ -431,7 +425,7 @@ def revogar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
     return concessao
 
 
-def restaurar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
+def restaurar(*, concessao: Concessao, quem_id: str, motivo: str = "") -> Concessao:
     """A equipe devolve uma conquista retirada, ao estado que ela tinha antes."""
     with transaction.atomic():
         concessao, motivo = _travar_para_o_gesto(concessao, quem_id, motivo)
@@ -457,7 +451,7 @@ def restaurar(*, concessao: Concessao, quem_id: str, motivo: str) -> Concessao:
 
 
 def corrigir(
-    *, concessao: Concessao, quem_id: str, origem_nova: str, motivo: str
+    *, concessao: Concessao, quem_id: str, origem_nova: str, motivo: str = ""
 ) -> Concessao:
     """A equipe corrige de onde a conquista veio. A referência antiga fica na história.
 
@@ -560,8 +554,9 @@ def pedir_validacao(
             pessoa=pessoa, conquista=conquista, estado=Concessao.Estado.REVOGADA
         ).exists():
             raise PedidoInvalido(
-                f"a equipe retirou {conquista.nome!r}, e o motivo está nesta "
-                "página. Se você discorda, fale com a equipe: só ela devolve."
+                f"a equipe retirou {conquista.nome!r}, e o que ficou registrado "
+                "está nesta página. Se você discorda, fale com a equipe: só ela "
+                "devolve."
             )
         if Concessao.objects.filter(pessoa=pessoa, conquista=conquista).exists():
             raise PedidoInvalido(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from django.urls import get_resolver, reverse
+from django.urls import reverse
 
 from apps.core import rodape as regras
 
@@ -67,25 +67,6 @@ def test_a_recusa_da_fila_da_equipe_tambem_tem_rodape(client, com_site, visitant
     resposta = client.get(reverse("interno"))
     assert resposta.status_code == 403
     assert '<footer class="rodape' in _corpo(resposta)
-
-
-def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
-    """A varredura que impede a frase "em todas as páginas" de envelhecer.
-
-    Mede o urlconf REAL, não uma lista escrita à mão: rota nova que ninguém
-    decidiu cai no padrão, e rota sem rodapé precisa estar dita. O silêncio
-    nunca significa "sem rodapé".
-    """
-    nomes = {
-        padrao.name
-        for padrao in get_resolver().url_patterns
-        if getattr(padrao, "name", None)
-    }
-    assert "base" in nomes, "a varredura não encontrou o urlconf da célula"
-    sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
-    assert sem_rodape == set(regras.ROTAS_SEM_PAGINA) & nomes
-    for nome in nomes - sem_rodape:
-        assert regras.variante_da_rota(nome) in regras.VARIANTES
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():

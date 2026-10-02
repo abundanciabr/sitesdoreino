@@ -4,11 +4,9 @@ fail-CLOSED da fila dos marcos; quem não é leva 403 com frase, desenhado por
 `interno.html`.
 
 Cada conquista mostra a regra com que foi dada (versão e frase do dia), a
-referência da origem e a história inteira. Retirar, devolver e corrigir exigem
-motivo, e cada gesto vira uma linha nova da história: nada aqui apaga nada.
-
-A conquista de quem está olhando não traz os botões: ninguém mexe na própria.
-A regra mora em `validacao.py`; esconder o botão só poupa um clique recusado.
+referência da origem e a história inteira. Retirar, devolver e corrigir aceitam
+um motivo (opcional), e cada gesto vira uma linha nova da história: nada aqui
+apaga nada.
 
 Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
 {% endcomment %}
@@ -55,14 +53,12 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
         {% endfor %}
       </ol>
 
-      {% if concessao.pessoa_id == eu %}
-        <p class="selo">Esta conquista é sua. Outra pessoa da equipe decide sobre ela.</p>
-      {% elif concessao.estado == revogada %}
+      {% if concessao.estado == revogada %}
         <form method="post" action="{% url 'decidir-reconhecimento' %}">
           {% csrf_token %}
           <input type="hidden" name="concessao" value="{{ concessao.pk }}">
-          <label for="motivo-devolver-{{ concessao.pk }}">Por que devolver</label>
-          <textarea id="motivo-devolver-{{ concessao.pk }}" name="motivo" rows="2" required></textarea>
+          <label for="motivo-devolver-{{ concessao.pk }}">Por que devolver (opcional)</label>
+          <textarea id="motivo-devolver-{{ concessao.pk }}" name="motivo" rows="2"></textarea>
           <button type="submit" name="gesto" value="restaurar">Devolver a conquista</button>
         </form>
       {% else %}
@@ -71,15 +67,15 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
           <input type="hidden" name="concessao" value="{{ concessao.pk }}">
           <label for="origem-{{ concessao.pk }}">Referência certa da origem (por exemplo pedido:7 ou contribuicao:15)</label>
           <input type="text" id="origem-{{ concessao.pk }}" name="origem" maxlength="64" required>
-          <label for="motivo-corrigir-{{ concessao.pk }}">Por que corrigir</label>
-          <textarea id="motivo-corrigir-{{ concessao.pk }}" name="motivo" rows="2" required></textarea>
+          <label for="motivo-corrigir-{{ concessao.pk }}">Por que corrigir (opcional)</label>
+          <textarea id="motivo-corrigir-{{ concessao.pk }}" name="motivo" rows="2"></textarea>
           <button type="submit" name="gesto" value="corrigir">Corrigir a origem</button>
         </form>
         <form method="post" action="{% url 'decidir-reconhecimento' %}">
           {% csrf_token %}
           <input type="hidden" name="concessao" value="{{ concessao.pk }}">
-          <label for="motivo-retirar-{{ concessao.pk }}">Por que retirar (a pessoa lê isto)</label>
-          <textarea id="motivo-retirar-{{ concessao.pk }}" name="motivo" rows="2" required></textarea>
+          <label for="motivo-retirar-{{ concessao.pk }}">Por que retirar (opcional; a pessoa lê isto)</label>
+          <textarea id="motivo-retirar-{{ concessao.pk }}" name="motivo" rows="2"></textarea>
           <button type="submit" name="gesto" value="revogar" class="discreto">Retirar a conquista</button>
         </form>
       {% endif %}

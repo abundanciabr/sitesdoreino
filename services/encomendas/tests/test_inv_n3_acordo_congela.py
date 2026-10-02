@@ -235,7 +235,7 @@ def test_a_mediacao_muda_o_combinado_com_autor_e_motivo(projeto_pego, formulario
     assert "uma peca a mais" in linha.motivo
 
 
-def test_mediacao_sem_autor_ou_sem_motivo_e_recusada(projeto_pego, formulario):
+def test_mediacao_sem_autor_e_recusada(projeto_pego, formulario):
     projeto, _ = projeto_pego
     projeto = _acordado(projeto, formulario, _agora(), valor_cents=32_500)
 
@@ -247,12 +247,32 @@ def test_mediacao_sem_autor_ou_sem_motivo_e_recusada(projeto_pego, formulario):
         motivo="qualquer coisa",
         valor_cents=1,
     )
-    sem_motivo = negociacao.mudar_por_mediacao(
-        projeto.pk, _agora(), site_id=SITE, quem="prof-1", motivo="", valor_cents=1
-    )
     assert sem_autor.razao == negociacao.SEM_AUTOR
-    assert sem_motivo.razao == negociacao.SEM_MOTIVO
 
     projeto.refresh_from_db()
     assert projeto.acordo_valor_cents == 32_500
     assert projeto.status == Encomenda.Status.ACORDADA
+
+
+def test_mediacao_sem_motivo_e_aceita_e_o_historico_guarda_o_autor(
+    projeto_pego, formulario
+):
+    """O motivo é opcional; o autor continua sendo o rastro."""
+    projeto, _ = projeto_pego
+    projeto = _acordado(projeto, formulario, _agora(), valor_cents=32_500)
+
+    feito = negociacao.mudar_por_mediacao(
+        projeto.pk,
+        projeto.acordado_em + timedelta(microseconds=1),
+        site_id=SITE,
+        quem="prof-1",
+        valor_cents=40_000,
+    )
+    assert feito.feito
+
+    projeto.refresh_from_db()
+    assert projeto.acordo_valor_cents == 40_000
+    assert projeto.status == Encomenda.Status.EM_MEDIACAO
+    linha = projeto.historico.latest("em")
+    assert linha.ator_id == "prof-1"
+    assert linha.motivo == ""
