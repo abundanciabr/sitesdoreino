@@ -9,9 +9,9 @@ isto dar errado:
    do arquivo.
 2. **O par de tokens ainda não provisionado virar um erro por página.** É o
    estado REAL desta célula no dia em que este arquivo nasce: o par
-   `pages→catalogo` não existe enquanto o mantenedor não rodar a versão de
-   `infra/provisionar-par-do-menu.sh` que também escreve `env/portfolio.env`. Ele
-   tem de ser silencioso, e não pode custar nem uma tentativa de rede.
+   `pages→catalogo` não existe enquanto a versão de
+   `infra/provisionar-par-do-menu.sh` que também escreve `env/portfolio.env` não
+   rodar. Ele tem de ser silencioso, e não pode custar nem uma tentativa de rede.
 3. **As três telas da porta ficarem sem menu.** Elas são desenhadas pelo
    middleware ANTES de a rota ser resolvida, e são as primeiras páginas que um
    visitante desta casa vê. É a diferença desta célula para todas as vizinhas.
@@ -147,7 +147,7 @@ def so_o_menu(corpo: str) -> str:
 def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
     aluna, rede, monkeypatch, site_declarado
 ):
-    """O estado REAL desta célula enquanto o passo do mantenedor não roda.
+    """O estado REAL desta célula enquanto o provisionamento não roda.
 
     Silencioso, e sem bater na rede: o `rede` do `conftest` levanta em qualquer
     chamada não registrada, e o catálogo não está registrado neste teste.

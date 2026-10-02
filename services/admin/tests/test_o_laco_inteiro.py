@@ -190,7 +190,15 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
     ]
 
     # ---------------------------------------------- 2. a meta
-    contagem = placar.contar_compras(alunos, PARTIDA, HOJE)
+    # Só venda do NOSSO site move a meta (correção do mantenedor em
+    # 02/10/2026): as quatro liberadas da sala de espera compraram em outro
+    # site e não contam. Quem conta são as quatro compras pelo checkout.
+    assert placar.contar_compras(alunos, PARTIDA, HOJE)["ciclo"] == 0
+    vendas_do_site = [
+        _pessoa(origem="comprou", virou_aluno_em=f"2026-10-{dia + 1}T10:00:00-03:00")
+        for dia in (20, 21, 22, 23)
+    ]
+    contagem = placar.contar_compras(alunos + vendas_do_site, PARTIDA, HOJE)
     resultado = placar.calcular_placar(CARTAO_DO_CICLO, contagem["ciclo"], HOJE)
     assert contagem["ciclo"] == 4
     assert resultado["veredito"] == "perdendo", (
@@ -281,10 +289,11 @@ def test_o_laco_inteiro_gira_do_ciclo_ativo_ate_o_placar_atualizado():
     ), "o experimento fechado tinha de virar aprendizado validado do ciclo"
 
     # ---------------------------------------------- 10. o placar atualizado
-    # A aposta venceu: a sala de espera foi confirmada, e as duas pessoas que
-    # esperavam viraram alunas. O MESMO placar, relido, muda de veredito.
-    alunos_depois = alunos + [
+    # A aposta venceu e o site vendeu mais 18. O MESMO placar, relido, muda de
+    # veredito; a sala de espera confirmada sozinha não o mudaria (02/10/2026).
+    alunos_depois = alunos + vendas_do_site + [
         _pessoa(
+            origem="comprou",
             criada_em="2026-10-26T09:00:00-03:00",
             virou_aluno_em=f"2026-10-{27 + n % 2}T{9 + n // 2:02d}:00:00-03:00",
         )

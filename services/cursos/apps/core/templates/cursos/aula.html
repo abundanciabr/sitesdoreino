@@ -22,7 +22,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% block atributos_principal %} class="sala-com-conteudo"{% endblock %}
 
 {% block faixa %}
-  <a href="{{ url_do_mapa }}">Mapa das portas</a>
+  <a href="{{ url_do_mapa }}">{{ curso.nome }}</a>
   <span class="onde">{{ aula.titulo_exibido }}</span>
 {% endblock %}
 
@@ -30,12 +30,10 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
 {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
 
-<header class="cabecalho-da-aula">
-  <p class="rotulo">{{ aula.numero }} · {{ estado }}</p>
-  <h1>{{ aula.titulo_exibido }}</h1>
+{% if aula.pedido or aula.cliente %}<div class="encomenda-da-aula">
   {% if aula.pedido %}<p class="pedido">{{ aula.pedido }}</p>{% endif %}
   {% if aula.cliente %}<p class="cliente">Cliente: {{ aula.cliente }}</p>{% endif %}
-</header>
+</div>{% endif %}
 
 {% for peca in pecas %}
 <section class="peca" id="peca-{{ peca.tipo }}">
@@ -188,7 +186,6 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   <p class="selo fechado">{{ conclusao.fechado_por }}</p>
   {% else %}
   <p class="selo">Todas as pausas desta aula estão registradas.</p>
-  <p>Terminou? Conclua a aula, e a próxima abre na hora.</p>
   <form method="post" action="{% url 'concluir-aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
     <button type="submit">Concluir esta aula</button>

@@ -86,7 +86,7 @@ def porta(monkeypatch):
 
 @pytest.fixture
 def sem_par(monkeypatch):
-    """O estado real enquanto o passo do mantenedor não roda: nada no env."""
+    """O estado real enquanto o provisionamento não roda: nada no env."""
     monkeypatch.delenv("GAMIFICACAO_API_URL", raising=False)
     monkeypatch.delenv("GAMIFICACAO_API_TOKEN", raising=False)
 

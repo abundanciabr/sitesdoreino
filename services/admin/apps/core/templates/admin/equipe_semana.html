@@ -30,7 +30,7 @@
   {% else %}
   <p class="aviso">
     <b>Nenhum compromisso {% if e_corrente %}assumido nesta semana{% else %}nesta semana{% endif %}.</b>
-    {% if e_corrente %}No cartão de uma tarefa aberta, com responsável, aperte <b>Assumir na semana</b>: ela passa a contar aqui, no nome de quem responde por ela.{% else %}Ninguém marcou tarefa como compromisso daquela semana.{% endif %}
+    {% if e_corrente %}No cartão de uma tarefa aberta que é sua, aperte <b>Assumir na semana</b>: ela passa a contar aqui, no seu nome. Só quem responde pela tarefa assume ou tira.{% else %}Ninguém marcou tarefa como compromisso daquela semana.{% endif %}
   </p>
   {% endif %}
 
@@ -76,12 +76,14 @@
             <input type="hidden" name="situacao" value="concluida">
             <button class="botao-pequeno" type="submit">Concluir</button>
           </form>
+          {% if membro and tarefa.responsavel_id == membro.id %}
           <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ endereco_atual }}">
             <input type="hidden" name="acao" value="tirar">
             <button class="botao-pequeno" type="submit">Tirar da semana</button>
           </form>
+          {% endif %}
         </div>
         {% endif %}
       </article>

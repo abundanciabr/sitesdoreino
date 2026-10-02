@@ -73,7 +73,7 @@ def _perguntar_ao_catalogo(host: str) -> dict:
     token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
     if not base or not token:
         # Sem par de tokens, o fórum abre igual e sem menu. É o estado enquanto
-        # o passo do mantenedor não roda (infra/provisionar-par-do-menu.sh), e
+        # o provisionamento não roda (infra/provisionar-par-do-menu.sh), e
         # ele não pode custar um erro por página.
         return {}
     try:

@@ -1,6 +1,5 @@
 <section class="comentarios-aula" id="comentarios" aria-labelledby="titulo-comentarios">
   <h2 id="titulo-comentarios">Comentários</h2>
-  <p class="comentarios-privacidade">Seu comentário é privado: só você e os admins podem vê-lo. Os admins podem torná-lo público para os alunos desta aula.</p>
   <form method="post" action="{{ url_enviar_comentario }}" class="comentarios-formulario">
     {% csrf_token %}
     <label for="corpo-comentario">Seu comentário</label>

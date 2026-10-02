@@ -34,7 +34,7 @@ from apps.agentes.models import (
     RoboPessoal,
 )
 from apps.core import equipe_operacoes as operacoes
-from apps.core.models import Comentario, MembroDaEquipe, Tarefa
+from apps.core.models import Comentario, Compromisso, MembroDaEquipe, Tarefa
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -380,6 +380,26 @@ def test_simulacao_alteracao_com_versao_velha_e_recusada():
     assert "mudou desde que você a leu" in saida["erro"]
     tarefa.refresh_from_db()
     assert tarefa.titulo == "Mudada por outra pessoa"
+
+
+def test_o_robo_so_mexe_no_compromisso_da_propria_pessoa():
+    livia = _pessoa("Lívia", LIVIA)
+    arameu = MembroDaEquipe.objects.get(nome="Arameu")
+    do_arameu = Tarefa.objects.create(titulo="Do Arameu", responsavel=arameu)
+    dela = Tarefa.objects.create(titulo="Dela", responsavel=livia)
+    robo = trabalhos.robo_de(livia)
+    execucao = Execucao.objects.create(robo=robo, tipo=Execucao.Tipo.CONVERSA, pedido_por_membro_id=livia.id)
+    ctx = ferramentas.Contexto(robo=robo, membro=livia, execucao=execucao)
+
+    alheia = json.loads(
+        ferramentas.executar(ctx, "c1", "marcar_compromisso", json.dumps({"tarefa_id": do_arameu.id}))
+    )
+    assert "só essa pessoa assume ou tira" in alheia["erro"]
+    propria = json.loads(
+        ferramentas.executar(ctx, "c2", "marcar_compromisso", json.dumps({"tarefa_id": dela.id}))
+    )
+    assert propria["tarefa"]["compromisso_desta_semana"] is True
+    assert list(Compromisso.objects.values_list("tarefa_id", flat=True)) == [dela.id]
 
 
 def test_pessoa_retirada_da_equipe_nao_age_pelo_robo():

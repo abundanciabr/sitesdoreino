@@ -92,6 +92,18 @@ class RuntimeTest(unittest.TestCase):
                 self.assertFalse(called)
             self.assertEqual(called, [True])
 
+    def test_paginas_de_erro_compartilhadas_sao_achadas_em_toda_celula(self):
+        """Sem elas, o endereço que não existe virava 500 em vez de 404 (02/10/2026)."""
+        from django.template.loader import get_template
+        from config.registry import SERVICES
+        from config.runtime import serving
+
+        for service in SERVICES:
+            with serving(service):
+                for status in (404, 500):
+                    self.assertIn("site_errors", get_template(f"site_errors/{status}.html").origin.name)
+        self.assertIn("site_errors", get_template("site_errors/404.html").origin.name)
+
     def test_model_checks_keep_real_database_collisions(self):
         from types import SimpleNamespace
 

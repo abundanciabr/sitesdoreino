@@ -216,14 +216,17 @@ def test_nao_consegui_perguntar_nunca_vira_zero():
 
 def test_cada_compra_cai_na_semana_dela():
     faixas = placar.semanas_do_ciclo(CARTAO)
+    site = {"origem": "comprou"}
     alunos = [
-        {"status": "ativa", "virou_aluno_em": "2026-09-08T10:00:00-03:00"},
-        {"status": "ativa", "virou_aluno_em": "2026-09-08T11:00:00-03:00"},
-        {"status": "suspensa", "virou_aluno_em": "2026-09-15T09:00:00-03:00"},
+        {**site, "status": "ativa", "virou_aluno_em": "2026-09-08T10:00:00-03:00"},
+        {**site, "status": "ativa", "virou_aluno_em": "2026-09-08T11:00:00-03:00"},
+        {**site, "status": "suspensa", "virou_aluno_em": "2026-09-15T09:00:00-03:00"},
         # Fora de qualquer semana (um sábado): não some, só não entra em nenhuma.
-        {"status": "ativa", "virou_aluno_em": "2026-09-12T09:00:00-03:00"},
+        {**site, "status": "ativa", "virou_aluno_em": "2026-09-12T09:00:00-03:00"},
         # Reembolsada não conta: a compra foi desfeita.
-        {"status": "reembolsada", "virou_aluno_em": "2026-09-08T09:00:00-03:00"},
+        {**site, "status": "reembolsada", "virou_aluno_em": "2026-09-08T09:00:00-03:00"},
+        # Liberada pela sala de espera: comprou em outro site (02/10/2026).
+        {"origem": "liberado", "status": "ativa", "virou_aluno_em": "2026-09-09T09:00:00-03:00"},
     ]
     assert ciclo.contar_por_semana(alunos, faixas) == [2, 1]
 

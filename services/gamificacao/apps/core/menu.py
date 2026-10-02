@@ -30,11 +30,12 @@ apontada que sumiu: a resposta é lista vazia e a página abre normal. Um menu �
 enfeite de navegação; derrubar as Conquistas porque um item está torto seria a
 troca errada.
 
-**E o estado de HOJE é justamente esse.** Enquanto o mantenedor não rodar
-`infra/provisionar-par-do-menu.sh` na VPS, `CATALOGO_API_URL` e `TOKEN_CATALOGO`
-não existem no env desta célula, e a barra simplesmente não aparece — sem erro,
-sem log por página, sem custo de rede. Credencial não viaja por esteira (Lei 5,
-INV-P8), e é por isso que este arquivo pode entrar antes do passo dele.
+**E o estado de HOJE é justamente esse.** Enquanto o provisionamento
+(`infra/provisionar-par-do-menu.sh`) não rodar na VPS, `CATALOGO_API_URL` e
+`TOKEN_CATALOGO` não existem no env desta célula, e a barra simplesmente não
+aparece — sem erro, sem log por página, sem custo de rede. O env mora só na VPS
+(INV-P8) e é escrito pelo provisionamento lá, e é por isso que este arquivo pode
+entrar antes dele.
 """
 
 from __future__ import annotations
@@ -85,7 +86,7 @@ def _perguntar_ao_catalogo(host: str) -> dict:
     token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
     if not base or not token:
         # Sem par de tokens, as Conquistas abrem igual e sem menu. É o estado
-        # enquanto o passo do mantenedor não roda
+        # enquanto o provisionamento não roda
         # (`infra/provisionar-par-do-menu.sh`), e ele não pode custar um erro
         # por página.
         return {}

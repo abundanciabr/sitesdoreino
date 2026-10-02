@@ -94,7 +94,7 @@ TETO_DE_SAIDA = 8000
 # de modelos: a referência diz que o nível `max` DÁ ERRO no Haiku 4.5, o Haiku
 # não aparece na lista dos modelos de pensamento adaptativo, e para o resto ela
 # manda consultar a API de capacidades ao vivo — que exige uma chave, e a chave
-# desta casa mora na VPS e não passa por agente (Lei 5).
+# desta casa mora na VPS e não passa por agente (INV-P8).
 #
 # OMITIR É SEGURO NOS DOIS MUNDOS, e é por isso que esta é a escolha e não um
 # chute: se o Haiku aceitasse o ajuste, não mandá-lo apenas usa o padrão dele;

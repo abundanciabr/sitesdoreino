@@ -282,8 +282,8 @@ class FonteAusente:
 
     #: A célula `alunos` JÁ entrega esta lista, por porta que já está no
     #: contrato congelado. O que falta é desta área conseguir bater nela: o par
-    #: de tokens `admin→alunos` (um passo do mantenedor na VPS) e a página que
-    #: lê e mostra. Nenhuma decisão nova, nenhum rito.
+    #: de tokens `admin→alunos` (um passo de provisionamento na VPS) e a página
+    #: que lê e mostra. Nenhuma decisão nova, nenhum rito.
     PORTA_PRONTA = "porta-pronta"
 
     #: O dado existe guardado, mas NENHUMA porta o entrega em lista — hoje a

@@ -7,7 +7,7 @@ corresponde a uma forma diferente de isto dar errado:
    Caixa tem de abrir igual sem ele, e é este o guarda mais importante do
    arquivo.
 2. **O par de tokens ainda não provisionado virar um erro por página.** É o
-   estado real enquanto o passo do mantenedor não roda, e ele tem de ser
+   estado real enquanto o provisionamento não roda, e ele tem de ser
    silencioso e sem tocar na rede.
 3. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa
    página precisa VENCER a versão padrão do site.
@@ -180,7 +180,7 @@ def test_catalogo_fora_do_ar_nao_derruba_a_caixa(dentro, rede, quadro):
 def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
     dentro, rede, quadro, monkeypatch
 ):
-    """O estado real enquanto o passo do mantenedor não roda. Silencioso, e sem
+    """O estado real enquanto o provisionamento não roda. Silencioso, e sem
     bater na rede: o `respx` estoura em requisição não registrada, então este
     guarda falharia sozinho se alguém tentasse perguntar."""
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)

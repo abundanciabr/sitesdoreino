@@ -340,5 +340,9 @@ def test_a_aula_aponta_para_o_mapa_do_proprio_curso(aluna, aula_publicada, clien
             HTTP_COOKIE=COOKIE,
         )
     )
-    assert 'href="/profissional/">Mapa das portas</a>' in corpo
-    assert 'href="/">Mapa das portas</a>' not in corpo
+    assert f'href="/profissional/">{aula_publicada.curso.nome}</a>' in corpo
+    assert f'<span class="onde">{aula_publicada.titulo_exibido}</span>' in corpo
+    assert "Em andamento · Aula atual" in corpo
+    assert "cabecalho-da-aula" not in corpo
+    assert "Terminou? Conclua a aula" not in corpo
+    assert "Seu comentário é privado:" not in corpo

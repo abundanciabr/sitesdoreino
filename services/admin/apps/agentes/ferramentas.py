@@ -76,18 +76,21 @@ SITUACOES = list(Situacao.values)
 DEFINICOES = [
     _ferramenta(
         "consultar_membros",
-        "Lista as pessoas ativas da equipe, com número, nome e área.",
+        "Lista as pessoas ativas da equipe, com número, nome e área. Elas "
+        "já vêm no retrato do painel: só chame se o retrato não estiver lá.",
         {},
     ),
     _ferramenta(
         "consultar_objetivos",
-        "Lista os objetivos da equipe, com quantas tarefas abertas cada um tem.",
+        "Lista os objetivos da equipe, com quantas tarefas abertas cada um tem. "
+        "Os ativos já vêm no retrato do painel: chame para os inativos ou a descrição.",
         {"incluir_inativos": {"type": "boolean"}},
     ),
     _ferramenta(
         "consultar_tarefas",
-        "Procura tarefas do painel da equipe. Sem filtro, traz as tarefas "
-        "abertas de quem fala com você.",
+        "Procura tarefas do painel da equipe. As tarefas abertas de quem fala "
+        "com você já vêm no retrato do painel: não chame para elas. Chame para "
+        "outra pessoa, toda a equipe, tarefas concluídas ou uma busca por texto.",
         {
             "responsavel_id": _inteiro_ou_nulo(
                 "Número da pessoa responsável; nulo para a pessoa que fala com você."
@@ -175,7 +178,8 @@ DEFINICOES = [
     ),
     _ferramenta(
         "marcar_compromisso",
-        "Assume a tarefa como compromisso da semana atual, ou tira.",
+        "Assume a tarefa como compromisso da semana atual, ou tira. Só "
+        "vale para tarefa de que a própria pessoa é responsável.",
         {"tarefa_id": {"type": "integer"}, "tirar": {"type": "boolean"}},
     ),
     _ferramenta(
@@ -479,6 +483,10 @@ FRASES = {
     "compromisso_sem_responsavel": (
         "Compromisso é de alguém: a tarefa precisa de responsável. Nada mudou."
     ),
+    "compromisso_de_outra_pessoa": (
+        "O compromisso da semana é de quem responde pela tarefa: só essa "
+        "pessoa assume ou tira. Nada mudou."
+    ),
     "comentado": "Comentário publicado.",
     "comentario_vazio": "O comentário estava vazio. Nada foi publicado.",
     "comentario_longo": "O comentário passou de 500 letras. Nada foi publicado.",
@@ -488,6 +496,7 @@ CODIGOS_DE_RECUSA = {
     "situacao_desconhecida",
     "compromisso_concluida",
     "compromisso_sem_responsavel",
+    "compromisso_de_outra_pessoa",
     "comentario_vazio",
     "comentario_longo",
 }
@@ -521,7 +530,9 @@ def comentar_tarefa(ctx: Contexto, args: dict) -> dict:
 
 def marcar_compromisso(ctx: Contexto, args: dict) -> dict:
     tarefa = _tarefa(args)
-    codigo = operacoes.marcar_compromisso(tarefa, ctx.quem, tirar=bool(args.get("tirar")))
+    codigo = operacoes.marcar_compromisso(
+        tarefa, ctx.quem, membro=ctx.membro, tirar=bool(args.get("tirar"))
+    )
     return _resultado_do_painel(codigo, tarefa)
 
 

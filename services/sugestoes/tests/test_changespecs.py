@@ -66,7 +66,8 @@ def test_sem_lista_de_aprovadores_ninguem_registra(equipe, sugestao):
 
     Este é o teste que prova que o default é seguro. Ele roda no ambiente
     padrão da suíte, onde a variável é apagada (`conftest.py::ambiente`) —
-    exatamente como a VPS estará até o mantenedor escrever o e-mail dele lá.
+    exatamente como a VPS estará até o provisionamento escrever lá o e-mail do
+    aprovador.
     """
     escrita = _registrar(equipe, sugestao)
 

@@ -43,11 +43,11 @@ seria a troca errada.
 **E o estado de HOJE é justamente esse.** O par `pages→catalogo` ainda não
 existe: `infra/provisionar-par-do-menu.sh` liga quatro consumidores
 (`admin`, `forum`, `sugestoes`, `gamificacao`) e esta casa não está entre eles.
-Enquanto o mantenedor não rodar a versão do roteiro que também escreve
-`CATALOGO_API_URL` e `TOKEN_CATALOGO` em `env/pages.env`, a barra simplesmente
-não aparece: sem erro, sem log por página, sem custo de rede. Credencial não
-viaja por esteira (Lei 5, INV-P8), e é por isso que este arquivo pode entrar
-antes do passo dele.
+Enquanto a versão do roteiro que também escreve `CATALOGO_API_URL` e
+`TOKEN_CATALOGO` em `env/pages.env` não rodar na VPS, a barra simplesmente não
+aparece: sem erro, sem log por página, sem custo de rede. O env mora só na VPS
+(INV-P8) e é escrito pelo provisionamento lá, e é por isso que este arquivo pode
+entrar antes dele.
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ def _perguntar_ao_catalogo(host: str) -> dict:
     token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
     if not base or not token:
         # Sem par de tokens, a Prancheta abre igual e sem menu. É o estado
-        # enquanto o passo do mantenedor não roda, e ele não pode custar um erro
+        # enquanto o provisionamento não roda, e ele não pode custar um erro
         # por página nem uma tentativa de rede.
         return {}
     try:

@@ -152,7 +152,7 @@ def _configuracao() -> tuple[str, str] | None:
     como **HTTP 500 em toda página do fórum** — com o deploy verde e o
     `/healthz` respondendo 200.
 
-    `None` é o estado real enquanto o passo do mantenedor não roda
+    `None` é o estado real enquanto o provisionamento não roda
     (`infra/provisionar-par-do-forum-com-a-gamificacao.sh`), e ele não pode
     custar nem um erro nem uma tentativa de rede por página aberta.
     """

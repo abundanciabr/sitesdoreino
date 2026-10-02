@@ -10,7 +10,7 @@ Quatro coisas se provam aqui, e cada uma tem um modo de falha silencioso:
 
 2. **Não conseguir perguntar nunca é "então pode entrar".** A `identidade`
    fora do ar, a `alunos` fora do ar e o env do par ausente fecham a porta. O
-   último não é hipótese: é o estado da VPS enquanto o passo do mantenedor não
+   último não é hipótese: é o estado da VPS enquanto o provisionamento não
    roda, e é o único caso em que a porta se defende sozinha sem ninguém ter
    configurado nada.
 
@@ -109,7 +109,7 @@ def test_a_alunos_fora_do_ar_fecha_a_porta(env_dos_pares, rede):
 
 
 def test_sem_o_env_do_par_a_porta_fecha_em_vez_de_abrir(monkeypatch, rede):
-    """O estado da VPS enquanto o passo do mantenedor não roda.
+    """O estado da VPS enquanto o provisionamento não roda.
 
     Nenhuma variável do par existe, então nem a pergunta chega a ser feita. A
     porta se fecha sozinha, sem ninguém ter configurado nada, e é isso que

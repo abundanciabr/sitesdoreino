@@ -19,7 +19,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
 {% block corpo %}
 <div class="envolucro">
   <h1>O placar</h1>
-  <p class="subtitulo">Quantas pessoas viraram alunas neste mês, e a meta grande por cima: estamos ganhando ou perdendo?</p>
+  <p class="subtitulo">Quantas pessoas compraram pelo nosso site neste mês, e a meta grande por cima: estamos ganhando ou perdendo? Quem foi liberado pela sala de espera comprou em outro site e não entra nesta conta.</p>
 
   {% comment %}
   A LINHA DA MEMÓRIA (degrau 7.6). Não é um bloco, e isso é de propósito: a
@@ -98,9 +98,9 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% if placar.veredito == "nao-consigo-contar" %}
     {% if contagem.campo_ausente %}
     <div class="aviso borda-amarela">
-      <b>A lista de alunos ainda não traz a data em que cada pessoa virou aluna.</b>
-      A parte que guarda os alunos respondeu, mas sem o campo novo do contrato
-      (PR #933). Isto não é zero: é a pergunta que ela ainda não sabe responder.
+      <b>A lista de alunos ainda não traz a data e a origem de cada compra.</b>
+      A parte que guarda os alunos respondeu, mas sem os campos do contrato
+      que separam a venda do nosso site da sala de espera. Isto não é zero: é a pergunta que ela ainda não sabe responder.
       Quando o PR da célula de alunos pousar, esta tela passa a contar sozinha.
     </div>
     {% else %}
@@ -117,7 +117,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <div>
         <div class="hero-numero">{{ barra.x }}</div>
         <h2 class="titulo-da-conta">
-          pessoa{{ barra.x|pluralize:"s" }} {% if barra.x == 1 %}virou aluna{% else %}viraram alunas{% endif %} em {{ barra.mes }}
+          pessoa{{ barra.x|pluralize:"s" }} {% if barra.x == 1 %}comprou{% else %}compraram{% endif %} pelo nosso site em {{ barra.mes }}
           {% if barra.alvo is not None %}(meta do mês: {{ barra.alvo }}){% endif %}
         </h2>
       </div>
