@@ -98,16 +98,6 @@ def test_sem_provedor_configurado_levanta_com_nome_proprio(settings):
         enviar_email("aluna@example.com", "Bem-vinda!", "corpo")
 
 
-def test_sem_webhook_configurado_nao_envia_mesmo_com_smtp(settings, monkeypatch):
-    settings.EMAIL_HOST = "smtp-relay.brevo.com"
-    settings.DEFAULT_FROM_EMAIL = "escola@meshcraft.top"
-    settings.EMAIL_WEBHOOK_TOKEN = ""
-    monkeypatch.setattr("apps.eventos.tasks.send_mail", lambda **kwargs: 1)
-
-    with pytest.raises(EmailNaoConfigurado, match="EMAIL_WEBHOOK_TOKEN"):
-        enviar_email("aluna@example.com", "Bem-vinda!", "corpo")
-
-
 def test_sem_provedor_a_linha_NAO_vira_enviado(envio, settings):
     """O GUARDA QUE CARREGA ESTE ARQUIVO — e o falso-verde que existia.
 

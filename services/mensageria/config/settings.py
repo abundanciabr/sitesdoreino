@@ -145,9 +145,6 @@ EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
 EMAIL_WEBHOOK_TOKEN = os.environ.get("EMAIL_WEBHOOK_TOKEN", "")
-EMAIL_SUPPRESSIONS_SINCRONIZADAS = (
-    os.environ.get("EMAIL_SUPPRESSIONS_SINCRONIZADAS", "0") == "1"
-)
 
 
 def limite_de_email(nome: str) -> int | None:

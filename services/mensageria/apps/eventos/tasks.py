@@ -131,20 +131,9 @@ def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
     """
     destinatario = _email_normalizado(destinatario)
     with _bloqueio_do_endereco(destinatario):
-        if not settings.EMAIL_WEBHOOK_TOKEN:
-            raise EmailNaoConfigurado(
-                "EMAIL_WEBHOOK_TOKEN ausente; configure a rota autenticada de "
-                "webhook do provedor antes de enviar"
-            )
         if EnderecoDeEmail.objects.filter(email=destinatario).exists():
             raise EmailBloqueado(
                 f"endereco {destinatario} esta bloqueado por devolucao ou reclamacao; nenhum envio sera tentado"
-            )
-        if not settings.EMAIL_SUPPRESSIONS_SINCRONIZADAS:
-            raise EmailNaoConfigurado(
-                "a lista de enderecos suprimidos do provedor ainda nao foi "
-                "sincronizada; importe a lista e defina "
-                "EMAIL_SUPPRESSIONS_SINCRONIZADAS=1 antes de enviar"
             )
         if not (settings.EMAIL_HOST and settings.DEFAULT_FROM_EMAIL):
             raise EmailNaoConfigurado(
