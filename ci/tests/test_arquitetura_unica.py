@@ -1,4 +1,4 @@
-"""O corte publica um processo web e conserva os antigos para recuperação."""
+"""Um processo web, com o roteador, o banco e o Redis."""
 from pathlib import Path, PurePosixPath
 
 import yaml
@@ -10,9 +10,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 def test_compose_padrao_so_sobe_aplicacao_e_infra_compartilhada():
     compose = yaml.safe_load((RAIZ / "infra/docker-compose.yml").read_text(encoding="utf-8"))
     servicos = compose["services"]
-    ativos = {nome for nome, definicao in servicos.items() if not definicao.get("profiles")}
-    assert ativos == {"aplicacao", "traefik", "postgres", "redis"}
-    assert len(servicos) == 41
+    assert set(servicos) == {"aplicacao", "traefik", "postgres", "redis"}
     app = servicos["aplicacao"]
     volumes = app["volumes"]
     env_dir = app["environment"]["APLICACAO_ENV_DIR"]

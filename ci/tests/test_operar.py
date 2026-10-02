@@ -561,7 +561,7 @@ def test_servicos_do_compose_com_e_sem_yaml_dao_a_mesma_lista(monkeypatch):
     monkeypatch.setitem(sys.modules, "yaml", None)  # `import yaml` passa a dar ImportError
     sem_yaml = operar.servicos_do_compose(compose)
     assert sem_yaml == com_yaml
-    assert {"plataforma", "catalogo", "pagamentos", "quiz", "postgres"} <= set(sem_yaml)
+    assert sem_yaml == ["aplicacao", "plataforma", "postgres", "redis", "traefik"]
 
 
 # --------------------------------------------------------------------------- módulos Appmax

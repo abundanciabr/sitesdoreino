@@ -18,23 +18,16 @@ def carregar(nome, arquivo):
     return modulo
 
 
-def test_journals_ativos_trocam_com_a_topologia(tmp_path, monkeypatch, capsys):
+def test_estado_mostra_so_a_aplicacao(tmp_path, monkeypatch, capsys):
     publicar = carregar("publicar_journals_ativos", "infra/publicar.py")
     monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path)
-    legado = {"celula": "admin", "atual": "a" * 40,
-              "aprovada": {"sha": "a" * 40}}
-    aplicacao = {"celula": "aplicacao", "atual": "b" * 40,
-                 "aprovada": {"sha": "b" * 40}}
-    (tmp_path / "admin.json").write_text(json.dumps(legado))
-    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "aprovada"}))
-    assert publicar.journals_em_uso() == [legado]
+    (tmp_path / "admin.json").write_text(json.dumps({"celula": "admin", "atual": "a" * 40}))
+    assert publicar.journals_em_uso() == []
+    aplicacao = {"celula": "aplicacao", "atual": "b" * 40, "aprovada": {"sha": "b" * 40}}
     (tmp_path / "aplicacao.json").write_text(json.dumps(aplicacao))
     assert publicar.journals_em_uso() == [aplicacao]
     assert publicar.estado() == 0
     assert "aplicacao" in capsys.readouterr().out
-    (tmp_path / "aplicacao.json").unlink()
-    (tmp_path / "aplicacao-transicao.json").write_text(json.dumps({"fase": "recuperada"}))
-    assert publicar.journals_em_uso() == [legado]
 
 
 @pytest.fixture
@@ -94,17 +87,6 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
     (tmp_path / "publicacoes").mkdir()
     return publicar, celula, commit
-
-
-def test_codigo_novo_mantem_a_base_e_requirements_muda(repo):
-    publicar, celula, commit = repo
-    c0 = commit("c0")
-    (celula / "codigo.py").write_text("V = 1\n")
-    c1 = commit("só código")
-    assert publicar.hash_da_base("demo", c0) == publicar.hash_da_base("demo", c1)
-    (celula / "requirements.txt").write_text("pytest\nsix\n")
-    c2 = commit("base")
-    assert publicar.hash_da_base("demo", c2) != publicar.hash_da_base("demo", c1)
 
 
 def test_base_da_aplicacao_inclui_requirements_e_vendor_de_todos(repo):
@@ -190,8 +172,6 @@ def test_versao_existente_e_reaproveitada_sem_copiar_de_novo(repo, monkeypatch, 
 
 def test_infra_sem_codigo_apos_corte_usa_sincronizador_da_aplicacao(tmp_path, monkeypatch):
     publicar = carregar("publicar_infra_aplicacao", "infra/publicar.py")
-    import mapa_de_celulas
-    monkeypatch.setattr(mapa_de_celulas, "celulas_do_diff", lambda *_: [])
     monkeypatch.setattr(publicar, "LOTES", tmp_path / "lotes")
     monkeypatch.setattr(publicar, "LOGS", tmp_path / "logs")
     monkeypatch.setattr(publicar, "PUBLICACOES", tmp_path / "publicacoes")
@@ -276,5 +256,3 @@ def test_codigo_montado_somente_leitura_vira_pin_e_aprovacao(receptor):
     assert estado["aprovada"]["imagem"] == "plataforma-admin:base-0123"
     assert estado["anterior_aprovada"]["imagem"].startswith("ghcr.io/abundanciabr/plataforma-admin:")
     assert estado["anterior_aprovada"]["codigo"] is None
-
-

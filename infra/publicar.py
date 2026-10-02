@@ -3,7 +3,7 @@
 
 Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
   receber               busca a main e publica a infra e as células tocadas desde a última recebida
-  publicar CELULA SHA   publica uma célula: backup, ativação, prova do endereço
+  publicar aplicacao SHA  publica a aplicação: backup, troca, prova do endereço
   recuperar CELULA      volta a célula para a última aprovada distinta e prova de novo
   vigiar                mede o site; fora do ar, religa, volta a versão uma vez e avisa se não resolver
   estado                versões no ar e últimas medições
@@ -12,8 +12,8 @@ Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
 
 Sem journal, a primeira publicação que abre o endereço vira a aprovada.
 
-Código novo com a mesma base (Dockerfile, requirements.txt, vendor/) não reconstrói imagem:
-a pasta imutável versoes/<celula>/<sha> é montada em /app, somente leitura, e o serviço é
+Código novo com a mesma base (Dockerfile, requirements.txt, vendor/ e packages/) não reconstrói
+imagem: a pasta imutável versoes/aplicacao/<sha> é montada em /app, somente leitura, e o serviço é
 recriado. Base diferente reconstrói a imagem aqui. Cada publicação tem pasta de trabalho,
 O banco nunca é restaurado sozinho.
 """
@@ -108,24 +108,18 @@ def extrair(sha: str, destino: Path, *caminhos: str) -> None:
 
 
 def hash_da_base(celula: str, sha: str) -> str:
-    """O que exige reconstruir a imagem: Dockerfile, requirements.txt e vendor/ da célula."""
-    if celula == "aplicacao":
-        listagem = git("ls-tree", "-r", sha, "--", "services", "packages")
-        linhas = [linha for linha in listagem.splitlines()
-                  if "\tservices/aplicacao/Dockerfile" in linha
-                  or re.search(r"\tservices/[^/]+/requirements\.txt$", linha)
-                  or re.search(r"\tservices/[^/]+/vendor/", linha)
-                  or "\tpackages/" in linha]
-        if not any("\tservices/aplicacao/Dockerfile" in linha for linha in linhas):
-            raise RuntimeError(f"aplicacao sem Dockerfile em {sha}")
-        if not any("\tservices/aplicacao/requirements.txt" in linha for linha in linhas):
-            raise RuntimeError(f"aplicacao sem requirements.txt em {sha}")
-        return hashlib.sha256("\n".join(linhas).encode()).hexdigest()[:16]
-    base = f"services/{celula}"
-    listagem = git("ls-tree", "-r", sha, "--", f"{base}/Dockerfile", f"{base}/requirements.txt", f"{base}/vendor")
-    if f"{base}/Dockerfile" not in listagem:
-        raise RuntimeError(f"{celula} sem Dockerfile em {sha}")
-    return hashlib.sha256(listagem.encode()).hexdigest()[:16]
+    """O que exige reconstruir a imagem: Dockerfile, requirements.txt, vendor/ e packages/."""
+    listagem = git("ls-tree", "-r", sha, "--", "services", "packages")
+    linhas = [linha for linha in listagem.splitlines()
+              if "\tservices/aplicacao/Dockerfile" in linha
+              or re.search(r"\tservices/[^/]+/requirements\.txt$", linha)
+              or re.search(r"\tservices/[^/]+/vendor/", linha)
+              or "\tpackages/" in linha]
+    if not any("\tservices/aplicacao/Dockerfile" in linha for linha in linhas):
+        raise RuntimeError(f"aplicacao sem Dockerfile em {sha}")
+    if not any("\tservices/aplicacao/requirements.txt" in linha for linha in linhas):
+        raise RuntimeError(f"aplicacao sem requirements.txt em {sha}")
+    return hashlib.sha256("\n".join(linhas).encode()).hexdigest()[:16]
 
 
 def imagem_existe(imagem: str) -> bool:
@@ -142,7 +136,9 @@ def garantir_base(celula: str, sha: str, contexto: Path, registro) -> tuple[str,
     for registro_versao in (estado.get("aprovada"), estado.get("anterior_aprovada")):
         if not registro_versao or not SHA.fullmatch(registro_versao.get("sha", "")):
             continue
-        anterior = registro_versao.get("imagem") or f"ghcr.io/abundanciabr/plataforma-{celula}:{registro_versao['sha']}"
+        anterior = registro_versao.get("imagem")
+        if not anterior:
+            continue
         try:
             mesma = hash_da_base(celula, registro_versao["sha"]) == marca
         except RuntimeError:
@@ -152,9 +148,8 @@ def garantir_base(celula: str, sha: str, contexto: Path, registro) -> tuple[str,
             return imagem, False, 0.0
     dizer(f"BASE-MUDOU: {celula} constrói {imagem}")
     inicio = time.monotonic()
-    dockerfile = (["-f", str(contexto / "services/aplicacao/Dockerfile")]
-                  if celula == "aplicacao" else [])
-    processo = subprocess.run(["nice", "-n", "10", "docker", "build", *dockerfile,
+    processo = subprocess.run(["nice", "-n", "10", "docker", "build",
+                              "-f", str(contexto / "services/aplicacao/Dockerfile"),
                               "-t", imagem, str(contexto)],
                               stdout=registro, stderr=subprocess.STDOUT)
     if processo.returncode != 0:
@@ -173,24 +168,20 @@ def preparar_codigo(celula: str, sha: str, fonte: Path, registro) -> tuple[Path,
     """Pasta imutável do código desta versão, com estáticos coletados, e a imagem da base."""
     final = VERSOES / celula / sha
     if final.is_dir():
-        imagem, construida, build_s = garantir_base(celula, sha,
-                                                   fonte if celula == "aplicacao" else final, registro)
+        imagem, construida, build_s = garantir_base(celula, sha, fonte, registro)
         return final, imagem, construida, build_s
     final.parent.mkdir(parents=True, exist_ok=True)
     temporaria = final.parent / f".{sha}.{os.getpid()}"
     shutil.rmtree(temporaria, ignore_errors=True)
     shutil.copytree(fonte / "services" / celula, temporaria, symlinks=True)
     try:
-        if celula == "aplicacao":
-            processo = subprocess.run(
-                [sys.executable, str(temporaria / "preparar.py"), "--origem", str(fonte / "services"),
-                 "--destino", str(temporaria / "modules")], stdout=registro, stderr=subprocess.STDOUT)
-            if processo.returncode != 0:
-                raise RuntimeError("montagem dos módulos da aplicação falhou")
-        if celula in {"admin", "aplicacao"}:
-            shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=True)
-        imagem, construida, build_s = garantir_base(celula, sha,
-                                                   fonte if celula == "aplicacao" else temporaria, registro)
+        processo = subprocess.run(
+            [sys.executable, str(temporaria / "preparar.py"), "--origem", str(fonte / "services"),
+             "--destino", str(temporaria / "modules")], stdout=registro, stderr=subprocess.STDOUT)
+        if processo.returncode != 0:
+            raise RuntimeError("montagem dos módulos da aplicação falhou")
+        shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=True)
+        imagem, construida, build_s = garantir_base(celula, sha, fonte, registro)
         estaticos = comando_de_estaticos(celula, temporaria)
         if estaticos:
             processo = subprocess.run(
@@ -535,18 +526,9 @@ def publicacao_em_andamento() -> bool:
 
 
 def journals_em_uso() -> list[dict]:
-    """Após o corte, só a aplicação representa o site; na recuperação, os legados voltam."""
+    """A aplicação representa o site."""
     aplicacao = journal("aplicacao")
-    if aplicacao and aplicacao.get("atual"):
-        return [aplicacao]
-    estados = []
-    for caminho in PUBLICACOES.glob("*.json"):
-        if caminho.stem in {"imagens", "recuperacao-terminal", "incidente", "aplicacao-transicao"}:
-            continue
-        dado = json.loads(caminho.read_text())
-        if isinstance(dado, dict) and dado.get("celula") and dado.get("atual"):
-            estados.append(dado)
-    return estados
+    return [aplicacao] if aplicacao and aplicacao.get("atual") else []
 
 
 def vigiar() -> int:
