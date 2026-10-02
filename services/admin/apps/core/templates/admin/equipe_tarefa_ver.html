@@ -73,7 +73,7 @@ e o script embutido só o faz andar a cada segundo; ele entra no CSP pelo hash
       <button class="botao-pequeno" type="submit">Concluir</button>
       {% endif %}
     </form>
-    {% if e_responsavel and tarefa.situacao != 'concluida' %}
+    {% if tarefa.responsavel_id and tarefa.situacao != 'concluida' %}
     <form method="post" action="{% url 'tarefa_compromisso' tarefa.id %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ endereco_atual }}">

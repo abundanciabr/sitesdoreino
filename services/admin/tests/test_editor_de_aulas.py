@@ -540,7 +540,7 @@ def test_o_editor_a_gravacao_e_a_publicacao_levam_o_curso_e_a_parte_a_porta():
     cliente.get(reverse("escola_aula", kwargs=endereco))
     salvou = cliente.post(reverse("escola_aula_salvar", kwargs=endereco), _formulario())
     publicou = cliente.post(
-        reverse("escola_aula_publicar", kwargs=endereco), {"confirmo": "1"}
+        reverse("escola_aula_publicar", kwargs=endereco), {}
     )
 
     for rota in (leitura, gravacao, publicacao):
@@ -593,7 +593,7 @@ def test_a_tela_nunca_chama_as_operacoes_que_nao_sabem_de_curso():
     )
     cliente.post(
         reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
-        {"confirmo": "1"},
+        {},
     )
 
     assert [rota.call_count for rota in sem_curso] == [0, 0, 0, 0]
@@ -816,7 +816,7 @@ def test_publicar_chama_a_porta_e_mostra_a_data():
     cliente = _dentro()
     resposta = cliente.post(
         reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
-        {"confirmo": "1"},
+        {},
     )
 
     assert resposta.status_code == 302
@@ -1383,7 +1383,7 @@ def test_a_recusa_de_publicar_do_inv_c1_chega_a_tela_como_frase():
 
     resposta = _dentro().post(
         reverse("escola_aula_publicar", kwargs={"curso": CURSO, "numero": "E07"}),
-        {"confirmo": "1"},
+        {},
     )
 
     assert resposta.status_code == 422

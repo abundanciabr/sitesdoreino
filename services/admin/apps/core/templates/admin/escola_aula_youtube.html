@@ -32,7 +32,6 @@
   {% if url_salva %}
   <form method="post" action="{{ url_de_publicar }}">
     {% csrf_token %}
-    <input type="hidden" name="confirmo" value="1">
     <button type="submit">Tentar publicar a aula de novo</button>
   </form>
   {% endif %}

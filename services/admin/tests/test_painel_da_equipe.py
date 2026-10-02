@@ -775,42 +775,43 @@ def test_tirar_da_semana_so_mexe_na_semana_corrente():
 
 
 @respx.mock
-def test_so_quem_responde_pela_tarefa_assume_ou_tira_da_semana():
-    """02/10/2026: a Lívia tirou da semana uma tarefa que o Arameu assumiu."""
+def test_qualquer_pessoa_da_equipe_assume_ou_tira_da_semana():
+    """A Lívia assume e tira o compromisso de uma tarefa do Arameu."""
     livia = _livia()
     arameu = MembroDaEquipe.objects.get(nome="Arameu")
     arameu.email = DONO
     arameu.save()
     tarefa = Tarefa.objects.create(titulo="TESTE Portfólio", responsavel=arameu)
     Compromisso.objects.create(tarefa=tarefa, semana=_segunda(timezone.localdate()))
-    dela = Tarefa.objects.create(titulo="TESTE Aula", responsavel=livia)
+    alheia = Tarefa.objects.create(titulo="TESTE Outra do Arameu", responsavel=arameu)
     cliente = _cliente(LIVIA, nome="Lívia")
 
     for rota in (reverse(PAINEL) + "?visao=equipe", reverse("semana_da_equipe")):
         html = _texto(cliente.get(rota))
         assert "TESTE Portfólio" in html
-        assert ">Tirar da semana</button>" not in html, rota
-    assert ">Assumir na semana</button>" in _texto(cliente.get(reverse(PAINEL)))
+        assert ">Tirar da semana</button>" in html, rota
+    assert ">Assumir na semana</button>" in _texto(
+        cliente.get(reverse(PAINEL) + "?visao=equipe")
+    )
 
     tirar = cliente.post(
         reverse("tarefa_compromisso", args=[tarefa.id]), {"acao": "tirar"}
     )
-    assert tirar["Location"].endswith("resultado=compromisso_de_outra_pessoa")
-    assert Compromisso.objects.filter(tarefa=tarefa).exists()
-    marcar = cliente.post(reverse("tarefa_compromisso", args=[dela.id]), {"acao": "marcar"})
-    assert marcar["Location"].endswith("resultado=compromisso_marcado")
-    Compromisso.objects.filter(tarefa=dela).delete()
-    assert "só essa pessoa assume ou tira" in _texto(
-        cliente.get(reverse(PAINEL) + "?resultado=compromisso_de_outra_pessoa")
-    )
+    assert tirar["Location"].endswith("resultado=compromisso_tirado")
+    assert not Compromisso.objects.filter(tarefa=tarefa).exists()
 
-    # Nem a Lívia assume a tarefa do Arameu; o Arameu, sim, tira a dele.
-    alheia = Tarefa.objects.create(titulo="TESTE Outra do Arameu", responsavel=arameu)
-    cliente.post(reverse("tarefa_compromisso", args=[alheia.id]), {"acao": "marcar"})
-    assert not Compromisso.objects.filter(tarefa=alheia).exists()
+    marcar = cliente.post(
+        reverse("tarefa_compromisso", args=[alheia.id]), {"acao": "marcar"}
+    )
+    assert marcar["Location"].endswith("resultado=compromisso_marcado")
+    compromisso = Compromisso.objects.get(tarefa=alheia)
+    assert compromisso.marcado_por == f"Lívia ({LIVIA})"
+    assert livia.id != alheia.responsavel_id, "a tarefa continua sendo do Arameu"
+    assert "TESTE Outra do Arameu" in _texto(cliente.get(reverse("semana_da_equipe")))
+
+    # E o Arameu tira a dele do mesmo jeito.
     dono = _cliente(DONO, nome="Arameu")
-    assert ">Tirar da semana</button>" in _texto(dono.get(reverse("semana_da_equipe")))
-    dono.post(reverse("tarefa_compromisso", args=[tarefa.id]), {"acao": "tirar"})
+    dono.post(reverse("tarefa_compromisso", args=[alheia.id]), {"acao": "tirar"})
     assert not Compromisso.objects.exists()
 
 

@@ -262,7 +262,6 @@ def decidir(
     experimento_id: str,
     decisao: str,
     variante_id: str | None,
-    confirmou_inconclusivo: bool,
 ) -> Desfecho:
     """O gesto inteiro, sob a trava do experimento."""
     catalogo = CatalogoClient()
@@ -348,7 +347,6 @@ def decidir(
             ),
             f"{decisao}"
             + (f" {variante_id}" if decisao == "promover" else "")
-            + (" com resultado não conclusivo" if confirmou_inconclusivo else "")
             + ("" if situacao == CatalogoClient.OK else f": {resposta}"),
         )
         if situacao == CatalogoClient.OK:
@@ -454,7 +452,6 @@ def decidir_experimento(request, experimento_id: str):
         experimento_id,
         decisao,
         request.POST.get("variante") or None,
-        request.POST.get("confirmo_inconclusivo") == "sim",
     )
     if desfecho.estado in ("feito", "repetido"):
         recado = decisao if desfecho.estado == "feito" else "repetido"

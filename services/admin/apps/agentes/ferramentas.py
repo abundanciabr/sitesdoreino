@@ -182,8 +182,8 @@ DEFINICOES = [
     ),
     _ferramenta(
         "marcar_compromisso",
-        "Assume a tarefa como compromisso da semana atual, ou tira. Só "
-        "vale para tarefa de que a própria pessoa é responsável.",
+        "Assume a tarefa como compromisso da semana atual, ou tira. Vale "
+        "para qualquer tarefa aberta que tenha responsável.",
         {"tarefa_id": {"type": "integer"}, "tirar": {"type": "boolean"}},
     ),
     _ferramenta(
@@ -486,10 +486,6 @@ FRASES = {
     "compromisso_sem_responsavel": (
         "Compromisso é de alguém: a tarefa precisa de responsável. Nada mudou."
     ),
-    "compromisso_de_outra_pessoa": (
-        "O compromisso da semana é de quem responde pela tarefa: só essa "
-        "pessoa assume ou tira. Nada mudou."
-    ),
     "comentado": "Comentário publicado.",
     "comentario_vazio": "O comentário estava vazio. Nada foi publicado.",
     "comentario_longo": "O comentário passou de 500 letras. Nada foi publicado.",
@@ -498,7 +494,6 @@ CODIGOS_DE_RECUSA = {
     "situacao_desconhecida",
     "compromisso_concluida",
     "compromisso_sem_responsavel",
-    "compromisso_de_outra_pessoa",
     "comentario_vazio",
     "comentario_longo",
 }
@@ -532,9 +527,7 @@ def comentar_tarefa(ctx: Contexto, args: dict) -> dict:
 
 def marcar_compromisso(ctx: Contexto, args: dict) -> dict:
     tarefa = _tarefa(args)
-    codigo = operacoes.marcar_compromisso(
-        tarefa, ctx.quem, membro=ctx.membro, tirar=bool(args.get("tirar"))
-    )
+    codigo = operacoes.marcar_compromisso(tarefa, ctx.quem, tirar=bool(args.get("tirar")))
     return _resultado_do_painel(codigo, tarefa)
 
 

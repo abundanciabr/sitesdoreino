@@ -92,7 +92,7 @@
       {% if soltos %}{{ soltos }} {% if soltos == 1 %}não diz{% else %}não dizem{% endif %} mover nenhum destes números ({{ soltos_cumpridos }} cumprido{{ soltos_cumpridos|pluralize }}): é o trabalho do dia a dia, e é bom saber quanto ele é.{% else %}Todos dizem mover um destes números.{% endif %}
       <a href="{% url 'semana_da_equipe' %}">Ver por pessoa</a>.
     {% else %}
-      Nenhum compromisso assumido nesta semana. No cartão de uma tarefa aberta que é sua, aperte <b>Assumir na semana</b>.
+      Nenhum compromisso assumido nesta semana. No cartão de uma tarefa aberta que tem responsável, aperte <b>Assumir na semana</b>.
     {% endif %}
   </p>
 </div>

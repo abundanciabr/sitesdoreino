@@ -307,7 +307,7 @@ class Command(BaseCommand):
 
     def _decidir_encerrar(self, alvo: str) -> None:
         """Encerra pela decisão da tela, com a trava e a auditoria dela."""
-        desfecho = decidir(ATOR, self.site["id"], alvo, "encerrar", None, False)
+        desfecho = decidir(ATOR, self.site["id"], alvo, "encerrar", None)
         if desfecho.estado not in ("feito", "repetido"):
             raise CommandError(
                 f"O catálogo não encerrou o A/A {alvo}: {desfecho.frase} O QUE "

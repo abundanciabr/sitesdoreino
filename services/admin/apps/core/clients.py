@@ -1749,6 +1749,8 @@ class EncomendasClient:
     ) -> "tuple[str, str]":
         """Acrescenta uma linha nova ao histórico da chave. Devolve (situação, frase).
 
+        `motivo` pode vir vazio: vai vazio, e nunca um texto inventado aqui.
+
         **Nunca reescreve a linha que está valendo**, e isso não é promessa deste
         arquivo: o `UPDATE` é recusado por gatilho no PostgreSQL do outro lado. O
         que este método decide é só o que o mantenedor lê quando a célula recusa.

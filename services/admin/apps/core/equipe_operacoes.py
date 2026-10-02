@@ -219,32 +219,23 @@ def mudar_situacao(tarefa: Tarefa, situacao: str, impedimento: str, quem: str) -
     return "situacao"
 
 
-def marcar_compromisso(
-    tarefa: Tarefa, quem: str, *, membro: MembroDaEquipe | None, tirar: bool = False
-) -> str:
+def marcar_compromisso(tarefa: Tarefa, quem: str, *, tirar: bool = False) -> str:
     """Assumir a tarefa como compromisso da semana corrente, ou tirá-la.
 
     Só a semana CORRENTE se mexe: o que ficou numa semana que já passou é o
     registro dela, e tirar dali seria reescrever o resultado.
 
-    O compromisso é da pessoa que responde pela tarefa: só ela assume ou tira
-    (`membro` é quem está agindo; o robô age como a pessoa dona dele).
+    Qualquer pessoa da equipe (e o robô dela) assume ou tira; o compromisso
+    fica no nome de quem responde pela tarefa, e `quem` fica gravado.
     """
     semana = segunda(hoje())
-    de_outra_pessoa = tarefa.responsavel_id is not None and (
-        membro is None or tarefa.responsavel_id != membro.id
-    )
     if tirar:
-        if de_outra_pessoa:
-            return "compromisso_de_outra_pessoa"
         Compromisso.objects.filter(tarefa=tarefa, semana=semana).delete()
         return "compromisso_tirado"
     if tarefa.situacao == Situacao.CONCLUIDA:
         return "compromisso_concluida"
     if tarefa.responsavel_id is None:
         return "compromisso_sem_responsavel"
-    if de_outra_pessoa:
-        return "compromisso_de_outra_pessoa"
     Compromisso.objects.get_or_create(
         tarefa=tarefa, semana=semana, defaults={"marcado_por": quem[:200]}
     )
