@@ -169,3 +169,153 @@ status_mesclado:
   en: "merged"
   pt-br: "mesclado"
   es: "fusionado"
+
+sugestao_implementada_titulo:
+  _fonte: "939a72"
+  en: "Suggestion implemented"
+  pt-br: "Sugestão implementada"
+  es: "Sugerencia implementada"
+
+ver_sugestao:
+  _fonte: "427f07"
+  en: "See the suggestion"
+  pt-br: "Ver a sugestão"
+  es: "Ver la sugerencia"
+
+nivel_titulo:
+  _fonte: "656c39"
+  en: "You moved up a level"
+  pt-br: "Você subiu de nível"
+  es: "Subiste de nivel"
+
+nivel_corpo:
+  _fonte: "5584de"
+  en: "You are now at level {nivel}."
+  pt-br: "Agora você está no nível {nivel}."
+  es: "Ahora estás en el nivel {nivel}."
+
+nivel_corpo_sem_numero:
+  _fonte: "711c5e"
+  en: "You reached a new step."
+  pt-br: "Você alcançou um novo degrau."
+  es: "Alcanzaste un nuevo escalón."
+
+conquista_titulo:
+  _fonte: "40dd6c"
+  en: "You earned a medal"
+  pt-br: "Você ganhou uma medalha"
+  es: "Ganaste una medalla"
+
+conquista_corpo:
+  _fonte: "3ae24f"
+  en: "It is already saved in your achievements."
+  pt-br: "Ela já está guardada nas suas conquistas."
+  es: "Ya está guardada en tus logros."
+
+marco_titulo:
+  _fonte: "a9961a"
+  en: "Your milestone was accepted"
+  pt-br: "Seu marco foi aceito"
+  es: "Tu hito fue aceptado"
+
+marco_corpo:
+  _fonte: "c1c224"
+  en: "Someone reviewed what you sent, and the milestone is yours."
+  pt-br: "Alguém conferiu o que você enviou, e o marco agora é seu."
+  es: "Alguien revisó lo que enviaste, y el hito ahora es tuyo."
+
+destaque_titulo:
+  _fonte: "8b9481"
+  en: "Your work was featured"
+  pt-br: "Sua obra foi destaque"
+  es: "Tu obra fue destacada"
+
+destaque_corpo:
+  _fonte: "c5ff7d"
+  en: "A teacher picked your work for the gallery of the week."
+  pt-br: "Um professor escolheu o seu trabalho para a galeria da semana."
+  es: "Un profesor eligió tu trabajo para la galería de la semana."
+
+portfolio_titulo:
+  _fonte: "d90526"
+  en: "Your portfolio was checked"
+  pt-br: "Seu portfólio foi conferido"
+  es: "Tu portafolio fue revisado"
+
+portfolio_corpo:
+  _fonte: "7645a3"
+  en: "The school checked your portfolio and the seal is out."
+  pt-br: "A escola conferiu seu portfólio e o selo saiu."
+  es: "La escuela revisó tu portafolio y el sello salió."
+
+ver_portfolio:
+  _fonte: "e48dca"
+  en: "Open my portfolio"
+  pt-br: "Abrir meu portfólio"
+  es: "Abrir mi portafolio"
+
+ver_conquistas:
+  _fonte: "1c9ce6"
+  en: "See my achievements"
+  pt-br: "Ver minhas conquistas"
+  es: "Ver mis logros"
+
+matricula_titulo:
+  _fonte: "c7c223"
+  en: "Your enrollment changed"
+  pt-br: "Sua matrícula mudou"
+  es: "Tu matrícula cambió"
+
+matricula_ativa:
+  _fonte: "9bc3f1"
+  en: "Your enrollment is active."
+  pt-br: "Sua matrícula está ativa."
+  es: "Tu matrícula está activa."
+
+matricula_aguardando:
+  _fonte: "e2bfa9"
+  en: "Your request is in the queue, waiting for a decision."
+  pt-br: "Seu pedido está na fila, esperando decisão."
+  es: "Tu pedido está en la fila, esperando una decisión."
+
+matricula_suspensa:
+  _fonte: "e36572"
+  en: "Your access is paused."
+  pt-br: "Seu acesso está pausado."
+  es: "Tu acceso está en pausa."
+
+matricula_encerrada:
+  _fonte: "01f092"
+  en: "Your access has ended."
+  pt-br: "Seu acesso foi encerrado."
+  es: "Tu acceso terminó."
+
+matricula_reembolsada:
+  _fonte: "19918a"
+  en: "Your payment was refunded and the access ended."
+  pt-br: "Seu pagamento foi reembolsado e o acesso acabou."
+  es: "Tu pago fue reembolsado y el acceso terminó."
+
+matricula_recusada:
+  _fonte: "9b6cf3"
+  en: "Your request was not approved."
+  pt-br: "Seu pedido não foi aprovado."
+  es: "Tu pedido no fue aprobado."
+
+matricula_outra:
+  _fonte: "b8d291"
+  en: "The school updated your enrollment."
+  pt-br: "A escola atualizou sua matrícula."
+  es: "La escuela actualizó tu matrícula."
+
+teste_titulo:
+  _fonte: "6d4ffb"
+  en: "Test notice"
+  pt-br: "Aviso de teste"
+  es: "Aviso de prueba"
+
+teste_corpo:
+  _fonte: "c18735"
+  en: "It worked. This is the test you asked for."
+  pt-br: "Deu certo. Este é o teste que você pediu."
+  es: "Funcionó. Esta es la prueba que pediste."
