@@ -268,7 +268,7 @@ def formulario(request, slug):
     if quiz.directed and request.method == "GET" and not request.GET.get("v"):
         return render(request, "quiz/campanha.html", {"quiz": quiz})
     entrada, versao = resolver_sessao(request, quiz)
-    if quiz.directed and (entrada.get("context") or {}).get("fmt") == "ai":
+    if quiz.directed and (entrada.get("context") or {}).get("fmt") in ("ai", "ai_agent"):
         # Importado aqui: conversa.py importa este módulo.
         from .conversa import formulario_ai
 

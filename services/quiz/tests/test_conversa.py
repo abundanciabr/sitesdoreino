@@ -290,3 +290,10 @@ def test_abas_diferentes_nao_se_misturam(client, quiz):
     )
     assert inexistente.status_code == 404
     assert Submission.objects.count() == 0
+
+
+@pytest.mark.parametrize("fmt", ["ai", "ai_agent"])
+def test_entrada_principal_com_fmt_de_ia_abre_a_conversa(client, quiz, fmt):
+    resposta = client.get(f"/{quiz.slug}/?v=B2&fmt={fmt}", HTTP_HOST=quiz.site.host)
+    assert resposta.status_code == 200
+    assert "estado_token" in resposta.context
