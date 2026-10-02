@@ -4,12 +4,11 @@ Esta pasta contém os formatos de integração entre as células do site.
 
 ## Compatibilidade HTTP
 
-1. `ci/freeze-de-contrato.sh` compara o schema HTTP com o congelado. O manifesto
-   `ci/manifesto-de-contratos.json` registra quais schemas participam dessa
-   prova; um schema marcado como obrigatório precisa estar declarado nele.
-2. Extensões aditivas preservam operações e definições existentes. Remoções,
-   mudanças incompatíveis ou diferenças entre schema, manifesto e serviço
-   aparecem na prova de compatibilidade.
+1. Cada `contracts/<celula>.openapi.yaml` é o schema HTTP daquela célula. O
+   manifesto `ci/manifesto-de-contratos.json` lista as células publicáveis.
+2. Extensões aditivas preservam operações e definições existentes. Remoção ou
+   mudança incompatível de uma operação quebra quem a consome: conserte o
+   schema e o serviço juntos, e publique (push na main).
 
 3. Consumidores podem desenvolver e exercitar a integração pelo mock do schema:
 

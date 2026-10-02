@@ -104,10 +104,6 @@ def carregar(raiz: Path | None = None) -> dict[str, Celula]:
             consome=tuple(sorted(str(c).strip() for c in consome)),
             compartilhados=tuple(str(c).strip().strip("/") for c in compartilhados),
         )
-    # Durante o corte, as entradas antigas ficam recuperáveis no arquivo, mas
-    # todo código do produto passa a pertencer à única aplicação publicada.
-    if "aplicacao" in mapa:
-        return {"aplicacao": mapa["aplicacao"]}
     return mapa
 
 
