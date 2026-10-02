@@ -7,9 +7,10 @@ cole numa conversa com o robô aberta na pasta do projeto e troque o que está e
 
 - **Na VPS**, na pasta `/opt/plataforma/backups-de-banco`. Ela recebe uma cópia de todas as bases
   antes de cada publicação e outra uma vez por dia, às 3h30 da manhã (horário de Brasília).
+  Ficam só as dos últimos 7 dias: a cópia diária apaga as mais velhas.
 - **No seu PC**, na pasta `C:\Users\davia\Cofre-sitesdoreino`. A tarefa "Cofre sitesdoreino" do
   Windows traz para essa pasta o que é novo na VPS, uma vez por dia e sempre que você entra no
-  Windows. Nada é apagado dessa pasta.
+  Windows. Dos backups do banco ficam só os últimos 7 dias, como na VPS.
 - **Para ver a data da última cópia**, abra `C:\Users\davia\Cofre-sitesdoreino\ultima-copia.txt`.
   A primeira linha tem a data. A última linha diz se o PC e a VPS têm os mesmos arquivos.
 
@@ -23,7 +24,8 @@ O que as cópias guardam:
 - no PC, também as pastas `admin-midia` (arquivos anexados no painel) e `admin-dados` (a fila
   antiga).
 
-As senhas e chaves (a pasta `env` da VPS) não vão para o PC.
+As senhas e chaves (a pasta `env` e o arquivo `.env` da VPS) também vêm para o PC, em
+`C:\Users\davia\Cofre-sitesdoreino\senhas`.
 
 O nome de cada arquivo diz de quando ele é. Por exemplo, `alunos_db-20261002-155607Z-diario.dump`
 é a base de alunos de 02/10/2026 às 15:56 no horário UTC, que é 12:56 em Brasília (três horas a
@@ -110,7 +112,7 @@ recebida: `S=codigo/ferramentas/atual/infra`.
     5. se o site não abrir, desfaz tudo.
 - **VPS nova:**
   1. Rode `infra/provisionamento-vps.sh`.
-  2. Ponha as chaves em `/opt/plataforma/env/`. Os papéis do banco pegam as senhas do `DATABASE_URL` de lá.
+  2. Ponha as chaves em `/opt/plataforma/env/` e `/opt/plataforma/.env`, copiando de `senhas\env` e `senhas\.env` do cofre. Os papéis do banco pegam as senhas do `DATABASE_URL` de lá.
   3. Suba só o `postgres` e o `redis`.
   4. Copie o conjunto mais novo do cofre para `backups-de-banco/`.
   5. Rode `bash $S/restaurar-backup.sh --vps-nova <CARIMBO>`. Isso cria os papéis que faltam e as 17 bases, com dono e contagens conferidos.

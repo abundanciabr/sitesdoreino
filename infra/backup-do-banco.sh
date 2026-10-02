@@ -13,7 +13,9 @@
 #   <CARIMBO>.contagens.tsv        base, tabela e linhas de cada tabela, contadas logo antes do dump
 #   redis-<CARIMBO>.rdb            foto do Redis (falha aqui só avisa: o Redis guarda eventos de passagem)
 #
-# Nunca apaga backup. Sai com código diferente de zero se alguma base não foi copiada.
+# Depois de uma cópia completa, apaga os arquivos com carimbo de mais de 7 dias (o mantenedor
+# escolheu guardar só os últimos 7 dias, em 02/10/2026). Sai com código diferente de zero se
+# alguma base não foi copiada, e aí não apaga nada.
 # Para voltar: infra/restaurar-backup.sh (guia em infra/COMO-RESTAURAR.md).
 
 set -eu
@@ -117,3 +119,17 @@ if [ -n "$REDIS" ] && [ -z "${BASES:-}" ]; then
 fi
 
 echo "BACKUP-CONCLUIDO: $CARIMBO $FEITAS bases em $PASTA (o carimbo é UTC; em Brasília são 3 horas a menos)"
+
+# Só os últimos 7 dias ficam: sai todo arquivo cujo carimbo é de antes de hoje menos 7 dias (UTC).
+# Só depois de uma cópia de todas as bases, para nunca sobrar apenas cópia parcial.
+[ -z "${BASES:-}" ] || exit 0
+LIMITE="$(date -u -d '7 days ago' +%Y%m%d)"
+SAIRAM=0
+for ARQ in "$PASTA"/*; do
+  [ -f "$ARQ" ] || continue
+  DIA="$(basename "$ARQ" | sed -nE 's/^(.*-)?([0-9]{8})-[0-9]{6}Z.*/\2/p')"
+  if [ -n "$DIA" ] && [ "$DIA" -lt "$LIMITE" ]; then
+    rm -f "$ARQ" && SAIRAM=$((SAIRAM + 1))
+  fi
+done
+[ "$SAIRAM" -eq 0 ] || echo "BACKUP: saíram $SAIRAM arquivos com carimbo de antes de $LIMITE (ficam os últimos 7 dias)"
