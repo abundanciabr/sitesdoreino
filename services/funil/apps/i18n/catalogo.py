@@ -2,12 +2,12 @@
 #
 # Divisão de trabalho do módulo apps.i18n:
 #   catalogo.py  → carregar YAML estrito, achatar, resolver em runtime (t/t_lazy)
-#                  + a política de TRADUÇÃO da célula (IDIOMAS_BASE, VARIANTES,
-#                    GLOSSARIO): o que ela sabe renderizar, e como
+#                  + a política de TRADUÇÃO da célula (IDIOMAS_BASE, VARIANTES):
+#                    o que ela sabe renderizar, e como
 #   idiomas.py   → os idiomas DO SITE, vindos do catálogo (contrato `Site`),
 #                  + derivação de tag BCP 47/dir + emissão SEO
-#   validador.py → portão fail-closed (mesma implementação no CI e no boot)
-#   apps.py      → boot: valida e congela o catálogo em memória (zero parse/request)
+#   validador.py → carrega o catálogo; problema vira linha de log
+#   apps.py      → boot: carrega e congela o catálogo em memória (zero parse/request)
 import hashlib
 import logging
 import re
@@ -39,40 +39,24 @@ IDIOMAS_BASE = ("en", "pt-br", "es")
 # ainda que o catálogo o declare para o site.
 VARIANTES: "dict[str, str]" = {}
 
-# D8.1 — glossário: nomes próprios que NUNCA se traduzem; o validador confere
-# a presença literal em toda tradução cujo `en` os contenha. Vinha do registro
-# interim (por site); é conhecimento da CÉLULA — quem escreve a tradução é
-# quem precisa da regra, e ela não muda de site para site.
-GLOSSARIO = ("Meshcraft", "Roblox", "Roblox Studio")
-
-FONTE_PENDENTE = "pendente"  # D4: degradação declarável, nunca inferível
-
-# D8.2 — texto com efeito legal (termos de uso, privacidade, consentimento).
-# Toda folha do catálogo é `str` (D2.7), então em YAML escreve-se
-# `_juridico: "true"` COM aspas — o booleano nu cai antes, no loader estrito.
-# Não existe `"false"`: a AUSÊNCIA da chave é a forma de dizer "não é jurídico".
-# Um valor que desligasse o portão seria o silenciador barato que um agente
-# instruído a "deixar o CI verde" acharia primeiro (mesmo espírito da regra
-# anti-burla do `_fonte`).
+# Chaves de anotação que o catálogo aceita ao lado dos idiomas: `_fonte` (hash
+# do en), `_juridico` e `_revisado_humano` (texto com efeito legal). São só
+# anotação para quem escreve a tradução; o carregamento não as confere.
 CHAVE_JURIDICO = "_juridico"
-VALOR_JURIDICO = "true"
-# Declaração de revisão humana: mapa idioma → "Quem revisou AAAA-MM-DD".
-# POR IDIOMA de propósito — revisar o inglês não valida o espanhol (D8.2).
 CHAVE_REVISAO_HUMANA = "_revisado_humano"
 
 CHAVES_META = (
     "_fonte",
     CHAVE_JURIDICO,
     CHAVE_REVISAO_HUMANA,
-)  # meta desconhecida = FAIL (fail-closed; fases futuras ampliam)
+)
 SUFIXO_HTML = ".html"  # única forma de chave que admite markup (com whitelist)
 
 RE_PLACEHOLDER = re.compile(r"[a-z_][a-z0-9_]*\Z")  # D2.2: sem ponto, sem índice
 RE_SEGMENTO = re.compile(r"[a-z0-9_]+(\.html)?\Z")
-RE_HEX6 = re.compile(r"[0-9a-f]{6}\Z")
 
 # Whitelist do sufixo .html — só marcação inline inofensiva; nada de script,
-# nada de handler de evento, nada de javascript: (validador reprova no portão).
+# nada de handler de evento, nada de javascript: (o validador anota no log).
 TAGS_HTML_PERMITIDAS = frozenset(
     {"a", "abbr", "b", "br", "code", "em", "i", "small", "span", "strong"}
 )

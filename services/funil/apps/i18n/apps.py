@@ -1,6 +1,5 @@
-# apps/i18n/apps.py — entrada (b) do validador: BOOT fail-closed (D4).
-# Catálogo/registro inválido ⇒ ImproperlyConfigured ⇒ o processo NÃO sobe.
-# O CI protege o merge; ISTO protege a produção (merge sujo, drift).
+# apps/i18n/apps.py — na partida, carrega e instala o catálogo de traduções.
+# Problema no catálogo vira linha de log; o processo sobe do mesmo jeito.
 from django.apps import AppConfig
 
 

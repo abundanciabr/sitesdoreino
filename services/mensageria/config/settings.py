@@ -1,9 +1,12 @@
 # config/settings.py — padrão fail-hard  # [RECEITA:CONV v1]
+import logging
 import os
 from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -128,7 +131,11 @@ TIME_ZONE = "America/Sao_Paulo"
 # coisa.
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ.get("SMTP_HOST", "")
-EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+try:
+    EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+except ValueError:
+    logger.warning("SMTP_PORT inválida (%r); usando 587", os.environ["SMTP_PORT"])
+    EMAIL_PORT = 587
 EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
 EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 # 587 com STARTTLS é o que o Brevo documenta e o que todo provedor aceita. A
@@ -144,15 +151,17 @@ EMAIL_SUPPRESSIONS_SINCRONIZADAS = (
 
 
 def limite_de_email(nome: str) -> int | None:
+    # Valor ruim vira None (o envio usa o padrão baixo de apps/eventos/capacidade.py).
     valor = os.environ.get(nome, "").strip()
     if not valor:
         return None
     try:
         limite = int(valor)
-    except ValueError as exc:
-        raise ImproperlyConfigured(f"{nome} deve ser um inteiro positivo") from exc
+    except ValueError:
+        limite = 0
     if limite <= 0:
-        raise ImproperlyConfigured(f"{nome} deve ser um inteiro positivo")
+        logger.warning("%s deve ser um inteiro positivo (%r); ignorado", nome, valor)
+        return None
     return limite
 
 

@@ -50,7 +50,6 @@ from config.huey import huey
 
 from .capacidade import (
     CapacidadeDoProvedor,
-    CapacidadeNaoConfigurada,
     atraso_com_backoff,
     registrar_falha,
     registrar_sucesso,
@@ -223,11 +222,10 @@ def processar_envio(envio_id: int, task=None) -> None:
             envio.resultado = str(exc)[:500]
             envio.save(update_fields=["status", "tentativas", "resultado"])
             return
-        except (CapacidadeDoProvedor, CapacidadeNaoConfigurada) as exc:
-            if isinstance(exc, CapacidadeDoProvedor):
-                contar_tentativa = False
-                if task is not None:
-                    task.retry_delay = exc.atraso
+        except CapacidadeDoProvedor as exc:
+            contar_tentativa = False
+            if task is not None:
+                task.retry_delay = exc.atraso
             erro = exc
         except EmailNaoConfigurado as exc:
             erro = exc

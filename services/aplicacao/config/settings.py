@@ -1,5 +1,6 @@
 """One Django registry with the existing databases kept separate."""
 
+import logging
 import os
 from pathlib import Path
 
@@ -8,14 +9,18 @@ from django.core.exceptions import ImproperlyConfigured
 
 from .registry import SERVICES, app_configs
 
+logger = logging.getLogger(__name__)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODULES_ROOT = BASE_DIR / "modules"
 ENV_DIR = Path(os.environ.get("APLICACAO_ENV_DIR", BASE_DIR / "env"))
 
 
 def _read_env(path: Path) -> dict[str, str]:
+    # Arquivo ausente vira ambiente vazio: um módulo sem env não derruba o site.
     if not path.is_file():
-        raise ImproperlyConfigured(f"ambiente do módulo ausente: {path}")
+        logger.warning("ambiente do módulo ausente, seguindo vazio: %s", path)
+        return {}
     values = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
@@ -39,6 +44,7 @@ SERVICE_ENV = {service: _read_env(ENV_DIR / f"{service}.env") for service in SER
 
 
 def _value(service: str, key: str) -> str:
+    # Só DJANGO_SECRET_KEY e DATABASE_URL passam por aqui: sem eles não há site.
     value = SERVICE_ENV[service].get(key) or os.environ.get(f"{service.upper()}_{key}")
     if not value:
         raise ImproperlyConfigured(f"{key} ausente no ambiente de {service}")

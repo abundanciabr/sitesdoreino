@@ -52,7 +52,12 @@ def assinatura_valida(request: HttpRequest) -> bool:
 
     A janela sobre `ts` é parte da validade da assinatura: o HMAC prova que o
     MP assinou ESTE manifesto um dia — só o `ts` diz que foi AGORA. Sem a
-    janela, um webhook antigo capturado seria reapresentável para sempre."""
+    janela, um webhook antigo capturado seria reapresentável para sempre.
+
+    Segredo vazio ⇒ False sempre: com chave vazia qualquer um calcularia o
+    HMAC e forjaria um "pago". O site sobe; o webhook responde 403."""
+    if not settings.MP_WEBHOOK_SECRET:
+        return False
     cabecalho = request.headers.get("x-signature", "")
     partes = dict(p.split("=", 1) for p in cabecalho.split(",") if "=" in p)
     ts = partes.get("ts", "")

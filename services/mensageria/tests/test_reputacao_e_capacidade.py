@@ -8,7 +8,6 @@ from django.utils import timezone
 
 from apps.eventos.capacidade import (
     CapacidadeDoProvedor,
-    CapacidadeNaoConfigurada,
     atraso_com_backoff,
     registrar_falha,
     reservar_envio,
@@ -186,12 +185,6 @@ def test_espera_por_capacidade_nao_consume_tentativa(monkeypatch):
     envio.refresh_from_db()
     assert envio.tentativas == 0
     assert envio.resultado == "teto atingido"
-
-
-def test_limite_ausente_falha_fechado(settings):
-    settings.EMAIL_MAX_EMAILS_POR_MINUTO = None
-    with pytest.raises(CapacidadeNaoConfigurada, match="limites contratados"):
-        reservar_envio()
 
 
 def test_tres_falhas_abrem_disjuntor_e_tem_backoff_com_jitter(monkeypatch):

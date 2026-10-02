@@ -79,10 +79,12 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
 # [INV-P8] Em dev/CI/worktrees é sempre TEST-... — a credencial de produção
 # (APP_USR-...) só existe em /opt/plataforma/env/pagamentos.env na VPS.
-MP_ACCESS_TOKEN = env("MP_ACCESS_TOKEN")
+# Ausente não derruba a partida: só o Mercado Pago fica sem credencial.
+MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 
-# [INV-P10] Segredo do HMAC de x-signature — nunca tem default, fail-hard.
-MP_WEBHOOK_SECRET = env("MP_WEBHOOK_SECRET")
+# [INV-P10] Segredo do HMAC de x-signature. Vazio não derruba a partida: o
+# webhook responde 403 a tudo (core/webhook_signature.py) e nada vira "pago".
+MP_WEBHOOK_SECRET = os.environ.get("MP_WEBHOOK_SECRET", "")
 
 # Appmax permanece inativa sem credenciais; Pix não depende desta integração.
 APPMAX_MERCHANT_CLIENT_ID = os.environ.get("APPMAX_MERCHANT_CLIENT_ID", "")
@@ -105,7 +107,7 @@ APPMAX_PIX_ENABLED_SITES = frozenset(
 # [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.
 # models.relay_outbox). Já provisionado em .github/workflows/ci-celula.yml e em
 # infra/env/pagamentos.env.exemplo por convenção da plataforma.
-REDIS_STREAMS_URL = env("REDIS_STREAMS_URL")
+REDIS_STREAMS_URL = os.environ.get("REDIS_STREAMS_URL", "")
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",

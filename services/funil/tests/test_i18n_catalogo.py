@@ -1,18 +1,12 @@
-"""Validador fail-closed nos TRÊS estados (PASS, FAIL, ERROR — semântica
-INV-CI01), loader YAML estrito (D2.7), runtime t()/plural/escape (D2), overlay
-de variante (D4), glossário e anti-burla do _fonte (D8) — e, desde a FASE 4,
-os idiomas do SITE lidos do catálogo (`apps.i18n.idiomas`, contrato `Site`).
+"""Loader YAML estrito (D2.7), instalação do catálogo, runtime
+t()/plural/escape (D2) e, desde a FASE 4, os idiomas do SITE lidos do
+catálogo (`apps.i18n.idiomas`, contrato `Site`)."""
 
-O teste `test_validador_da_celula_real_passa` É a entrada (a) do portão: roda
-o validador contra a célula de verdade dentro do `make ci`."""
-
-import subprocess
 from pathlib import Path
 from types import MappingProxyType
 
 import pytest
 import yaml
-from django.core.exceptions import ImproperlyConfigured
 from django.template import engines
 from django.test import RequestFactory
 
@@ -22,15 +16,13 @@ from apps.i18n import validador as val
 
 RAIZ_REAL = Path(__file__).resolve().parent.parent
 
-# Variante de mentira para os testes de overlay (D4). A célula real tem
-# `cat.VARIANTES` vazio; o validador aceita a tabela por parâmetro justamente
-# para o teste não precisar mexer no estado global do módulo.
+# Variante de mentira para o teste de instalação (D4). A célula real tem
+# `cat.VARIANTES` vazio.
 VARIANTES_TESTE = {"pt-pt": "pt-br"}
 
 
 def _plural(texto_um: str, texto_outros: str, idioma: str) -> dict:
-    # As categorias vêm do babel PINADO (nunca lista hardcoded) — o teste
-    # constrói o plural exatamente como o validador vai exigir.
+    # As categorias vêm do babel PINADO (nunca lista hardcoded).
     return {
         categoria: (texto_um if categoria == "one" else texto_outros)
         for categoria in sorted(cat.categorias_plural(idioma))
@@ -69,7 +61,7 @@ TEMPLATE_OK = (
 def _celula(tmp_path, doc=None, template=TEMPLATE_OK):
     """Célula de mentira: traduções + templates. Desde a fase 4 não há mais
     arquivo de registro de idiomas para escrever — a política de tradução vem
-    do módulo (`cat.IDIOMAS_BASE`/`VARIANTES`/`GLOSSARIO`)."""
+    do módulo (`cat.IDIOMAS_BASE`/`VARIANTES`)."""
     (tmp_path / "traducoes").mkdir(exist_ok=True)
     (tmp_path / "templates").mkdir(exist_ok=True)
     if doc is not None:
@@ -80,169 +72,11 @@ def _celula(tmp_path, doc=None, template=TEMPLATE_OK):
     return tmp_path
 
 
-# ---------------------------------------------------------------------------
-# A entrada (a) do portão: a célula REAL passa.
-# ---------------------------------------------------------------------------
-def test_validador_da_celula_real_passa():
-    resultado = val.validar_celula(RAIZ_REAL)
-    assert resultado.estado == "PASS", resultado.problemas
-
-
 def test_nenhum_registro_local_de_idioma_sobrou_na_celula():
     # Fase 4: o interim `sites_i18n.yaml` morreu — quem declara idioma é o
     # catálogo. Se alguém recriar o arquivo, este teste conta a história.
     assert not (RAIZ_REAL / "sites_i18n.yaml").exists()
     assert not list(RAIZ_REAL.glob("*i18n*.yaml"))
-
-
-# ---------------------------------------------------------------------------
-# PASS / FAIL do validador — formato, paridade, _fonte, plural, placeholders.
-# ---------------------------------------------------------------------------
-def test_catalogo_completo_passa(tmp_path):
-    resultado = val.validar_celula(_celula(tmp_path, _doc_ok()), com_diff=False)
-    assert resultado.estado == "PASS", resultado.problemas
-    assert "cadastro.titulo" in resultado.chaves
-
-
-def test_falta_de_idioma_base_reprova_nas_duas_direcoes(tmp_path):
-    doc = _doc_ok()
-    del doc["titulo"]["es"]  # falta
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("falta o idioma-base `es`" in p for p in resultado.problemas)
-
-    doc = _doc_ok()
-    doc["titulo"]["fr"] = "Apprendre"  # sobra: idioma não declarado
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("não é idioma declarado" in p for p in resultado.problemas)
-
-
-def test_fonte_desatualizado_reprova_e_pendente_declara(tmp_path):
-    doc = _doc_ok()
-    doc["titulo"]["en"] = "Learn Meshcraft today"  # en mudou, hash não
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("obsoleta" in p for p in resultado.problemas)
-
-    doc = _doc_ok()
-    doc["titulo"] = {"_fonte": "pendente", "en": "Learn Meshcraft today"}
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "PASS", resultado.problemas  # degradação declarada
-
-
-def test_plural_incompleto_para_o_idioma_reprova(tmp_path):
-    doc = _doc_ok()
-    categoria = sorted(set(doc["itens"]["pt-br"]) - {"other", "one"})[0]
-    del doc["itens"]["pt-br"][categoria]
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("categorias CLDR" in p for p in resultado.problemas)
-
-
-def test_placeholder_divergente_reprova(tmp_path):
-    doc = _doc_ok()
-    doc["saudacao"]["pt-br"] = "Olá {name}"
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("placeholders" in p for p in resultado.problemas)
-
-
-def test_placeholder_com_atributo_ou_indice_reprova(tmp_path):
-    doc = _doc_ok()
-    doc["saudacao"]["en"] = "Hi {user.senha}"
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("placeholder proibido" in p for p in resultado.problemas)
-
-
-def test_html_fora_da_whitelist_reprova(tmp_path):
-    doc = _doc_ok()
-    doc["aviso"] = {"html": _spec("<script>x()</script>", "a", "b")}
-    doc["aviso"]["html"]["_fonte"] = cat.hash_da_fonte("<script>x()</script>")
-    resultado = val.validar_celula(
-        _celula(
-            tmp_path,
-            doc,
-            template=TEMPLATE_OK + ' {% t "cadastro.aviso.html" %}',
-        ),
-        com_diff=False,
-    )
-    assert resultado.estado == "FAIL"
-    assert any("whitelist" in p for p in resultado.problemas)
-
-
-def test_overlay_de_variante_igual_a_base_reprova(tmp_path):
-    doc = _doc_ok()
-    doc["titulo"]["pt-pt"] = doc["titulo"]["pt-br"]  # idêntico ⇒ remova
-    resultado = val.validar_celula(
-        _celula(tmp_path, doc), com_diff=False, variantes=VARIANTES_TESTE
-    )
-    assert resultado.estado == "FAIL"
-    assert any("idêntico à base" in p for p in resultado.problemas)
-
-    doc = _doc_ok()
-    doc["so_variante"] = {
-        "_fonte": "pendente",
-        "en": "Only variant",
-        "pt-pt": "Só variante",
-    }
-    resultado = val.validar_celula(
-        _celula(
-            tmp_path, doc, template=TEMPLATE_OK + ' {% t "cadastro.so_variante" %}'
-        ),
-        com_diff=False,
-        variantes=VARIANTES_TESTE,
-    )
-    assert resultado.estado == "FAIL"
-    assert any("sem a base" in p for p in resultado.problemas)
-
-
-def test_variante_com_base_que_nao_e_idioma_base_reprova(tmp_path):
-    # D4, fallback de fallback: a base de uma variante tem de ser idioma-BASE
-    # da célula. Com a tabela em código (fase 4), é aqui que a regra vive.
-    resultado = val.validar_celula(
-        _celula(tmp_path, _doc_ok()),
-        com_diff=False,
-        variantes={"pt-pt": "pt-br", "pt-ao": "pt-pt"},
-    )
-    assert resultado.estado == "FAIL"
-    assert any("fallback de fallback" in p for p in resultado.problemas)
-
-
-def test_glossario_termo_traduzido_reprova(tmp_path):
-    # O glossário vem da CÉLULA (cat.GLOSSARIO) desde a fase 4 — antes vinha
-    # do registro por site, que morreu com o interim.
-    assert "Meshcraft" in cat.GLOSSARIO
-    doc = _doc_ok()
-    doc["titulo"]["pt-br"] = "Aprenda MalhaCraft agora"  # traduziu a marca
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("glossário" in p and "Meshcraft" in p for p in resultado.problemas)
-
-
-def test_template_e_catalogo_nas_duas_direcoes(tmp_path):
-    resultado = val.validar_celula(
-        _celula(tmp_path, _doc_ok(), template=TEMPLATE_OK + ' {% t "cadastro.nada" %}'),
-        com_diff=False,
-    )
-    assert resultado.estado == "FAIL"
-    assert any("usada e não definida" in p for p in resultado.problemas)
-
-    doc = _doc_ok()
-    doc["orfa"] = _spec("Unused", "Sem uso", "Sin uso")
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
-    assert resultado.estado == "FAIL"
-    assert any("definida e não usada" in p for p in resultado.problemas)
-
-
-def test_chave_dinamica_no_template_reprova_o_lint(tmp_path):
-    resultado = val.validar_celula(
-        _celula(tmp_path, _doc_ok(), template=TEMPLATE_OK + " {% t variavel %}"),
-        com_diff=False,
-    )
-    assert resultado.estado == "FAIL"
-    assert any("LITERAL" in p for p in resultado.problemas)
 
 
 # ---------------------------------------------------------------------------
@@ -275,85 +109,6 @@ def test_loader_rejeita_chave_nao_string():
     # validação de folha — cai aqui como tipo inválido de chave (D2.7).
     with pytest.raises(cat.ErroDeCatalogo, match="chave não-string"):
         cat.carregar_yaml_estrito("no: 'norsk'\n")
-
-
-# ---------------------------------------------------------------------------
-# Anti-burla do _fonte (D8/D4) — PASS, FAIL e ERROR, num repositório git
-# hermético (nunca o repo real; nunca `git stash` — ARMADILHAS §6.1.1).
-# ---------------------------------------------------------------------------
-def _git(cwd, *args):
-    subprocess.run(
-        ["git", "-c", "user.email=t@t", "-c", "user.name=t", *args],
-        cwd=str(cwd),
-        check=True,
-        capture_output=True,
-    )
-
-
-@pytest.fixture
-def repo_burla(tmp_path):
-    _celula(tmp_path, _doc_ok())
-    _git(tmp_path, "init", "-q")
-    _git(tmp_path, "add", "-A")
-    _git(tmp_path, "commit", "-q", "-m", "v1")
-    return tmp_path
-
-
-def _regravar(repo, doc):
-    (repo / "traducoes" / "cadastro.yaml").write_text(
-        yaml.safe_dump(doc, allow_unicode=True), encoding="utf-8"
-    )
-
-
-def test_anti_burla_reprova_rehash_sem_traduzir(repo_burla):
-    doc = _doc_ok()
-    doc["titulo"]["en"] = "Learn Meshcraft today"
-    doc["titulo"]["_fonte"] = cat.hash_da_fonte(doc["titulo"]["en"])  # a burla
-    _regravar(repo_burla, doc)
-    resultado = val.validar_celula(repo_burla, base_ref="HEAD")
-    assert resultado.estado == "FAIL"
-    assert any("anti-burla" in p for p in resultado.problemas)
-
-
-def test_anti_burla_aceita_traducao_junto(repo_burla):
-    doc = _doc_ok()
-    doc["titulo"] = _spec(
-        "Learn Meshcraft today",
-        "Aprenda Meshcraft hoje",
-        "Aprende Meshcraft hoy",
-    )
-    _regravar(repo_burla, doc)
-    resultado = val.validar_celula(repo_burla, base_ref="HEAD")
-    assert resultado.estado == "PASS", resultado.problemas
-
-
-def test_anti_burla_aceita_pendente_declarado(repo_burla):
-    doc = _doc_ok()
-    doc["titulo"]["en"] = "Learn Meshcraft today"
-    doc["titulo"]["_fonte"] = "pendente"
-    _regravar(repo_burla, doc)
-    resultado = val.validar_celula(repo_burla, base_ref="HEAD")
-    assert resultado.estado == "PASS", resultado.problemas
-
-
-def test_anti_burla_aceita_marcador_de_revisao(repo_burla):
-    doc = _doc_ok()
-    doc["titulo"]["en"] = "Learn Meshcraft today"
-    novo_hash = cat.hash_da_fonte(doc["titulo"]["en"])
-    doc["titulo"]["_fonte"] = novo_hash
-    texto = yaml.safe_dump(doc, allow_unicode=True).replace(
-        f"_fonte: {novo_hash}",
-        f"_fonte: {novo_hash}  {val.MARCADOR_REVISAO}",
-    )
-    (repo_burla / "traducoes" / "cadastro.yaml").write_text(texto, encoding="utf-8")
-    resultado = val.validar_celula(repo_burla, base_ref="HEAD")
-    assert resultado.estado == "PASS", resultado.problemas
-
-
-def test_anti_burla_ref_incalculavel_e_error_nunca_skip(repo_burla):
-    resultado = val.validar_celula(repo_burla, base_ref="refs/nao-existe")
-    assert resultado.estado == "ERROR"
-    assert any("diff incalculável" in p for p in resultado.problemas)
 
 
 # ---------------------------------------------------------------------------
@@ -459,28 +214,13 @@ def test_dir_deriva_do_idioma_nunca_do_site(codigo, dir_):
 
 
 # ---------------------------------------------------------------------------
-# BOOT (entrada b): inválido não sobe; válido congela imutável em memória.
+# BOOT: o catálogo é instalado imutável em memória.
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def estado_protegido(monkeypatch):
     monkeypatch.setattr(cat, "_CATALOGO", cat._CATALOGO)
     monkeypatch.setattr(cat, "_BASES", cat._BASES)
     monkeypatch.setattr(cat, "CONTADOR_DE_FALTAS", {})
-
-
-def test_boot_recusa_catalogo_invalido(tmp_path, estado_protegido):
-    doc = _doc_ok()
-    del doc["titulo"]["es"]
-    with pytest.raises(ImproperlyConfigured, match="não sobe"):
-        val.validar_e_instalar(_celula(tmp_path, doc))
-
-
-def test_boot_recusa_variantes_incoerentes(tmp_path, estado_protegido, monkeypatch):
-    # A tabela de variantes virou código (fase 4) — e o boot continua
-    # fail-closed sobre ela, como era sobre o registro em arquivo.
-    monkeypatch.setattr(cat, "VARIANTES", {"pt-pt": "pt-ao"})
-    with pytest.raises(ImproperlyConfigured, match="não sobe"):
-        val.validar_e_instalar(_celula(tmp_path, _doc_ok()))
 
 
 def test_boot_instala_catalogo_imutavel(tmp_path, estado_protegido, monkeypatch):

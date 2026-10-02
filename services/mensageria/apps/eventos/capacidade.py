@@ -7,12 +7,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
 
 from .models import JanelaDeCapacidade
 
+LIMITE_PADRAO_POR_MINUTO = 10
+LIMITE_PADRAO_POR_HORA = 100
 MAX_FALHAS_ATE_DISJUNTOR = 3
 TEMPO_DO_DISJUNTOR = timedelta(minutes=5)
 BACKOFF_BASE = 30
@@ -25,10 +26,6 @@ class CapacidadeDoProvedor(RuntimeError):
     def __init__(self, motivo: str, atraso: float):
         super().__init__(motivo)
         self.atraso = max(1, int(atraso))
-
-
-class CapacidadeNaoConfigurada(ImproperlyConfigured):
-    """A conta do provedor ainda não informou seus limites contratados."""
 
 
 @dataclass(frozen=True)
@@ -52,13 +49,9 @@ def _segundos_ate(instante: datetime, agora: datetime) -> float:
 
 
 def _limites_configurados() -> tuple[int, int]:
-    minuto = settings.EMAIL_MAX_EMAILS_POR_MINUTO
-    hora = settings.EMAIL_MAX_EMAILS_POR_HORA
-    if minuto is None or hora is None:
-        raise CapacidadeNaoConfigurada(
-            "EMAIL_MAX_EMAILS_POR_MINUTO e EMAIL_MAX_EMAILS_POR_HORA ausentes; "
-            "informe os limites contratados do provedor antes de enviar"
-        )
+    # Sem limite informado, vale um padrão baixo: o e-mail sai devagar, não para.
+    minuto = settings.EMAIL_MAX_EMAILS_POR_MINUTO or LIMITE_PADRAO_POR_MINUTO
+    hora = settings.EMAIL_MAX_EMAILS_POR_HORA or LIMITE_PADRAO_POR_HORA
     return minuto, hora
 
 
