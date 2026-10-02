@@ -762,7 +762,7 @@ def test_o_menu_e_fail_open_catalogo_fora_do_ar_nao_derruba_a_sala(
 
 
 def test_sem_par_com_o_catalogo_nenhuma_tentativa_de_rede(aluna, rede, client):
-    """O estado real da célula até o passo do mantenedor: silencioso."""
+    """O estado real da célula até o provisionamento: silencioso."""
     resposta = abrir(client, reverse("curso", args=["profissional"]))
     assert resposta.status_code == 200
     assert "menu-topo" not in corpo_de(resposta)

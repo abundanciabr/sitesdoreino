@@ -89,8 +89,9 @@ def esqueleto(db):
     """O curso `profissional` do site `escola-a`, com blocos, aulas e instrumentos.
 
     O curso já aponta para o produto: o semeador não preenche esse campo (o
-    curso nasce sem produto, e conteúdo nenhum entra por migração), e é o passo
-    do mantenedor que o aponta em produção. O cenário faz aqui o que ele faz lá.
+    curso nasce sem produto, e conteúdo nenhum entra por migração), e é o comando
+    `apontar_o_produto_do_curso` que o aponta em produção. O cenário faz aqui o
+    que ele faz lá.
     """
     call_command("semear_esqueleto", site=SITE, stdout=StringIO())
     curso = Curso.objects.get(site_id=SITE, slug="profissional")
@@ -102,7 +103,7 @@ def esqueleto(db):
 @pytest.fixture
 def env_dos_pares(monkeypatch):
     """Os pares provisionados, exceto o do menu (que fica sem par de propósito:
-    é o estado real da célula até o passo do mantenedor, e assim nenhum teste
+    é o estado real da célula até o provisionamento, e assim nenhum teste
     de tela custa uma ida ao catálogo sem querer)."""
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-cursos-para-identidade")

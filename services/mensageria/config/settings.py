@@ -121,10 +121,11 @@ TIME_ZONE = "America/Sao_Paulo"
 # que é onde ela pertence.
 #
 # `os.environ.get` com padrão vazio, nunca `env()`: o `env()` desta casa é
-# fail-hard, e derrubaria os TRÊS containers da célula no boot enquanto o passo
-# do mantenedor não estiver feito. Ausência aqui não é erro de configuração — é
-# o estado normal até ele criar a conta. Quem falha alto é o ENVIO, no ponto de
-# uso (`apps/eventos/tasks.py`), que é onde a falha significa alguma coisa.
+# fail-hard, e derrubaria os TRÊS containers da célula no boot enquanto o
+# provisionamento não estiver feito. Ausência aqui não é erro de configuração —
+# é o estado normal até a conta no provedor existir. Quem falha alto é o ENVIO,
+# no ponto de uso (`apps/eventos/tasks.py`), que é onde a falha significa alguma
+# coisa.
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ.get("SMTP_HOST", "")
 EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")

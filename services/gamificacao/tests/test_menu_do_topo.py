@@ -8,8 +8,8 @@ guardas. Cada um corresponde a uma forma diferente de isto dar errado:
    importante do arquivo.
 2. **O par de tokens ainda não provisionado virar um erro por página.** É o
    estado REAL desta célula no dia em que este arquivo nasce — o par
-   `gamificacao→catalogo` só existe depois que o mantenedor rodar
-   `infra/provisionar-par-do-menu.sh` na VPS — e ele tem de ser silencioso.
+   `gamificacao→catalogo` só existe depois que
+   `infra/provisionar-par-do-menu.sh` rodar na VPS — e ele tem de ser silencioso.
 3. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa página
    precisa VENCER a versão padrão do site: é ela a metade "exceto nas páginas
    que já configuramos para não ter" do pedido do mantenedor.
@@ -169,7 +169,7 @@ def test_catalogo_fora_do_ar_nao_derruba_as_conquistas(client):
 
 
 def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(client, monkeypatch):
-    """O estado REAL desta célula enquanto o passo do mantenedor não roda.
+    """O estado REAL desta célula enquanto o provisionamento não roda.
 
     Silencioso, e sem bater na rede: o `respx.mock` sem rota registrada levanta
     em qualquer chamada, então uma tentativa deixaria este teste vermelho.

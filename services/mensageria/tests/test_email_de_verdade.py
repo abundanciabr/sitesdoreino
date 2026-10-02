@@ -49,7 +49,7 @@ def envio():
 
 @pytest.fixture
 def provedor_configurado(settings):
-    """Como o env da VPS vai parecer depois do passo do mantenedor.
+    """Como o env da VPS vai parecer depois do provisionamento.
 
     O backend em memória é o que o Django usa para provar envio sem rede: ele
     percorre o MESMO caminho de `send_mail` e guarda a mensagem em `mail.outbox`.
@@ -88,7 +88,7 @@ def test_o_caminho_completo_marca_a_linha_como_enviada(envio, provedor_configura
 def test_sem_provedor_configurado_levanta_com_nome_proprio(settings):
     """Nome próprio porque a AÇÃO é diferente: configurar, não reprocessar.
 
-    Quem vir isto num log precisa saber que o conserto é o passo do mantenedor
+    Quem vir isto num log precisa saber que o conserto é o provisionamento
     (conta no provedor, domínio, DNS) e não um deploy.
     """
     settings.EMAIL_HOST = ""

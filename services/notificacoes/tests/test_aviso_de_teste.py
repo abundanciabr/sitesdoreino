@@ -3,7 +3,7 @@
 Rito de Contrato de 03/09/2026. Ela nasceu de um caso real: em 02/09 o botão
 de ligar os avisos falhava no navegador do mantenedor com o servidor verde, e
 não havia como distinguir **"o aviso não foi enviado"** de **"o aviso foi
-enviado e não chegou"** sem entrar na VPS, coisa que o agente não faz (Lei 5).
+enviado e não chegou"** sem entrar na VPS.
 
 O que estes testes medem, e é o motivo de a porta existir: **o número que ela
 devolve**. Ele não é enfeite da resposta, é o produto dela. `aparelhos: 0` com
@@ -219,7 +219,7 @@ def test_sem_o_token_do_par_a_porta_nao_abre(client, par_autorizado, envio):
 @pytest.mark.django_db
 def test_sem_chave_de_push_a_carta_ainda_nasce(client, par_autorizado):
     """Sem a fixture `envio` não há chave configurada — o estado de uma
-    plataforma antes do passo do mantenedor na VPS. A metade durável não pode
+    plataforma antes do provisionamento na VPS. A metade durável não pode
     depender da metade que precisa de segredo: é a mesma regra que vale para
     todo aviso desta célula."""
     inscrever()

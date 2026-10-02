@@ -70,7 +70,7 @@ def _perguntar_ao_catalogo(host: str) -> dict:
     token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
     if not base or not token:
         # Sem par de tokens, o fórum abre igual e sem menu. É o estado enquanto
-        # o passo do mantenedor não roda (infra/provisionar-par-do-menu.sh), e
+        # o provisionamento não roda (infra/provisionar-par-do-menu.sh), e
         # ele não pode custar um erro por página.
         return {}
     try:
@@ -120,8 +120,8 @@ def site_id_do_host(host: str) -> str:
     Quem usa é a VOZ do fórum (`apps/forum/eventos.py`): os quatro eventos
     congelados exigem `site_id`, e o fórum não tem — nem ganhou — uma variável de
     ambiente com ele. Uma variável dessas seria uma segunda verdade sobre "que
-    site é este", que envelhece calada e ainda custaria um passo manual do
-    mantenedor na VPS.
+    site é este", que envelhece calada e ainda custaria um passo de
+    provisionamento na VPS.
 
     **Vazio é resposta legítima** (catálogo fora do ar, par de tokens não
     provisionado, host desconhecido), e quem chama trata como "não emito". A

@@ -432,7 +432,7 @@ def test_catalogo_mudo_nao_derruba_a_tela():
 
 @respx.mock
 def test_par_de_tokens_ausente_tambem_abre_a_tela(monkeypatch):
-    """O par `admin→catalogo` é passo do mantenedor na VPS. Enquanto ele não
+    """O par `admin→catalogo` é passo de provisionamento na VPS. Enquanto ele não
     existir, a tela explica; nada do que está no ar muda."""
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)
     resp = _dentro().get(reverse("menu_do_topo"))

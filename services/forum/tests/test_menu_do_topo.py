@@ -7,7 +7,7 @@ a uma forma diferente de isto dar errado:
    fórum tem de abrir igual sem ele, e é este o guarda mais importante do
    arquivo.
 2. **O par de tokens ainda não provisionado virar um erro por página.** É o
-   estado real enquanto o passo do mantenedor não roda, e ele tem de ser
+   estado real enquanto o provisionamento não roda, e ele tem de ser
    silencioso.
 3. **A regra "esta página não tem menu" ser ignorada.** Versão vazia numa
    página precisa VENCER a versão padrão do site.
@@ -172,7 +172,7 @@ def test_catalogo_fora_do_ar_nao_derruba_o_forum(client, monkeypatch):
 
 
 def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(client, monkeypatch):
-    """O estado real enquanto o passo do mantenedor não roda. Silencioso, e sem
+    """O estado real enquanto o provisionamento não roda. Silencioso, e sem
     bater na rede: o `sem_rede` do conftest levantaria se alguém tentasse."""
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)
     resp = client.get(reverse("home"))
