@@ -38,8 +38,7 @@ def test_alvo_invalido_nao_executa_nada(tmp_path):
 def test_host_publico_chega_a_execucao_com_o_arquivo_certo(tmp_path, monkeypatch):
     script = RAIZ / "infra" / "provisionar-cursos.sh"
     chamadas: list = []
-    monkeypatch.setattr(operar, "fcntl", None)
-    monkeypatch.setattr(operar, "_provisionar_sob_trava",
+    monkeypatch.setattr(operar, "_provisionar",
                         lambda ctx, alvo, arquivo, argumentos: chamadas.append((alvo, arquivo, argumentos)) or 0)
     assert operar.main(["provisionar", "--alvo", "cursos"], _ctx(tmp_path, [])) == 0
     assert chamadas == [("cursos", script, ["meshcraft.top"])]

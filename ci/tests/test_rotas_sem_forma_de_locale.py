@@ -60,10 +60,11 @@ ROTAS = RAIZ / "infra" / "traefik" / "dynamic" / "plataforma.yml"
 SITES = RAIZ / "infra" / "sites.json"
 
 # Matchers que este guarda sabe julgar. `Host(...)` é inofensivo para caminho;
-# `PathPrefix(...)` é o que carrega o risco. `PathRegexp(...)` só é aceito para
-# o desvio legado fechado logo abaixo. Qualquer outro ⇒ AssertionError.
+# `PathPrefix(...)` é o que carrega o risco, e `Path(...)` (endereço exato) é
+# julgado do mesmo jeito. `PathRegexp(...)` só é aceito para o desvio legado
+# fechado logo abaixo. Qualquer outro ⇒ AssertionError.
 MATCHER = re.compile(r"([A-Za-z]+)\(\s*`([^`]*)`\s*\)")
-CONHECIDOS = {"Host", "PathPrefix", "PathRegexp"}
+CONHECIDOS = {"Host", "Path", "PathPrefix", "PathRegexp"}
 PATHREGEXP_LEGADO_PERMITIDO = {
     "aulas-avulsas-legadas": r"^/aulas/[A-Za-z0-9_-]+/?$",
 }
@@ -131,7 +132,7 @@ def prefixos_de_caminho(nome: str, regra: str) -> list[str]:
                 "sabe julgar fora da única forma legada permitida. Ensine a "
                 "regra nova antes de usá-la (INV-CI01: não medir não é OK)."
             )
-    return [valor for funcao, valor in achados if funcao == "PathPrefix"]
+    return [valor for funcao, valor in achados if funcao in ("Path", "PathPrefix")]
 
 
 def primeiro_segmento(prefixo: str) -> str:
@@ -307,7 +308,10 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     #   A (forma de locale): 5 letras, e a forma exige 2-3. Não casa.
     #   B (idioma declarado): `midia` não está em `infra/sites.json`.
     # O prefixo CRU engoliria `/midiaX`; não existe rota assim.
-    assert segmentos == {
+    #
+    # Rota nova não precisa entrar nesta lista: quem a julga é o teste acima.
+    # Aqui só se prova que a função mediu as rotas reais.
+    assert {
         "",
         "quiz",
         "checkout",
@@ -324,7 +328,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "estudio",
         "encomendas",
         "midia",
-    }
+    } <= segmentos
 
 
 # ---------------------------------------------------------------------------
