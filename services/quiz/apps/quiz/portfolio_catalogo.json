@@ -1,6 +1,12 @@
 {
-  "versao": "1",
+  "versao": "2",
+  "fluxo_versao": "comercial",
   "familias": [
+    {"chave": "cabelos", "nome": "Cabelos UGC", "descricao": "Cabelos para avatares Roblox."},
+    {"chave": "roupas", "nome": "Roupas 3D", "descricao": "Layered Clothing para avatares Roblox."},
+    {"chave": "chapeus", "nome": "Chapéus e acessórios", "descricao": "Acessórios de cabeça para avatares Roblox."},
+    {"chave": "armas", "nome": "Espadas e armas", "descricao": "Itens para experiências Roblox."},
+    {"chave": "animais", "nome": "Animais", "descricao": "Animais e mascotes para experiências Roblox."},
     {
       "chave": "objetos",
       "nome": "Objetos e acessórios",
@@ -33,6 +39,11 @@
     }
   ],
   "projetos": [
+    {"chave":"cabelo-autoral","familia":"cabelos","titulo":"Cabelo autoral","descricao":"Um cabelo com silhueta clara para avatar Roblox.","direcao":"Item UGC com identidade própria.","aplicacao":"Avatar Roblox.","contextos":["social","proprio"],"estilos":["cartunesco","detalhado"],"servico":"Crio cabelos para avatares Roblox.","primeira_entrega":"Um cabelo apresentado de vários ângulos.","aprendizagem":"Silhueta e apresentação.","apresentacao":"Imagens claras, descrição e exemplo de uso no Roblox.","primeira_acao":"Escolher a silhueta do cabelo.","versao_pequena":"Um cabelo.","expansao":"Criar variações depois da primeira peça.","feedback":"A silhueta está clara?","escopos":["um","existente"],"referencia":""},
+    {"chave":"roupa-3d","familia":"roupas","titulo":"Roupa 3D — Layered Clothing","descricao":"Uma roupa 3D para avatar Roblox.","direcao":"Peça de vestuário com apresentação comercial clara.","aplicacao":"Avatar Roblox.","contextos":["social","proprio"],"estilos":["cartunesco","detalhado"],"servico":"Crio roupas 3D para avatares Roblox.","primeira_entrega":"Uma roupa 3D apresentada no avatar.","aprendizagem":"Forma e apresentação.","apresentacao":"Imagens claras, descrição e exemplo de uso no Roblox.","primeira_acao":"Escolher a primeira roupa.","versao_pequena":"Uma roupa 3D.","expansao":"Acrescentar outras roupas ao longo do curso.","feedback":"A peça é visível no avatar?","escopos":["um","existente"],"referencia":""},
+    {"chave":"chapeu-autoral","familia":"chapeus","titulo":"Chapéu ou acessório de cabeça","descricao":"Um acessório de cabeça para avatar Roblox.","direcao":"Peça UGC com forma reconhecível.","aplicacao":"Avatar Roblox.","contextos":["social","proprio"],"estilos":["cartunesco","detalhado"],"servico":"Crio acessórios para avatares Roblox.","primeira_entrega":"Um chapéu ou acessório apresentado no avatar.","aprendizagem":"Silhueta e apresentação.","apresentacao":"Imagens claras, descrição e exemplo de uso no Roblox.","primeira_acao":"Escolher o formato do acessório.","versao_pequena":"Um chapéu.","expansao":"Acrescentar outras peças depois.","feedback":"A forma é reconhecível?","escopos":["um","existente"],"referencia":""},
+    {"chave":"espada-autoral","familia":"armas","titulo":"Espada para experiência Roblox","descricao":"Uma espada autoral para um jogo Roblox.","direcao":"Objeto com função e visual claros.","aplicacao":"Experiência Roblox.","contextos":["aventura","proprio"],"estilos":["cartunesco","low_poly"],"servico":"Crio objetos e armas para experiências Roblox.","primeira_entrega":"Uma espada apresentada em imagens e no Roblox.","aprendizagem":"Forma e apresentação.","apresentacao":"Imagens claras, descrição e exemplo de uso no Roblox.","primeira_acao":"Escolher a forma da espada.","versao_pequena":"Uma espada.","expansao":"Criar outros itens conforme novos projetos.","feedback":"A função é evidente?","escopos":["um","existente"],"referencia":""},
+    {"chave":"animal-autoral","familia":"animais","titulo":"Animal para experiência Roblox","descricao":"Um animal ou mascote para um mundo Roblox.","direcao":"Personagem com silhueta reconhecível.","aplicacao":"Experiência Roblox.","contextos":["aventura","social","proprio"],"estilos":["cartunesco","low_poly"],"servico":"Crio animais e mascotes para experiências Roblox.","primeira_entrega":"Um animal apresentado em imagens e no Roblox.","aprendizagem":"Silhueta e apresentação.","apresentacao":"Imagens claras, descrição e exemplo de uso no Roblox.","primeira_acao":"Escolher o animal e sua silhueta.","versao_pequena":"Um animal.","expansao":"Criar outros personagens conforme novos projetos.","feedback":"A silhueta comunica o animal?","escopos":["um","existente"],"referencia":""},
     {
       "chave": "bancada-oficina",
       "familia": "objetos",
