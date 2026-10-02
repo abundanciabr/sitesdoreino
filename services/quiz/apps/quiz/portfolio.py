@@ -23,7 +23,28 @@ ETAPAS = {
     "apresentacao",
     "escolha_final",
 }
-LISTAS = {"interesses", "contextos", "estilos"}
+LISTAS = {
+    "interesses",
+    "contextos",
+    "estilos",
+    "trabalhos_selecionados",
+    "proximas_pecas",
+    "apresentacao_itens",
+}
+OPCOES = {
+    "experiencia": {"iniciante", "intermediario", "avancado", "nao_sei"},
+    "andamento_curso": {"nao_comecou", "comeco", "meio", "final", "concluido"},
+    "experiencia_comercial": {"nunca", "encomendas", "profissional"},
+    "tem_trabalhos": {"nenhum", "rascunhos", "prontos"},
+    "caminho_comercial": {"experiencias", "ugc_clientes", "marketplace", "explorar"},
+    "publico": {"criadores", "marcas", "jogadores", "descobrir"},
+    "pronta_entrega": {"desenvolvimento", "comercial"},
+    "primeira_peca": {"cabelo", "roupa", "chapeu", "outra", "nenhuma"},
+    "acrescentar": {"sim", "nao"},
+    "divulgacao": {"pagina", "comunidades", "marketplace", "descobrir"},
+}
+PECAS = {"cabelo", "roupa", "chapeu", "outra"}
+APRESENTACAO = {"imagens", "descricao", "roblox"}
 TEXTOS = {
     "ideia_propria": 3000,
     "modelos_prontos": 3000,
@@ -35,6 +56,7 @@ TEXTOS = {
     "objetivo_apresentacao": 3000,
     "servico_proprio": 3000,
     "primeira_acao": 3000,
+    **{campo: 100 for campo in OPCOES},
 }
 PROPOSTA_CAMPOS = {
     "chave": 100,
@@ -54,6 +76,7 @@ PROPOSTA_CAMPOS = {
 CATALOGO_ARQUIVO = Path(__file__).with_name("portfolio_catalogo.json")
 REFERENCIAS = Path(settings.BASE_DIR) / "static" / "quiz" / "portfolio"
 REFERENCIA_PREFIXO = "/quiz/portfolio/referencias/"
+FAMILIAS_COMERCIAIS = {"cabelos", "roupas", "chapeus", "armas", "animais"}
 
 
 def _erro(mensagem, status=400):
@@ -186,15 +209,30 @@ def _validar_catalogo(catalogo):
 
 def _catalogo(site):
     publicado = PortfolioCatalog.objects.filter(site=site).order_by("-version").first()
-    if publicado:
-        return copy.deepcopy(publicado.content), str(publicado.version)
     with CATALOGO_ARQUIVO.open(encoding="utf-8") as arquivo:
-        catalogo = _validar_catalogo(json.load(arquivo))
-    return catalogo, str(catalogo.get("versao", "1"))
+        base = _validar_catalogo(json.load(arquivo))
+    if not publicado:
+        return base, str(base.get("versao", "2"))
+    # Preserve school edits; add only commercial choices absent from older catalogs.
+    catalogo = copy.deepcopy(publicado.content)
+    familias = {item["chave"] for item in catalogo["familias"]}
+    projetos = {item["chave"] for item in catalogo["projetos"]}
+    catalogo["familias"].extend(
+        copy.deepcopy(item)
+        for item in base["familias"]
+        if item["chave"] in FAMILIAS_COMERCIAIS and item["chave"] not in familias
+    )
+    catalogo["projetos"].extend(
+        copy.deepcopy(item)
+        for item in base["projetos"]
+        if item["familia"] in FAMILIAS_COMERCIAIS and item["chave"] not in projetos
+    )
+    catalogo["fluxo_versao"] = "comercial"
+    return catalogo, str(publicado.version)
 
 
-def _validar_respostas(respostas):
-    if not isinstance(respostas, dict) or len(respostas) > 20:
+def _validar_respostas(respostas, *, comercial=True):
+    if not isinstance(respostas, dict) or len(respostas) > 35:
         raise ValueError("Respostas inválidas.")
     desconhecidos = set(respostas) - LISTAS - set(TEXTOS) - {"proposta_editada"}
     if desconhecidos:
@@ -202,11 +240,19 @@ def _validar_respostas(respostas):
     validadas = {}
     for campo, valor in respostas.items():
         if campo in LISTAS:
-            if not isinstance(valor, list) or len(valor) > 20:
+            limite = 30 if campo == "trabalhos_selecionados" else 20
+            if not isinstance(valor, list) or len(valor) > limite:
                 raise ValueError(f"{campo} inválido.")
-            validadas[campo] = [_texto(item, 100, campo) for item in valor]
+            tamanho = 200 if campo == "trabalhos_selecionados" else 100
+            validadas[campo] = [_texto(item, tamanho, campo) for item in valor]
+            if campo == "proximas_pecas" and set(valor) - PECAS:
+                raise ValueError(f"{campo} inválido.")
+            if campo == "apresentacao_itens" and set(valor) - APRESENTACAO:
+                raise ValueError(f"{campo} inválido.")
         elif campo in TEXTOS:
             validadas[campo] = _texto(valor, TEXTOS[campo], campo)
+            if comercial and campo in OPCOES and valor and valor not in OPCOES[campo]:
+                raise ValueError(f"{campo} inválido.")
         else:
             if not isinstance(valor, dict) or set(valor) - set(PROPOSTA_CAMPOS):
                 raise ValueError("proposta_editada inválida.")
@@ -254,18 +300,212 @@ def _proposta(projeto, motivo, respostas):
     return proposta
 
 
+def _plano(respostas, proposta=None):
+    """Concrete portfolio composition from the student's own commercial choices."""
+    proposta = proposta or {}
+    caminho = respostas.get("caminho_comercial", "explorar")
+    servicos = {
+        "experiencias": "Modelagem por encomenda para experiências Roblox",
+        "ugc_clientes": "Criação de acessórios ou itens UGC para clientes",
+        "marketplace": "Criação de itens próprios para vender no Marketplace",
+        "explorar": "Explorar encomendas para experiências, UGC para clientes e itens próprios",
+    }
+    publicos = {
+        "criadores": "criadores de experiências Roblox",
+        "marcas": "marcas e clientes",
+        "jogadores": "jogadores e compradores",
+        "descobrir": "público a definir ao apresentar os primeiros trabalhos",
+    }
+    nomes = {
+        "cabelo": "um cabelo",
+        "roupa": "uma roupa 3D (Layered Clothing)",
+        "chapeu": "um chapéu ou acessório de cabeça",
+        "outra": "outra criação 3D",
+    }
+    existentes = list(respostas.get("trabalhos_selecionados", []))
+    for nome in re.split(r"[;\r\n]+", respostas.get("modelos_prontos", "")):
+        nome = nome.strip()
+        if nome and nome.casefold() not in {item.casefold() for item in existentes}:
+            existentes.append(nome)
+    tem = respostas.get("tem_trabalhos", "prontos" if existentes else "nenhum")
+    experiencia = respostas.get("experiencia", "nao_sei")
+    momento_aluno = {
+        "iniciante": "Você está começando: organize sua primeira versão com trabalhos que já fez ou uma única peça.",
+        "intermediario": "Você já conclui trabalhos: selecione os que demonstram seu serviço e acrescente peças para buscar novas encomendas.",
+        "avancado": "Você já tem experiência: organize serviço, público e clientes, aproveitando trabalhos profissionais que tem autorização para apresentar.",
+        "nao_sei": (
+            "Use os trabalhos que já possui para decidir o caminho do seu portfólio."
+            if existentes or tem != "nenhum"
+            else "Comece com uma peça e descubra o caminho a partir dela."
+        ),
+    }
+    primeira_codigo = respostas.get("primeira_peca", "nenhuma")
+    primeira = nomes.get(primeira_codigo, "")
+    if primeira_codigo == "outra" and proposta.get("titulo"):
+        primeira = proposta["titulo"]
+    if primeira_codigo == "nenhuma":
+        primeira = ""
+    if not existentes and not primeira:
+        primeira = proposta.get("titulo") or "uma peça 3D à sua escolha"
+    if (
+        primeira
+        and respostas.get("ideia_propria")
+        and primeira_codigo in {"cabelo", "roupa", "chapeu"}
+    ):
+        primeira += ": " + respostas["ideia_propria"][:200]
+    acrescentar = respostas.get("acrescentar")
+    composicao = list(existentes)
+    if not existentes or acrescentar == "sim":
+        if primeira and primeira.casefold() not in {
+            item.casefold() for item in composicao
+        }:
+            composicao.append(primeira)
+    elif acrescentar == "nao":
+        primeira = "Organizar os trabalhos existentes; nenhuma peça nova agora."
+    proximos = [nomes[item] for item in respostas.get("proximas_pecas", [])]
+    formatos = {
+        "imagens": "imagens claras de vários ângulos",
+        "descricao": "descrição do trabalho e do que pode ser entregue",
+        "roblox": "exemplo de uso no Roblox",
+    }
+    itens = respostas.get("apresentacao_itens") or []
+    apresentacao = [formatos[item] for item in list(dict.fromkeys([*itens, *formatos]))]
+    curso = respostas.get("andamento_curso", "")
+    continuidade = {
+        "nao_comecou": "Ao começar o curso, acrescente novas peças no seu ritmo.",
+        "comeco": "No começo do curso, apresente o que já tem e acrescente peças aos poucos.",
+        "meio": "Na metade do curso, revise os trabalhos concluídos e amplie a seleção conforme seu objetivo.",
+        "final": "Perto do final do curso, revise a apresentação e escolha o que ainda deseja acrescentar.",
+        "concluido": "Com o curso concluído, mantenha o portfólio atualizado com trabalhos que demonstram seu serviço.",
+    }.get(curso, "Acrescente trabalhos conforme desenvolver novas peças.")
+    meta = (
+        "Meta desejável da escola até o final do curso para um portfólio UGC, se fizer sentido para seus objetivos: "
+        "3 cabelos, 3 roupas 3D (Layered Clothing) e 3 chapéus ou acessórios de cabeça. "
+        "Comece com o que já tem ou com uma peça; essa meta não é requisito inicial, para publicar ou buscar clientes."
+        if caminho in {"ugc_clientes", "marketplace", "explorar"}
+        else ""
+    )
+    divulgacoes = {
+        "pagina": "Apresente os trabalhos na sua página pública de portfólio.",
+        "comunidades": "Mostre o portfólio a criadores e comunidades relacionados ao serviço escolhido.",
+        "marketplace": "Prepare a apresentação dos itens próprios para compradores no Marketplace.",
+        "descobrir": "Comece pela página pública e escolha onde mostrar os trabalhos conforme seu público.",
+    }
+    canal = respostas.get("divulgacao") or (
+        "marketplace" if caminho == "marketplace" else "pagina"
+    )
+    if canal == "marketplace" and caminho != "marketplace":
+        canal = (
+            "comunidades"
+            if caminho in {"experiencias", "ugc_clientes"}
+            else "descobrir"
+        )
+    if caminho == "explorar":
+        divulgacao = "Compare três possibilidades: encomendas para experiências Roblox, UGC para clientes e itens próprios no Marketplace. Mostre primeiro seus trabalhos na página pública."
+    else:
+        divulgacao = divulgacoes[canal]
+    if caminho == "explorar":
+        acao = "Escolher qual dos três caminhos comerciais combina com os trabalhos que deseja apresentar."
+    elif not existentes and primeira:
+        acao = f"Criar {primeira} e preparar {apresentacao[0] if apresentacao else 'sua apresentação'} para o portfólio."
+    elif existentes:
+        acao = f"Organizar {existentes[0]} com {apresentacao[0] if apresentacao else 'uma apresentação clara'} na página pública."
+    else:
+        acao = "Selecionar um trabalho existente ou escolher uma primeira peça para apresentar."
+    if (
+        caminho != "explorar"
+        and respostas.get("pronta_entrega") == "desenvolvimento"
+        and existentes
+    ):
+        acao = f"Concluir e revisar {existentes[0]} antes de apresentá-lo como entrega comercial."
+    elif (
+        caminho != "explorar"
+        and respostas.get("pronta_entrega") == "comercial"
+        and existentes
+    ):
+        acao = f"Preparar {existentes[0]} para mostrar a {publicos.get(respostas.get('publico', 'descobrir'))}."
+    razoes = [
+        (
+            "Você já tem trabalhos para apresentar; escolha os que mostram seu serviço."
+            if existentes
+            else "Uma peça concreta permite iniciar o portfólio no seu ritmo."
+        )
+    ]
+    if respostas.get("experiencia_comercial") in {"encomendas", "profissional"}:
+        razoes.append(
+            "Aproveite trabalhos de encomenda ou profissionais que possa apresentar."
+        )
+    elif respostas.get("experiencia_comercial") == "nunca":
+        razoes.append(
+            "Sua primeira apresentação pode mostrar capacidade de entrega mesmo antes da primeira encomenda."
+        )
+    if respostas.get("pronta_entrega") == "desenvolvimento":
+        razoes.append(
+            "Identifique peças em desenvolvimento antes de oferecê-las como entrega comercial."
+        )
+    razoes.append(continuidade)
+    return {
+        "servico": respostas.get("servico_proprio") or servicos[caminho],
+        "publico": publicos.get(respostas.get("publico", "descobrir")),
+        "trabalhos_existentes": existentes,
+        "primeira_peca": primeira
+        or "Organizar os trabalhos existentes; nenhuma peça nova agora.",
+        "apresentacao": apresentacao,
+        "composicao_inicial": composicao,
+        "proximos_trabalhos": proximos,
+        "meta_escola": meta,
+        "divulgacao": divulgacao,
+        "proxima_acao": respostas.get("primeira_acao") or acao,
+        "momento": momento_aluno[experiencia],
+        "continuidade": continuidade,
+        "objetivo_apresentacao": respostas.get("objetivo_apresentacao", ""),
+        "por_que": " ".join(razoes),
+    }
+
+
 def _propostas(exploracao):
     respostas = exploracao.respostas
+    comercial = exploracao.catalogo_snapshot.get("fluxo_versao") == "comercial"
     projetos = exploracao.catalogo_snapshot.get("projetos", [])
     interesses = set(respostas.get("interesses", []))
     contextos = set(respostas.get("contextos", []))
     estilos = set(respostas.get("estilos", []))
     escolha = respostas.get("projeto_chave", "")
+    caminho = respostas.get("caminho_comercial", "explorar")
+    primeira = respostas.get("primeira_peca", "")
+    por_peca = {
+        "cabelo": "cabelos",
+        "roupa": "roupas",
+        "chapeu": "chapeus",
+        "outra": "objetos",
+    }
+    prioridades = (
+        ["cabelos", "roupas", "chapeus", "objetos", "armas", "animais"]
+        if caminho in {"ugc_clientes", "marketplace", "explorar"}
+        else [
+            "objetos",
+            "armas",
+            "animais",
+            "veiculos",
+            "construcoes",
+            "mobiliario",
+            "natureza",
+            "personagens",
+        ]
+    )
+    if primeira in por_peca:
+        familia = por_peca[primeira]
+        prioridades = [familia, *[item for item in prioridades if item != familia]]
 
     def ordem(projeto):
         return (
             0 if projeto.get("chave") == escolha else 1,
             0 if projeto.get("familia") in interesses else 1,
+            (
+                prioridades.index(projeto.get("familia"))
+                if comercial and projeto.get("familia") in prioridades
+                else len(prioridades)
+            ),
             0 if contextos.intersection(projeto.get("contextos", [])) else 1,
             0 if estilos.intersection(projeto.get("estilos", [])) else 1,
             projeto.get("chave", ""),
@@ -317,18 +557,58 @@ def _propostas(exploracao):
         else:
             motivo = "Uma possibilidade para explorar e adaptar do seu jeito."
         sugestoes.append(_proposta(projeto, motivo, respostas))
+    if comercial:
+        for proposta in sugestoes:
+            plano = _plano(respostas, proposta)
+            proposta["plano"] = plano
+            proposta["servico"] = plano["servico"]
+            proposta["descricao"] = (
+                f"{proposta['descricao']} No portfólio, esta peça mostra {plano['servico'].lower()} para {plano['publico']}.".strip()
+            )
+            proposta["direcao"] = plano["servico"]
+            proposta["primeira_entrega"] = plano["primeira_peca"] or (
+                plano["composicao_inicial"][0]
+                if plano["composicao_inicial"]
+                else "Escolher uma primeira peça."
+            )
+            proposta["aprendizagem"] = ""
+            proposta["apresentacao"] = "; ".join(plano["apresentacao"])
+            if plano["objetivo_apresentacao"]:
+                proposta[
+                    "apresentacao"
+                ] += f". Objetivo: {plano['objetivo_apresentacao']}"
+            proposta["primeira_acao"] = plano["proxima_acao"]
+            proposta["expansao"] = "; ".join(plano["proximos_trabalhos"])
+            proposta["feedback"] = ""
+            proposta["por_que"] = f"{proposta['por_que']} {plano['por_que']}"
     return sugestoes
 
 
 def _serializar(exploracao):
-    return {
+    comercial = exploracao.catalogo_snapshot.get("fluxo_versao") == "comercial"
+    propostas = _propostas(exploracao)
+    resultado = {
         "id": str(exploracao.id),
         "entrada": exploracao.entrada,
         "etapa": exploracao.etapa,
         "respostas": exploracao.respostas,
         "versao": exploracao.versao,
-        "propostas": _propostas(exploracao),
+        "propostas": propostas,
+        "fluxo_versao": "comercial" if comercial else "legado",
     }
+    if comercial:
+        escolhida = next(
+            (
+                p
+                for p in propostas
+                if p.get("chave") == exploracao.respostas.get("projeto_chave")
+            ),
+            None,
+        )
+        resultado["plano"] = _plano(
+            exploracao.respostas, escolhida or (propostas[0] if propostas else None)
+        )
+    return resultado
 
 
 @csrf_exempt
@@ -397,6 +677,7 @@ def exploracoes(request):
                 site=site,
                 aluno_id=aluno_id,
                 entrada=entrada,
+                etapa="ponto_partida",
                 versao=versao,
                 catalogo_snapshot=conteudo,
             )
@@ -420,16 +701,28 @@ def exploracao_atual(request):
         return _erro(str(exc))
     except LookupError as exc:
         return _erro(str(exc), 404)
-    atual = (
-        PortfolioExploration.objects.filter(site=site, aluno_id=aluno_id)
-        .order_by("-created_at", "-id")
-        .first()
+    tentativas = list(
+        PortfolioExploration.objects.filter(site=site, aluno_id=aluno_id).order_by(
+            "-created_at", "-id"
+        )[:51]
     )
-    return (
-        JsonResponse(_serializar(atual))
-        if atual
-        else _erro("Exploração não encontrada.", 404)
-    )
+    if not tentativas:
+        return _erro("Exploração não encontrada.", 404)
+    resultado = _serializar(tentativas[0])
+    resultado["historico"] = [
+        {
+            "id": str(item.id),
+            "etapa": item.etapa,
+            "entrada": item.entrada,
+            "fluxo_versao": (
+                "comercial"
+                if item.catalogo_snapshot.get("fluxo_versao") == "comercial"
+                else "legado"
+            ),
+        }
+        for item in tentativas[1:]
+    ]
+    return JsonResponse(resultado)
 
 
 @csrf_exempt
@@ -468,7 +761,6 @@ def respostas(request, exploracao_id):
         etapa = dados["etapa"]
         if etapa not in ETAPAS:
             raise ValueError("Etapa inválida.")
-        novas = _validar_respostas(dados["respostas"])
         with transaction.atomic():
             registro = (
                 PortfolioExploration.objects.select_for_update()
@@ -477,6 +769,10 @@ def respostas(request, exploracao_id):
             )
             if registro is None:
                 return _erro("Exploração não encontrada.", 404)
+            novas = _validar_respostas(
+                dados["respostas"],
+                comercial=registro.catalogo_snapshot.get("fluxo_versao") == "comercial",
+            )
             atualizadas = {**registro.respostas, **novas}
             if "proposta_editada" in novas:
                 atualizadas["proposta_editada"] = {
