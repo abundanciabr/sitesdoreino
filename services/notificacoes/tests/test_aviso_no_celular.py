@@ -76,8 +76,8 @@ class RecusaDoServidor(Exception):
 
 @pytest.fixture
 def com_chave(settings):
-    """A plataforma com o segredo instalado — o estado depois do passo do
-    mantenedor na VPS. Sem esta fixture, o estado é o de HOJE: sem chave."""
+    """A plataforma com o segredo instalado — o estado depois do provisionamento
+    na VPS. Sem esta fixture, o estado é o de HOJE: sem chave."""
     settings.VAPID_PRIVATE_KEY = "chave-privada-de-teste"
     settings.VAPID_SUBJECT = "mailto:contato@exemplo.com"
     settings.VAPID_PUBLIC_KEY = "chave-publica-de-teste"

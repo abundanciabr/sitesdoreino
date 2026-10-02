@@ -232,8 +232,8 @@ class CatalogoClient:
         token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
         if not base or not token:
             # Sem o par de tokens a sala abre igual e sem menu, sem custar uma
-            # tentativa de rede por página. É o estado enquanto o passo do
-            # mantenedor não roda.
+            # tentativa de rede por página. É o estado enquanto o
+            # provisionamento não roda.
             return {}
         try:
             resposta = http().get(

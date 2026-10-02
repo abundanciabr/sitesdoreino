@@ -4,7 +4,7 @@ funcionando.
 Nasceu de um caso real: em 02/09/2026 o botão de ligar os avisos falhava no
 navegador do mantenedor, e o servidor estava verde. Não havia como distinguir
 "o aviso não foi enviado" de "o aviso foi enviado e não chegou" sem entrar na
-VPS, e o agente não entra (Lei 5). Um clique que dispara um aviso de teste, e
+VPS. Um clique que dispara um aviso de teste, e
 diz **para quantos aparelhos ele saiu**, encerra essa classe de dúvida sem
 SSH nenhum.
 

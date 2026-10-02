@@ -28,7 +28,7 @@ from huey import RedisHuey
 # `forum-relay`, por `environment:` — do mesmo jeito que já faz com o
 # `gamificacao-relay`. Endereço de Redis não é segredo e vale igual em toda a
 # plataforma: é topologia do compose, não configuração desta célula, e por isso
-# não custa um passo manual do mantenedor.
+# não custa um passo de provisionamento.
 HUEY_REDIS_URL = os.environ.get("HUEY_REDIS_URL", "redis://localhost:6379/1")
 
 # O nome é o namespace das chaves no Redis: com o nome de fábrica, duas células

@@ -34,7 +34,7 @@ DE ONDE SAI O `site_id`, E POR QUE NÃO HÁ ENV NOVO
 Do HOST, perguntando ao catálogo (`getSiteByHost`), com o mesmo cache que o menu
 do topo já usa. O fórum não tinha e não ganhou uma variável de ambiente com o id
 do site: uma variável dessas seria uma segunda verdade sobre "que site é este",
-que envelhece calada e que custaria um passo manual do mantenedor na VPS.
+que envelhece calada e que custaria um passo de provisionamento na VPS.
 
 A consequência honesta: com o catálogo fora do ar E o cache vazio, o evento não
 sai. É o mesmo desenho que o menu já escolheu para si — o fórum abre sem menu, em

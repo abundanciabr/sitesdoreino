@@ -281,8 +281,8 @@ class AlunosClient:
         """Endereço e token do par, ou `None` se o env não os tiver.
 
         Lido NO PONTO DE USO, com `.get()` — `armadilhas/097`. Enquanto o
-        mantenedor não rodar `infra/provisionar-pares-de-categorias.sh`, estas
-        duas variáveis simplesmente não existem, e este é o caminho normal por
+        provisionamento (`infra/provisionar-pares-de-categorias.sh`) não rodar,
+        estas duas variáveis simplesmente não existem, e este é o caminho normal por
         onde a célula passa: sem elas a área abre igual, e só a lista da fila
         diz que ainda não consegue perguntar.
         """
@@ -1001,10 +1001,10 @@ class CatalogoClient:
     dele (Lei 3).
 
     **Fail-OPEN na leitura, e a mensagem é honesta.** O par de tokens
-    `admin→catalogo` é um passo do mantenedor na VPS (INV-P8, Lei 5): enquanto
-    ele não existir, esta tela abre dizendo o que falta, em português, em vez de
-    500. Uma tela de operação que não abre é inútil justamente quando você
-    precisa dela.
+    `admin→catalogo` é um passo de provisionamento na VPS (o env mora só na VPS,
+    INV-P8, e é escrito pelo provisionamento lá): enquanto ele não existir, esta
+    tela abre dizendo o que falta, em português, em vez de 500. Uma tela de
+    operação que não abre é inútil justamente quando você precisa dela.
 
     As variáveis são lidas no PONTO DE USO, nunca no `__init__`
     (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
@@ -1448,11 +1448,12 @@ class GamificacaoClient:
     crachá que a porta desta área já exige. O Bearer daqui prova só QUEM CHAMA.
 
     **Fail-OPEN na leitura, e a mensagem é honesta.** O par de tokens
-    `admin→gamificacao` é um passo do mantenedor na VPS (INV-P8, Lei 5): enquanto
-    ele não existir, esta tela abre dizendo o que falta, em português, em vez de
-    500. Uma tela de operação que não abre é inútil justamente quando você
-    precisa dela. Na ESCRITA a falha é fechada: dizer "liguei" sem ter ligado
-    seria pior que recusar.
+    `admin→gamificacao` é um passo de provisionamento na VPS (o env mora só na
+    VPS, INV-P8, e é escrito pelo provisionamento lá): enquanto ele não existir,
+    esta tela abre dizendo o que falta, em português, em vez de 500. Uma tela de
+    operação que não abre é inútil justamente quando você precisa dela. Na
+    ESCRITA a falha é fechada: dizer "liguei" sem ter ligado seria pior que
+    recusar.
 
     As variáveis são lidas no PONTO DE USO, nunca no `__init__`
     (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
@@ -1759,7 +1760,7 @@ class NotificacoesClient:
     responde "o aviso saiu daqui, e para quantos aparelhos". Nasceu de um caso
     real — o botão de ligar os avisos falhava no navegador do mantenedor com o
     servidor verde, e não havia como distinguir "não foi enviado" de "foi
-    enviado e não chegou" sem entrar na VPS (Lei 5).
+    enviado e não chegou" sem entrar na VPS.
 
     **Escrita, e por isso `(desfecho, aparelhos)`, nunca `None`.** A pessoa
     clicou num botão esperando saber alguma coisa: `None` aqui seria a mesma
@@ -1826,7 +1827,7 @@ class MedicaoClient:
     A `metricas` é o LIVRO DE FATOS da plataforma: ela guarda o que aconteceu,
     para esta tela poder dizer o que MUDOU e não só o que é. Pela Lei 3 o Admin
     não lê o banco dela (o papel `admin_user` sequer o enxerga); pergunta por
-    aqui, com o Bearer do par que o mantenedor provisionou.
+    aqui, com o Bearer do par provisionado.
 
     FALHA ABERTA, ao contrário da `IdentidadeClient`. A diferença não é gosto: a
     identidade decide ACESSO a esta área, e sem resposta a porta fecha; esta
@@ -2116,7 +2117,8 @@ class MensageriaClient:
     ## Fail-OPEN na leitura, fail-CLOSED na escrita
 
     Mesmo desenho de `GamificacaoClient`, pelo mesmo motivo. O par de tokens
-    `admin→mensageria` é um passo do mantenedor na VPS (Lei 5): enquanto ele não
+    `admin→mensageria` é um passo de provisionamento na VPS (o env mora só na
+    VPS, INV-P8, e é escrito pelo provisionamento lá): enquanto ele não
     existir, a tela abre dizendo o que falta, em português, em vez de 500. Uma
     tela de operação que não abre é inútil justamente quando você precisa dela.
     Na escrita a falha é fechada: dizer "publiquei" sem ter publicado mandaria
@@ -2335,8 +2337,9 @@ class CursosClient:
     mantenedor resolve de jeitos diferentes, e três delas ele resolve sozinho:
 
     - **`SEM_CONFIGURACAO`**: o par (`CURSOS_API_URL`/`CURSOS_API_TOKEN`) não
-      está no env desta célula. É um passo dele na VPS (Lei 5), e a tela nomeia
-      o passo. Nenhuma ida à rede acontece neste caso (`armadilhas/097`).
+      está no env desta célula. É um passo de provisionamento na VPS (INV-P8), e
+      a tela nomeia o passo. Nenhuma ida à rede acontece neste caso
+      (`armadilhas/097`).
     - **`RECUSOU`** (401/403): o par existe aqui, mas a `cursos` não o aceita.
       De fora é indistinguível de "não há aula nenhuma", e é por isso que tem
       nome próprio: o conserto é conferir `TOKENS_ACEITOS_ADMIN` do outro lado,

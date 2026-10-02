@@ -25,7 +25,7 @@ mais tenta.
 O que muda é que agora há três causas distintas, e nomeá-las é o que faz um
 incidente durar minutos em vez de horas:
 
-- **`EmailNaoConfigurado`** — o passo do mantenedor ainda não foi feito. Não é
+- **`EmailNaoConfigurado`** — o provisionamento ainda não foi feito. Não é
   defeito de código, e não adianta reprocessar: adianta configurar.
 - **`EnvioRecusado`** — o provedor aceitou a conversa e não aceitou a carta.
 - **`SMTPException`** e parentes — provedor fora do ar, ou credencial inválida.
@@ -66,7 +66,7 @@ class EmailNaoConfigurado(RuntimeError):
 
     Classe própria porque a AÇÃO que ela pede é diferente de todas as outras:
     nenhuma quantidade de retentativa a resolve, e quem a vir num log precisa
-    saber que o conserto é o passo do mantenedor (conta no provedor, domínio
+    saber que o conserto é o provisionamento (conta no provedor, domínio
     remetente, registros de DNS), não um deploy.
 
     Ela LEVANTA em vez de voltar em silêncio de propósito. O silêncio é

@@ -507,7 +507,7 @@ def _sem_mensageria(request, molde: str, status: int = 200):
 
     Fail-OPEN na leitura, pelo mesmo motivo de `economia.py::_sem_gamificacao`:
     uma tela de operação que não abre é inútil justamente quando você precisa
-    dela. E o que falta é um passo DELE na VPS (Lei 5), então a tela nomeia o
+    dela. E o que falta é o provisionamento na VPS (INV-P8), então a tela nomeia o
     passo em vez de mostrar um erro cru ou, pior, uma lista vazia — que pareceria
     "esta escola não tem sequência nenhuma" e o mandaria procurar no lugar errado.
     """

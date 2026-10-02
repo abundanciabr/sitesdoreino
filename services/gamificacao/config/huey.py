@@ -27,7 +27,7 @@ from huey import RedisHuey
 # E aqui a ausência tem um segundo motivo, próprio desta célula: o env real é
 # escrito na VPS por `infra/provisionar-gamificacao.sh`, que rodou em
 # 31/08/2026, ANTES de existir relay. Ele não escreveu esta chave, e voltar
-# para escrevê-la custaria um passo manual do mantenedor por um valor que não é
+# para escrevê-la custaria um passo de provisionamento por um valor que não é
 # segredo. Quem a entrega é o `infra/docker-compose.yml`, no serviço
 # `gamificacao-relay`, exatamente como já faz com `REDIS_STREAMS_URL` do
 # consumidor.

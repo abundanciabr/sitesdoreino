@@ -20,7 +20,7 @@ pode confundir:
 `tests/conftest.py`:** é a mesma convenção de `NOTIFICACOES` e `ALUNOS`, e pelo
 mesmo motivo — é o estado REAL de hoje (a VPS ainda não foi provisionada para
 este par; quem o liga é `infra/provisionar-par-do-funil-com-a-gamificacao.sh`,
-e rodá-lo é passo do mantenedor). Deixar a suíte inteira rodar sem elas faz
+e rodá-lo é o provisionamento). Deixar a suíte inteira rodar sem elas faz
 TODO teste desta célula, mesmo os que nem sabem que o quadrinho existe,
 exercitar o fail-open por omissão — sem precisar de um teste dedicado por
 página.

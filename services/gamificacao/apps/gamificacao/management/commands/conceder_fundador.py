@@ -28,7 +28,7 @@ duas medidas:
    depois que a gamificação subiu", que é o contrário do que a medalha afirma.
 2. **Quem sabe de matrícula é a célula `alunos`**, e a `gamificacao` não a
    consome de propósito (`celulas.yml` diz por quê). Puxá-la para dentro seria
-   dependência nova, senha de máquina nova e um passo do mantenedor na VPS,
+   dependência nova, senha de máquina nova e um passo de provisionamento na VPS,
    tudo isso para responder a uma pergunta que se responde uma vez na vida.
 
 A lista de quem estava no começo é conhecimento de fora desta célula. Ela entra

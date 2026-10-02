@@ -17,8 +17,8 @@ Fail-closed sem fail-hard.
 que `sessao.quem_e()` já devolve. Sem conversão, sem chamada de rede, sem cache
 para envelhecer.
 
-Quem escreve o env é o mantenedor, na VPS: um id de pessoa é dado de produção, e
-nenhum agente o inventa.
+O env é escrito na VPS pelo provisionamento: um id de pessoa é dado de produção,
+e nenhum agente o inventa.
 
 O molde é `services/gamificacao/apps/core/equipe.py`.
 """
