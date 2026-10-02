@@ -224,11 +224,6 @@ def religar(raiz: Path, ambiente: dict[str, str]) -> str | None:
 
 
 def executar(raiz: Path) -> dict:
-    with canario.trava_publicacao(raiz):
-        return _executar(raiz)
-
-
-def _executar(raiz: Path) -> dict:
     caminhos = {nome: raiz / f"env/{nome}.env" for nome in ENVS}
     envs = {nome: ler_env(caminho) for nome, caminho in caminhos.items()}
     conferir_sandbox_da_meshcraft(envs["pagamentos"])
