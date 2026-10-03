@@ -147,8 +147,10 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
 #: `quiz.completado` leva `lead` (e-mail, nome, telefone) e entra sem ele:
 #: decisao 6 do mantenedor, sessao de 26/09/2026, "Limpar na entrada e
 #: expurgar" (LGPD). Os fatos guardados antes dela perderam `lead` na migracao
-#: `0004_quiz_completado_sem_lead`.
-DESCARTADOS_NA_ENTRADA = {"quiz.completado": frozenset({"lead"})}
+#: `0004_quiz_completado_sem_lead`. Desde 03/10/2026 o evento leva tambem
+#: `respostas` (texto do que a pessoa escolheu, e um dia o que ela digitou);
+#: o livro nao precisa delas e elas ficam de fora pelo mesmo motivo.
+DESCARTADOS_NA_ENTRADA = {"quiz.completado": frozenset({"lead", "respostas"})}
 
 #: Comparado por chave, sem distinguir maiusculas.
 CAMPOS_PESSOAIS_PROIBIDOS = frozenset(
