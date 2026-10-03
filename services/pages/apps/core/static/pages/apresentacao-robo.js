@@ -25,6 +25,144 @@
   ];
   const positionFields = [["comprador", "Comprador"], ["necessidade", "Necessidade"], ["oferta", "Oferta prioritária"], ["prova", "O que demonstra meu trabalho"]];
   const fieldGuides = {
+    pagina_titulo: {
+      description: "É a primeira frase que o visitante lê. Apresente o tipo de criação que ele pode encomendar e ajude-o a imaginar essa peça no projeto dele.",
+      steps: ["Comece pelo serviço ou pela peça que você quer destacar, como acessórios, espadas ou objetos de cenário.", "Acrescente um estilo ou uso que faça sentido para seu comprador. Prefira uma frase curta e específica, apoiada no que seus trabalhos mostram."],
+      examples: ["Espadas de fantasia para dar forma à aventura do seu jogo.", "Acessórios florais para sua próxima coleção de avatares.", "Objetos coloridos para compor sua vila no Roblox."],
+      unknown: "Use uma frase simples como ‘Modelagem de objetos de cenário para Roblox’. Você pode pedir ao robô uma nova abertura e ajustar depois."
+    },
+    pagina_subtitulo: {
+      description: "É a frase que acompanha o título. Ela explica com mais clareza o serviço, para quem ele serve e o que você cria.",
+      steps: ["Leia o título e identifique qual informação ainda falta para o comprador entender a oferta.", "Complete com a peça, o estilo ou a entrega. Evite repetir o título inteiro ou acrescentar arquivos e serviços que você não oferece."],
+      examples: ["Modelo espadas estilizadas com texturas para equipes que desenvolvem jogos de aventura.", "Crio chapéus e outros acessórios com tema floral para coleções de avatares.", "Transformo suas referências em objetos 3D para a decoração do seu cenário."],
+      unknown: "Responda em uma frase: ‘O que eu crio e para quem?’. Os detalhes de prazo e preço podem ficar nas condições."
+    },
+    pagina_apresentacao: {
+      description: "É sua apresentação ao possível cliente. Escreva em primeira pessoa e conecte o que você faz aos trabalhos que ele pode ver na página.",
+      steps: ["Diga qual criação você oferece e que tipo de projeto gosta de atender.", "Aponte uma peça sua que demonstre esse trabalho. Se foi um estudo autoral ou uma colaboração, explique sua participação de forma simples."],
+      examples: ["Crio objetos estilizados para cenários Roblox. A lanterna que apresento abaixo mostra as formas e as cores que desenvolvi para uma vila de fantasia.", "Modelo acessórios para avatares. Meu chapéu floral é um projeto autoral que mostra o tipo de composição que posso criar para uma coleção."],
+      unknown: "Você pode se apresentar pelo serviço e por um trabalho autoral, mesmo sem encomendas anteriores. Não precisa inventar clientes ou resultados."
+    },
+    pagina_oferta: {
+      description: "É o texto que explica o que o visitante pode contratar. Reúna a criação oferecida e os materiais que fazem parte da entrega.",
+      steps: ["Use as informações de ‘Minha oferta’ para descrever uma encomenda concreta: peça, quantidade e estilo.", "Diga o que o cliente recebe e o que precisa ser definido na conversa. Inclua importação, montagem ou publicação somente quando fizerem parte do seu serviço."],
+      examples: ["Você pode encomendar uma espada estilizada. A entrega inclui o modelo 3D e suas texturas, com formatos e prazo definidos na proposta.", "Crio um chapéu floral a partir das suas referências. Combinamos a composição, os arquivos e os ajustes antes de começar."],
+      unknown: "Comece por uma peça que você oferece. Quando algum detalhe depender do pedido, escreva que será combinado na proposta."
+    },
+    pagina_diferenciais: {
+      description: "São motivos concretos para escolher seu trabalho. Explique uma característica que você consegue demonstrar e como ela ajuda o comprador.",
+      steps: ["Observe suas peças e seu modo de trabalhar: formas, cores, organização da entrega ou etapas de conversa que você realmente oferece.", "Escreva um diferencial por linha, ligando a característica à utilidade para o cliente. Troque elogios gerais por algo que ele consiga entender e conferir."],
+      examples: ["Cores e formas combinadas com suas referências para compor a direção visual do cenário.", "Prévia na etapa combinada para você comentar a aparência antes da entrega final.", "Arquivos identificados por peça para facilitar a organização do projeto."],
+      unknown: "Escolha uma característica visível de um trabalho seu e descreva-a. Os exemplos de processo só devem ser usados se fizerem parte da sua oferta."
+    },
+    pagina_condicoes: {
+      description: "É o resumo dos combinados que o visitante precisa conhecer para contratar: prazo, ajustes, pagamento e entrega, conforme você definiu na oferta.",
+      steps: ["Confira os campos de prazo, revisões, suporte e condições comerciais em ‘Minha oferta’.", "Organize um combinado por linha. Use palavras simples e indique o que será definido após analisar o pedido, sem criar prazos ou benefícios novos."],
+      examples: ["Prazo informado após receber as referências e definir a peça.", "Quantidade de revisões combinada na proposta.", "Formatos e etapas de pagamento definidos antes do início."],
+      unknown: "Escreva ‘Prazo, arquivos e ajustes definidos na proposta antes do início’. Depois, acrescente as condições que você decidir oferecer."
+    },
+    pagina_continuidade: {
+      description: "Mostra uma possibilidade de nova encomenda depois da primeira entrega. Ajuda o cliente a pensar em outras peças relacionadas ao projeto.",
+      steps: ["Pense em uma continuação útil: outros acessórios da coleção, novas armas ou objetos para outra área do cenário.", "Apresente a ideia como um novo trabalho que pode ser combinado, com seu próprio escopo e orçamento."],
+      examples: ["Depois da primeira espada, podemos conversar sobre outras armas no mesmo estilo.", "Podemos definir novos acessórios para ampliar a coleção floral.", "Uma próxima encomenda pode incluir objetos para outras áreas da vila."],
+      unknown: "Pode deixar vazio se ainda não houver uma continuação que faça sentido para sua oferta."
+    },
+    pagina_duvidas: {
+      description: "São perguntas e respostas que ajudam o visitante a entender a contratação. Escreva cada pergunta com sua resposta na mesma linha.",
+      steps: ["Pense no que alguém perguntaria antes de encomendar: referências, arquivos, prazo ou ajustes.", "Responda com suas condições reais. Para separar as perguntas na página, coloque uma pergunta e sua resposta por linha."],
+      examples: ["O que preciso enviar? Envie referências da peça e conte onde ela será usada.", "Qual é o prazo? Informo depois de analisar a complexidade do pedido.", "Quais arquivos recebo? Combinamos os formatos na proposta conforme o uso no projeto."],
+      unknown: "Comece com a pergunta sobre como enviar um pedido. Você pode acrescentar outras depois das primeiras conversas com clientes."
+    },
+    pagina_cta: {
+      description: "É o convite que aparece no botão de contato. Diga qual ação o interessado pode fazer para começar uma conversa com você.",
+      steps: ["Escolha uma ação curta, como enviar referências ou conversar sobre a peça.", "Confira o ‘Link público de contato’ em ‘Minha oferta’: é esse endereço que o botão abre. O texto deste campo é o convite, sem precisar repetir o endereço."],
+      examples: ["Envie as referências da sua peça", "Vamos conversar sobre seu projeto", "Peça um orçamento para sua criação"],
+      unknown: "Use ‘Entrar em contato’ e escolha seu canal no campo de link público."
+    },
+    kit_apresentacao_principal: {
+      description: "É uma apresentação mais completa para copiar e usar em uma conversa, perfil ou proposta. Ela deve fazer sentido mesmo fora da sua página.",
+      steps: ["Escreva em primeira pessoa qual serviço oferece, quem atende e que tipo de peça cria.", "Acrescente um trabalho que demonstre seu estilo e um convite para conversar. Revise o texto para o destinatário e o idioma escolhidos."],
+      examples: ["Modelo objetos estilizados para cenários Roblox. Minha lanterna de fantasia mostra as formas e cores que crio para esse tipo de ambiente. Se você precisa de uma peça para sua vila, podemos conversar a partir das referências.", "Crio acessórios florais para avatares. Você pode ver meu chapéu autoral no portfólio e me contar qual peça imagina para a próxima coleção."],
+      unknown: "Use o serviço e um trabalho seu como ponto de partida. A apresentação pode ser útil sem listar experiências ou clientes que você ainda não tem."
+    },
+    kit_bio_curta: {
+      description: "É uma descrição rápida para perfis e mensagens curtas. O campo permite até 280 caracteres; acompanhe o contador abaixo do texto.",
+      steps: ["Resuma o tipo de criação que oferece e o público ou projeto que atende.", "Se houver espaço, acrescente uma característica do seu trabalho ou um convite para ver o portfólio. Corte repetições até ficar dentro do limite."],
+      examples: ["Modelo objetos estilizados para cenários Roblox. Veja minhas peças e envie as referências do seu projeto.", "Crio acessórios florais para avatares Roblox. Portfólio e contato para encomendas na minha página.", "Modelagem de espadas de fantasia para jogos de aventura. Vamos conversar sobre sua próxima peça."],
+      unknown: "Comece com ‘Modelagem 3D de [tipo de peça] para [tipo de projeto]’ e substitua os trechos pelas suas informações."
+    },
+    kit_abordagem: {
+      description: "É a primeira mensagem para um possível cliente. Conecte uma necessidade dele ao seu serviço e ofereça um trabalho relevante para ele conhecer.",
+      steps: ["Use o nome, o projeto e o contexto que você informou em ‘Para quem vou enviar o kit’. Cite apenas o que realmente sabe.", "Apresente seu serviço em poucas frases, indique uma peça sua e termine com uma pergunta simples. Depois de revisar, copie e envie pelo canal que você escolheu."],
+      examples: ["Exemplo fictício: Olá, Ana! Vi seu anúncio procurando uma lanterna para a vila. Modelo objetos estilizados e posso mostrar uma lanterna autoral. Você já tem referências para essa peça?", "Olá! Crio acessórios florais para avatares. Posso mostrar meu chapéu autoral para você conhecer meu estilo. Sua equipe está planejando novas peças para a coleção?"],
+      unknown: "Sem informações sobre um destinatário, apresente o serviço e pergunte quais peças ele procura. Você pode personalizar o texto quando conhecer o projeto."
+    },
+    kit_proposta: {
+      description: "É o texto que organiza uma encomenda para o cliente conferir: o pedido entendido, a entrega, os combinados e o próximo passo para começar.",
+      steps: ["Confira o pedido recebido e descreva a peça, a quantidade e os arquivos incluídos. Ajuste qualquer sugestão que não corresponda à conversa.", "Acrescente preço, moeda, prazo, revisões e condições já definidos. Identifique os pontos a combinar e termine pedindo a confirmação ou as informações que faltam."],
+      examples: ["Modelo para adaptar: Pedido: [peça e quantidade]. Entrega: [modelo, texturas e formatos]. Prazo: [prazo combinado]. Valor: [valor e moeda]. Ajustes: [rodadas combinadas]. Próximo passo: confirmar as referências e o escopo.", "Para a lanterna que você descreveu, proponho criar o modelo 3D e suas texturas. Confirmamos dimensões, formatos e referências para definir o prazo e o orçamento antes de começar."],
+      unknown: "Sem pedido recebido, use o texto como rascunho. Complete os pontos em aberto com o cliente antes de apresentá-lo como uma proposta fechada."
+    },
+    orientacao: {
+      description: "É um pedido curto para orientar a escrita do robô. Você pode indicar o foco, o tom ou algo que deseja destacar, usando até 400 caracteres.",
+      steps: ["Diga qual aspecto dos seus dados ou trabalhos merece destaque: estilo, tipo de peça ou público.", "Acrescente uma preferência de escrita, como frases curtas ou tom direto. Ao gerar uma seção, a orientação ajuda a reescrever aquela parte; confira a sugestão antes de salvar."],
+      examples: ["Destaque meus objetos coloridos para cenários de aventura. Use frases curtas.", "Dê foco aos acessórios florais e ao chapéu autoral que selecionei.", "Escreva uma abordagem direta para o pedido de lanterna informado no kit."],
+      unknown: "Pode deixar vazio. O robô usa o quiz, a oferta e os trabalhos informados para criar as sugestões.",
+      hint: "Ex.: Destaque meus objetos coloridos e use frases curtas"
+    },
+    pagina_trabalho_destaque: {
+      description: "É a imagem que abre sua apresentação. Escolha um trabalho seu que mostre claramente o serviço que deseja vender.",
+      steps: ["Compare as peças com sua oferta principal e escolha a que mais ajuda o cliente a visualizar uma encomenda parecida.", "Ao escolher uma peça aqui, ela também é marcada na seleção de trabalhos. Confira o destaque na prévia; você pode manter a escolha automática entre os trabalhos selecionados."],
+      examples: ["Oferta de espadas: destacar a imagem da sua espada de fantasia.", "Oferta de acessórios florais: destacar o chapéu da coleção.", "Oferta de objetos de cenário: destacar uma peça com formas e cores bem visíveis."],
+      unknown: "Mantenha ‘Escolher automaticamente’. Se ainda não houver peças, adicione imagens em ‘Meus trabalhos’."
+    },
+    trabalho_selecao: {
+      label: "Selecionar este trabalho",
+      description: "Marque a peça que deseja incluir na apresentação. Os trabalhos escolhidos também ajudam o robô a relacionar os textos às suas criações.",
+      steps: ["Escolha peças relacionadas ao serviço e ao comprador que você quer destacar. Um estudo autoral também pode demonstrar seu trabalho.", "Confira o título e a legenda de cada peça marcada. Salve a seleção; se sua página já estiver publicada, os trabalhos selecionados aparecem nela."],
+      examples: ["Selecionar uma espada para apresentar modelagem de armas de fantasia.", "Selecionar um chapéu para mostrar a composição de um acessório floral.", "Selecionar uma lanterna para uma oferta de objetos de cenário."],
+      unknown: "Comece pelo trabalho mais próximo da sua oferta. Você pode ajustar a seleção enquanto observa a prévia."
+    },
+    trabalho_titulo: {
+      description: "É o nome da peça que o visitante verá na página. Ajude-o a identificar a criação sem depender do nome do arquivo.",
+      steps: ["Diga que peça é essa: espada, chapéu, lanterna ou outro objeto.", "Acrescente o tema ou uma característica que diferencia a peça. Use um título curto que corresponda à imagem."],
+      examples: ["Espada de cristal para aventura", "Chapéu com flores de primavera", "Lanterna para vila de fantasia"],
+      unknown: "Use o tipo de peça seguido do tema, como ‘Espada de fantasia’."
+    },
+    trabalho_texto: {
+      description: "É a legenda que explica o que essa peça mostra sobre seu trabalho e como uma criação parecida pode servir ao projeto do comprador.",
+      steps: ["Descreva a peça e o que você fez: modelagem, texturas ou outra contribuição real.", "Conecte uma característica visível ao uso possível. Quando for um estudo, apresente-o como projeto autoral; quando houver colaboração, informe sua parte."],
+      examples: ["Espada autoral que modelei e texturizei. As formas e as cores mostram uma direção visual para armas de um jogo de fantasia.", "Chapéu floral que modelei para explorar acessórios de avatar. A imagem mostra a composição das flores e da aba.", "Nesta cena em colaboração, modelei a lanterna. Ela demonstra o tipo de objeto que posso criar para uma praça."],
+      unknown: "Escreva ‘Modelei esta [peça] para explorar [tema ou estilo]’ e complete com o que a imagem realmente mostra."
+    },
+    trabalho_provas: {
+      label: "Links de prova e detalhes",
+      description: "São imagens ou vídeos adicionais que ajudam o visitante a conferir detalhes da mesma peça. Adicione uma prova, escolha o tipo, cole o link e explique o que ela mostra.",
+      steps: ["Escolha um material seu que complemente a imagem principal: outro ângulo, detalhe, malha, teste no Studio ou vídeo.", "Clique em ‘Adicionar prova’ para preencher os três campos. Você pode acrescentar outros materiais ou remover uma linha; salve a apresentação para guardar os links."],
+      examples: ["Um detalhe aproximado das flores do chapéu.", "Uma imagem da malha da espada que você modelou.", "Um vídeo que mostra a lanterna por vários ângulos."],
+      unknown: "É opcional. Se ainda não tem material adicional, mantenha a imagem principal e acrescente as provas quando estiverem disponíveis."
+    },
+    prova_tipo: {
+      label: "Tipo de prova",
+      description: "Indica o tipo do material adicional. Render final é uma imagem da peça pronta; detalhe mostra uma parte; wireframe mostra as linhas da malha; Teste Studio mostra a peça no Roblox Studio; vídeo mostra uma gravação.",
+      steps: ["Veja o material que você vai compartilhar e escolha a opção que melhor descreve o que aparece nele.", "Use a descrição para explicar o que o visitante consegue observar. Um teste no Studio deve corresponder ao que você realmente testou e registrou."],
+      examples: ["Detalhe: imagem aproximada das flores do chapéu.", "Wireframe: imagem com as linhas da malha da espada.", "Vídeo: gravação da peça girando para mostrar seus lados."],
+      unknown: "Se é uma imagem da peça pronta, escolha ‘Render final’. Se mostra apenas uma parte, escolha ‘Detalhe’."
+    },
+    prova_link: {
+      description: "É o endereço público da imagem ou do vídeo que será aberto pelo visitante. Use o link completo do material que deseja mostrar.",
+      steps: ["Abra a imagem ou o vídeo e copie seu endereço ou link de compartilhamento público, começando com https://.", "Confira se uma pessoa sem login consegue abrir o material. O conteúdo do link deve mostrar a mesma peça ou o detalhe descrito nesta prova."],
+      examples: ["Endereço público de uma imagem com outro ângulo da sua peça.", "Link de compartilhamento de um vídeo seu mostrando o objeto.", "Endereço de uma imagem sua da peça no Roblox Studio."],
+      unknown: "Deixe o link vazio enquanto prepara o material. Uma linha sem link não acrescenta uma prova à apresentação.",
+      hint: "https://..."
+    },
+    prova_descricao: {
+      label: "Descrição da prova",
+      description: "É a explicação curta do material adicional. Conte o que o cliente deve observar ao abrir a imagem ou o vídeo.",
+      steps: ["Identifique a peça e o detalhe que aparece, como acabamento, formas, malha ou posição no cenário.", "Descreva somente o que o material permite conferir. Se citar um teste, diga o que foi observado nele."],
+      examples: ["Vista aproximada das flores que modelei para o chapéu.", "Linhas da malha da espada vistas por dois ângulos.", "Registro da lanterna posicionada no cenário no Roblox Studio."],
+      unknown: "Use uma frase simples, como ‘Vista lateral da peça’. Pode deixar vazio e voltar para explicar melhor depois."
+    },
     oferta_encomenda: {
       description: "É o serviço que uma pessoa pode contratar de você. Diga qual criação você faz e qual é o tamanho dessa encomenda: uma peça, um conjunto ou uma cena.",
       steps: ["Comece com o que você cria: acessório de avatar, objeto de cenário, arma, cabelo ou outra peça que você oferece.", "Acrescente o estilo ou tema e a quantidade. Se oferece vários serviços, destaque aqui uma encomenda fácil de entender; os detalhes dos arquivos vêm em ‘O que você entrega’."],
@@ -201,16 +339,16 @@
     }
   };
   function addFieldGuide(wrap, input, guide) {
-    if (!guide) return;
+    if (!guide || !wrap) return;
     const description = document.createElement("p"); description.className = "ap-help-description";
-    description.id = `ajuda-${input.name}`; description.textContent = guide.description;
+    description.id = `ajuda-${input.id || input.name}`; description.textContent = guide.description;
     input.setAttribute("aria-describedby", description.id);
     const anchor = input.closest("label") || input;
     anchor.after(description);
     if (guide.hint && input.tagName !== "SELECT" && input.type !== "checkbox") input.placeholder = guide.hint;
     const details = document.createElement("details"); details.className = "ap-field-guide";
     const summary = document.createElement("summary"); summary.textContent = "Como preencher e exemplos";
-    const label = wrap.querySelector("label")?.textContent.trim() || input.name;
+    const label = guide.label || wrap.querySelector("label")?.textContent.trim() || input.name;
     summary.setAttribute("aria-label", `Como preencher e exemplos: ${label}`);
     const instructions = document.createElement("ol");
     guide.steps.forEach(step => { const item = document.createElement("li"); item.textContent = step; instructions.append(item); });
@@ -265,7 +403,7 @@
   Object.entries(fieldGuides).forEach(([name, guide]) => {
     if (name.startsWith("posicionamento_")) return;
     const input = form.elements.namedItem(name);
-    if (input) addFieldGuide(input.closest(".ap-field"), input, guide);
+    if (input) addFieldGuide(input.closest(".ap-field,.ap-orient"), input, guide);
   });
   function makeField(group, spec, mount) {
     const [key, label, title, kind, max] = spec;
@@ -288,6 +426,7 @@
     if (max) input.maxLength = max;
     input.value = String(content[group][key] || "");
     wrapper.append(caption, input);
+    addFieldGuide(wrapper, input, fieldGuides[input.name]);
     if (path === "kit.bio_curta") {
       const counter = document.createElement("small"); counter.id = "bio-contador"; counter.className = "ap-counter"; counter.setAttribute("aria-live", "polite"); wrapper.append(counter);
     }
@@ -303,6 +442,11 @@
     const description = $(`[name="legenda_texto_${id}"]`, work);
     title.value = savedLegend?.titulo || work.dataset.workTitle || "";
     description.value = savedLegend?.texto || work.dataset.workText || "";
+    const selection = $('[name="trabalhos_ids"]', work);
+    selection.id = `trabalho-selecao-${id}`;
+    addFieldGuide(selection.closest("div"), selection, fieldGuides.trabalho_selecao);
+    addFieldGuide(title.closest(".ap-field"), title, fieldGuides.trabalho_titulo);
+    addFieldGuide(description.closest(".ap-field"), description, fieldGuides.trabalho_texto);
   }
   const proofTypes = [["render", "Render final"], ["detalhe", "Detalhe"], ["wireframe", "Wireframe"], ["studio", "Teste Studio"], ["video", "Vídeo"]];
   for (const work of works) {
@@ -310,6 +454,8 @@
     const raw = $(`[name="provas_${id}"]`, work);
     const editor = $(`[data-proofs-for="${id}"]`, work);
     if (!raw || !editor) continue;
+    addFieldGuide(raw.closest(".ap-field"), raw, fieldGuides.trabalho_provas);
+    editor.setAttribute("aria-describedby", raw.getAttribute("aria-describedby"));
     raw.hidden = true; raw.style.display = "none";
     const list = document.createElement("div"); editor.append(list);
     const add = document.createElement("button"); add.type = "button"; add.className = "ap-generate"; add.textContent = "Adicionar prova"; editor.append(add);
@@ -321,20 +467,28 @@
         return url ? `${type} | ${url} | ${description}` : "";
       }).filter(Boolean).join("\n");
     };
+    let proofSequence = 0;
     function addRow(type = "render", url = "", description = "") {
       if (list.children.length >= 8) return;
+      const proofId = `prova-${id}-${++proofSequence}`;
       const row = document.createElement("div"); row.className = "ap-fields";
       const typeWrap = document.createElement("div"); typeWrap.className = "ap-field";
       const typeLabel = document.createElement("label"); typeLabel.textContent = "Tipo de prova";
       const select = document.createElement("select");
+      select.id = `${proofId}-tipo`;
       proofTypes.forEach(([value, label]) => { const option = document.createElement("option"); option.value = value; option.textContent = label; select.append(option); });
       select.value = type; typeLabel.append(select); typeWrap.append(typeLabel);
       const urlWrap = document.createElement("div"); urlWrap.className = "ap-field";
       const urlLabel = document.createElement("label"); urlLabel.textContent = "Link público";
       const link = document.createElement("input"); link.type = "text"; link.inputMode = "url"; link.dataset.proofLink = ""; link.placeholder = "https://..."; link.value = url; urlLabel.append(link); urlWrap.append(urlLabel);
+      link.id = `${proofId}-link`;
       const descWrap = document.createElement("div"); descWrap.className = "ap-field wide";
       const descLabel = document.createElement("label"); descLabel.textContent = "Descrição";
       const desc = document.createElement("input"); desc.type = "text"; desc.dataset.proofDescription = ""; desc.value = description; descLabel.append(desc); descWrap.append(descLabel);
+      desc.id = `${proofId}-descricao`;
+      addFieldGuide(typeWrap, select, fieldGuides.prova_tipo);
+      addFieldGuide(urlWrap, link, fieldGuides.prova_link);
+      addFieldGuide(descWrap, desc, fieldGuides.prova_descricao);
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "ap-generate"; remove.textContent = "Remover prova";
       remove.addEventListener("click", () => { row.remove(); add.disabled = false; serialize(); sync(); });
       row.append(typeWrap, urlWrap, descWrap, remove); list.append(row);
