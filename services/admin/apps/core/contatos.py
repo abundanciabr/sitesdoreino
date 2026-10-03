@@ -63,6 +63,7 @@ ROTULOS_DOS_EVENTOS = {
     "pix.expirado": "Pix venceu sem pagar",
     "quiz.completado": "Respondeu o quiz",
     "lead.upsert": "Deixou o contato",
+    "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
 }
 
 #: Forma de pagamento, como o checkout a manda.

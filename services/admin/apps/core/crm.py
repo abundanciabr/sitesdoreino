@@ -14,7 +14,7 @@ from .crm_client import CRMClient
 ETAPAS = (
     ("nova", "Nova"), ("qualificada", "Qualificada"), ("proposta", "Proposta"),
     ("negociacao", "Em negociação"), ("ganha", "Ganha"),
-    ("perdida", "Perdida"), ("desqualificada", "Sem interesse"),
+    ("perdida", "Perdida"), ("desqualificada", "Encerrada"),
 )
 ABERTAS = dict(ETAPAS[:4])
 
@@ -47,7 +47,9 @@ def erro_da_fonte(estado):
 
 @require_GET
 def crm(request):
-    filtros = {k: request.GET.get(k, "").strip() for k in ("q", "etapa", "situacao", "lead_id")}
+    filtros = {k: request.GET.get(k, "").strip() for k in ("q", "etapa", "situacao", "lead_id", "testes")}
+    if filtros["testes"] not in ("ocultar", "mostrar", "somente"):
+        filtros["testes"] = "ocultar"
     try:
         pagina = min(10000, max(1, int(request.GET.get("pagina", 1))))
     except ValueError:

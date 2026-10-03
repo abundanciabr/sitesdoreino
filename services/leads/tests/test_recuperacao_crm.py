@@ -125,14 +125,17 @@ def test_backfill_reversao_existente_nao_duplica_timeline():
 def test_api_admin_lista_atualiza_e_isola_token(client, settings, monkeypatch):
     monkeypatch.setenv("TOKENS_ACEITOS_ADMIN", "admin")
     settings.TOKENS_ACEITOS.add("admin")
-    _evento("pagamento.recusado", ao_pagamento_recusado, _dados())
+    dados = _dados()
+    dados["customer"] = {"email": "ana@cliente.com", "name": "Ana"}
+    _evento("pagamento.recusado", ao_pagamento_recusado, dados)
     caminho = "/api/leads/crm"
     cabecalho = {"HTTP_AUTHORIZATION": "Bearer admin"}
     resposta = client.get(caminho, **cabecalho)
     assert resposta.status_code == 200
     corpo = resposta.json()
     assert corpo["total"] == 1
-    assert corpo["itens"][0]["contato"]["email"] == "ana@example.com"
+    assert corpo["itens"][0]["contato"]["email"] == "ana@cliente.com"
+    assert corpo["itens"][0]["registro_de_teste"] is False
     assert corpo["resumo"]["abertas"] == 1
     identificador = corpo["itens"][0]["id"]
     atualizado = client.patch(
@@ -154,3 +157,47 @@ def test_api_admin_lista_atualiza_e_isola_token(client, settings, monkeypatch):
     assert ganho_manual.status_code == 422
     recusado = client.get(caminho, HTTP_AUTHORIZATION="Bearer outro")
     assert recusado.status_code in (401, 403)
+
+
+def test_crm_oculta_testes_explicitos_por_padrao_sem_perder_contagem(
+    client, settings, monkeypatch
+):
+    monkeypatch.setenv("TOKENS_ACEITOS_ADMIN", "admin")
+    settings.TOKENS_ACEITOS.add("admin")
+
+    casos = [
+        ("cliente@dominio.com", "Cliente Real", "real"),
+        ("sandbox@dominio.com", "Teste Sandbox Appmax", "nome"),
+        ("pessoa@example.com", "Pessoa", "email"),
+        ("outra@dominio.com", "Pessoa Outra", "origem"),
+    ]
+    for indice, (email, nome, _) in enumerate(casos):
+        dados = _dados(pedido=f"pedido-{indice}")
+        dados["payment_id"] = f"pay-{indice}"
+        dados["customer"] = {"email": email, "name": nome}
+        _evento("pagamento.recusado", ao_pagamento_recusado, dados)
+    Lead.objects.filter(email="outra@dominio.com").update(source="sandbox-campanha")
+
+    caminho = "/api/leads/crm"
+    cabecalho = {"HTTP_AUTHORIZATION": "Bearer admin"}
+    padrao = client.get(caminho, **cabecalho)
+    assert padrao.status_code == 200
+    assert padrao.json()["total"] == 1
+    assert padrao.json()["resumo"] == {
+        "contatos": 4, "eventos": 4, "testes": 3, "abertas": 1,
+        "atrasadas": 0, "ganhas": 0, "recuperadas": 0, "perdidas": 0,
+    }
+    assert padrao.json()["itens"][0]["registro_de_teste"] is False
+
+    todos = client.get(f"{caminho}?testes=mostrar", **cabecalho)
+    assert todos.json()["total"] == 4
+    assert todos.json()["resumo"]["abertas"] == 4
+    assert sum(item["registro_de_teste"] for item in todos.json()["itens"]) == 3
+
+    somente = client.get(f"{caminho}?testes=somente", **cabecalho)
+    assert somente.json()["total"] == 3
+    assert somente.json()["resumo"]["abertas"] == 3
+    assert all(item["registro_de_teste"] for item in somente.json()["itens"])
+
+    invalido = client.get(f"{caminho}?testes=qualquer", **cabecalho)
+    assert invalido.status_code == 422

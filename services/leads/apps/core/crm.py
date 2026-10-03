@@ -1,6 +1,7 @@
 """Porta do painel admin para acompanhar recuperações e demais oportunidades."""
 
 import os
+import re
 import uuid
 
 from django.db import transaction
@@ -14,6 +15,22 @@ from .models import Lead, Oportunidade, RegistroHistoricoOportunidade, TimelineE
 from .oportunidades import _como_oportunidade, _corpo, _escolha, _proximo_passo, _texto
 
 router = Router()
+
+_PALAVRA_DE_TESTE = r"(^|[^a-z0-9])(teste|test|sandbox)([^a-z0-9]|$)"
+_PALAVRA_DE_TESTE_PY = re.compile(_PALAVRA_DE_TESTE, re.IGNORECASE)
+_INDICADOR_DE_TESTE = (
+    Q(lead__name__iregex=_PALAVRA_DE_TESTE)
+    | Q(lead__source__icontains="sandbox")
+    | Q(lead__email__iendswith="@example.com")
+)
+
+
+def _registro_de_teste(lead):
+    return bool(
+        _PALAVRA_DE_TESTE_PY.search(lead.name or "")
+        or "sandbox" in (lead.source or "").lower()
+        or (lead.email or "").lower().endswith("@example.com")
+    )
 
 
 def _admin(request):
@@ -29,6 +46,7 @@ def _item(oportunidade, historico=False):
         "id": str(lead.id), "nome": lead.name, "email": lead.email,
         "telefone": lead.phone, "site_id": lead.site_id,
     }
+    item["registro_de_teste"] = _registro_de_teste(lead)
     return item
 
 
@@ -46,10 +64,12 @@ def _oportunidade(chave):
 @router.get("/crm")
 def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
                situacao: str = "", pagina: int = 1, por_pagina: int = 30,
-               site_id: str = ""):
+               site_id: str = "", testes: str = "ocultar"):
     _admin(request)
     if pagina < 1 or por_pagina < 1 or por_pagina > 100:
         raise HttpError(422, "Paginação inválida")
+    if testes not in {"ocultar", "mostrar", "somente"}:
+        raise HttpError(422, "testes deve ser ocultar, mostrar ou somente")
     base = Oportunidade.objects.select_related("lead")
     leads = Lead.objects.all()
     eventos = TimelineEvent.objects.all()
@@ -57,9 +77,15 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
         base = base.filter(lead__site_id=site_id)
         leads = leads.filter(site_id=site_id)
         eventos = eventos.filter(lead__site_id=site_id)
+    quantidade_de_testes = base.filter(_INDICADOR_DE_TESTE).count()
+    if testes == "ocultar":
+        base = base.exclude(_INDICADOR_DE_TESTE)
+    elif testes == "somente":
+        base = base.filter(_INDICADOR_DE_TESTE)
     agora = timezone.now()
     resumo = {
         "contatos": leads.count(), "eventos": eventos.count(),
+        "testes": quantidade_de_testes,
         "abertas": base.filter(desfecho_encerrada_em__isnull=True).count(),
         "atrasadas": base.filter(desfecho_encerrada_em__isnull=True,
                                 passo_executar_ate__lt=agora).count(),

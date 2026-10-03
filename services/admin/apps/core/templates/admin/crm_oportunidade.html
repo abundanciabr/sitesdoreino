@@ -6,7 +6,7 @@
 <main class="envolucro crm-ficha"><a class="volta" href="{% url 'crm' %}">← CRM</a>
 {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 {% if oportunidade %}
-<h1>{{ oportunidade.contato.nome|default:oportunidade.contato.email }}</h1><p class="subtitulo">{{ oportunidade.etapa_nome }} · Responsável: {{ oportunidade.titular.id }}</p>
+{% if oportunidade.registro_de_teste %}<p class="aviso">Este contato tem identificação explícita de teste. O histórico está preservado.</p>{% endif %}<h1>{{ oportunidade.contato.nome|default:oportunidade.contato.email }}</h1><p class="subtitulo">{{ oportunidade.etapa_nome }} · Responsável: {{ oportunidade.titular.id }}</p>
 <div class="crm-ficha-grid"><div>
 <section class="cartao"><h2>A pessoa</h2><p>{{ oportunidade.contato.email }}{% if oportunidade.contato.telefone %}<br>{{ oportunidade.contato.telefone }}{% endif %}</p><a href="{% url 'contato' oportunidade.lead_id %}">Abrir ficha completa →</a></section>
 <section class="cartao"><h2>Próximo passo</h2><p>{{ oportunidade.proximo_passo.descricao }}</p><p {% if oportunidade.atrasada %}class="atrasada"{% endif %}>Prazo: {{ oportunidade.prazo|date:"d/m/Y H:i" }}{% if oportunidade.atrasada %} · Vencido{% endif %}</p>

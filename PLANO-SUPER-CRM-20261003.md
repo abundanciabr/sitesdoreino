@@ -34,6 +34,15 @@ conseguiu é a lista mais quente que o site tem. A primeira utilidade do CRM é 
 
 ## Construção da primeira entrega
 
+Fases 1 e 2 publicadas em `https://meshcraft.top/admin/crm/` e
+`https://meshcraft.top/admin/contatos/`. Conferência de produção em 03/10/2026:
+103 contatos e 195 acontecimentos; 53 oportunidades construídas a partir
+dos eventos existentes. A repetição criou zero oportunidades novas.
+
+Há registros explicitamente identificados como testes e sandbox nessa base.
+O quadro os oculta por padrão e permite mostrá-los pelo filtro, sem apagar
+o histórico. Ausência de identificação de teste não comprova venda real.
+
 Implementados: contatos pesquisáveis e paginados, ficha com origem, etiquetas,
 consentimentos e histórico em português; quadro de oportunidades com etapas,
 responsável, próximo passo e prazo; notas de acompanhamento e encerramento.
