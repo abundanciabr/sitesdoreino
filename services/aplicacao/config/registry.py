@@ -69,7 +69,7 @@ def service_for_path(
                 continue
             if service == "pagamentos":
                 if path.startswith("/api/pagamentos/webhooks"):
-                    if host != "basileiatoutheou.org":
+                    if host != "meshcraft.top":
                         continue
                 elif not (path.startswith("/api/pagamentos/appmax") and host == "meshcraft.top"):
                     continue
