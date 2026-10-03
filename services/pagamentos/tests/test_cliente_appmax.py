@@ -8,7 +8,11 @@ import httpx
 import pytest
 import respx
 
-from pagamentos.providers.appmax.client import AppmaxClient, AppmaxError
+from pagamentos.providers.appmax.client import (
+    AppmaxClient,
+    AppmaxError,
+    registrar_resposta_pix,
+)
 
 _AUTH_URL = "https://auth.sandboxappmax.com.br/oauth2/token"
 _ORDER_URL = "https://api.sandboxappmax.com.br/v1/orders/3531"
@@ -17,6 +21,7 @@ _ORDERS_URL = "https://api.sandboxappmax.com.br/v1/orders"
 _INSTALLMENTS_URL = "https://api.sandboxappmax.com.br/v1/payments/installments"
 _CARD_URL = "https://api.sandboxappmax.com.br/v1/payments/credit-card"
 _PIX_URL = "https://api.sandboxappmax.com.br/v1/payments/pix"
+_REFUND_URL = "https://api.sandboxappmax.com.br/v1/orders/refund-request"
 _CLIENT_ID = "merchant-client-id"
 _CLIENT_SECRET = "merchant-client-secret"
 _ACCESS_TOKEN = "merchant-access-token"
@@ -175,7 +180,6 @@ def test_segundo_401_falha_sem_repetir_e_sem_expor_credenciais(settings: Any) ->
     "url",
     [
         "http://auth.sandboxappmax.com.br/oauth2/token",
-        "https://auth.appmax.com.br/oauth2/token",
         "https://auth.sandboxappmax.com.br/outro",
         "https://usuario:segredo@auth.sandboxappmax.com.br/oauth2/token",
         "https://auth.sandboxappmax.com.br/oauth2/token?redirect=https://evil.test",
@@ -200,7 +204,6 @@ def test_url_de_autenticacao_fora_do_sandbox_falha_sem_rede(
     "url",
     [
         "http://api.sandboxappmax.com.br",
-        "https://api.appmax.com.br",
         "https://api.sandboxappmax.com.br/v1",
         "https://usuario:segredo@api.sandboxappmax.com.br",
         "https://api.sandboxappmax.com.br?redirect=https://evil.test",
@@ -214,6 +217,25 @@ def test_url_da_api_fora_do_sandbox_falha_sem_rede(settings: Any, url: str) -> N
     with respx.mock() as transport, pytest.raises(AppmaxError, match="endpoints HTTPS"):
         AppmaxClient()
 
+    assert not transport.calls
+
+
+def test_hosts_de_producao_sao_aceitos_sem_acessar_rede(settings: Any) -> None:
+    settings.APPMAX_AUTH_URL = "https://auth.appmax.com.br/oauth2/token"
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
+    with respx.mock() as transport:
+        client = AppmaxClient()
+    assert client._auth_url == settings.APPMAX_AUTH_URL
+    assert client._api_url == settings.APPMAX_API_URL
+    assert not transport.calls
+
+
+def test_hosts_de_ambientes_misturados_sao_recusados(settings: Any) -> None:
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
+    with respx.mock() as transport, pytest.raises(
+        AppmaxError, match="ambientes diferentes"
+    ):
+        AppmaxClient()
     assert not transport.calls
 
 
@@ -633,15 +655,173 @@ def test_escritas_appmax_usam_endpoints_e_respostas_oficiais_sem_repetir(
         client = AppmaxClient()
         assert client.criar_cliente(customer_body) == {"id": "42"}
         assert client.criar_pedido(order_body) == {"id": "3531", "status": "pendente"}
-        client.criar_pagamento_cartao(payment_body)
+        resposta_cartao = client.criar_pagamento_cartao(payment_body)
 
     assert customer.call_count == order.call_count == payment.call_count == 1
     assert json.loads(customer.calls[0].request.read()) == customer_body
     assert json.loads(order.calls[0].request.read()) == order_body
     assert json.loads(payment.calls[0].request.read()) == payment_body
+    assert resposta_cartao == {"data": {"payment": {"status": "autorizado"}}}
     payment_text = payment.calls[0].request.content.decode()
     assert "card_number" not in payment_text
     assert '"cvv"' not in payment_text
+
+
+def test_cartao_devolve_status_do_pedido_e_pagamento(settings: Any) -> None:
+    corpo = {
+        "data": {
+            "order": {"id": 3531, "status": "recusado_por_risco"},
+            "payment": {"method": "creditcard", "status": "recusado"},
+        }
+    }
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_CARD_URL).mock(return_value=httpx.Response(201, json=corpo))
+        resultado = AppmaxClient().criar_pagamento_cartao({"order_id": 3531})
+    assert resultado == corpo
+
+
+def test_cartao_devolve_order_parcial_sem_mudar_decisao(settings: Any) -> None:
+    corpo = {"data": {"order": {"id": 3531}, "payment": {"status": "autorizado"}}}
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        transport.post(_CARD_URL).mock(return_value=httpx.Response(201, json=corpo))
+        resultado = AppmaxClient().criar_pagamento_cartao({"order_id": 3531})
+    assert resultado == corpo
+
+
+def test_estorno_total_usa_total_pago_e_201_e_somente_solicitado(settings: Any) -> None:
+    pedido = _order_response()
+    pedido["data"]["order"]["total_paid"] = 12300
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        _consulta(transport, json=pedido)
+        estorno = transport.post(_REFUND_URL).mock(
+            return_value=httpx.Response(201, json={"data": {"status": "requested"}})
+        )
+        resultado = AppmaxClient().solicitar_estorno(3531)
+    assert resultado == {"status": "solicitado", "order_id": 3531, "value": 12300}
+    assert json.loads(estorno.calls[0].request.read()) == {
+        "order_id": 3531,
+        "type": "total",
+        "value": 12300,
+    }
+
+
+@pytest.mark.parametrize("status", [400, 404, 500])
+def test_estorno_recusado_nao_afirma_estornado(settings: Any, status: int) -> None:
+    pedido = _order_response()
+    pedido["data"]["order"]["total_paid"] = 12300
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        _consulta(transport, json=pedido)
+        transport.post(_REFUND_URL).mock(
+            return_value=httpx.Response(status, json={"message": "segredo"})
+        )
+        with pytest.raises(AppmaxError, match=f"HTTP {status}") as excinfo:
+            AppmaxClient().solicitar_estorno(3531)
+    assert excinfo.value.ambiguo is False
+    assert "segredo" not in str(excinfo.value)
+
+
+def test_estorno_timeout_ambiguo_sem_reenvio(settings: Any) -> None:
+    pedido = _order_response()
+    pedido["data"]["order"]["total_paid"] = 12300
+    with respx.mock() as transport:
+        _autenticacao(transport)
+        _consulta(transport, json=pedido)
+        estorno = transport.post(_REFUND_URL).mock(
+            side_effect=httpx.ReadTimeout("timeout")
+        )
+        with pytest.raises(AppmaxError, match="consulte o pedido") as excinfo:
+            AppmaxClient().solicitar_estorno(3531)
+    assert excinfo.value.ambiguo is True
+    assert estorno.call_count == 1
+
+
+@pytest.mark.parametrize("valor", [None, 0, -1, True, "12300"])
+def test_estorno_sem_total_pago_confirmado_nao_envia_post(
+    settings: Any, valor: Any
+) -> None:
+    pedido = _order_response()
+    pedido["data"]["order"]["total_paid"] = valor
+    with respx.mock(assert_all_called=False) as transport:
+        _autenticacao(transport)
+        _consulta(transport, json=pedido)
+        estorno = transport.post(_REFUND_URL).mock(return_value=httpx.Response(201))
+        with pytest.raises(AppmaxError, match="total pago"):
+            AppmaxClient().solicitar_estorno(3531)
+    assert estorno.call_count == 0
+
+
+def test_estorno_parcial_rejeitado_sem_rede(settings: Any) -> None:
+    with respx.mock() as transport, pytest.raises(AppmaxError, match="total"):
+        AppmaxClient().solicitar_estorno(3531, tipo="partial")
+    assert not transport.calls
+
+
+def test_pix_registra_corpo_completo_sanitizado_e_operation_id(
+    settings: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    resposta = {
+        "data": {
+            "payment": {
+                "pix_qrcode": "aW1hZ2Vt",
+                "pix_emv": "000201",
+                "pix_expiration_date": "2026-09-25 15:30:00",
+                "status": "pendente",
+                "customer": {"name": "Ana Silva", "email": "ana@example.com"},
+            }
+        },
+        "token": "token-secreto",
+    }
+    with respx.mock() as transport, registrar_resposta_pix(
+        "operacao-teste"
+    ), caplog.at_level("INFO"):
+        _autenticacao(transport)
+        transport.post(_PIX_URL).mock(return_value=httpx.Response(200, json=resposta))
+        AppmaxClient().criar_pagamento_pix({"order_id": 3531})
+    registro = next(
+        r.message for r in caplog.records if "appmax_pix_resposta" in r.message
+    )
+    payload = json.loads(registro.removeprefix("appmax_pix_resposta "))
+    assert payload["operation_id"] == "operacao-teste"
+    assert payload["http_status"] == 200
+    assert set(payload["resposta"]["data"]["payment"]) == set(
+        resposta["data"]["payment"]
+    )
+    assert payload["resposta"]["data"]["payment"]["status"] == "pendente"
+    assert payload["resposta"]["data"]["payment"]["pix_emv"] == "[redigido]"
+    for segredo in ("Ana Silva", "ana@example.com", "token-secreto", "000201"):
+        assert segredo not in registro
+
+
+def test_pix_sem_qr_registra_corpo_de_erro_sanitizado(
+    settings: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    resposta = {
+        "message": "expiration_date inválido ana@example.com",
+        "errors": {"expiration_date": ["12345678909"]},
+    }
+    with respx.mock() as transport, registrar_resposta_pix(
+        "operacao-erro"
+    ), caplog.at_level("INFO"):
+        _autenticacao(transport)
+        transport.post(_PIX_URL).mock(return_value=httpx.Response(400, json=resposta))
+        with pytest.raises(AppmaxError):
+            AppmaxClient().criar_pagamento_pix({"order_id": 3531})
+    registro = next(
+        r.message for r in caplog.records if "appmax_pix_resposta" in r.message
+    )
+    payload = json.loads(registro.removeprefix("appmax_pix_resposta "))
+    assert payload["operation_id"] == "operacao-erro"
+    assert payload["resposta"] == {
+        "message": "[redigido]",
+        "errors": {"expiration_date": ["[redigido]"]},
+    }
+    assert payload["diagnostico"] == "campo_expiration_date"
+    assert "ana@example.com" not in registro
+    assert "12345678909" not in registro
 
 
 @pytest.mark.parametrize(
@@ -691,12 +871,24 @@ def test_pix_appmax_preserva_qr_codigo_vencimento_e_pedido(
     }
 
 
-def test_pix_appmax_sem_codigo_pagavel_exige_reconciliacao(settings: Any) -> None:
-    with respx.mock() as transport:
+def test_pix_appmax_sem_codigo_pagavel_exige_reconciliacao(
+    settings: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    with respx.mock() as transport, registrar_resposta_pix(
+        "operacao-sem-qr"
+    ), caplog.at_level("INFO"):
         _autenticacao(transport)
         pagamento = transport.post(_PIX_URL).mock(
             return_value=httpx.Response(
-                200, json={"data": {"payment": {"pix_qrcode": "aW1hZ2Vt"}}}
+                200,
+                json={
+                    "data": {
+                        "payment": {
+                            "pix_qrcode": "aW1hZ2Vt",
+                            "reason": "cliente@example.com",
+                        }
+                    }
+                },
             )
         )
         with pytest.raises(AppmaxError) as capturada:
@@ -704,6 +896,14 @@ def test_pix_appmax_sem_codigo_pagavel_exige_reconciliacao(settings: Any) -> Non
 
     assert pagamento.call_count == 1
     assert capturada.value.ambiguo
+    registro = next(
+        r.message for r in caplog.records if "appmax_pix_resposta" in r.message
+    )
+    payload = json.loads(registro.removeprefix("appmax_pix_resposta "))
+    assert payload["operation_id"] == "operacao-sem-qr"
+    assert set(payload["resposta"]["data"]["payment"]) == {"pix_qrcode", "reason"}
+    assert payload["resposta"]["data"]["payment"]["reason"] == "[redigido]"
+    assert "cliente@example.com" not in registro
 
 
 def test_pix_400_preserva_so_causa_permitida_sem_vazar_resposta(settings: Any) -> None:

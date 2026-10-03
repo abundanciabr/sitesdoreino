@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import nullcontext
 from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import Mock, patch
@@ -30,6 +31,7 @@ SITE = "site-appmax"
 
 def _cliente() -> Mock:
     cliente = Mock()
+    cliente.registrar_resposta_pix.side_effect = lambda _id: nullcontext()
     cliente.criar_cliente.return_value = {"id": "42"}
     cliente.criar_pedido.return_value = {"id": "3531", "status": "pendente"}
     cliente.criar_pagamento_pix.return_value = {
@@ -114,6 +116,15 @@ def test_pix_gera_qr_uma_vez_com_cliente_pedido_e_tentativa_persistida(
     with patch("pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente):
         assert completar_intent_pix(intent).pk == intent.pk
     assert cliente.criar_pagamento_pix.call_count == 1
+
+
+def test_pix_vincula_log_da_resposta_ao_operation_id_da_tentativa(
+    settings: Any,
+) -> None:
+    cliente = _cliente()
+    intent = _criar(settings, cliente)
+    tentativa = PaymentAttempt.objects.get(intent=intent, provider="appmax")
+    cliente.registrar_resposta_pix.assert_called_once_with(str(tentativa.operation_id))
 
 
 def test_pix_recusado_preserva_diagnostico_sanitizado_na_tentativa(

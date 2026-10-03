@@ -206,7 +206,8 @@ def completar(intent: Intent) -> Intent:
         }
         operacao = abrir_operacao(tentativa, tipo="payment", corpo=corpo)
         try:
-            resposta_pix = sessao.criar_pagamento_pix(body=corpo)
+            with sessao.registrar_resposta_pix(str(tentativa.operation_id)):
+                resposta_pix = sessao.criar_pagamento_pix(body=corpo)
             vencimento = _vencimento(resposta_pix["expires_at"])
         except gateway.FalhaNoProvedor as exc:
             finalizar_operacao(

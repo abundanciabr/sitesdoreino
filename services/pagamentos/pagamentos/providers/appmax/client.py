@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import re
+import json
+import logging
 import threading
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import quote, urlsplit
@@ -13,6 +17,89 @@ from django.conf import settings
 _MARGEM_EXPIRACAO_SEGUNDOS = 60
 _TENTATIVAS_GET = 3
 _ID_EXTERNO = re.compile(r"[1-9][0-9]*\Z")
+_PIX_OPERATION_ID: ContextVar[str] = ContextVar("appmax_pix_operation_id", default="")
+_LOG = logging.getLogger(__name__)
+_STATUS_SEGUROS = frozenset(
+    {
+        "pendente",
+        "autorizado",
+        "aprovado",
+        "integrado",
+        "pendente_integracao",
+        "cancelado",
+        "recusado_por_risco",
+        "estornado",
+        "expired",
+        "rejected",
+        "approved",
+        "pending",
+        "in_process",
+        "pix",
+        "creditcard",
+        "total",
+    }
+)
+_NUMEROS_SEGUROS = frozenset(
+    {
+        "id",
+        "order_id",
+        "amount",
+        "total",
+        "total_paid",
+        "value",
+        "sub_total",
+        "shipping_value",
+        "discount_value",
+        "installments",
+    }
+)
+_CHAVE_SEGURA = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]{0,79}\Z")
+
+
+@contextmanager
+def registrar_resposta_pix(operation_id: str):
+    """Liga a resposta do provedor à tentativa durante o único POST Pix."""
+    token = _PIX_OPERATION_ID.set(str(operation_id))
+    try:
+        yield
+    finally:
+        _PIX_OPERATION_ID.reset(token)
+
+
+def _sanitizar_resposta_pix(valor: Any, chave: str = "") -> Any:
+    """Preserva toda a estrutura, mas só libera escalares de diagnóstico seguros."""
+    if isinstance(valor, dict):
+        return {
+            (
+                str(k) if _CHAVE_SEGURA.fullmatch(str(k)) else "[chave_redigida]"
+            ): _sanitizar_resposta_pix(v, str(k).lower())
+            for k, v in valor.items()
+        }
+    if isinstance(valor, list):
+        return [_sanitizar_resposta_pix(item, chave) for item in valor]
+    if valor is None or isinstance(valor, bool):
+        return valor
+    if isinstance(valor, (int, float)):
+        return valor if chave in _NUMEROS_SEGUROS else "[redigido]"
+    if isinstance(valor, str):
+        if (
+            chave in {"status", "type", "method", "payment_method"}
+            and valor in _STATUS_SEGUROS
+        ):
+            return valor
+        if chave in {
+            "pix_expiration_date",
+            "expires_at",
+            "expiration_date",
+            "created_at",
+            "updated_at",
+            "paid_at",
+        } and re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}(?:[+-][0-9]{2}:[0-9]{2})?",
+            valor,
+        ):
+            return valor
+    return "[redigido]"
 
 
 def _id_externo_valido(value: Any) -> bool:
@@ -38,16 +125,18 @@ class AppmaxClient:
     def __init__(self) -> None:
         self._client_id = settings.APPMAX_MERCHANT_CLIENT_ID
         self._client_secret = settings.APPMAX_MERCHANT_CLIENT_SECRET
-        self._auth_url = self._validar_url_sandbox(
+        self._auth_url = self._validar_url_oficial(
             settings.APPMAX_AUTH_URL,
-            host="auth.sandboxappmax.com.br",
+            hosts={"auth.sandboxappmax.com.br", "auth.appmax.com.br"},
             path="/oauth2/token",
         )
-        self._api_url = self._validar_url_sandbox(
+        self._api_url = self._validar_url_oficial(
             settings.APPMAX_API_URL,
-            host="api.sandboxappmax.com.br",
+            hosts={"api.sandboxappmax.com.br", "api.appmax.com.br"},
             path="",
         )
+        if ("sandbox" in self._auth_url) != ("sandbox" in self._api_url):
+            raise AppmaxError("URLs Appmax de ambientes diferentes; confira o env")
         self._timeout = httpx.Timeout(connect=3.0, read=10.0, write=5.0, pool=3.0)
         self._timeout_pix = httpx.Timeout(connect=3.0, read=30.0, write=5.0, pool=3.0)
         self._token: str | None = None
@@ -433,6 +522,49 @@ class AppmaxClient:
             )
         return payload
 
+    def solicitar_estorno(self, order_id: int, tipo: str = "total") -> dict[str, Any]:
+        """Solicita estorno total com o valor efetivamente pago no pedido."""
+        if isinstance(order_id, bool) or not isinstance(order_id, int) or order_id <= 0:
+            raise AppmaxError(
+                "ID do pedido Appmax inválido; informe um inteiro positivo"
+            )
+        if tipo != "total":
+            raise AppmaxError("Apenas estorno total Appmax é aceito nesta integração")
+        pedido = self.consultar_pedido(order_id)
+        valor = pedido.get("total_paid")
+        if type(valor) is not int or valor <= 0:
+            raise AppmaxError(
+                "Pedido Appmax sem total pago confirmado; confira antes de estornar"
+            )
+        token = self._obter_token()
+        try:
+            response = httpx.post(
+                f"{self._api_url}/v1/orders/refund-request",
+                json={"order_id": order_id, "type": "total", "value": valor},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/json",
+                },
+                timeout=self._timeout,
+                follow_redirects=False,
+            )
+        except httpx.TimeoutException:
+            raise AppmaxError(
+                "Timeout ao solicitar estorno Appmax; consulte o pedido antes de qualquer novo envio",
+                ambiguo=True,
+            ) from None
+        except httpx.HTTPError:
+            raise AppmaxError(
+                "Falha de transporte no estorno Appmax; consulte o pedido antes de qualquer novo envio",
+                ambiguo=True,
+            ) from None
+        if response.status_code != 201:
+            raise AppmaxError(
+                f"Appmax não confirmou solicitação de estorno (HTTP {response.status_code})",
+                ambiguo=200 <= response.status_code < 300,
+            )
+        return {"status": "solicitado", "order_id": order_id, "value": valor}
+
     def criar_pagamento_pix(self, body: dict[str, Any]) -> dict[str, str]:
         payload = self._post("/v1/payments/pix", body, "pagamento Pix")
         try:
@@ -494,6 +626,28 @@ class AppmaxClient:
             falha_rede = f"falha de transporte após enviar {operacao} Appmax; reconciliação necessária"
         if falha_rede:
             raise AppmaxError(falha_rede, ambiguo=True)
+        if path == "/v1/payments/pix" and _PIX_OPERATION_ID.get():
+            try:
+                corpo_resposta = response.json()
+            except ValueError:
+                corpo_resposta = {"corpo": "[json_invalido]"}
+            _LOG.info(
+                "appmax_pix_resposta %s",
+                json.dumps(
+                    {
+                        "operation_id": _PIX_OPERATION_ID.get(),
+                        "http_status": response.status_code,
+                        "resposta": _sanitizar_resposta_pix(corpo_resposta),
+                        "diagnostico": (
+                            self._diagnostico_rejeicao(response)
+                            if response.status_code >= 400
+                            else ""
+                        ),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ),
+            )
         if response.status_code >= 500:
             raise AppmaxError(
                 f"Appmax {operacao}: serviço indisponível (HTTP {response.status_code}); reconciliação necessária",
@@ -523,11 +677,17 @@ class AppmaxClient:
         return seconds if seconds >= 0 else None
 
     @staticmethod
-    def _validar_url_sandbox(url: str, *, host: str, path: str) -> str:
-        if not AppmaxClient._url_sandbox_valida(url, host=host, path=path):
+    def _validar_url_oficial(url: str, *, hosts: set[str], path: str) -> str:
+        try:
+            host = urlsplit(url).hostname if isinstance(url, str) else None
+        except ValueError:
+            host = None
+        if host not in hosts or not AppmaxClient._url_sandbox_valida(
+            url, host=host, path=path
+        ):
             url = ""
             raise AppmaxError(
-                "URL Appmax inválida; use somente os endpoints HTTPS oficiais do sandbox"
+                "URL Appmax inválida; use somente os endpoints HTTPS oficiais"
             )
         return f"https://{host}{path}"
 
