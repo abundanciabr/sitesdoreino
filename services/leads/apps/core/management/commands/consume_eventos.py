@@ -13,6 +13,7 @@ from apps.core.handlers import (
     ao_pedido_criado,
     ao_pix_expirado,
     ao_quiz_completado,
+    ao_reversao_confirmada,
     processar_envelope,
 )
 
@@ -32,6 +33,7 @@ STREAMS = {
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
     "eventos.pix.expirado": ao_pix_expirado,
+    "eventos.pagamento.reversao_confirmada": ao_reversao_confirmada,
 }
 
 

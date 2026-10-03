@@ -5,8 +5,10 @@
 # ninja.Schema tipado — isso criaria refs nomeadas que o contrato não tem. O corpo
 # é lido e validado à mão a partir de request.body.
 import json
+import uuid
 
 from django.db import transaction
+from django.db.models import OuterRef, Q, Subquery
 from django.http import JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
@@ -162,3 +164,235 @@ _ADD_TAGS_OPENAPI = {
 )
 def add_tags(request, lead_id: str):
     raise HttpError(501, "não implementado")
+
+
+# ---------------------------------------------------------------------------
+# Consulta (somente leitura): a base da primeira tela de CRM do painel
+# ---------------------------------------------------------------------------
+#
+# O admin lista e abre contatos por aqui; não lê o banco desta célula. Nada
+# desta seção grava: quem cria ou muda lead continua sendo o upsert acima e os
+# handlers de evento.
+
+POR_PAGINA = 50
+POR_PAGINA_MAXIMO = 100
+# A linha do tempo de uma pessoa muito ativa não pode virar resposta sem fim:
+# vêm os mais recentes e `linha_do_tempo_total` diz quantos existem ao todo.
+LIMITE_DA_LINHA_DO_TEMPO = 200
+
+
+def _data(valor) -> str | None:
+    return valor.isoformat() if valor else None
+
+
+_LISTA_LEADS_OPENAPI = {
+    "responses": {
+        200: {
+            "description": "Contatos, do mais novo para o mais antigo",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["itens", "pagina", "por_pagina", "total"],
+                        "properties": {
+                            "itens": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "id": {"type": "string"},
+                                        "site_id": {"type": "string"},
+                                        "nome": {"type": "string"},
+                                        "email": {"type": "string"},
+                                        "telefone": {"type": "string"},
+                                        "origem": {"type": "string"},
+                                        "tags": {
+                                            "type": "array",
+                                            "items": {"type": "string"},
+                                        },
+                                        "criado_em": {"type": "string"},
+                                        "ultimo_evento": {
+                                            "type": "string",
+                                            "nullable": True,
+                                        },
+                                        "ultimo_evento_em": {
+                                            "type": "string",
+                                            "nullable": True,
+                                        },
+                                    },
+                                },
+                            },
+                            "pagina": {"type": "integer"},
+                            "por_pagina": {"type": "integer"},
+                            "total": {"type": "integer"},
+                            "tem_mais": {"type": "boolean"},
+                        },
+                    }
+                }
+            },
+        },
+        422: {"description": "Página ou tamanho de página inválidos"},
+    },
+}
+
+
+@router.get(
+    "/leads",
+    operation_id="listLeads",
+    summary=(
+        "Lista contatos, do mais novo para o mais antigo (busca q por nome, "
+        "e-mail ou telefone; filtros site_id e tag)"
+    ),
+    openapi_extra=_LISTA_LEADS_OPENAPI,
+)
+def listar_leads(
+    request,
+    q: str = None,
+    site_id: str = None,
+    tag: str = None,
+    pagina: int = 1,
+    por_pagina: int = POR_PAGINA,
+):
+    if pagina < 1:
+        raise HttpError(422, "pagina começa em 1")
+    if not 1 <= por_pagina <= POR_PAGINA_MAXIMO:
+        raise HttpError(422, f"por_pagina vai de 1 a {POR_PAGINA_MAXIMO}")
+
+    ultimo = TimelineEvent.objects.filter(lead=OuterRef("pk")).order_by(
+        "-occurred_at", "-id"
+    )
+    consulta = Lead.objects.annotate(
+        ultimo_evento=Subquery(ultimo.values("event")[:1]),
+        ultimo_evento_em=Subquery(ultimo.values("occurred_at")[:1]),
+    )
+    busca = (q or "").strip()
+    if busca:
+        consulta = consulta.filter(
+            Q(name__icontains=busca)
+            | Q(email__icontains=busca)
+            | Q(phone__icontains=busca)
+        )
+    if site_id:
+        consulta = consulta.filter(site_id=site_id)
+    if tag:
+        consulta = consulta.filter(tags__contains=[tag])
+
+    total = consulta.count()
+    inicio = (pagina - 1) * por_pagina
+    itens = list(consulta.order_by("-created_at", "-id")[inicio : inicio + por_pagina])
+    return JsonResponse(
+        {
+            "itens": [
+                {
+                    "id": str(lead.id),
+                    "site_id": lead.site_id,
+                    "nome": lead.name,
+                    "email": lead.email,
+                    "telefone": lead.phone,
+                    "origem": lead.source,
+                    "tags": lead.tags,
+                    "criado_em": _data(lead.created_at),
+                    "ultimo_evento": lead.ultimo_evento,
+                    "ultimo_evento_em": _data(lead.ultimo_evento_em),
+                }
+                for lead in itens
+            ],
+            "pagina": pagina,
+            "por_pagina": por_pagina,
+            "total": total,
+            "tem_mais": inicio + len(itens) < total,
+        }
+    )
+
+
+_FICHA_LEAD_OPENAPI = {
+    "responses": {
+        200: {
+            "description": (
+                "Ficha do contato com a linha do tempo, do mais novo ao mais antigo"
+            ),
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "required": ["id", "email", "linha_do_tempo"],
+                        "properties": {
+                            "id": {"type": "string"},
+                            "site_id": {"type": "string"},
+                            "nome": {"type": "string"},
+                            "email": {"type": "string"},
+                            "telefone": {"type": "string"},
+                            "origem": {"type": "string"},
+                            "utm": {"type": "object"},
+                            "tags": {"type": "array", "items": {"type": "string"}},
+                            "consentimento": {"type": "object"},
+                            "criado_em": {"type": "string"},
+                            "atualizado_em": {"type": "string"},
+                            "linha_do_tempo_total": {"type": "integer"},
+                            "linha_do_tempo": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "evento": {"type": "string"},
+                                        "event_id": {
+                                            "type": "string",
+                                            "nullable": True,
+                                        },
+                                        "ocorrido_em": {"type": "string"},
+                                        "payload": {},
+                                    },
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        404: {"description": "Contato inexistente"},
+    },
+}
+
+
+@router.get(
+    "/leads/{lead_id}",
+    operation_id="getLead",
+    summary="Ficha do contato: dados, origem, consentimento e linha do tempo",
+    openapi_extra=_FICHA_LEAD_OPENAPI,
+)
+def ficha_do_lead(request, lead_id: str):
+    # Identificador que não é UUID nunca existiu: 404 sem ir ao banco.
+    try:
+        chave = uuid.UUID(str(lead_id))
+    except ValueError:
+        raise HttpError(404, "Lead inexistente")
+    lead = Lead.objects.filter(id=chave).first()
+    if lead is None:
+        raise HttpError(404, "Lead inexistente")
+
+    eventos = lead.timeline.order_by("-occurred_at", "-id")
+    return JsonResponse(
+        {
+            "id": str(lead.id),
+            "site_id": lead.site_id,
+            "nome": lead.name,
+            "email": lead.email,
+            "telefone": lead.phone,
+            "origem": lead.source,
+            "utm": lead.utm,
+            "tags": lead.tags,
+            "consentimento": lead.consent,
+            "criado_em": _data(lead.created_at),
+            "atualizado_em": _data(lead.updated_at),
+            "linha_do_tempo_total": eventos.count(),
+            "linha_do_tempo": [
+                {
+                    "evento": evento.event,
+                    "event_id": str(evento.event_id) if evento.event_id else None,
+                    "ocorrido_em": _data(evento.occurred_at),
+                    "payload": evento.payload,
+                }
+                for evento in eventos[:LIMITE_DA_LINHA_DO_TEMPO]
+            ],
+        }
+    )

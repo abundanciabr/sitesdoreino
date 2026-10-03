@@ -1,0 +1,136 @@
+{% extends "admin/base.html" %}
+{% comment %}
+OS CONTATOS (/admin/contatos/, 03/10/2026): a primeira tela de CRM, só de
+leitura. Lista quem deixou o contato na casa, do mais novo para o mais antigo.
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html, e toda classe usada abaixo já existe lá.
+
+Três regras governam cada `{% if %}` desta tela, as mesmas do funil:
+
+1. NÃO PERGUNTEI nunca vira NÃO HÁ NINGUÉM. Com a `leads` fora do ar ou sem o
+   par de senhas, nenhuma lista aparece; a frase diz o que houve e o que fazer.
+2. VAZIO POR PROCURA não é VAZIO POR AUSÊNCIA. Quem digitou um nome errado não
+   pode sair achando que a casa não tem ninguém.
+3. PÁGINA ALÉM DO FIM não é lista vazia: há contatos, só não nesta página.
+
+Cartão por pessoa, e não tabela: esta área é usada no celular, e uma tabela de
+cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
+{% endcomment %}
+{% block titulo %}Contatos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
+  <h1>Contatos</h1>
+  <p class="subtitulo">
+    Quem deixou o nome, o e-mail ou o telefone na casa, do mais novo para o mais
+    antigo. Abra um contato para ver de onde ele veio e tudo o que já fez.
+  </p>
+
+  <form class="peneira" method="get" action="{% url 'contatos' %}">
+    <div class="campo">
+      <label class="rotulo" for="busca">Procurar por nome, e-mail ou telefone</label>
+      <input id="busca" type="search" name="q" maxlength="120" value="{{ procurado }}"
+             placeholder="ex.: ana &middot; ana@ &middot; 11 9999">
+    </div>
+    <div class="campo">
+      <label class="rotulo" for="tag">Tag</label>
+      <input id="tag" type="search" name="tag" maxlength="100" value="{{ tag }}" placeholder="ex.: interessado">
+    </div>
+    <div class="campo">
+      <label class="rotulo" for="site_id">Site</label>
+      <input id="site_id" type="search" name="site_id" maxlength="100" value="{{ site_id }}" placeholder="Todos os sites">
+    </div>
+    <button class="sim" type="submit">Procurar</button>
+    {% if peneirando %}<a class="volta" href="{% url 'contatos' %}">Limpar</a>{% endif %}
+  </form>
+
+  {% if site_id or tag %}
+  <p class="nota">
+    Mostrando só
+    {% if tag %}quem tem a tag <span class="selo">{{ tag }}</span>{% endif %}
+    {% if tag and site_id %} e {% endif %}
+    {% if site_id %}quem veio do site <span class="selo">{{ site_id }}</span>{% endif %}.
+  </p>
+  {% endif %}
+
+  {% if tela.veredito == "sem-configuracao" %}
+  <div class="aviso borda-amarela espaco-20">
+    <b>A lista de contatos ainda não está ligada nesta célula.</b>
+    Sem o par de senhas entre a administração e a parte que guarda os contatos,
+    eu não consegui perguntar nada, e por isso nenhuma lista aparece: uma lista
+    vazia aqui diria que ninguém deixou o contato. O passo que liga isso é
+    ligar o acesso da administração à área de contatos na VPS.
+  </div>
+
+  {% elif tela.veredito != "ok" %}
+  <div class="aviso borda-vermelha espaco-20">
+    <b>A parte que guarda os contatos não respondeu agora.</b>
+    Eu não consegui perguntar quem está na lista, e isso não quer dizer que não
+    há ninguém. Nenhum contato aparece enquanto a resposta não vier. Recarregue
+    a página em alguns minutos.
+  </div>
+
+  {% elif tela.alem_do_fim %}
+  <div class="aviso borda-amarela espaco-20">
+    <b>Esta página está além do fim da lista.</b>
+    Há {{ tela.total }} contato{{ tela.total|pluralize }}, e eles não chegam até
+    a página {{ tela.pagina }}.
+    <a href="{{ tela.link_primeira }}">Voltar para a primeira página</a>.
+  </div>
+
+  {% elif not tela.itens and peneirando %}
+  <p class="aviso espaco-20">
+    <b>Nenhum contato casou com a sua procura.</b>
+    A lista não está vazia por isso: a sua busca é que não achou ninguém nela.
+    <a href="{% url 'contatos' %}">Ver todos</a>.
+  </p>
+
+  {% elif not tela.itens %}
+  <p class="aviso espaco-20">
+    <b>Ainda não há nenhum contato.</b>
+    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia. Quem
+    deixar o contato em qualquer página da casa aparece aqui.
+  </p>
+
+  {% else %}
+  <p class="nota">
+    {% if tela.total == 1 %}1 contato.{% else %}Contatos {{ tela.de }} a {{ tela.ate }}, de {{ tela.total }}.{% endif %}
+  </p>
+
+  <div class="cartoes">
+    {% for pessoa in tela.itens %}
+    <div class="cartao">
+      <div class="valor"><b>{% if pessoa.id %}<a href="{% url 'contato' pessoa.id %}">{{ pessoa.nome }}</a>{% else %}{{ pessoa.nome }}{% endif %}</b></div>
+      {% if pessoa.email %}<div class="nota">{{ pessoa.email }}</div>{% endif %}
+      {% if pessoa.telefone %}<div class="nota">Telefone: {{ pessoa.telefone }}</div>{% endif %}
+      <div class="nota">
+        {% if pessoa.criado_em %}Chegou em {{ pessoa.criado_em|date:"d/m/Y H:i" }}{% else %}Chegou em data desconhecida{% endif %}
+        {% if pessoa.origem %} &middot; origem: {{ pessoa.origem }}{% endif %}
+        {% if pessoa.site_id %} &middot; site: <a href="?site_id={{ pessoa.site_id|urlencode }}">{{ pessoa.site_id }}</a>{% endif %}
+      </div>
+      {% if pessoa.ultimo_rotulo %}
+      <div class="nota">
+        Último passo: <b>{{ pessoa.ultimo_rotulo }}</b>{% if pessoa.ultimo_em %} em {{ pessoa.ultimo_em|date:"d/m/Y H:i" }}{% endif %}
+      </div>
+      {% endif %}
+      {% if pessoa.tags %}
+      <div class="nota">
+        {% for etiqueta in pessoa.tags %}<a class="selo" href="?tag={{ etiqueta|urlencode }}">{{ etiqueta }}</a> {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if tela.link_anterior or tela.link_proxima %}
+  <nav class="nota espaco-20" aria-label="Páginas da lista">
+    {% if tela.link_anterior %}<a href="{{ tela.link_anterior }}">&larr; Mais novos</a>{% endif %}
+    {% if tela.link_anterior and tela.link_proxima %} &middot; {% endif %}
+    {% if tela.link_proxima %}<a href="{{ tela.link_proxima }}">Mais antigos &rarr;</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

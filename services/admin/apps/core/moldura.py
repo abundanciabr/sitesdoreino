@@ -86,6 +86,12 @@ SECOES = (
     ("pendencias", "Pendências"),
     ("painel_da_equipe", "Equipe"),
     ("escola", "Escola"),
+    ("crm", "CRM"),
+    # "Contatos", e não "Clientes" nem "CRM" (03/10/2026): a lista traz quem
+    # deixou o nome, o e-mail ou o telefone, e a maioria ainda não comprou
+    # nada. "Clientes" prometeria só quem pagou; "CRM" é sigla de quem vende
+    # software, e não é como ele fala da lista.
+    ("contatos", "Contatos"),
     ("whatsapp", "WhatsApp"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
@@ -190,6 +196,8 @@ def secoes_do_menu(caminho_interno: str) -> list[dict]:
             continue
         rota = href[len(prefixo) :]
         aqui = atual == rota if nome == CASA else atual.startswith(rota)
+        if nome == "crm" and atual.startswith("contatos/"):
+            aqui = True
         itens.append({"href": href, "rotulo": rotulo, "aqui": aqui})
     return itens
 

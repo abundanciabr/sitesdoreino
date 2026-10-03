@@ -6,6 +6,10 @@
   <p class="subtitulo">A sala de comando da plataforma. Por enquanto, o começo dela.</p>
 
   <div class="cartoes">
+    <a class="cartao porta" href="{% url 'crm' %}">
+      <div class="rotulo">Abrir o CRM →</div>
+      <div class="nota">Contatos, histórico de cada pessoa e acompanhamento das vendas a recuperar.</div>
+    </a>
     <div class="cartao">
       <div class="rotulo">Quem está aqui</div>
       <div class="valor">{{ admin.nome }}</div>
@@ -194,6 +198,18 @@
       <div class="nota">
         Um botão que manda um aviso de teste para o seu próprio aparelho, e diz
         para quantos aparelhos ele chegou.
+      </div>
+    </a>
+    {% comment %}
+    A nona porta (03/10/2026): a lista de quem deixou o contato na casa, e a
+    ficha de cada um com o que já fez. Só leitura. Vai por `{% url %}`, como as
+    outras, e não por endereço escrito à mão.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'contatos' %}">
+      <div class="rotulo">Ver os contatos &rarr;</div>
+      <div class="nota">
+        Quem deixou o nome, o e-mail ou o telefone, com busca, e a ficha de cada
+        um: de onde veio e tudo o que já fez.
       </div>
     </a>
   </div>

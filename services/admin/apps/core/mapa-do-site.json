@@ -2871,6 +2871,59 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/",
+      "endereco": "/admin/crm/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "CRM",
+      "descricao": "Contatos, oportunidades por etapa e próximos acompanhamentos de vendas recusadas ou Pix vencidos.",
+      "observacao": "Só administradores. Os totais vêm dos contatos e dos eventos registrados."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/<uuid:opportunity_id>/",
+      "endereco": "/admin/crm/<uuid:opportunity_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Acompanhamento da venda",
+      "descricao": "Responsável, prazo, próximo passo e histórico da oportunidade, ligados à ficha do contato."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/<uuid:opportunity_id>/salvar/",
+      "endereco": "/admin/crm/<uuid:opportunity_id>/salvar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Registrar acompanhamento",
+      "descricao": "Salva etapa, responsável e prazo, registra nota ou encerra o acompanhamento, com histórico do autor."
+    },
+    {
+      "celula": "admin",
+      "rota": "contatos/",
+      "endereco": "/admin/contatos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Os contatos",
+      "descricao": "A lista de quem deixou o nome, o e-mail ou o telefone em alguma página da casa, do mais novo para o mais antigo, com busca por nome, e-mail ou telefone e filtro por tag e por site.",
+      "observacao": "Só leitura. Pergunta à parte que guarda os contatos pela API: com ela fora do ar a tela diz isso em vez de mostrar uma lista vazia. Só o dono e os administradores entram."
+    },
+    {
+      "celula": "admin",
+      "rota": "contatos/<uuid:lead_id>/",
+      "endereco": "/admin/contatos/<uuid:lead_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "A ficha do contato",
+      "descricao": "Tudo o que a casa sabe de uma pessoa: e-mail, telefone, de onde veio, tags, o que ela autorizou receber e a linha do tempo do que já fez (pedido, pagamento, quiz), com valor e produto quando há.",
+      "observacao": "Só leitura. Contato que não existe mais responde que não existe."
+    },
+    {
+      "celula": "admin",
       "rota": "placar/fechamento/",
       "endereco": "/admin/placar/fechamento/",
       "alcance": "publico",
