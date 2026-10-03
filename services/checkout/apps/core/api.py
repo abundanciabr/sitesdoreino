@@ -1016,3 +1016,31 @@ def get_order_card_installments(request, order_id: str):
             "options": sorted(opcoes, key=lambda item: item["installments"]),
         }
     )
+
+
+@router.get(
+    "/interno/quiz/{slug}/vendas",
+    operation_id="quizPaidSales",
+    include_in_schema=False,
+)
+def vendas_do_quiz(request, slug: str, inicio: str = "", fim: str = ""):
+    """Pedidos pagos que vieram de um quiz, para a tela de campanhas do admin.
+
+    Fora do alcance do token público (a página do comprador nunca lê isto).
+    Uma linha por versão, campanha, criativo, segmento, formato e dia.
+    """
+    import datetime as dt
+
+    from apps.pedidos.relatorio import pagos_do_quiz
+
+    try:
+        desde = dt.date.fromisoformat(inicio) if inicio else None
+        ate = dt.date.fromisoformat(fim) if fim else None
+    except ValueError as erro:
+        raise HttpError(422, "datas no formato AAAA-MM-DD") from erro
+    linhas = pagos_do_quiz(slug[:100], request.site["id"], desde, ate)
+    return {
+        "vendas": [{**linha, "dia": linha["dia"].isoformat()} for linha in linhas],
+        "moeda": "BRL",
+        "fuso": "UTC",
+    }

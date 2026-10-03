@@ -431,6 +431,35 @@ def _link_de_teste(url: str) -> str:
     return urlunsplit(partes._replace(query=urlencode(consulta)))
 
 
+def _vendas_do_quiz(request, slug: str, datas: dict):
+    """Pedidos PAGOS que vieram deste quiz, lidos do checkout.
+
+    Devolve (linhas, aviso). Sem configuração ou com o checkout fora do ar, a
+    página de campanhas continua de pé e só diz que as vendas não puderam ser
+    lidas agora.
+    """
+    base = (os.environ.get("CHECKOUT_API_URL") or "").strip().rstrip("/")
+    token = (os.environ.get("CHECKOUT_API_TOKEN") or "").strip()
+    if not base or not token:
+        return [], "A leitura de vendas ainda não está ligada neste ambiente."
+    try:
+        resposta = httpx.get(
+            f"{base}/interno/quiz/{quote(slug, safe='')}/vendas",
+            params=datas,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Host": host_da_requisicao(request),
+            },
+            timeout=4.0,
+        )
+        corpo = resposta.json() if resposta.status_code == 200 else None
+    except (httpx.HTTPError, ValueError):
+        corpo = None
+    if not isinstance(corpo, dict) or not isinstance(corpo.get("vendas"), list):
+        return [], "Não consegui ler as vendas agora."
+    return [l for l in corpo["vendas"] if isinstance(l, dict)], ""
+
+
 @require_GET
 def quiz_campanhas(request, slug: str):
     get = request.GET
@@ -527,6 +556,22 @@ def quiz_campanhas(request, slug: str):
     campanhas_vistas = sorted(
         {l.get("cpg") or l.get("campaign") for l in relatorio["campanhas"] if isinstance(l, dict)} - {None, ""}
     )
+    vendas, aviso_vendas = _vendas_do_quiz(request, slug, datas)
+    vendas = [
+        {
+            **linha,
+            "receita": f"R$ {(linha.get('receita_cents') or 0) / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+            "formato_legivel": FORMATOS_LEGIVEIS.get(linha.get("fmt"), linha.get("fmt")),
+            "publico_legivel": PUBLICOS_LEGIVEIS.get(linha.get("seg") or "geral", linha.get("seg")),
+        }
+        for linha in vendas
+        if not ver_cpg or linha.get("cpg") == ver_cpg
+    ]
+    centavos = sum(linha.get("receita_cents") or 0 for linha in vendas)
+    resumo_vendas = {
+        "pedidos": sum(linha.get("pedidos") or 0 for linha in vendas),
+        "receita": f"R$ {centavos / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+    }
     from apps.agentes.quiz import RESULTADOS as RECADOS_DO_ROBO, painel_na_pagina
 
     try:
@@ -560,6 +605,9 @@ def quiz_campanhas(request, slug: str):
             "linhas_reais": linhas_reais,
             "linhas_testes": linhas_testes,
             "resumo": resumo,
+            "vendas": vendas,
+            "resumo_vendas": resumo_vendas,
+            "aviso_vendas": aviso_vendas,
             "avulsas": da_campanha(relatorio.get("sem_visita_registrada") or []),
             "divergentes": da_campanha(relatorio.get("submissoes_sem_correspondencia") or []),
             "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",

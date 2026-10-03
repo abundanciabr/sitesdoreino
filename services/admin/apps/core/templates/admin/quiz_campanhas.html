@@ -237,6 +237,23 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
       {% if datas.inicio or datas.fim or ver_cpg %}<p class="meta">{% if ver_cpg %}{{ ver_cpg }} · {% endif %}{% if datas.inicio %}A partir de {{ datas.inicio }}{% endif %}{% if datas.fim %} até {{ datas.fim }}{% endif %} · <a href="?aba=resultados#resultados">Limpar filtro</a></p>{% endif %}
       <div class="resumo-numeros" aria-label="Resumo das visitas reais"><div><strong>{{ resumo.visitas }}</strong><span>Visitas</span></div><div><strong>{{ resumo.submissoes }}</strong><span>Responderam</span></div><div><strong>{{ resumo.saidas }}</strong><span>Cliques na oferta</span></div></div>
       <p class="nota">Só visitas reais. Clicar na oferta não significa comprar.</p>
+      <h2 id="vendas">Vendas confirmadas</h2>
+      {% if aviso_vendas %}<p class="nota">{{ aviso_vendas }}</p>{% else %}
+      <div class="resumo-numeros" aria-label="Resumo das vendas confirmadas"><div><strong>{{ resumo_vendas.pedidos }}</strong><span>Vendas pagas</span></div><div><strong>{{ resumo_vendas.receita }}</strong><span>Receita</span></div><div><strong>{% if resumo.visitas %}{% widthratio resumo_vendas.pedidos resumo.visitas 100 %}%{% else %}—{% endif %}</strong><span>Vendas por visita</span></div></div>
+      {% if vendas %}
+      <div class="rolagem" tabindex="0" role="region" aria-label="Vendas pagas por campanha">
+        <table>
+          <thead><tr><th>Dia</th><th>Campanha</th><th>Anúncio</th><th>Quiz escolhido</th><th>Vendas pagas</th><th>Receita</th></tr></thead>
+          <tbody>
+            {% for linha in vendas %}
+              <tr><td>{{ linha.dia }}</td><td>{{ linha.cpg|default:"Sem nome de campanha" }}</td><td>{{ linha.ctv|default:"Sem nome de anúncio" }}</td><td>{{ linha.v|default:"—" }} · {{ linha.formato_legivel|default:"—" }}<br><span class="meta">{{ linha.publico_legivel }}</span></td><td>{{ linha.pedidos }}</td><td>{{ linha.receita }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}<p class="nota">Nenhuma venda paga veio deste quiz{% if ver_cpg %} nesta campanha{% endif %} no período.</p>{% endif %}
+      <p class="nota">Só pedidos com pagamento confirmado pelo provedor. Dia em UTC, valores em reais. A porcentagem inclui testes da equipe que compraram.</p>
+      {% endif %}
       {% if not linhas_reais %}<p class="nota">Seus primeiros visitantes vão aparecer aqui{% if ver_cpg %} para esta campanha{% endif %}.</p>{% endif %}
       <details class="detalhes-resultados"><summary>Ver detalhes</summary>
         {% if linhas_reais %}<h2>Por anúncio</h2>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_reais %}{% endif %}
