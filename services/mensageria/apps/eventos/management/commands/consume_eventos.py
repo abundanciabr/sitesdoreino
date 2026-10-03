@@ -16,6 +16,7 @@ from apps.eventos.handlers import (
     ao_pagamento_recusado,
     ao_pessoa_cadastrada,
     ao_pix_expirado,
+    ao_pix_codigo_trocado,
 )
 from apps.eventos.models import EventoProcessado, FatoDeProvedorVisto
 
@@ -26,6 +27,7 @@ CONSUMIDOR = "worker-1"
 STREAMS = {
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pix.expirado": ao_pix_expirado,
+    "eventos.pix.codigo_trocado": ao_pix_codigo_trocado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
     # Desde 02/09/2026: o cadastro é o gatilho da primeira sequência de verdade
     # (boas-vindas). O nome do stream é `eventos.<evento>`, SEM versão — a versão

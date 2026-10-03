@@ -24,6 +24,8 @@ default, e só quem precisa o usa.
 """
 
 import logging
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from django.db import transaction
 
@@ -73,6 +75,15 @@ TEMPLATES_PADRAO = {
         "versao": 1,
         "assunto": "Seu pagamento não foi aprovado",
         "corpo": "Olá {name}, seu pagamento foi recusado ({reason_code}). Tente novamente.",
+    },
+    "pix_codigo_novo": {
+        "versao": 1,
+        "assunto": "Seu novo código Pix",
+        "corpo": (
+            "Olá {name}, não conseguimos concluir o pagamento com o código anterior. "
+            "Pague com este novo código Pix (copia e cola), válido até {vence_as}:\n"
+            "{qr_code}{pagina_linha}"
+        ),
     },
 }
 TEMPLATES_POR_SITE: dict[str, dict[str, dict]] = {}
@@ -178,6 +189,30 @@ def ao_pix_expirado(
             tpl=tpl,
             contexto=contexto,
         )
+
+
+def ao_pix_codigo_trocado(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
+    cliente = data["customer"]
+    pix = data["pix"]
+    vencimento = datetime.fromisoformat(pix["expires_at"]).astimezone(
+        ZoneInfo("America/Sao_Paulo")
+    )
+    pagina = str(data.get("pagina_url") or "")
+    contexto = {
+        "name": cliente["name"],
+        "vence_as": vencimento.strftime("%d/%m/%Y às %H:%M"),
+        "qr_code": pix["qr_code"],
+        "pagina_linha": f"\nPara ver o QR Code, abra: {pagina}" if pagina else "",
+    }
+    _registrar_e_enfileirar(
+        event="pix.codigo_trocado", site_id=data["site_id"],
+        order_id=data["order_id"], tipo="pix_codigo_novo", canal="email",
+        destinatario=cliente["email"],
+        tpl=_resolver_template("pix_codigo_novo", data["site_id"]),
+        contexto=contexto,
+    )
 
 
 def ao_pagamento_recusado(
