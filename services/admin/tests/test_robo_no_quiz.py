@@ -11,12 +11,15 @@ site e a conta reais é feita à parte, no site.
 from __future__ import annotations
 
 import json
+from datetime import timedelta
+from decimal import Decimal
 
 import httpx
 import pytest
 import respx
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.agentes import executor, ferramentas, modelo, quiz, segredo, trabalhos
 from apps.agentes.models import ChamadaDeFerramenta, Conexao, Consumo, Entrega, Execucao, Mensagem
@@ -753,6 +756,8 @@ def test_a_pagina_de_links_mostra_o_robo_os_tres_pedidos_e_a_ultima_entrega():
     rodando = cliente.get(url).content.decode()
     assert reverse("quiz_campanhas_robo_andamento", args=["encontre"]) in rodando
     assert "Conferência dos links do quiz" in rodando and "Na fila" in rodando
+    # Com trabalho rodando, a lista de trabalhos fica aberta para mostrar o andamento.
+    assert '<details class="trabalhos-quiz" open>' in rodando
 
     Execucao.objects.filter(pk=execucao.pk).update(
         situacao=S.CONCLUIDA, resultado="PODE SUBIR OS ANÚNCIOS: tudo conferido. Entrega nº 1."
@@ -778,6 +783,82 @@ def test_a_pagina_de_links_mostra_o_robo_os_tres_pedidos_e_a_ultima_entrega():
     )
     outro = cliente.get(reverse("quiz_campanhas", args=["outro"])).content.decode()
     assert "Última entrega" not in outro
+
+
+@respx.mock
+def test_o_topo_do_robo_diz_o_que_ele_ja_sabe_e_o_proximo_passo():
+    livia = _admin()
+    cliente = _cliente()
+    _quiz_da_pagina()
+    url = reverse("quiz_campanhas", args=["encontre"])
+    robo = trabalhos.robo_de(livia)
+    agora = timezone.now()
+
+    vazio = cliente.get(url).content.decode()
+    assert "O que o robô já sabe deste quiz" in vazio and "Ainda não conferidos." in vazio
+    assert "Antes de subir os anúncios, peça a conferência dos links" in vazio
+
+    tarefa = Tarefa.objects.create(titulo="Corrigir os links do quiz encontre antes de anunciar", responsavel=livia)
+    Execucao.objects.create(
+        robo=robo,
+        tipo=Execucao.Tipo.CONFERENCIA_QUIZ,
+        situacao=S.CONCLUIDA,
+        terminada_em=agora - timedelta(hours=2),
+        resultado="NÃO SUBA OS ANÚNCIOS AINDA: 2 problema(s) para corrigir. Entrega nº 9.",
+        estado={"quiz": "encontre", "paginas": {"a": {}, "b": {}, "c": {}}, "tarefa_de_correcao": tarefa.id},
+    )
+    ruim = cliente.get(url).content.decode()
+    assert 'class="veredito ruim">NÃO SUBA OS ANÚNCIOS AINDA: 2 problema(s) para corrigir</div>' in ruim
+    assert "3 página(s) abertas como visitante" in ruim
+    assert f'{reverse("tarefa_ver", args=[tarefa.id])}">tarefa de correção nº {tarefa.id}</a>' in ruim
+    assert f"Corrija o que a conferência apontou (tarefa nº {tarefa.id}) e peça outra conferência" in ruim
+    # Nada rodando: a lista de trabalhos fica recolhida.
+    assert '<details class="trabalhos-quiz">' in ruim
+
+    tarefa.situacao = Tarefa.Situacao.CONCLUIDA
+    tarefa.save()
+    Execucao.objects.create(
+        robo=robo,
+        tipo=Execucao.Tipo.CONFERENCIA_QUIZ,
+        situacao=S.CONCLUIDA,
+        terminada_em=agora - timedelta(hours=1),
+        resultado="PODE SUBIR OS ANÚNCIOS: tudo conferido. Entrega nº 10.",
+        estado={"quiz": "encontre", "paginas": {"a": {}}},
+    )
+    leitura = Execucao.objects.create(
+        robo=robo,
+        tipo=Execucao.Tipo.LEITURA_QUIZ,
+        situacao=S.CONCLUIDA,
+        terminada_em=agora,
+        modelo="gpt-6-sol",
+        resultado="Leitura pronta: 11 visita(s) de verdade (pouca gente para decidir). Entrega nº 11.",
+        estado={
+            "quiz": "encontre",
+            "dados": {"visitas_elegiveis": 11, "amostra_minima": 30},
+            "leitura": {
+                "leitura": "Pouca gente ainda.",
+                "acoes": [
+                    {"titulo": "Medir a pergunta 1.", "porque": "2 de 8 saem nela.", "evidencia": "-", "tipo": "medir"},
+                    {"titulo": "Marcar a origem dos links", "porque": "9 sem campanha.", "evidencia": "-", "tipo": "campanha"},
+                ],
+            },
+        },
+    )
+    Consumo.objects.create(execucao=leitura, robo=robo, modelo="gpt-6-sol", custo_estimado_usd=Decimal("0.011722"))
+    entrega = Entrega.objects.create(
+        robo=robo, execucao=leitura, tipo="leitura_quiz", titulo="Leitura dos números", conteudo="# Leitura\n"
+    )
+    pronta = cliente.get(url).content.decode()
+    assert 'class="veredito bom">PODE SUBIR OS ANÚNCIOS: tudo conferido</div>' in pronta
+    assert "tarefa de correção nº" not in pronta
+    assert "<b>11</b> visita(s) de verdade: pouca gente para decidir (o robô decide a partir de 30)." in pronta
+    assert "<li><b>Medir a pergunta 1</b> <span class=\"meta\">— 2 de 8 saem nela.</span></li>" in pronta
+    assert "modelo gpt-6-sol · custou US$ 0,0117" in pronta
+    assert f'{reverse("entrega_do_robo", args=[entrega.id])}">relatório</a>' in pronta
+    assert (
+        "Ainda é pouca gente: 11 de 30 visitas de verdade para decidir. Enquanto isso: "
+        "Medir a pergunta 1. Peça outra leitura quando chegar a 30." in pronta
+    )
 
 
 @respx.mock

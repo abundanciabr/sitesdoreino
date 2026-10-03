@@ -33,7 +33,7 @@ from urllib.parse import urlencode, urlsplit
 
 import httpx
 from django.conf import settings
-from django.db.models import Max, Q
+from django.db.models import F, Max, Q, Sum
 from django.urls import reverse
 from django.utils import timezone
 
@@ -1527,6 +1527,93 @@ def _dolares(valor, casas: int = 2) -> str:
     return f"{valor:,.{casas}f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
+def _tom(texto: str) -> str:
+    """O veredito da conferência em verde ou vermelho, para ler de longe."""
+    return "ruim" if texto.startswith("NÃO SUBA") else "bom" if texto.startswith("PODE SUBIR") else ""
+
+
+def situacao_do_quiz(execucoes) -> dict:
+    """O que o robô já sabe deste quiz, no topo do painel: a última
+    conferência, a última leitura com as primeiras ações, a tarefa de correção
+    ainda aberta e o próximo passo. Só lê o que os trabalhos já guardaram."""
+    concluidas = execucoes.filter(situacao=S.CONCLUIDA).order_by(
+        F("terminada_em").desc(nulls_last=True), "-id"
+    )
+    conferencia = concluidas.filter(tipo=Execucao.Tipo.CONFERENCIA_QUIZ).first()
+    leitura = concluidas.filter(tipo=Execucao.Tipo.LEITURA_QUIZ).first()
+    conf = nums = None
+    if conferencia is not None:
+        estado = conferencia.estado or {}
+        veredito = re.sub(r"\s*Entrega (?:parcial )?nº \d+.*$", "", conferencia.resultado, flags=re.S)
+        veredito = veredito.rstrip(" .;")
+        tarefa = None
+        if estado.get("tarefa_de_correcao"):
+            tarefa = (
+                Tarefa.objects.filter(pk=estado["tarefa_de_correcao"])
+                .exclude(situacao=Tarefa.Situacao.CONCLUIDA)
+                .first()
+            )
+        conf = {
+            "veredito": veredito,
+            "tom": _tom(veredito),
+            "quando": conferencia.terminada_em or conferencia.atualizada_em,
+            "paginas": len(estado.get("paginas") or {}),
+            "entrega": conferencia.entregas.order_by("-id").first(),
+            "tarefa": tarefa,
+        }
+    if leitura is not None:
+        estado = leitura.estado or {}
+        dados = estado.get("dados") or {}
+        visitas = dados.get("visitas_elegiveis") or 0
+        amostra = dados.get("amostra_minima") or 30
+        acoes = [
+            {"titulo": _curto(a["titulo"], 140).rstrip("."), "porque": _curto(a.get("porque"), 240)}
+            for a in (estado.get("leitura") or {}).get("acoes") or []
+            if isinstance(a, dict) and a.get("titulo")
+        ][:3]
+        propostas = [
+            r for r in (estado.get("propostas_registradas") or {}).values()
+            if r.get("id") and not r.get("erro") and not r.get("ja_existia")
+        ]
+        custo = leitura.consumos.aggregate(t=Sum("custo_estimado_usd"))["t"]
+        nums = {
+            "visitas": visitas,
+            "amostra": amostra,
+            "pouca": visitas < amostra,
+            "acoes": acoes,
+            "propostas": len(propostas),
+            "quando": leitura.terminada_em or leitura.atualizada_em,
+            "modelo": leitura.modelo,
+            "custo": _dolares(custo, 4 if custo < 1 else 2) if custo else "",
+            "entrega": leitura.entregas.order_by("-id").first(),
+        }
+
+    if conf is None:
+        proximo = (
+            "Antes de subir os anúncios, peça a conferência dos links: não custa nada e "
+            "mostra a oferta de cada pontuação."
+        )
+    elif conf["tom"] == "ruim":
+        proximo = "Corrija o que a conferência apontou" + (
+            f" (tarefa nº {conf['tarefa'].id})" if conf["tarefa"] else ""
+        ) + " e peça outra conferência antes de anunciar."
+    elif nums is None:
+        proximo = "Links conferidos. Quando os anúncios trouxerem visitas, peça a leitura dos números."
+    elif nums["pouca"]:
+        proximo = (
+            f"Ainda é pouca gente: {nums['visitas']} de {nums['amostra']} visitas de verdade para decidir."
+            + (f" Enquanto isso: {nums['acoes'][0]['titulo']}." if nums["acoes"] else "")
+            + f" Peça outra leitura quando chegar a {nums['amostra']}."
+        )
+    elif nums["acoes"]:
+        proximo = f"Siga a 1ª ação da leitura: {nums['acoes'][0]['titulo']}."
+    else:
+        proximo = "Nenhuma ação pendente. Peça outra leitura daqui a alguns dias para comparar."
+    if nums and nums["propostas"]:
+        proximo += f" A leitura registrou {nums['propostas']} proposta(s) de nova versão para a equipe decidir."
+    return {"conferencia": conf, "leitura": nums, "proximo": proximo}
+
+
 def painel_na_pagina(request, slug: str) -> dict:
     from apps.core.equipe import _membro_da_sessao
 
@@ -1537,12 +1624,7 @@ def painel_na_pagina(request, slug: str) -> dict:
     execucoes = _do_quiz(robo, slug)
     lista = list(execucoes.exclude(tipo=Execucao.Tipo.CONVERSA).order_by("-criada_em")[:6])
     for execucao in lista:
-        # O veredito da conferência em verde ou vermelho, para ler de longe.
-        execucao.tom = (
-            "ruim" if execucao.resultado.startswith("NÃO SUBA")
-            else "bom" if execucao.resultado.startswith("PODE SUBIR")
-            else ""
-        )
+        execucao.tom = _tom(execucao.resultado)
     conversas = list(execucoes.filter(tipo=Execucao.Tipo.CONVERSA).order_by("-criada_em")[:5])
     mensagens = list(Mensagem.objects.filter(execucao__in=conversas).order_by("id"))[-14:]
     for mensagem in mensagens:
@@ -1568,7 +1650,9 @@ def painel_na_pagina(request, slug: str) -> dict:
         "conexao": conexao,
         "gasto": _dolares(gasto, 4 if gasto < 1 else 2) if autorizacao else "",
         "teto": _dolares(autorizacao.teto_mensal_usd) if autorizacao else "",
+        "situacao": situacao_do_quiz(execucoes),
         "trabalhos": lista,
+        "trabalhando": any(e.aberta for e in lista),
         "mensagens": mensagens,
         "respondendo": respondendo,
         "entrega": entregas[0] if entregas else None,

@@ -56,6 +56,15 @@
   .camp .ficha { border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 10px; font-size: 13px; }
   .camp .ficha.bom { border-color: #16a34a; background: rgba(22,163,74,.12); }
   .camp .ficha.atencao { border-color: #d97706; background: rgba(217,119,6,.12); }
+  .camp .situacao { border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
+  .camp .situacao h3 { margin: 0 0 10px; font-size: 16px; }
+  .camp .situacao-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 20px; }
+  .camp .situacao p { margin: 4px 0; }
+  .camp .situacao ol { margin: 6px 0; padding-left: 22px; }
+  .camp .situacao li { margin: 4px 0; }
+  .camp .rotulo-situacao { display: block; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .75; margin-bottom: 4px; }
+  .camp .proximo { margin: 12px 0 0 !important; padding: 8px 12px; border-left: 4px solid #60a5fa; background: rgba(96,165,250,.12); border-radius: 6px; }
+  .camp .trabalhos-quiz summary { font-size: 16px; margin: 12px 0 4px; }
 </style>
 <div class="envolucro camp">
   <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
@@ -87,6 +96,33 @@
       <p class="dica">Ele trabalha no servidor: pode fechar esta página que o trabalho continua, e o resultado aparece aqui embaixo e na página do robô.</p>
       {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Os pedidos ficam guardados e começam quando ele for reativado, na página do robô.</p>{% endif %}
       {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência dos links funciona sem ela; a leitura dos números e os pedidos ficam guardados e são feitos quando ela voltar.</p>{% endif %}
+      {% with s=robo_painel.situacao %}
+      <section class="situacao" aria-labelledby="situacao-titulo">
+        <h3 id="situacao-titulo">O que o robô já sabe deste quiz</h3>
+        <div class="situacao-grade">
+          <div>
+            <span class="rotulo-situacao">Links dos anúncios</span>
+            {% if s.conferencia %}
+              <div class="veredito {{ s.conferencia.tom }}">{{ s.conferencia.veredito }}</div>
+              <div class="meta">Conferência de {{ s.conferencia.quando|date:"d/m H:i" }}{% if s.conferencia.paginas %} · {{ s.conferencia.paginas }} página(s) abertas como visitante{% endif %}{% if s.conferencia.entrega %} · <a href="{% url 'entrega_do_robo' s.conferencia.entrega.id %}">relatório</a>{% endif %}{% if s.conferencia.tarefa %} · <a href="{% url 'tarefa_ver' s.conferencia.tarefa.id %}">tarefa de correção nº {{ s.conferencia.tarefa.id }}</a>{% endif %}. Mudou o quiz? Confira de novo.</div>
+            {% else %}
+              <p>Ainda não conferidos.</p>
+            {% endif %}
+          </div>
+          <div>
+            <span class="rotulo-situacao">Números</span>
+            {% if s.leitura %}
+              <p><b>{{ s.leitura.visitas }}</b> visita(s) de verdade{% if s.leitura.pouca %}: pouca gente para decidir (o robô decide a partir de {{ s.leitura.amostra }}){% endif %}.</p>
+              {% if s.leitura.acoes %}<ol>{% for a in s.leitura.acoes %}<li><b>{{ a.titulo }}</b>{% if a.porque %} <span class="meta">— {{ a.porque }}</span>{% endif %}</li>{% endfor %}</ol>{% endif %}
+              <div class="meta">Leitura de {{ s.leitura.quando|date:"d/m H:i" }}{% if s.leitura.modelo %} · modelo {{ s.leitura.modelo }}{% endif %}{% if s.leitura.custo %} · custou US$ {{ s.leitura.custo }}{% endif %}{% if s.leitura.entrega %} · <a href="{% url 'entrega_do_robo' s.leitura.entrega.id %}">relatório</a>{% endif %}{% if s.leitura.propostas %} · <a href="{% url 'quiz_evolucao' slug %}">{{ s.leitura.propostas }} proposta(s) de nova versão</a>{% endif %}</div>
+            {% else %}
+              <p>Nenhuma leitura ainda.</p>
+            {% endif %}
+          </div>
+        </div>
+        <p class="proximo"><b>Próximo passo:</b> {{ s.proximo }}</p>
+      </section>
+      {% endwith %}
       <div class="robo-acoes">
         <section class="robo-acao">
           <h3>Conferir os links no site</h3>
@@ -152,7 +188,8 @@
       {% endif %}
 
       {% if robo_painel.trabalhos %}
-        <h3>Trabalhos deste quiz</h3>
+        <details class="trabalhos-quiz"{% if robo_painel.trabalhando %} open{% endif %}>
+        <summary>Trabalhos deste quiz ({{ robo_painel.trabalhos|length }} mais recentes){% if robo_painel.trabalhando %} · trabalhando agora{% endif %}</summary>
         <ul class="robo-lista">
           {% for e in robo_painel.trabalhos %}
             <li>
@@ -166,6 +203,7 @@
             </li>
           {% endfor %}
         </ul>
+        </details>
       {% endif %}
 
       {% if robo_painel.entrega %}
