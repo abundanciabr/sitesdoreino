@@ -2271,14 +2271,14 @@ class LeadsClient:
         pagina: int = 1,
         por_pagina: int = 50,
     ) -> "tuple[str, dict | None]":
-        """Uma página de contatos, do mais novo para o mais antigo.
+        """Uma página de contatos vindos dos quizzes, do mais novo ao mais antigo.
 
         `{"itens": [...], "pagina": int, "por_pagina": int, "total": int,
         "tem_mais": bool}`. Filtro vazio NÃO vai na pergunta: a `leads` trata
         `q=` e a ausência de `q` do mesmo jeito, mas mandar só o que foi pedido
         deixa o registro de acesso dela dizer o que a tela de fato procurou.
         """
-        params: dict = {"pagina": pagina, "por_pagina": por_pagina}
+        params: dict = {"pagina": pagina, "por_pagina": por_pagina, "origem": "quiz"}
         for nome, valor in (("q", q), ("site_id", site_id), ("tag", tag)):
             if valor:
                 params[nome] = valor
@@ -2293,13 +2293,13 @@ class LeadsClient:
         return self.OK, corpo
 
     def ficha(self, lead_id: "uuid.UUID | str") -> "tuple[str, dict | None]":
-        """UM contato, com a linha do tempo: dados, origem, consentimento.
+        """UM contato vindo dos quizzes: dados, origem e linha do tempo.
 
         Devolve `NAO_EXISTE` para id que não existe, e nunca um dicionário
         vazio: ficha vazia que parece ficha é pior do que dizer que não achou.
         """
         desfecho, corpo = self._pedir(
-            f"/leads/{quote(str(lead_id), safe='')}", {}, aceita_404=True
+            f"/leads/{quote(str(lead_id), safe='')}", {"origem": "quiz"}, aceita_404=True
         )
         if desfecho != self.OK:
             return desfecho, None

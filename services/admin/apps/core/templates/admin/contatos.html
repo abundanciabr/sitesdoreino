@@ -1,7 +1,7 @@
 {% extends "admin/base.html" %}
 {% comment %}
 OS CONTATOS (/admin/contatos/, 03/10/2026): a primeira tela de CRM, só de
-leitura. Lista quem deixou o contato na casa, do mais novo para o mais antigo.
+leitura. Lista os contatos vindos dos quizzes, do mais novo para o mais antigo.
 
 Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
 tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
@@ -24,8 +24,8 @@ cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
   <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
   <h1>Contatos</h1>
   <p class="subtitulo">
-    Quem deixou o nome, o e-mail ou o telefone na casa, do mais novo para o mais
-    antigo. Abra um contato para ver de onde ele veio e tudo o que já fez.
+    Pessoas que chegaram pelos quizzes, do contato mais novo para o mais antigo.
+    Abra uma ficha para ver a origem e o histórico dessa pessoa.
   </p>
 
   <form class="peneira" method="get" action="{% url 'contatos' %}">
@@ -89,9 +89,9 @@ cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
 
   {% elif not tela.itens %}
   <p class="aviso espaco-20">
-    <b>Ainda não há nenhum contato.</b>
-    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia. Quem
-    deixar o contato em qualquer página da casa aparece aqui.
+    <b>Ainda não há contatos vindos dos quizzes.</b>
+    Este zero foi medido: a lista de pessoas que chegaram pelos quizzes voltou
+    vazia. Cadastros feitos apenas por pedido ou pagamento não entram aqui.
   </p>
 
   {% else %}

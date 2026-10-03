@@ -6,12 +6,12 @@
 @media(max-width:800px){.crm-numeros{grid-template-columns:repeat(3,1fr)}.crm .peneira{grid-template-columns:1fr 1fr}.crm .peneira .campo:first-child{grid-column:1/-1}.crm-cabecalho{align-items:start}.crm h1{font-size:28px}}@media(max-width:480px){.crm-cabecalho{flex-direction:column;gap:12px}.crm-numeros{grid-template-columns:repeat(2,1fr)}.crm .peneira{grid-template-columns:1fr}.crm-abertura{padding:18px}}
 </style>
 <main class="envolucro crm">
-  <div class="crm-cabecalho"><div><h1>CRM</h1><p class="subtitulo">Cada pessoa, sua história e o próximo passo.</p></div><a class="botao" href="{% url 'contatos' %}">Ver contatos →</a></div>
+  <div class="crm-cabecalho"><div><h1>CRM</h1><p class="subtitulo">Contatos que vieram dos quizzes, sua história e o próximo passo.</p></div><a class="botao" href="{% url 'contatos' %}">Ver contatos →</a></div>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
-  <div class="crm-abertura"><div class="rotulo">Recuperação de vendas</div><h2>Quem tentou comprar merece acompanhamento.</h2><p>Pagamentos recusados e Pix vencidos entram aqui para você acompanhar. Quando a compra é paga, a oportunidade passa para Ganha.</p></div>
+  <div class="crm-abertura"><div class="rotulo">Recuperação de vendas</div><h2>Acompanhe quem veio dos quizzes e tentou comprar.</h2><p>Pagamentos recusados e Pix vencidos desses contatos entram aqui. Quando a compra é paga, a oportunidade passa para Ganha.</p></div>
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
   <div class="crm-numeros">
-    <div class="cartao"><strong>{{ resumo.contatos }}</strong><span>Contatos</span></div>
+    <div class="cartao"><strong>{{ resumo.contatos }}</strong><span>Contatos dos quizzes</span></div>
     <div class="cartao"><strong>{{ resumo.eventos }}</strong><span>Acontecimentos registrados</span></div>
     <div class="cartao"><strong>{{ resumo.abertas }}</strong><span>Oportunidades abertas</span></div>
     <div class="cartao"><strong>{{ resumo.atrasadas }}</strong><span>Com prazo vencido</span></div>

@@ -129,6 +129,7 @@ def test_api_admin_lista_atualiza_e_isola_token(client, settings, monkeypatch):
     dados["customer"] = {"email": "ana@cliente.com", "name": "Ana"}
     _evento("pagamento.recusado", ao_pagamento_recusado, dados)
     caminho = "/api/leads/crm"
+    Lead.objects.filter(email="ana@cliente.com").update(source="quiz:crivo")
     cabecalho = {"HTTP_AUTHORIZATION": "Bearer admin"}
     resposta = client.get(caminho, **cabecalho)
     assert resposta.status_code == 200
@@ -176,7 +177,8 @@ def test_crm_oculta_testes_explicitos_por_padrao_sem_perder_contagem(
         dados["payment_id"] = f"pay-{indice}"
         dados["customer"] = {"email": email, "name": nome}
         _evento("pagamento.recusado", ao_pagamento_recusado, dados)
-    Lead.objects.filter(email="outra@dominio.com").update(source="sandbox-campanha")
+    Lead.objects.update(source="quiz:crivo")
+    Lead.objects.filter(email="outra@dominio.com").update(source="quiz-sandbox-campanha")
 
     caminho = "/api/leads/crm"
     cabecalho = {"HTTP_AUTHORIZATION": "Bearer admin"}
