@@ -158,6 +158,19 @@ def test_reentrega_da_reversao_tem_um_so_efeito() -> None:
     )
 
 
+def test_estorno_com_pedido_do_checkout_reembolsa_uma_vez() -> None:
+    matricula = _matricula()
+    envelope = _reversao(motivo="estorno")
+    envelope["data"]["order_id"] = "pedido-do-checkout"
+
+    processar_envelope(envelope, HANDLERS)
+    processar_envelope(envelope, HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
+    assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
+
+
 def test_reversao_de_um_site_nao_corta_matricula_de_outro() -> None:
     uma = _matricula(site=SITE)
     outra = _matricula(site=OUTRO_SITE)
