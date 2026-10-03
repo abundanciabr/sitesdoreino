@@ -101,7 +101,7 @@ function brCodeValido(codigo) {
  *  autoriza criar pedido; qualquer outra leitura para antes do formulário. */
 async function lerProvedorDoPix(pagina) {
   var bruto = await pagina.evaluate(function () {
-    var el = document.getElementById("appmax-pix-enabled");
+    var el = document.getElementById("appmax-pix-provider") || document.getElementById("appmax-pix-enabled");
     return el ? el.textContent : null;
   });
   try {
@@ -173,6 +173,7 @@ async function autoTeste(navegador) {
   var cenarios = [
     ["checkout com Pix no Mercado Pago autoriza o pedido", "<script id='appmax-pix-enabled' type='application/json'>false</script>", "mercado_pago"],
     ["checkout com Pix na Appmax não autoriza", "<script id='appmax-pix-enabled' type='application/json'>true</script>", "appmax"],
+    ["campos Appmax preparados com Pix primeiro no MP", "<script id='appmax-pix-enabled' type='application/json'>true</script><script id='appmax-pix-provider' type='application/json'>false</script>", "mercado_pago"],
     ["checkout sem a declaração não autoriza", "<p>sem declaração</p>", "desconhecido"],
   ];
   for (var i = 0; i < cenarios.length; i++) {

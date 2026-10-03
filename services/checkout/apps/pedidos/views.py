@@ -35,6 +35,7 @@ def dados(request, offer_slug: str):
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
             "static_base": _static_base(request),
+            "appmax_pix_provider": request.site["id"] in settings.APPMAX_PIX_ENABLED_SITES,
             "appmax_pix_enabled": request.site["id"]
             in (settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES),
             "appmax_card_enabled": request.site["id"]
