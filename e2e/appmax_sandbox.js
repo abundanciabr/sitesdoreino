@@ -882,11 +882,116 @@ async function provarPrefillDoQuiz() {
   }
 }
 
+var CENARIOS = ["risco-mp-aprova", "risco-mp-recusa", "risco-pagina-fechada", "pix-risco-appmax", "pix-risco-tardio"];
+var CARTAO_MP_TESTE = "5480832801033311";
+
+async function provarCenario(perfil, nome) {
+  var playwright = require("playwright");
+  var opcoes = perfil === "celular"
+    ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }
+    : { viewport: { width: 1366, height: 768 } };
+  var browser = await playwright.chromium.launch({ headless: true });
+  var contexto = await browser.newContext(opcoes);
+  var pagina = await contexto.newPage();
+  var pix = nome.indexOf("pix-") === 0;
+  var pagador = nome === "pix-risco-appmax" ? "RISCO SANDBOX" : nome === "pix-risco-tardio" ? "RISCO TARDIO SANDBOX" : "Cliente Teste";
+  var titular = nome === "risco-mp-recusa" ? "BLAC SANDBOX" : "APRO SANDBOX";
+  var ordem = "";
+  var segundaChamadas = 0;
+  try {
+    pagina.on("request", function (requisicao) {
+      if (requisicao.method() === "POST" && /\/cartao\/segunda-opcao(?:\?|$)/.test(requisicao.url())) segundaChamadas++;
+    });
+    await pagina.goto(BASE + "/checkout/" + OFERTA + "/", { waitUntil: "networkidle" });
+    await pagina.locator("#name").fill(pagador);
+    await pagina.locator("#email").fill("e2e-rota-" + crypto.randomBytes(6).toString("hex") + "@exemplo.test");
+    await pagina.locator("#phone").fill("11999990000");
+    await pagina.locator("#cpf").fill("40827365144");
+    await pagina.locator(pix ? ".metodo button:has-text('Pix')" : ".metodo button:has-text('Cartão')").click();
+    var destino = pix ? /\/pedido\/[0-9a-f-]{36}\/pix\/$/ : /\/pedido\/[0-9a-f-]{36}\/cartao\/$/;
+    await Promise.all([pagina.waitForURL(destino, { timeout: 90000 }), pagina.locator("button.cta").click()]);
+    ordem = pagina.url().match(/\/pedido\/([0-9a-f-]{36})\//)[1];
+    if (pix) {
+      var primeiro = await pagina.locator(".copia code").textContent({ timeout: 30000 });
+      if (!primeiro) throw new Error("Pix sem código inicial");
+      if (nome === "pix-risco-appmax" && !primeiro.startsWith("PIX-SIMULADO-")) throw new Error("troca na criação não mostrou Pix simulado da Appmax");
+      if (nome === "pix-risco-tardio") {
+        await pagina.locator(".codigo-antigo").waitFor({ state: "visible", timeout: 420000 });
+        var anterior = await pagina.locator(".codigo-antigo code").textContent();
+        var novo = await pagina.locator(".copia code").textContent();
+        if (primeiro !== anterior || !novo || novo === anterior) throw new Error("código antigo não foi substituído");
+        if (!novo.startsWith("PIX-SIMULADO-")) throw new Error("código novo não é o Pix simulado da Appmax");
+        if (!(await pagina.locator(".card").textContent()).includes("Não conseguimos concluir este pagamento. Pague com este novo código.")) throw new Error("aviso de código novo ausente");
+      }
+      console.log("PASS " + perfil + " " + nome + " order_id=" + ordem);
+      return;
+    }
+    var scripts = await pagina.$$eval("script[src]", function (s) { return s.map(function (x) { return x.src; }); });
+    if (!paginaEmSandbox(scripts)) throw new Error("cartão fora do sandbox");
+    await pagina.waitForFunction(function () { var botao = document.querySelector("form[data-appmax-checkout] button[type=submit]"); return botao && !botao.disabled; }, null, { timeout: 60000 });
+    await pagina.locator("input[name=card-number]").fill(CARTAO_MP_TESTE);
+    await pagina.locator("input[name=card-holder-name]").fill(titular);
+    await pagina.locator("input[inputmode=numeric][autocomplete=off]").fill(DOCUMENTO_DO_TITULAR);
+    await pagina.locator("input[name=exp-month]").fill("11");
+    await pagina.locator("input[name=exp-year]").fill("2030");
+    await pagina.locator("input[name=cvv]").fill("123");
+    if (nome === "risco-pagina-fechada") {
+      var concluirFechamento;
+      var falharFechamento;
+      var fechamento = new Promise(function (resolve, reject) { concluirFechamento = resolve; falharFechamento = reject; });
+      await pagina.route(/\/cartao(?:\?|$)/, async function (rota) {
+        if (rota.request().method() !== "POST") return rota.continue();
+        try {
+          // route.fetch recebe a decisão do servidor, mas ainda não a entrega ao JS.
+          var recebida = await rota.fetch({ timeout: 90000 });
+          var corpo = await recebida.json();
+          if (corpo.payment?.status !== "segunda_opcao") throw new Error("Appmax não abriu a segunda opção");
+          await pagina.close();
+          concluirFechamento();
+        } catch (e) {
+          if (!pagina.isClosed()) await rota.abort().catch(function () {});
+          falharFechamento(e);
+        }
+      });
+      var cliqueFechado = pagina.locator("form[data-appmax-checkout] button[type=submit]").click().catch(function (e) {
+        if (!pagina.isClosed()) falharFechamento(e);
+      });
+      await fechamento;
+      await cliqueFechado;
+      if (segundaChamadas !== 0) throw new Error("segunda chamada enviada após a página fechar");
+      console.log("PASS " + perfil + " " + nome + " order_id=" + ordem);
+      return;
+    }
+    var primeira = pagina.waitForResponse(function (r) { return r.request().method() === "POST" && /\/cartao(?:\?|$)/.test(r.url()); }, { timeout: 90000 });
+    var segunda = pagina.waitForResponse(function (r) { return r.request().method() === "POST" && /\/cartao\/segunda-opcao(?:\?|$)/.test(r.url()); }, { timeout: 90000 });
+    await pagina.locator("form[data-appmax-checkout] button[type=submit]").click();
+    var resposta = await primeira;
+    var corpo = await resposta.json();
+    if (corpo.payment?.status !== "segunda_opcao") throw new Error("Appmax não abriu a segunda opção");
+    await segunda;
+    await pagina.waitForFunction(function () { return /Pagamento aprovado|Cartão recusado|Pagamento recusado/.test(document.querySelector(".status")?.textContent || "") || /Cartão recusado/.test(document.querySelector(".erro")?.textContent || ""); }, null, { timeout: 90000 });
+    var estado = await statusDoPedido(pagina, ordem);
+    if (nome === "risco-mp-aprova" && estado !== "pago") throw new Error("MP não aprovou");
+    if (nome === "risco-mp-recusa" && estado !== "recusado") throw new Error("MP não recusou");
+    if (segundaChamadas !== 1) throw new Error("segunda chamada não foi única");
+    console.log("PASS " + perfil + " " + nome + " pedido=" + resumo(ordem));
+  } finally {
+    await contexto.close();
+    await browser.close();
+  }
+}
+
 async function principal() {
   if (ETAPA === "auto-teste") {
     autoTeste();
   } else if (ETAPA === "prefill") {
     await provarPrefillDoQuiz();
+  } else if (ETAPA === "cenario") {
+    var cenario = argumento("cenario", "");
+    if (CENARIOS.indexOf(cenario) === -1) erro("--cenario deve ser um dos cenários de roteamento");
+    var perfilCenario = argumento("perfil", "");
+    if (perfilCenario && PERFIS.indexOf(perfilCenario) === -1) erro("--perfil deve ser desktop ou celular");
+    for (var perfil of (perfilCenario ? [perfilCenario] : PERFIS)) await provarCenario(perfil, cenario);
   } else if (ETAPA === "comprar") {
     var selecaoDaCompra = selecaoDaLinhaDeComando();
     autoTeste();

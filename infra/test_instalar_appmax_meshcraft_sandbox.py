@@ -40,6 +40,13 @@ class InstalacaoSandboxTest(unittest.TestCase):
         self.assertNotIn("segredo-falso", " ".join(executar.call_args.args[0]))
         self.assertIn(b"segredo-falso", executar.call_args.kwargs["input"])
 
+    def test_erro_producao_nao_indica_painel_sandbox(self) -> None:
+        with patch.object(instalador.subprocess, "run", return_value=Mock(returncode=0, stdout=b"{}\n403")):
+            with self.assertRaises(instalador.FalhaDeInstalacao) as erro:
+                instalador.postar("https://api.appmax.com.br/app/authorize", b"{}")
+        self.assertIn("produção", str(erro.exception))
+        self.assertNotIn("painel sandbox", str(erro.exception))
+
     def test_curl_envia_json_e_bearer_sem_segredos_na_linha_de_comando(self) -> None:
         if not shutil.which("curl"):
             self.skipTest("curl indisponível")
@@ -76,7 +83,7 @@ class InstalacaoSandboxTest(unittest.TestCase):
         self.assertEqual(recebido["body"], body)
         self.assertEqual(recebido["authorization"], "Bearer token-app-falso")
 
-    def test_somente_env_sandbox_da_loja_autorizada(self) -> None:
+    def test_sandbox_e_producao_aceitam_ids_diferentes(self) -> None:
         with tempfile.TemporaryDirectory() as pasta:
             env = Path(pasta) / "pagamentos.env"
             script = Path(pasta) / "appmax.sh"
@@ -105,8 +112,10 @@ class InstalacaoSandboxTest(unittest.TestCase):
                     env.read_text(encoding="utf-8").replace("1888", "1889"),
                     encoding="utf-8",
                 )
-                with self.assertRaises(instalador.FalhaDeInstalacao):
-                    instalador.conferir_ambiente()
+                self.assertEqual(instalador.conferir_ambiente()[2], instalador.SITE_INTERNO)
+                env.write_text(env.read_text(encoding="utf-8").replace("sandboxappmax", "appmax"), encoding="utf-8")
+                self.assertEqual(instalador.endpoints()[2], "https://admin.appmax.com.br")
+                self.assertEqual(instalador.conferir_ambiente()[2], instalador.SITE_INTERNO)
 
     def test_retorno_precisa_remover_o_token_da_url(self) -> None:
         resposta = urllib.error.HTTPError(
@@ -154,6 +163,7 @@ class InstalacaoSandboxTest(unittest.TestCase):
                 ),
             ),
             patch.object(instalador, "conferir_callback"),
+            patch.object(instalador, "endpoints", return_value=(instalador.AUTH_SANDBOX, instalador.API_SANDBOX, "https://breakingcode.sandboxappmax.com.br")),
             patch.object(instalador, "postar", side_effect=respostas) as postar,
             patch(
                 "builtins.input",
@@ -176,7 +186,7 @@ class InstalacaoSandboxTest(unittest.TestCase):
         )
         self.assertNotIn("merchant-id-falso", saida.getvalue())
         self.assertNotIn("merchant-segredo-falso", saida.getvalue())
-        self.assertIn("INSTALACAO_SANDBOX_OK", saida.getvalue())
+        self.assertIn("INSTALACAO_OK", saida.getvalue())
 
 
 if __name__ == "__main__":
