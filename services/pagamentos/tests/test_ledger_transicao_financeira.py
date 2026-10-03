@@ -23,6 +23,79 @@ from pagamentos.core.ledger import AvisoAusente, registrar_fato
 from pagamentos.core.models import Intent, OutboxEvent, TransicaoForaDoLedger
 from pagamentos.core.webhook_signature import assinar
 
+
+def test_ultima_tentativa_aprova_tarde_e_a_anterior_nao_recusa(caplog: Any) -> None:
+    from pagamentos.core.ledger import registrar_fato_da_tentativa
+    from pagamentos.core.models import PaymentAttempt
+
+    intent = Intent.objects.create(
+        idempotency_key=str(uuid.uuid4()), site_id="site", order_id="ordem",
+        method="pix", status="pending", amount_cents=1000,
+        customer={"email": "teste@example.org", "name": "Teste"},
+    )
+    antiga = PaymentAttempt.objects.create(
+        intent=intent, platform_site_id="site", provider="mercadopago",
+        request_hash="1" * 64, provider_reference_id="mp-antigo",
+        amount_cents=1000, effective_amount_cents=1000, state="rejected",
+    )
+    ultima = PaymentAttempt.objects.create(
+        intent=intent, platform_site_id="site", provider="appmax",
+        request_hash="2" * 64, provider_reference_id="app-novo",
+        amount_cents=1000, effective_amount_cents=1000, state="rejected",
+    )
+    dados = {"platform_site_id": "site", "provider": "appmax",
+             "provider_reference_id": "app-novo"}
+    assert registrar_fato_da_tentativa(
+        "mercadopago", "mp-antigo", novo_status="rejected",
+        evento="pagamento.recusado", dados={**dados, "reason_code": "risco"},
+    ) == "ignorado"
+    assert intent.status == "pending"
+    assert registrar_fato_da_tentativa(
+        "appmax", "app-novo", novo_status="rejected",
+        evento="pagamento.recusado", dados=dados,
+    ) == "aplicado"
+    intent.refresh_from_db()
+    assert intent.status == "rejected"
+    assert registrar_fato_da_tentativa(
+        "appmax", "app-novo", novo_status="approved",
+        evento="pagamento.aprovado", dados=dados,
+    ) == "aplicado"
+    intent.refresh_from_db()
+    ultima.refresh_from_db()
+    assert intent.status == "approved"
+    assert ultima.state == "approved"
+    assert "aprovacao_tardia" in caplog.text
+    assert registrar_fato_da_tentativa(
+        "mercadopago", "mp-antigo", novo_status="approved",
+        evento="pagamento.aprovado", dados=dados,
+    ) == "approved_duplicate"
+    antiga.refresh_from_db()
+    assert antiga.state == "approved_duplicate"
+    assert "cobranca_duplicada" in caplog.text
+    assert OutboxEvent.objects.filter(event="pagamento.aprovado", version=2).count() == 1
+
+
+def test_reversao_da_tentativa_deduplica_com_provider_correto() -> None:
+    from pagamentos.core.ledger import emitir_reversao_confirmada
+    from pagamentos.core.models import PaymentAttempt
+
+    intent = Intent.objects.create(
+        idempotency_key=str(uuid.uuid4()), site_id="site", order_id="ordem",
+        method="card", amount_cents=1000,
+        customer={"email": "teste@example.org"},
+    )
+    tentativa = PaymentAttempt.objects.create(
+        intent=intent, platform_site_id="site", provider="mercadopago",
+        request_hash="3" * 64, provider_reference_id="mp-estorno",
+        amount_cents=1000, effective_amount_cents=1000, state="approved",
+    )
+    assert emitir_reversao_confirmada(tentativa, "refunded") is True
+    assert emitir_reversao_confirmada(tentativa, "refunded") is False
+    evento = OutboxEvent.objects.get(event="pagamento.reversao_confirmada")
+    assert evento.version == 2
+    assert evento.payload["provider"] == "mercadopago"
+    assert evento.payload["provider_reference_id"] == "mp-estorno"
+
 pytestmark = pytest.mark.django_db
 
 _URL_PAGAMENTOS = "https://api.mercadopago.com/v1/payments"

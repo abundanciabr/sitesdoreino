@@ -44,6 +44,7 @@ ATTEMPT_STATE_CHOICES = [
     ("rejected", "rejected"),
     ("failed", "failed"),
     ("reconciliation_required", "reconciliation_required"),
+    ("approved_duplicate", "approved_duplicate"),
 ]
 # Os tres estados que impedem um novo envio para o MESMO Intent, e o porque de
 # cada um: `sending` porque a chamada ainda esta em voo (duplo clique),
@@ -129,6 +130,7 @@ class Intent(models.Model):
     pix_qr_code_base64 = models.TextField(blank=True, default="")
     pix_expires_at = models.DateTimeField(null=True, blank=True)
     card_reason_code = models.CharField(max_length=255, blank=True, default="")
+    segunda_opcao_ate = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -252,6 +254,8 @@ class PaymentAttempt(models.Model):
         max_length=30, choices=ATTEMPT_STATE_CHOICES, default="sending"
     )
     reason = models.CharField(max_length=120, blank=True, default="")
+    estorno_estado = models.CharField(max_length=30, null=True, blank=True)
+    estorno_solicitado_em = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -286,7 +290,7 @@ class PaymentOperation(models.Model):
     operation_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     operation_type = models.CharField(
         max_length=16,
-        choices=[("customer", "customer"), ("order", "order"), ("payment", "payment")],
+        choices=[("customer", "customer"), ("order", "order"), ("payment", "payment"), ("refund", "refund")],
     )
     request_hash = models.CharField(max_length=64)
     state = models.CharField(

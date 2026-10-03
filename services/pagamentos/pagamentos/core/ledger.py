@@ -25,7 +25,7 @@ from typing import Any
 from django.db import transaction
 
 from pagamentos.core import models
-from pagamentos.core.models import ESTADOS_FINANCEIROS, Intent
+from pagamentos.core.models import ESTADOS_FINANCEIROS, Intent, OutboxEvent, PaymentAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # ledger registra que o dinheiro voltou; o que diferencia os dois é o `motivo`
 # do evento, não o estado.
 ORIGENS_ADMITIDAS: dict[str, frozenset[str]] = {
-    "approved": frozenset({"created", "pending"}),
+    "approved": frozenset({"created", "pending", "rejected", "expired"}),
     "rejected": frozenset({"created", "pending"}),
     "expired": frozenset({"created", "pending"}),
     "refunded": frozenset({"approved"}),
@@ -136,6 +136,99 @@ def transicionar_e_emitir(
     if intent is None:
         return False
     return registrar_fato(intent, novo_status=novo_status, evento=evento, dados=dados)
+
+
+def registrar_fato_da_tentativa(
+    provider: str,
+    provider_reference_id: str,
+    *,
+    novo_status: str,
+    evento: str,
+    dados: dict[str, Any],
+    version: int = 2,
+) -> str:
+    """Aplica um fato da tentativa identificada pelo provedor.
+
+    Retorna ``aplicado``, ``ignorado``, ``approved_duplicate`` ou
+    ``desconhecido``. Uma tentativa anterior à mais recente nunca decide a
+    intent; sua aprovação vira uma cobrança para estorno individual.
+    """
+    if not provider_reference_id:
+        return "desconhecido"
+    with transaction.atomic():
+        tentativa = (PaymentAttempt.objects.filter(
+            provider=provider, provider_reference_id=provider_reference_id
+        ).order_by("-created_at", "-pk").first())
+        if tentativa is None:
+            return "desconhecido"
+        intent = Intent.objects.select_for_update().get(pk=tentativa.intent_id)
+        tentativa = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+        ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+        substituida = ultima is not None and ultima.pk != tentativa.pk
+        if novo_status == "approved" and (substituida or (
+            intent.status == "approved" and not OutboxEvent.objects.filter(
+                event="pagamento.aprovado", version=2,
+                payload__provider=provider,
+                payload__provider_reference_id=provider_reference_id,
+            ).exists()
+        )):
+            if tentativa.state != "approved_duplicate":
+                tentativa.state = "approved_duplicate"
+                tentativa.save(update_fields=["state", "updated_at"])
+                logger.error("cobranca_duplicada intent=%s tentativa=%s provider=%s", intent.pk, tentativa.pk, provider)
+            return "approved_duplicate"
+        if tentativa.state == "approved_duplicate":
+            return "approved_duplicate"
+        if tentativa.state == "approved" and novo_status != "approved":
+            return "ignorado"
+        if novo_status == "approved":
+            tentativa.state = "approved"
+        elif novo_status in {"rejected", "expired"} and tentativa.state in {"sending", "pending", "reconciliation_required"}:
+            tentativa.state = "rejected"
+            tentativa.reason = str(dados.get("reason_code") or "")[:120]
+        tentativa.save(update_fields=["state", "reason", "updated_at"])
+        if substituida:
+            return "ignorado"
+        if novo_status == "approved" and intent.status in {"rejected", "expired"}:
+            logger.error("aprovacao_tardia intent=%s tentativa=%s provider=%s", intent.pk, tentativa.pk, provider)
+        return "aplicado" if registrar_fato(
+            intent, novo_status=novo_status, evento=evento, dados=dados, version=version
+        ) else "ignorado"
+
+
+_MOTIVOS_REVERSAO = {
+    "appmax_estornado": "estorno",
+    "appmax_chargeback_em_tratativa": "contestacao",
+    "appmax_chargeback_em_disputa": "contestacao",
+    "appmax_chargeback_perdido": "contestacao",
+    "refunded": "estorno",
+    "charged_back": "contestacao",
+}
+
+
+def emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> bool:
+    """Emite uma reversão v2 uma única vez para a cobrança desta tentativa."""
+    motivo = _MOTIVOS_REVERSAO[codigo]
+    with transaction.atomic():
+        travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+        if not travada.provider_reference_id:
+            return False
+        payload = {
+            "platform_site_id": travada.platform_site_id,
+            "provider": travada.provider,
+            "provider_reference_id": travada.provider_reference_id,
+            "motivo": motivo,
+        }
+        if OutboxEvent.objects.filter(
+            event="pagamento.reversao_confirmada", version=2,
+            payload__platform_site_id=travada.platform_site_id,
+            payload__provider=travada.provider,
+            payload__provider_reference_id=travada.provider_reference_id,
+        ).exists():
+            return False
+        models.emitir("pagamento.reversao_confirmada", payload, version=2)
+    transaction.on_commit(models.relay_apos_commit)
+    return True
 
 
 def _exigir_fato_financeiro(novo_status: str) -> None:

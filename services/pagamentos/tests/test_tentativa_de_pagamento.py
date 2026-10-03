@@ -32,6 +32,56 @@ from pagamentos.core.tentativas import (
     tentativas_do_site,
 )
 
+
+@pytest.mark.parametrize(
+    ("aprovada", "estado"),
+    [(True, "approved"), (False, "rejected"), (None, "pending")],
+)
+def test_mp_fecha_resultados_com_operacao_de_pagamento(
+    aprovada: bool | None, estado: str
+) -> None:
+    from pagamentos.core.models import PaymentOperation
+
+    intent = _criar_intent()
+    visto: list[bool] = []
+
+    def enviar(tentativa: PaymentAttempt) -> ResultadoDoProvedor:
+        assert PaymentOperation.objects.filter(
+            attempt=tentativa, operation_type="payment", state="sending"
+        ).exists()
+        return ResultadoDoProvedor(aprovada=aprovada, provider_reference_id="mp-1")
+
+    tentativa = executar_tentativa(
+        intent=intent, provider="mercadopago", corpo={"token": str(uuid.uuid4())},
+        enviar=enviar, registrar_resultado=lambda t, r: visto.append(t.fechada_agora),
+    )
+    assert tentativa.state == estado
+    assert tentativa.fechada_agora is True
+    assert visto == [True]
+    assert PaymentOperation.objects.get(attempt=tentativa).state == "completed"
+
+
+@pytest.mark.parametrize(
+    ("erro", "estado", "operacao"),
+    [(EnvioNaoChegou, "failed", "failed"),
+     (ResultadoAmbiguo, "reconciliation_required", "reconciliation_required")],
+)
+def test_mp_erro_fecha_e_preserva_operacao(erro: type[Exception], estado: str, operacao: str) -> None:
+    from pagamentos.core.models import PaymentOperation
+
+    intent = _criar_intent()
+
+    def enviar(tentativa: PaymentAttempt) -> ResultadoDoProvedor:
+        assert PaymentOperation.objects.filter(attempt=tentativa, state="sending").exists()
+        raise erro("falha")
+
+    with pytest.raises(erro):
+        executar_tentativa(
+            intent=intent, provider="mercadopago", corpo={"token": "mp"}, enviar=enviar,
+        )
+    tentativa = PaymentAttempt.objects.get(intent=intent)
+    assert tentativa.state == estado
+    assert PaymentOperation.objects.get(attempt=tentativa).state == operacao
 pytestmark = pytest.mark.django_db(transaction=True)
 
 _SITE = "meshcraft-top"

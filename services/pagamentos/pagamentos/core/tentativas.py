@@ -12,12 +12,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import timedelta
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from django.db import IntegrityError, transaction
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from pagamentos.core.models import (
     ESTADOS_EM_ABERTO,
@@ -87,6 +89,10 @@ class ResultadoAmbiguo(Exception):
     não voltou (timeout depois do envio). A cobrança pode existir lá fora."""
 
 
+class SegundaOpcaoIndisponivel(Exception):
+    """A janela do cartão venceu, foi consumida ou nunca esteve aberta."""
+
+
 @dataclass(frozen=True)
 class ResultadoDoProvedor:
     """O que o provedor respondeu, traduzido para o vocabulário desta casa."""
@@ -109,6 +115,7 @@ def executar_tentativa(
     registrar_resultado: (
         Callable[[PaymentAttempt, ResultadoDoProvedor], None] | None
     ) = None,
+    consumir_segunda_opcao: bool = False,
 ) -> PaymentAttempt:
     """Abre a tentativa, manda, e fecha com o que voltou.
 
@@ -129,16 +136,20 @@ def executar_tentativa(
         installments=installments,
         external_order_id=external_order_id,
         effective_amount_cents=effective_amount_cents,
+        consumir_segunda_opcao=consumir_segunda_opcao,
     )
     if not nova:
+        tentativa.fechada_agora = False
         return tentativa
     try:
         resultado = enviar(tentativa)
     except EnvioNaoChegou as exc:
-        _fechar(tentativa, state="failed", motivo=str(exc))
+        with transaction.atomic():
+            _fechar(tentativa, state="failed", motivo=str(exc))
         raise
     except Exception as exc:
-        _fechar(tentativa, state="reconciliation_required", motivo=str(exc))
+        with transaction.atomic():
+            _fechar(tentativa, state="reconciliation_required", motivo=str(exc))
         raise
     estado = (
         "approved"
@@ -152,7 +163,7 @@ def executar_tentativa(
             motivo=resultado.motivo,
             resultado=resultado,
         )
-        if registrar_resultado is not None:
+        if registrar_resultado is not None and finalizada.fechada_agora:
             registrar_resultado(finalizada, resultado)
     return finalizada
 
@@ -181,6 +192,7 @@ def fechar_reconciliacao(
         travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
         if travada.state not in ESTADOS_EM_ABERTO:
             tentativa.refresh_from_db()
+            travada.fechada_agora = False
             return travada
         finalizada = _fechar(
             travada,
@@ -188,7 +200,7 @@ def fechar_reconciliacao(
             motivo=resultado.motivo,
             resultado=resultado,
         )
-        if registrar_resultado is not None:
+        if registrar_resultado is not None and finalizada.fechada_agora:
             registrar_resultado(finalizada, resultado)
         return finalizada
 
@@ -199,8 +211,8 @@ def tentativas_do_site(platform_site_id: str) -> QuerySet[PaymentAttempt]:
     return PaymentAttempt.objects.filter(platform_site_id=platform_site_id)
 
 
-def hash_da_tentativa(corpo: Mapping[str, Any]) -> str:
-    return _hash_do_corpo(corpo)
+def hash_da_tentativa(corpo: Mapping[str, Any], provider: str = "appmax") -> str:
+    return _hash_do_corpo(corpo if provider == "appmax" else {"provider": provider, "corpo": corpo})
 
 
 def _abrir(
@@ -211,16 +223,24 @@ def _abrir(
     installments: int,
     external_order_id: str,
     effective_amount_cents: int | None,
+    consumir_segunda_opcao: bool,
 ) -> tuple[PaymentAttempt, bool]:
     """`durable=True` é o guarda de "persistida ANTES do envio": ele recusa
     rodar dentro de uma transação já aberta, e é isso que garante que, ao sair
     daqui, a linha está COMMITADA de verdade. Sem ele, um chamador que
     envolvesse tudo num `atomic()` faria a chamada externa com a linha ainda
     invisível, e um crash apagaria o rastro da cobrança."""
-    request_hash = _hash_do_corpo(corpo)
+    request_hash = hash_da_tentativa(corpo, provider=provider)
     try:
         with transaction.atomic(durable=True):
-            Intent.objects.select_for_update().get(pk=intent.pk)
+            travada = Intent.objects.select_for_update().get(pk=intent.pk)
+            if consumir_segunda_opcao:
+                if (provider != "mercadopago" or travada.method != "card"
+                    or travada.status != "pending"
+                    or travada.segunda_opcao_ate is None
+                    or travada.segunda_opcao_ate <= timezone.now()
+                    or PaymentAttempt.objects.filter(intent=travada, provider="mercadopago").exists()):
+                    raise SegundaOpcaoIndisponivel("segunda opção encerrada ou já utilizada")
             bloqueadora = _tentativa_viva(intent)
             if bloqueadora is not None:
                 raise TentativaBloqueada(bloqueadora)
@@ -229,8 +249,10 @@ def _abrir(
             ).first()
             if anterior is not None:
                 return anterior, False
-            return (
-                PaymentAttempt.objects.create(
+            if consumir_segunda_opcao:
+                travada.segunda_opcao_ate = None
+                travada.save(update_fields=["segunda_opcao_ate", "updated_at"])
+            tentativa = PaymentAttempt.objects.create(
                     intent=intent,
                     platform_site_id=intent.site_id,
                     provider=provider,
@@ -238,14 +260,18 @@ def _abrir(
                     effective_amount_cents=(
                         effective_amount_cents or intent.amount_cents
                     ),
-                    previous_intent_status=intent.status,
+                    previous_intent_status=travada.status,
                     installments=installments,
                     external_order_id=external_order_id,
                     request_hash=request_hash,
                     state="sending",
-                ),
-                True,
-            )
+                )
+            if provider == "mercadopago":
+                PaymentOperation.objects.create(
+                    attempt=tentativa, platform_site_id=tentativa.platform_site_id,
+                    operation_type="payment", request_hash=request_hash,
+                )
+            return tentativa, True
     except IntegrityError:
         # A checagem acima perde a corrida do duplo clique; o índice único
         # parcial não perde. Quem chegou depois recebe a mesma recusa clara.
@@ -263,7 +289,7 @@ def _abrir(
 def abrir_operacao(
     tentativa: PaymentAttempt, *, tipo: str, corpo: Mapping[str, Any]
 ) -> PaymentOperation:
-    if tipo not in {"customer", "order", "payment"}:
+    if tipo not in {"customer", "order", "payment", "refund"}:
         raise ValueError(f"tipo de operação Appmax inválido: {tipo}")
     with transaction.atomic(durable=True):
         return PaymentOperation.objects.create(
@@ -318,6 +344,11 @@ def _fechar(
     motivo: str,
     resultado: ResultadoDoProvedor | None = None,
 ) -> PaymentAttempt:
+    atual = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+    if atual.state not in ESTADOS_EM_ABERTO:
+        atual.fechada_agora = False
+        return atual
+    tentativa = atual
     tentativa.state = state
     tentativa.reason = _sanitizar_motivo(motivo)
     campos = ["state", "reason", "updated_at"]
@@ -328,7 +359,70 @@ def _fechar(
             tentativa.external_order_id = resultado.external_order_id
             campos.append("external_order_id")
     tentativa.save(update_fields=campos)
+    if tentativa.provider == "mercadopago":
+        estado_operacao = (
+            "reconciliation_required" if state == "reconciliation_required"
+            else "failed" if state == "failed" else "completed"
+        )
+        PaymentOperation.objects.filter(
+            attempt=tentativa, operation_type="payment", state="sending"
+        ).update(state=estado_operacao, provider_resource_id=tentativa.provider_reference_id)
+    tentativa.fechada_agora = True
     return tentativa
+
+
+def fechar_tentativa_sem_fato(tentativa: PaymentAttempt, motivo: str) -> tuple[PaymentAttempt, bool]:
+    """Fecha uma recusa intermediária sem alterar a intent nem emitir evento."""
+    with transaction.atomic():
+        fechada = _fechar(tentativa, state="rejected", motivo=motivo)
+        return fechada, fechada.fechada_agora
+
+
+def abrir_segunda_opcao(intent: Intent) -> Intent:
+    """Abre por 60 segundos; também pode participar do fechamento da Appmax."""
+    with transaction.atomic():
+        travada = Intent.objects.select_for_update().get(pk=intent.pk)
+        if travada.method != "card" or travada.status != "pending":
+            raise SegundaOpcaoIndisponivel("intent fora da troca de cartão")
+        if PaymentAttempt.objects.filter(intent=travada, provider="mercadopago").exists():
+            raise SegundaOpcaoIndisponivel("segunda opção já usada")
+        travada.segunda_opcao_ate = timezone.now() + timedelta(seconds=60)
+        travada.save(update_fields=["segunda_opcao_ate", "updated_at"])
+    intent.refresh_from_db()
+    return intent
+
+
+def fechar_segundas_opcoes_vencidas(intent: Intent | None = None) -> int:
+    """Recusa cada janela vencida uma vez; a trava decide a corrida com o consumo."""
+    from pagamentos.core import ledger
+
+    ids = ([intent.pk] if intent is not None else list(Intent.objects.filter(
+        method="card", status="pending", segunda_opcao_ate__lte=timezone.now()
+    ).values_list("pk", flat=True)))
+    fechadas = 0
+    for pk in ids:
+        with transaction.atomic():
+            travada = Intent.objects.select_for_update().get(pk=pk)
+            if (travada.status != "pending" or travada.segunda_opcao_ate is None
+                or travada.segunda_opcao_ate > timezone.now()
+                or _tentativa_viva(travada) is not None):
+                continue
+            ultima = PaymentAttempt.objects.filter(intent=travada).order_by("-created_at", "-pk").first()
+            travada.segunda_opcao_ate = None
+            travada.save(update_fields=["segunda_opcao_ate", "updated_at"])
+            dados = {
+                "platform_site_id": travada.site_id,
+                "payment_id": str(ultima.operation_id) if ultima else str(travada.id),
+                "order_id": travada.order_id, "amount_cents": travada.amount_cents,
+                "method": "card", "provider": "appmax",
+                "provider_reference_id": ultima.provider_reference_id if ultima else "",
+                "customer": {"email": str(travada.customer.get("email") or ""),
+                             "name": str(travada.customer.get("name") or "")},
+                "reason_code": "segunda_opcao_nao_enviada",
+            }
+            if ledger.registrar_fato(travada, novo_status="rejected", evento="pagamento.recusado", dados=dados, version=2):
+                fechadas += 1
+    return fechadas
 
 
 def _sanitizar_motivo(bruto: str) -> str:
