@@ -361,6 +361,18 @@ def _dados_expirado(intent: Intent) -> dict[str, Any]:
     }
 
 
+def registrar_aprovacao_tardia_appmax(tentativa: PaymentAttempt) -> str:
+    """Aplica pelo ledger v2 uma aprovação Appmax conferida pela supervisão."""
+    resultado = ledger.registrar_fato_da_tentativa(
+        "appmax",
+        tentativa.provider_reference_id,
+        novo_status="approved",
+        evento="pagamento.aprovado",
+        dados=_dados_v2(tentativa.intent, tentativa, "pagamento.aprovado", ""),
+    )
+    return resultado
+
+
 def conferir_consulta_mp(
     tentativa: PaymentAttempt, consulta: gateway.StatusDoPagamento
 ) -> None:

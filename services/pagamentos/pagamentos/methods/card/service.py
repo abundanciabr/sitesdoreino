@@ -485,6 +485,16 @@ def reconciliar_intent_card(intent: Intent) -> Intent:
         return _reconciliar_mp(intent, tentativa)
     if tentativa is None or not tentativa.external_order_id:
         raise IntentNaoConfirmavel("reconciliation_required")
+    reconciliar_tentativa_appmax(tentativa)
+    intent.refresh_from_db()
+    return intent
+
+
+def reconciliar_tentativa_appmax(tentativa: PaymentAttempt) -> Intent:
+    """Consulta o pedido Appmax vinculado, inclusive após uma recusa já fechada."""
+    intent = tentativa.intent
+    if tentativa.provider != "appmax" or not tentativa.external_order_id:
+        raise IntentNaoConfirmavel("reconciliation_required")
     cliente_appmax = gateway.nova_sessao_appmax()
     try:
         cliente_appmax.preparar()
@@ -502,14 +512,6 @@ def reconciliar_intent_card(intent: Intent) -> Intent:
             "resultado Appmax ainda não confirmado; consulte a intent depois",
             ambiguo=True,
         ) from None
-    if resultado.aprovada is None:
-        fechar_reconciliacao(
-            tentativa,
-            resultado=resultado,
-            registrar_resultado=_registrar_resultado_v2,
-        )
-        intent.refresh_from_db()
-        return intent
     fechar_reconciliacao(
         tentativa,
         resultado=resultado,
@@ -733,7 +735,9 @@ def _registrar_resultado_v2(
     abrir_janela: bool = False,
 ) -> None:
     intent = tentativa.intent
-    ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+    ultima = (PaymentAttempt.objects.filter(intent=intent)
+              .exclude(state="approved_duplicate")
+              .order_by("-created_at", "-pk").first())
     if ultima is not None and ultima.pk == tentativa.pk:
         if resultado.aprovada is None and intent.status in {"created", "rejected", "pending"}:
             ledger.marcar_tentativa_pendente(intent)
@@ -770,6 +774,34 @@ def _registrar_resultado_v2(
     else:
         ledger.registrar_fato(intent, novo_status="approved" if aprovado else "rejected",
                              evento=evento, dados=dados, version=2)
+
+
+def registrar_aprovacao_tardia_appmax(tentativa: PaymentAttempt) -> str:
+    """Entrega uma aprovação autenticada de tentativa Appmax já encerrada ao ledger."""
+    _registrar_resultado_v2(
+        tentativa,
+        ResultadoDoProvedor(
+            aprovada=True,
+            provider_reference_id=tentativa.provider_reference_id,
+            external_order_id=tentativa.external_order_id,
+            motivo="aprovado",
+        ),
+    )
+    tentativa.refresh_from_db()
+    return tentativa.state
+
+
+def registrar_risco_appmax_sem_janela(tentativa: PaymentAttempt) -> None:
+    """Fecha a intent cujo risco já encerrou a Appmax fora do clique."""
+    _registrar_resultado_v2(
+        tentativa,
+        ResultadoDoProvedor(
+            aprovada=False,
+            provider_reference_id=tentativa.provider_reference_id,
+            external_order_id=tentativa.external_order_id,
+            motivo="recusado_por_risco",
+        ),
+    )
 
 
 def _estornar_duplicata(tentativa: PaymentAttempt) -> None:

@@ -36,6 +36,7 @@ from pagamentos.methods.pix.service import (
     completar_intent_pix,
     criar_intent_pix,
     intent_pix_incompleta,
+    reconciliar_intent_pix,
 )
 from pagamentos.methods.pix.appmax import (
     DadosPixInvalidos,
@@ -342,15 +343,20 @@ def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
     if (
         PaymentAttempt.objects.filter(
             intent=intent,
-            state__in=("pending", "reconciliation_required"),
+            state__in=("sending", "pending", "reconciliation_required"),
         )
         .exists()
     ):
         try:
             if intent.method == "card":
                 reconciliar_intent_card(intent)
-            else:
+            elif PaymentAttempt.objects.filter(
+                intent=intent, provider="appmax",
+                state__in=("sending", "pending", "reconciliation_required"),
+            ).exists():
                 reconciliar_pix_appmax(intent)
+            else:
+                reconciliar_intent_pix(intent)
         except (FalhaNoProvedor, IntentNaoConfirmavel):
             intent.refresh_from_db()
     return _intent_to_dict(intent)

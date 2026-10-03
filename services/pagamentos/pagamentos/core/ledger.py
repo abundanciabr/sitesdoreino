@@ -163,7 +163,9 @@ def registrar_fato_da_tentativa(
             return "desconhecido"
         intent = Intent.objects.select_for_update().get(pk=tentativa.intent_id)
         tentativa = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-        ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+        ultima = (PaymentAttempt.objects.filter(intent=intent)
+                  .exclude(state="approved_duplicate")
+                  .order_by("-created_at", "-pk").first())
         substituida = ultima is not None and ultima.pk != tentativa.pk
         aprovacoes_v2 = OutboxEvent.objects.filter(
             event="pagamento.aprovado", version=2,
