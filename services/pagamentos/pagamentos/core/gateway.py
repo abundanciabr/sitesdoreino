@@ -141,6 +141,10 @@ def criar_pagamento_card(
         )
     except MercadoPagoError as exc:
         raise FalhaNoProvedor(str(exc), ambiguo=exc.ambiguo) from exc
+    return traduzir_pagamento_card(resposta)
+
+
+def traduzir_pagamento_card(resposta: dict[str, Any]) -> ResultadoCard:
     payment_id = _exigir_id(resposta, ambiguo=True)
     status = str(resposta.get("status") or "").strip()
     if not status:

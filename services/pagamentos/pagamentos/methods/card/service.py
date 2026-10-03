@@ -4,10 +4,14 @@
 from __future__ import annotations
 
 import re
+import logging
+from datetime import timedelta
+from decimal import Decimal
 from typing import Any
 
 from django.db import transaction
 from django.conf import settings
+from django.utils import timezone
 
 from pagamentos.core import gateway, ledger
 from pagamentos.core.models import (
@@ -25,10 +29,14 @@ from pagamentos.core.tentativas import (
     fechar_reconciliacao,
     finalizar_operacao,
     hash_da_tentativa,
+    abrir_segunda_opcao,
+    fechar_segundas_opcoes_vencidas,
+    SegundaOpcaoIndisponivel,
 )
 
 _STATUS_CONFIRMAVEL = "created"
 _DIGITOS = re.compile(r"\D")
+logger = logging.getLogger(__name__)
 
 EVENTO_POR_STATUS = {
     "approved": "pagamento.aprovado",
@@ -46,6 +54,22 @@ class DadosCartaoInvalidos(Exception):
 
 class CartaoAppmaxDesativado(Exception):
     """A loja ainda não está autorizada a cobrar cartão pela Appmax (409)."""
+
+
+def recusa_antifraude_appmax(status: str) -> bool:
+    return status == "recusado_por_risco"
+
+
+def _segunda_empresa_habilitada(intent: Intent, mp_pronto: bool) -> bool:
+    return mp_pronto and intent.site_id in settings.MP_CARD_FALLBACK_SITES
+
+
+def _email_de_prova(intent: Intent) -> bool:
+    return str(intent.customer.get("email") or "").strip().lower() in settings.PROVA_SEGUNDA_EMPRESA_EMAILS
+
+
+def _sandbox_mp() -> bool:
+    return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower() and settings.MP_ACCESS_TOKEN.startswith("TEST-")
 
 
 def montar_dados_do_evento(
@@ -147,9 +171,22 @@ def confirmar_intent_card(
     ip: str = "",
     holder_name: str = "",
     holder_document_number: str = "",
+    mp_pronto: bool = False,
 ) -> Intent:
+    fechar_segundas_opcoes_vencidas(intent)
+    intent.refresh_from_db()
     if intent.site_id not in settings.APPMAX_CARD_ENABLED_SITES:
         raise CartaoAppmaxDesativado
+    if _segunda_empresa_habilitada(intent, mp_pronto) and _email_de_prova(intent):
+        with transaction.atomic():
+            travada = Intent.objects.select_for_update().get(pk=intent.pk)
+            if travada.segunda_opcao_ate is None:
+                if travada.status != "created" or PaymentAttempt.objects.filter(intent=travada).exists():
+                    raise IntentNaoConfirmavel(travada.status)
+                ledger.marcar_tentativa_pendente(travada)
+                abrir_segunda_opcao(travada)
+        intent.refresh_from_db()
+        return intent
     cliente, documento, telefone = _validar_dados_appmax(
         intent,
         card_token=card_token,
@@ -278,12 +315,20 @@ def confirmar_intent_card(
             order_id=order_id,
             customer_id=cliente_id,
             installments=installments,
+            holder_name=holder_name,
         )
         if resultado.aprovada is not None and operacao.state != "completed":
             finalizar_operacao(
                 operacao, state="completed", provider_resource_id=order_id
             )
         return resultado
+
+    def registrar_resultado(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -> None:
+        _registrar_resultado_v2(
+            tentativa, resultado,
+            abrir_janela=(_segunda_empresa_habilitada(intent, mp_pronto)
+                          and recusa_antifraude_appmax(resultado.motivo)),
+        )
 
     try:
         executar_tentativa(
@@ -293,7 +338,7 @@ def confirmar_intent_card(
             enviar=enviar,
             installments=installments,
             effective_amount_cents=total_efetivo,
-            registrar_resultado=_registrar_resultado_v2,
+            registrar_resultado=registrar_resultado,
         )
     except TentativaBloqueada as exc:
         raise IntentNaoConfirmavel(exc.estado) from None
@@ -308,6 +353,125 @@ def confirmar_intent_card(
     return intent
 
 
+def confirmar_segunda_opcao_card(
+    intent: Intent, *, mp_token: str, mp_payment_method_id: str,
+    mp_issuer_id: str, mp_device_id: str, installments: int,
+    holder_name: str, holder_document_number: str,
+) -> Intent:
+    fechar_segundas_opcoes_vencidas(intent)
+    intent.refresh_from_db()
+    if intent.site_id not in settings.MP_CARD_FALLBACK_SITES:
+        raise SegundaOpcaoIndisponivel("site sem segunda opção")
+    anterior = PaymentAttempt.objects.filter(intent=intent, provider="appmax").order_by("-created_at").first()
+    if anterior is not None and anterior.installments != installments:
+        raise SegundaOpcaoIndisponivel("parcelas diferentes da primeira tentativa")
+    nome = holder_name.strip().split()
+    documento = _DIGITOS.sub("", holder_document_number)
+    if (not mp_token or not mp_payment_method_id
+        or not nome or len(documento) not in {11, 14}
+        or isinstance(installments, bool) or not 1 <= installments <= 12):
+        raise DadosCartaoInvalidos("dados da segunda opção incompletos")
+    identificacao = {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
+    corpo_hash = {
+        "card_token": mp_token, "payment_method_id": mp_payment_method_id,
+        "issuer_id": mp_issuer_id, "device_id": mp_device_id,
+        "installments": installments, "holder_name": holder_name,
+        "holder_document_number": documento, "amount_cents": intent.amount_cents,
+    }
+    duplicados_encontrados: list[gateway.StatusDoPagamento] = []
+
+    def enviar(tentativa: PaymentAttempt) -> ResultadoDoProvedor:
+        chave = str(tentativa.operation_id)
+        url_base = str(settings.PAGAMENTOS_PUBLIC_BASE_URL or "").rstrip("/")
+        def cobrar(*, envio_ambiguo_anterior: bool = False) -> gateway.ResultadoCard:
+            return gateway.criar_pagamento_card(
+                idempotency_key=chave, order_id=chave,
+                amount_cents=intent.amount_cents, card_token=mp_token,
+                installments=installments, payment_method_id=mp_payment_method_id,
+                issuer_id=mp_issuer_id or None, device_id=mp_device_id,
+                payer_email=str(intent.customer.get("email") or ""),
+                payer_first_name=nome[0], payer_last_name=" ".join(nome[1:]),
+                payer_identification=identificacao,
+                notification_url=(url_base + "/api/pagamentos/webhooks/mp/card") if url_base else None,
+                envio_ambiguo_anterior=envio_ambiguo_anterior,
+            )
+        try:
+            resposta = cobrar()
+        except gateway.FalhaNoProvedor as exc:
+            if exc.ambiguo:
+                try:
+                    encontrados = gateway.buscar_por_referencia(external_reference=chave)
+                    if encontrados:
+                        consultas = [gateway.consultar_status_do_pagamento(payment_id=str(item["id"]))
+                                     for item in encontrados]
+                        principal = next((p for p in consultas if p.status == "approved"), consultas[0])
+                        duplicados_encontrados.extend(
+                            p for p in consultas if p.status == "approved"
+                            and p.payment_id != principal.payment_id
+                        )
+                        return _resultado_mp(tentativa, principal)
+                    primeira_operacao = tentativa.operacoes.filter(operation_type="payment").order_by("created_at").first()
+                    if primeira_operacao is not None:
+                        finalizar_operacao(primeira_operacao, state="reconciliation_required")
+                    abrir_operacao(tentativa, tipo="payment", corpo=corpo_hash)
+                    resposta = cobrar(envio_ambiguo_anterior=True)
+                except (gateway.FalhaNoProvedor, KeyError, TypeError, ValueError):
+                    raise ResultadoAmbiguo("mp_sem_resposta") from None
+            else:
+                raise EnvioNaoChegou("mp_envio_recusado") from None
+        return _resultado_mp(tentativa, resposta)
+
+    try:
+        principal = executar_tentativa(
+            intent=intent, provider="mercadopago", corpo=corpo_hash,
+            enviar=enviar, installments=installments,
+            effective_amount_cents=intent.amount_cents,
+            registrar_resultado=_registrar_resultado_v2,
+            consumir_segunda_opcao=True,
+        )
+        for pagamento in duplicados_encontrados:
+            _registrar_mp_duplicado(principal, pagamento)
+    except EnvioNaoChegou:
+        tentativa = PaymentAttempt.objects.filter(intent=intent, provider="mercadopago").order_by("-created_at").first()
+        if tentativa is not None:
+            _registrar_falha_mp(tentativa, "mp_envio_recusado")
+    except ResultadoAmbiguo:
+        logger.error("mp_sem_resposta intent=%s", intent.pk)
+    intent.refresh_from_db()
+    return intent
+
+
+def _resultado_mp(tentativa: PaymentAttempt, resposta: gateway.ResultadoCard) -> ResultadoDoProvedor:
+    status = resposta.status
+    if status == "approved":
+        esperado = Decimal(tentativa.amount_cents) / 100
+        if (resposta.external_reference != str(tentativa.operation_id)
+            or resposta.transaction_amount != esperado
+            or resposta.installments != tentativa.installments
+            or resposta.currency_id != "BRL"):
+            logger.error("mp_conferencia_divergente intent=%s tentativa=%s", tentativa.intent_id, tentativa.pk)
+            raise ResultadoAmbiguo("mp_conferencia_divergente")
+        pago = resposta.total_paid_amount
+        cents = pago * 100 if pago is not None else None
+        if cents is None or cents <= 0 or cents != cents.to_integral_value():
+            logger.error("mp_total_pago_invalido intent=%s tentativa=%s", tentativa.intent_id, tentativa.pk)
+            raise ResultadoAmbiguo("mp_total_pago_invalido")
+        tentativa.effective_amount_cents = int(cents)
+        tentativa.save(update_fields=["effective_amount_cents", "updated_at"])
+        return ResultadoDoProvedor(True, resposta.payment_id, motivo=resposta.reason_code or "approved")
+    if status == "rejected":
+        return ResultadoDoProvedor(False, resposta.payment_id, motivo=resposta.reason_code or "rejected")
+    if status in {"in_process", "pending", "authorized"}:
+        return ResultadoDoProvedor(None, resposta.payment_id, motivo=status)
+    raise ResultadoAmbiguo("mp_status_inconclusivo")
+
+
+def _registrar_falha_mp(tentativa: PaymentAttempt, motivo: str) -> None:
+    resultado = ResultadoDoProvedor(False, tentativa.provider_reference_id, motivo=motivo)
+    with transaction.atomic():
+        _registrar_resultado_v2(tentativa, resultado)
+
+
 def reconciliar_intent_card(intent: Intent) -> Intent:
     tentativa = (
         PaymentAttempt.objects.filter(
@@ -316,6 +480,8 @@ def reconciliar_intent_card(intent: Intent) -> Intent:
         .order_by("-created_at")
         .first()
     )
+    if tentativa is not None and tentativa.provider == "mercadopago":
+        return _reconciliar_mp(intent, tentativa)
     if tentativa is None or not tentativa.external_order_id:
         raise IntentNaoConfirmavel("reconciliation_required")
     cliente_appmax = gateway.nova_sessao_appmax()
@@ -350,6 +516,87 @@ def reconciliar_intent_card(intent: Intent) -> Intent:
     )
     intent.refresh_from_db()
     return intent
+
+
+def _reconciliar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
+    try:
+        if tentativa.provider_reference_id:
+            pagamentos = [gateway.consultar_status_do_pagamento(payment_id=tentativa.provider_reference_id)]
+        else:
+            encontrados = gateway.buscar_por_referencia(external_reference=str(tentativa.operation_id))
+            pagamentos = [gateway.consultar_status_do_pagamento(payment_id=str(item["id"]))
+                          for item in encontrados if item.get("id")]
+    except (gateway.FalhaNoProvedor, KeyError, TypeError, ValueError):
+        _marcar_mp_sem_resposta(tentativa)
+        intent.refresh_from_db()
+        return intent
+    if not pagamentos:
+        _marcar_mp_sem_resposta(tentativa)
+        intent.refresh_from_db()
+        return intent
+    principal = next((p for p in pagamentos if p.status == "approved"), pagamentos[0])
+    try:
+        resultado = _resultado_mp(tentativa, principal)
+    except ResultadoAmbiguo:
+        intent.refresh_from_db()
+        return intent
+    fechar_reconciliacao(tentativa, resultado=resultado, registrar_resultado=_registrar_resultado_v2)
+    for pagamento in pagamentos:
+        if pagamento.status == "approved" and pagamento.payment_id != principal.payment_id:
+            _registrar_mp_duplicado(tentativa, pagamento)
+    intent.refresh_from_db()
+    return intent
+
+
+def _marcar_mp_sem_resposta(tentativa: PaymentAttempt) -> None:
+    if (timezone.now() - tentativa.created_at < timedelta(hours=24)
+        or tentativa.reason == "mp_sem_resposta"):
+        return
+    tentativa.reason = "mp_sem_resposta"
+    tentativa.save(update_fields=["reason", "updated_at"])
+    logger.error("mp_sem_resposta intent=%s tentativa=%s", tentativa.intent_id, tentativa.pk)
+
+
+def _registrar_mp_duplicado(principal: PaymentAttempt, pagamento: gateway.StatusDoPagamento) -> None:
+    cents = pagamento.total_paid_amount * 100 if pagamento.total_paid_amount is not None else None
+    conferida = (
+        pagamento.external_reference == str(principal.operation_id)
+        and pagamento.transaction_amount == Decimal(principal.amount_cents) / 100
+        and pagamento.installments == principal.installments
+        and pagamento.currency_id == "BRL"
+        and cents is not None and cents > 0 and cents == cents.to_integral_value()
+    )
+    with transaction.atomic():
+        existente = PaymentAttempt.objects.select_for_update().filter(
+            intent=principal.intent, provider="mercadopago",
+            provider_reference_id=pagamento.payment_id,
+        ).first()
+        if existente is not None:
+            if conferida and existente.state == "approved_duplicate" and existente.reason == "mp_conferencia_divergente":
+                existente.effective_amount_cents = int(cents)
+                existente.reason = "cobranca_duplicada"
+                existente.save(update_fields=["effective_amount_cents", "reason", "updated_at"])
+                transaction.on_commit(lambda: _estornar_duplicata(existente))
+            return
+        duplicada = PaymentAttempt.objects.create(
+            intent=principal.intent, platform_site_id=principal.platform_site_id,
+            provider="mercadopago", amount_cents=principal.amount_cents,
+            effective_amount_cents=int(cents) if conferida else principal.amount_cents,
+            installments=principal.installments,
+            external_order_id=str(principal.operation_id),
+            request_hash=hash_da_tentativa({"duplicata": pagamento.payment_id}, provider="mercadopago"),
+            state="approved_duplicate", provider_reference_id=pagamento.payment_id,
+            reason="cobranca_duplicada" if conferida else "mp_conferencia_divergente",
+        )
+        # A cobrança principal continua sendo a última tentativa que decide a intent.
+        PaymentAttempt.objects.filter(pk=duplicada.pk).update(
+            created_at=principal.created_at - timedelta(microseconds=1)
+        )
+        logger.error("%s intent=%s tentativa=%s provider=mercadopago",
+                     "cobranca_duplicada" if conferida else "mp_conferencia_divergente",
+                     principal.intent_id, duplicada.pk)
+        if conferida:
+            transaction.on_commit(lambda: _estornar_duplicata(duplicada))
 
 
 def _criar_operacao(
@@ -402,6 +649,7 @@ def _consultar_resultado(
     order_id: str,
     customer_id: str,
     installments: int,
+    holder_name: str = "",
 ) -> ResultadoDoProvedor:
     try:
         pedido = cliente_appmax.consultar_pedido(order_id=int(order_id))
@@ -421,6 +669,9 @@ def _consultar_resultado(
         ledger.marcar_tentativa_pendente(intent)
         raise ResultadoAmbiguo("consulta Appmax incompleta") from None
     status_normalizado = status.strip().lower() if isinstance(status, str) else ""
+    if (status_normalizado == "cancelado" and _sandbox_mp()
+        and holder_name.strip().split()[:1] in (["APRO"], ["BLAC"])):
+        status_normalizado = "recusado_por_risco"
     if (
         str(pedido.get("id")) != order_id
         or str(cliente) != customer_id
@@ -477,12 +728,19 @@ def _consultar_resultado(
 
 
 def _registrar_resultado_v2(
-    tentativa: PaymentAttempt, resultado: ResultadoDoProvedor
+    tentativa: PaymentAttempt, resultado: ResultadoDoProvedor, *,
+    abrir_janela: bool = False,
 ) -> None:
     intent = tentativa.intent
-    ledger.marcar_tentativa_pendente(intent)
-    _registrar_motivo(intent, resultado.motivo)
+    ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+    if ultima is not None and ultima.pk == tentativa.pk:
+        if resultado.aprovada is None and intent.status in {"created", "rejected", "pending"}:
+            ledger.marcar_tentativa_pendente(intent)
+        _registrar_motivo(intent, resultado.motivo)
     if resultado.aprovada is None:
+        return
+    if abrir_janela and tentativa.provider == "appmax" and resultado.aprovada is False:
+        abrir_segunda_opcao(intent)
         return
     aprovado = resultado.aprovada
     evento = "pagamento.aprovado" if aprovado else "pagamento.recusado"
@@ -492,7 +750,7 @@ def _registrar_resultado_v2(
         "order_id": intent.order_id,
         "amount_cents": tentativa.effective_amount_cents,
         "method": "card",
-        "provider": "appmax",
+        "provider": tentativa.provider,
         "provider_reference_id": resultado.provider_reference_id,
         "customer": _customer(intent),
     }
@@ -502,13 +760,21 @@ def _registrar_resultado_v2(
             dados["product_id"] = produto
     else:
         dados["reason_code"] = resultado.motivo
-    ledger.registrar_fato(
-        intent,
-        novo_status="approved" if aprovado else "rejected",
-        evento=evento,
-        dados=dados,
-        version=2,
-    )
+    if resultado.provider_reference_id:
+        ledger.registrar_fato_da_tentativa(
+            tentativa.provider, resultado.provider_reference_id,
+            novo_status="approved" if aprovado else "rejected",
+            evento=evento, dados=dados,
+        )
+    else:
+        ledger.registrar_fato(intent, novo_status="approved" if aprovado else "rejected",
+                             evento=evento, dados=dados, version=2)
+
+
+def _estornar_duplicata(tentativa: PaymentAttempt) -> None:
+    from pagamentos.core.estorno import estornar
+
+    estornar(tentativa, motivo="cobranca_duplicada")
 
 
 def _registrar_motivo(intent: Intent, motivo: str) -> None:
