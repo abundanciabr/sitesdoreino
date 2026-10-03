@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import unicodedata
 from collections import defaultdict
 from datetime import timedelta
@@ -98,6 +99,23 @@ def normal(texto: str) -> str:
     texto = unicodedata.normalize("NFKD", texto or "")
     texto = "".join(c for c in texto if not unicodedata.combining(c))
     return " ".join(texto.lower().split())
+
+
+_ARTIGOS = {"o", "a", "os", "as", "um", "uma", "uns", "umas", "the"}
+
+
+def nome_chave(texto: str) -> str:
+    """O que decide se dois nomes são a mesma coisa: além de `normal`, sem
+    pontuação, sem artigo na frente e sem plural ('O Crivo' = 'crivo',
+    'Alunos' = 'aluno', 'cartas_de_celebração' = 'carta de celebração')."""
+    texto = re.sub(r"[\"'“”‘’`«»().,:;!?\[\]_-]", " ", normal(texto))
+    palavras = texto.split()
+    while len(palavras) > 1 and palavras[0] in _ARTIGOS:
+        palavras = palavras[1:]
+    return " ".join(
+        p[:-1] if len(p) > 3 and p.endswith("s") and not p.endswith(("ss", "is", "us")) else p
+        for p in palavras
+    )
 
 
 def _impressao(documento: Documento) -> str:
@@ -198,9 +216,9 @@ def guardar_leitura(documento: Documento, dados: dict) -> FonteDoConhecimento:
         novas = []
         for e in dados.get("entidades") or []:
             nome = (e.get("nome") or "").strip()[:200]
-            if not nome or normal(nome) in vistos:
+            if not nome or nome_chave(nome) in vistos:
                 continue
-            vistos.add(normal(nome))
+            vistos.add(nome_chave(nome))
             tipo = e.get("tipo") if e.get("tipo") in TIPOS else "outro"
             novas.append(EntidadeDoConhecimento(
                 fonte=fonte, nome=nome, tipo=tipo, resumo=(e.get("resumo") or "")[:500]
@@ -314,7 +332,7 @@ class Mapa:
         existente = self.nos.get(chave)
         if existente is None:
             self.nos[chave] = {"tipo": tipo, "nome": nome, "resumo": resumo, "fontes": []}
-            self.por_nome.setdefault(normal(nome), chave)
+            self.por_nome.setdefault(nome_chave(nome), chave)
         elif resumo and not existente["resumo"]:
             existente["resumo"] = resumo
         if fonte and fonte not in self.nos[chave]["fontes"]:
@@ -341,7 +359,7 @@ class Mapa:
     def chave_do_nome(self, nome: str, tipo: str = "outro") -> str:
         """O mesmo nome em documentos diferentes é a mesma coisa; e o nome de
         uma pessoa ou objetivo do painel aponta para o nó do painel."""
-        n = normal(nome)
+        n = nome_chave(nome)
         achado = self.por_nome.get(n)
         if achado is not None:
             return achado
@@ -358,7 +376,7 @@ def montar(*, com_privados: bool) -> Mapa:
 def _painel(mapa: Mapa) -> None:
     for m in MembroDaEquipe.objects.filter(ativo=True):
         mapa.no(f"pessoa:{m.id}", "pessoa", m.nome, m.area, "painel")
-        primeiro = normal(m.nome).split(" ")[0]
+        primeiro = nome_chave(m.nome).split(" ")[0]
         mapa.por_nome.setdefault(primeiro, f"pessoa:{m.id}")
     movidos = dict(Objetivo.Move.choices)
     for o in Objetivo.objects.all():
@@ -388,7 +406,7 @@ def _painel(mapa: Mapa) -> None:
         if t.impedimento:
             resumo += f", impedimento: {t.impedimento[:120]}"
         chave = mapa.no(f"tarefa:{t.id}", "tarefa", f"Tarefa nº {t.id}: {t.titulo}", resumo, "painel")
-        mapa.por_nome.setdefault(normal(t.titulo), chave)
+        mapa.por_nome.setdefault(nome_chave(t.titulo), chave)
         if t.responsavel_id:
             mapa.ligar(f"pessoa:{t.responsavel_id}", "responde por", chave)
         if t.objetivo_id:
@@ -424,8 +442,9 @@ def consultar(termos: list[str], *, com_privados: bool, profundidade: int = 2,
     termos = [normal(t) for t in termos if normal(t)]
     sementes = []
     for termo in termos:
+        termo = nome_chave(termo) or termo
         exatos = [c for n, c in mapa.por_nome.items() if n == termo]
-        parecidos = [c for c, no in mapa.nos.items() if termo in normal(no["nome"])]
+        parecidos = [c for c, no in mapa.nos.items() if termo in nome_chave(no["nome"])]
         sementes.extend(exatos or parecidos[:8])
     if not sementes:
         # Nenhum nome casou: procura o termo nos trechos e resumos.
@@ -442,7 +461,8 @@ def consultar(termos: list[str], *, com_privados: bool, profundidade: int = 2,
     for _ in range(max(1, min(profundidade, 3))):
         proxima = []
         for chave in fronteira:
-            for indice in mapa.vizinhos.get(chave, []):
+            # Primeiro as ligações que mais documentos confirmam.
+            for indice in sorted(mapa.vizinhos.get(chave, []), key=lambda i: -len(mapa.ligacoes[i]["fontes"])):
                 if indice in escolhidas or len(escolhidas) >= max_ligacoes:
                     continue
                 escolhidas.append(indice)

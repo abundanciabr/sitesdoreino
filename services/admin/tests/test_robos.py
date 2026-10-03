@@ -922,3 +922,27 @@ def test_a_tela_do_mapa_e_so_do_administrador():
         resposta = dono.get(reverse("mapa_de_conhecimento") + "?q=Lívia")
         assert resposta.status_code == 200
         assert "Lívia" in resposta.content.decode()
+
+
+def test_nomes_que_so_mudam_por_artigo_ou_plural_sao_a_mesma_coisa():
+    from apps.agentes import conhecimento
+    from apps.core.models import Documento
+
+    assert conhecimento.nome_chave("O Crivo") == conhecimento.nome_chave("crivo")
+    assert conhecimento.nome_chave("Alunos") == conhecimento.nome_chave("aluno")
+    assert conhecimento.nome_chave("cartas_de_celebração") == conhecimento.nome_chave("Carta de celebração")
+    assert conhecimento.nome_chave("Status") != conhecimento.nome_chave("Statu")
+
+    Documento.objects.all().delete()
+    conhecimento.guardar_leitura(_documento("regras", "x"), {
+        "entidades": [{"nome": "O Crivo", "tipo": "processo"}, {"nome": "Alunos", "tipo": "pessoa"}],
+        "ligacoes": [{"origem": "O Crivo", "relacao": "avalia", "destino": "Alunos"}],
+    })
+    conhecimento.guardar_leitura(_documento("cursos", "y"), {
+        "entidades": [{"nome": "Crivo", "tipo": "processo"}, {"nome": "aluno", "tipo": "pessoa"}],
+        "ligacoes": [{"origem": "Crivo", "relacao": "avalia", "destino": "aluno"}],
+    })
+    achado = conhecimento.consultar(["crivos"], com_privados=True)
+    assert achado["encontrados"] == ["O Crivo"]
+    assert len(achado["ligacoes"]) == 1
+    assert len(conhecimento.consultar(["crivo"], com_privados=True)["ligacoes"][0]["fontes"]) == 2
