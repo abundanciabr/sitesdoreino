@@ -47,6 +47,7 @@ from django.core.mail import send_mail
 from django.db import connection, transaction
 
 from config.huey import huey
+from huey import crontab
 
 from .capacidade import (
     CapacidadeDoProvedor,
@@ -56,6 +57,9 @@ from .capacidade import (
     reservar_envio,
 )
 from .models import EnderecoDeEmail, EnvioRegistrado
+from apps.whatsapp.service import enviar_mensagem
+from apps.whatsapp.models import MensagemWhatsApp
+from apps.whatsapp.service import estado_da_conexao
 
 logger = logging.getLogger("mensageria.provedores")
 
@@ -156,18 +160,9 @@ def enviar_email(destinatario: str, assunto: str, corpo: str) -> None:
             )
 
 
-def enviar_whatsapp(destinatario: str, corpo: str) -> None:
-    """Stub: loga o envio. WhatsApp oficial é o degrau 10 do plano das jornadas.
-
-    Continua fingindo, e o `despacho` das jornadas SABE disso: ele recusa o canal
-    `whatsapp` levantando `CanalNaoSuportado`, então nenhuma jornada consegue
-    marcar como entregue algo que este stub não entregou. O caminho transacional
-    antigo ainda o chama, e essa dívida fica declarada aqui em vez de escondida.
-    """
-    logger.info("WHATSAPP -> %s | %s", destinatario, corpo)
-
-
-PROVEDORES = {"email": enviar_email, "whatsapp": enviar_whatsapp}
+def enviar_whatsapp(destinatario: str, corpo: str, *, site_id: str, referencia: str):
+    return enviar_mensagem(site_id=site_id, destinatario=destinatario, corpo=corpo,
+                           origem="transacional", referencia=referencia)
 
 
 def processar_envio(envio_id: int, task=None) -> None:
@@ -204,7 +199,22 @@ def processar_envio(envio_id: int, task=None) -> None:
                 enviar_email(envio.destinatario, envio.assunto, envio.corpo)
                 registrar_sucesso()
             else:
-                enviar_whatsapp(envio.destinatario, envio.corpo)
+                mensagem = enviar_whatsapp(
+                    envio.destinatario, envio.corpo, site_id=envio.site_id,
+                    referencia=str(envio.pk),
+                )
+                envio.tentativas += 1
+                if mensagem.status == "falhou":
+                    envio.status = "falhou"
+                    envio.resultado = mensagem.erro
+                elif mensagem.status == "desconhecido":
+                    envio.status = "pendente"
+                    envio.resultado = "resultado desconhecido; consultar retorno sem reenvio automatico"
+                else:
+                    envio.status = "enviado"
+                    envio.resultado = f"gateway {mensagem.status}; provider_id={mensagem.provider_id}"
+                envio.save(update_fields=["status", "tentativas", "resultado", "updated_at"])
+                return
         except EmailBloqueado as exc:
             envio.status = "falhou"
             envio.tentativas += 1
@@ -256,3 +266,34 @@ def enviar_notificacao(envio_id: int, task=None) -> None:
     except CapacidadeDoProvedor as exc:
         retries = task.retries if task is not None else 5
         enviar_notificacao.schedule(args=(envio_id,), delay=exc.atraso, retries=retries)
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def retomar_whatsapp_transacional() -> None:
+    """Retoma apenas falhas pré-POST criadas pela integração nova.
+
+    O histórico simulado anterior não tem MensagemWhatsApp e nunca entra aqui.
+    Resultado desconhecido, aceito ou entregue também não é repetido.
+    """
+    erros_seguros = (
+        "instancia desconectada", "instancia nao configurada",
+        "gateway nao configurado", "gateway respondeu HTTP 401",
+        "gateway respondeu HTTP 403", "gateway respondeu HTTP 404",
+    )
+    pendentes = MensagemWhatsApp.objects.filter(
+        origem="transacional", status="falhou", erro__in=erros_seguros,
+    ).order_by("id")[:50]
+    conexoes = {}
+    for mensagem in pendentes:
+        if not mensagem.referencia.isdigit():
+            continue
+        if mensagem.site_id not in conexoes:
+            conexoes[mensagem.site_id] = estado_da_conexao(mensagem.site_id)["estado"] == "open"
+        if not conexoes[mensagem.site_id]:
+            continue
+        envio = EnvioRegistrado.objects.filter(
+            pk=int(mensagem.referencia), site_id=mensagem.site_id,
+            canal="whatsapp", status="falhou",
+        ).first()
+        if envio:
+            processar_envio(envio.pk)

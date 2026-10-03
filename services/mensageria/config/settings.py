@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "huey.contrib.djhuey",  # entrypoint oficial do worker: manage.py run_huey (§4.11)
     "apps.core",
     "apps.eventos",
+    "apps.whatsapp",
     # O motor das sequências (`PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.1: o
     # mantenedor escolheu em 30/08/2026 que ele mora DENTRO desta célula, e não
     # numa célula nova). App separado, banco compartilhado: ele lê e escreve as
@@ -145,6 +146,10 @@ EMAIL_USE_TLS = True
 EMAIL_TIMEOUT = 20
 DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
 EMAIL_WEBHOOK_TOKEN = os.environ.get("EMAIL_WEBHOOK_TOKEN", "")
+WHATSAPP_GATEWAY_URL = os.environ.get("WHATSAPP_GATEWAY_URL", "")
+WHATSAPP_GATEWAY_TOKEN = os.environ.get("WHATSAPP_GATEWAY_TOKEN", "")
+WHATSAPP_WEBHOOK_URL = os.environ.get("WHATSAPP_WEBHOOK_URL", "")
+WHATSAPP_WEBHOOK_TOKEN = os.environ.get("WHATSAPP_WEBHOOK_TOKEN", "")
 
 
 def limite_de_email(nome: str) -> int | None:

@@ -1,83 +1,41 @@
-"""Quem entrega um passo — o despachante que o motor injeta.
-
-O `motor.varrer()` nasceu (TAR-073) com `sem_despacho_ainda`, que devolvia
-`False` e dizia no nome o que faltava: ninguém sabia entregar. Este arquivo é a
-resposta, para o canal `sino`.
-
-O CANAL DE HOJE É O SINO, E ISSO FOI ESCOLHA DO MANTENEDOR
------------------------------------------------------------
-§8.1: *"sininho primeiro, e-mail em seguida"*. O e-mail é o degrau 8, e ele não
-depende de coragem: depende de a célula aprender a PERGUNTAR o endereço à
-`identidade` (a linha `consome:` do `celulas.yml` entra naquele PR) e de um
-provedor de verdade no lugar do `logger.info` que existe hoje. Enquanto isso,
-este despachante recusa `email` e `whatsapp` levantando `CanalNaoSuportado`, e a
-escolha da exceção sobre o `False` é o conserto de 02/09/2026: `False` quer dizer
-*"falhei AGORA"* (Redis fora, provedor mudo), e o motor o trata como transitório
-— o passo continua devendo e a passada seguinte tenta de novo. *"Esta versão da
-plataforma não entrega por aqui"* nunca deixa de ser verdade sozinha, então
-dizê-lo com `False` prendia a inscrição no passo **para sempre**, reexaminada de
-cinco em cinco minutos. Era o mesmo laço que a `armadilhas/283` catalogou, por
-outra porta. Nenhum dos dois grava `enviada` para algo que não saiu.
-
-POR QUE A CARTA VAI POR EVENTO, E NÃO POR ESCRITA DIRETA
----------------------------------------------------------
-O sininho é OUTRA célula, e ninguém escreve no banco alheio (célula não lê banco de outra). O caminho é
-`notificacao.devida.v1`, que já existe e já é consumido por ela — nenhum contrato
-novo, nenhum Rito. O §4.3 explica por que o e-mail, quando chegar, não precisará
-de evento nenhum: ele mora dentro desta célula.
-"""
+"""Despacho dos passos, com intenção durável para WhatsApp."""
 
 from __future__ import annotations
 
 import logging
+import os
+from urllib.parse import quote
 
+import httpx
 from django.db import transaction
+from django.db.models import F
+from django.utils import timezone
 
-from . import eventos, tasks
+from . import condicoes, eventos, regua, tasks
 from .motor import CanalNaoSuportado
-from .models import Inscricao, Passo
+from .models import Entrega, EstadoDoAluno, Inscricao, Passo
 
 logger = logging.getLogger(__name__)
-
-# Os canais que este despachante sabe entregar hoje. `email` e `whatsapp` saem
-# pela máquina de envio da própria célula, e é o degrau 8 que os liga. Quem
-# acrescentar um canal aqui NÃO precisa mexer no motor: a exceção some sozinha
-# para aquele canal no instante em que ele entra neste conjunto.
-CANAIS_QUE_SEI_ENTREGAR = frozenset({"sino"})
+CANAIS_QUE_SEI_ENTREGAR = frozenset({"sino", "whatsapp"})
+TIMEOUT = 5.0
 
 
 def despachar(inscricao: Inscricao, passo: Passo, canal: str) -> bool:
-    """Publica a carta do passo. Devolve `True` só quando ela foi mesmo gravada.
-
-    **Exige transação aberta**, e não por preciosismo: a carta e a linha de
-    `Entrega` que diz "saiu" precisam viver ou morrer juntas. Sem isso, o aviso
-    chega ao sininho, o motor acha que não entregou, e a passada seguinte manda
-    de novo — com um `event_id` novo, que a dedup do sininho não tem como pegar.
-    Quem abre a transação é o `motor.varrer()`, em volta do par
-    despacho + registro.
-    """
+    """O motor grava Entrega na mesma transação; a rede só é tocada após commit."""
     if canal not in CANAIS_QUE_SEI_ENTREGAR:
-        # NÃO é `return False`: isto não é falha, é um fato sobre esta versão da
-        # plataforma, e retentar não o muda. O motor registra a entrega como
-        # `pulada`, com este texto no motivo, e SEGUE a jornada.
         raise CanalNaoSuportado(
             f"a plataforma ainda nao entrega pelo canal {canal}; "
             f"hoje sai por {', '.join(sorted(CANAIS_QUE_SEI_ENTREGAR))}"
         )
-
-    # FAIL-CLOSED: sem saber que FATO gerou esta carta, não publico.
-    # `origem_event_id` é obrigatório no contrato (`format: uuid`), e é o que
-    # torna a promessa "a entrega do aviso é RASTREÁVEL" verdadeira: de qualquer
-    # aviso na tela se chega ao acontecimento que o causou. Inventar um valor
-    # aqui — o id da inscrição, por exemplo — deixaria uma pista que não leva a
-    # lugar nenhum, e é pior do que não publicar.
+    if canal == "whatsapp":
+        inscricao_id, passo_id = inscricao.pk, passo.pk
+        transaction.on_commit(lambda: _processar_apos_commit(inscricao_id, passo_id))
+        return True
     if inscricao.origem_event_id is None:
         logger.warning(
-            "inscricao %s nao tem origem_event_id; nao publico carta sem origem",
-            inscricao.pk,
+            "inscricao %s sem origem_event_id; carta nao publicada", inscricao.pk
         )
         return False
-
     eventos.passo_de_jornada_devido(
         site_id=inscricao.site_id,
         destinatario_id=inscricao.destinatario_id,
@@ -86,7 +44,219 @@ def despachar(inscricao: Inscricao, passo: Passo, canal: str) -> bool:
         ordem=passo.ordem,
         origem_event_id=str(inscricao.origem_event_id),
     )
-    # Latência sub-segundo sem furar a outbox: publica DEPOIS do commit. Se o
-    # Redis estiver fora, a carta fica pendente e o relay periódico a leva.
     transaction.on_commit(tasks.relay_apos_commit)
     return True
+
+
+def _config(nome: str) -> str:
+    return (os.environ.get(nome) or "").strip()
+
+
+def _processar_apos_commit(inscricao_id, passo_id) -> None:
+    try:
+        tasks.processar_whatsapp_da_jornada(str(inscricao_id), str(passo_id))
+    except Exception:  # noqa: BLE001 - o job periódico retoma a intenção persistida
+        logger.exception("entrega WhatsApp da jornada ficou pendente para retomada")
+
+
+def _telefone_da_pessoa(
+    *, pessoa_id: str, site_id: str
+) -> tuple[str | None, str | None, str]:
+    """Resolve ID na identidade e telefone na passagem mais recente deste site."""
+    identidade = _config("IDENTIDADE_API_URL").rstrip("/")
+    token_identidade = _config("IDENTIDADE_API_TOKEN")
+    alunos = _config("ALUNOS_API_URL").rstrip("/")
+    token_alunos = _config("ALUNOS_API_TOKEN")
+    if not all((identidade, token_identidade, alunos, token_alunos)):
+        return None, None, "consulta de telefone nao configurada"
+    try:
+        resposta = httpx.post(
+            f"{identidade}/pessoas/por-id",
+            json={"id": pessoa_id},
+            headers={"Authorization": f"Bearer {token_identidade}"},
+            timeout=TIMEOUT,
+        )
+        if resposta.status_code != 200:
+            return None, None, f"identidade indisponivel (HTTP {resposta.status_code})"
+        pessoa = resposta.json()
+        if not isinstance(pessoa, dict):
+            return None, None, "resposta invalida da identidade"
+        email, idioma = pessoa.get("email"), pessoa.get("idioma")
+        if not isinstance(email, str) or not email:
+            return None, None, "pessoa sem endereco na identidade"
+        resposta = httpx.get(
+            f"{alunos}/alunos/{quote(email, safe='')}/prontuario",
+            headers={"Authorization": f"Bearer {token_alunos}"},
+            timeout=TIMEOUT,
+        )
+        if resposta.status_code != 200:
+            return None, None, f"prontuario indisponivel (HTTP {resposta.status_code})"
+        prontuario = resposta.json()
+        if not isinstance(prontuario, dict) or not isinstance(
+            prontuario.get("passagens"), list
+        ):
+            return None, None, "resposta invalida do prontuario"
+        # O WhatsApp do topo mistura sites; cada jornada só usa sua passagem.
+        passagens = [
+            p
+            for p in prontuario["passagens"]
+            if isinstance(p, dict) and p.get("site_id") == site_id
+        ]
+        if not passagens:
+            return None, None, "pessoa sem passagem neste site"
+        telefone = passagens[-1].get("whatsapp")
+        if not isinstance(telefone, str) or not telefone.strip():
+            return None, None, "telefone ausente neste site"
+        return telefone.strip(), idioma if isinstance(idioma, str) else None, ""
+    except (httpx.HTTPError, ValueError) as erro:
+        logger.warning("consulta de contato da jornada falhou: %s", type(erro).__name__)
+        return None, None, "consulta de telefone indisponivel"
+
+
+def _texto(passo: Passo, idioma: str | None) -> str | None:
+    textos = {t.idioma.lower(): t for t in passo.textos.all()}
+    idioma = (idioma or "pt-br").lower()
+    texto = (
+        textos.get(idioma) or textos.get(idioma.split("-")[0]) or textos.get("pt-br")
+    )
+    return texto.corpo if texto is not None else None
+
+
+def _referencia(entrega: Entrega) -> str:
+    return f"{entrega.inscricao_id}:{entrega.passo_id}:whatsapp"
+
+
+def _atualizar(entrega: Entrega, status: str, erro: str = "") -> None:
+    mapa = {
+        "aceito": "aceita_pelo_gateway",
+        "desconhecido": "resultado_desconhecido",
+        "falhou": "falhou",
+        "enviado": "enviada",
+        "entregue": "entregue",
+        "lido": "lida",
+    }
+    resultado = mapa.get(status, "resultado_desconhecido")
+    entrega.resultado = resultado
+    entrega.motivo = (erro or "")[:200]
+    if resultado in {"enviada", "entregue", "lida"} and entrega.enviado_em is None:
+        entrega.enviado_em = timezone.now()
+    entrega.save(update_fields=["resultado", "motivo", "enviado_em"])
+
+
+def processar_entrega(*, inscricao_id, passo_id) -> None:
+    """Envia ou sincroniza intenção confirmada, sem repetir resultado incerto."""
+    from apps.whatsapp.service import consultar_mensagem, enviar_mensagem
+
+    entrega = (
+        Entrega.objects.select_related("inscricao", "passo")
+        .filter(
+            inscricao_id=inscricao_id,
+            passo_id=passo_id,
+            canal="whatsapp",
+            whatsapp_intencao=True,
+        )
+        .first()
+    )
+    if entrega is None or entrega.resultado not in {
+        "pendente",
+        "falhou",
+        "aceita_pelo_gateway",
+        "resultado_desconhecido",
+        "enviada",
+    }:
+        return
+    referencia = _referencia(entrega)
+    existente = consultar_mensagem(
+        site_id=entrega.inscricao.site_id,
+        origem="jornada",
+        referencia=referencia,
+    )
+    if existente is not None and existente.status != "falhou":
+        _atualizar(entrega, existente.status, getattr(existente, "erro", ""))
+        return
+    if entrega.inscricao.estado in {"cancelada", "saiu"}:
+        entrega.resultado, entrega.motivo = "pulada", "jornada encerrada antes do envio"
+        entrega.save(update_fields=["resultado", "motivo"])
+        return
+    projecao = EstadoDoAluno.objects.filter(
+        destinatario_id=entrega.inscricao.destinatario_id,
+        site_id=entrega.inscricao.site_id,
+    ).first()
+    try:
+        vale = condicoes.avaliar(entrega.passo.condicao_slug, projecao, timezone.now())
+    except condicoes.CondicaoDesconhecida:
+        vale = False
+    if not vale:
+        entrega.resultado, entrega.motivo = (
+            "pulada",
+            "condicao deixou de valer antes do envio",
+        )
+        entrega.save(update_fields=["resultado", "motivo"])
+        return
+    veredito = regua.avaliar(
+        destinatario_id=entrega.inscricao.destinatario_id,
+        site_id=entrega.inscricao.site_id,
+        canal="whatsapp",
+        classe=entrega.passo.classe,
+        momento=timezone.now(),
+        mensagem=(entrega.inscricao_id, entrega.passo_id),
+    )
+    if veredito.barrada:
+        if veredito.resultado == "barrada_por_preferencia":
+            entrega.resultado, entrega.motivo = (
+                veredito.resultado,
+                veredito.motivo[:200],
+            )
+            entrega.save(update_fields=["resultado", "motivo"])
+        return
+    telefone, idioma, motivo = _telefone_da_pessoa(
+        pessoa_id=entrega.inscricao.destinatario_id,
+        site_id=entrega.inscricao.site_id,
+    )
+    if not telefone:
+        _atualizar(entrega, "falhou", motivo)
+        return
+    corpo = _texto(entrega.passo, idioma)
+    if not corpo:
+        _atualizar(entrega, "falhou", "texto do passo ausente")
+        return
+    mensagem = enviar_mensagem(
+        site_id=entrega.inscricao.site_id,
+        destinatario=telefone,
+        corpo=corpo,
+        origem="jornada",
+        referencia=referencia,
+    )
+    _atualizar(entrega, mensagem.status, getattr(mensagem, "erro", ""))
+
+
+def processar_pendentes(lote: int = 200) -> int:
+    """Retoma falhas explícitas e acompanha confirmações posteriores do gateway."""
+    linhas = list(
+        Entrega.objects.filter(
+            canal="whatsapp",
+            whatsapp_intencao=True,
+            resultado__in=(
+                "pendente",
+                "falhou",
+                "aceita_pelo_gateway",
+                "resultado_desconhecido",
+                "enviada",
+            ),
+        )
+        .order_by(F("whatsapp_verificado_em").asc(nulls_first=True), "decidida_em")[
+            :lote
+        ]
+        .values_list("inscricao_id", "passo_id")
+    )
+    for inscricao_id, passo_id in linhas:
+        try:
+            Entrega.objects.filter(
+                inscricao_id=inscricao_id,
+                passo_id=passo_id,
+                canal="whatsapp",
+            ).update(whatsapp_verificado_em=timezone.now())
+            processar_entrega(inscricao_id=inscricao_id, passo_id=passo_id)
+        except Exception:  # noqa: BLE001 - intenção fica durável para próxima passada
+            logger.exception("falha ao processar entrega WhatsApp de jornada")
+    return len(linhas)

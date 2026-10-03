@@ -231,7 +231,7 @@ def quantas_mensagens_entre(
     consulta = Entrega.objects.filter(
         inscricao__destinatario_id=destinatario_id,
         inscricao__site_id=site_id,
-        resultado="enviada",
+        resultado__in=("enviada", "entregue", "lida"),
         enviado_em__gte=inicio,
         enviado_em__lt=fim,
     )
@@ -321,6 +321,7 @@ def registrar(
     canal: str,
     previsto_para: datetime,
     momento: datetime | None = None,
+    pendente_whatsapp: bool = False,
 ) -> Entrega:
     """Materializa a decisão na `Entrega` — inclusive quando a decisão foi não.
 
@@ -338,8 +339,9 @@ def registrar(
         defaults={
             "previsto_para": previsto_para,
             "reagendado_para": veredito.reagendar_para,
-            "enviado_em": agora if veredito.libera else None,
-            "resultado": veredito.resultado,
+            "enviado_em": agora if veredito.libera and not pendente_whatsapp else None,
+            "resultado": "pendente" if pendente_whatsapp else veredito.resultado,
+            "whatsapp_intencao": pendente_whatsapp,
             "motivo": veredito.motivo,
         },
     )

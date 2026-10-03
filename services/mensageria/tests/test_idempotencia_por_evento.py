@@ -53,3 +53,13 @@ def test_handler_sem_telefone_nao_envia_whatsapp():
     assert not EnvioRegistrado.objects.filter(
         order_id="order-1", canal="whatsapp"
     ).exists()
+
+
+def test_mesmo_order_de_sites_distintos_nao_perde_envio():
+    outro = dict(DATA_PAGAMENTO_APROVADO, site_id="outro-site")
+    with patch("apps.eventos.handlers.enviar_notificacao") as enviar:
+        ao_pagamento_aprovado(DATA_PAGAMENTO_APROVADO)
+        ao_pagamento_aprovado(outro)
+        ao_pagamento_aprovado(outro)
+    assert EnvioRegistrado.objects.filter(order_id="order-1", tipo="boas_vindas").count() == 2
+    assert enviar.call_count == 2

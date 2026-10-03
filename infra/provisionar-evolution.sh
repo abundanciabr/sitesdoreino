@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provisiona a Evolution antes de o Compose referenciar env/evolution.env.
+# Provisiona a Evolution e a mensageria antes de ativar o perfil whatsapp.
 # Segredos nascem na VPS, nenhum servico e reiniciado e toda falha fecha o caminho.
 if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then
   echo "PAROU POR SEGURANÇA: rode este arquivo com bash, nunca com source."
@@ -123,6 +123,10 @@ docker compose ps postgres >/dev/null 2>&1 || parar "nao consegui falar com o Po
 validar_chave_unica "$ENV_MENSAGERIA" WHATSAPP_GATEWAY_URL
 validar_chave_unica "$ENV_MENSAGERIA" WHATSAPP_GATEWAY_TOKEN
 TOKEN_MENSAGERIA=$(ler_chave "$ENV_MENSAGERIA" WHATSAPP_GATEWAY_TOKEN || true)
+TOKEN_WEBHOOK=$(ler_chave "$ENV_MENSAGERIA" WHATSAPP_WEBHOOK_TOKEN || true)
+URL_WEBHOOK="http://aplicacao:8000/webhooks/whatsapp"
+validar_chave_unica "$ENV_MENSAGERIA" WHATSAPP_WEBHOOK_URL
+validar_chave_unica "$ENV_MENSAGERIA" WHATSAPP_WEBHOOK_TOKEN
 
 if [ -f "$ENV_EVOLUTION" ]; then
   validar_chave_unica "$ENV_EVOLUTION" AUTHENTICATION_API_KEY
@@ -137,8 +141,12 @@ else
   fi
   SENHA_DB=$(gerar_segredo) || parar "nao achei fonte criptografica para gerar a senha do banco."
 fi
+if [ -z "$TOKEN_WEBHOOK" ]; then
+  TOKEN_WEBHOOK=$(gerar_segredo) || parar "nao achei fonte criptografica para gerar o token do webhook."
+fi
 validar_segredo "$CHAVE_API" "AUTHENTICATION_API_KEY"
 validar_segredo "$SENHA_DB" "a senha de evolution_user"
+validar_segredo "$TOKEN_WEBHOOK" "WHATSAPP_WEBHOOK_TOKEN"
 
 EXISTE_ROLE=$(psql_comando -tAc "SELECT 1 FROM pg_roles WHERE rolname='evolution_user'") \
   || parar "nao consegui consultar evolution_user."
@@ -194,7 +202,7 @@ DATABASE_SAVE_DATA_LABELS=false
 DATABASE_SAVE_DATA_HISTORIC=false
 DATABASE_SAVE_IS_ON_WHATSAPP=false
 CACHE_REDIS_ENABLED=true
-CACHE_REDIS_URI=redis://evolution-redis:6379/0
+CACHE_REDIS_URI=redis://redis:6379/9
 CACHE_REDIS_PREFIX_KEY=evolution
 CACHE_REDIS_SAVE_INSTANCES=false
 CACHE_LOCAL_ENABLED=false
@@ -209,11 +217,17 @@ while IFS= read -r LINHA || [ -n "$LINHA" ]; do
   case "$LINHA" in
     WHATSAPP_GATEWAY_URL=*) [ "$VIU_URL" -eq 0 ] && printf '%s\n' 'WHATSAPP_GATEWAY_URL=http://evolution:8080'; VIU_URL=1 ;;
     WHATSAPP_GATEWAY_TOKEN=*) [ "$VIU_TOKEN" -eq 0 ] && printf 'WHATSAPP_GATEWAY_TOKEN=%s\n' "$CHAVE_API"; VIU_TOKEN=1 ;;
+    WHATSAPP_WEBHOOK_URL=*) printf 'WHATSAPP_WEBHOOK_URL=%s\n' "$URL_WEBHOOK" ;;
+    WHATSAPP_WEBHOOK_TOKEN=*) printf 'WHATSAPP_WEBHOOK_TOKEN=%s\n' "$TOKEN_WEBHOOK" ;;
     *) printf '%s\n' "$LINHA" ;;
   esac
 done < "$ENV_MENSAGERIA" > "$TMP_MENSAGERIA" || parar "nao consegui preparar o novo mensageria.env."
 [ "$VIU_URL" -eq 1 ] || printf '%s\n' 'WHATSAPP_GATEWAY_URL=http://evolution:8080' >> "$TMP_MENSAGERIA"
 [ "$VIU_TOKEN" -eq 1 ] || printf 'WHATSAPP_GATEWAY_TOKEN=%s\n' "$CHAVE_API" >> "$TMP_MENSAGERIA"
+grep -q '^WHATSAPP_WEBHOOK_URL=' "$TMP_MENSAGERIA" \
+  || printf 'WHATSAPP_WEBHOOK_URL=%s\n' "$URL_WEBHOOK" >> "$TMP_MENSAGERIA"
+grep -q '^WHATSAPP_WEBHOOK_TOKEN=' "$TMP_MENSAGERIA" \
+  || printf 'WHATSAPP_WEBHOOK_TOKEN=%s\n' "$TOKEN_WEBHOOK" >> "$TMP_MENSAGERIA"
 
 HASH_EVOLUTION=$(sed -n 's/^AUTHENTICATION_API_KEY=//p' "$TMP_EVOLUTION" | sha256sum | cut -d' ' -f1)
 HASH_MENSAGERIA=$(sed -n 's/^WHATSAPP_GATEWAY_TOKEN=//p' "$TMP_MENSAGERIA" | sha256sum | cut -d' ' -f1)
@@ -255,4 +269,5 @@ rm -f "$BACKUP_MENSAGERIA" ${BACKUP_EVOLUTION:+"$BACKUP_EVOLUTION"} \
 BACKUP_MENSAGERIA=""
 BACKUP_EVOLUTION=""
 echo "PRONTO: evolution_db, evolution_user e os dois lados da credencial foram conferidos sem expor valores."
-echo "A Evolution ainda nao foi adicionada ao Compose e nenhum envio foi ativado."
+echo "Para iniciar o gateway depois da configuracao: docker compose --profile whatsapp up -d evolution."
+echo "Nenhum envio foi ativado por este provisionamento."

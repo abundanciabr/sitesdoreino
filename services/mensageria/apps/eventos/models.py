@@ -86,8 +86,8 @@ class EnvioRegistrado(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["order_id", "tipo", "canal"],
-                name="uniq_envio_por_order_tipo_canal",
+                fields=["site_id", "order_id", "tipo", "canal"],
+                name="uniq_envio_por_site_order_tipo_canal",
             ),
         ]
 

@@ -104,12 +104,12 @@ def _registrar_e_enfileirar(
 ) -> None:
     with transaction.atomic():
         envio, criado = EnvioRegistrado.objects.get_or_create(
+            site_id=site_id,
             order_id=order_id,
             tipo=tipo,
             canal=canal,
             defaults=dict(
                 event=event,
-                site_id=site_id,
                 destinatario=destinatario,
                 assunto=tpl["assunto"].format(**contexto),
                 corpo=tpl["corpo"].format(**contexto),

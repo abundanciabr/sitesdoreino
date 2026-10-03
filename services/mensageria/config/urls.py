@@ -2,6 +2,7 @@ from django.urls import path
 
 from apps.core.views import healthz
 from apps.eventos.webhooks import webhook_email
+from apps.whatsapp.views import webhook_whatsapp
 from config.api import api
 
 # A `mensageria` não serve página nenhuma: não há `SCRIPT_NAME`, não há rota no
@@ -20,5 +21,6 @@ from config.api import api
 urlpatterns = [
     path("healthz", healthz),
     path("webhooks/email", webhook_email),
+    path("webhooks/whatsapp", webhook_whatsapp),
     path("api/mensageria/", api.urls),
 ]

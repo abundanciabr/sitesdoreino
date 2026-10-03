@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as mensageria_router
 from apps.core.auth import bearerAuth
+from apps.whatsapp.api import router as whatsapp_router
 
 # O ENDEREÇO, e a escolha entre os dois formatos que a casa usa.
 #
@@ -65,3 +66,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", mensageria_router)
+api.add_router("whatsapp/", whatsapp_router)

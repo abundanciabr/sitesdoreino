@@ -244,16 +244,11 @@ def test_o_que_nao_saiu_fica_registrado_com_o_motivo():
 # ---------------------------------------------------------------------------
 
 
-def test_a_constraint_do_fluxo_de_dinheiro_continua_exatamente_como_estava():
-    """`uniq_envio_por_order_tipo_canal` é intocável (§4.1, e o despacho da TAR).
-
-    O diff vazio em `apps/eventos/` prova isto UMA VEZ, no dia do PR. Este teste
-    prova todo dia — inclusive contra um PR futuro que resolva "melhorar" a
-    trava sem saber que o motor das jornadas depende dela.
-    """
+def test_constraint_transacional_deduplica_por_site_order_tipo_canal():
+    """A chave de negócio não mistura pedidos coincidentes de sites distintos."""
     (constraint,) = EnvioRegistrado._meta.constraints
-    assert constraint.name == "uniq_envio_por_order_tipo_canal"
-    assert tuple(constraint.fields) == ("order_id", "tipo", "canal")
+    assert constraint.name == "uniq_envio_por_site_order_tipo_canal"
+    assert tuple(constraint.fields) == ("site_id", "order_id", "tipo", "canal")
     assert getattr(constraint, "condition", None) is None
 
 

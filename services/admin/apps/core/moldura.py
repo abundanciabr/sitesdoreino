@@ -86,6 +86,7 @@ SECOES = (
     ("pendencias", "Pendências"),
     ("painel_da_equipe", "Equipe"),
     ("escola", "Escola"),
+    ("whatsapp", "WhatsApp"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
     ("documentos_admin", "Documentos"),

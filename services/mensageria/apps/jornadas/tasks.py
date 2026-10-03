@@ -151,3 +151,19 @@ def varrer_jornadas() -> int:
             passada.puladas,
         )
     return passada.entregues
+
+
+@huey.task()
+def processar_whatsapp_da_jornada(inscricao_id: str, passo_id: str) -> None:
+    """Envia uma intenção já confirmada, fora da transação e do loop do motor."""
+    from .despacho import processar_entrega
+
+    processar_entrega(inscricao_id=inscricao_id, passo_id=passo_id)
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def retomar_whatsapp_das_jornadas() -> int:
+    """Retoma intenções já gravadas e sincroniza retornos do provedor."""
+    from .despacho import processar_pendentes
+
+    return processar_pendentes()

@@ -103,7 +103,11 @@ CLASSES = ("critica", "transacional", "relacional", "engajamento")
 # O que aconteceu com uma entrega, por canal. Uma linha barrada NÃO se perde:
 # ela guarda o motivo e o `reagendado_para` — é o que dá resposta à pergunta
 # "por que o aluno X não recebeu no e-mail?" sem precisar de duas tabelas.
-RESULTADOS = ("enviada", "pulada", "barrada_pela_regua", "barrada_por_preferencia")
+RESULTADOS = (
+    "enviada", "pulada", "barrada_pela_regua", "barrada_por_preferencia",
+    "pendente", "aceita_pelo_gateway", "resultado_desconhecido", "falhou",
+    "entregue", "lida",
+)
 
 # Um episódio de uma pessoa numa jornada. `saiu` é a pessoa que deixou de
 # satisfazer a condição; `cancelada` é a jornada que foi interrompida por fora.
@@ -518,6 +522,8 @@ class Entrega(models.Model):
 
     resultado = models.CharField(max_length=48, choices=_escolhas(RESULTADOS))
     motivo = models.CharField(max_length=200, blank=True, default="")
+    whatsapp_intencao = models.BooleanField(default=False)
+    whatsapp_verificado_em = models.DateTimeField(null=True, blank=True)
 
     # O `event_id` da carta publicada (`notificacao.devida.v1`), quando houve
     # carta. Nulo enquanto nada saiu — e nulo para sempre no que foi barrado.

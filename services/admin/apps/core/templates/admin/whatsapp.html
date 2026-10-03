@@ -1,0 +1,50 @@
+{% extends "admin/base.html" %}
+{% block titulo %}WhatsApp{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>WhatsApp do site</h1>
+  <p class="subtitulo">Conecte o número da escola e acompanhe cada mensagem. A conexão usa WhatsApp Web pela Evolution.</p>
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  {% if resultado %}<p class="aviso">{{ resultado }}</p>{% endif %}
+  {% if site %}
+  <div class="cartao">
+    <h2>Conexão</h2>
+    <p>Estado: <strong>{{ conexao.estado|default:"Não configurado" }}</strong>{% if conexao.numero_mascarado %} · {{ conexao.numero_mascarado }}{% endif %}</p>
+    {% if conexao.erro %}<p class="aviso">{{ conexao.erro }}</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="config">
+      <label for="instancia">Nome desta conexão</label>
+      <input id="instancia" name="instancia" value="{{ configuracao.instancia|default:'meshcraft-whatsapp' }}" maxlength="100" pattern="[a-zA-Z0-9_-]+" required>
+      <p><label><input type="checkbox" name="ativo" value="sim" {% if configuracao.ativo %}checked{% endif %}> Habilitar os novos envios deste site</label></p>
+      <button type="submit">Salvar conexão</button>
+    </form>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="connect">
+      <p><button type="submit">Conectar ou renovar QR</button></p>
+    </form>
+    {% if qr %}<img src="{{ qr }}" alt="QR para conectar o WhatsApp" width="280" height="280">{% endif %}
+    <p>No celular do número que vai enviar, abra WhatsApp → Aparelhos conectados → Conectar um aparelho. Leia o QR e depois clique em Atualizar estado. Se o QR expirou, renove aqui.</p>
+    <p><a href="{% url 'whatsapp' %}">Atualizar estado e mensagens</a></p>
+  </div>
+  <div class="cartao espaco-28">
+    <h2>Mensagem de teste</h2>
+    <p>Use somente um número indicado e autorizado para este teste.</p>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="send">
+      <input type="hidden" name="referencia" value="{{ referencia }}">
+      <p><label for="destinatario">Número com DDI e DDD</label><input id="destinatario" name="destinatario" type="tel" autocomplete="off" required maxlength="32" placeholder="55 + DDD + número"></p>
+      <p><label for="corpo">Mensagem</label><textarea id="corpo" name="corpo" required maxlength="4000" rows="3">Teste autorizado do WhatsApp do Meshcraft. Esta mensagem verifica o envio real pelo site.</textarea></p>
+      <p><label><input type="checkbox" name="autorizado" value="sim" required> Este destinatário autorizou receber esta mensagem de teste.</label></p>
+      <button type="submit">Enviar esta mensagem de teste</button>
+    </form>
+  </div>
+  <h2 class="espaco-28">Mensagens recentes</h2>
+  <p>Aceita pelo provedor significa que o pedido foi recebido. A entrega só aparece quando o WhatsApp a confirma. Resultado desconhecido exige consulta; repetir pode duplicar a mensagem.</p>
+  <div class="tabela-envolucro"><table>
+    <thead><tr><th>Quando</th><th>Origem</th><th>Estado</th><th>Identificador no provedor</th><th>Falha</th></tr></thead>
+    <tbody>{% for mensagem in mensagens %}<tr><td>{{ mensagem.criado_em }}</td><td>{{ mensagem.origem }}</td><td>{{ mensagem.status_visivel }}</td><td>{{ mensagem.provider_id|default:"Ainda não informado" }}</td><td>{{ mensagem.erro|default:"—" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma mensagem real registrada nesta integração.</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p>Os registros anteriores da simulação não comprovam envio nem entrega e não são reenviados por esta tela.</p>
+  {% endif %}
+</div>
+{% endblock %}

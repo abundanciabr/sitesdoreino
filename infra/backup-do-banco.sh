@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cópia de segurança de todas as bases do Postgres da plataforma, e uma foto do Redis.
+# Cópia de segurança das bases do Postgres, Redis e sessão persistente da Evolution.
 #
 # Uso (na VPS, em /opt/plataforma):
 #   bash infra/backup-do-banco.sh [ROTULO]
@@ -12,6 +12,7 @@
 #   papeis-<CARIMBO>.sql           os papéis, sem senha (pg_dumpall --globals-only --no-role-passwords)
 #   <CARIMBO>.contagens.tsv        base, tabela e linhas de cada tabela, contadas logo antes do dump
 #   redis-<CARIMBO>.rdb            foto do Redis (falha aqui só avisa: o Redis guarda eventos de passagem)
+#   evolution-instancias-<CARIMBO>.tar.gz sessão do WhatsApp Web (quando a base evolution_db está incluída)
 #
 # Depois de uma cópia completa, apaga os arquivos com carimbo de mais de 7 dias (o mantenedor
 # escolheu guardar só os últimos 7 dias, em 02/10/2026). Sai com código diferente de zero se
@@ -116,6 +117,24 @@ if [ -n "$REDIS" ] && [ -z "${BASES:-}" ]; then
     echo "AVISO: a foto do Redis não saiu; as bases foram copiadas."
   fi
   docker exec "$REDIS" rm -f /tmp/backup-do-banco.rdb > /dev/null 2>&1 || true
+fi
+
+# A sessão Baileys mora fora do Postgres. Ela acompanha qualquer cópia completa
+# e uma cópia seletiva que inclua evolution_db; uma falha impede retenção/rotação.
+if [ -z "${BASES:-}" ] || printf '%s\n' "$ESCOLHIDAS" | grep -Eq '(^|[[:space:]])evolution_db([[:space:]]|$)'; then
+  INSTANCIAS="${EVOLUTION_INSTANCES_DIR:-$RAIZ/dados/evolution/instances}"
+  if [ -d "$INSTANCIAS" ]; then
+    SESSAO="$PASTA/evolution-instancias-$CARIMBO.tar.gz"
+    tar -czf "$SESSAO.parcial" -C "$INSTANCIAS" . \
+      || { rm -f "$SESSAO.parcial"; falhar "não consegui copiar a sessão persistente da Evolution."; }
+    [ -s "$SESSAO.parcial" ] && tar -tzf "$SESSAO.parcial" > /dev/null \
+      || { rm -f "$SESSAO.parcial"; falhar "a cópia da sessão da Evolution não abre."; }
+    chmod 600 "$SESSAO.parcial" && mv "$SESSAO.parcial" "$SESSAO" \
+      || { rm -f "$SESSAO.parcial"; falhar "não consegui proteger a cópia da sessão da Evolution."; }
+    echo "BACKUP: evolution-instancias-$CARIMBO.tar.gz ($(( $(wc -c < "$SESSAO") / 1024 )) KB)"
+  else
+    echo "BACKUP: diretório de sessões da Evolution ainda não existe; nenhuma sessão presente para copiar."
+  fi
 fi
 
 echo "BACKUP-CONCLUIDO: $CARIMBO $FEITAS bases em $PASTA (o carimbo é UTC; em Brasília são 3 horas a menos)"

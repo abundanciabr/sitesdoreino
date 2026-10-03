@@ -174,6 +174,16 @@ ESTADO_DA_INSCRICAO = {
 # recebeu?" fica sem resposta e o mantenedor olha para o silêncio.
 RESULTADO = {
     "enviada": ("Enviada", "Saiu daqui para a pessoa."),
+    "pendente": ("Pendente", "O envio foi registrado e aguarda tentativa pelo WhatsApp."),
+    "aceita_pelo_gateway": (
+        "Aceita pelo WhatsApp", "O provedor aceitou a mensagem; a entrega ainda não foi confirmada."
+    ),
+    "resultado_desconhecido": (
+        "Resultado desconhecido", "A resposta do provedor não permitiu confirmar o resultado; o envio não é repetido automaticamente."
+    ),
+    "falhou": ("Falhou", "O envio falhou antes de uma aceitação confirmada; a retomada tentará novamente."),
+    "entregue": ("Entregue", "O provedor confirmou a entrega no WhatsApp."),
+    "lida": ("Lida", "O provedor confirmou a leitura da mensagem."),
     # A explicação cobre as DUAS causas reais de um pulo, e não só a bonita. A
     # primeira versão dizia apenas "ela já tinha feito o que a mensagem ia
     # pedir" — e hoje, em produção, a causa MAIS COMUM é a outra: o e-mail
@@ -368,7 +378,7 @@ def _linha_de_entrega(entrega: dict) -> dict:
         "resultado_rotulo": rotulo,
         "resultado_explicacao": explicacao,
         "barrada": resultado.startswith("barrada"),
-        "saiu": resultado == "enviada",
+        "saiu": resultado in {"enviada", "entregue", "lida"},
         "motivo": str(entrega.get("motivo") or ""),
         "previsto_para": _momento(entrega.get("previsto_para")),
         "reagendado_para": _momento(entrega.get("reagendado_para")),

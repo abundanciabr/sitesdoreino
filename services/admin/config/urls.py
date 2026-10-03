@@ -76,6 +76,7 @@ from apps.core.parametros_da_fila import (
     parametros_da_fila_mudar,
 )
 from apps.core.avisos import avisos, avisos_testar
+from apps.core.whatsapp import whatsapp
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -227,6 +228,7 @@ from config.api import api
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 
 urlpatterns = [
+    path("whatsapp/", whatsapp, name="whatsapp"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),

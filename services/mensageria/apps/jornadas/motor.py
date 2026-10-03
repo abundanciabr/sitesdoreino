@@ -46,6 +46,7 @@ from datetime import datetime
 from typing import Callable
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from . import condicoes, regua
@@ -100,6 +101,7 @@ class Passada:
     puladas: int = 0
     barradas: int = 0
     entregues: int = 0
+    pendentes: int = 0
     sem_despacho: int = 0
     motivos: list[str] = field(default_factory=list)
     # O teto QUE ESTA PASSADA usou, e não a constante do módulo: `varrer` aceita
@@ -212,7 +214,7 @@ def cancelar(
     contexto_id: str = "",
     motivo: str,
 ) -> int:
-    """Interrompe POR FORA o episódio que está andando. Devolve quantos parou.
+    """Interrompe o episódio andando ou já concluído com WhatsApp ainda pendente.
 
     É a capacidade que o §2 do plano chama de "desistir na hora certa" vinda
     de um EVENTO, e não de uma condição reavaliada na varredura: o aluno que
@@ -224,14 +226,22 @@ def cancelar(
     Um `update()` e não um `save()` por linha, de propósito: a trava parcial só
     conhece `andando`, então a linha cancelada libera a chave no mesmo
     instante, e um episódio novo pode nascer logo depois (`recomecar`). O que
-    já saiu fica gravado em `Entrega`: cancelar não reescreve história.
+    já saiu fica gravado em `Entrega`: cancelar não reescreve história. Um passo
+    WhatsApp pode concluir a inscrição enquanto aguarda o worker; nesse intervalo
+    o cancelamento ainda impede o envio.
     """
+    pendentes_whatsapp = Entrega.objects.filter(
+        canal="whatsapp",
+        whatsapp_intencao=True,
+        resultado__in=("pendente", "falhou"),
+    ).values("inscricao_id")
     return Inscricao.objects.filter(
         jornada=jornada,
         destinatario_id=destinatario_id,
         site_id=site_id,
         contexto_id=contexto_id,
-        estado="andando",
+    ).filter(
+        Q(estado="andando") | Q(estado="concluida", pk__in=pendentes_whatsapp)
     ).update(estado="cancelada", proximo_em=None, motivo_de_saida=motivo)
 
 
@@ -463,6 +473,7 @@ def varrer(
                         canal=canal,
                         previsto_para=previsto,
                         momento=agora,
+                        pendente_whatsapp=canal == "whatsapp",
                     )
             except CanalNaoSuportado as motivo_do_canal:
                 # RECUSA DEFINITIVA por canal, e ela é irmã da recusa por
@@ -483,7 +494,10 @@ def varrer(
                 passada.puladas += 1
                 continue
 
-            passada.entregues += 1
+            if canal == "whatsapp":
+                passada.pendentes += 1
+            else:
+                passada.entregues += 1
             entregou_algum = True
 
         if entregou_algum:

@@ -36,6 +36,24 @@ services:
       - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
       - /opt/plataforma/admin-midia:/opt/plataforma/admin-midia
 
+  # Perfil separado: a aplicação continua subindo sem configuração WhatsApp.
+  # Evolution fica acessível só pela rede interna, sem porta, manager ou chave pública.
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.7
+    restart: unless-stopped
+    profiles: [whatsapp]
+    env_file:
+      - path: /opt/plataforma/env/evolution.env
+        required: false
+    volumes:
+      - ./dados/evolution/instances:/evolution/instances
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [interna]
+
   traefik:
     image: traefik:v3.4
     restart: unless-stopped

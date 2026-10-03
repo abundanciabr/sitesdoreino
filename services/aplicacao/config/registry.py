@@ -11,6 +11,7 @@ SERVICES = (
 # The public prefixes are deliberately distinct from the old internal paths.
 # A cell behind SCRIPT_NAME used a local URLconf; identidade and payments did not.
 PUBLIC_PREFIXES = (
+    ("/webhooks/whatsapp", "mensageria", ""),
     ("/static/checkout", "checkout", ""),
     ("/api/pagamentos", "pagamentos", ""),
     ("/api/checkout", "checkout", ""),
