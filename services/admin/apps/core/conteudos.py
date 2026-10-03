@@ -561,6 +561,7 @@ def quiz_campanhas(request, slug: str):
         {
             **linha,
             "receita": f"R$ {(linha.get('receita_cents') or 0) / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
+            "reembolsado": f"R$ {(linha.get('reembolsado_cents') or 0) / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
             "formato_legivel": FORMATOS_LEGIVEIS.get(linha.get("fmt"), linha.get("fmt")),
             "publico_legivel": PUBLICOS_LEGIVEIS.get(linha.get("seg") or "geral", linha.get("seg")),
         }
@@ -570,6 +571,7 @@ def quiz_campanhas(request, slug: str):
     centavos = sum(linha.get("receita_cents") or 0 for linha in vendas)
     resumo_vendas = {
         "pedidos": sum(linha.get("pedidos") or 0 for linha in vendas),
+        "reembolsos": sum(linha.get("reembolsos") or 0 for linha in vendas),
         "receita": f"R$ {centavos / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", "."),
     }
     from apps.agentes.quiz import RESULTADOS as RECADOS_DO_ROBO, painel_na_pagina

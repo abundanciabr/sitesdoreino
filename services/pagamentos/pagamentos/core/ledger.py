@@ -218,6 +218,8 @@ def emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> bool:
             "provider": travada.provider,
             "provider_reference_id": travada.provider_reference_id,
             "motivo": motivo,
+            # O checkout acha o pedido por aqui e o marca como reembolsado.
+            "order_id": travada.intent.order_id,
         }
         if OutboxEvent.objects.filter(
             event="pagamento.reversao_confirmada", version=2,

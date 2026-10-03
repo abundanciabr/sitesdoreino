@@ -173,6 +173,7 @@ def test_get_autenticado_emite_reversao_sem_valor_nem_transicao_financeira(
         "provider": "appmax",
         "provider_reference_id": REFERENCIA,
         "motivo": motivo,
+        "order_id": intent.order_id,
     }
     envelope = _envelope_publicado(evento)
     assert set(envelope) == {"event", "version", "event_id", "occurred_at", "data"}

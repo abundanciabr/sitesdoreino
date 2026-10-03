@@ -34,6 +34,7 @@ GRUPO = "checkout"
 TODOS_OS_STREAMS = (
     "eventos.pagamento.aprovado",
     "eventos.pagamento.recusado",
+    "eventos.pagamento.reversao_confirmada",
     "eventos.pix.expirado",
 )
 

@@ -1,6 +1,6 @@
 """Leitura: pedidos pagos ligados a um quiz, por versão, campanha e dia."""
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import TruncDate
 
@@ -18,7 +18,11 @@ def pagos_do_quiz(slug: str, site_id: str | None = None, desde=None, ate=None):
     barra a reentrega do aviso antes do UPDATE), então reenviar o webhook não
     soma duas vezes. `desde`/`ate` são datas (inclusivas) do dia de criação.
     """
-    consulta = Order.objects.filter(status="pago", contexto__qz=slug)
+    # Reembolsado entra só para ser mostrado à parte: a venda estornada sai de
+    # `pedidos` e de `receita_cents` e aparece em `reembolsos`.
+    consulta = Order.objects.filter(
+        status__in=("pago", "reembolsado"), contexto__qz=slug
+    )
     if site_id:
         consulta = consulta.filter(site_id=site_id)
     if desde:
@@ -29,7 +33,12 @@ def pagos_do_quiz(slug: str, site_id: str | None = None, desde=None, ate=None):
     linhas = (
         consulta.annotate(dia=TruncDate("created_at"), **campos)
         .values(*campos, "dia")
-        .annotate(pedidos=Count("id"), receita_cents=Sum("total_cents"))
+        .annotate(
+            pedidos=Count("id", filter=Q(status="pago")),
+            receita_cents=Sum("total_cents", filter=Q(status="pago")),
+            reembolsos=Count("id", filter=Q(status="reembolsado")),
+            reembolsado_cents=Sum("total_cents", filter=Q(status="reembolsado")),
+        )
         .order_by("dia", *campos)
     )
     return [
@@ -37,7 +46,9 @@ def pagos_do_quiz(slug: str, site_id: str | None = None, desde=None, ate=None):
             **{d: linha[f"d_{d}"] or "" for d in DIMENSOES},
             "dia": linha["dia"],
             "pedidos": linha["pedidos"],
-            "receita_cents": linha["receita_cents"],
+            "receita_cents": linha["receita_cents"] or 0,
+            "reembolsos": linha["reembolsos"],
+            "reembolsado_cents": linha["reembolsado_cents"] or 0,
         }
         for linha in linhas
     ]

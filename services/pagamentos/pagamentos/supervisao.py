@@ -186,6 +186,8 @@ def _emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> None:
         "provider": "appmax",
         "provider_reference_id": tentativa.provider_reference_id,
         "motivo": motivo,
+        # O checkout acha o pedido por aqui e o marca como reembolsado.
+        "order_id": tentativa.intent.order_id,
     }
     # A tentativa é a identidade local que todas as entregas deste pedido
     # compartilham. Travá-la antes da leitura da outbox serializa reentregas

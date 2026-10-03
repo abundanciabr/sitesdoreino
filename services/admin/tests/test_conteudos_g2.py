@@ -428,7 +428,8 @@ def test_painel_de_campanhas_mostra_vendas_pagas_do_checkout(monkeypatch):
                 "vendas": [
                     {"v": "B2", "cpg": "outubro", "ctv": "vsl", "seg": "escalando",
                      "fmt": "text", "dia": "2026-10-03", "pedidos": 2,
-                     "receita_cents": 315800},
+                     "receita_cents": 315800, "reembolsos": 1,
+                     "reembolsado_cents": 14700},
                 ],
                 "moeda": "BRL",
             },
@@ -441,7 +442,10 @@ def test_painel_de_campanhas_mostra_vendas_pagas_do_checkout(monkeypatch):
     assert pagina.status_code == 200
     texto = pagina.content.decode()
     assert "Vendas confirmadas" in texto and "R$ 3.158,00" in texto
-    assert pagina.context["resumo_vendas"] == {"pedidos": 2, "receita": "R$ 3.158,00"}
+    assert pagina.context["resumo_vendas"] == {
+        "pedidos": 2, "reembolsos": 1, "receita": "R$ 3.158,00"
+    }
+    assert "1 · R$ 147,00" in texto and "1 venda(s) estornada(s)" in texto
     pedido = vendas.calls.last.request
     assert pedido.headers["Authorization"] == "Bearer token-admin-checkout"
     assert pedido.headers["Host"] == "testserver"
