@@ -74,6 +74,7 @@ class Execucao(models.Model):
         PANORAMA = "panorama_semanal", "Panorama semanal"
         CONFERENCIA_QUIZ = "conferencia_quiz", "Conferência dos links do quiz"
         LEITURA_QUIZ = "leitura_quiz", "Leitura dos números do quiz"
+        CONHECIMENTO = "conhecimento", "Leitura dos documentos para o mapa de conhecimento"
 
     class Situacao(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"
@@ -396,3 +397,40 @@ class Conexao(models.Model):
     conferida_em = models.DateTimeField(null=True, blank=True)
     alterada_por = models.CharField(max_length=200, blank=True, default="")
     alterada_em = models.DateTimeField(auto_now=True)
+
+
+class FonteDoConhecimento(models.Model):
+    """Um documento do site já lido para o mapa de conhecimento
+    (`conhecimento.py`). A `impressao` é o resumo do texto lido: documento que
+    não mudou não é lido de novo, e não gasta de novo."""
+
+    chave = models.CharField(max_length=120, unique=True)
+    titulo = models.CharField(max_length=200)
+    endereco = models.CharField(max_length=300, blank=True, default="")
+    publica = models.BooleanField(default=False)
+    impressao = models.CharField(max_length=64)
+    lida_em = models.DateTimeField(auto_now=True)
+
+
+class EntidadeDoConhecimento(models.Model):
+    """Uma coisa que um documento cita: pessoa, curso, oferta, sistema..."""
+
+    fonte = models.ForeignKey(
+        FonteDoConhecimento, on_delete=models.CASCADE, related_name="entidades"
+    )
+    nome = models.CharField(max_length=200)
+    tipo = models.CharField(max_length=40)
+    resumo = models.CharField(max_length=500, blank=True, default="")
+
+
+class LigacaoDoConhecimento(models.Model):
+    """Uma ligação que um documento afirma entre duas coisas, com o trecho
+    que a sustenta: é o que deixa o robô dizer de onde tirou a resposta."""
+
+    fonte = models.ForeignKey(
+        FonteDoConhecimento, on_delete=models.CASCADE, related_name="ligacoes"
+    )
+    origem = models.CharField(max_length=200)
+    relacao = models.CharField(max_length=80)
+    destino = models.CharField(max_length=200)
+    evidencia = models.CharField(max_length=400, blank=True, default="")

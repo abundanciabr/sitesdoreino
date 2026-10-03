@@ -814,3 +814,98 @@ def test_cada_acao_tem_um_rotulo_para_a_pessoa():
     assert set(ferramentas.ROTULOS) == set(ferramentas.ACOES)
     definicoes = ferramentas.DEFINICOES + ferramentas.DEFINICOES_DO_QUIZ
     assert {f["name"] for f in definicoes} == set(ferramentas.ACOES)
+
+
+# ---------------------------------------------------------------- mapa de conhecimento
+
+
+def _documento(nome: str, corpo: str, publico: bool = False):
+    from apps.core.models import Documento
+
+    return Documento.objects.create(nome=nome, titulo=nome.replace("-", " ").title(), corpo=corpo, publico=publico)
+
+
+def _leitura_do_modelo() -> httpx.Response:
+    return _texto_do_modelo(json.dumps({
+        "entidades": [
+            {"nome": "Lívia", "tipo": "pessoa", "resumo": "Cuida das aulas."},
+            {"nome": "Curso de Blender", "tipo": "curso", "resumo": "Curso principal."},
+            {"nome": "Oferta Anual", "tipo": "oferta", "resumo": "Plano de um ano."},
+        ],
+        "ligacoes": [
+            {"origem": "Lívia", "relacao": "cuida de", "destino": "Curso de Blender",
+             "evidencia": "A Lívia cuida do Curso de Blender."},
+            {"origem": "Oferta Anual", "relacao": "vende", "destino": "Curso de Blender",
+             "evidencia": "A Oferta Anual vende o Curso de Blender."},
+        ],
+    }), rid="resp_mapa")
+
+
+@respx.mock
+def test_simulacao_o_mapa_le_o_documento_e_liga_ao_painel():
+    from apps.agentes import conhecimento
+
+    livia = _pessoa("Lívia", LIVIA)
+    Tarefa.objects.create(titulo="Gravar aula 3 de Blender", responsavel=livia)
+    from apps.core.models import Documento
+
+    Documento.objects.all().delete()  # só o documento deste teste no mapa
+    _documento("cursos", "A Lívia cuida do Curso de Blender.\n\nA Oferta Anual vende o Curso de Blender.")
+    _guardar_chave()
+    robo = trabalhos.robo_de(livia)
+    execucao = conhecimento.pedir_leitura(robo, "teste")
+    assert conhecimento.pedir_leitura(robo, "teste").pk == execucao.pk
+    with respx.mock as rede:
+        rota = rede.post(RESPOSTAS).mock(return_value=_leitura_do_modelo())
+        executor.rodar_uma("teste")
+    execucao.refresh_from_db()
+    assert execucao.situacao == S.CONCLUIDA, execucao.motivo
+    corpo = json.loads(rota.calls[0].request.content)
+    assert corpo["text"]["format"]["name"] == "mapa_de_conhecimento"
+    assert Consumo.objects.filter(execucao=execucao).exists()
+    assert conhecimento.documentos_a_ler() == []
+
+    achado = conhecimento.consultar(["curso de blender"], com_privados=True)
+    relacoes = {(l["de"], l["relacao"], l["para"]) for l in achado["ligacoes"]}
+    assert ("Oferta Anual", "vende", "Curso de Blender") in relacoes
+    # Dois passos: a Lívia do documento é a Lívia do painel, com a tarefa dela.
+    assert ("Lívia", "cuida de", "Curso de Blender") in relacoes
+    assert any(l["relacao"] == "responde por" and "Gravar aula 3" in l["para"] for l in achado["ligacoes"])
+    assert any("Cursos" in f for l in achado["ligacoes"] for f in l["fontes"])
+
+    # Documento privado não aparece para quem não administra o site.
+    assert conhecimento.consultar(["oferta anual"], com_privados=False)["achou"] is False
+
+
+@respx.mock
+def test_simulacao_o_robo_consulta_o_mapa_na_conversa():
+    from apps.agentes import conhecimento
+
+    livia = _pessoa("Lívia", LIVIA)
+    doc = _documento("ofertas", "A Oferta Anual vende o Curso de Blender.", publico=True)
+    conhecimento.guardar_leitura(doc, json.loads(_leitura_do_modelo().json()["output"][0]["content"][0]["text"]))
+    _guardar_chave()
+    robo = trabalhos.robo_de(livia)
+    trabalhos.pedir_resposta(robo, livia, "O que vende o Curso de Blender?", chave="k-mapa", autor="Lívia")
+    with respx.mock as rede:
+        rede.post(RESPOSTAS).mock(side_effect=[
+            _pedido_de_acao("consultar_conhecimento", {"termos": ["Curso de Blender"], "profundidade": 2}),
+            _texto_do_modelo("A Oferta Anual vende o Curso de Blender (documento Ofertas)."),
+        ])
+        executor.rodar_uma("teste")
+    chamada = ChamadaDeFerramenta.objects.get(nome="consultar_conhecimento")
+    assert chamada.situacao == "feita"
+    assert any(l["de"] == "Oferta Anual" for l in chamada.resultado["ligacoes"])
+    assert "consultar_conhecimento" in ferramentas.ROTULOS
+
+
+def test_a_tela_do_mapa_e_so_do_administrador():
+    _pessoa("Lívia", LIVIA)
+    with respx.mock:
+        assert _cliente(LIVIA, "Lívia").get(reverse("mapa_de_conhecimento")).status_code == 404
+    with respx.mock:
+        dono = _cliente(DONO, "Dono")
+        assert dono.get(reverse("robos_admin")).status_code == 200
+        resposta = dono.get(reverse("mapa_de_conhecimento") + "?q=Lívia")
+        assert resposta.status_code == 200
+        assert "Lívia" in resposta.content.decode()

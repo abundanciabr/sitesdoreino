@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Mapa de conhecimento{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'robos_admin' %}#mapa">&larr; Robôs</a>
+  <h1>Mapa de conhecimento</h1>
+  <p class="subtitulo">O que o robô acha quando procura um assunto: as coisas que casaram, as ligações em volta (até dois passos) e de onde veio cada uma. {{ mapa.coisas }} coisas e {{ mapa.ligacoes }} ligações vindas de {{ mapa.documentos }} documento{{ mapa.documentos|pluralize }}, mais o painel da equipe, lido na hora.</p>
+
+  <form class="forma" method="get" action="{% url 'mapa_de_conhecimento' %}">
+    <label class="largo"><span class="rotulo">Assunto, pessoa, tarefa ou documento</span><input type="search" name="q" maxlength="80" value="{{ termo }}" autofocus></label>
+    <button class="botao" type="submit">Procurar</button>
+  </form>
+
+  {% if resultado %}
+    {% if not resultado.achou %}
+    <p class="aviso">Nada no mapa casou "{{ termo }}".</p>
+    {% else %}
+    <section>
+      <h2 class="titulo-de-secao">Achou</h2>
+      <p>{{ resultado.encontrados|join:" · " }}</p>
+    </section>
+    <section>
+      <h2 class="titulo-de-secao">Ligações ({{ resultado.ligacoes|length }})</h2>
+      <ul class="passos-do-robo">
+        {% for l in resultado.ligacoes %}
+        <li><b>{{ l.de }}</b> <i>{{ l.relacao }}</i> <b>{{ l.para }}</b>{% if l.evidencia %}<div class="nota">“{{ l.evidencia }}”</div>{% endif %}<div class="meta">fonte: {{ l.fontes|join:"; " }}</div></li>
+        {% empty %}<li>Sem ligações em volta.</li>{% endfor %}
+      </ul>
+    </section>
+    <section>
+      <h2 class="titulo-de-secao">Coisas ({{ resultado.coisas|length }})</h2>
+      <ul class="passos-do-robo">
+        {% for c in resultado.coisas %}
+        <li><b>{{ c.nome }}</b> &middot; {{ c.tipo }}{% if c.resumo %} &middot; {{ c.resumo }}{% endif %}{% if c.fontes %}<div class="meta">{{ c.fontes|join:"; " }}</div>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

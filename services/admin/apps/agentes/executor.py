@@ -37,6 +37,7 @@ POSSE = timedelta(minutes=5)
 MAX_TENTATIVAS = 4
 INTERVALO_SEM_TRABALHO = 2.0
 INTERVALO_DE_REACORDAR = timedelta(minutes=5)
+INTERVALO_DO_MAPA = timedelta(minutes=30)
 
 S = Execucao.Situacao
 
@@ -159,7 +160,7 @@ def _avisar_na_conversa(execucao: Execucao, texto: str) -> None:
 
 
 def _executar(execucao: Execucao) -> None:
-    from . import conversa, panorama, quiz
+    from . import conhecimento, conversa, panorama, quiz
     from .models import RoboPessoal
 
     if execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
@@ -173,6 +174,8 @@ def _executar(execucao: Execucao) -> None:
         quiz.executar_conferencia(execucao)
     elif execucao.tipo == Execucao.Tipo.LEITURA_QUIZ:
         quiz.executar_leitura(execucao)
+    elif execucao.tipo == Execucao.Tipo.CONHECIMENTO:
+        conhecimento.executar(execucao)
     else:  # pragma: no cover - tipo novo sem executor
         terminar(execucao, S.FALHOU, "Este tipo de trabalho ainda não tem executor.")
 
@@ -231,7 +234,25 @@ def reacordar() -> int:
     autorizacao = modelo.autorizacao_ativa()
     if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
+    _manter_o_mapa_em_dia()
     return n
+
+
+def _manter_o_mapa_em_dia() -> None:
+    """Depois da primeira leitura pedida na tela, documento novo ou mudado
+    entra no mapa sozinho, pelo mesmo robô que pediu da última vez."""
+    from . import conhecimento
+
+    try:
+        ultima = Execucao.objects.filter(tipo=Execucao.Tipo.CONHECIMENTO).first()
+        if ultima is None or ultima.situacao in Execucao.ABERTAS:
+            return
+        if timezone.now() - ultima.criada_em < INTERVALO_DO_MAPA:
+            return
+        if conhecimento.documentos_a_ler() or conhecimento.esquecer_os_que_sairam():
+            conhecimento.pedir_leitura(ultima.robo, "Leitura automática dos documentos mudados")
+    except Exception:  # noqa: BLE001 - o mapa não pode derrubar o laço
+        log.exception("Mapa de conhecimento: conferência automática falhou")
 
 
 _acordar = threading.Event()

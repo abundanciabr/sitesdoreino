@@ -135,6 +135,7 @@ from apps.agentes.views import (
     robo_da_pessoa,
     robo_no_quiz,
     robos_admin,
+    mapa_de_conhecimento,
 )
 from apps.core.equipe_acesso import (
     conectar_meu_celular,
@@ -336,6 +337,7 @@ urlpatterns = [
     ),
     path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
     path("robos/", robos_admin, name="robos_admin"),
+    path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),

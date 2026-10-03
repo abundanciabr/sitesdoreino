@@ -32,7 +32,7 @@ from apps.core.documentos import para_html
 from apps.core.equipe import _membro_da_sessao, _nao_existe, _quem
 from apps.core.models import MembroDaEquipe, Tarefa
 
-from . import ferramentas, modelo, segredo, trabalhos
+from . import conhecimento, ferramentas, modelo, segredo, trabalhos
 from .models import Conexao, Entrega, Execucao, Mensagem, RoboPessoal, tempo_em_palavras
 
 TAMANHO_DA_MENSAGEM = 4000
@@ -59,6 +59,8 @@ RESULTADOS = {
     "chave_tirada": "Chave apagada do banco. Os robôs ficam sem modelo até guardar outra.",
     "conferida": "Conexão conferida de novo.",
     "modelos_salvos": "Modelos salvos.",
+    "mapa_pedido": "Leitura dos documentos na fila. O robô lê no servidor; pode fechar a página.",
+    "mapa_sem_robo": "Abra a aba Meu robô uma vez antes: a leitura roda pelo seu robô.",
 }
 
 _SCRIPT_EMBUTIDO = re.compile(
@@ -560,8 +562,22 @@ def robos_admin(request):
             "execucoes": list(Execucao.objects.select_related("robo")[:20]),
             "consumo": _consumo_do_mes(),
             "precos": modelo.PRECOS,
+            "mapa": conhecimento.numeros(),
             "resultado": _resultado(request),
         },
+    )
+
+
+@require_GET
+def mapa_de_conhecimento(request):
+    """Procurar no mapa como o robô procura: o que casou e as ligações em
+    volta, com o trecho e a fonte de cada uma. Só do administrador."""
+    termo = (request.GET.get("q") or "").strip()[:80]
+    resultado = conhecimento.consultar([termo], com_privados=True) if termo else None
+    return render(
+        request,
+        "agentes/mapa.html",
+        {"admin": request.admin, "termo": termo, "resultado": resultado, "mapa": conhecimento.numeros()},
     )
 
 
@@ -569,6 +585,14 @@ def _conexao_post(request):
     acao = request.POST.get("acao") or ""
     conexao = modelo.conexao()
     quem = _quem(request)
+    if acao == "mapa":
+        membro = _membro_da_sessao(request)
+        robo = RoboPessoal.objects.filter(membro=membro).first() if membro else None
+        robo = robo or RoboPessoal.objects.filter(situacao=RoboPessoal.Situacao.ATIVO).order_by("id").first()
+        if robo is None:
+            return _volta("robos_admin", "mapa_sem_robo", "#mapa")
+        conhecimento.pedir_leitura(robo, quem)
+        return _volta("robos_admin", "mapa_pedido", "#mapa")
     if acao == "alunos":
         from .alunos import configuracao
         from .models import AutorizacaoDeGasto
