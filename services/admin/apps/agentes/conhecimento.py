@@ -102,16 +102,20 @@ def normal(texto: str) -> str:
 
 
 _ARTIGOS = {"o", "a", "os", "as", "um", "uma", "uns", "umas", "the"}
+_ARTIGOS_DEFINIDOS = {"o", "a", "os", "as"}
 
 
 def nome_chave(texto: str) -> str:
     """O que decide se dois nomes são a mesma coisa: além de `normal`, sem
-    pontuação, sem artigo na frente e sem plural ('O Crivo' = 'crivo',
-    'Alunos' = 'aluno', 'cartas_de_celebração' = 'carta de celebração')."""
-    texto = re.sub(r"[\"'“”‘’`«»().,:;!?\[\]_-]", " ", normal(texto))
-    palavras = texto.split()
+    pontuação nem símbolo, sem artigo na frente ou no meio e sem plural
+    ('O Crivo' = 'crivo', 'Alunos' = 'aluno', 'cartas_de_celebração' =
+    'carta de celebração', 'Capítulo 3: A comunidade' = 'Capítulo 3 — comunidade',
+    '/admin/' = 'admin'). Artigo no fim conta: 'Plano A' não é 'Plano'."""
+    palavras = re.sub(r"[^\w\s]|_", " ", normal(texto)).split()
     while len(palavras) > 1 and palavras[0] in _ARTIGOS:
         palavras = palavras[1:]
+    palavras = [p for i, p in enumerate(palavras)
+                if not (0 < i < len(palavras) - 1 and p in _ARTIGOS_DEFINIDOS)]
     return " ".join(
         p[:-1] if len(p) > 3 and p.endswith("s") and not p.endswith(("ss", "is", "us")) else p
         for p in palavras
@@ -444,8 +448,14 @@ def consultar(termos: list[str], *, com_privados: bool, profundidade: int = 2,
     for termo in termos:
         termo = nome_chave(termo) or termo
         exatos = [c for n, c in mapa.por_nome.items() if n == termo]
-        parecidos = [c for c, no in mapa.nos.items() if termo in nome_chave(no["nome"])]
-        sementes.extend(exatos or parecidos[:8])
+        parecidos = [c for c, no in mapa.nos.items() if c not in exatos and termo in nome_chave(no["nome"])]
+        if exatos:
+            # Com o nome exato achado, junta só quem tem o termo como palavra inteira:
+            # 'Comunidade' traz 'Comunidade Meshcraft', mas 'IA' não traz 'Academia'.
+            parecidos = [c for c in parecidos if f" {termo} " in f" {nome_chave(mapa.nos[c]['nome'])} "]
+        # Os mais ligados primeiro: são os que mais têm a contar.
+        parecidos.sort(key=lambda c: -len(mapa.vizinhos.get(c, [])))
+        sementes.extend((exatos + parecidos)[:8])
     if not sementes:
         # Nenhum nome casou: procura o termo nos trechos e resumos.
         for i, l in enumerate(mapa.ligacoes):

@@ -965,3 +965,29 @@ def test_o_par_confirmado_por_mais_documentos_vem_primeiro():
     })
     primeira = conhecimento.consultar(["crivo"], com_privados=True, profundidade=1, max_ligacoes=1)["ligacoes"][0]
     assert {primeira["de"], primeira["para"]} == {"Crivo", "Aluno"}
+
+
+def test_artigo_no_meio_e_simbolo_nao_separam_nomes():
+    from apps.agentes.conhecimento import nome_chave
+
+    assert nome_chave("Capítulo 3 — Comunidade de alunos") == nome_chave("Capítulo 3: A comunidade de alunos")
+    assert nome_chave("/admin/") == nome_chave("admin")
+    assert nome_chave("Plano A") != nome_chave("Plano")
+
+
+def test_a_busca_traz_tambem_os_nomes_com_a_palavra_inteira():
+    from apps.agentes import conhecimento
+    from apps.core.models import Documento
+
+    Documento.objects.all().delete()
+    conhecimento.guardar_leitura(_documento("comunidade", "x"), {
+        "entidades": [{"nome": n, "tipo": "outro"} for n in [
+            "Comunidade", "Ensino e Comunidade", "Comunidade Meshcraft", "Subcomunidade", "Aluno", "Fórum", "Professor"]],
+        "ligacoes": [{"origem": "Comunidade", "relacao": "tem", "destino": "Fórum"},
+                     {"origem": "Ensino e Comunidade", "relacao": "inclui", "destino": "Fórum"},
+                     {"origem": "Comunidade Meshcraft", "relacao": "reúne", "destino": "Aluno"},
+                     {"origem": "Comunidade Meshcraft", "relacao": "reúne", "destino": "Professor"},
+                     {"origem": "Subcomunidade", "relacao": "reúne", "destino": "Aluno"}],
+    })
+    achado = conhecimento.consultar(["comunidade"], com_privados=True)
+    assert achado["encontrados"] == ["Comunidade", "Comunidade Meshcraft", "Ensino e Comunidade"]
