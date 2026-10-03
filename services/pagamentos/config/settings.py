@@ -81,10 +81,10 @@ APPMAX_INSTALACOES = _instalacoes_appmax(os.environ.get("APPMAX_INSTALACOES", ""
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
-# Em dev/CI/worktrees é sempre TEST-... — a credencial de produção
-# (APP_USR-...) só existe em /opt/plataforma/env/pagamentos.env na VPS.
-# Ausente não derruba a partida: só o Mercado Pago fica sem credencial.
+# Contas de teste MP podem emitir token TEST- ou APP_USR-. Para APP_USR,
+# apenas o hash do token previamente confirmado como test_user habilita sandbox.
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
+MP_TEST_ACCOUNT_TOKEN_SHA256 = os.environ.get("MP_TEST_ACCOUNT_TOKEN_SHA256", "")
 
 # Segredo do HMAC de x-signature. Vazio não derruba a partida: o
 # webhook responde 403 a tudo (core/webhook_signature.py) e nada vira "pago".

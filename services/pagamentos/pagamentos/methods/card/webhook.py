@@ -8,6 +8,7 @@
 # o status vem da CONSULTA à API do MP.
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
 from django.http import HttpRequest
@@ -40,6 +41,8 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
         consulta = gateway.consultar_status_do_pagamento(payment_id=mp_payment_id)
     except FalhaNoProvedor as exc:
         raise HttpError(502, "nao foi possivel confirmar o pagamento") from exc
+    if consulta.payment_id != mp_payment_id:
+        raise HttpError(502, "consulta nao confirma o pagamento")
     tentativa = PaymentAttempt.objects.filter(
         provider="mercadopago", provider_reference_id=mp_payment_id,
         intent__method="card",
@@ -50,6 +53,7 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
             intent__method="card",
         ).first()
         if tentativa is not None:
+            _conferir_identidade(tentativa, consulta)
             if tentativa.provider_reference_id and tentativa.provider_reference_id != mp_payment_id:
                 if consulta.status == "approved":
                     _registrar_mp_duplicado(tentativa, consulta)
@@ -59,6 +63,7 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
                 tentativa.save(update_fields=["provider_reference_id", "updated_at"])
     if tentativa is None:
         return {"ignorado": True}
+    _conferir_identidade(tentativa, consulta)
     if tentativa.state == "approved_duplicate":
         if consulta.status == "approved" and tentativa.external_order_id:
             principal = PaymentAttempt.objects.filter(
@@ -107,3 +112,18 @@ def processar_webhook_card(request: HttpRequest) -> dict[str, Any]:
         dados=dados_evento,
     )
     return {"recebido": True}
+
+
+def _conferir_identidade(
+    tentativa: PaymentAttempt, consulta: gateway.StatusDoPagamento
+) -> None:
+    if (
+        consulta.external_reference != (
+            tentativa.external_order_id
+            if tentativa.state == "approved_duplicate"
+            else str(tentativa.operation_id)
+        )
+        or consulta.transaction_amount != Decimal(tentativa.amount_cents) / 100
+        or consulta.currency_id != tentativa.intent.currency
+    ):
+        raise HttpError(502, "consulta nao confirma referencia, valor e moeda")

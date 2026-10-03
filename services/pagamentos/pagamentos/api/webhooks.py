@@ -6,6 +6,7 @@
 # ver simulate_webhook abaixo e ESQUELETO-QUE-ANDA.md).
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -22,14 +23,16 @@ from django.http import Http404, HttpRequest, JsonResponse
 from django.test import Client as _DjangoClient
 from django.views.decorators.csrf import csrf_exempt
 from ninja import Router
+from ninja.errors import HttpError
 
 from pagamentos.core.models import (
     AppmaxWebhookInbox,
     InstalacaoAppmax,
+    MercadoPagoWebhookInbox,
     PaymentAttempt,
 )
 from pagamentos.core.instalacoes_appmax import instalacao_do_webhook
-from pagamentos.core.webhook_signature import assinar
+from pagamentos.core.webhook_signature import assinar, assinatura_valida
 from pagamentos.methods.card.webhook import processar_webhook_card
 from pagamentos.methods.pix.webhook import processar_webhook_pix
 
@@ -90,6 +93,70 @@ _WEBHOOK_CARD_OPENAPI = {
 )
 def webhook_mp_card(request: HttpRequest) -> dict[str, Any]:
     return processar_webhook_card(request)
+
+
+_TOPICOS_FUTUROS = {
+    "orders", "order", "mp-connect", "stop_delivery_op_wh",
+    "topic_claims_integration_wh", "topic_card_id_wh",
+    "topic_merchant_order_wh", "topic_chargebacks_wh",
+    "subscription_authorized_payment", "subscription_preapproval",
+    "subscription_preapproval_plan",
+    # Variações emitidas em integrações anteriores.
+    "merchant_order", "claims", "chargebacks", "fraudalerts",
+    "applicationlink", "cardupdater",
+}
+
+
+@csrf_exempt
+def webhook_mp_unificado(request: HttpRequest) -> JsonResponse:
+    if request.method != "POST":
+        return JsonResponse({"detail": "use POST"}, status=405)
+    if not assinatura_valida(request):
+        return JsonResponse({"detail": "assinatura invalida"}, status=403)
+    try:
+        corpo = request.body
+        if len(corpo) > 65_536:
+            return JsonResponse({"detail": "aviso muito grande"}, status=413)
+        envelope = json.loads(corpo or b"{}")
+    except (ValueError, UnicodeDecodeError, RequestDataTooBig):
+        return JsonResponse({"detail": "JSON invalido"}, status=400)
+    if not isinstance(envelope, dict):
+        return JsonResponse({"detail": "aviso invalido"}, status=400)
+
+    topico = envelope.get("type") or request.GET.get("type") or request.GET.get("topic") or "payment"
+    if not isinstance(topico, str):
+        return JsonResponse({"detail": "topico invalido"}, status=400)
+    topico = topico.strip().lower()
+    mp_id = request.GET["data.id"]  # presença obrigatória já validada pelo HMAC
+
+    if topico in _TOPICOS_FUTUROS:
+        if len(mp_id) > 2048:
+            return JsonResponse({"detail": "identificador invalido"}, status=400)
+        _, criado = MercadoPagoWebhookInbox.objects.get_or_create(
+            topic=topico,
+            resource_id_hash=hashlib.sha256(mp_id.encode("utf-8")).hexdigest(),
+        )
+        return JsonResponse({"recebido": True, "novo": criado})
+    if topico != "payment":
+        return JsonResponse({"detail": "topico desconhecido"}, status=400)
+
+    tentativa = (
+        PaymentAttempt.objects.filter(
+            provider="mercadopago", provider_reference_id=mp_id
+        ).select_related("intent").first()
+    )
+    if tentativa is None:
+        return JsonResponse({"ignorado": True})
+    try:
+        if tentativa.intent.method == "pix":
+            resultado = processar_webhook_pix(request)
+        elif tentativa.intent.method == "card":
+            resultado = processar_webhook_card(request)
+        else:
+            resultado = {"ignorado": True}
+    except HttpError as exc:
+        return JsonResponse({"detail": str(exc)}, status=exc.status_code)
+    return JsonResponse(resultado)
 
 
 def _resposta_appmax(detalhe: str, status: int) -> JsonResponse:

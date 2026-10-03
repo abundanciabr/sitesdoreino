@@ -17,6 +17,12 @@ def test_avisos_de_pagamentos_chegam_no_meshcraft():
     spec = importlib.util.spec_from_file_location("registro_avisos_pagamentos", fonte)
     registro = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(registro)
-    for caminho in ("/api/pagamentos/webhooks/mp/card", "/api/pagamentos/webhooks/mp/pix"):
+    for caminho in (
+        "/api/pagamentos/webhooks/mp/card", "/api/pagamentos/webhooks/mp/pix",
+        "/api/pagamentos/mp/webhooks", "/api/pagamentos/mp/webhooks/",
+        "/api/pagamentos/mercadopago/webhooks", "/api/pagamentos/mercadopago/webhooks/",
+    ):
         assert registro.service_for_path(caminho, "meshcraft.top") == ("pagamentos", "")
         assert registro.service_for_path(caminho, "outro.exemplo") == ("funil", "")
+    for caminho in ("/api/pagamentos/mp/webhooks/outro", "/api/pagamentos/mp/intent"):
+        assert registro.service_for_path(caminho, "meshcraft.top") == ("funil", "")

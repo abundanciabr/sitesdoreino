@@ -13,7 +13,7 @@ def test_card_corpo_adulterado_decisao_segue_a_api(client: Client) -> None:
     ⇒ recusado, com a rota GET comprovadamente chamada."""
     mp_payment_id = "333000111"
     intent = _criar_intent("card", mp_payment_id)
-    PaymentAttempt.objects.create(
+    tentativa = PaymentAttempt.objects.create(
         intent=intent, platform_site_id=intent.site_id, provider="mercadopago",
         provider_reference_id=mp_payment_id, amount_cents=1990,
         effective_amount_cents=1990, installments=1,
@@ -28,6 +28,9 @@ def test_card_corpo_adulterado_decisao_segue_a_api(client: Client) -> None:
                     "id": int(mp_payment_id),
                     "status": "rejected",
                     "status_detail": "cc_rejected_call_for_authorize",
+                    "external_reference": str(tentativa.operation_id),
+                    "transaction_amount": 19.9,
+                    "currency_id": "BRL",
                 },
             )
         )

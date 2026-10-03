@@ -14,6 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from pagamentos.core import gateway, ledger
+from pagamentos.core.ambiente_mp import mp_em_teste
 from pagamentos.core.models import Intent, PaymentAttempt
 from pagamentos.core.tentativas import (
     ResultadoDoProvedor,
@@ -35,7 +36,7 @@ def _na_lista(intent: Intent) -> bool:
 def _sandbox() -> bool:
     return (
         "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower()
-        and settings.MP_ACCESS_TOKEN.startswith("TEST-")
+        and mp_em_teste()
     )
 
 
@@ -163,7 +164,7 @@ def completar_intent_pix(intent: Intent) -> Intent:
         intent.pix_expires_at = datetime.fromisoformat(vencimento)
         intent.save(update_fields=["pix_expires_at", "updated_at"])
     aviso = (
-        f"{settings.PAGAMENTOS_PUBLIC_BASE_URL}/api/pagamentos/webhooks/mp/pix"
+        f"{settings.PAGAMENTOS_PUBLIC_BASE_URL}/api/pagamentos/mp/webhooks"
         if settings.PAGAMENTOS_PUBLIC_BASE_URL
         else None
     )
@@ -256,7 +257,7 @@ def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
         else None
     )
     aviso = (
-        f"{settings.PAGAMENTOS_PUBLIC_BASE_URL}/api/pagamentos/webhooks/mp/pix"
+        f"{settings.PAGAMENTOS_PUBLIC_BASE_URL}/api/pagamentos/mp/webhooks"
         if settings.PAGAMENTOS_PUBLIC_BASE_URL
         else None
     )

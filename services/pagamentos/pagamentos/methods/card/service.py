@@ -14,6 +14,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from pagamentos.core import gateway, ledger
+from pagamentos.core.ambiente_mp import mp_em_teste
 from pagamentos.core.models import (
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
@@ -69,7 +70,7 @@ def _email_de_prova(intent: Intent) -> bool:
 
 
 def _sandbox_mp() -> bool:
-    return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower() and settings.MP_ACCESS_TOKEN.startswith("TEST-")
+    return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower() and mp_em_teste()
 
 
 def montar_dados_do_evento(
@@ -392,7 +393,7 @@ def confirmar_segunda_opcao_card(
                 payer_email=str(intent.customer.get("email") or ""),
                 payer_first_name=nome[0], payer_last_name=" ".join(nome[1:]),
                 payer_identification=identificacao,
-                notification_url=(url_base + "/api/pagamentos/webhooks/mp/card") if url_base else None,
+                notification_url=(url_base + "/api/pagamentos/mp/webhooks") if url_base else None,
                 envio_ambiguo_anterior=envio_ambiguo_anterior,
             )
         try:

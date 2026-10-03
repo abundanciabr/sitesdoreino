@@ -92,6 +92,25 @@ class RuntimeTest(unittest.TestCase):
                 self.assertFalse(called)
             self.assertEqual(called, [True])
 
+    def test_webhooks_mp_unificados_chegam_ao_receptor_sem_consultar_gateway(self):
+        import httpx
+
+        async def check():
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=type(self).application),
+                base_url="https://meshcraft.top",
+            ) as client:
+                for rota in ("mp", "mercadopago"):
+                    caminho = f"/api/pagamentos/{rota}/webhooks"
+                    response = await client.get(caminho)
+                    self.assertEqual(response.status_code, 405)
+                    response = await client.post(
+                        caminho + "?data.id=prova-sem-assinatura",
+                        json={"type": "payment", "data": {"id": "prova-sem-assinatura"}},
+                    )
+                    self.assertEqual(response.status_code, 403)
+        asyncio.run(check())
+
     def test_paginas_de_erro_compartilhadas_sao_achadas_em_toda_celula(self):
         """Sem elas, o endereço que não existe virava 500 em vez de 404 (02/10/2026)."""
         from django.template.loader import get_template

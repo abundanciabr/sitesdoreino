@@ -112,7 +112,7 @@ def test_risco_abre_e_mp_aprova_sem_recusa_intermediaria(client: Client, loja: s
     assert rota.calls.last.request.headers["X-Idempotency-Key"] == str(tentativa.operation_id)
     assert rota.calls.last.request.headers["X-meli-session-id"] == "device-sintetico"
     assert enviado["external_reference"] == str(tentativa.operation_id)
-    assert enviado["notification_url"].endswith("/api/pagamentos/webhooks/mp/card")
+    assert enviado["notification_url"].endswith("/api/pagamentos/mp/webhooks")
     assert OutboxEvent.objects.get(event="pagamento.aprovado").payload["provider"] == "mercadopago"
     assert TOKEN not in str(list(PaymentAttempt.objects.values()))
     assert TOKEN not in str(list(PaymentOperation.objects.values()))
@@ -548,7 +548,11 @@ def test_duplicata_divergente_nao_estorna_ate_consulta_corrigida(
     assert duplicada.effective_amount_cents == 2090
     assert estornos == ["999"]
     with respx.mock(assert_all_called=True) as rede:
-        rede.get(f"{MP_URL}/999").respond(200, json={"id": 999, "status": "refunded"})
+        rede.get(f"{MP_URL}/999").respond(200, json={
+            "id": 999, "status": "refunded",
+            "external_reference": str(tentativa.operation_id),
+            "transaction_amount": 19.9, "currency_id": "BRL",
+        })
         resposta = _postar_webhook(client, method="card", data_id="999",
                                   body_status="refunded", ts=int(timezone.now().timestamp()))
     assert resposta.status_code == 200
@@ -615,6 +619,7 @@ def test_estorno_confirmado_mp_emite_reversao_v2_sem_mudar_intent(
         rede.get(f"{MP_URL}/991").respond(200, json={
             "id": 991, "status": "refunded",
             "external_reference": str(tentativa.operation_id),
+            "transaction_amount": 19.9, "currency_id": "BRL",
         })
         for _ in range(2):
             resposta = _postar_webhook(client, method="card", data_id="991",
