@@ -260,6 +260,8 @@ REGRAS_DO_FUNIL = (
     "o dia e a versão são os da primeira abertura (fuso America/Sao_Paulo).",
     "Cada etapa conta sessões distintas. Abandono na etapa só vale para quem não "
     "concluiu e não viu nenhuma etapa depois dela; atualizar a página não conta como abandono.",
+    "Quem concluiu conta como tendo visto e respondido todas as perguntas, mesmo se o "
+    "navegador não registrou alguma etapa: o envio só é aceito com todas respondidas.",
     "Tráfego de teste (src=teste, cpg começando com teste ou utm de teste) fica fora das taxas.",
     "Conclusões sem abertura registrada ficam de fora do funil e são contadas à parte.",
     "Saída real é clique para o checkout; saída de demonstração é clique na oferta ainda sem checkout.",
@@ -407,21 +409,25 @@ def funil_de_versao(versao, sessoes, etapas_conhecidas):
     etapas += [(e, f"Etapa fora da versão atual ({e})") for e in desconhecidas]
     etapas.append((ETAPA_LEAD, "Cadastro e envio"))
     indice = {etapa: i for i, (etapa, _) in enumerate(etapas)}
+    # O envio só é aceito com todas as perguntas respondidas: quem concluiu
+    # passou por cada uma, mesmo quando o navegador não registrou a etapa.
+    viu = {s["id"]: s["viu"] | conhecidas if s["concluiu"] else s["viu"] for s in reais}
+    clicou = {
+        s["id"]: s["clicou"] | conhecidas if s["concluiu"] else s["clicou"] for s in reais
+    }
 
     ate = {}
     for s in reais:
-        ate[s["id"]] = max(
-            (indice[e] for e in (s["viu"] | s["clicou"] | s["abandonou"]) if e in indice),
-            default=-1,
-        )
+        passou = viu[s["id"]] | clicou[s["id"]] | s["abandonou"]
+        ate[s["id"]] = max((indice[e] for e in passou if e in indice), default=-1)
     visitas = len(reais)
     conclusoes = sum(1 for s in reais if s["concluiu"])
     linhas = []
     ultima_pergunta = len(etapas) - 2
     for i, (etapa, rotulo) in enumerate(etapas):
         e_lead = etapa == ETAPA_LEAD
-        viram = None if e_lead else sum(1 for s in reais if etapa in s["viu"])
-        clicaram = None if e_lead else sum(1 for s in reais if etapa in s["clicou"])
+        viram = None if e_lead else sum(1 for s in reais if etapa in viu[s["id"]])
+        clicaram = None if e_lead else sum(1 for s in reais if etapa in clicou[s["id"]])
         abandonaram = sum(
             1
             for s in reais
@@ -430,7 +436,7 @@ def funil_de_versao(versao, sessoes, etapas_conhecidas):
         if e_lead:
             avancaram = None
         elif i < ultima_pergunta:
-            avancaram = sum(1 for s in reais if etapas[i + 1][0] in s["viu"])
+            avancaram = sum(1 for s in reais if etapas[i + 1][0] in viu[s["id"]])
         else:
             avancaram = conclusoes
         perda = None if avancaram is None else max(0, viram - avancaram)

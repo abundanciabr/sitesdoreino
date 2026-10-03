@@ -115,6 +115,44 @@ def test_saida_leva_os_parametros_da_campanha_e_nada_e_gravado(quiz):
 
 
 @override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_sem_campanha_na_tela_cada_saida_real_e_provada_com_os_12_parametros(quiz):
+    # Conferir "todos os links" não traz campanha: a prova usa um anúncio com
+    # a origem completa, com src e utm_source diferentes, e os dois chegam.
+    conectar_checkouts(
+        quiz, {"oferta-primeiros-passos": DESAFIO, "oferta-acelerar": CURSO}
+    )
+    dados = _dados(pedir(quiz, "v=B2&fmt=text&seg=geral"))
+    (b2,) = dados["versoes"]
+    provas = {f["key"]: f["prova_origem"] for f in b2["faixas"]}
+    assert all(p["faltam"] == [] for p in provas.values())
+    curso = parse_qs(urlsplit(provas["acelerar"]["url_final"]).query)
+    assert {k: v[0] for k, v in curso.items()} == {
+        "v": "B2",
+        "fmt": "text",
+        "seg": "frio",
+        "src": "meta",
+        "med": "cpc",
+        "cpg": "prova_da_origem",
+        "ctv": "anuncio_de_prova",
+        "utm_source": "facebook",
+        "utm_medium": "paid_social",
+        "utm_campaign": "prova_utm_campaign",
+        "utm_content": "prova_utm_content",
+        "utm_term": "prova_utm_term",
+    }
+    # O destino que já traz um parâmetro fica como está.
+    assert provas["primeiros-passos"]["url_final"].startswith(DESAFIO + "&")
+    assert b2["problemas"] == []
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_oferta_de_demonstracao_nao_tem_prova_de_saida(quiz):
+    dados = _dados(pedir(quiz, "v=B2&fmt=text&seg=geral"))
+    (b2,) = dados["versoes"]
+    assert all(f["prova_origem"] is None for f in b2["faixas"])
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
 def test_aponta_soma_sem_faixa_faixa_impossivel_e_destino_trocado(quiz):
     conectar_checkouts(
         quiz, {"oferta-primeiros-passos": DESAFIO, "oferta-acelerar": CURSO}

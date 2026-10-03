@@ -46,7 +46,9 @@
   .camp .fala-quiz { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
   .camp .fala-quiz.robo { border-color: #60a5fa; }
   .camp .fala-quiz .documento p:first-child { margin-top: 0; }
-  .camp .entrega-quiz { max-height: 560px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; margin-top: 8px; }
+  .camp .entrega-quiz { max-height: 560px; overflow-y: auto; overflow-x: hidden; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; margin-top: 8px; }
+  .camp .entrega-quiz code, .camp .fala-quiz code { white-space: normal; overflow-wrap: anywhere; word-break: break-all; }
+  .camp .entrega-quiz table { display: block; overflow-x: auto; }
   .camp .veredito { font-weight: 700; margin: 4px 0; }
   .camp .veredito.bom { border-left: 4px solid #16a34a; background: rgba(22,163,74,.15); padding: 4px 10px; border-radius: 6px; }
   .camp .veredito.ruim { border-left: 4px solid #dc2626; background: rgba(220,38,38,.15); padding: 4px 10px; border-radius: 6px; }
@@ -80,7 +82,7 @@
       <div class="fichas">
         <span class="ficha {% if robo_painel.ia_pronta %}bom{% else %}atencao{% endif %}">{% if robo_painel.ia_pronta %}IA pronta{% else %}IA ainda não pronta{% endif %}</span>
         <span class="ficha">Conversa: {{ robo_painel.conexao.modelo_rapido }} · Leitura: {{ robo_painel.conexao.modelo_forte }}</span>
-        {% if robo_painel.teto %}<span class="ficha">Gasto da equipe no mês: US$ {{ robo_painel.gasto|floatformat:4 }} de US$ {{ robo_painel.teto|floatformat:2 }}</span>{% endif %}
+        {% if robo_painel.teto %}<span class="ficha">Gasto da equipe no mês: US$ {{ robo_painel.gasto }} de US$ {{ robo_painel.teto }}</span>{% endif %}
       </div>
       <p class="dica">Ele trabalha no servidor: pode fechar esta página que o trabalho continua, e o resultado aparece aqui embaixo e na página do robô.</p>
       {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Os pedidos ficam guardados e começam quando ele for reativado, na página do robô.</p>{% endif %}
@@ -88,7 +90,7 @@
       <div class="robo-acoes">
         <section class="robo-acao">
           <h3>Conferir os links no site</h3>
-          <p>Antes de subir os anúncios. O robô abre cada versão, formato e público como um visitante, confere versão, título e vídeo, calcula que oferta cada pontuação mostra e se a origem da campanha chega inteira ao checkout.</p>
+          <p>Antes de subir os anúncios. O robô abre cada versão, formato e público como um visitante, confere versão, título e vídeo, calcula o resultado e a oferta de cada pontuação e prova que os 12 parâmetros do anúncio chegam inteiros à página da oferta.</p>
           <p class="dica">Sem IA e sem custo. As aberturas ficam marcadas como teste. Não envia formulário nem compra. Se achar problema, cria a tarefa de correção.</p>
           <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
             {% csrf_token %}

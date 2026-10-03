@@ -402,6 +402,16 @@ def relatorio_da_conferencia(estado: dict, robo_nome: str, pedido: str) -> tuple
         if all(s.get("url_final") and not s.get("faltam") for s in l["saidas"] if not s.get("demonstracao"))
     ]
     so_demonstracao = [l for l in links if l.get("saidas") and l not in com_saida_real]
+    # Sem campanha na escolha, a saída dos links não tem origem para levar:
+    # quem prova o caminho é o anúncio de origem completa que o quiz monta.
+    com_campanha = any((estado.get("params") or {}).get(c) for c in ("src", "med", "cpg", "ctv", "utm_term"))
+    provas = [
+        (versao.get("key"), faixa)
+        for versao in dados.get("versoes") or []
+        for faixa in versao.get("faixas") or []
+        if faixa.get("alcancavel") and faixa.get("prova_origem")
+    ]
+    provas_inteiras = [p for p in provas if not p[1]["prova_origem"].get("faltam")]
 
     linhas = [
         f"# Conferência dos links — {dados.get('quiz_titulo') or dados.get('quiz_slug')}",
@@ -424,10 +434,15 @@ def relatorio_da_conferencia(estado: dict, robo_nome: str, pedido: str) -> tuple
             f"- {estado['fora_do_limite']} página(s) ficaram sem abrir: o limite é "
             f"{LIMITE_DE_PAGINAS} por conferência. Peça uma conferência só das versões que vão anunciar."
         )
-    if com_saida_real:
+    if provas:
         linhas.append(
-            f"- Saída para o checkout: **{len(inteiras)} de {len(com_saida_real)}** links levam a "
-            "origem da campanha inteira até o checkout"
+            f"- Anúncio com a origem completa (os 12 parâmetros, de propósito com src e utm_source "
+            f"diferentes): **{len(provas_inteiras)} de {len(provas)}** saídas levam tudo até a página da oferta"
+        )
+    if com_saida_real and com_campanha:
+        linhas.append(
+            f"- Links desta escolha: **{len(inteiras)} de {len(com_saida_real)}** levam a origem da "
+            "campanha inteira até a página da oferta"
         )
     if so_demonstracao:
         linhas.append(
@@ -443,31 +458,39 @@ def relatorio_da_conferencia(estado: dict, robo_nome: str, pedido: str) -> tuple
         linhas.append("")
 
     linhas += [
-        "## Que oferta cada pontuação mostra",
+        "## O que cada pontuação mostra e para onde leva",
         "",
-        "| Versão | Faixa | Pontos | Acontece? | Oferta | Saída |",
-        "|---|---|---|---|---|---|",
+        "| Versão | Pontos | Resultado que a pessoa vê | Botão | Para onde vai |",
+        "|---|---|---|---|---|",
     ]
     exemplos = []
     for versao in dados.get("versoes") or []:
         for faixa in versao.get("faixas") or []:
-            saida = "demonstração, sem cobrança" if faixa.get("demonstracao") else "checkout real"
+            pontos = f"{faixa.get('min')} a {faixa.get('max')}"
+            if not faixa.get("alcancavel"):
+                pontos += " (nunca acontece)"
+            if faixa.get("demonstracao"):
+                destino = "demonstração, sem cobrança"
+            elif faixa.get("destino"):
+                destino = f"`{_celula(faixa['destino'])}`"
+            else:
+                destino = "—"
             linhas.append(
-                f"| {_celula(versao.get('key'))} | {_celula(faixa.get('key'))} | "
-                f"{faixa.get('min')} a {faixa.get('max')} | {'sim' if faixa.get('alcancavel') else 'nunca'} | "
-                f"{_celula(faixa.get('oferta') or faixa.get('oferta_id') or '—')} | {saida} |"
+                f"| {_celula(versao.get('key'))} | {pontos} | "
+                f"{_celula(faixa.get('titulo') or faixa.get('key'))} | "
+                f"{'«' + _celula(faixa['rotulo']) + '»' if faixa.get('rotulo') else '—'} | {destino} |"
             )
             if faixa.get("exemplos"):
                 exemplos.append(
-                    f"- **{versao.get('key')} · {faixa.get('key')}**: "
+                    f"- **{versao.get('key')} · {faixa.get('titulo') or faixa.get('key')}**: "
                     + _exemplo_legivel(faixa["exemplos"][0])
                 )
     if exemplos:
-        linhas += ["", "Exemplo de respostas que caem em cada faixa (a menor soma de cada uma):", ""]
+        linhas += ["", "Exemplo de respostas que caem em cada resultado (a menor soma de cada um):", ""]
         linhas += exemplos
     linhas.append("")
 
-    exemplo_de_saida = next(iter(com_saida_real), None)
+    exemplo_de_saida = next(iter(com_saida_real), None) if com_campanha else None
     if exemplo_de_saida:
         linhas += [
             "## Para onde a pessoa vai ao clicar na oferta",
@@ -480,6 +503,24 @@ def relatorio_da_conferencia(estado: dict, robo_nome: str, pedido: str) -> tuple
                 linhas.append(f"- Faixa **{saida.get('faixa')}**: página de demonstração, sem cobrança")
             else:
                 linhas.append(f"- Faixa **{saida.get('faixa')}**: `{saida.get('url_final')}`")
+        linhas.append("")
+    elif provas:
+        chave = provas[0][0]
+        linhas += [
+            "## Para onde a pessoa vai ao clicar na oferta",
+            "",
+            f"Exemplo de um anúncio com a origem completa na versão **{chave}**, montado pela mesma "
+            "função da saída real (a campanha é de prova; os seus links levam os valores que você escolher):",
+            "",
+        ]
+        for versao_key, faixa in provas:
+            if versao_key != chave:
+                continue
+            prova = faixa["prova_origem"]
+            perde = f" — perde {', '.join(prova['faltam'])}" if prova.get("faltam") else ""
+            linhas.append(
+                f"- **{faixa.get('titulo') or faixa.get('key')}**: `{prova.get('url_final')}`{perde}"
+            )
         linhas.append("")
 
     linhas += [
@@ -526,8 +567,9 @@ def relatorio_da_conferencia(estado: dict, robo_nome: str, pedido: str) -> tuple
         "## O que o robô não fez",
         "",
         "- Não enviou nenhum formulário: enviar criaria contato, e-mail e registro no CRM de verdade.",
-        "- Não abriu o checkout nem comprou nada: o endereço final foi montado pela mesma função "
-        "que o site usa no clique da oferta.",
+        "- Não abriu a página da oferta nem o checkout (abrir contaria visita nos números de venda) "
+        "e não comprou nada: o endereço final foi montado pela mesma função que o site usa no "
+        "clique da oferta.",
         "- Abriu as páginas marcadas como teste (`src=teste`): essas aberturas ficam fora das porcentagens.",
         "- Não usou IA: esta conferência não gasta nada.",
     ]
@@ -1229,10 +1271,19 @@ def executar_leitura(execucao: Execucao) -> None:
                 f"{robo.nome} (a pedido de {membro.nome})",
             )
     novas = [r for r in (estado.get("propostas_registradas") or {}).values() if r.get("id") and not r.get("ja_existia")]
+    # O resumo na lista de trabalhos: quanta gente e o que fazer primeiro.
+    dados = estado.get("dados") or {}
+    visitas = dados.get("visitas_elegiveis") or 0
+    resumo = f"Leitura pronta: {visitas} visita(s) de verdade"
+    if visitas < (dados.get("amostra_minima") or 30):
+        resumo += " (pouca gente para decidir)"
+    acoes = [a for a in (estado.get("leitura") or {}).get("acoes") or [] if isinstance(a, dict)]
+    if acoes and acoes[0].get("titulo"):
+        resumo += f". 1ª ação: {_curto(acoes[0]['titulo'], 120).rstrip('.')}"
     terminar(
         execucao,
         S.CONCLUIDA,
-        resultado=f"Entrega nº {entrega.id}"
+        resultado=f"{resumo}. Entrega nº {entrega.id}"
         + (f"; {len(novas)} proposta(s) de nova versão registrada(s)." if novas else "."),
     )
 
@@ -1471,6 +1522,11 @@ def marca_do_quiz(robo, slug: str) -> str:
     return f"{abertas}|{terminadas}|{mensagens}|{entregas}"
 
 
+def _dolares(valor, casas: int = 2) -> str:
+    """Valor em dólar escrito como no Brasil: 1.234,56."""
+    return f"{valor:,.{casas}f}".replace(",", "_").replace(".", ",").replace("_", ".")
+
+
 def painel_na_pagina(request, slug: str) -> dict:
     from apps.core.equipe import _membro_da_sessao
 
@@ -1500,6 +1556,7 @@ def painel_na_pagina(request, slug: str) -> dict:
     respondendo = next((e for e in conversas if e.situacao in Execucao.ABERTAS), None)
     conexao = modelo.conexao()
     autorizacao = modelo.autorizacao_ativa()
+    gasto = modelo.gasto_do_mes(autorizacao.pk) if autorizacao else None
     return {
         "robo": robo,
         "membro": membro,
@@ -1509,8 +1566,8 @@ def painel_na_pagina(request, slug: str) -> dict:
             and autorizacao is not None
         ),
         "conexao": conexao,
-        "gasto": modelo.gasto_do_mes(autorizacao.pk) if autorizacao else None,
-        "teto": autorizacao.teto_mensal_usd if autorizacao else None,
+        "gasto": _dolares(gasto, 4 if gasto < 1 else 2) if autorizacao else "",
+        "teto": _dolares(autorizacao.teto_mensal_usd) if autorizacao else "",
         "trabalhos": lista,
         "mensagens": mensagens,
         "respondendo": respondendo,

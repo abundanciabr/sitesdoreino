@@ -126,6 +126,31 @@ def test_abandono_por_atualizacao_nao_conta_quando_a_sessao_segue_adiante(quiz):
     assert versao["etapas"][1]["abandonaram"] == 0
 
 
+def test_quem_concluiu_conta_em_todas_as_perguntas_mesmo_sem_o_registro_do_navegador(quiz):
+    # Achado do robô no site: na última pergunta da B2, 5 viram e 6 seguiram.
+    # O envio só é aceito com todas as respostas, então quem concluiu passou
+    # por todas, mesmo que o navegador só tenha registrado a primeira.
+    p1, p2 = [str(q.id) for q in quiz.versions.get(key="a").questions.all()]
+    completa, sem_registro, desistiu = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    for sessao in (completa, sem_registro, desistiu):
+        abre(quiz, sessao)
+        evento(quiz, sessao, "view_question", instante(1), p1)
+    evento(quiz, completa, "click_option", instante(1), "7", {"question_id": p1})
+    evento(quiz, completa, "view_question", instante(1, 16), p2)
+    evento(quiz, completa, "click_option", instante(1, 16), "9", {"question_id": p2})
+    conclui(quiz, completa)
+    conclui(quiz, sem_registro)
+    evento(quiz, desistiu, "abandon", instante(1, 16), p1)
+
+    primeira, segunda, _ = funil_por_etapa(quiz)["versoes"][0]["etapas"]
+    assert (primeira["viram"], primeira["clicaram"], primeira["avancaram"]) == (3, 2, 2)
+    assert primeira["perda"] == 1 and primeira["abandonaram"] == 1
+    assert (segunda["viram"], segunda["clicaram"], segunda["avancaram"]) == (2, 2, 2)
+    assert segunda["perda"] == 0
+    for linha in (primeira, segunda):
+        assert linha["avancaram"] <= linha["viram"]
+
+
 def test_saida_de_demonstracao_e_distinta_da_saida_real(quiz):
     reais, demos = uuid.uuid4(), uuid.uuid4()
     for sessao in (reais, demos):

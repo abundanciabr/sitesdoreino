@@ -146,6 +146,10 @@ def _faixa(key, minimo, maximo, oferta, destino, soma):
         "oferta": oferta,
         "demonstracao": False,
         "destino": destino,
+        "prova_origem": {
+            "url_final": f"{destino}?v=B2&fmt=text&seg=frio&src=meta&utm_source=facebook&utm_term=prova_utm_term",
+            "faltam": [],
+        },
         "rotulo": "Quero",
         "exemplos": [{"pontuacao": soma, "respostas": [{"pergunta": 1, "opcao": "Nunca", "pontos": 1}]}],
     }
@@ -280,10 +284,16 @@ def test_conferencia_abre_as_paginas_so_com_get_e_entrega_o_veredito_sem_custo()
     assert entrega.tipo == "conferencia_quiz"
     assert "PODE SUBIR OS ANÚNCIOS, com avisos para saber" in entrega.conteudo
     assert "Páginas abertas no site: **2 de 2** abriram certas" in entrega.conteudo
-    assert "Saída para o checkout: **2 de 2**" in entrega.conteudo
-    assert "| B2 | desafio | 0 a 5 | sim | Desafio R$ 147 | checkout real |" in entrega.conteudo
+    # Sem campanha na escolha, a prova da saída é o anúncio de origem completa.
+    assert "Anúncio com a origem completa (os 12 parâmetros" in entrega.conteudo
+    assert "**2 de 2** saídas levam tudo até a página da oferta" in entrega.conteudo
+    assert "Links desta escolha" not in entrega.conteudo
+    assert "Exemplo de um anúncio com a origem completa na versão **B2**" in entrega.conteudo
+    assert "- **desafio**: `https://pay.exemplo.com/desafio?v=B2&fmt=text&seg=frio&src=meta" in entrega.conteudo
+    assert "| B2 | 0 a 5 | desafio | «Quero» | `https://pay.exemplo.com/desafio` |" in entrega.conteudo
     assert "Vídeo em produção" in entrega.conteudo
     assert "Não enviou nenhum formulário" in entrega.conteudo
+    assert "Não abriu a página da oferta nem o checkout" in entrega.conteudo
     assert execucao.resultado == f"PODE SUBIR OS ANÚNCIOS, com avisos para saber. Entrega nº {entrega.id}."
     assert not Tarefa.objects.filter(titulo__startswith="Corrigir os links").exists()
 
@@ -339,6 +349,33 @@ def test_a_conferencia_so_abre_paginas_do_quiz_no_proprio_site():
         ):
             pagina = quiz.abrir_pagina(cliente, {"teste_url": url, "marcas": []}, "testserver", "encontre")
             assert pagina["erro"] == "endereço fora do site do quiz", url
+
+
+def test_relatorio_com_campanha_na_escolha_mostra_a_saida_dos_proprios_links():
+    estado = {
+        "conferencia": _conferencia(),
+        "paginas": {
+            "B2|text|frio": {"status": 200, "ms": 40, "faltam": [], "erro": ""},
+            "B2|video|frio": {"status": 200, "ms": 50, "faltam": [], "erro": ""},
+        },
+        "params": {"v": "B2", "src": "meta", "med": "cpc", "cpg": "qz_frio_oct26", "ctv": "a1,a2"},
+    }
+    conteudo, veredito, problemas = quiz.relatorio_da_conferencia(estado, "Robô de Lívia", "")
+    assert veredito == "PODE SUBIR OS ANÚNCIOS, com avisos para saber" and problemas == []
+    assert "Links desta escolha: **2 de 2** levam a origem da campanha inteira" in conteudo
+    assert "Exemplo do link **B2 · Texto · frio · anúncio a1**" in conteudo
+    assert "`https://pay.exemplo.com/curso?src=meta&cpg=qz_frio_oct26&ctv=a1`" in conteudo
+    # A prova de origem completa continua no resumo.
+    assert "**2 de 2** saídas levam tudo até a página da oferta" in conteudo
+    assert "Exemplo de um anúncio com a origem completa" not in conteudo
+
+
+def test_gasto_em_dolar_escrito_como_no_brasil():
+    from decimal import Decimal
+
+    assert quiz._dolares(Decimal("0.018818"), 4) == "0,0188"
+    assert quiz._dolares(Decimal("10")) == "10,00"
+    assert quiz._dolares(Decimal("1234.5")) == "1.234,50"
 
 
 # ---------------------------------------------------------------- leitura
@@ -511,7 +548,10 @@ def test_simulacao_leitura_com_o_modelo_forte_registra_so_a_proposta_com_amostra
     assert "| B2 | 41 | 20 (49%) | 9 (45%) | sim |" in entrega.conteudo
     assert "1. **Encurtar a pergunta 2**" in entrega.conteudo
     assert "Proposta nº 7: criar a **B4** a partir da **B2**" in entrega.conteudo
-    assert execucao.resultado == f"Entrega nº {entrega.id}; 1 proposta(s) de nova versão registrada(s)."
+    assert execucao.resultado == (
+        "Leitura pronta: 41 visita(s) de verdade. 1ª ação: Encurtar a pergunta 2. "
+        f"Entrega nº {entrega.id}; 1 proposta(s) de nova versão registrada(s)."
+    )
     tarefa.refresh_from_db()
     assert tarefa.situacao == Tarefa.Situacao.CONCLUIDA
     assert Comentario.objects.filter(tarefa=tarefa, texto__startswith="Entrega pronta").exists()

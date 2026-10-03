@@ -3,7 +3,8 @@
 Só lê: para cada link, a versão, o formato e o segmento que a pessoa vai ver,
 as somas de pontos possíveis, a faixa e a oferta de cada uma e o endereço final
 da saída com os parâmetros da campanha, montado pela mesma função da saída
-real. Nada é gravado e nenhum formulário é enviado. O endereço de teste de cada
+real, e a prova de cada saída real com um anúncio de origem completa (os 12
+parâmetros). Nada é gravado e nenhum formulário é enviado. O endereço de teste de cada
 experiência leva src=teste, que os relatórios deixam fora das taxas.
 """
 
@@ -19,6 +20,21 @@ from .painel_campanhas import _host_https, _ia_ligada, _montar_links, _quiz_priv
 
 LIMITE_SOMAS = 5000
 CAMPANHA_DE_TESTE = "teste-conferencia"
+# Um anúncio com a origem completa, de propósito com src e utm_source (e os
+# outros pares) diferentes: os dois valores precisam chegar à oferta.
+ORIGEM_DE_PROVA = {
+    "fmt": "text",
+    "seg": "frio",
+    "src": "meta",
+    "med": "cpc",
+    "cpg": "prova_da_origem",
+    "ctv": "anuncio_de_prova",
+    "utm_source": "facebook",
+    "utm_medium": "paid_social",
+    "utm_campaign": "prova_utm_campaign",
+    "utm_content": "prova_utm_content",
+    "utm_term": "prova_utm_term",
+}
 
 
 def _curto(texto, limite=90):
@@ -57,6 +73,22 @@ def _exemplo(soma, caminho):
     }
 
 
+def _prova_da_origem(versao_key, destino):
+    """A saída de um anúncio com os 12 parâmetros, pela mesma função da saída
+    real: o endereço final e o que se perdeu no caminho."""
+    chegada = {"v": versao_key, **ORIGEM_DE_PROVA}
+    contexto, utm = parametros_de_entrada(QueryDict(urlencode(chegada)))
+    final = destino_com_parametros(destino, utm, contexto)
+    destino_original = dict(parse_qsl(urlsplit(destino).query))
+    recebidos = dict(parse_qsl(urlsplit(final).query))
+    faltam = sorted(
+        chave
+        for chave, valor in chegada.items()
+        if chave not in destino_original and recebidos.get(chave) != valor
+    )
+    return {"url_final": final, "faltam": faltam}
+
+
 def _conferir_versao(versao):
     """Faixas, ofertas e somas possíveis de uma versão."""
     experiencia = versao.experience if isinstance(versao.experience, dict) else {}
@@ -89,6 +121,7 @@ def _conferir_versao(versao):
         oferta = ofertas.get(oferta_id) if oferta_id else None
         checkout = (oferta or {}).get("checkout_url") or ""
         destino = banda.botao_destino or ""
+        prova = None
         if oferta is None:
             problemas.append(f"A faixa {banda.key} não leva a nenhuma oferta.")
         elif checkout and destino != checkout:
@@ -98,9 +131,16 @@ def _conferir_versao(versao):
             )
         elif checkout:
             try:
-                destino_com_parametros(destino, {}, {})
+                prova = _prova_da_origem(versao.key, destino)
             except ValueError:
                 problemas.append(f"O destino da faixa {banda.key} não é HTTPS válido.")
+            else:
+                if prova["faltam"] and dentro:
+                    problemas.append(
+                        f"A saída da faixa {banda.key} perde "
+                        + ", ".join(prova["faltam"])
+                        + " quando o anúncio traz a origem completa."
+                    )
         if not dentro and somas:
             avisos.append(
                 f"A faixa {banda.key} ({banda.min_score} a {banda.max_score} pontos) "
@@ -117,6 +157,7 @@ def _conferir_versao(versao):
                 "oferta": _curto((oferta or {}).get("nome", "")),
                 "demonstracao": bool(oferta) and not checkout,
                 "destino": destino,
+                "prova_origem": prova,
                 "rotulo": banda.botao_rotulo,
                 "exemplos": [
                     _exemplo(s, caminhos[s]) for s in dict.fromkeys((dentro[0], dentro[-1]))
