@@ -11,7 +11,8 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
-from .models import Lead, Oportunidade, RegistroHistoricoOportunidade, TimelineEvent
+from .models import Oportunidade, RegistroHistoricoOportunidade, TimelineEvent
+from .contatos import contatos_dos_quizzes
 from .oportunidades import _como_oportunidade, _corpo, _escolha, _proximo_passo, _texto
 
 router = Router()
@@ -55,7 +56,9 @@ def _oportunidade(chave):
         identificador = uuid.UUID(str(chave))
     except (ValueError, TypeError, AttributeError):
         raise HttpError(404, "Oportunidade inexistente")
-    item = Oportunidade.objects.select_related("lead").filter(pk=identificador).first()
+    item = Oportunidade.objects.select_related("lead").filter(
+        pk=identificador, lead__in=contatos_dos_quizzes()
+    ).first()
     if item is None:
         raise HttpError(404, "Oportunidade inexistente")
     return item
@@ -70,9 +73,9 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
         raise HttpError(422, "Paginação inválida")
     if testes not in {"ocultar", "mostrar", "somente"}:
         raise HttpError(422, "testes deve ser ocultar, mostrar ou somente")
-    base = Oportunidade.objects.select_related("lead")
-    leads = Lead.objects.all()
-    eventos = TimelineEvent.objects.all()
+    leads = contatos_dos_quizzes()
+    base = Oportunidade.objects.select_related("lead").filter(lead__in=leads)
+    eventos = TimelineEvent.objects.filter(lead__in=leads)
     if site_id:
         base = base.filter(lead__site_id=site_id)
         leads = leads.filter(site_id=site_id)

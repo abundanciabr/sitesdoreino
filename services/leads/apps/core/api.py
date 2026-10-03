@@ -14,6 +14,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
+from .contatos import contatos_dos_quizzes
 
 router = Router()
 
@@ -252,7 +253,10 @@ def listar_leads(
     tag: str = None,
     pagina: int = 1,
     por_pagina: int = POR_PAGINA,
+    origem: str = "",
 ):
+    if origem not in {"", "quiz"}:
+        raise HttpError(422, "origem deve ser quiz")
     if pagina < 1:
         raise HttpError(422, "pagina começa em 1")
     if not 1 <= por_pagina <= POR_PAGINA_MAXIMO:
@@ -261,7 +265,8 @@ def listar_leads(
     ultimo = TimelineEvent.objects.filter(lead=OuterRef("pk")).order_by(
         "-occurred_at", "-id"
     )
-    consulta = Lead.objects.annotate(
+    base = contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    consulta = base.annotate(
         ultimo_evento=Subquery(ultimo.values("event")[:1]),
         ultimo_evento_em=Subquery(ultimo.values("occurred_at")[:1]),
     )
@@ -360,13 +365,16 @@ _FICHA_LEAD_OPENAPI = {
     summary="Ficha do contato: dados, origem, consentimento e linha do tempo",
     openapi_extra=_FICHA_LEAD_OPENAPI,
 )
-def ficha_do_lead(request, lead_id: str):
+def ficha_do_lead(request, lead_id: str, origem: str = ""):
+    if origem not in {"", "quiz"}:
+        raise HttpError(422, "origem deve ser quiz")
     # Identificador que não é UUID nunca existiu: 404 sem ir ao banco.
     try:
         chave = uuid.UUID(str(lead_id))
     except ValueError:
         raise HttpError(404, "Lead inexistente")
-    lead = Lead.objects.filter(id=chave).first()
+    base = contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    lead = base.filter(id=chave).first()
     if lead is None:
         raise HttpError(404, "Lead inexistente")
 

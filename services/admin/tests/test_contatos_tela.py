@@ -180,7 +180,7 @@ def test_lista_verdadeiramente_vazia_diz_que_o_zero_foi_medido():
     r = cliente.get(reverse("contatos"))
 
     assert r.status_code == 200
-    assert "Ainda não há nenhum contato" in r.content.decode()
+    assert "Ainda não há contatos vindos dos quizzes" in r.content.decode()
 
 
 @respx.mock
@@ -284,6 +284,7 @@ def test_a_procura_e_os_filtros_vao_na_pergunta_e_voltam_no_link_da_pagina():
     assert params["tag"] == "quente"
     assert params["site_id"] == "principal"
     assert params["pagina"] == "1"
+    assert params["origem"] == "quiz"
     corpo = r.content.decode()
     assert "Contatos 1 a 1, de 120" in corpo
     assert "pagina=2" in corpo
@@ -318,7 +319,7 @@ def test_procura_sem_resultado_nao_diz_que_a_casa_esta_vazia():
     corpo = cliente.get(reverse("contatos"), {"q": "ninguem"}).content.decode()
 
     assert "Nenhum contato casou com a sua procura" in corpo
-    assert "Ainda não há nenhum contato" not in corpo
+    assert "Ainda não há contatos vindos dos quizzes" not in corpo
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +350,7 @@ def test_leads_fora_do_ar_a_lista_diz_isso_e_nao_mostra_lista_vazia(falha):
     corpo = r.content.decode()
     assert r.status_code == 503
     assert "não respondeu agora" in corpo
-    assert "Ainda não há nenhum contato" not in corpo
+    assert "Ainda não há contatos vindos dos quizzes" not in corpo
     assert "Nenhum contato casou" not in corpo
 
 
@@ -368,7 +369,7 @@ def test_sem_o_par_de_senhas_a_lista_diz_que_nao_esta_ligada(monkeypatch):
     assert r.status_code == 503
     assert "ainda não está ligada" in corpo
     assert "Ana Souza" not in corpo
-    assert "Ainda não há nenhum contato" not in corpo
+    assert "Ainda não há contatos vindos dos quizzes" not in corpo
     assert not rota.called
 
 

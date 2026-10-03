@@ -20,6 +20,18 @@ def _pedido(caminho, **filtros):
     return pedido
 
 
+def test_cliente_consulta_somente_contatos_dos_quizzes():
+    cliente = LeadsClient()
+    lista = {"itens": [], "total": 0, "pagina": 2, "por_pagina": 25, "tem_mais": False}
+    ficha = {"id": str(ID), "linha_do_tempo": []}
+    with patch.object(cliente, "_pedir", return_value=(LeadsClient.OK, lista)) as pedir:
+        assert cliente.listar(q="Ana", tag="interessada", pagina=2, por_pagina=25) == (LeadsClient.OK, lista)
+    pedir.assert_called_once_with("/leads", {"pagina": 2, "por_pagina": 25, "origem": "quiz", "q": "Ana", "tag": "interessada"})
+    with patch.object(cliente, "_pedir", return_value=(LeadsClient.OK, ficha)) as pedir:
+        assert cliente.ficha(ID) == (LeadsClient.OK, ficha)
+    pedir.assert_called_once_with(f"/leads/{ID}", {"origem": "quiz"}, aceita_404=True)
+
+
 def test_lista_filtra_pagina_e_preserva_filtros():
     resposta = {
         "itens": [{"id": str(ID), "nome": "Ana", "tags": ["quente"], "criado_em": "2026-10-03T13:00:00Z"}],
