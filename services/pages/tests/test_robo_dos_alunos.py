@@ -33,7 +33,7 @@ def test_gerar_e_regerar_sao_rascunhos_e_usam_so_o_aluno(aluna, site_declarado, 
     meu.refresh_from_db()
     assert meu.apresentacao_publica == "Texto salvo" and not meu.vitrine_publicada
     html = cliente.get(reverse("apresentacao_publica"), **como()).content.decode()
-    assert html.count("Gerar texto de exemplo") == 2
+    assert "Gerar página e kit" in html and "Meu kit de vendas" in html
     script = cliente.get(reverse("script_robo"), **como())
     assert script.status_code == 200 and "javascript" in script["Content-Type"]
 

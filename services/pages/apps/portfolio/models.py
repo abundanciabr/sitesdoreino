@@ -190,6 +190,10 @@ class Portfolio(models.Model):
     publicada_em = models.DateTimeField(null=True, blank=True)
     apresentacao_publica = models.TextField(blank=True, default="", db_default="")
     servico_publico = models.TextField(blank=True, default="", db_default="")
+    oferta_comercial = models.JSONField(default=dict, blank=True, db_default={})
+    apresentacao_comercial = models.JSONField(default=dict, blank=True, db_default={})
+    kit_vendas = models.JSONField(default=dict, blank=True, db_default={})
+    prospeccao_comercial = models.JSONField(default=dict, blank=True, db_default={})
 
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -316,6 +320,7 @@ class Peca(models.Model):
     uso_pretendido = models.TextField(blank=True, default="", db_default="")
     contribuicao = models.TextField(blank=True, default="", db_default="")
     duvida = models.TextField(blank=True, default="", db_default="")
+    provas_comerciais = models.JSONField(default=list, blank=True, db_default=[])
     mostrar_na_pagina_publica = models.BooleanField(default=False, db_default=False)
 
     link = models.URLField(max_length=500)

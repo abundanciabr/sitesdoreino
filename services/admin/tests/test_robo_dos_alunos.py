@@ -1,5 +1,6 @@
 import json
 from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 import httpx
 import pytest
@@ -87,3 +88,138 @@ def test_configuracao_dos_alunos_nao_altera_modelo_da_equipe():
     assert antes == (conexao.modelo_rapido, conexao.modelo_forte, conexao.segredo_cifrado)
     pagina = cliente.get("/robos/")
     assert pagina.status_code == 200 and "Robô dos alunos" in pagina.content.decode()
+
+
+def conteudo_comercial():
+    return {
+        "versao": 1,
+        "posicionamento": {"comprador": "Estúdio", "necessidade": "Cenário",
+                          "oferta": "Objeto 3D", "prova": "Peça no portfólio"},
+        "pagina": {"titulo": "Objetos para seu mundo", "subtitulo": "3D para projetos Roblox",
+                   "apresentacao": "Crio objetos para mundos de jogo.",
+                   "oferta": "Converse sobre o objeto de que precisa.",
+                   "continuidade": "Podemos conversar sobre novas peças.",
+                   "diferenciais": "Trabalho demonstrado no portfólio.",
+                   "condicoes": "Escopo a combinar.", "duvidas": "Como começar? Envie seu projeto.",
+                   "cta": "Conte sobre seu projeto.", "trabalho_destaque": "p1",
+                   "legendas": [{"peca_id": "p1", "titulo": "Peça", "texto": "Objeto 3D."}]},
+        "kit": {"apresentacao_principal": "Crio objetos 3D para mundos Roblox.",
+                "bio_curta": "Criador 3D para Roblox.",
+                "abordagem": "Olá, seu projeto pode usar esta peça como referência.",
+                "proposta": "Podemos definir juntos o objeto e o escopo."},
+    }
+
+
+def test_completo_envia_imagem_separada_e_devolve_contrato(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    conteudo = conteudo_comercial()
+    with patch.object(modelo, "responder", return_value=SimpleNamespace(
+        texto=json.dumps({"conteudo": conteudo}), completa=True,
+    )) as chamar:
+        resposta = pedido(campo="completo", contexto={
+            "trabalhos": [{"id": "p1", "legenda": "Objeto 3D"}],
+            "imagens": [{"peca_id": "p1", "data_url": "data:image/png;base64,AAAA"}],
+            "oferta": {"comprador": "Estúdio", "exibir_preco": False},
+        })
+    assert resposta.status_code == 200
+    assert resposta.json()["conteudo"] == conteudo
+    assert resposta.json()["visao"] is True
+    argumentos = chamar.call_args.kwargs
+    assert argumentos["max_saida"] == 6500 and argumentos["esforco"] == "medium"
+    assert argumentos["formato"]["type"] == "json_schema"
+    assert argumentos["formato"]["strict"] is True
+    partes = argumentos["itens"][0]["content"]
+    assert partes[-1] == {"type": "input_image", "image_url": "data:image/png;base64,AAAA", "detail": "low"}
+    assert "base64" not in partes[0]["text"]
+    assert "Hormozi" in argumentos["instrucoes"]
+    assert "NUNCA escreva números de preço" in argumentos["instrucoes"]
+    assert "kit.proposta" in argumentos["instrucoes"]
+    assert "Quatro exemplos sintéticos completos" in argumentos["instrucoes"]
+    assert '"u1"' in argumentos["instrucoes"] and '"a2"' in argumentos["instrucoes"]
+    assert '"m3"' in argumentos["instrucoes"]
+    assert "Vamos conversar sobre seu visual 3D" in argumentos["instrucoes"]
+    assert 'prospeccao.idioma' in argumentos["instrucoes"]
+
+
+def test_url_https_publica_e_aceita_e_endereco_interno_e_rejeitado(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    conteudo = conteudo_comercial()
+    with patch.object(modelo, "responder", return_value=SimpleNamespace(
+        texto=json.dumps({"conteudo": conteudo}), completa=True,
+    )) as chamar:
+        resposta = pedido(campo="completo", contexto={
+            "trabalhos": [{"id": "p1"}],
+            "imagens": [{"peca_id": "p1", "data_url": "https://cdn.example.com/peca.webp"}],
+        })
+    assert resposta.status_code == 200 and resposta.json()["visao"] is True
+    assert chamar.call_args.kwargs["itens"][0]["content"][-1]["image_url"] == "https://cdn.example.com/peca.webp"
+    for url in ("https://localhost/x", "https://127.0.0.1/x", "https://10.0.0.1/x",
+                "https://arquivo.local/x", "https://usuario:senha@example.com/x",
+                "https://intranet/x", "http://example.com/x"):
+        assert pedido(campo="completo", contexto={
+            "trabalhos": [{"id": "p1"}], "imagens": [{"peca_id": "p1", "data_url": url}],
+        }).status_code == 422
+
+
+def test_recusa_especifica_de_imagem_repete_uma_vez_sem_visao(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    conteudo = conteudo_comercial()
+    with patch.object(modelo, "responder", side_effect=[
+        modelo.PedidoRecusado("modelo não suporta image input"),
+        SimpleNamespace(texto=json.dumps({"conteudo": conteudo}), completa=True),
+    ]) as chamar:
+        resposta = pedido(campo="completo", contexto={
+            "trabalhos": [{"id": "p1"}],
+            "imagens": [{"peca_id": "p1", "data_url": "data:image/png;base64,AAAA"}],
+        })
+    assert resposta.status_code == 200 and resposta.json()["visao"] is False
+    assert chamar.call_count == 2
+    assert len(chamar.call_args.kwargs["itens"][0]["content"]) == 1
+
+
+def test_erro_geral_nao_repete_sem_imagem(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    with patch.object(modelo, "responder", side_effect=modelo.PedidoRecusado(
+        "pedido recusado por parâmetro"
+    )) as chamar:
+        resposta = pedido(campo="completo", contexto={
+            "trabalhos": [{"id": "p1"}],
+            "imagens": [{"peca_id": "p1", "data_url": "data:image/png;base64,AAAA"}],
+        })
+    assert resposta.status_code == 503 and chamar.call_count == 1
+
+
+def test_secao_preserva_demais_campos_mesmo_se_modelo_os_alterar(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    atual = conteudo_comercial()
+    novo = json.loads(json.dumps(atual))
+    novo["kit"]["bio_curta"] = "Objetos 3D para mundos Roblox."
+    contexto = {"trabalhos": [{"id": "p1"}], "conteudo_atual": atual}
+    with patch.object(modelo, "responder", return_value=SimpleNamespace(
+        texto=json.dumps({"conteudo": novo}), completa=True,
+    )):
+        assert pedido(campo="kit.bio_curta", contexto=contexto).json()["conteudo"] == novo
+    novo["pagina"]["titulo"] = "Título alterado"
+    with patch.object(modelo, "responder", return_value=SimpleNamespace(
+        texto=json.dumps({"conteudo": novo}), completa=True,
+    )):
+        resposta = pedido(campo="kit.bio_curta", contexto=contexto)
+    assert resposta.status_code == 200
+    assert resposta.json()["conteudo"]["kit"]["bio_curta"] == novo["kit"]["bio_curta"]
+    assert resposta.json()["conteudo"]["pagina"]["titulo"] == atual["pagina"]["titulo"]
+
+
+def test_contrato_incompleto_nao_substitui_texto(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_PAGES", "pages")
+    ativar()
+    with patch.object(modelo, "responder", return_value=SimpleNamespace(
+        texto='{"conteudo":{"versao":1}}', completa=True,
+    )):
+        resposta = pedido(campo="completo", contexto={})
+    assert resposta.status_code == 503
+    assert "mantido" in resposta.json()["erro"]

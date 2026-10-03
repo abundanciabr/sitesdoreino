@@ -188,3 +188,25 @@ def test_privada_so_dono_com_matricula_ativa_ou_equipe(monkeypatch):
         return_value={"autenticado": True, "id": "equipe", "email": "prof@test"},
     ), patch("apps.core.equipe.e_da_equipe", return_value=True):
         assert servir_imagem(pedido, imagem.id).status_code == 200
+
+
+@pytest.mark.django_db
+def test_prova_propria_associada_so_abre_com_peca_e_portfolio_publicados(monkeypatch):
+    monkeypatch.setenv("SITE_ID", "escola-a")
+    obra = guardar(arquivo(), site_id="escola-a", aluno_id="ana", legenda="Final", base_url="https://site.test")
+    prova = guardar(arquivo(), site_id="escola-a", aluno_id="ana", legenda="Wireframe", base_url="https://site.test")
+    pedido = RequestFactory().get("/portfolio/imagens/" + str(prova.imagem_enviada.id))
+    obra.provas_comerciais = [{"tipo": "wireframe", "link": prova.link}]
+    obra.mostrar_na_pagina_publica = True
+    obra.save()
+    assert servir_imagem(pedido, prova.imagem_enviada.id).status_code == 404
+    portfolio = obra.portfolio
+    from django.utils import timezone
+    portfolio.apelido = "ana"
+    portfolio.vitrine_publicada = True
+    portfolio.publicada_em = timezone.now()
+    portfolio.save()
+    assert servir_imagem(pedido, prova.imagem_enviada.id).status_code == 200
+    obra.mostrar_na_pagina_publica = False
+    obra.save()
+    assert servir_imagem(pedido, prova.imagem_enviada.id).status_code == 404

@@ -157,3 +157,8 @@ def obras(portfolio: Portfolio) -> list[Peca]:
         .exclude(estado_do_link=EstadoDoLink.QUEBRADO)
         .order_by("ordem")
     )
+
+
+def contexto_comercial(portfolio):
+    from .comercial import contexto_publico
+    return contexto_publico(portfolio, obras(portfolio))

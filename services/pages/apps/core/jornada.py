@@ -9,7 +9,7 @@ from pathlib import Path
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
-from apps.portfolio import conferencia, projetos
+from apps.portfolio import conferencia, projetos, comercial as textos_comerciais
 from apps.portfolio.models import Peca, Portfolio, ProjetoAutoral
 from apps.portfolio.quiz_client import QuizIndisponivel, QuizRecusado, quiz
 from .views import de_fora, site_atual, sem_escola
@@ -129,6 +129,7 @@ PUBLICOS = [
     ("criadores", "Criadores de experiências Roblox"),
     ("marcas", "Clientes e equipes que encomendam itens para avatares"),
     ("jogadores", "Jogadores que compram itens para seus avatares"),
+    ("equipes_marcas", "Marcas e estúdios que criam experiências Roblox"),
     ("descobrir", "Quero descobrir quem pode se interessar"),
 ]
 PECAS = [
@@ -186,6 +187,8 @@ CAMPOS_COMERCIAIS = {
         "divulgacao",
         "objetivo_apresentacao",
         "primeira_acao",
+        *tuple("oferta_" + campo for campo in textos_comerciais.OFERTA),
+        "oferta_exibir_preco",
     ),
     "escolha_final": (),
 }
@@ -621,15 +624,17 @@ def gerar_exemplo(request):
     from apps.portfolio import robo
     campo = request.POST.get("campo", "")
     if campo not in robo.CAMPOS:
-        return JsonResponse({"erro": "Escolha um dos campos da apresentação."}, status=422)
+        return JsonResponse({"erro": "Escolha a apresentação ou uma das seções para gerar."}, status=422)
     try:
         dados = robo.contexto(dono(request), request.POST)
-        texto = robo.gerar(campo, dados)
-        resposta = JsonResponse({"texto": texto})
+        resultado = robo.gerar(campo, dados)
+        resposta = JsonResponse({"visao": resultado.pop("_visao", False), "conteudo": resultado} if isinstance(resultado, dict) else {"texto": resultado})
         resposta["Cache-Control"] = "no-store"
         return resposta
     except (robo.RoboIndisponivel, QuizIndisponivel) as erro:
         return JsonResponse({"erro": str(erro)}, status=503)
+    except ValueError as erro:
+        return JsonResponse({"erro": str(erro)}, status=422)
 
 
 @require_GET
@@ -644,6 +649,20 @@ def apresentacao_publica(request):
     if not escola:
         return sem_escola(request)
     portfolio = Portfolio.objects.do_aluno(**dono(request)).first()
+    trabalhos = list(Peca.objects.do_aluno(**dono(request)).order_by("ordem"))
+    ids = [i.pk for i in trabalhos]
+    respostas = {}
+    try:
+        respostas = (quiz.chamar("exploracoes/atual", **dono(request)) or {}).get("respostas", {})
+    except (QuizIndisponivel, QuizRecusado):
+        pass
+    dados = request.POST if request.method == "POST" else None
+    oferta = textos_comerciais.oferta_de(portfolio, respostas, dados)
+    prospeccao = textos_comerciais.prospeccao_de(portfolio, dados)
+    try:
+        conteudo = textos_comerciais.conteudo_de(portfolio, dados, ids)
+    except ValueError as erro:
+        return problema(request, str(erro), 422)
     if request.method == "POST":
         textos = {
             chave: request.POST.get(chave, "").strip()
@@ -653,17 +672,39 @@ def apresentacao_publica(request):
             return problema(
                 request, "Use até 3000 caracteres em cada texto da apresentação.", 422
             )
+        legado = "conteudo_json" not in request.POST and "pagina_apresentacao" not in request.POST
+        if not legado:
+            textos = {"apresentacao_publica": conteudo["pagina"]["apresentacao"], "servico_publico": conteudo["pagina"]["oferta"]}
         with transaction.atomic():
             portfolio, _ = Portfolio.objects.get_or_create(**dono(request))
             for chave, valor in textos.items():
                 setattr(portfolio, chave, valor)
-            portfolio.save(update_fields=list(textos))
+            portfolio.oferta_comercial = oferta
+            portfolio.apresentacao_comercial = {"versao": 1, "posicionamento": conteudo["posicionamento"], "pagina": conteudo["pagina"]}
+            portfolio.kit_vendas = conteudo["kit"]
+            portfolio.prospeccao_comercial = prospeccao
+            portfolio.save(update_fields=[*textos, "oferta_comercial", "apresentacao_comercial", "kit_vendas", "prospeccao_comercial"])
+            selecionados = set(request.POST.getlist("trabalhos_ids")) if "selecao_trabalhos" in request.POST else None
+            for trabalho in trabalhos:
+                campos = []
+                if selecionados is not None:
+                    trabalho.mostrar_na_pagina_publica = str(trabalho.pk) in selecionados
+                    campos.append("mostrar_na_pagina_publica")
+                if "provas_" + str(trabalho.pk) in request.POST:
+                    trabalho.provas_comerciais = textos_comerciais.provas_de(request.POST["provas_" + str(trabalho.pk)])
+                    campos.append("provas_comerciais")
+                if campos:
+                    trabalho.save(update_fields=[*campos, "atualizada_em"])
         return redirect("apresentacao_publica")
     return desenhar(
         request,
         "apresentacao.html",
         {
             "portfolio": portfolio,
+            "oferta": oferta,
+            "prospeccao": prospeccao,
+            "conteudo": conteudo,
+            "trabalhos": textos_comerciais.preparar_trabalhos(trabalhos, conteudo),
             "selecionados": (
                 portfolio.pecas.filter(mostrar_na_pagina_publica=True)
                 if portfolio

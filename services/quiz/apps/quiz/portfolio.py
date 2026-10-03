@@ -37,7 +37,8 @@ OPCOES = {
     "experiencia_comercial": {"nunca", "encomendas", "profissional"},
     "tem_trabalhos": {"nenhum", "rascunhos", "prontos"},
     "caminho_comercial": {"experiencias", "ugc_clientes", "marketplace", "explorar"},
-    "publico": {"criadores", "marcas", "jogadores", "descobrir"},
+    "publico": {"criadores", "marcas", "equipes_marcas", "jogadores", "descobrir"},
+    "oferta_exibir_preco": {"sim", "nao"},
     "pronta_entrega": {"desenvolvimento", "comercial"},
     "primeira_peca": {"cabelo", "roupa", "chapeu", "outra", "nenhuma"},
     "acrescentar": {"sim", "nao"},
@@ -56,6 +57,11 @@ TEXTOS = {
     "objetivo_apresentacao": 3000,
     "servico_proprio": 3000,
     "primeira_acao": 3000,
+    **{f"oferta_{campo}": 3000 for campo in (
+        "encomenda", "comprador", "uso", "entregaveis", "formatos",
+        "prazo", "revisoes", "suporte", "preco", "moeda",
+        "condicoes", "continuidade", "contato",
+    )},
     **{campo: 100 for campo in OPCOES},
 }
 PROPOSTA_CAMPOS = {
@@ -232,7 +238,7 @@ def _catalogo(site):
 
 
 def _validar_respostas(respostas, *, comercial=True):
-    if not isinstance(respostas, dict) or len(respostas) > 35:
+    if not isinstance(respostas, dict) or len(respostas) > 50:
         raise ValueError("Respostas inválidas.")
     desconhecidos = set(respostas) - LISTAS - set(TEXTOS) - {"proposta_editada"}
     if desconhecidos:
@@ -313,6 +319,7 @@ def _plano(respostas, proposta=None):
     publicos = {
         "criadores": "criadores de experiências Roblox",
         "marcas": "marcas e clientes",
+        "equipes_marcas": "equipes de marcas que encomendam experiências ou itens Roblox",
         "jogadores": "jogadores e compradores",
         "descobrir": "público a definir ao apresentar os primeiros trabalhos",
     }
@@ -458,6 +465,23 @@ def _plano(respostas, proposta=None):
             "Identifique peças em desenvolvimento antes de oferecê-las como entrega comercial."
         )
     razoes.append(continuidade)
+    oferta_campos = (
+        "encomenda", "comprador", "uso", "entregaveis", "formatos",
+        "prazo", "revisoes", "suporte", "preco", "moeda",
+        "condicoes", "continuidade", "contato", "exibir_preco",
+    )
+    oferta_comercial = {
+        campo: respostas.get(f"oferta_{campo}", "") for campo in oferta_campos
+    }
+    oferta_comercial["encomenda"] = (
+        oferta_comercial["encomenda"]
+        or respostas.get("servico_proprio")
+        or servicos[caminho]
+    )
+    oferta_comercial["comprador"] = (
+        oferta_comercial["comprador"]
+        or publicos.get(respostas.get("publico", "descobrir"), "")
+    )
     return {
         "servico": respostas.get("servico_proprio") or servicos[caminho],
         "publico": publicos.get(respostas.get("publico", "descobrir")),
@@ -474,6 +498,7 @@ def _plano(respostas, proposta=None):
         "continuidade": continuidade,
         "objetivo_apresentacao": respostas.get("objetivo_apresentacao", ""),
         "por_que": " ".join(razoes),
+        "oferta_comercial": oferta_comercial,
     }
 
 

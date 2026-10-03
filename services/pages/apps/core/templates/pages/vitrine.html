@@ -4,63 +4,143 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<title>Portfólio de {{ apelido }} | Meshcraft Academy</title>
+<title>{% if comercial.titulo %}{{ comercial.titulo }}{% else %}Portfólio de {{ apelido }}{% endif %} | Meshcraft Academy</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 48rem; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
-  h1 { font-size: 2.2rem; line-height: 1.2; margin: 0 0 .35rem; }
-  h2 { font-size: 1.25rem; margin: 1.8rem 0 .4rem; }
+  :root { color-scheme: light; --ink: #1a302b; --muted: #566963; --paper: #f7f8f3; --line: #d9e0d8; --accent: #145446; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 3px solid #bc793d; outline-offset: 3px; }
+  .wrap { width: min(100% - 2.5rem, 70rem); margin-inline: auto; }
+  .topo { border-bottom: 1px solid var(--line); }
+  .topo .wrap { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding-block: 1rem; }
+  .marca { color: var(--ink); text-decoration: none; font-weight: 750; }
+  .topo nav { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: .9rem; }
+  .topo nav a { color: var(--ink); text-decoration: none; }
+  .hero { display: grid; grid-template-columns: 1fr .92fr; align-items: center; gap: clamp(2rem, 5vw, 5rem); padding-block: clamp(3rem, 7vw, 6rem); }
+  .sobretitulo { margin: 0 0 1rem; color: var(--accent); font-size: .75rem; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+  h1, h2, h3 { line-height: 1.12; letter-spacing: -.035em; }
+  h1 { margin: 0 0 1.2rem; font-size: clamp(2.5rem, 5vw, 5rem); max-width: 13ch; }
+  h2 { margin: 0 0 1.25rem; font-size: clamp(1.8rem, 3.2vw, 3rem); }
+  h3 { margin: 0 0 .65rem; font-size: 1.25rem; }
   p { margin: 0 0 1rem; }
-  .miudo { font-size: .9rem; opacity: .8; }
-  .intro { max-width: 42rem; white-space: pre-line; }
-  .servico { padding: 1rem 1.2rem; border-left: .25rem solid currentColor; background: rgba(128,128,128,.12); white-space: pre-line; }
-  .selo { padding: .75rem 1rem; border-left: .25rem solid currentColor; background: rgba(128,128,128,.12); }
-  .obras { list-style: none; padding: 0; margin: 2.5rem 0 0; }
-  .obra { margin: 0 0 3rem; }
-  .obra img { display: block; width: 100%; height: auto; border-radius: .4rem; background: rgba(128,128,128,.12); }
-  .obra .legenda { font-weight: 600; margin: .6rem 0 0; }
-  .obra .destaque { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
-  .vazio { padding: .75rem 1rem; background: rgba(128,128,128,.12); }
-  .assinatura { max-width: 48rem; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; border-top: 1px solid rgba(128,128,128,.35); font-size: .9rem; }
+  .intro { max-width: 55ch; font-size: clamp(1.05rem, 1.7vw, 1.28rem); white-space: pre-line; }
+  .miudo { color: var(--muted); font-size: .9rem; }
+  .texto-longo { white-space: pre-line; overflow-wrap: anywhere; }
+  .acoes { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem 1.25rem; margin-top: 1.8rem; }
+  .botao { display: inline-block; border-radius: 999px; padding: .85rem 1.35rem; background: var(--accent); color: #fff; text-decoration: none; font-weight: 700; }
+  .botao:hover { background: #0d392f; }
+  .hero-arte { margin: 0; min-width: 0; }
+  .hero-arte img { display: block; width: 100%; aspect-ratio: 4/4.5; object-fit: cover; border-radius: 1.2rem; background: #e5eee7; box-shadow: 0 1.5rem 3rem #192c2920; }
+  .hero-arte figcaption { padding-top: .7rem; color: var(--muted); font-size: .86rem; }
+  .faixa { border-block: 1px solid var(--line); padding-block: 1rem; font-size: .88rem; }
+  .faixa .wrap { display: flex; gap: .5rem 2rem; flex-wrap: wrap; }
+  .secao { padding-block: clamp(3.5rem, 7vw, 6.5rem); }
+  .secao + .secao { border-top: 1px solid var(--line); }
+  .secao-cabecalho { max-width: 43rem; margin-bottom: 2.1rem; }
+  .obras { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2.2rem; list-style: none; padding: 0; margin: 0; }
+  .obra { min-width: 0; }
+  .obra .imagem { display: block; overflow: hidden; border-radius: .9rem; background: #e5eee7; }
+  .obra img { display: block; width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+  .obra h3 { margin: 1rem 0 .3rem; }
+  .obra .legenda { margin: 0 0 .7rem; white-space: pre-line; }
+  .obra .destaque { color: var(--accent); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 750; }
   .obra .endereco { display: none; }
+  .provas { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; margin: 1rem 0 0; padding: 0; }
+  .provas a { display: inline-block; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: .5rem; font-size: .88rem; text-decoration: none; overflow-wrap: anywhere; }
+  .grade-oferta { display: grid; grid-template-columns: .8fr 1.2fr; gap: clamp(2rem, 5vw, 5rem); }
+  .oferta-cartao { background: #fff; border: 1px solid var(--line); border-radius: 1rem; padding: clamp(1.3rem, 3vw, 2.5rem); }
+  .detalhes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.3rem 2rem; margin: 1.4rem 0; }
+  .detalhes div { border-top: 1px solid var(--line); padding-top: .8rem; }
+  .detalhes dt { color: var(--muted); font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+  .detalhes dd { margin: .25rem 0 0; white-space: pre-line; overflow-wrap: anywhere; }
+  .preco { margin-top: 1.7rem; font-size: 1.3rem; font-weight: 750; }
+  .duvidas { max-width: 48rem; }
+  .selo { border-left: .2rem solid var(--accent); padding: .5rem 0 .5rem 1rem; }
+  .final { background: var(--ink); color: #fff; padding-block: clamp(3.5rem, 7vw, 6rem); }
+  .final h2 { max-width: 16ch; }
+  .final p { color: #d8e4dd; max-width: 38rem; }
+  .final .botao { color: var(--ink); background: #d6edce; }
+  .vazio { padding: 1.2rem; background: #e5eee7; border-radius: .7rem; }
+  .assinatura { border-top: 1px solid var(--line); padding-block: 1.7rem 2.5rem; }
+  @media (max-width: 740px) { .hero, .grade-oferta, .obras { grid-template-columns: 1fr; } .hero-arte { max-width: 35rem; } .hero-arte img { aspect-ratio: 4/3; } }
+  @media (max-width: 450px) { .detalhes { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   @media print {
     :root { color-scheme: light; }
-    body { background: #fff; color: #000; }
-    main { max-width: none; padding: 0; }
-    .obra { break-inside: avoid; page-break-inside: avoid; margin: 0 0 1.5rem; }
+    body { background: #fff; color: #000; font-size: 11pt; }
+    .wrap { width: 100%; }
+    .topo nav, .acoes, .final .botao { display: none; }
+    .hero { display: block; padding-block: 1rem; }
+    .hero-arte img { max-height: 9cm; width: auto; box-shadow: none; }
+    .secao { padding-block: 1.5rem; }
+    .obras, .grade-oferta { display: block; }
+    .obra, .oferta-cartao { break-inside: avoid; page-break-inside: avoid; margin: 0 0 1.5rem; }
     .obra img { max-height: 15cm; width: auto; }
     .obra .endereco { display: block; overflow-wrap: anywhere; }
-    .assinatura { border-top: 1px solid #999; }
+    .final { background: #fff; color: #000; border-top: 1px solid #999; }
+    .final p { color: #000; }
   }
 </style>
 </head>
 <body>
-<main>
+{% if comercial %}
+<header class="topo"><div class="wrap"><a class="marca" href="#inicio">{{ apelido }}</a><nav aria-label="Navegação da página"><a href="#trabalhos">Trabalhos</a>{% if oferta or comercial.oferta %}<a href="#encomendas">Encomendas</a>{% endif %}{% if contato_url %}<a href="#contato">Contato</a>{% endif %}</nav></div></header>
+<main id="inicio">
+  <section class="hero wrap" aria-labelledby="titulo-principal">
+    <div>
+      <p class="sobretitulo">{{ apelido }} · Modelagem 3D para Roblox</p>
+      <h1 id="titulo-principal">{{ comercial.titulo|default:apelido }}</h1>
+      {% if comercial.subtitulo %}<p class="intro">{{ comercial.subtitulo }}</p>{% endif %}
+      {% if comercial.apresentacao %}<p class="texto-longo">{{ comercial.apresentacao }}</p>{% elif portfolio.apresentacao_publica %}<p class="texto-longo">{{ portfolio.apresentacao_publica }}</p>{% endif %}
+      <div class="acoes">{% if contato_url %}<a class="botao" href="{{ contato_url }}" rel="noopener noreferrer">{{ comercial.cta|default:"Enviar meu projeto" }}</a>{% endif %}<a href="#trabalhos">Ver trabalhos</a></div>
+    </div>
+    {% if hero %}<figure class="hero-arte"><img src="{{ hero.link }}" alt="{{ hero.titulo_comercial|default:hero.legenda|default:'Trabalho em destaque' }}"><figcaption>{{ hero.titulo_comercial|default:hero.legenda }}</figcaption></figure>{% endif %}
+  </section>
+  {% if selo_em %}<div class="faixa"><div class="wrap"><span>Conferência registrada em {{ selo_em|date:"d/m/Y" }}.</span><span>Trabalhos podem ter sido alterados depois dessa data.</span></div></div>{% endif %}
+  <section class="secao wrap" id="trabalhos" aria-labelledby="titulo-trabalhos">
+    <div class="secao-cabecalho"><p class="sobretitulo">Portfólio</p><h2 id="titulo-trabalhos">Trabalhos selecionados</h2>{% if comercial.diferenciais %}<p class="texto-longo">{{ comercial.diferenciais }}</p>{% endif %}</div>
+    {% if obras %}<ol class="obras">{% for obra in obras %}
+      <li class="obra">
+        <a class="imagem" href="{{ obra.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ obra.link }}" alt="{{ obra.titulo_comercial|default:obra.legenda|default:'Imagem do trabalho' }}" loading="lazy"></a>
+        <h3>{% if obra.destaque %}<span class="destaque">Em destaque · </span>{% endif %}{{ obra.titulo_comercial|default:obra.legenda|default:"Trabalho sem descrição" }}</h3>
+        {% if obra.texto_comercial %}<p class="legenda">{{ obra.texto_comercial }}</p>{% elif obra.legenda and obra.titulo_comercial %}<p class="legenda">{{ obra.legenda }}</p>{% endif %}
+        {% if obra.contribuicao %}<p><strong>Minha participação:</strong> {{ obra.contribuicao }}</p>{% endif %}
+        {% if obra.uso_pretendido %}<p><strong>Uso previsto:</strong> {{ obra.uso_pretendido }}</p>{% endif %}
+        {% if obra.provas_visiveis %}<ul class="provas" aria-label="Materiais deste trabalho">{% for prova in obra.provas_visiveis %}<li><a href="{{ prova.link }}" target="_blank" rel="noopener noreferrer">{{ prova.descricao|default:prova.tipo }}</a></li>{% endfor %}</ul>{% endif %}
+        <p class="miudo endereco">{{ obra.link }}</p>
+      </li>
+    {% endfor %}</ol>{% else %}<p class="vazio">O autor ainda não selecionou trabalhos para esta página.</p>{% endif %}
+  </section>
+  {% if oferta or comercial.oferta or comercial.continuidade or comercial.condicoes %}
+  <section class="secao wrap grade-oferta" id="encomendas" aria-labelledby="titulo-encomendas">
+    <div><p class="sobretitulo">Encomendas</p><h2 id="titulo-encomendas">O que posso criar</h2>{% if comercial.oferta %}<p class="texto-longo">{{ comercial.oferta }}</p>{% elif oferta.encomenda %}<p class="texto-longo">{{ oferta.encomenda }}</p>{% elif portfolio.servico_publico %}<p class="texto-longo">{{ portfolio.servico_publico }}</p>{% endif %}{% if comercial.continuidade %}<h3>Continuidade</h3><p class="texto-longo">{{ comercial.continuidade }}</p>{% elif oferta.continuidade %}<h3>Continuidade</h3><p class="texto-longo">{{ oferta.continuidade }}</p>{% endif %}</div>
+    <div class="oferta-cartao"><h3>Detalhes da encomenda</h3><dl class="detalhes">
+      {% if oferta.comprador %}<div><dt>Para quem</dt><dd>{{ oferta.comprador }}</dd></div>{% endif %}
+      {% if oferta.uso %}<div><dt>Uso previsto</dt><dd>{{ oferta.uso }}</dd></div>{% endif %}
+      {% if oferta.entregaveis %}<div><dt>Entregáveis</dt><dd>{{ oferta.entregaveis }}</dd></div>{% endif %}
+      {% if oferta.formatos %}<div><dt>Formatos</dt><dd>{{ oferta.formatos }}</dd></div>{% endif %}
+      {% if oferta.prazo %}<div><dt>Prazo</dt><dd>{{ oferta.prazo }}</dd></div>{% endif %}
+      {% if oferta.revisoes %}<div><dt>Revisões</dt><dd>{{ oferta.revisoes }}</dd></div>{% endif %}
+      {% if oferta.suporte %}<div><dt>Suporte</dt><dd>{{ oferta.suporte }}</dd></div>{% endif %}
+    </dl>
+    {% if oferta.exibir_preco and oferta.preco %}<p class="preco">{{ oferta.moeda }} {{ oferta.preco }}</p>{% endif %}
+    {% if comercial.condicoes %}<h3>Condições</h3><p class="texto-longo">{{ comercial.condicoes }}</p>{% elif oferta.condicoes %}<h3>Condições</h3><p class="texto-longo">{{ oferta.condicoes }}</p>{% endif %}</div>
+  </section>{% endif %}
+  {% if comercial.duvidas %}<section class="secao wrap duvidas" aria-labelledby="titulo-duvidas"><p class="sobretitulo">Antes de começar</p><h2 id="titulo-duvidas">Dúvidas frequentes</h2><p class="texto-longo">{{ comercial.duvidas }}</p></section>{% endif %}
+  <section class="final" id="contato"><div class="wrap"><p class="sobretitulo">Próximo passo</p><h2>Vamos conversar sobre seu projeto?</h2>{% if contato_url %}<p>Conte o que você precisa e receba uma resposta pelo canal informado pelo autor.</p><a class="botao" href="{{ contato_url }}" rel="noopener noreferrer">{{ comercial.cta|default:"Enviar meu projeto" }}</a>{% else %}<p>O autor ainda não informou um canal de contato nesta página.</p>{% endif %}</div></section>
+</main>
+{% else %}
+<main class="wrap"><section class="secao">
   <h1>{{ apelido }}</h1>
   <p class="miudo">Modelagem 3D para experiências Roblox</p>
   {% if portfolio.apresentacao_publica %}<p class="intro">{{ portfolio.apresentacao_publica }}</p>{% endif %}
-  {% if portfolio.servico_publico %}<section aria-labelledby="servico"><h2 id="servico">O que posso criar</h2><p class="servico">{{ portfolio.servico_publico }}</p></section>{% endif %}
-  {% if selo_em %}
-    <p class="selo">Conferência registrada em {{ selo_em|date:"d/m/Y" }}.</p>
-    <p class="miudo">Trabalhos podem ter sido alterados depois dessa data.</p>
-  {% endif %}
-  {% if obras %}
-    <h2>Trabalhos selecionados</h2>
-    <ol class="obras">
-    {% for obra in obras %}
-      <li class="obra">
-        <a href="{{ obra.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ obra.link }}" alt="{{ obra.legenda|default:'Imagem do trabalho' }}"></a>
-        <p class="legenda">{% if obra.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ obra.legenda|default:"Trabalho sem descrição" }}</p>
-        {% if obra.uso_pretendido %}<p>{{ obra.uso_pretendido }}</p>{% endif %}
-        <p class="miudo endereco">{{ obra.link }}</p>
-      </li>
-    {% endfor %}
-    </ol>
-  {% else %}
-    <p class="vazio">O autor ainda não selecionou trabalhos para esta página.</p>
-  {% endif %}
-</main>
-<footer class="assinatura"><p class="miudo">Portfólio publicado na <a href="{{ url_da_capa }}">Meshcraft Academy</a>, escola de modelagem 3D para Roblox.</p></footer>
+  {% if portfolio.servico_publico %}<section aria-labelledby="servico"><h2 id="servico">O que posso criar</h2><p class="texto-longo">{{ portfolio.servico_publico }}</p></section>{% endif %}
+  {% if selo_em %}<p class="selo">Conferência registrada em {{ selo_em|date:"d/m/Y" }}.</p><p class="miudo">Trabalhos podem ter sido alterados depois dessa data.</p>{% endif %}
+  {% if obras %}<h2>Trabalhos selecionados</h2><ol class="obras">{% for obra in obras %}<li class="obra"><a class="imagem" href="{{ obra.link }}" target="_blank" rel="noopener noreferrer"><img src="{{ obra.link }}" alt="{{ obra.legenda|default:'Imagem do trabalho' }}"></a><p class="legenda">{% if obra.destaque %}<span class="destaque">Em destaque</span> {% endif %}{{ obra.legenda|default:"Trabalho sem descrição" }}</p>{% if obra.uso_pretendido %}<p>{{ obra.uso_pretendido }}</p>{% endif %}<p class="miudo endereco">{{ obra.link }}</p></li>{% endfor %}</ol>{% else %}<p class="vazio">O autor ainda não selecionou trabalhos para esta página.</p>{% endif %}
+</section></main>
+{% endif %}
+<footer class="assinatura"><div class="wrap"><p class="miudo">Portfólio publicado na <a href="{{ url_da_capa }}">Meshcraft Academy</a>, escola de modelagem 3D para Roblox.</p></div></footer>
 </body>
 </html>

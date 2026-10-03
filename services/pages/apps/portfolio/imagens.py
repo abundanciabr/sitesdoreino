@@ -173,7 +173,16 @@ def servir_imagem(request, imagem_id):
     if imagem is None:
         return _recusa()
     portfolio = imagem.peca.portfolio
-    if not (portfolio.vitrine_publicada and imagem.peca.mostrar_na_pagina_publica):
+    publica = portfolio.vitrine_publicada and imagem.peca.mostrar_na_pagina_publica
+    if portfolio.vitrine_publicada and not publica:
+        from .comercial import provas_de
+        # Uma prova escolhida para uma peça pública pertence ao mesmo portfólio.
+        publica = any(
+            prova["link"] == imagem.peca.link
+            for obra in portfolio.pecas.filter(mostrar_na_pagina_publica=True)
+            for prova in provas_de(obra.provas_comerciais)
+        )
+    if not publica:
         cookie = request.META.get("HTTP_COOKIE", "")
         if not cookie:
             return _recusa()

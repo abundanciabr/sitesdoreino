@@ -975,7 +975,7 @@ def vitrine_publica(request, apelido: str):
             {
                 "portfolio": portfolio,
                 "apelido": portfolio.apelido,
-                "obras": vitrine.obras(portfolio),
+                **vitrine.contexto_comercial(portfolio),
                 # O SELO DA ESCOLA (AC-12) é o que mais vale para quem contrata,
                 # e ele sai do estado do aluno, nunca do último pedido, pelo
                 # mesmo motivo escrito na estante. `getattr` com padrão dá conta
