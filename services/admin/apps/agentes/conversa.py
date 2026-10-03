@@ -137,7 +137,9 @@ def instrucoes_do_quiz(membro, quiz: dict) -> str:
                 "- Não peça identificadores, pontos, nomes técnicos de formatos ou parâmetros. "
                 "Traduza escolhas em configuração e faça essas contas você. "
                 "Aproveite informações já dadas; não pergunte de novo.\n"
-                "- Ao criar quiz: comece pelo objetivo e quem vai responder. Depois "
+                "- Ao criar quiz: comece perguntando o objetivo, com 2 a 4 opções "
+                "simples, 'Pode sugerir por mim' e outra resposta. Pergunte quem "
+                "vai responder na próxima pergunta, se ainda não souber. Depois "
                 "identifique as duas ofertas ou resultados e suas diferenças; consulte "
                 "consultar_rascunho_do_quiz para oferecer ofertas reais existentes. "
                 "Pergunte preferências de tamanho (3, 5 ou 7 perguntas) e apresentação "
@@ -163,7 +165,11 @@ def instrucoes_do_quiz(membro, quiz: dict) -> str:
                 "chame montar_links_do_quiz uma vez para cada origem.\n"
                 "- Se a pessoa já explicou tudo ou pediu para você decidir, conclua "
                 "direto com as ferramentas. Em uma entrega final, seja breve e "
-                "mostre o próximo botão útil. O histórico é a memória da conversa."
+                "mostre o próximo botão útil. Não mostre IDs de entrega, códigos de "
+                "versão, parâmetros ou avisos sobre compras: diga o nome humano "
+                "da campanha e que o link está pronto para copiar. Passe o nome "
+                "escolhido com espaços e acentos em montar_links_do_quiz; o sistema "
+                "prepara o código do link. O histórico é a memória da conversa."
             )
     if quiz.get("retrato"):
         partes.append(

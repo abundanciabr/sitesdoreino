@@ -259,7 +259,8 @@ def _escolha_de_links(com_campanha: bool = True) -> dict:
                     "Tipo (med): cpc = anúncio pago, retargeting, organic ou email."
                 ),
                 "campanha": _texto_ou_nulo(
-                    "Nome da campanha (cpg), sem espaços. Nulo: o sistema sugere."
+                    "Nome humano escolhido para a campanha, com espaços e acentos. "
+                    "O sistema prepara o código do link. Nulo: o sistema sugere."
                 ),
                 "anuncios": {
                     "type": "array",
@@ -900,6 +901,7 @@ def montar_links_do_quiz(ctx: Contexto, args: dict) -> dict:
     host, slug = _no_quiz(ctx, args)
     params = quiz.selecao_dos_argumentos(args, sugerir_campanha=True)
     kit = _pelo_quiz(quiz.kit_de_links, ctx.robo, ctx.execucao, host, slug, params)
+    kit["titulo"] = (args.get("campanha") or kit.get("campanha") or "Minha campanha").replace("-", " ").replace("_", " ")
     ctx.execucao.estado.setdefault("kits_guiados", []).append(kit)
     Execucao.objects.filter(pk=ctx.execucao.pk).update(estado=ctx.execucao.estado)
     return kit
