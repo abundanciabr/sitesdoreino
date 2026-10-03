@@ -550,7 +550,7 @@ def _caminhos_de_leitura() -> list[str]:
 
     schema = api.get_openapi_schema(path_prefix="")
     caminhos = [
-        rota.replace("{slug}", SLUG).replace(
+        rota.replace("{slug}", SLUG).replace("{site_id}", SITE).replace(
             "{inscricao_id}", "00000000-0000-0000-0000-000000000000"
         )
         for rota, operacoes in schema["paths"].items()
@@ -565,7 +565,7 @@ def _caminhos_de_escrita() -> list[str]:
 
     schema = api.get_openapi_schema(path_prefix="")
     caminhos = [
-        rota.replace("{slug}", SLUG)
+        rota.replace("{slug}", SLUG).replace("{site_id}", SITE)
         for rota, operacoes in schema["paths"].items()
         if "post" in operacoes
     ]
@@ -831,6 +831,14 @@ CORPOS_DE_ESCRITA = {
         "corpo": "b",
     },
     f"/jornadas/{SLUG}/ativa": {"site_id": SITE, "ativa": True},
+    f"/whatsapp/{SITE}/config": {"instancia": "instancia-sintetica"},
+    f"/whatsapp/{SITE}/connect": {"renovar": False},
+    f"/whatsapp/{SITE}/send": {
+        "destinatario": "11999999999", "corpo": "Prova sintética", "referencia": "prova-sem-envio",
+    },
+    f"/whatsapp/{SITE}/reconcile": {
+        "origem": "manual", "referencia": "prova-sem-envio", "provider_id": "mensagem-sintetica",
+    },
 }
 
 
