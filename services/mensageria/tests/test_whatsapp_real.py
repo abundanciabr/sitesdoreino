@@ -6,7 +6,7 @@ from django.test import Client
 
 from apps.eventos.models import EnvioRegistrado
 from apps.whatsapp.models import ConfiguracaoWhatsApp, MensagemWhatsApp
-from apps.whatsapp.service import GatewayRespostaInvalida, enviar_mensagem, normalizar_telefone
+from apps.whatsapp.service import GatewayRespostaInvalida, conectar, enviar_mensagem, normalizar_telefone
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -141,3 +141,51 @@ def test_api_exige_grau_de_escrita_e_instancia_nao_cruza_site(configurado, setti
     assert cliente.post(url, corpo, content_type='application/json', HTTP_AUTHORIZATION='Bearer leitura-test').status_code == 403
     assert cliente.post(url, corpo, content_type='application/json', HTTP_AUTHORIZATION='Bearer escrita-test').status_code == 409
     assert ConfiguracaoWhatsApp.objects.count() == 1
+
+
+def test_renovar_connecting_reinicia_sem_logout_e_oculta_qr_antigo(configurado, settings, monkeypatch):
+    settings.WHATSAPP_WEBHOOK_URL = 'http://aplicacao:8000/webhooks/whatsapp'
+    chamadas = []
+    def gateway(metodo, caminho, dados=None):
+        chamadas.append((metodo, caminho))
+        if caminho.startswith('instance/connectionState/'):
+            return {'instance': {'state': 'connecting'}}
+        if caminho.startswith('instance/connect/'):
+            return {'code': 'qr-antigo'}
+        return {'instance': {'status': 'connecting'}}
+    monkeypatch.setattr('apps.whatsapp.service._gateway', gateway)
+    resultado = conectar('site-a', renovar=True)
+    assert resultado['estado'] == 'aguardando_qr'
+    assert resultado['qr'] == ''
+    assert resultado['erro'] == ''
+    assert chamadas.count(('POST', 'instance/restart/instancia-a')) == 1
+    assert not any('logout' in caminho or 'delete' in caminho for _, caminho in chamadas)
+
+
+def test_consulta_normal_e_estado_open_nao_reiniciam(configurado, settings, monkeypatch):
+    settings.WHATSAPP_WEBHOOK_URL = 'http://aplicacao:8000/webhooks/whatsapp'
+    chamadas = []
+    estado = ['connecting']
+    def gateway(metodo, caminho, dados=None):
+        chamadas.append((metodo, caminho))
+        if caminho.startswith('instance/connectionState/'):
+            return {'instance': {'state': estado[0]}}
+        if caminho.startswith('instance/connect/'):
+            return {'base64': 'iVBORw0KGgo='}
+        return {}
+    monkeypatch.setattr('apps.whatsapp.service._gateway', gateway)
+    assert conectar('site-a')['qr'].startswith('data:image/png;base64,')
+    estado[0] = 'open'
+    assert conectar('site-a', renovar=True)['estado'] == 'open'
+    assert not any('restart' in caminho for _, caminho in chamadas)
+
+
+def test_estado_close_conecta_sem_restart(configurado, settings, monkeypatch):
+    settings.WHATSAPP_WEBHOOK_URL = 'http://aplicacao:8000/webhooks/whatsapp'
+    chamadas = []
+    def gateway(metodo, caminho, dados=None):
+        chamadas.append((metodo, caminho))
+        return {'instance': {'state': 'close'}} if 'connectionState' in caminho else {'code': 'qr-novo'}
+    monkeypatch.setattr('apps.whatsapp.service._gateway', gateway)
+    assert conectar('site-a', renovar=True)['qr'].startswith('data:image/png;base64,')
+    assert ('POST', 'instance/restart/instancia-a') not in chamadas

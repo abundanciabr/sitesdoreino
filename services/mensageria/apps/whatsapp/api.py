@@ -28,6 +28,10 @@ class ReconciliacaoEntrada(Schema):
     provider_id: str
 
 
+class ConexaoEntrada(Schema):
+    renovar: bool = False
+
+
 def _site(site_id: str) -> str:
     site_id = site_id.strip()
     if not site_id or len(site_id) > 100:
@@ -86,9 +90,9 @@ def configurar(request, site_id: str, dados: ConfigEntrada):
 
 
 @router.post("/{site_id}/connect")
-def conectar_pelo_painel(request, site_id: str):
+def conectar_pelo_painel(request, site_id: str, dados: ConexaoEntrada = None):
     _escrita(request)
-    return conectar(_site(site_id))
+    return conectar(_site(site_id), renovar=bool(dados and dados.renovar))
 
 
 @router.post("/{site_id}/send")

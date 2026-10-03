@@ -68,3 +68,31 @@ def test_painel_mostra_estado_real_e_sem_corpo_ou_numero():
     resposta = client.get(reverse('whatsapp'))
     assert 'Entrega confirmada' in resposta.content.decode()
     assert 'provider-test-1' in resposta.content.decode()
+
+
+@respx.mock
+def test_renovacao_e_consulta_periodica_preservam_site_e_nao_enviam():
+    client = dentro()
+    gateway = respx.post(MENSAGERIA + '/whatsapp/site-do-host/connect').respond(200,
+        json={'estado': 'aguardando_qr', 'qr': '', 'erro': ''})
+    envio = respx.post(MENSAGERIA + '/whatsapp/site-do-host/send').respond(200, json={})
+    resposta = client.post(reverse('whatsapp'), {'acao': 'connect', 'renovar': 'sim',
+        'site_id': 'outro-site'}, HTTP_ACCEPT='application/json')
+    assert resposta.json()['estado_visivel'] == 'Preparando um novo QR'
+    assert gateway.calls.last.request.content == b'{"renovar":true}'
+    assert resposta['Cache-Control'] == 'no-store'
+    client.post(reverse('whatsapp'), {'acao': 'connect', 'renovar': 'nao'},
+        HTTP_ACCEPT='application/json')
+    assert gateway.calls.last.request.content == b'{"renovar":false}'
+    assert not envio.called
+
+
+@respx.mock
+def test_erro_real_do_pareamento_chega_ao_painel_sem_qr_velho():
+    client = dentro()
+    respx.post(MENSAGERIA + '/whatsapp/site-do-host/connect').respond(200,
+        json={'estado': 'indisponivel', 'qr': '', 'erro': 'gateway HTTP 503'})
+    resposta = client.post(reverse('whatsapp'), {'acao': 'connect', 'renovar': 'sim'},
+        HTTP_ACCEPT='application/json')
+    assert resposta.json()['erro'] == 'gateway HTTP 503'
+    assert resposta.json()['qr'] == ''

@@ -3,6 +3,7 @@ import uuid
 from urllib.parse import quote
 
 import httpx
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
@@ -16,6 +17,11 @@ ESTADOS = {
     'entregue': 'Entrega confirmada', 'lido': 'Leitura confirmada',
     'falhou': 'Falhou', 'desconhecido': 'Resultado desconhecido — não reenviar às cegas',
 }
+
+CONEXOES = {'open': 'Conectado', 'connecting': 'Aguardando leitura do QR',
+    'close': 'Desconectado', 'nao_configurado': 'Não configurado',
+    'aguardando_conexao': 'Aguardando leitura do QR', 'aguardando_qr': 'Preparando um novo QR',
+    'indisponivel': 'Conexão indisponível'}
 
 
 def _pedir(site_id, acao='', payload=None):
@@ -54,7 +60,7 @@ def whatsapp(request):
             payload = {'instancia': request.POST.get('instancia', '').strip(),
                 'transporte': 'WHATSAPP-BAILEYS', 'ativo': request.POST.get('ativo') == 'sim'}
         elif acao == 'connect':
-            payload = {}
+            payload = {'renovar': request.POST.get('renovar') == 'sim'}
         elif acao == 'send':
             if request.POST.get('autorizado') != 'sim':
                 contexto['erro'] = 'Confirme que este destinatário autorizou a mensagem de teste.'
@@ -71,17 +77,29 @@ def whatsapp(request):
             if resultado is not None:
                 if acao == 'connect':
                     contexto['pareamento'] = resultado
+                    contexto['erro'] = resultado.get('erro') or erro
                     qr = resultado.get('qr') or ''
                     if qr.startswith('data:image/png;base64,'):
                         contexto['qr'] = qr
                 contexto['resultado'] = ('Configuração salva.' if acao == 'config' else
                     'Conexão consultada. Siga as instruções abaixo.' if acao == 'connect' else
                     ESTADOS.get(resultado.get('status'), 'Pedido registrado. Consulte o estado abaixo.'))
+            if acao == 'connect' and request.headers.get('Accept') == 'application/json':
+                resultado = resultado or {}
+                estado = resultado.get('estado', '')
+                resposta = JsonResponse({'qr': contexto.get('qr', ''), 'estado': estado,
+                    'estado_visivel': CONEXOES.get(estado, estado or 'Não foi possível consultar'),
+                    'erro': contexto.get('erro') or '',
+                    'numero_mascarado': resultado.get('numero_mascarado') or ''})
+                resposta['Cache-Control'] = 'no-store'
+                return resposta
     dados, erro = _pedir(site_id)
     if dados is None:
         contexto['erro'] = contexto.get('erro') or erro
     else:
         contexto.update(dados)
+        conexao = contexto.get('conexao') or {}
+        contexto['estado_visivel'] = CONEXOES.get(conexao.get('estado'), conexao.get('estado'))
         for mensagem in contexto.get('mensagens', []):
             mensagem['status_visivel'] = ESTADOS.get(mensagem.get('status'), mensagem.get('status', ''))
     resposta = render(request, 'admin/whatsapp.html', contexto)

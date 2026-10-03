@@ -23,6 +23,16 @@ def _qr_png(codigo: str) -> str:
     return "data:image/png;base64," + base64.b64encode(imagem.getvalue()).decode("ascii")
 
 
+def _qr_da_resposta(resposta: dict) -> str:
+    """Converte apenas o QR devolvido pela consulta atual ao provedor."""
+    qrcode = resposta.get("qrcode") if isinstance(resposta.get("qrcode"), dict) else {}
+    qr = resposta.get("base64") or qrcode.get("base64") or ""
+    if isinstance(qr, str) and qr:
+        return qr if qr.startswith("data:") else "data:image/png;base64," + qr
+    codigo = resposta.get("code") or qrcode.get("code") or ""
+    return _qr_png(codigo) if isinstance(codigo, str) else ""
+
+
 class GatewayIndisponivel(RuntimeError):
     pass
 
@@ -106,7 +116,7 @@ def estado_da_conexao(site_id: str) -> dict:
     }
 
 
-def conectar(site_id: str) -> dict:
+def conectar(site_id: str, renovar: bool = False) -> dict:
     config = ConfiguracaoWhatsApp.objects.filter(site_id=site_id, ativo=True).first()
     if config is None:
         return {"estado": "nao_configurado", "qr": "", "erro": "configure uma instancia ativa"}
@@ -117,9 +127,8 @@ def conectar(site_id: str) -> dict:
     try:
         estado = estado_da_conexao(site_id)
         ja_aberta = estado["estado"] == "open"
-        resposta_criacao = {}
         if estado["estado"] == "indisponivel" and "HTTP 404" in estado["erro"]:
-            resposta_criacao = _gateway("POST", "instance/create", {
+            _gateway("POST", "instance/create", {
                 "instanceName": config.instancia,
                 "integration": config.transporte,
                 "qrcode": config.transporte == "WHATSAPP-BAILEYS",
@@ -131,15 +140,25 @@ def conectar(site_id: str) -> dict:
         }})
         if ja_aberta:
             return {**estado, "qr": ""}
+        qr_anterior = ""
+        if renovar and estado["estado"] == "connecting":
+            # A API v2.3.7 devolve o QR em cache enquanto está connecting.
+            # Capturamos esse valor para não mostrar o mesmo QR após o restart.
+            anterior = _gateway("GET", f"instance/connect/{_instancia(config)}")
+            if isinstance(anterior, dict):
+                qr_anterior = _qr_da_resposta(anterior)
+            reinicio = _gateway("POST", f"instance/restart/{_instancia(config)}")
+            if not isinstance(reinicio, dict) or reinicio.get("error"):
+                return {"estado": "indisponivel", "qr": "", "erro": "falha ao renovar a conexao"}
+        # Em state=close, /instance/restart rejeita a operação na v2.3.7;
+        # /instance/connect já inicia a reconexão sem apagar a sessão.
         resposta = _gateway("GET", f"instance/connect/{_instancia(config)}")
-        qrcode = resposta.get("qrcode") if isinstance(resposta.get("qrcode"), dict) else {}
-        qrcode_criacao = resposta_criacao.get("qrcode") if isinstance(resposta_criacao.get("qrcode"), dict) else {}
-        qr = resposta.get("base64") or qrcode.get("base64") or resposta_criacao.get("base64") or qrcode_criacao.get("base64") or ""
-        if not qr:
-            qr = _qr_png(resposta.get("code") or qrcode.get("code") or resposta_criacao.get("code") or qrcode_criacao.get("code") or "")
-        elif isinstance(qr, str) and not qr.startswith("data:"):
-            qr = "data:image/png;base64," + qr
-        return {"estado": "aguardando_conexao", "qr": qr, "erro": ""}
+        if not isinstance(resposta, dict) or resposta.get("error"):
+            return {"estado": "indisponivel", "qr": "", "erro": "gateway nao conseguiu conectar a instancia"}
+        qr = _qr_da_resposta(resposta)
+        if renovar and qr_anterior and qr == qr_anterior:
+            return {"estado": "aguardando_qr", "qr": "", "erro": ""}
+        return {"estado": "aguardando_conexao" if qr else "aguardando_qr", "qr": qr, "erro": ""}
     except (GatewayIndisponivel, GatewayRespostaInvalida) as exc:
         return {"estado": "indisponivel", "qr": "", "erro": str(exc)}
 

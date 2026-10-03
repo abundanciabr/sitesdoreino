@@ -9,7 +9,7 @@
   {% if site %}
   <div class="cartao">
     <h2>Conexão</h2>
-    <p>Estado: <strong>{{ conexao.estado|default:"Não configurado" }}</strong>{% if conexao.numero_mascarado %} · {{ conexao.numero_mascarado }}{% endif %}</p>
+    <p>Estado: <strong id="estado-whatsapp">{{ estado_visivel|default:"Não configurado" }}</strong> <span id="numero-whatsapp">{{ conexao.numero_mascarado|default:"" }}</span></p>
     {% if conexao.erro %}<p class="aviso">{{ conexao.erro }}</p>{% endif %}
     <form method="post">
       {% csrf_token %}<input type="hidden" name="acao" value="config">
@@ -18,12 +18,14 @@
       <p><label><input type="checkbox" name="ativo" value="sim" {% if configuracao.ativo %}checked{% endif %}> Habilitar os novos envios deste site</label></p>
       <button type="submit">Salvar conexão</button>
     </form>
-    <form method="post">
+    <form method="post" id="pareamento-whatsapp">
       {% csrf_token %}<input type="hidden" name="acao" value="connect">
+      <input type="hidden" name="renovar" value="sim">
       <p><button type="submit">Conectar ou renovar QR</button></p>
     </form>
-    {% if qr %}<img src="{{ qr }}" alt="QR para conectar o WhatsApp" width="280" height="280">{% endif %}
-    <p>No celular do número que vai enviar, abra WhatsApp → Aparelhos conectados → Conectar um aparelho. Leia o QR e depois clique em Atualizar estado. Se o QR expirou, renove aqui.</p>
+    <p id="aviso-pareamento" role="status" aria-live="polite">{% if qr %}Leia este QR agora. Ele é atualizado automaticamente enquanto esta tela estiver aberta.{% endif %}</p>
+    <img id="qr-whatsapp" {% if qr %}src="{{ qr }}"{% else %}hidden{% endif %} alt="QR para conectar o WhatsApp" width="280" height="280">
+    <p>No celular do número que vai enviar, abra WhatsApp → Aparelhos conectados → Conectar um aparelho e leia o QR. Aguarde a tela indicar Conectado. Se o celular recusar, clique em Conectar ou renovar QR para começar uma nova tentativa.</p>
     <p><a href="{% url 'whatsapp' %}">Atualizar estado e mensagens</a></p>
   </div>
   <div class="cartao espaco-28">
@@ -47,4 +49,57 @@
   <p>Os registros anteriores da simulação não comprovam envio nem entrega e não são reenviados por esta tela.</p>
   {% endif %}
 </div>
+<script>
+(() => {
+  const form = document.getElementById('pareamento-whatsapp');
+  if (!form || !window.fetch) return;
+  const image = document.getElementById('qr-whatsapp');
+  const notice = document.getElementById('aviso-pareamento');
+  const state = document.getElementById('estado-whatsapp');
+  const number = document.getElementById('numero-whatsapp');
+  const button = form.querySelector('button');
+  let timer;
+  let busy = false;
+  async function consultar(renovar) {
+    if (busy) return;
+    busy = true;
+    button.disabled = true;
+    clearTimeout(timer);
+    if (renovar) {
+      image.hidden = true;
+      notice.textContent = 'Preparando um novo QR…';
+    }
+    const data = new FormData(form);
+    data.set('renovar', renovar ? 'sim' : 'nao');
+    let seguir = false;
+    try {
+      const response = await fetch(window.location.pathname, {
+        method: 'POST', body: data, credentials: 'same-origin',
+        headers: {Accept: 'application/json'}, cache: 'no-store'
+      });
+      if (!response.ok) throw new Error('consulta');
+      const result = await response.json();
+      state.textContent = result.estado_visivel;
+      number.textContent = result.numero_mascarado || '';
+      const qrValido = result.qr && result.qr.startsWith('data:image/png;base64,');
+      image.hidden = !qrValido || result.estado === 'open';
+      if (!image.hidden) image.src = result.qr;
+      notice.textContent = result.erro || (result.estado === 'open'
+        ? 'WhatsApp conectado. Você já pode enviar a mensagem de teste autorizada.'
+        : qrValido ? 'Leia este QR agora. Ele é atualizado automaticamente enquanto esta tela estiver aberta.'
+        : 'Aguardando o novo QR. A tela consulta novamente em alguns segundos.');
+      seguir = !result.erro && result.estado !== 'open';
+    } catch (_) {
+      image.hidden = true;
+      notice.textContent = 'Não consegui atualizar o QR. Clique em Conectar ou renovar QR para consultar novamente.';
+    } finally {
+      busy = false;
+      button.disabled = false;
+      if (seguir) timer = setTimeout(() => consultar(false), 20000);
+    }
+  }
+  form.addEventListener('submit', event => {event.preventDefault(); consultar(true);});
+  if (!image.hidden) timer = setTimeout(() => consultar(false), 20000);
+})();
+</script>
 {% endblock %}
