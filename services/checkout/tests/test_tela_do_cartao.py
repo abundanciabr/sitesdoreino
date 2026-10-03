@@ -78,6 +78,8 @@ def _tela_depois_de(html: str, confirmacao: dict | None, pedidos: list) -> dict:
 const vm = require('node:vm');
 const [js, mostrados, confirmacao, pedidos] = process.argv.slice(1);
 const fila = JSON.parse(pedidos);
+const primeira = JSON.parse(confirmacao);
+const respostas = Array.isArray(primeira) ? primeira.slice() : null;
 let agendadas = 0;
 const contexto = {
   document: {getElementById: () => ({textContent: 'null'})},
@@ -92,7 +94,7 @@ const contexto = {
       return typeof pedido === 'string' ? {status: pedido} : pedido;
     },
     post: async () => {
-      const resposta = JSON.parse(confirmacao);
+      const resposta = respostas ? respostas.shift() : primeira;
       if (resposta.falha) throw new Error('POST: ' + resposta.falha);
       return resposta;
     },
@@ -108,6 +110,7 @@ const ver = expressao => vm.runInNewContext(
     await ilha.poll();
   } else {
     ilha.status = 'aguardando_pagamento';
+    if (respostas) ilha.mpDados = {mp_token: 'token-sintetico'};
     await ilha.confirmarCartao('tok');
   }
   while (fila.length) await ilha.pollSemTelaTravada();
@@ -183,6 +186,28 @@ def test_aprovado_apaga_a_frase_de_analise(cartao_html):
     assert tela["status"] == "Pagamento aprovado!"
     assert FRASE_DE_ANALISE not in tela["status"] + tela["erro"]
     assert tela["formulario"] is False
+
+
+def test_segunda_opcao_aprovada_mostra_aprovacao_final(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html,
+        [_confirmacao("segunda_opcao"), _confirmacao("approved")],
+        [_pedido("pago", False)],
+    )
+    assert tela["status"] == "Pagamento aprovado!"
+    assert tela["formulario"] is False
+    assert tela["segue_consultando"] is False
+
+
+def test_segunda_opcao_em_analise_explica_espera(cartao_html):
+    tela = _tela_depois_de(
+        cartao_html,
+        [_confirmacao("segunda_opcao"), _confirmacao("pending")],
+        [_pedido("aguardando_pagamento", True)],
+    )
+    assert tela["status"].startswith(FRASE_DE_ANALISE)
+    assert tela["formulario"] is False
+    assert tela["segue_consultando"] is True
 
 
 def test_recusa_depois_da_analise_reabre_o_formulario(cartao_html):

@@ -234,7 +234,7 @@ function cartaoIsland() {
     },
 
     statusLabel() {
-      if (this.segundaOpcaoPendente || this.segundaOpcaoEnviada) return "Concluindo pagamento...";
+      if (this.segundaOpcaoPendente) return "Concluindo pagamento...";
       if (this.emAnalise) {
         return "Pagamento em análise. Não é preciso pagar de novo. A confirmação aparece aqui assim que a análise terminar.";
       }
