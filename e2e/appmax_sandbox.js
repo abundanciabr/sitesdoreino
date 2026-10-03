@@ -814,8 +814,15 @@ function etapaConferir(selecao) {
 
 async function provarPrefillDoQuiz() {
   var playwright = require("playwright");
+  var dispositivo = argumento("dispositivo", "desktop");
+  if (dispositivo !== "desktop" && dispositivo !== "mobile") {
+    throw new Error("--dispositivo deve ser desktop ou mobile");
+  }
+  var opcoesContexto = dispositivo === "mobile"
+    ? { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }
+    : { viewport: { width: 1280, height: 800 } };
   var browser = await playwright.chromium.launch({ headless: true });
-  var contexto = await browser.newContext();
+  var contexto = await browser.newContext(opcoesContexto);
   var pagina = await contexto.newPage();
   var slug = argumento("quiz", "crivo");
   var email = "e2e-prefill-" + crypto.randomBytes(6).toString("hex") + "@exemplo.test";
@@ -862,7 +869,7 @@ async function provarPrefillDoQuiz() {
     var recebido = await pagina.inputValue("#email");
     var telefone = await pagina.inputValue("#phone");
     caso("quiz e checkout no mesmo navegador preenchem nome, e-mail e telefone", nome === "Ana Teste" && recebido === email && telefone === "11999999999");
-    var novoContexto = await browser.newContext();
+    var novoContexto = await browser.newContext(opcoesContexto);
     try {
       var novaPagina = await novoContexto.newPage();
       await novaPagina.goto(endereco, { waitUntil: "networkidle" });
