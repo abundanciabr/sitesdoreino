@@ -66,6 +66,53 @@ def test_provedor_volta_a_funcionar_no_reenvio(envio):
     assert envio.tentativas == 2
 
 
+def _tarefa(retries: int):
+    return type("Tarefa", (), {"retries": retries, "retry_delay": 30})()
+
+
+@pytest.mark.parametrize(
+    "erro", [ConnectionError("smtp fora"), RuntimeError("limites ausentes")]
+)
+def test_ultima_tentativa_que_falha_vira_falhou_e_nao_pendente(envio, erro):
+    """Sem retry sobrando no Huey ninguém mais tenta a linha; antes ela ficava
+    "pendente" para sempre (os e-mails de 27/09/2026, com 6 tentativas)."""
+    with patch("apps.eventos.tasks.enviar_email", side_effect=erro):
+        with pytest.raises(type(erro)):
+            processar_envio(envio.id, task=_tarefa(0))
+
+    envio.refresh_from_db()
+    assert envio.status == "falhou"
+    assert envio.tentativas == 1
+    assert str(erro) in envio.resultado
+
+
+def test_tentativa_com_retry_sobrando_continua_pendente(envio):
+    with patch(
+        "apps.eventos.tasks.enviar_email", side_effect=ConnectionError("smtp fora")
+    ):
+        with pytest.raises(ConnectionError):
+            processar_envio(envio.id, task=_tarefa(2))
+
+    envio.refresh_from_db()
+    assert envio.status == "pendente"
+    assert envio.tentativas == 1
+
+
+def test_espera_de_capacidade_na_ultima_tentativa_nao_vira_falhou(envio):
+    from apps.eventos.capacidade import CapacidadeDoProvedor
+
+    with patch(
+        "apps.eventos.tasks.reservar_envio",
+        side_effect=CapacidadeDoProvedor("teto atingido", 47),
+    ):
+        with pytest.raises(CapacidadeDoProvedor):
+            processar_envio(envio.id, task=_tarefa(0))
+
+    envio.refresh_from_db()
+    assert envio.status == "pendente"
+    assert envio.tentativas == 0
+
+
 def test_envio_ja_enviado_nao_chama_provedor_de_novo(envio):
     envio.status = "enviado"
     envio.save(update_fields=["status"])

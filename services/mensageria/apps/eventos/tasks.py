@@ -249,10 +249,16 @@ def processar_envio(envio_id: int, task=None) -> None:
             envio.save(update_fields=["status", "tentativas", "resultado"])
             return
         if erro is not None:
+            campos = ["tentativas", "resultado", "updated_at"]
             if contar_tentativa:
                 envio.tentativas += 1
+                if task is not None and not task.retries:
+                    # Era a última tentativa do Huey e ninguém mais vai tentar
+                    # esta linha: ela vira "falhou", não "pendente" para sempre.
+                    envio.status = "falhou"
+                    campos.append("status")
             envio.resultado = str(erro)[:500]
-            envio.save(update_fields=["tentativas", "resultado"])
+            envio.save(update_fields=campos)
     if erro_do_provedor:
         registrar_falha()
     raise erro
