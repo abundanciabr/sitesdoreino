@@ -247,8 +247,14 @@ def test_pix_status_desconhecido_levanta_falha_no_provedor(settings: Any) -> Non
 
 
 def test_aviso_pix_forjado_nao_aprova_sem_consulta_autenticada(settings: Any) -> None:
+    from pagamentos.core.models import InstalacaoAppmax
+
     cliente = _cliente()
     intent = _criar(settings, cliente)
+    InstalacaoAppmax.objects.create(
+        app_id="1888", appmax_site_id="loja-sandbox", alias="Teste",
+        platform_site_ids=[SITE],
+    )
     AppmaxWebhookInbox.objects.create(
         app_id="1888",
         appmax_site_id="loja-sandbox",
