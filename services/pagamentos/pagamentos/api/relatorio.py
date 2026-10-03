@@ -15,6 +15,7 @@ from pagamentos.core.estorno import estornar
 from pagamentos.core.models import Intent, PaymentAttempt
 
 router = Router()
+COMPRAS_POR_PAGINA = 100
 
 
 def _admin(request: HttpRequest) -> bool:
@@ -60,19 +61,28 @@ def _linha(intent: Intent) -> dict:
 
 
 @router.get("/compras/{site_id}", auth=None)
-def compras(request: HttpRequest, site_id: str):
+def compras(request: HttpRequest, site_id: str, pagina: int = 1):
     if not _admin(request):
         return JsonResponse({"detail": "acesso negado"}, status=403)
     if not site_id:
         return JsonResponse({"detail": "site obrigatório"}, status=400)
-    itens = (Intent.objects.filter(site_id=site_id)
+    consulta = Intent.objects.filter(site_id=site_id)
+    total = consulta.count()
+    paginas = max(1, (total + COMPRAS_POR_PAGINA - 1) // COMPRAS_POR_PAGINA)
+    pagina = min(max(pagina, 1), paginas)
+    inicio = (pagina - 1) * COMPRAS_POR_PAGINA
+    itens = (consulta
              .prefetch_related(Prefetch(
                  "tentativas",
                  queryset=PaymentAttempt.objects.order_by("created_at", "pk"),
                  to_attr="tentativas_ordenadas",
              ))
-             .order_by("-created_at", "-pk")[:100])
-    return {"compras": [_linha(item) for item in itens]}
+             .order_by("-created_at", "-pk")[inicio:inicio + COMPRAS_POR_PAGINA])
+    return {
+        "compras": [_linha(item) for item in itens],
+        "pagina": pagina, "total": total, "paginas": paginas,
+        "mais": pagina < paginas,
+    }
 
 
 @router.post("/compras/{site_id}/{tentativa_id}/devolver", auth=None)

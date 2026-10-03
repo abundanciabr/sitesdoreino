@@ -904,10 +904,10 @@ async function provarCenario(perfil, nome) {
     });
     await pagina.goto(BASE + "/checkout/" + OFERTA + "/", { waitUntil: "networkidle" });
     await pagina.locator("#name").fill(pagador);
-    await pagina.locator("#email").fill("e2e-rota-" + crypto.randomBytes(6).toString("hex") + "@exemplo.test");
+    await pagina.locator("#email").fill("e2e-rota-" + crypto.randomBytes(6).toString("hex") + "@example.com");
     await pagina.locator("#phone").fill("11999990000");
-    await pagina.locator("#cpf").fill("40827365144");
-    await pagina.locator(pix ? ".metodo button:has-text('Pix')" : ".metodo button:has-text('Cartão')").click();
+    await pagina.locator("#cpf").fill(DOCUMENTO_DO_TITULAR);
+    await pagina.getByRole("button", { name: pix ? "Pix" : "Cartão", exact: true }).click();
     var destino = pix ? /\/pedido\/[0-9a-f-]{36}\/pix\/$/ : /\/pedido\/[0-9a-f-]{36}\/cartao\/$/;
     await Promise.all([pagina.waitForURL(destino, { timeout: 90000 }), pagina.locator("button.cta").click()]);
     ordem = pagina.url().match(/\/pedido\/([0-9a-f-]{36})\//)[1];
