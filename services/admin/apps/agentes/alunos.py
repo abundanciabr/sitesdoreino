@@ -101,7 +101,10 @@ podem ser 'a combinar'.
 
 A página precisa título, subtítulo, apresentação, oferta, continuidade,
 diferenciais, condições, dúvidas e CTA úteis. trabalho_destaque é ID real de
-trabalhos ou vazio. legendas só têm peças reais, com uso, contribuição e prova
+trabalhos ou vazio. CTA é um convite curto de até 120 caracteres, sem URL:
+o botão já aponta para o contato informado. Peça somente referências e o
+contexto necessário para iniciar. As
+legendas só têm peças reais, com uso, contribuição e prova
 fiéis. O kit tem apresentação principal, bio_curta de até 280 caracteres,
 abordagem personalizada com prospeccao quando informada, e proposta coerente
 com oferta e condições. Use prospeccao.idioma: se for "en", escreva os quatro
