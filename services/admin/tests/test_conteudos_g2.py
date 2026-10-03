@@ -280,7 +280,20 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
                         "seg": "",
                         "visitas": 3,
                         "submissoes": 1,
-                        "saidas": 0,
+                        "saidas": 1,
+                        "saidas_reais": 0,
+                        "saidas_demonstracao": 1,
+                    },
+                    {
+                        "dia_origem": "2026-10-01",
+                        "src": "teste",
+                        "cpg": "teste-da-equipe",
+                        "version_key": "B1",
+                        "fmt": "text",
+                        "trafego_teste": True,
+                        "visitas": 100,
+                        "submissoes": 50,
+                        "saidas": 30,
                     },
                 ],
                 "sem_visita_registrada": [
@@ -323,6 +336,10 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
     assert "3 visitas" not in texto and "email@" not in texto
     assert "unsafe-inline" not in pagina["Content-Security-Policy"]
     assert "'sha256-" in pagina["Content-Security-Policy"]
+    assert pagina.context["resumo"] == {"visitas": 13, "submissoes": 5, "saidas": 2}
+    assert len(pagina.context["linhas_testes"]) == 1
+    assert "Ver testes da equipe (fora do resumo)" in texto
+    assert "Clicar na oferta não significa comprar" in texto
     assert dict(relatorio.calls.last.request.url.params) == {
         "site_id": "site-teste",
         "inicio": "2026-10-01",
@@ -350,6 +367,11 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
     assert enviado["cpg"].startswith("qz_novo_")
     assert "https://testserver/quiz/campanha/" in texto
     assert "src=teste" in texto and "Copiar todos os links" in texto
+
+    filtrada = cliente.get(url, {"ver_cpg": "teste-da-equipe"})
+    assert filtrada.context["resumo"] == {"visitas": 0, "submissoes": 0, "saidas": 0}
+    assert not filtrada.context["linhas_reais"]
+    assert len(filtrada.context["linhas_testes"]) == 1
 
 
 @respx.mock

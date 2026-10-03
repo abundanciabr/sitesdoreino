@@ -1,0 +1,18 @@
+<div class="rolagem" tabindex="0" role="region" aria-label="Detalhes das visitas por anúncio">
+  <table>
+    <thead><tr><th>Dia</th><th>Onde foi divulgado / campanha</th><th>Anúncio</th><th>Quiz escolhido</th><th>Abriram</th><th>Terminaram</th><th>Clicaram na oferta</th></tr></thead>
+    <tbody>
+      {% for linha in linhas %}
+        <tr>
+          <td>{{ linha.dia_origem }}</td>
+          <td>{{ linha.origem_legivel }}<br><span class="meta">{% firstof linha.cpg linha.campaign "Sem nome de campanha" %}</span></td>
+          <td>{% firstof linha.ctv linha.content "Sem nome de anúncio" %}{% if linha.term %}<br><span class="meta">Palavra-chave: {{ linha.term }}</span>{% endif %}</td>
+          <td>{{ linha.version_key }} · {{ linha.formato_legivel|default:"—" }}<br><span class="meta">{{ linha.publico_legivel }}</span></td>
+          <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td>
+          <td>{{ linha.saidas }}{% if linha.saidas_demonstracao %}<br><span class="meta">{{ linha.saidas_reais }} reais; {{ linha.saidas_demonstracao }} de demonstração</span>{% endif %}</td>
+        </tr>
+        {% if linha.alertas %}<tr><td colspan="7"><details><summary class="meta">Observações sobre estas visitas</summary><p class="dica">{{ linha.alertas|join:"; " }}</p></details></td></tr>{% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

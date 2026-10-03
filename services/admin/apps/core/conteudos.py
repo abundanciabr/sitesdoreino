@@ -381,6 +381,13 @@ FORMATOS_LEGIVEIS = {
     "calc": "Calculadora",
     "ai": "Conversa com IA",
 }
+PUBLICOS_LEGIVEIS = {
+    "geral": "Qualquer pessoa",
+    "frio": "Ainda não conhece você",
+    "quente": "Já conhece você",
+    "iniciante": "Está começando agora",
+    "escalando": "Já começou e quer crescer",
+}
 ORIGENS = (
     ("meta", "Meta (Facebook e Instagram)"),
     ("tiktok", "TikTok"),
@@ -483,6 +490,7 @@ def quiz_campanhas(request, slug: str):
                 {
                     **item,
                     "formato_legivel": FORMATOS_LEGIVEIS.get(item.get("fmt"), item.get("fmt")),
+                    "publico_legivel": PUBLICOS_LEGIVEIS.get(item.get("seg") or "geral", item.get("seg")),
                     "teste": _link_de_teste(item["url"]),
                 }
                 for item in resposta["links"]
@@ -497,9 +505,25 @@ def quiz_campanhas(request, slug: str):
         ]
 
     linhas = [
-        {**linha, "formato_legivel": FORMATOS_LEGIVEIS.get(linha.get("fmt"), linha.get("fmt"))}
+        {
+            **linha,
+            "formato_legivel": FORMATOS_LEGIVEIS.get(linha.get("fmt"), linha.get("fmt")),
+            "publico_legivel": PUBLICOS_LEGIVEIS.get(linha.get("seg") or "geral", linha.get("seg")),
+            "origem_legivel": dict(ORIGENS).get(linha.get("src") or linha.get("source"), linha.get("src") or linha.get("source") or "Origem não informada"),
+        }
         for linha in da_campanha(relatorio["campanhas"])
     ]
+    linhas_reais = [linha for linha in linhas if not linha.get("trafego_teste")]
+    linhas_testes = [linha for linha in linhas if linha.get("trafego_teste")]
+    resumo = {
+        campo: sum(linha.get(campo) or 0 for linha in linhas_reais)
+        for campo in ("visitas", "submissoes")
+    }
+    resumo["saidas"] = sum(
+        linha["saidas_reais"] if linha.get("saidas_reais") is not None
+        else max(0, (linha.get("saidas") or 0) - (linha.get("saidas_demonstracao") or 0))
+        for linha in linhas_reais
+    )
     campanhas_vistas = sorted(
         {l.get("cpg") or l.get("campaign") for l in relatorio["campanhas"] if isinstance(l, dict)} - {None, ""}
     )
@@ -533,6 +557,9 @@ def quiz_campanhas(request, slug: str):
             "ver_cpg": ver_cpg,
             "campanhas_vistas": campanhas_vistas,
             "linhas": linhas,
+            "linhas_reais": linhas_reais,
+            "linhas_testes": linhas_testes,
+            "resumo": resumo,
             "avulsas": da_campanha(relatorio.get("sem_visita_registrada") or []),
             "divergentes": da_campanha(relatorio.get("submissoes_sem_correspondencia") or []),
             "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",

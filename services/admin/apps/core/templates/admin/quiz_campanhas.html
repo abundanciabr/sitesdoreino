@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% block titulo %}Links e números · {{ slug }}{% endblock %}
+{% block titulo %}Campanhas do quiz · {{ slug }}{% endblock %}
 {% block corpo %}
 <style>
   .camp .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0 4px; }
@@ -67,18 +67,208 @@
   .camp .trabalhos-quiz summary { font-size: 16px; margin: 12px 0 4px; }
   .camp .tom-bom { color: #16a34a; }
   .camp .tom-ruim { color: #dc2626; }
-</style>
-<div class="envolucro camp">
-  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
-  <h1>Links dos anúncios e números: {{ slug }}</h1>
-  <p class="subtitulo">Aqui você cria o link certo para cada anúncio e depois vê quantas pessoas cada um trouxe.</p>
-  <div class="passos">
-    <div class="passo"><b>1. Monte</b>Marque as opções abaixo e clique em "Criar os links".</div>
-    <div class="passo"><b>2. Teste e copie</b>Abra o link de teste e depois copie o link verdadeiro para o anúncio.</div>
-    <div class="passo"><b>3. Acompanhe</b>Volte aqui e veja visitas, respostas e cliques por campanha.</div>
-  </div>
-  <p><a href="{% url 'quiz_evolucao' slug %}">Ver onde o quiz perde gente e propostas de nova versão →</a></p>
 
+  .camp { max-width: 1060px; }
+  .camp [hidden] { display: none !important; }
+  .camp .cartao { margin: 18px 0; padding: 24px; border-radius: 16px; }
+  .camp h1 { font-size: 30px; }
+  .camp h2 { font-size: 22px; margin: 0 0 8px; }
+  .camp .subtitulo { font-size: 16px; max-width: 720px; }
+  .camp .camp-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+  .camp .camp-nav a { display: block; border: 1px solid var(--linha); border-radius: 12px; padding: 14px 16px; text-decoration: none; background: var(--painel); color: var(--texto); }
+  .camp .camp-nav a span { display: block; color: var(--texto-2); font-size: 13px; }
+  .camp .camp-nav a[aria-selected="true"] { border-color: var(--azul); background: rgba(76,141,255,.12); }
+  .camp button, .camp .acoes a { border: 1px solid var(--linha); border-radius: 10px; padding: 10px 14px; background: var(--fundo); color: var(--texto); cursor: pointer; font: inherit; font-weight: 600; }
+  .camp button:hover, .camp .acoes a:hover { border-color: var(--azul); }
+  .camp button.principal, .camp [data-copiar] { background: var(--azul); color: #08152b; border-color: var(--azul); }
+  .camp :is(input[type=text],input[type=date],select,textarea) { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 9px; padding: 10px 12px; font: inherit; margin-top: 6px; }
+  .camp :is(input[type=checkbox],input[type=radio]) { accent-color: var(--azul); }
+  .camp .grade { gap: 16px; margin: 16px 0; }
+  .camp .campo { margin: 16px 0; }
+  .camp .campo-acao { display: flex; align-items: end; }
+  .camp .dica { opacity: 1; color: var(--texto-2); }
+  .camp .escolha-inicial { background: var(--fundo); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
+  .camp :is(fieldset,.robo-acao,.situacao,.link,.fala-quiz,.entrega-quiz) { border-color: var(--linha); }
+  .camp summary { padding: 10px 0; }
+  .camp .personalizar, .camp details { border-top: 1px solid var(--linha); padding-top: 4px; }
+  .camp .robo-acoes { grid-template-columns: 1fr 1fr; }
+  .camp .robo-acao:last-child { grid-column: 1 / -1; }
+  .camp .resumo-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0 12px; }
+  .camp .resumo-numeros > div { border: 1px solid var(--linha); background: var(--fundo); border-radius: 12px; padding: 16px; }
+  .camp .resumo-numeros strong { display: block; color: var(--azul); font-size: 32px; }
+  .camp .resumo-numeros b, .camp .resumo-numeros span { display: block; }
+  .camp .resumo-numeros span { font-size: 13px; color: var(--texto-2); }
+  .camp :focus-visible { outline: 3px solid var(--azul); outline-offset: 3px; }
+  .camp th, .camp td { border-color: var(--linha); }
+  .camp .link .rotulo { color: var(--texto); font-size: 15px; }
+  @media (max-width: 640px) {
+    .camp { padding: 20px 14px 48px; }
+    .camp .cartao { padding: 18px 16px; }
+    .camp h1 { font-size: 26px; }
+    .camp .camp-nav, .camp .resumo-numeros, .camp .robo-acoes, .camp .situacao-grade, .camp .grade { grid-template-columns: 1fr; }
+    .camp .camp-nav { gap: 8px; }
+    .camp .camp-nav a { padding: 10px 14px; }
+    .camp .camp-nav a span { display: none; }
+    .camp .robo-acao:last-child { grid-column: auto; }
+    .camp .acoes > * { width: 100%; text-align: center; }
+    .camp .resumo-numeros > div { padding: 12px 16px; }
+  }
+</style>
+<div class="envolucro camp" data-campanhas>
+  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
+  <h1>Divulgue seu quiz</h1>
+  <p class="subtitulo">Crie um link para cada anúncio. Depois, veja quantas pessoas abriram o quiz, terminaram as perguntas e clicaram na oferta.</p>
+  <nav class="camp-nav" aria-label="O que você quer fazer?">
+    <a href="#criar" data-aba="criar"><b>Criar link</b><span>Para colocar no seu anúncio</span></a>
+    <a href="#resultados" data-aba="resultados"><b>Ver resultados</b><span>Para saber o que aconteceu</span></a>
+    <a href="#robo" data-aba="robo"><b>Pedir ajuda ao robô</b><span>Para conferir ou tirar dúvidas</span></a>
+  </nav>
+  <section id="painel-criar" data-painel="criar" aria-label="Criar link para divulgar">
+  <div class="cartao" id="criar">
+    <h2>Crie o link do seu anúncio</h2>
+    <p class="dica">Comece pelo lugar onde vai divulgar e dê um nome ao anúncio. A campanha pode ficar com o nome automático.</p>
+    <p class="escolha-inicial">Perguntas: <b data-escolha="v">{% for v in versoes %}{% if v in escolha.v or not escolha.v and forloop.last %}{{ v }}{% if not escolha.v %} (mais recente){% endif %} {% endif %}{% endfor %}</b> · Formato: <b data-escolha="fmt">{% for chave, nome in formatos %}{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %}{% if chave == 'video' %}Vídeo no topo{% else %}{{ nome }}{% endif %} {% endif %}{% endfor %}</b> · Público: <b data-escolha="seg">{% for s in segmentos %}{% if s in escolha.seg or not escolha.seg and s == 'geral' %}{% if s == "geral" %}Qualquer pessoa{% elif s == "frio" %}Ainda não conhece você{% elif s == "quente" %}Já conhece você{% elif s == "iniciante" %}Está começando agora{% elif s == "escalando" %}Já começou e quer crescer{% else %}{{ s }}{% endif %} {% endif %}{% endfor %}</b><br><span class="dica">Para mudar essas escolhas ou o público, abra a opção abaixo do nome do anúncio.</span></p>
+    <form method="get" action="#links" id="form-links">
+      <input type="hidden" name="gerar" value="1">
+      <div class="grade">
+        <label>Onde você vai divulgar?
+          <select name="src">
+            <option value="">Escolha…</option>
+            {% for chave, nome in origens %}<option value="{{ chave }}"{% if escolha.src == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Como você vai divulgar?
+          <select name="med">
+            <option value="">Escolha…</option>
+            {% for chave, nome in meios %}<option value="{{ chave }}"{% if escolha.med == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Nome da campanha (opcional)
+          <input type="text" name="cpg" value="{{ escolha.cpg }}" placeholder="{{ nome_exemplo }}" maxlength="200">
+          <span class="dica">Deixe vazio para o site criar o nome. A campanha agrupa seus anúncios nos resultados.</span>
+        </label>
+      </div>
+      <label class="campo">Nome do anúncio
+        <textarea name="ctv" rows="2" placeholder="Ex.: video_apresentacao">{{ criativos_texto }}</textarea>
+        <span class="dica">Escolha um nome que você reconheça depois, como video_apresentacao. Para vários anúncios, escreva um nome por linha: cada um recebe seu próprio link.</span>
+      </label>
+      <details class="personalizar">
+        <summary>Mudar as perguntas, o formato ou o público</summary>
+        <p class="dica">Você pode manter as escolhas iniciais. Marcar várias opções cria um link para cada combinação.</p>
+      <fieldset>
+        <legend>Versão das perguntas</legend>
+        <p class="dica">Cada versão tem suas próprias perguntas. Se não souber, deixe só a mais nova marcada.</p>
+        <div class="opcoes">
+          {% for v in versoes %}<label><input type="checkbox" name="v" value="{{ v }}"{% if v in escolha.v or not escolha.v and forloop.last %} checked{% endif %}> {{ v }}{% if forloop.last %} (mais recente){% endif %}</label>{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Como o quiz aparece?</legend>
+        <p class="dica">Texto é a opção mais simples. Os formatos com vídeo precisam de um vídeo configurado no quiz.</p>
+        <div class="opcoes">
+          {% for chave, nome in formatos %}<label><input type="checkbox" name="fmt" value="{{ chave }}"{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %} checked{% endif %}> {% if chave == "video" %}Vídeo no topo{% else %}{{ nome }}{% endif %}</label>{% endfor %}
+        </div>
+        {% if not ia_ligada %}<p class="dica">"Conversa com IA": enquanto a chave da IA não estiver ligada no site, a página faz as mesmas perguntas em botões, sem a IA.</p>{% endif %}
+      </fieldset>
+      <fieldset>
+        <legend>Para quem é o anúncio?</legend>
+        <p class="dica">Essa escolha adapta o título do quiz e o texto do resultado a quem vai responder.</p>
+        <div class="opcoes">
+          {% for s in segmentos %}<label><input type="checkbox" name="seg" value="{{ s }}"{% if s in escolha.seg or not escolha.seg and s == 'geral' %} checked{% endif %}> {% if s == "geral" %}Qualquer pessoa{% elif s == "frio" %}Ainda não conhece você{% elif s == "quente" %}Já conhece você{% elif s == "iniciante" %}Está começando agora{% elif s == "escalando" %}Já começou e quer crescer{% else %}{{ s }}{% endif %}</label>{% endfor %}
+        </div>
+      </fieldset>
+      </details>
+      <details>
+        <summary>Configurações de rastreamento (opcional)</summary>
+        <p class="dica">Normalmente ficam vazias: o site repete a origem, o tipo, a campanha e o criativo nos campos <code>utm_*</code>, que o Google Analytics e a Meta leem.</p>
+        <div class="grade">
+          <label>utm_source<input type="text" name="utm_source" value="{{ escolha.utm_source }}" maxlength="200"></label>
+          <label>utm_medium<input type="text" name="utm_medium" value="{{ escolha.utm_medium }}" maxlength="200"></label>
+          <label>utm_campaign<input type="text" name="utm_campaign" value="{{ escolha.utm_campaign }}" maxlength="200"></label>
+          <label>utm_content<input type="text" name="utm_content" value="{{ escolha.utm_content }}" maxlength="200"></label>
+          <label>utm_term (palavra-chave)<input type="text" name="utm_term" value="{{ escolha.utm_term }}" maxlength="200"></label>
+        </div>
+      </details>
+      <p><button type="submit" class="principal">Criar os links</button></p>
+    </form>
+  </div>
+
+  {% if gerar %}
+  <div class="cartao" id="links">
+    <h2>{% if links and not aviso_links %}Seu link está pronto. Teste e copie.{% else %}Confira suas escolhas{% endif %}</h2>
+    {% if aviso_links %}
+      <p class="alerta">{{ aviso_links }} Desmarque a opção que não existe e tente de novo.</p>
+    {% elif links %}
+      <p class="certo"><b>{{ links|length }} link(s) prontos.</b>{% if cpg_sugerido %} Nome da campanha criado pelo site: <code>{{ cpg_sugerido }}</code>.{% endif %}</p>
+      {% if not escolha.src %}<p class="alerta">Você não escolheu onde o anúncio vai rodar. Sem isso, os números não mostram de onde a pessoa veio.</p>{% endif %}
+      {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
+      <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
+      {% if robo_painel.robo %}
+      <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="conferir">
+        <input type="hidden" name="escopo" value="tela">
+        <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
+        <input type="hidden" name="volta" value="{{ consulta }}">
+        <p><button type="submit">Pedir ao robô para conferir estes {{ links|length }} link(s) no site</button> <span class="dica">Grátis. Veja o resultado na área “Pedir ajuda ao robô”.</span></p>
+      </form>
+      {% endif %}
+      <details><summary>Copiar todos os links de uma vez</summary>
+      <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado-todos role="status"></span></p>
+      <textarea readonly rows="4" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
+{% endfor %}</textarea></details>
+      {% for item in links %}
+        <div class="link">
+          <div class="rotulo">{{ item.version_key }} · {{ item.formato_legivel }} · {{ item.publico_legivel }}{% if item.ctv %} · anúncio {{ item.ctv }}{% endif %}</div>
+          <input type="text" readonly value="{{ item.url }}" aria-label="Link do anúncio">
+          <div class="acoes">
+            <a href="{{ item.teste }}" target="_blank" rel="noopener noreferrer" class="botao">Testar sem contar visita ↗</a>
+            <button type="button" data-copiar="{{ item.url }}">Copiar link para o anúncio</button>
+          </div>
+          <span data-recado role="status"></span>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="alerta">Nenhum link saiu com essas escolhas. Marque pelo menos uma versão, um formato e um público.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  </section>
+  <section id="painel-resultados" data-painel="resultados" aria-label="Resultados da divulgação">
+  <div class="cartao" id="resultados">
+    <h2>Veja o resultado da divulgação</h2>
+    <p class="dica">Escolha um período ou deixe as datas vazias para ver tudo.</p>
+    <form method="get" class="grade" action="#resultados">
+      <input type="hidden" name="aba" value="resultados">
+      <label>Data inicial<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
+      <label>Data final<input type="date" name="fim" value="{{ datas.fim }}"></label>
+      <label>Campanha<select name="ver_cpg"><option value="">Todas as campanhas</option>{% for c in campanhas_vistas %}<option value="{{ c }}"{% if ver_cpg == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+      <div class="campo-acao"><button type="submit">Ver números</button></div>
+    </form>
+    <div class="resumo-numeros" aria-label="Resumo das visitas reais">
+      <div><strong>{{ resumo.visitas }}</strong><b>Abriram o quiz</b><span>Visitas registradas</span></div>
+      <div><strong>{{ resumo.submissoes }}</strong><b>Terminaram as perguntas</b><span>Chegaram ao resultado</span></div>
+      <div><strong>{{ resumo.saidas }}</strong><b>Clicaram na oferta</b><span>Foram ver o que você vende</span></div>
+    </div>
+    <p class="dica">Os testes da equipe ficam fora deste resumo. Os cliques de demonstração também ficam fora do total de ofertas. <b>Clicar na oferta não significa comprar.</b> A compra é confirmada na página de pagamento.</p>
+    {% if linhas_reais %}
+      <details><summary>Ver os números de cada anúncio</summary>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_reais %}</details>
+    {% else %}<p>Nenhuma visita real neste período{% if ver_cpg %} para esta campanha{% endif %}. Quando sua divulgação trouxer pessoas, os resultados aparecem aqui.</p>{% endif %}
+    {% if linhas_testes %}<details><summary>Ver testes da equipe (fora do resumo)</summary>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_testes %}</details>{% endif %}
+    {% if avulsas or divergentes %}
+      <details><summary>Respostas sem visita registrada</summary>
+        <p class="dica">São respostas cujo início não pôde ser associado à visita, por exemplo por um bloqueador no navegador. Ficam fora do resumo acima.</p>
+        {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
+        {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
+      </details>
+    {% endif %}
+    <details><summary>Como estes números são contados</summary><p class="dica">{{ aviso }}</p></details>
+    <p><a href="{% url 'quiz_evolucao' slug %}">Ver em qual pergunta as pessoas desistem →</a></p>
+    <p><a href="#robo" data-ir="robo">Pedir ao robô para explicar esses resultados →</a></p>
+  </div>
+  </section>
+  <section data-painel="robo" aria-label="Ajuda do robô">
   <div class="cartao" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% endif %}>
     <div class="robo-topo">
       <h2>Seu robô nesta página{% if robo_painel.robo %}: {{ robo_painel.robo.nome }}{% endif %}</h2>
@@ -90,12 +280,14 @@
     {% elif not robo_painel.robo %}
       <p class="dica">Seu acesso não está ligado a uma pessoa da equipe, por isso ainda não há robô para você aqui. Quem administra a equipe confere o seu e-mail na ficha da pessoa, e o robô aparece.</p>
     {% else %}
+      <details><summary>Disponibilidade e gastos do robô</summary>
       <div class="fichas">
         <span class="ficha {% if robo_painel.ia_pronta %}bom{% else %}atencao{% endif %}">{% if robo_painel.ia_pronta %}IA pronta{% else %}IA ainda não pronta{% endif %}</span>
         <span class="ficha">Conversa: {{ robo_painel.conexao.modelo_rapido }} · Leitura: {{ robo_painel.conexao.modelo_forte }}</span>
         {% if robo_painel.teto %}<span class="ficha">Gasto da equipe no mês: US$ {{ robo_painel.gasto }} de US$ {{ robo_painel.teto }}</span>{% endif %}
       </div>
       <p class="dica">Ele trabalha no servidor: pode fechar esta página que o trabalho continua, e o resultado aparece aqui embaixo e na página do robô.</p>
+      </details>
       {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Os pedidos ficam guardados e começam quando ele for reativado, na página do robô.</p>{% endif %}
       {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência dos links funciona sem ela; a leitura dos números e os pedidos ficam guardados e são feitos quando ela voltar.</p>{% endif %}
       {% with s=robo_painel.situacao %}
@@ -134,8 +326,8 @@
       <div class="robo-acoes">
         <section class="robo-acao">
           <h3>Conferir os links no site</h3>
-          <p>Antes de subir os anúncios. O robô abre cada versão, formato e público como um visitante, confere versão, título e vídeo, calcula o resultado e a oferta de cada pontuação e prova que os 12 parâmetros do anúncio chegam inteiros à página da oferta.</p>
-          <p class="dica">Sem IA e sem custo. As aberturas ficam marcadas como teste. Não envia formulário nem compra. Se achar problema, cria a tarefa de correção.</p>
+          <p>O robô verifica se as páginas do quiz abrem e se os links levam às ofertas esperadas.</p>
+          <p class="dica">Grátis. A conferência não entra nas visitas reais. O resultado aparece aqui; se houver um problema, o robô registra uma tarefa de correção.</p>
           <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
             {% csrf_token %}
             <input type="hidden" name="acao" value="conferir">
@@ -147,24 +339,27 @@
         </section>
         <section class="robo-acao">
           <h3>Ler os números e sugerir melhorias</h3>
-          <p>Visitas, respostas e cliques por versão, etapa e campanha; onde o quiz perde gente; até cinco ações com a evidência de cada uma; e propostas de nova versão quando houver gente suficiente para decidir.</p>
-          <p class="dica">Nenhuma versão muda. Usa o modelo forte: centavos por leitura. A tarefa aparece no painel da equipe e é concluída com a entrega.</p>
+          <p>O robô explica os resultados e sugere o que você pode melhorar, usando os números do quiz.</p>
+          <p class="dica">Usa IA e tem um pequeno custo em dólar, descontado do limite da equipe. Você recebe sugestões para decidir o que fazer.</p>
           <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
             {% csrf_token %}
             <input type="hidden" name="acao" value="ler">
             <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
             <input type="hidden" name="volta" value="{{ consulta }}">
+            <details><summary>Escolher um período ou uma dúvida (opcional)</summary>
             <div class="datas">
               <label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
               <label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label>
             </div>
             <label>Algo para olhar com atenção (opcional)<input type="text" name="observacao" maxlength="1000" placeholder="Ex.: por que a campanha do TikTok responde menos?"></label>
+            </details>
             <button type="submit">Pedir a leitura dos números</button>
           </form>
         </section>
         <section class="robo-acao">
-          <h3>Peça qualquer coisa sobre este quiz</h3>
-          <p class="dica">Ele já sabe qual quiz é e o que está marcado na tela. Toque num exemplo ou escreva do seu jeito:</p>
+          <h3>Escreva sua dúvida ou seu pedido</h3>
+          <p class="dica">Escreva como você falaria com uma pessoa. O robô já sabe de qual quiz você está falando. Usa IA dentro do limite de gastos da equipe.</p>
+          <details><summary>Ver exemplos de pedidos</summary>
           <div class="exemplos">
             <button type="button" data-exemplo="Monte os links da versão mais nova para o TikTok, público frio, anúncios a1 e a2.">Links para o TikTok</button>
             <button type="button" data-exemplo="Que oferta cada pontuação mostra em cada versão? Explique com um exemplo de respostas.">Que oferta cada pontuação mostra?</button>
@@ -172,20 +367,20 @@
             <button type="button" data-exemplo="Confira no site os links que estão marcados na tela antes de eu subir os anúncios.">Conferir antes de anunciar</button>
             <button type="button" data-exemplo="Registre a ideia de uma versão nova a partir da B2 com a pergunta onde mais gente desiste mais curta. Use os números para escolher a pergunta.">Ideia de versão nova</button>
             <button type="button" data-exemplo="Crie uma tarefa para mim: gravar o vídeo da versão B2, prazo sexta-feira.">Tarefa para a equipe</button>
-          </div>
+          </div></details>
           <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
             {% csrf_token %}
             <input type="hidden" name="acao" value="pedir">
             <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
             <input type="hidden" name="volta" value="{{ consulta }}">
-            <textarea name="texto" rows="3" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: monte os links da B2 para o Instagram, público quente, anúncio vsl_47s"></textarea>
+            <textarea name="texto" rows="3" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: quero divulgar no Instagram. Me ajude a criar o link."></textarea>
             <button type="submit">Enviar ao robô</button>
           </form>
         </section>
       </div>
 
       {% if robo_painel.mensagens or robo_painel.respondendo %}
-        <h3>Conversa sobre este quiz</h3>
+        <details{% if recado_do_robo or robo_painel.respondendo %} open{% endif %}><summary>Conversa sobre este quiz</summary>
         {% for m in robo_painel.mensagens %}
           <div class="fala-quiz {{ m.papel }}">
             {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
@@ -195,6 +390,7 @@
         {% if robo_painel.respondendo %}<p class="dica" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}{{ robo_painel.robo.nome }} está respondendo…{% endif %}</p>{% endif %}
       {% endif %}
 
+      {% if robo_painel.mensagens or robo_painel.respondendo %}</details>{% endif %}
       {% if robo_painel.trabalhos %}
         <details class="trabalhos-quiz"{% if robo_painel.trabalhando %} open{% endif %}>
         <summary>Trabalhos deste quiz ({{ robo_painel.trabalhos|length }} mais recentes){% if robo_painel.trabalhando %} · trabalhando agora{% endif %}</summary>
@@ -215,7 +411,7 @@
       {% endif %}
 
       {% if robo_painel.entrega %}
-        <details open>
+        <details>
           <summary>Última entrega: {{ robo_painel.entrega.titulo }}{% if robo_painel.entrega.parcial %} (parcial){% endif %}</summary>
           <div class="entrega-quiz documento">{{ robo_painel.entrega_html|safe }}</div>
           <p class="meta"><a href="{% url 'entrega_do_robo' robo_painel.entrega.id %}">Abrir a entrega inteira</a> · {{ robo_painel.entrega.atualizada_em|date:"d/m H:i" }} · versão {{ robo_painel.entrega.versao }}</p>
@@ -228,154 +424,10 @@
     {% endif %}
   </div>
 
-  <div class="cartao">
-    <h2>1. Monte os links</h2>
-    <form method="get">
-      <input type="hidden" name="gerar" value="1">
-      <fieldset>
-        <legend>Qual versão do quiz?</legend>
-        <p class="dica">Cada versão tem suas próprias perguntas. Se não souber, deixe só a mais nova marcada.</p>
-        <div class="opcoes">
-          {% for v in versoes %}<label><input type="checkbox" name="v" value="{{ v }}"{% if v in escolha.v or not escolha.v and forloop.last %} checked{% endif %}> {{ v }}</label>{% endfor %}
-        </div>
-      </fieldset>
-      <fieldset>
-        <legend>Como o quiz aparece?</legend>
-        <p class="dica">Use o mesmo jeito do anúncio: anúncio com vídeo → "Vídeo no topo"; anúncio de imagem ou texto → "Texto".</p>
-        <div class="opcoes">
-          {% for chave, nome in formatos %}<label><input type="checkbox" name="fmt" value="{{ chave }}"{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %} checked{% endif %}> {{ nome }}</label>{% endfor %}
-        </div>
-        {% if not ia_ligada %}<p class="dica">"Conversa com IA": enquanto a chave da IA não estiver ligada no site, a página faz as mesmas perguntas em botões, sem a IA.</p>{% endif %}
-      </fieldset>
-      <fieldset>
-        <legend>Para quem é o anúncio?</legend>
-        <p class="dica">O público muda o título do quiz e o texto do resultado. "Geral" serve para qualquer pessoa.</p>
-        <div class="opcoes">
-          {% for s in segmentos %}<label><input type="checkbox" name="seg" value="{{ s }}"{% if s in escolha.seg or not escolha.seg and s == 'geral' %} checked{% endif %}> {% if s == 'geral' %}Geral (qualquer pessoa){% else %}{{ s }}{% endif %}</label>{% endfor %}
-        </div>
-      </fieldset>
-      <div class="grade">
-        <label>Onde o anúncio vai rodar?
-          <select name="src">
-            <option value="">Escolha…</option>
-            {% for chave, nome in origens %}<option value="{{ chave }}"{% if escolha.src == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
-          </select>
-        </label>
-        <label>Que tipo de divulgação?
-          <select name="med">
-            <option value="">Escolha…</option>
-            {% for chave, nome in meios %}<option value="{{ chave }}"{% if escolha.med == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
-          </select>
-        </label>
-        <label>Nome da campanha
-          <input type="text" name="cpg" value="{{ escolha.cpg }}" placeholder="{{ nome_exemplo }}" maxlength="200">
-          <span class="dica">Deixe vazio e o site cria um nome sozinho: <code>{{ nome_exemplo }}</code> (quiz, público, mês e ano).</span>
-        </label>
-      </div>
-      <label class="campo">Nome de cada anúncio (criativo), um por linha
-        <textarea name="ctv" rows="4" placeholder="vsl_47s&#10;vsl_30s&#10;imagem_depoimento">{{ criativos_texto }}</textarea>
-        <span class="dica">Use o mesmo nome que está no gerenciador de anúncios. Cada nome vira um link próprio, e assim você sabe qual anúncio trouxe cada pessoa.</span>
-      </label>
-      <details>
-        <summary>Opções avançadas (só se o time de mídia pedir)</summary>
-        <p class="dica">Normalmente ficam vazias: o site repete a origem, o tipo, a campanha e o criativo nos campos <code>utm_*</code>, que o Google Analytics e a Meta leem.</p>
-        <div class="grade">
-          <label>utm_source<input type="text" name="utm_source" value="{{ escolha.utm_source }}" maxlength="200"></label>
-          <label>utm_medium<input type="text" name="utm_medium" value="{{ escolha.utm_medium }}" maxlength="200"></label>
-          <label>utm_campaign<input type="text" name="utm_campaign" value="{{ escolha.utm_campaign }}" maxlength="200"></label>
-          <label>utm_content<input type="text" name="utm_content" value="{{ escolha.utm_content }}" maxlength="200"></label>
-          <label>utm_term (palavra-chave)<input type="text" name="utm_term" value="{{ escolha.utm_term }}" maxlength="200"></label>
-        </div>
-      </details>
-      <p><button type="submit" class="principal">Criar os links</button></p>
-    </form>
-  </div>
-
-  {% if gerar %}
-  <div class="cartao" id="links">
-    <h2>2. Teste e copie</h2>
-    {% if aviso_links %}
-      <p class="alerta">{{ aviso_links }} Desmarque a opção que não existe e tente de novo.</p>
-    {% elif links %}
-      <p class="certo"><b>{{ links|length }} link(s) prontos.</b>{% if cpg_sugerido %} Nome da campanha criado pelo site: <code>{{ cpg_sugerido }}</code>.{% endif %}</p>
-      {% if not escolha.src %}<p class="alerta">Você não escolheu onde o anúncio vai rodar. Sem isso, os números não mostram de onde a pessoa veio.</p>{% endif %}
-      {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
-      <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
-      {% if robo_painel.robo %}
-      <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="conferir">
-        <input type="hidden" name="escopo" value="tela">
-        <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
-        <input type="hidden" name="volta" value="{{ consulta }}">
-        <p><button type="submit">Pedir ao robô para conferir estes {{ links|length }} link(s) no site</button> <span class="dica">Sem custo; o relatório aparece no cartão do robô, acima.</span></p>
-      </form>
-      {% endif %}
-      <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado role="status"></span></p>
-      <textarea readonly rows="4" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
-{% endfor %}</textarea>
-      {% for item in links %}
-        <div class="link">
-          <div class="rotulo">{{ item.version_key }} · {{ item.formato_legivel }} · {% if item.seg %}{{ item.seg }}{% else %}geral{% endif %}{% if item.ctv %} · anúncio {{ item.ctv }}{% endif %}</div>
-          <input type="text" readonly value="{{ item.url }}" aria-label="Link do anúncio">
-          <div class="acoes">
-            <button type="button" data-copiar="{{ item.url }}">Copiar</button>
-            <a href="{{ item.teste }}" target="_blank" rel="noopener noreferrer">Testar (não conta nos números)</a>
-          </div>
-        </div>
-      {% endfor %}
-    {% else %}
-      <p class="alerta">Nenhum link saiu com essas escolhas. Marque pelo menos uma versão, um formato e um público.</p>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  <div class="cartao">
-    <h2>3. Acompanhe os números</h2>
-    <form method="get" class="grade">
-      <label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
-      <label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label>
-      <label>Campanha
-        <select name="ver_cpg">
-          <option value="">Todas</option>
-          {% for c in campanhas_vistas %}<option value="{{ c }}"{% if ver_cpg == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
-        </select>
-      </label>
-      <label>&nbsp;<button type="submit">Ver números</button></label>
-    </form>
-    <p class="dica"><b>Visitas</b>: pessoas que abriram o quiz. <b>Responderam</b>: chegaram ao resultado. <b>Foram para a oferta</b>: clicaram no botão da oferta. O clique não é compra: a venda é confirmada no checkout. Testes da equipe ficam fora.</p>
-    {% if linhas %}
-      <div class="rolagem">
-        <table>
-          <thead><tr><th>Dia</th><th>Onde rodou / campanha</th><th>Anúncio</th><th>Versão · formato · público</th><th>Visitas</th><th>Responderam</th><th>Foram para a oferta</th></tr></thead>
-          <tbody>
-            {% for linha in linhas %}
-              <tr>
-                <td>{{ linha.dia_origem }}</td>
-                <td>{% firstof linha.src linha.source "—" %} / {% firstof linha.cpg linha.campaign "—" %}</td>
-                <td>{% firstof linha.ctv linha.content "—" %}{% if linha.term %}<br><span class="dica">termo: {{ linha.term }}</span>{% endif %}</td>
-                <td>{{ linha.version_key }} · {{ linha.formato_legivel|default:"—" }} · {{ linha.seg|default:"geral" }}</td>
-                <td>{{ linha.visitas }}</td><td>{{ linha.submissoes }}</td>
-                <td>{{ linha.saidas }}{% if linha.saidas_demonstracao %} ({{ linha.saidas_reais }} reais, {{ linha.saidas_demonstracao }} de demonstração){% endif %}</td>
-              </tr>
-              {% if linha.alertas %}<tr><td colspan="7" class="dica">{{ linha.alertas|join:"; " }}</td></tr>{% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% else %}<p>Nenhuma visita neste período. Quando um anúncio trouxer gente, ela aparece aqui.</p>{% endif %}
-    {% if avulsas or divergentes %}
-      <h3>Respostas sem visita registrada</h3>
-      <p class="dica">Pessoas que responderam, mas cuja visita não foi registrada (por exemplo, bloqueador no navegador). Não entram nas porcentagens.</p>
-      {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
-      {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
-    {% endif %}
-    <p class="dica">{{ aviso }}</p>
-  </div>
-
+  </section>
   <div class="cartao">
     <details>
-      <summary>O que significa cada parte do link?</summary>
+      <summary>Entender os termos técnicos do link (opcional)</summary>
       <dl>
         <dt>v = versão</dt><dd>Qual quiz a pessoa vê (perguntas e pontos). Ex.: B2.</dd>
         <dt>fmt = formato</dt><dd>Como o quiz aparece: texto, vídeo, vídeo curto + texto, calculadora ou conversa com IA.</dd>
@@ -391,10 +443,52 @@
   </div>
 </div>
 <script>
+
+(function () {
+  var nav = document.querySelector('.camp-nav');
+  var abas = Array.from(document.querySelectorAll('[data-aba]'));
+  var paineis = Array.from(document.querySelectorAll('[data-painel]'));
+  if (!nav || !abas.length) { return; }
+  nav.setAttribute('role', 'tablist');
+  nav.setAttribute('aria-label', 'O que você quer fazer?');
+  abas.forEach(function (a) { a.id = 'aba-' + a.dataset.aba; a.setAttribute('role', 'tab'); a.setAttribute('aria-controls', 'painel-' + a.dataset.aba); });
+  paineis.forEach(function (p) { p.id = 'painel-' + p.dataset.painel; p.setAttribute('role', 'tabpanel'); p.setAttribute('aria-labelledby', 'aba-' + p.dataset.painel); });
+  function mostrar(nome) {
+    if (!abas.some(function (a) { return a.dataset.aba === nome; })) { nome = 'criar'; }
+    paineis.forEach(function (p) { p.hidden = p.dataset.painel !== nome; });
+    abas.forEach(function (a) { var ativa = a.dataset.aba === nome; a.setAttribute('aria-selected', String(ativa)); a.tabIndex = ativa ? 0 : -1; });
+  }
+  function peloEndereco() {
+    var hash = window.location.hash.slice(1);
+    var params = new URLSearchParams(window.location.search);
+    mostrar(hash === 'links' ? 'criar' : hash || (params.has('robo') ? 'robo' : params.get('aba') || (params.has('inicio') || params.has('fim') || params.has('ver_cpg') ? 'resultados' : 'criar')));
+  }
+  abas.forEach(function (a, i) {
+    a.addEventListener('click', function (e) { e.preventDefault(); mostrar(a.dataset.aba); window.history.replaceState(null, '', a.getAttribute('href')); });
+    a.addEventListener('keydown', function (e) {
+      var j = e.key === 'ArrowRight' ? (i + 1) % abas.length : e.key === 'ArrowLeft' ? (i + abas.length - 1) % abas.length : e.key === 'Home' ? 0 : e.key === 'End' ? abas.length - 1 : -1;
+      if (j < 0) { return; } e.preventDefault(); abas[j].click(); abas[j].focus();
+    });
+  });
+  document.querySelectorAll('[data-ir]').forEach(function (a) { a.addEventListener('click', function () { mostrar(a.dataset.ir); }); });
+  document.querySelectorAll('#form-links input[type=checkbox]').forEach(function (input) {
+    input.addEventListener('change', function () {
+      var resumo = document.querySelector('[data-escolha="' + input.name + '"]');
+      if (!resumo) { return; }
+      var nomes = Array.from(document.querySelectorAll('#form-links input[name="' + input.name + '"]:checked')).map(function (i) { return i.closest('label').textContent.trim(); });
+      resumo.textContent = nomes.length ? nomes.join(', ') : 'Nenhuma opção marcada';
+    });
+  });
+  window.addEventListener('hashchange', peloEndereco);
+  peloEndereco();
+  if (window.location.hash === '#links') { var links = document.getElementById('links'); if (links) { links.scrollIntoView(); } }
+})();
+
 (function () {
   var recado = document.querySelector('[data-recado]');
   function avisar(texto) { if (recado) { recado.textContent = texto; } }
   function copiar(texto, botao) {
+    recado = botao.closest('.link') ? botao.closest('.link').querySelector('[data-recado]') : document.querySelector('[data-recado-todos]');
     function feito() { var antes = botao.textContent; botao.textContent = 'Copiado!'; setTimeout(function () { botao.textContent = antes; }, 1500); }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(texto).then(feito, function () { avisar('Não consegui copiar. Selecione o link e copie com Ctrl+C.'); });
