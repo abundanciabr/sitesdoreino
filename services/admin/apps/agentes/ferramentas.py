@@ -211,6 +211,174 @@ DEFINICOES = [
     ),
 ]
 
+
+# ---------------------------------------------------------------- quizzes
+#
+# Só para quem administra o site: as telas de quiz ficam atrás da porta do
+# administrador, e o robô não abre para a pessoa o que ela não abriria.
+
+FORMATOS_DO_QUIZ = ["text", "video", "hybrid", "calc", "ai"]
+SLUG_DO_QUIZ = _texto_ou_nulo(
+    "O quiz (slug). Nulo: o quiz da página de onde a pessoa escreveu."
+)
+
+
+def _escolha_de_links(com_campanha: bool = True) -> dict:
+    propriedades = {
+        "slug": SLUG_DO_QUIZ,
+        "versoes": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Versões, como B2. Vazia: todas as ativas.",
+        },
+        "formatos": {
+            "type": "array",
+            "items": {"type": "string", "enum": FORMATOS_DO_QUIZ},
+            "description": (
+                "text = Texto; video = Vídeo no topo (VSL); hybrid = Vídeo curto + "
+                "texto; calc = Calculadora; ai = Conversa com IA. Vazia: todos."
+            ),
+        },
+        "publicos": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": (
+                "Públicos (seg), como frio, quente, escalando, iniciante; 'geral' "
+                "é o link sem público. Vazia: todos."
+            ),
+        },
+    }
+    if com_campanha:
+        propriedades.update(
+            {
+                "origem": _texto_ou_nulo(
+                    "Onde o anúncio roda (src): meta, tiktok, google, youtube, "
+                    "email, whatsapp ou organico."
+                ),
+                "meio": _texto_ou_nulo(
+                    "Tipo (med): cpc = anúncio pago, retargeting, organic ou email."
+                ),
+                "campanha": _texto_ou_nulo(
+                    "Nome da campanha (cpg), sem espaços. Nulo: o sistema sugere."
+                ),
+                "anuncios": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": (
+                        "Identificadores dos anúncios (ctv), como vsl_47s. Cada "
+                        "anúncio multiplica os links."
+                    ),
+                },
+                "utm_term": _texto_ou_nulo("Termo (utm_term), opcional."),
+            }
+        )
+    return propriedades
+
+
+PERIODO = {
+    "inicio": _texto_ou_nulo("Primeiro dia AAAA-MM-DD; nulo para o começo."),
+    "fim": _texto_ou_nulo("Último dia AAAA-MM-DD; nulo para hoje."),
+}
+
+DEFINICOES_DO_QUIZ = [
+    _ferramenta(
+        "consultar_quiz",
+        "A estrutura de um quiz do site: versões ativas, perguntas, pontos "
+        "possíveis, faixas de pontuação, a oferta e a saída de cada faixa, "
+        "formatos e públicos. O quiz da página já vem nas instruções. Com slug "
+        "nulo fora da página de um quiz, lista os quizzes do site.",
+        {"slug": SLUG_DO_QUIZ},
+    ),
+    _ferramenta(
+        "montar_links_do_quiz",
+        "Monta os links dos anúncios pelo próprio quiz (nunca escreva um link "
+        "à mão), salva um kit com todos como entrega e devolve o endereço da "
+        "página de links já preenchida, onde cada link tem Copiar e Testar.",
+        _escolha_de_links(),
+    ),
+    _ferramenta(
+        "delegar_conferencia_dos_links",
+        "Pede ao robô que CONFIRA NO SITE os links antes de anunciar: abre cada "
+        "versão, formato e público como um visitante (aberturas marcadas como "
+        "teste), confere versão, título e vídeo, calcula que oferta cada "
+        "pontuação mostra e se a origem da campanha chega inteira ao checkout. "
+        "Roda no servidor, sem IA e sem custo; não envia formulário nem compra. "
+        "Entrega um relatório com veredito e, se achar problema, cria a tarefa "
+        "de correção.",
+        {**_escolha_de_links(), "observacao": _texto_ou_nulo("O que a pessoa pediu de especial.")},
+    ),
+    _ferramenta(
+        "consultar_numeros_do_quiz",
+        "Os números de um quiz num período: visitas de verdade (testes ficam "
+        "fora), quem chegou ao resultado e quem foi para a oferta, por versão, "
+        "etapa por etapa, por campanha e por dia, os gargalos e o que falta "
+        "medir. Para perguntas rápidas; a leitura completa é delegar_leitura_do_quiz.",
+        {"slug": SLUG_DO_QUIZ, **PERIODO},
+    ),
+    _ferramenta(
+        "delegar_leitura_do_quiz",
+        "Pede ao robô que EXECUTE no servidor a leitura completa dos números "
+        "com o modelo forte: um documento com as tabelas, a leitura, até cinco "
+        "ações com a evidência de cada uma e propostas de nova versão quando a "
+        "amostra permitir (nenhuma versão existente muda). Cria a tarefa no "
+        "painel e a conclui com a entrega.",
+        {
+            "slug": SLUG_DO_QUIZ,
+            **PERIODO,
+            "observacao": _texto_ou_nulo("O que a pessoa quer saber em especial."),
+        },
+    ),
+    _ferramenta(
+        "consultar_propostas_do_quiz",
+        "As propostas de nova versão de um quiz, com o estado de cada uma "
+        "(proposta, aceita, publicada, medida, descartada).",
+        {"slug": SLUG_DO_QUIZ},
+    ),
+    _ferramenta(
+        "registrar_proposta_de_versao",
+        "Registra a ideia de uma versão nova a partir de uma versão publicada. "
+        "Não muda o quiz: se a equipe aceitar, a versão nova é criada no "
+        "estúdio. Use quando a pessoa pedir ou concordar com a ideia.",
+        {
+            "slug": SLUG_DO_QUIZ,
+            "versao_base": {"type": "string", "description": "A versão publicada de partida, como B2."},
+            "gargalo": {"type": "string", "description": "O problema que a versão nova ataca, em uma frase."},
+            "hipotese": {"type": "string", "description": "Por que a mudança deve ajudar."},
+            "mudanca": {"type": "string", "description": "O que muda, concretamente, na versão nova."},
+            "prioridade": {"type": "string", "enum": ["alta", "media", "baixa"]},
+        },
+    ),
+    _ferramenta(
+        "decidir_proposta_de_versao",
+        "Aceita, descarta, marca como publicada ou registra o resultado medido "
+        "de uma proposta. Só quando a pessoa pedir essa decisão.",
+        {
+            "slug": SLUG_DO_QUIZ,
+            "proposta_id": {"type": "integer"},
+            "decisao": {
+                "type": "string",
+                "enum": ["aceitar", "descartar", "marcar_publicada", "registrar_resultado"],
+            },
+            "resultado": _texto_ou_nulo("O resultado observado, para registrar_resultado."),
+        },
+    ),
+]
+NOMES_DO_QUIZ = {d["name"] for d in DEFINICOES_DO_QUIZ}
+
+
+def pode_usar_o_quiz(membro: MembroDaEquipe) -> bool:
+    """Quem fala com o robô administra o site? Pelo e-mail conferido, contra a
+    mesma lista da porta do painel."""
+    from apps.core.porta import _emails_autorizados
+
+    email = (membro.email or "").strip().lower()
+    return bool(email) and not membro.email_a_conferir and email in _emails_autorizados()
+
+
+def definicoes_para(membro: MembroDaEquipe) -> list[dict]:
+    return DEFINICOES + DEFINICOES_DO_QUIZ if pode_usar_o_quiz(membro) else DEFINICOES
+
+
 ESCREVEM = {
     "criar_tarefa",
     "alterar_tarefa",
@@ -219,6 +387,11 @@ ESCREVEM = {
     "marcar_compromisso",
     "delegar_panorama_semanal",
     "salvar_entrega",
+    "montar_links_do_quiz",
+    "delegar_conferencia_dos_links",
+    "delegar_leitura_do_quiz",
+    "registrar_proposta_de_versao",
+    "decidir_proposta_de_versao",
 }
 
 
@@ -400,6 +573,7 @@ def consultar_trabalhos_do_robo(ctx: Contexto, args: dict) -> dict:
                 "situacao": e.get_situacao_display(),
                 "etapa": e.etapa_atual,
                 "motivo": e.motivo or None,
+                "resultado": e.resultado or None,
                 "tarefa_id": e.tarefa_id,
                 "entregas": [
                     {"id": en.id, "titulo": en.titulo, "parcial": en.parcial}
@@ -580,6 +754,192 @@ def salvar_entrega(ctx: Contexto, args: dict) -> dict:
     return {"salva": True, "entrega_id": entrega.id, "titulo": titulo}
 
 
+# ---------------------------------------------------------------- quizzes
+
+
+def _pelo_quiz(funcao, *args, **kwargs):
+    """Chama o quiz; a recusa dele e a falta de resposta voltam ao modelo
+    como frase, para ele explicar à pessoa na mesma hora."""
+    from .quiz import QuizIndisponivel, QuizRecusou
+
+    try:
+        return funcao(*args, **kwargs)
+    except QuizRecusou as recusa:
+        raise Recusa(str(recusa)) from None
+    except QuizIndisponivel as falha:
+        raise Recusa(falha.frase) from None
+
+
+def _no_quiz(ctx: Contexto, args: dict, *, precisa_do_quiz: bool = True) -> tuple[str, str]:
+    """O site e o quiz do pedido: o site vem de onde a pessoa escreveu; o
+    quiz, do pedido ou da página do quiz."""
+    from apps.core.conteudos import SLUG
+
+    contexto = (ctx.execucao.estado or {}).get("contexto") or {}
+    host = contexto.get("host") or ""
+    if not host:
+        raise Recusa(
+            "Não sei de qual site é o pedido. Escreva de novo pela página do robô "
+            "ou pela página de links e números do quiz."
+        )
+    slug = str(args.get("slug") or contexto.get("quiz") or "").strip().lower()
+    if slug and not SLUG.fullmatch(slug):
+        raise Recusa("Esse nome de quiz não existe.")
+    if precisa_do_quiz and not slug:
+        raise Recusa("Diga qual quiz. A lista sai em consultar_quiz com slug nulo.")
+    return host, slug
+
+
+def _quiz_existe(host: str, slug: str) -> None:
+    from . import quiz
+
+    quizzes = _pelo_quiz(quiz.lista_de_quizzes, host)["quizzes"]
+    if slug not in {q["slug"] for q in quizzes}:
+        nomes = ", ".join(q["slug"] for q in quizzes) or "nenhum"
+        raise Recusa(f"Não há quiz {slug} neste site. Os que existem: {nomes}.")
+
+
+def _periodo(args: dict) -> tuple[str, str]:
+    datas = []
+    for nome in ("inicio", "fim"):
+        valor = str(args.get(nome) or "").strip()
+        if valor:
+            try:
+                date.fromisoformat(valor)
+            except ValueError:
+                raise Recusa(f"A data {valor} não está em AAAA-MM-DD.") from None
+        datas.append(valor)
+    return datas[0], datas[1]
+
+
+def consultar_quiz(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args, precisa_do_quiz=False)
+    if not slug:
+        return _pelo_quiz(quiz.lista_de_quizzes, host)
+    return _pelo_quiz(quiz.retrato_do_quiz, host, slug, levantar=True)
+
+
+def montar_links_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args)
+    params = quiz.selecao_dos_argumentos(args, sugerir_campanha=True)
+    return _pelo_quiz(quiz.kit_de_links, ctx.robo, ctx.execucao, host, slug, params)
+
+
+def delegar_conferencia_dos_links(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+    from .trabalhos import delegar_conferencia
+
+    host, slug = _no_quiz(ctx, args)
+    _quiz_existe(host, slug)
+    params = quiz.selecao_dos_argumentos(args)
+    execucao, nova = delegar_conferencia(
+        ctx.robo,
+        ctx.membro,
+        pedido_por=ctx.membro.nome,
+        origem="conversa",
+        host=host,
+        slug=slug,
+        params=params,
+        descricao=args.get("observacao") or "",
+    )
+    return {
+        "delegado": True,
+        "ja_existia": not nova,
+        "trabalho_id": execucao.id,
+        "situacao": execucao.get_situacao_display(),
+        "conferindo": quiz.descrever_selecao(params),
+        "acompanhar_em": quiz.endereco_da_pagina(host, slug, ancora="#robo"),
+        "aviso": (
+            "Roda no servidor, sem IA e sem custo. O relatório aparece na página "
+            "de links e números do quiz e na página do robô."
+        ),
+    }
+
+
+def consultar_numeros_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args)
+    inicio, fim = _periodo(args)
+    return _pelo_quiz(quiz.numeros_do_quiz, host, slug, inicio, fim)
+
+
+def delegar_leitura_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+    from .trabalhos import delegar_leitura
+
+    host, slug = _no_quiz(ctx, args)
+    inicio, fim = _periodo(args)
+    _quiz_existe(host, slug)
+    execucao, nova = delegar_leitura(
+        ctx.robo,
+        ctx.membro,
+        pedido_por=ctx.membro.nome,
+        origem="conversa",
+        host=host,
+        slug=slug,
+        inicio=inicio,
+        fim=fim,
+        observacao=args.get("observacao") or "",
+    )
+    return {
+        "delegado": True,
+        "ja_existia": not nova,
+        "trabalho_id": execucao.id,
+        "tarefa_id": execucao.tarefa_id,
+        "situacao": execucao.get_situacao_display(),
+        "acompanhar_em": quiz.endereco_da_pagina(host, slug, ancora="#robo"),
+        "aviso": (
+            "Roda no servidor com o modelo forte (centavos, dentro do teto do mês) "
+            "e continua mesmo com o navegador fechado."
+        ),
+    }
+
+
+def consultar_propostas_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args)
+    return _pelo_quiz(quiz.propostas_do_quiz, host, slug)
+
+
+def registrar_proposta_de_versao(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args)
+    campos = {
+        nome: str(args.get(nome) or "").strip()
+        for nome in ("versao_base", "gargalo", "hipotese", "mudanca")
+    }
+    if not all(campos.values()):
+        raise Recusa("A proposta precisa de versão base, problema, hipótese e mudança.")
+    return _pelo_quiz(
+        quiz.registrar_proposta,
+        host,
+        slug,
+        prioridade=args.get("prioridade") or "media",
+        **campos,
+    )
+
+
+def decidir_proposta_de_versao(ctx: Contexto, args: dict) -> dict:
+    from . import quiz
+
+    host, slug = _no_quiz(ctx, args)
+    return _pelo_quiz(
+        quiz.decidir_proposta,
+        host,
+        slug,
+        int(args.get("proposta_id") or 0),
+        str(args.get("decisao") or ""),
+        str(args.get("resultado") or ""),
+    )
+
+
 ACOES = {
     "consultar_membros": consultar_membros,
     "consultar_objetivos": consultar_objetivos,
@@ -594,6 +954,14 @@ ACOES = {
     "marcar_compromisso": marcar_compromisso,
     "delegar_panorama_semanal": delegar_panorama_semanal,
     "salvar_entrega": salvar_entrega,
+    "consultar_quiz": consultar_quiz,
+    "montar_links_do_quiz": montar_links_do_quiz,
+    "delegar_conferencia_dos_links": delegar_conferencia_dos_links,
+    "consultar_numeros_do_quiz": consultar_numeros_do_quiz,
+    "delegar_leitura_do_quiz": delegar_leitura_do_quiz,
+    "consultar_propostas_do_quiz": consultar_propostas_do_quiz,
+    "registrar_proposta_de_versao": registrar_proposta_de_versao,
+    "decidir_proposta_de_versao": decidir_proposta_de_versao,
 }
 
 
@@ -612,6 +980,14 @@ ROTULOS = {
     "marcar_compromisso": "marcar ou tirar um compromisso da semana",
     "delegar_panorama_semanal": "delegar o panorama semanal",
     "salvar_entrega": "salvar uma entrega",
+    "consultar_quiz": "consultar o quiz",
+    "montar_links_do_quiz": "montar os links dos anúncios",
+    "delegar_conferencia_dos_links": "pedir a conferência dos links no site",
+    "consultar_numeros_do_quiz": "consultar os números do quiz",
+    "delegar_leitura_do_quiz": "pedir a leitura dos números do quiz",
+    "consultar_propostas_do_quiz": "consultar as propostas de versão",
+    "registrar_proposta_de_versao": "registrar uma proposta de versão",
+    "decidir_proposta_de_versao": "decidir uma proposta de versão",
 }
 
 
@@ -647,6 +1023,15 @@ def executar(ctx: Contexto, call_id: str, nome: str, argumentos_crus: str) -> st
         return _registrar(ctx, call_id, nome, argumentos, {"erro": "Ação desconhecida."}, "recusada")
     if impedimento:
         return _registrar(ctx, call_id, nome, argumentos, {"erro": impedimento}, "recusada")
+    if nome in NOMES_DO_QUIZ and not pode_usar_o_quiz(ctx.membro):
+        return _registrar(
+            ctx,
+            call_id,
+            nome,
+            argumentos,
+            {"erro": "Os quizzes ficam com quem administra o site."},
+            "recusada",
+        )
 
     try:
         with transaction.atomic():

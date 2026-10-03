@@ -1,7 +1,7 @@
 """Experiência definida pelo link e preservada em cada tentativa."""
 
 import uuid
-from urllib.parse import urlencode
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.http import Http404
 from django.urls import reverse
@@ -93,6 +93,42 @@ def resolver_direcionada(request, quiz, quizzes, force_new=False):
         "context": contexto,
         "utm": utm,
     }, versao
+
+
+def destino_com_parametros(destino, utm, contexto):
+    """Endereço da saída: o destino HTTPS da faixa com a origem da tentativa.
+
+    Parâmetros que o destino já traz ficam como estão. ValueError quando o
+    destino não é HTTPS sem credenciais.
+    """
+    try:
+        partes = urlsplit(destino)
+        host = partes.hostname
+        partes.port
+    except (TypeError, ValueError) as erro:
+        raise ValueError("destino indisponível") from erro
+    if (
+        partes.scheme != "https"
+        or not host
+        or partes.username
+        or partes.password
+        or any(ord(c) < 33 for c in destino)
+    ):
+        raise ValueError("destino indisponível")
+    existentes = {chave for chave, _ in parse_qsl(partes.query)}
+    parametros = {f"utm_{chave}": valor for chave, valor in (utm or {}).items() if valor}
+    parametros.update(
+        {
+            chave: valor
+            for chave, valor in (contexto or {}).items()
+            if chave in PARAMETROS and isinstance(valor, str) and valor
+        }
+    )
+    adicionais = urlencode(
+        {chave: valor for chave, valor in parametros.items() if chave not in existentes}
+    )
+    consulta = partes.query + ("&" if partes.query and adicionais else "") + adicionais
+    return urlunsplit(partes._replace(query=consulta))
 
 
 def url_da_experiencia(quiz, entrada):

@@ -72,6 +72,8 @@ class Execucao(models.Model):
     class Tipo(models.TextChoices):
         CONVERSA = "conversa", "Resposta na conversa"
         PANORAMA = "panorama_semanal", "Panorama semanal"
+        CONFERENCIA_QUIZ = "conferencia_quiz", "Conferência dos links do quiz"
+        LEITURA_QUIZ = "leitura_quiz", "Leitura dos números do quiz"
 
     class Situacao(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"

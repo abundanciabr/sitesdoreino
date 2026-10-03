@@ -6,6 +6,7 @@ from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
 from apps.quiz import portfolio
 from apps.quiz import painel_campanhas
+from apps.quiz.conferencia import conferencia as conferencia_de_links
 from apps.quiz import conversa as quiz_conversa
 from apps.quiz import evolucao
 from apps.quiz.previa import previa as previa_editor
@@ -17,6 +18,9 @@ urlpatterns = [
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
     path("interno/editor/quizzes/<slug:slug>/campanhas", painel_campanhas.relatorio),
     path("interno/editor/quizzes/<slug:slug>/links", painel_campanhas.links),
+    path(
+        "interno/editor/quizzes/<slug:slug>/conferencia", conferencia_de_links
+    ),
     path("interno/editor/quizzes/<slug:slug>/previa", previa_editor),
     path("interno/editor/quizzes/<slug:slug>/evolucao", evolucao.leitura),
     path("interno/editor/quizzes/<slug:slug>/propostas", evolucao.propostas),

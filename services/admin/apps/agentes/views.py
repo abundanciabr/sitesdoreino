@@ -27,6 +27,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from apps.core.conteudos import SLUG, host_da_requisicao
 from apps.core.documentos import para_html
 from apps.core.equipe import _membro_da_sessao, _nao_existe, _quem
 from apps.core.models import MembroDaEquipe, Tarefa
@@ -236,7 +237,12 @@ def mensagem(request):
     if len(texto) > TAMANHO_DA_MENSAGEM:
         return _volta("robo_da_pessoa", "longa", "#conversa")
     trabalhos.pedir_resposta(
-        robo, membro, texto, chave=request.POST.get("chave") or "", autor=_quem(request)
+        robo,
+        membro,
+        texto,
+        chave=request.POST.get("chave") or "",
+        autor=_quem(request),
+        contexto={"host": host_da_requisicao(request)},
     )
     return _volta("robo_da_pessoa", "enviada", "#conversa")
 
@@ -268,6 +274,82 @@ def delegar(request):
         ficha = reverse("tarefa_ver", args=[tarefa.id])
         return HttpResponseRedirect(f"{ficha}?resultado=robo_{resultado}#robo")
     return _volta("robo_da_pessoa", resultado, "#trabalhos")
+
+
+@require_POST
+def robo_no_quiz(request, slug: str):
+    """Os botões do robô na página de links e números do quiz: conferir os
+    links no site, ler os números ou escrever um pedido. Volta para a mesma
+    página, com a mesma escolha na tela."""
+    from . import quiz
+
+    if not SLUG.fullmatch(slug):
+        return _nao_existe(request)
+    consulta = request.POST.get("volta") or ""
+    volta = quiz.endereco_de_volta(slug, consulta)
+    membro, robo = _meu_robo(request)
+    if robo is None:
+        return HttpResponseRedirect(volta("sem_robo"))
+    host = host_da_requisicao(request)
+    acao = request.POST.get("acao") or ""
+    chave = (request.POST.get("chave") or "")[:64]
+    tela = quiz.selecao_da_tela(consulta)
+    if acao == "conferir":
+        params = tela if request.POST.get("escopo") == "tela" else {}
+        _, nova = trabalhos.delegar_conferencia(
+            robo,
+            membro,
+            pedido_por=_quem(request),
+            origem="pagina_do_quiz",
+            host=host,
+            slug=slug,
+            params=params,
+            chave=chave,
+        )
+        return HttpResponseRedirect(volta("conferencia" if nova else "conferencia_rodando"))
+    if acao == "ler":
+        inicio = (request.POST.get("inicio") or "").strip()[:10]
+        fim = (request.POST.get("fim") or "").strip()[:10]
+        if any(data and not quiz.DATA.fullmatch(data) for data in (inicio, fim)):
+            return HttpResponseRedirect(volta("datas"))
+        _, nova = trabalhos.delegar_leitura(
+            robo,
+            membro,
+            pedido_por=_quem(request),
+            origem="pagina_do_quiz",
+            host=host,
+            slug=slug,
+            inicio=inicio,
+            fim=fim,
+            observacao=(request.POST.get("observacao") or "").strip()[:1000],
+            chave=chave,
+        )
+        return HttpResponseRedirect(volta("leitura" if nova else "leitura_rodando"))
+    texto = (request.POST.get("texto") or "").replace("\r\n", "\n").strip()
+    if not texto:
+        return HttpResponseRedirect(volta("vazia"))
+    if len(texto) > TAMANHO_DA_MENSAGEM:
+        return HttpResponseRedirect(volta("longa"))
+    trabalhos.pedir_resposta(
+        robo,
+        membro,
+        texto,
+        chave=chave,
+        autor=_quem(request),
+        contexto={"host": host, "quiz": slug, "pagina": "campanhas", "selecao": tela},
+    )
+    return HttpResponseRedirect(volta("pedido"))
+
+
+@require_GET
+def andamento_no_quiz(request, slug: str):
+    """A pergunta curta da página do quiz: o robô mudou alguma coisa aqui?"""
+    from .quiz import marca_do_quiz
+
+    _, robo = _meu_robo(request)
+    if robo is None or not SLUG.fullmatch(slug):
+        return JsonResponse({"marca": ""})
+    return JsonResponse({"marca": marca_do_quiz(robo, slug)})
 
 
 def _execucao_visivel(request, id: int) -> Execucao | None:

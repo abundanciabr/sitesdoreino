@@ -123,6 +123,7 @@ from apps.core.equipe import (
 )
 from apps.agentes.views import (
     andamento as andamento_do_robo,
+    andamento_no_quiz,
     configurar as configurar_robo,
     delegar as delegar_ao_robo,
     entrega_detalhe,
@@ -131,6 +132,7 @@ from apps.agentes.views import (
     execucao_retomar,
     mensagem as mensagem_ao_robo,
     robo_da_pessoa,
+    robo_no_quiz,
     robos_admin,
 )
 from apps.core.equipe_acesso import (
@@ -236,6 +238,12 @@ urlpatterns = [
     path("conteudos/<slug:tipo>/", conteudos, name="conteudos"),
     path("conteudos/<slug:tipo>/novo", conteudo_novo, name="conteudo_novo"),
     path("conteudos/quiz/<slug:slug>/campanhas", quiz_campanhas, name="quiz_campanhas"),
+    path("conteudos/quiz/<slug:slug>/campanhas/robo", robo_no_quiz, name="quiz_campanhas_robo"),
+    path(
+        "conteudos/quiz/<slug:slug>/campanhas/robo/andamento",
+        andamento_no_quiz,
+        name="quiz_campanhas_robo_andamento",
+    ),
     path("conteudos/quiz/<slug:slug>/evolucao", quiz_evolucao, name="quiz_evolucao"),
     path("conteudos/<slug:tipo>/<slug:slug>/", conteudo_editar, name="conteudo_editar"),
     path("conteudos/<slug:tipo>/<slug:slug>/salvar", conteudo_salvar, name="conteudo_salvar"),

@@ -159,7 +159,7 @@ def _avisar_na_conversa(execucao: Execucao, texto: str) -> None:
 
 
 def _executar(execucao: Execucao) -> None:
-    from . import conversa, panorama
+    from . import conversa, panorama, quiz
     from .models import RoboPessoal
 
     if execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
@@ -169,6 +169,10 @@ def _executar(execucao: Execucao) -> None:
         conversa.executar(execucao)
     elif execucao.tipo == Execucao.Tipo.PANORAMA:
         panorama.executar(execucao)
+    elif execucao.tipo == Execucao.Tipo.CONFERENCIA_QUIZ:
+        quiz.executar_conferencia(execucao)
+    elif execucao.tipo == Execucao.Tipo.LEITURA_QUIZ:
+        quiz.executar_leitura(execucao)
     else:  # pragma: no cover - tipo novo sem executor
         terminar(execucao, S.FALHOU, "Este tipo de trabalho ainda não tem executor.")
 

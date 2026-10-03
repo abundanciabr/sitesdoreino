@@ -29,6 +29,31 @@
   .camp summary { cursor: pointer; font-weight: 700; }
   .camp dl dt { font-weight: 700; margin-top: 8px; }
   .camp dl dd { margin: 0 0 0 0; }
+  .camp .robo-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+  .camp .robo-topo h2 { margin-bottom: 0; }
+  .camp .robo-acoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
+  .camp .robo-acao { border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .camp .robo-acao h3 { margin: 0; font-size: 16px; }
+  .camp .robo-acao p { margin: 0; }
+  .camp .robo-acao form { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  .camp .robo-acao .datas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .camp .exemplos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .camp .exemplos button { font-size: 13px; padding: 4px 8px; text-align: left; }
+  .camp .robo-lista { list-style: none; padding: 0; margin: 6px 0 12px; }
+  .camp .robo-lista li { border-bottom: 1px solid #e2e8f0; padding: 8px 0; }
+  .camp .robo-lista progress { width: 160px; vertical-align: middle; margin-left: 6px; }
+  .camp .meta { font-size: 13px; opacity: .8; }
+  .camp .fala-quiz { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
+  .camp .fala-quiz.robo { border-color: #60a5fa; }
+  .camp .fala-quiz .documento p:first-child { margin-top: 0; }
+  .camp .entrega-quiz { max-height: 560px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; margin-top: 8px; }
+  .camp .veredito { font-weight: 700; margin: 4px 0; }
+  .camp .veredito.bom { border-left: 4px solid #16a34a; background: rgba(22,163,74,.15); padding: 4px 10px; border-radius: 6px; }
+  .camp .veredito.ruim { border-left: 4px solid #dc2626; background: rgba(220,38,38,.15); padding: 4px 10px; border-radius: 6px; }
+  .camp .fichas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+  .camp .ficha { border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 10px; font-size: 13px; }
+  .camp .ficha.bom { border-color: #16a34a; background: rgba(22,163,74,.12); }
+  .camp .ficha.atencao { border-color: #d97706; background: rgba(217,119,6,.12); }
 </style>
 <div class="envolucro camp">
   <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
@@ -40,6 +65,120 @@
     <div class="passo"><b>3. Acompanhe</b>Volte aqui e veja visitas, respostas e cliques por campanha.</div>
   </div>
   <p><a href="{% url 'quiz_evolucao' slug %}">Ver onde o quiz perde gente e propostas de nova versão →</a></p>
+
+  <div class="cartao" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% endif %}>
+    <div class="robo-topo">
+      <h2>Seu robô nesta página{% if robo_painel.robo %}: {{ robo_painel.robo.nome }}{% endif %}</h2>
+      {% if robo_painel.robo %}<a href="{% url 'robo_da_pessoa' %}">Página do robô →</a>{% endif %}
+    </div>
+    {% if recado_do_robo %}<p class="certo" role="status">{{ recado_do_robo }}</p>{% endif %}
+    {% if robo_painel.falhou %}
+      <p class="alerta">O painel do robô não abriu agora. Os links e os números desta página continuam funcionando.</p>
+    {% elif not robo_painel.robo %}
+      <p class="dica">Seu acesso não está ligado a uma pessoa da equipe, por isso ainda não há robô para você aqui. Quem administra a equipe confere o seu e-mail na ficha da pessoa, e o robô aparece.</p>
+    {% else %}
+      <div class="fichas">
+        <span class="ficha {% if robo_painel.ia_pronta %}bom{% else %}atencao{% endif %}">{% if robo_painel.ia_pronta %}IA pronta{% else %}IA ainda não pronta{% endif %}</span>
+        <span class="ficha">Conversa: {{ robo_painel.conexao.modelo_rapido }} · Leitura: {{ robo_painel.conexao.modelo_forte }}</span>
+        {% if robo_painel.teto %}<span class="ficha">Gasto da equipe no mês: US$ {{ robo_painel.gasto|floatformat:4 }} de US$ {{ robo_painel.teto|floatformat:2 }}</span>{% endif %}
+      </div>
+      <p class="dica">Ele trabalha no servidor: pode fechar esta página que o trabalho continua, e o resultado aparece aqui embaixo e na página do robô.</p>
+      {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Os pedidos ficam guardados e começam quando ele for reativado, na página do robô.</p>{% endif %}
+      {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência dos links funciona sem ela; a leitura dos números e os pedidos ficam guardados e são feitos quando ela voltar.</p>{% endif %}
+      <div class="robo-acoes">
+        <section class="robo-acao">
+          <h3>Conferir os links no site</h3>
+          <p>Antes de subir os anúncios. O robô abre cada versão, formato e público como um visitante, confere versão, título e vídeo, calcula que oferta cada pontuação mostra e se a origem da campanha chega inteira ao checkout.</p>
+          <p class="dica">Sem IA e sem custo. As aberturas ficam marcadas como teste. Não envia formulário nem compra. Se achar problema, cria a tarefa de correção.</p>
+          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="conferir">
+            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
+            <input type="hidden" name="volta" value="{{ consulta }}">
+            {% if gerar and links %}<button type="submit" name="escopo" value="tela" class="principal">Conferir os {{ links|length }} link(s) desta tela</button>{% endif %}
+            <button type="submit" name="escopo" value="tudo"{% if not gerar or not links %} class="principal"{% endif %}>Conferir todos os links do quiz</button>
+          </form>
+        </section>
+        <section class="robo-acao">
+          <h3>Ler os números e sugerir melhorias</h3>
+          <p>Visitas, respostas e cliques por versão, etapa e campanha; onde o quiz perde gente; até cinco ações com a evidência de cada uma; e propostas de nova versão quando houver gente suficiente para decidir.</p>
+          <p class="dica">Nenhuma versão muda. Usa o modelo forte: centavos por leitura. A tarefa aparece no painel da equipe e é concluída com a entrega.</p>
+          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="ler">
+            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
+            <input type="hidden" name="volta" value="{{ consulta }}">
+            <div class="datas">
+              <label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
+              <label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label>
+            </div>
+            <label>Algo para olhar com atenção (opcional)<input type="text" name="observacao" maxlength="1000" placeholder="Ex.: por que a campanha do TikTok responde menos?"></label>
+            <button type="submit">Pedir a leitura dos números</button>
+          </form>
+        </section>
+        <section class="robo-acao">
+          <h3>Peça qualquer coisa sobre este quiz</h3>
+          <p class="dica">Ele já sabe qual quiz é e o que está marcado na tela. Toque num exemplo ou escreva do seu jeito:</p>
+          <div class="exemplos">
+            <button type="button" data-exemplo="Monte os links da versão mais nova para o TikTok, público frio, anúncios a1 e a2.">Links para o TikTok</button>
+            <button type="button" data-exemplo="Que oferta cada pontuação mostra em cada versão? Explique com um exemplo de respostas.">Que oferta cada pontuação mostra?</button>
+            <button type="button" data-exemplo="Como estão os números desta semana? Qual campanha trouxe mais gente até a oferta?">Números da semana</button>
+            <button type="button" data-exemplo="Confira no site os links que estão marcados na tela antes de eu subir os anúncios.">Conferir antes de anunciar</button>
+            <button type="button" data-exemplo="Registre a ideia de uma versão nova a partir da B2 com a pergunta onde mais gente desiste mais curta. Use os números para escolher a pergunta.">Ideia de versão nova</button>
+            <button type="button" data-exemplo="Crie uma tarefa para mim: gravar o vídeo da versão B2, prazo sexta-feira.">Tarefa para a equipe</button>
+          </div>
+          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="pedir">
+            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
+            <input type="hidden" name="volta" value="{{ consulta }}">
+            <textarea name="texto" rows="3" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: monte os links da B2 para o Instagram, público quente, anúncio vsl_47s"></textarea>
+            <button type="submit">Enviar ao robô</button>
+          </form>
+        </section>
+      </div>
+
+      {% if robo_painel.mensagens or robo_painel.respondendo %}
+        <h3>Conversa sobre este quiz</h3>
+        {% for m in robo_painel.mensagens %}
+          <div class="fala-quiz {{ m.papel }}">
+            {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
+            <div class="meta">{% if m.papel == 'membro' %}Você{% elif m.papel == 'robo' %}{{ robo_painel.robo.nome }}{% else %}Aviso{% endif %} · {{ m.criada_em|date:"d/m H:i" }}{% if m.papel == 'robo' and m.execucao_id %} · <a href="{% url 'execucao_do_robo' m.execucao_id %}">o que ele fez</a>{% endif %}</div>
+          </div>
+        {% endfor %}
+        {% if robo_painel.respondendo %}<p class="dica" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}{{ robo_painel.robo.nome }} está respondendo…{% endif %}</p>{% endif %}
+      {% endif %}
+
+      {% if robo_painel.trabalhos %}
+        <h3>Trabalhos deste quiz</h3>
+        <ul class="robo-lista">
+          {% for e in robo_painel.trabalhos %}
+            <li>
+              <a href="{% url 'execucao_do_robo' e.id %}"><b>{{ e.get_tipo_display }}</b></a> · {{ e.get_situacao_display }}
+              {% if e.situacao == 'executando' or e.situacao == 'na_fila' %}<progress max="100" value="{{ e.progresso }}">{{ e.progresso }}%</progress>{% endif %}
+              {% if e.etapa_atual and e.aberta %}<div class="meta">Etapa: {{ e.etapa_atual }}</div>{% endif %}
+              {% if e.resultado %}<div class="veredito {{ e.tom }}">{{ e.resultado }}</div>{% endif %}
+              {% if e.motivo %}<div class="meta">{{ e.motivo }}</div>{% endif %}
+              {% for en in e.entregas.all %}<div class="meta">Entrega: <a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if en.parcial %} (parcial){% endif %}{% if en.tarefa_id %} · <a href="{% url 'tarefa_ver' en.tarefa_id %}">tarefa nº {{ en.tarefa_id }}</a>{% endif %}</div>{% endfor %}
+              <div class="meta">Pedido por {{ e.pedido_por|default:"—" }} em {{ e.criada_em|date:"d/m H:i" }}{% if e.modelo %} · modelo {{ e.modelo }}{% else %} · sem IA{% endif %}</div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+
+      {% if robo_painel.entrega %}
+        <details open>
+          <summary>Última entrega: {{ robo_painel.entrega.titulo }}{% if robo_painel.entrega.parcial %} (parcial){% endif %}</summary>
+          <div class="entrega-quiz documento">{{ robo_painel.entrega_html|safe }}</div>
+          <p class="meta"><a href="{% url 'entrega_do_robo' robo_painel.entrega.id %}">Abrir a entrega inteira</a> · {{ robo_painel.entrega.atualizada_em|date:"d/m H:i" }} · versão {{ robo_painel.entrega.versao }}</p>
+        </details>
+        {% if robo_painel.outras_entregas %}
+          <p class="meta">Entregas anteriores: {% for en in robo_painel.outras_entregas %}<a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+        {% endif %}
+      {% endif %}
+      <p class="alerta" data-aviso-do-robo hidden>O robô terminou um trabalho. <a href="#robo" data-recarregar>Atualizar a página</a> para ver (o que você marcou ou escreveu nesta página será perdido).</p>
+    {% endif %}
+  </div>
 
   <div class="cartao">
     <h2>1. Monte os links</h2>
@@ -114,6 +253,16 @@
       {% if not escolha.src %}<p class="alerta">Você não escolheu onde o anúncio vai rodar. Sem isso, os números não mostram de onde a pessoa veio.</p>{% endif %}
       {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
       <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
+      {% if robo_painel.robo %}
+      <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="conferir">
+        <input type="hidden" name="escopo" value="tela">
+        <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
+        <input type="hidden" name="volta" value="{{ consulta }}">
+        <p><button type="submit">Pedir ao robô para conferir estes {{ links|length }} link(s) no site</button> <span class="dica">Sem custo; o relatório aparece no cartão do robô, acima.</span></p>
+      </form>
+      {% endif %}
       <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado role="status"></span></p>
       <textarea readonly rows="4" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
 {% endfor %}</textarea>
@@ -210,6 +359,59 @@
   var caixa = document.querySelector('[data-todos]');
   if (todos && caixa) { todos.addEventListener('click', function () { copiar(caixa.value.trim(), todos); }); }
   document.querySelectorAll('.link input[readonly]').forEach(function (i) { i.addEventListener('focus', function () { i.select(); }); });
+})();
+(function () {
+  var mexeu = false;
+  var pedido = document.querySelector('#robo textarea[name=texto]');
+  document.querySelectorAll('[data-exemplo]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (!pedido) { return; }
+      pedido.value = b.getAttribute('data-exemplo');
+      mexeu = true;
+      pedido.focus();
+    });
+  });
+  var painel = document.querySelector('[data-acompanhar-quiz]');
+  if (!painel || !window.fetch) { return; }
+  var endereco = painel.getAttribute('data-acompanhar-quiz');
+  var marca = painel.getAttribute('data-marca');
+  var intervalo = parseInt(painel.getAttribute('data-intervalo'), 10) || 3000;
+  var fim = Date.now() + 30 * 60 * 1000;
+  document.addEventListener('input', function () { mexeu = true; });
+  document.addEventListener('change', function () { mexeu = true; });
+  function recarregar() {
+    var url = new URL(window.location.href);
+    url.searchParams.delete('robo');
+    url.hash = 'robo';
+    if (url.toString().split('#')[0] === window.location.href.split('#')[0]) {
+      window.location.hash = 'robo';
+      window.location.reload();
+    } else {
+      window.location.replace(url.toString());
+    }
+  }
+  var botao = document.querySelector('[data-recarregar]');
+  if (botao) { botao.addEventListener('click', function (e) { e.preventDefault(); recarregar(); }); }
+  function perguntar() {
+    if (Date.now() > fim) { return; }
+    fetch(endereco, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.marca && d.marca !== marca) {
+          if (mexeu) {
+            var aviso = document.querySelector('[data-aviso-do-robo]');
+            if (aviso) { aviso.hidden = false; }
+            marca = d.marca;
+            return;
+          }
+          recarregar();
+          return 'parou';
+        }
+      })
+      .catch(function () {})
+      .then(function (parou) { if (parou !== 'parou') { setTimeout(perguntar, intervalo); } });
+  }
+  setTimeout(perguntar, intervalo);
 })();
 </script>
 {% endblock %}

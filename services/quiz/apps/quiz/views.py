@@ -2,7 +2,6 @@ import json
 import uuid
 from datetime import datetime, timezone as datetime_timezone
 from types import SimpleNamespace
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -19,7 +18,7 @@ from redis.exceptions import RedisError
 
 from .models import OutboxEvent, Quiz, QuizVersion, Submission, TelemetryEvent
 from .direcionadas import (
-    PARAMETROS,
+    destino_com_parametros,
     entrada_da_tentativa,
     resolver_direcionada,
     url_da_experiencia,
@@ -542,36 +541,12 @@ def sair(request, slug):
     quiz = _quiz_do_site(request, slug)
     submissao, entrada = _submissao_da_sessao(request, quiz)
     banda = get_object_or_404(submissao.version.bands, key=submissao.result_key)
-    destino = banda.botao_destino
     try:
-        partes = urlsplit(destino)
-        host = partes.hostname
-        partes.port
+        endereco = destino_com_parametros(
+            banda.botao_destino, submissao.utm, submissao.context
+        )
     except ValueError:
         raise Http404("destino indisponível")
-    if (
-        partes.scheme != "https"
-        or not host
-        or partes.username
-        or partes.password
-        or any(ord(c) < 33 for c in destino)
-    ):
-        raise Http404("destino indisponível")
-    existentes = {chave for chave, _ in parse_qsl(partes.query)}
-    parametros = {
-        f"utm_{chave}": valor for chave, valor in submissao.utm.items() if valor
-    }
-    parametros.update(
-        {
-            chave: valor
-            for chave, valor in submissao.context.items()
-            if chave in PARAMETROS and isinstance(valor, str) and valor
-        }
-    )
-    adicionais = urlencode(
-        {chave: valor for chave, valor in parametros.items() if chave not in existentes}
-    )
-    consulta = partes.query + ("&" if partes.query and adicionais else "") + adicionais
     metadados = {"utm": submissao.utm}
     if submissao.context:
         metadados["context"] = submissao.context
@@ -587,7 +562,7 @@ def sair(request, slug):
             "occurred_at": timezone.now(),
         },
     )
-    resposta = redirect(urlunsplit(partes._replace(query=consulta)))
+    resposta = redirect(endereco)
     resposta["Referrer-Policy"] = "no-referrer"
     resposta["Cache-Control"] = "no-store"
     return resposta

@@ -7,6 +7,7 @@ import copy
 import hashlib
 import os
 import json
+import logging
 import re
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
@@ -27,7 +28,11 @@ TIPOS = {
 SLUG = re.compile(r"^[a-z0-9-]{1,100}$")
 
 
-def _destino(request, tipo: str):
+def host_da_requisicao(request) -> str:
+    return request.get_host().split(":")[0].lower()
+
+
+def _destino_por_host(host: str, tipo: str):
     if tipo not in TIPOS:
         return None
     _, nome_env, token_env, caminho, _ = TIPOS[tipo]
@@ -37,7 +42,7 @@ def _destino(request, tipo: str):
         return None
     site_id = ""
     if tipo != "forum":
-        site = CatalogoClient().site_por_host(request.get_host().split(":")[0].lower())
+        site = CatalogoClient().site_por_host(host)
         if site is None:
             return None
         site_id = str(site["id"])
@@ -49,6 +54,10 @@ def _destino(request, tipo: str):
     return prefixo, token, site_id
 
 
+def _destino(request, tipo: str):
+    return _destino_por_host(host_da_requisicao(request), tipo)
+
+
 def _pedir(
     request,
     tipo: str,
@@ -58,7 +67,24 @@ def _pedir(
     corpo=None,
     params=None,
 ):
-    destino = _destino(request, tipo)
+    return pedir_por_host(
+        host_da_requisicao(request), tipo, metodo, slug, gesto, corpo, params
+    )
+
+
+def pedir_por_host(
+    host: str,
+    tipo: str,
+    metodo: str,
+    slug: str = "",
+    gesto: str = "",
+    corpo=None,
+    params=None,
+    timeout: float = 4.0,
+):
+    """O mesmo pedido de `_pedir`, pelo domínio guardado: o robô trabalha no
+    servidor depois que a página fechou e não tem requisição na mão."""
+    destino = _destino_por_host(host, tipo)
     if destino is None:
         return 503, None
     url, token, site_id = destino
@@ -78,7 +104,7 @@ def _pedir(
             params=query or None,
             json=corpo,
             headers={"Authorization": f"Bearer {token}"},
-            timeout=4.0,
+            timeout=timeout,
         )
         return resposta.status_code, resposta.json() if resposta.content else {}
     except (httpx.HTTPError, ValueError):
@@ -477,6 +503,13 @@ def quiz_campanhas(request, slug: str):
     campanhas_vistas = sorted(
         {l.get("cpg") or l.get("campaign") for l in relatorio["campanhas"] if isinstance(l, dict)} - {None, ""}
     )
+    from apps.agentes.quiz import RESULTADOS as RECADOS_DO_ROBO, painel_na_pagina
+
+    try:
+        robo_painel = painel_na_pagina(request, slug)
+    except Exception:  # noqa: BLE001 - o painel do robô nunca derruba a página de links
+        logging.getLogger(__name__).exception("Painel do robô na página do quiz %s", slug)
+        robo_painel = {"robo": None, "falhou": True}
     return _com_csp_do_script(render(
         request,
         "admin/quiz_campanhas.html",
@@ -503,6 +536,9 @@ def quiz_campanhas(request, slug: str):
             "avulsas": da_campanha(relatorio.get("sem_visita_registrada") or []),
             "divergentes": da_campanha(relatorio.get("submissoes_sem_correspondencia") or []),
             "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",
+            "robo_painel": robo_painel,
+            "recado_do_robo": RECADOS_DO_ROBO.get(get.get("robo") or ""),
+            "consulta": get.urlencode(),
         },
     ))
 

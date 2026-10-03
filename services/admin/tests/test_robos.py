@@ -812,4 +812,5 @@ def test_enquanto_responde_a_pagina_pergunta_depressa_e_nao_pisca_a_cada_batida(
 
 def test_cada_acao_tem_um_rotulo_para_a_pessoa():
     assert set(ferramentas.ROTULOS) == set(ferramentas.ACOES)
-    assert {f["name"] for f in ferramentas.DEFINICOES} == set(ferramentas.ACOES)
+    definicoes = ferramentas.DEFINICOES + ferramentas.DEFINICOES_DO_QUIZ
+    assert {f["name"] for f in definicoes} == set(ferramentas.ACOES)

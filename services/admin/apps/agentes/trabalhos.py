@@ -61,12 +61,20 @@ def _acordar_o_executor() -> None:
 
 
 def pedir_resposta(
-    robo: RoboPessoal, membro: MembroDaEquipe, texto: str, *, chave: str, autor: str
+    robo: RoboPessoal,
+    membro: MembroDaEquipe,
+    texto: str,
+    *,
+    chave: str,
+    autor: str,
+    contexto: dict | None = None,
 ) -> tuple[Mensagem, Execucao]:
     """Guarda a mensagem da pessoa e põe na fila o trabalho de responder.
 
     `chave` vem do formulário: o mesmo envio repetido (duplo clique, botão
-    voltar) acha a mensagem já guardada."""
+    voltar) acha a mensagem já guardada. `contexto` diz de onde a mensagem
+    veio (o domínio do site e, na página de um quiz, qual quiz e o que estava
+    escolhido): o robô responde sobre aquela página sem a pessoa repetir."""
     conversa = conversa_de(robo)
     chave = (chave or "")[:64]
     if chave:
@@ -92,6 +100,7 @@ def pedir_resposta(
                 pedido=texto[:4000],
                 chave_de_repeticao=f"mensagem-{mensagem.id}",
                 etapa_atual="Na fila para responder",
+                estado={"contexto": contexto} if contexto else {},
             )
             mensagem.execucao = execucao
             mensagem.save(update_fields=["execucao"])
@@ -171,6 +180,125 @@ def delegar_panorama(
             estado={"semana": segunda.isoformat()},
         )
         registrar(execucao, f"Panorama delegado ({origem}), ligado à tarefa nº {tarefa.id}.")
+        _acordar_o_executor()
+        return execucao, True
+
+
+def _repetido(chave: str) -> tuple[str | None, Execucao | None]:
+    marca = f"quiz-{chave}"[:120] if chave else None
+    if marca is None:
+        return None, None
+    return marca, Execucao.objects.filter(chave_de_repeticao=marca).first()
+
+
+def _aberta_do_quiz(robo: RoboPessoal, tipo: str, slug: str) -> Execucao | None:
+    return robo.execucoes.filter(
+        tipo=tipo, situacao__in=Execucao.ABERTAS, estado__quiz=slug
+    ).first()
+
+
+def delegar_conferencia(
+    robo: RoboPessoal,
+    membro: MembroDaEquipe,
+    *,
+    pedido_por: str,
+    origem: str,
+    host: str,
+    slug: str,
+    params: dict,
+    descricao: str = "",
+    chave: str = "",
+) -> tuple[Execucao, bool]:
+    """Põe na fila a conferência dos links de um quiz no site.
+
+    Sem modelo e sem gasto (`quiz.executar_conferencia`). Pedir de novo
+    enquanto a conferência do mesmo quiz não terminou devolve a que está
+    rodando."""
+    marca, existente = _repetido(chave)
+    if existente is not None:
+        return existente, False
+    with transaction.atomic():
+        RoboPessoal.objects.select_for_update().get(pk=robo.pk)
+        aberta = _aberta_do_quiz(robo, Execucao.Tipo.CONFERENCIA_QUIZ, slug)
+        if aberta is not None:
+            return aberta, False
+        execucao = Execucao.objects.create(
+            robo=robo,
+            tipo=Execucao.Tipo.CONFERENCIA_QUIZ,
+            origem=origem,
+            pedido_por_membro_id=membro.id,
+            pedido_por=pedido_por[:200],
+            pedido=descricao[:4000],
+            chave_de_repeticao=marca,
+            etapa_atual="Na fila do servidor",
+            estado={"host": host, "quiz": slug, "params": params},
+        )
+        registrar(execucao, f"Conferência dos links do quiz {slug} pedida ({origem}).")
+        _acordar_o_executor()
+        return execucao, True
+
+
+def delegar_leitura(
+    robo: RoboPessoal,
+    membro: MembroDaEquipe,
+    *,
+    pedido_por: str,
+    origem: str,
+    host: str,
+    slug: str,
+    inicio: str = "",
+    fim: str = "",
+    observacao: str = "",
+    chave: str = "",
+) -> tuple[Execucao, bool]:
+    """Põe na fila a leitura dos números de um quiz, ligada a uma tarefa.
+
+    Como o panorama: a tarefa "Leitura dos números do quiz" aparece no painel
+    desde o primeiro instante, com a pessoa como responsável e o robô como
+    executor, e é concluída com a entrega."""
+    marca, existente = _repetido(chave)
+    if existente is not None:
+        return existente, False
+    with transaction.atomic():
+        RoboPessoal.objects.select_for_update().get(pk=robo.pk)
+        aberta = _aberta_do_quiz(robo, Execucao.Tipo.LEITURA_QUIZ, slug)
+        if aberta is not None:
+            return aberta, False
+        quem = f"{robo.nome} (a pedido de {membro.nome})"
+        tarefa, erros = operacoes.criar_tarefa(
+            {
+                "titulo": f"Leitura dos números do quiz {slug} — {operacoes.hoje():%d/%m}",
+                "descricao": (
+                    "Trabalho delegado ao robô: ler visitas, respostas e cliques "
+                    "para a oferta do quiz, apontar onde ele perde gente, sugerir "
+                    "até cinco ações e registrar propostas de nova versão quando "
+                    "a amostra permitir. A entrega fica ligada a esta tarefa."
+                    + (f"\n\nPedido: {observacao}" if observacao else "")
+                ),
+                "responsavel": str(membro.id),
+                "situacao": Tarefa.Situacao.EM_ANDAMENTO,
+            },
+            quem,
+            executor=Tarefa.Executor.ROBO,
+        )
+        if erros:  # pragma: no cover - os dados acima são sempre válidos
+            raise ValueError(" ".join(erros))
+        execucao = Execucao.objects.create(
+            robo=robo,
+            tipo=Execucao.Tipo.LEITURA_QUIZ,
+            origem=origem,
+            pedido_por_membro_id=membro.id,
+            pedido_por=pedido_por[:200],
+            tarefa_id=tarefa.id,
+            pedido=observacao[:4000],
+            chave_de_repeticao=marca,
+            etapa_atual="Na fila do servidor",
+            estado={"host": host, "quiz": slug, "inicio": inicio, "fim": fim},
+        )
+        registrar(
+            execucao,
+            f"Leitura dos números do quiz {slug} pedida ({origem}), ligada à tarefa nº {tarefa.id}.",
+        )
         _acordar_o_executor()
         return execucao, True
 

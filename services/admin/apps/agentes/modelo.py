@@ -232,9 +232,13 @@ def responder(
     robo=None,
     autorizacao_id=None,
     origem="equipe",
+    formato: dict | None = None,
 ) -> Resposta:
     """Uma rodada da Responses API. Não guarda nada na OpenAI (`store`
-    falso): o histórico mora aqui, e a retomada reenvia os itens."""
+    falso): o histórico mora aqui, e a retomada reenvia os itens.
+
+    `formato` pede a resposta num esquema JSON fixo (`text.format`), para o
+    sistema ler a resposta sem adivinhar."""
     segredo_da_conta = chave()
     if not segredo_da_conta:
         raise SemChave()
@@ -246,6 +250,8 @@ def responder(
         "include": ["reasoning.encrypted_content"],
         "max_output_tokens": max_saida,
     }
+    if formato:
+        corpo["text"] = {"format": formato}
     if ferramentas:
         corpo["tools"] = ferramentas
         corpo["parallel_tool_calls"] = False
@@ -288,6 +294,7 @@ def responder(
                 robo=robo,
                 autorizacao_id=autorizacao_id,
                 origem=origem,
+                formato=formato,
             )
         if resposta.status_code == 429 and codigo != "insufficient_quota":
             raise Temporario()

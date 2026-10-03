@@ -27,7 +27,7 @@ MAX_SAIDA = 2000
 ESFORCO = "low"
 
 
-def instrucoes(robo, membro, retrato: dict | None = None) -> str:
+def instrucoes(robo, membro, retrato: dict | None = None, quiz: dict | None = None) -> str:
     hoje = operacoes.hoje()
     segunda = operacoes.segunda(hoje)
     partes = [
@@ -68,12 +68,72 @@ def instrucoes(robo, membro, retrato: dict | None = None) -> str:
         "e-mail ou celular, conversa com outros robôs. Se pedirem, diga que "
         "ainda não está disponível, sem fingir que fez."
     )
+    if quiz is not None:
+        partes.append(instrucoes_do_quiz(membro, quiz))
     if retrato:
         partes.append(
             "Retrato do painel quando a mensagem chegou (JSON):\n"
             + json.dumps(retrato, ensure_ascii=False, separators=(",", ":"))
         )
     return "\n\n".join(partes)
+
+
+def instrucoes_do_quiz(membro, quiz: dict) -> str:
+    """O que o robô sabe e pode nos quizzes do site. Só entra para quem
+    administra o site (`ferramentas.pode_usar_o_quiz`)."""
+    from .quiz import caminho, descrever_selecao, endereco_da_pagina
+
+    partes = [
+        f"Quizzes do site ({membro.nome} administra o site, então você também "
+        "opera os quizzes):\n"
+        "- Cada quiz leva quem responde a uma de duas ofertas, pela soma dos "
+        "pontos. As versões (A, B1, B2...) convivem no mesmo endereço e não "
+        "mudam depois de publicadas: mudança vira versão nova, por proposta. "
+        "Formatos: text = Texto, video = Vídeo no topo (VSL), hybrid = Vídeo "
+        "curto + texto, calc = Calculadora, ai = Conversa com IA. Públicos (seg) "
+        "como frio e quente; 'geral' é o link sem público. Cada anúncio usa um "
+        "link fixo de versão, formato e público.\n"
+        "- Link de anúncio sai só de montar_links_do_quiz; nunca escreva um link "
+        "à mão. Se forem mais de 8 links, mande o endereço da página que a "
+        "ferramenta devolve e o número da entrega, sem colar todos.\n"
+        "- Antes de a equipe subir anúncios, ofereça delegar_conferencia_dos_links: "
+        "não custa nada, abre as páginas como visitante marcado como teste, não "
+        "envia formulário e não compra.\n"
+        "- Números: abaixo de 30 visitas é observação, não decisão. Campanha "
+        "direcionada mostra o que aconteceu, não prova causa. Clique na oferta "
+        "não é compra; ainda não há dados de compra. Para a leitura completa com "
+        "ações e propostas, delegar_leitura_do_quiz (modelo forte, centavos).\n"
+        "- Proposta de versão só registra a ideia: não publica nem muda versão "
+        "existente. Aceitar, descartar ou marcar resultado só quando a pessoa "
+        "pedir.\n"
+        "- Você não edita perguntas, não publica versões, não liga chaves, não "
+        "compra anúncios e não mexe em verba. Para editar, mande ao estúdio do "
+        "quiz; para entender onde perde gente, à página Onde o quiz perde gente."
+    ]
+    contexto = quiz.get("contexto") or {}
+    host, slug = contexto.get("host"), contexto.get("quiz")
+    if host and slug:
+        partes.append(
+            f"A pessoa escreveu da página de links e números do quiz {slug} "
+            f"({endereco_da_pagina(host, slug)}). Na tela estava escolhido: "
+            f"{descrever_selecao(contexto.get('selecao') or {})}. Quando ela disser "
+            "'este quiz', 'estes links' ou 'esta página', é isso. Estúdio do quiz: "
+            f"https://{host}{caminho('conteudo_editar', 'quiz', slug)}. Onde o quiz "
+            f"perde gente: https://{host}{caminho('quiz_evolucao', slug)}."
+        )
+    if quiz.get("retrato"):
+        partes.append(
+            "Estrutura do quiz quando a mensagem chegou (JSON; vale como "
+            "consultar_quiz recém-feito):\n"
+            + json.dumps(quiz["retrato"], ensure_ascii=False, separators=(",", ":"))
+        )
+    return "\n\n".join(partes)
+
+
+def _quiz_da_conversa(estado: dict, membro) -> dict | None:
+    if not ferramentas.pode_usar_o_quiz(membro):
+        return None
+    return {"contexto": estado.get("contexto") or {}, "retrato": estado.get("retrato_quiz")}
 
 
 def _historico(execucao: Execucao) -> list[dict]:
@@ -106,6 +166,11 @@ def executar(execucao: Execucao) -> None:
         # Guardado com os itens: a retomada e a segunda rodada veem o mesmo
         # retrato, e o começo do pedido fica igual para o cache da OpenAI.
         estado["retrato"] = ferramentas.retrato(membro)
+        contexto = estado.get("contexto") or {}
+        if contexto.get("host") and contexto.get("quiz") and ferramentas.pode_usar_o_quiz(membro):
+            from .quiz import retrato_do_quiz
+
+            estado["retrato_quiz"] = retrato_do_quiz(contexto["host"], contexto["quiz"])
         execucao.estado = estado
         guardar_estado(execucao)
 
@@ -138,9 +203,11 @@ def executar(execucao: Execucao) -> None:
         batimento(execucao, "Pensando na resposta", progresso=min(90, 10 + 10 * estado.get("rodadas", 0)))
         resposta = modelo.responder(
             modelo=execucao.modelo,
-            instrucoes=instrucoes(robo, membro, estado.get("retrato")),
+            instrucoes=instrucoes(
+                robo, membro, estado.get("retrato"), _quiz_da_conversa(estado, membro)
+            ),
             itens=itens,
-            ferramentas=ferramentas.DEFINICOES,
+            ferramentas=ferramentas.definicoes_para(membro),
             max_saida=MAX_SAIDA,
             esforco=ESFORCO,
             execucao=execucao,

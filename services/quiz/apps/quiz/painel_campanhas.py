@@ -64,19 +64,8 @@ def _lista(valor):
     return list(dict.fromkeys(item.strip() for item in valor.split(",") if item.strip()))
 
 
-def links(request, slug):
-    if not _authorized(request):
-        return _error("Não autorizado.", 401)
-    if request.method != "GET":
-        return _error("Método não permitido.", 405)
-    quiz = _quiz_privado(request, slug)
-    if quiz is None:
-        return _error("Quiz ou site não encontrado.", 404)
-    try:
-        host = _host_https(quiz.site.host)
-    except ValueError as erro:
-        return _error(str(erro), 422)
-
+def _montar_links(request, quiz, host):
+    """Um link por experiência existente; ValueError quando o pedido não casa."""
     # ctv, v e fmt aceitam listas separadas por vírgula: cada criativo vira um
     # link para cada experiência existente (4 criativos × 2 formatos × 3
     # segmentos = 24 links por versão).
@@ -99,11 +88,7 @@ def links(request, slug):
         versoes = versoes.filter(key__in=chaves)
         faltam = sorted(set(chaves) - set(versoes.values_list("key", flat=True)))
         if faltam:
-            return _error(f"Versão ativa indisponível: {', '.join(faltam)}.", 422)
-    from .conversa import _chave
-
-    # Sem a chave do provedor a conversa por IA ainda abre, com as perguntas fixas.
-    ia_ligada = bool(_chave())
+            raise ValueError(f"Versão ativa indisponível: {', '.join(faltam)}.")
     itens = []
     vistos = set()
     for versao in versoes:
@@ -147,15 +132,36 @@ def links(request, slug):
                         }
                     )
     if (formatos_pedidos or segmentos_pedidos) and not itens:
-        return _error(
-            "Nenhuma experiência existe com esses formatos e segmentos.", 422
-        )
+        raise ValueError("Nenhuma experiência existe com esses formatos e segmentos.")
+    return itens
+
+
+def _ia_ligada():
+    from .conversa import _chave
+
+    # Sem a chave do provedor a conversa por IA ainda abre, com as perguntas fixas.
+    return bool(_chave())
+
+
+def links(request, slug):
+    if not _authorized(request):
+        return _error("Não autorizado.", 401)
+    if request.method != "GET":
+        return _error("Método não permitido.", 405)
+    quiz = _quiz_privado(request, slug)
+    if quiz is None:
+        return _error("Quiz ou site não encontrado.", 404)
+    try:
+        host = _host_https(quiz.site.host)
+        itens = _montar_links(request, quiz, host)
+    except ValueError as erro:
+        return _error(str(erro), 422)
     return JsonResponse(
         {
             "site_id": quiz.site_id,
             "quiz_slug": quiz.slug,
             "links": itens,
             "total": len(itens),
-            "ia_ligada": ia_ligada,
+            "ia_ligada": _ia_ligada(),
         }
     )
