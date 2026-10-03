@@ -95,11 +95,13 @@ def resolver_direcionada(request, quiz, quizzes, force_new=False):
     }, versao
 
 
-def destino_com_parametros(destino, utm, contexto):
+def destino_com_parametros(destino, utm, contexto, tentativa=None, quiz_slug=None):
     """Endereço da saída: o destino HTTPS da faixa com a origem da tentativa.
 
     Parâmetros que o destino já traz ficam como estão. ValueError quando o
-    destino não é HTTPS sem credenciais.
+    destino não é HTTPS sem credenciais. `tentativa` (o session_id do quiz,
+    um UUID opaco) vai como `qa` e `quiz_slug` como `qz`: é o que liga a
+    compra, mais adiante, à versão e à campanha do quiz. Sem dado pessoal.
     """
     try:
         partes = urlsplit(destino)
@@ -124,6 +126,10 @@ def destino_com_parametros(destino, utm, contexto):
             if chave in PARAMETROS and isinstance(valor, str) and valor
         }
     )
+    if tentativa:
+        parametros["qa"] = str(tentativa)
+    if quiz_slug:
+        parametros["qz"] = str(quiz_slug)
     adicionais = urlencode(
         {chave: valor for chave, valor in parametros.items() if chave not in existentes}
     )

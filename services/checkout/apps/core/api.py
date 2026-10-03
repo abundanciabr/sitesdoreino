@@ -19,6 +19,7 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError
 
 from apps.core.clients import CatalogoClient, PagamentosClient
+from apps.pedidos.atribuicao import separar_atribuicao
 from apps.pedidos.emitir import emitir
 from apps.pedidos.tasks import relay_apos_commit
 
@@ -190,14 +191,18 @@ def create_session(request):
     if oferta is None:
         raise HttpError(404, "oferta inexistente ou despublicada neste site")
 
-    utm = corpo.get("utm") or {}
+    utm_bruto = corpo.get("utm") or {}
+    if not isinstance(utm_bruto, dict):
+        raise HttpError(422, "utm deve ser um objeto")
+    utm, contexto = separar_atribuicao(utm_bruto)
     with transaction.atomic():
         sessao = SessionModel.objects.create(
             site_id=site["id"],
             offer_slug=offer_slug,
             offer=oferta,
             lead_id=str(corpo.get("lead_id") or ""),
-            utm={str(k): str(v) for k, v in utm.items()},
+            utm=utm,
+            contexto=contexto,
             visitor_id=_visitor_id_do_cookie(request),
         )
         if sessao.visitor_id:
@@ -448,6 +453,7 @@ def place_order(request, session_id: str):
             method=method,
             intent_id=str(intent["id"]),
             pix=intent.get("pix") or {},
+            contexto=dict(sessao.contexto or {}),
         )
         emitir(  # mesma transação da criação do pedido
             "pedido.criado",

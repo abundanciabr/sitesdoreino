@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -62,6 +63,23 @@ def _utm_da_requisicao(request) -> dict:
     return {chave: valor for chave in CHAVES_UTM if (valor := request.GET.get(chave))}
 
 
+# Atribuição do quiz: versão, formato, segmento, origem, mídia, campanha,
+# criativo, a tentativa opaca (qa) e o quiz (qz). Seguem o mesmo caminho das UTMs
+# (link do checkout). Só passam valores de até 100 caracteres: letras, números, espaço e . : + / - _.
+CHAVES_QUIZ = ("v", "fmt", "seg", "src", "med", "cpg", "ctv", "qa", "qz")
+_VALOR_DE_ATRIBUICAO = re.compile(r"[\w .:+/-]{1,100}")
+
+
+def _atribuicao_da_requisicao(request) -> dict:
+    """UTMs + parâmetros do quiz, na ordem fixa, para o link do checkout."""
+    quiz = {
+        chave: valor
+        for chave in CHAVES_QUIZ
+        if (valor := request.GET.get(chave)) and _VALOR_DE_ATRIBUICAO.fullmatch(valor)
+    }
+    return {**_utm_da_requisicao(request), **quiz}
+
+
 @require_safe
 def healthz(request):
     return JsonResponse({"status": "ok"})
@@ -100,7 +118,7 @@ def landing(request):
         raise Http404("oferta padrão não encontrada neste site")
 
     utm = _utm_da_requisicao(request)
-    query = urlencode(utm)
+    query = urlencode(_atribuicao_da_requisicao(request))
     url_checkout = f"/checkout/{slug}/" + (f"?{query}" if query else "")
 
     return render(
@@ -275,7 +293,7 @@ def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA):
         else ""
     )
 
-    query = urlencode(_utm_da_requisicao(request))
+    query = urlencode(_atribuicao_da_requisicao(request))
     resposta = render(
         request,
         "funil/oferta.html",
@@ -391,7 +409,7 @@ def _destino_da_flp(destino: str, request) -> str:
     ) or destino.startswith("//"):
         return ""
     parametros = dict(parse_qsl(partes.query, keep_blank_values=True))
-    for chave, valor in _utm_da_requisicao(request).items():
+    for chave, valor in _atribuicao_da_requisicao(request).items():
         parametros.setdefault(chave, valor)
     return urlunsplit(partes._replace(query=urlencode(parametros)))
 

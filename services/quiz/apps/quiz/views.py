@@ -543,7 +543,11 @@ def sair(request, slug):
     banda = get_object_or_404(submissao.version.bands, key=submissao.result_key)
     try:
         endereco = destino_com_parametros(
-            banda.botao_destino, submissao.utm, submissao.context
+            banda.botao_destino,
+            submissao.utm,
+            submissao.context,
+            tentativa=submissao.session_id,
+            quiz_slug=quiz.slug,
         )
     except ValueError:
         raise Http404("destino indisponível")

@@ -4,6 +4,7 @@
 function dadosIsland() {
   return {
     offerSlug: JSON.parse(document.getElementById("offer-slug").textContent),
+    atribuicao: JSON.parse(document.getElementById("atribuicao").textContent),
     appmaxPix: JSON.parse(document.getElementById("appmax-pix-enabled").textContent),
     appmaxCard: JSON.parse(document.getElementById("appmax-card-enabled").textContent),
     carregando: true,
@@ -17,7 +18,7 @@ function dadosIsland() {
 
     async init() {
       try {
-        this.session = await api.post("/sessoes", { offer_slug: this.offerSlug });
+        this.session = await api.post("/sessoes", { offer_slug: this.offerSlug, utm: this.atribuicao });
         this.offer = this.session.offer;
       } catch (e) {
         this.erro = "Não foi possível carregar esta oferta.";

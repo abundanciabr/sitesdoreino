@@ -8,6 +8,7 @@ from django.conf import settings
 from django.http import Http404
 from django.shortcuts import render
 
+from apps.pedidos.atribuicao import atribuicao_da_consulta
 from apps.pedidos.models import Order as OrderModel
 
 
@@ -26,6 +27,7 @@ def dados(request, offer_slug: str):
         "checkout/dados.html",
         {
             "offer_slug": offer_slug,
+            "atribuicao": atribuicao_da_consulta(request.GET),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
             "appmax_pix_enabled": request.site["id"]

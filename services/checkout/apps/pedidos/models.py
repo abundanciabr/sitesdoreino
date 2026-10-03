@@ -21,6 +21,9 @@ class Session(models.Model):
     offer = models.JSONField()
     lead_id = models.CharField(max_length=64, blank=True, default="")
     utm = models.JSONField(default=dict, blank=True)
+    # Atribuição vinda do quiz (v, fmt, seg, src, med, cpg, ctv, qa, qz): valores
+    # curtos, opacos, sem dado pessoal. Preserva o que chegou na abertura.
+    contexto = models.JSONField(default=dict, blank=True)
     # [DESENHO-COMUM.md F10] o UUID4 do cookie `meshcraft_visitante` (funil),
     # lido na abertura da sessão. Nulo quando o navegador chegou sem o cookie
     # ou com um valor que não é um UUID4 canônico — esta célula não é dona do
@@ -66,6 +69,8 @@ class Order(models.Model):
     method = models.CharField(max_length=8)
     intent_id = models.CharField(max_length=64)
     pix = models.JSONField(default=dict, blank=True)
+    # Cópia de Session.contexto no fechamento do pedido.
+    contexto = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = OrderQuerySet.as_manager()

@@ -62,6 +62,8 @@ def test_sai_para_oferta_calculada_com_origem_sem_contato(
         "produto": ["1"],
         "utm_source": ["instagram"],
         "utm_campaign": ["outubro"],
+        "qa": [str(submissao.session_id)],
+        "qz": [externo.slug],
     }
     assert resposta["Referrer-Policy"] == "no-referrer"
     assert resposta["Cache-Control"] == "no-store"
