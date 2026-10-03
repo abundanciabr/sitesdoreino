@@ -1,6 +1,6 @@
 # apps/pedidos/management/commands/consume_eventos.py  # [RECEITA:R4 v1] adaptado
 # Consome pagamento.aprovado/pagamento.recusado/pix.expirado e move o status do
-# pedido.
+# pedido; pix.codigo_trocado atualiza apenas o código Pix do pedido pendente.
 #
 # DUAS VERSÕES AO MESMO TEMPO: pagamento.aprovado.v2 e pagamento.recusado.v2
 # tiraram o nome do fornecedor do contrato (saiu `mp_payment_id`, entrou o par
@@ -98,6 +98,12 @@ AVISOS = {
         "chave_entre_versoes": ("payment_id",),
         "no_v1": {"payment_id": "data.payment_id"},
     },
+    "pix.codigo_trocado": {
+        "versoes": (1,),
+        "status": "aguardando_pagamento",
+        "chave_entre_versoes": ("payment_id",),
+        "no_v1": {"payment_id": "data.payment_id"},
+    },
 }
 
 # O v2 renomeou o tenant desta plataforma para não confundi-lo com o `site_id`
@@ -126,6 +132,8 @@ class Aviso:
     site_id: str
     order_id: str
     status: str
+    pix: dict | None = None
+    payment_id: str | None = None
 
 
 def _valor_no_v1(data: dict, origem: str):
@@ -166,6 +174,8 @@ def normalizar(envelope: dict) -> Aviso:
         site_id=site_id,
         order_id=data["order_id"],
         status=aviso["status"],
+        pix=data["pix"] if evento == "pix.codigo_trocado" else None,
+        payment_id=str(data["payment_id"]) if evento == "pix.codigo_trocado" else None,
     )
 
 
@@ -218,6 +228,29 @@ def aplicar(envelope: dict) -> bool:
     aviso = normalizar(envelope)
     try:
         with transaction.atomic():
+            if aviso.evento == "pix.codigo_trocado":
+                pedido = (
+                    OrderModel.objects.select_for_update()
+                    .filter(
+                        pk=aviso.order_id,
+                        site_id=aviso.site_id,
+                        intent_id=aviso.payment_id,
+                        method="pix",
+                        status=OrderModel.AGUARDANDO,
+                    )
+                    .first()
+                )
+                if pedido is None:
+                    return False
+                FatoAplicado.objects.create(chave=aviso.chave)
+                pedido.pix = {
+                    "qr_code": aviso.pix["qr_code"],
+                    "qr_code_base64": aviso.pix["qr_code_base64"],
+                    "expires_at": aviso.pix["expires_at"],
+                    "trocado_em": django_timezone.now().isoformat(),
+                }
+                pedido.save(update_fields=["pix"])
+                return True
             FatoAplicado.objects.create(chave=aviso.chave)
             estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
             if aviso.status == "pago":

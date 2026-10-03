@@ -456,6 +456,10 @@ def place_order(request, session_id: str):
         "checkout_session_id": str(sessao.id),
         "product_id": str(itens[0]["product_id"]),
     }
+    if method == "pix":
+        metadata["pagina_url"] = (
+            f"https://{site['host']}/checkout/pedido/{order_id}/pix/"
+        )
     if method == "card" or pix_appmax:
         metadata["items"] = itens
     comprador_pagamento = dict(comprador)
@@ -646,7 +650,7 @@ def _estado_cartao(pedido: OrderModel) -> tuple[bool | None, str | None]:
     response={200: Order},
     operation_id="getOrder",
     summary="Status do pedido — a ÚNICA fonte que o front consulta (INV-P7)",
-    description="Atualizado pelos eventos pagamento.aprovado/recusado e pix.expirado.",
+    description="Status atualizado pelos avisos de pagamento; Pix atual vem do pedido.",
     openapi_extra={
         "responses": {
             200: {"description": "Pedido com snapshot e status corrente"},
@@ -670,6 +674,12 @@ def get_order(request, order_id: str):
         "total_cents": pedido.total_cents,
         "created_at": pedido.created_at.isoformat(),
     }
+    if pedido.method == "pix":
+        corpo["pix"] = {
+            campo: (pedido.pix or {}).get(campo)
+            for campo in ("qr_code", "qr_code_base64", "expires_at")
+        }
+        corpo["pix_trocado"] = bool((pedido.pix or {}).get("trocado_em"))
     em_analise, segunda_opcao_ate = _estado_cartao(pedido)
     if em_analise is not None:
         corpo["card_in_review"] = em_analise
