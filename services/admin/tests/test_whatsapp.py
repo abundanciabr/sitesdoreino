@@ -1,3 +1,7 @@
+import base64
+import hashlib
+import re
+
 import httpx
 import pytest
 import respx
@@ -96,3 +100,14 @@ def test_erro_real_do_pareamento_chega_ao_painel_sem_qr_velho():
         HTTP_ACCEPT='application/json')
     assert resposta.json()['erro'] == 'gateway HTTP 503'
     assert resposta.json()['qr'] == ''
+
+
+@respx.mock
+def test_script_de_atualizacao_do_qr_tem_permissao_exata_no_navegador():
+    resposta = dentro().get(reverse('whatsapp'))
+    script = re.search(rb'<script>(.*?)</script>', resposta.content, re.DOTALL).group(1)
+    permitido = "'sha256-" + base64.b64encode(hashlib.sha256(script).digest()).decode() + "'"
+    politica = resposta['Content-Security-Policy']
+    assert permitido in politica.split('script-src ', 1)[1].split(';', 1)[0]
+    assert "'unsafe-inline'" not in politica
+    assert "form-action 'self'" in politica

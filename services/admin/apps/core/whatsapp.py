@@ -1,4 +1,7 @@
 """Operação do WhatsApp pelo painel autenticado, sempre no site do host."""
+import base64
+import hashlib
+import re
 import uuid
 from urllib.parse import quote
 
@@ -8,6 +11,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from .clients import CatalogoClient, MensageriaClient, http
+from .porta import PortaAdministrativa
 
 
 ESTADOS = {
@@ -103,5 +107,12 @@ def whatsapp(request):
         for mensagem in contexto.get('mensagens', []):
             mensagem['status_visivel'] = ESTADOS.get(mensagem.get('status'), mensagem.get('status', ''))
     resposta = render(request, 'admin/whatsapp.html', contexto)
+    scripts = ''.join(" 'sha256-" + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode() + "'"
+        for m in re.finditer(rb'<script>(.*?)</script>', resposta.content, re.DOTALL))
+    resposta['Content-Security-Policy'] = (
+        f"default-src 'self'; script-src 'self'{scripts}; "
+        f"style-src 'self'{PortaAdministrativa.hashes_de_estilo(resposta)}; "
+        "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'self'")
     resposta['Cache-Control'] = 'no-store'
     return resposta
