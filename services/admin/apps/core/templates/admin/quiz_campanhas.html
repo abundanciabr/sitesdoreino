@@ -1,160 +1,173 @@
 {% extends "admin/base.html" %}
 {% block titulo %}Campanhas do quiz · {{ slug }}{% endblock %}
+{% block navegacao_admin %}
+<details class="menu-campanhas"><summary>Menu</summary><nav aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if secao.aqui %} aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}<a href="{% url 'docs_publicos' %}">Biblioteca pública</a></nav></details>
+{% endblock %}
+{% block rodape_admin %}<footer class="camp-rodape">Área privada · Meshcraft</footer>{% endblock %}
 {% block corpo %}
 <style>
-  .camp .passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0 4px; }
-  .camp .passo { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; }
-  .camp .passo b { display: block; font-size: 15px; margin-bottom: 2px; }
-  .camp fieldset { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; margin: 0 0 14px; }
-  .camp legend { font-weight: 700; padding: 0 6px; }
-  .camp .opcoes { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-  .camp .opcoes label { display: flex; align-items: center; gap: 6px; font-weight: 400; }
-  .camp .opcoes input { width: auto; margin: 0; }
-  .camp .dica { color: inherit; opacity: .75; font-size: 14px; margin: 4px 0 8px; }
-  .camp .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .camp .grade label, .camp .campo { display: block; }
-  .camp input[type=text], .camp input[type=date], .camp select, .camp textarea { width: 100%; box-sizing: border-box; }
-  .camp .principal { font-size: 17px; padding: 10px 18px; }
-  .camp .link { border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; margin: 8px 0; }
-  .camp .link .rotulo { font-weight: 700; }
-  .camp .link input { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 13px; margin: 6px 0; }
-  .camp .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
-  .camp .acoes a, .camp .acoes button { font-size: 14px; }
-  .camp .alerta { border-left: 4px solid #d97706; background: rgba(217,119,6,.15); padding: 8px 12px; border-radius: 6px; }
-  .camp .certo { border-left: 4px solid #16a34a; background: rgba(22,163,74,.15); padding: 8px 12px; border-radius: 6px; }
-  .camp table { width: 100%; border-collapse: collapse; text-align: left; }
-  .camp th, .camp td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-  .camp .rolagem { overflow-x: auto; }
-  .camp details { margin: 8px 0; }
-  .camp summary { cursor: pointer; font-weight: 700; }
-  .camp dl dt { font-weight: 700; margin-top: 8px; }
-  .camp dl dd { margin: 0 0 0 0; }
-  .camp .robo-topo { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
-  .camp .robo-topo h2 { margin-bottom: 0; }
-  .camp .robo-acoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 12px 0; }
-  .camp .robo-acao { border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .camp .robo-acao h3 { margin: 0; font-size: 16px; }
-  .camp .robo-acao p { margin: 0; }
-  .camp .robo-acao form { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
-  .camp .robo-acao .datas { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .camp .exemplos { display: flex; flex-wrap: wrap; gap: 6px; }
-  .camp .exemplos button { font-size: 13px; padding: 4px 8px; text-align: left; }
-  .camp .robo-lista { list-style: none; padding: 0; margin: 6px 0 12px; }
-  .camp .robo-lista li { border-bottom: 1px solid #e2e8f0; padding: 8px 0; }
-  .camp .robo-lista progress { width: 160px; vertical-align: middle; margin-left: 6px; }
-  .camp .meta { font-size: 13px; opacity: .8; }
-  .camp .fala-quiz { border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 12px; margin: 8px 0; }
-  .camp .fala-quiz.robo { border-color: #60a5fa; }
-  .camp .fala-quiz .documento p:first-child { margin-top: 0; }
-  .camp .entrega-quiz { max-height: 560px; overflow-y: auto; overflow-x: hidden; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; margin-top: 8px; }
-  .camp .entrega-quiz code, .camp .fala-quiz code { white-space: normal; overflow-wrap: anywhere; word-break: break-all; }
-  .camp .entrega-quiz table { display: block; overflow-x: auto; }
-  .camp .veredito { font-weight: 700; margin: 4px 0; }
-  .camp .veredito.bom { border-left: 4px solid #16a34a; background: rgba(22,163,74,.15); padding: 4px 10px; border-radius: 6px; }
-  .camp .veredito.ruim { border-left: 4px solid #dc2626; background: rgba(220,38,38,.15); padding: 4px 10px; border-radius: 6px; }
-  .camp .fichas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
-  .camp .ficha { border: 1px solid #cbd5e1; border-radius: 999px; padding: 2px 10px; font-size: 13px; }
-  .camp .ficha.bom { border-color: #16a34a; background: rgba(22,163,74,.12); }
-  .camp .ficha.atencao { border-color: #d97706; background: rgba(217,119,6,.12); }
-  .camp .situacao { border: 1px solid #cbd5e1; border-radius: 10px; padding: 12px 14px; margin: 12px 0; }
-  .camp .situacao h3 { margin: 0 0 10px; font-size: 16px; }
-  .camp .situacao-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 20px; }
-  .camp .situacao p { margin: 4px 0; }
-  .camp .situacao ol { margin: 6px 0; padding-left: 22px; }
-  .camp .situacao li { margin: 4px 0; }
-  .camp .rotulo-situacao { display: block; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .75; margin-bottom: 4px; }
-  .camp .proximo { margin: 12px 0 0 !important; padding: 8px 12px; border-left: 4px solid #60a5fa; background: rgba(96,165,250,.12); border-radius: 6px; }
-  .camp .trabalhos-quiz summary { font-size: 16px; margin: 12px 0 4px; }
-  .camp .tom-bom { color: #16a34a; }
-  .camp .tom-ruim { color: #dc2626; }
-
-  .camp { max-width: 1060px; }
-  .camp [hidden] { display: none !important; }
-  .camp .cartao { margin: 18px 0; padding: 24px; border-radius: 16px; }
-  .camp h1 { font-size: 30px; }
-  .camp h2 { font-size: 22px; margin: 0 0 8px; }
-  .camp .subtitulo { font-size: 16px; max-width: 720px; }
-  .camp .camp-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
-  .camp .camp-nav a { display: block; border: 1px solid var(--linha); border-radius: 12px; padding: 14px 16px; text-decoration: none; background: var(--painel); color: var(--texto); }
-  .camp .camp-nav a span { display: block; color: var(--texto-2); font-size: 13px; }
-  .camp .camp-nav a[aria-selected="true"] { border-color: var(--azul); background: rgba(76,141,255,.12); }
-  .camp button, .camp .acoes a { border: 1px solid var(--linha); border-radius: 10px; padding: 10px 14px; background: var(--fundo); color: var(--texto); cursor: pointer; font: inherit; font-weight: 600; }
-  .camp button:hover, .camp .acoes a:hover { border-color: var(--azul); }
-  .camp button.principal, .camp [data-copiar] { background: var(--azul); color: #08152b; border-color: var(--azul); }
-  .camp :is(input[type=text],input[type=date],select,textarea) { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 9px; padding: 10px 12px; font: inherit; margin-top: 6px; }
-  .camp :is(input[type=checkbox],input[type=radio]) { accent-color: var(--azul); }
-  .camp .grade { gap: 16px; margin: 16px 0; }
-  .camp .campo { margin: 16px 0; }
-  .camp .campo-acao { display: flex; align-items: end; }
-  .camp .dica { opacity: 1; color: var(--texto-2); }
-  .camp .escolha-inicial { background: var(--fundo); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
-  .camp :is(fieldset,.robo-acao,.situacao,.link,.fala-quiz,.entrega-quiz) { border-color: var(--linha); }
-  .camp summary { padding: 10px 0; }
-  .camp .personalizar, .camp details { border-top: 1px solid var(--linha); padding-top: 4px; }
-  .camp .robo-acoes { grid-template-columns: 1fr 1fr; }
-  .camp .robo-acao:last-child { grid-column: 1 / -1; }
-  .camp .resumo-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0 12px; }
-  .camp .resumo-numeros > div { border: 1px solid var(--linha); background: var(--fundo); border-radius: 12px; padding: 16px; }
-  .camp .resumo-numeros strong { display: block; color: var(--azul); font-size: 32px; }
-  .camp .resumo-numeros b, .camp .resumo-numeros span { display: block; }
-  .camp .resumo-numeros span { font-size: 13px; color: var(--texto-2); }
-  .camp :focus-visible { outline: 3px solid var(--azul); outline-offset: 3px; }
-  .camp th, .camp td { border-color: var(--linha); }
-  .camp .link .rotulo { color: var(--texto); font-size: 15px; }
-  @media (max-width: 640px) {
-    .camp { padding: 20px 14px 48px; }
-    .camp .cartao { padding: 18px 16px; }
-    .camp h1 { font-size: 26px; }
-    .camp .camp-nav, .camp .resumo-numeros, .camp .robo-acoes, .camp .situacao-grade, .camp .grade { grid-template-columns: 1fr; }
-    .camp .camp-nav { gap: 8px; }
-    .camp .camp-nav a { padding: 10px 14px; }
-    .camp .camp-nav a span { display: none; }
-    .camp .robo-acao:last-child { grid-column: auto; }
-    .camp .acoes > * { width: 100%; text-align: center; }
-    .camp .resumo-numeros > div { padding: 12px 16px; }
-  }
+:root { --fundo:#f5f5f7; --painel:#fff; --linha:#d2d2d7; --texto:#1d1d1f; --texto-2:#6e6e73; --texto-3:#6e6e73; --azul:#0066cc; --verde:#248342; --vermelho:#b3261e; }
+body { background:var(--fundo); color:var(--texto); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+.barra { background:rgba(255,255,255,.88); border-bottom:1px solid #e5e5e7; padding:15px 28px; }
+.barra b { font-size:13px; font-weight:600; }
+.barra .quem { font-size:12px; }
+.menu-campanhas { position:absolute; top:64px; right:28px; z-index:20; max-width:calc(100vw - 32px); }
+.menu-campanhas > summary { color:var(--texto-2); cursor:pointer; font-size:13px; }
+.menu-campanhas[open] { background:#fff; border:1px solid var(--linha); border-radius:16px; padding:14px 20px; box-shadow:0 12px 40px #00000014; }
+.menu-campanhas nav { display:grid; gap:2px; margin-top:10px; }
+.menu-campanhas nav a { padding:6px 8px; border-radius:6px; font-size:14px; text-decoration:none; color:var(--texto); }
+.menu-campanhas nav a:hover { background:var(--fundo); }
+.camp { max-width:820px; margin:0 auto; padding:26px 24px 64px; }
+.camp [hidden] { display:none !important; }
+.camp .volta { font-size:13px; text-decoration:none; margin:0; }
+.camp-nav { display:flex; gap:4px; background:#e8e8ed; border-radius:12px; padding:4px; width:fit-content; margin:30px auto 0; }
+.camp-nav a { display:block; text-decoration:none; color:var(--texto-2); padding:8px 23px; border-radius:9px; font-size:14px; white-space:nowrap; }
+.camp-nav a[aria-selected="true"] { background:#fff; color:var(--texto); box-shadow:0 1px 4px #00000014; }
+.camp .hero { text-align:center; margin:46px 0 30px; }
+.camp h1 { font-size:44px; font-weight:650; letter-spacing:-1.6px; line-height:1.12; margin:0 0 14px; }
+.camp .hero p { color:var(--texto-2); font-size:18px; margin:0; }
+.camp h2 { font-size:20px; font-weight:600; margin:0 0 14px; letter-spacing:-.3px; }
+.camp h3 { font-size:16px; margin:16px 0 8px; }
+.camp .folha { max-width:580px; margin:0 auto; background:#fff; border-radius:24px; padding:32px; box-shadow:0 4px 24px #00000004; }
+.camp .campo { display:block; margin:0 0 22px; font-size:14px; font-weight:500; }
+.camp :is(input[type=text],input[type=date],select,textarea) { display:block; width:100%; font:inherit; font-weight:400; color:var(--texto); background:#fff; border:1px solid var(--linha); border-radius:12px; padding:13px 14px; margin-top:8px; box-sizing:border-box; }
+.camp textarea { resize:vertical; }
+.camp input[type=checkbox] { accent-color:var(--azul); }
+.camp button, .camp a.botao { cursor:pointer; font:inherit; font-size:15px; font-weight:500; border:0; border-radius:999px; padding:12px 22px; color:var(--azul); background:#edf4fc; text-decoration:none; }
+.camp button:hover, .camp a.botao:hover { filter:brightness(.97); }
+.camp button.principal, .camp button[data-copiar] { background:#0071e3; color:#fff; }
+.camp .acao-principal { width:100%; margin-top:10px; }
+.camp :focus-visible { outline:3px solid #0071e3; outline-offset:4px; }
+.camp summary { cursor:pointer; color:var(--texto-2); font-size:14px; font-weight:500; padding:10px 0; }
+.camp details { margin:12px 0; }
+.camp details[open] > summary { color:var(--texto); }
+.camp .ajustes { margin:24px 0 0; }
+.camp .ajustes > summary { text-align:center; }
+.camp .dica, .camp .meta { color:var(--texto-2); font-size:13px; font-weight:400; }
+.camp .dica { line-height:1.5; }
+.camp .nota { text-align:center; margin:18px 0; font-size:12px; color:var(--texto-2); }
+.camp .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin:18px 0; }
+.camp .grade label { display:block; font-size:14px; }
+.camp fieldset { border:0; border-top:1px solid #e5e5e7; margin:22px 0; padding:20px 0 0; }
+.camp legend { font-size:14px; font-weight:600; padding:0 8px 0 0; }
+.camp .opcoes { display:grid; gap:12px; }
+.camp .opcoes label { display:flex; align-items:center; gap:8px; font-size:14px; }
+.camp .opcoes input { width:auto; }
+.camp .acoes { display:flex; align-items:center; gap:18px; margin-top:18px; flex-wrap:wrap; }
+.camp .acoes a:not(.botao) { font-size:14px; text-decoration:none; }
+.camp .link { padding:20px 0; border-bottom:1px solid #e5e5e7; }
+.camp .link:first-child { padding-top:0; }
+.camp .link:last-child { border:0; padding-bottom:0; }
+.camp .rotulo { font-size:18px; font-weight:600; overflow-wrap:anywhere; }
+.camp .link input { font-size:12px; }
+.camp .resultados { max-width:720px; margin:0 auto; }
+.camp .resumo-numeros { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; background:#fff; border-radius:24px; padding:36px 22px; text-align:center; }
+.camp .resumo-numeros strong { display:block; font-size:48px; font-weight:600; line-height:1.15; letter-spacing:-1px; }
+.camp .resumo-numeros span { display:block; color:var(--texto-2); font-size:14px; margin-top:10px; }
+.camp .filtro { text-align:right; margin-bottom:14px; }
+.camp .filtro[open] { text-align:left; background:#fff; padding:16px 24px; border-radius:20px; }
+.camp .detalhes-resultados { margin-top:24px; }
+.camp .detalhes-resultados > summary, .camp .historico > summary { text-align:center; }
+.camp .detalhes-resultados[open], .camp .historico[open] { background:#fff; padding:20px 24px; border-radius:20px; }
+.camp .rolagem { overflow-x:auto; }
+.camp table { width:100%; border-collapse:collapse; font-size:13px; text-align:left; }
+.camp th, .camp td { padding:10px 8px; border-bottom:1px solid #e5e5e7; vertical-align:top; }
+.camp .atalhos { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin:24px 0 8px; }
+.camp .atalhos button { font-size:14px; padding:10px 16px; }
+.camp .composer textarea { border:0; background:#f5f5f7; min-height:136px; margin:0; font-size:17px; padding:18px; }
+.camp .composer .enviar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:20px; }
+.camp .composer .enviar span { color:var(--texto-2); font-size:12px; }
+.camp .historico { margin:26px auto; max-width:620px; }
+.camp .situacao p { margin:8px 0; }
+.camp .situacao-grade { display:grid; gap:20px; }
+.camp .rotulo-situacao { font-weight:600; font-size:14px; }
+.camp .proximo { padding:12px 0; border-top:1px solid var(--linha); }
+.camp .veredito { font-size:14px; font-weight:600; margin:8px 0; }
+.camp .veredito.bom, .camp .tom-bom { color:#248342; }
+.camp .veredito.ruim, .camp .tom-ruim { color:#b3261e; }
+.camp .alerta, .camp .certo { padding:14px 18px; border-radius:14px; font-size:14px; margin:18px auto; max-width:580px; }
+.camp .alerta { background:#fff4df; color:#754500; }
+.camp .certo { background:#eaf6ed; color:#205a31; }
+.camp .fala-quiz { border-bottom:1px solid #e5e5e7; padding:14px 0; font-size:15px; }
+.camp .fala-quiz .meta { font-size:11px; }
+.camp .entrega-quiz, .camp .fala-quiz .documento { overflow-wrap:anywhere; }
+.camp .entrega-quiz { max-height:500px; overflow:auto; }
+.camp code { white-space:normal; overflow-wrap:anywhere; }
+.camp .exemplos { display:flex; gap:8px; flex-wrap:wrap; }
+.camp .exemplos button { font-size:13px; padding:8px 12px; }
+.camp .robo-lista { list-style:none; padding:0; font-size:14px; }
+.camp .robo-lista li { padding:16px 0; border-bottom:1px solid #e5e5e7; }
+.camp .robo-lista progress { width:120px; }
+.camp .fichas { font-size:13px; display:grid; gap:8px; }
+.camp .ficha { display:block; }
+.camp-rodape { text-align:center; font-size:11px; color:var(--texto-2); padding:0 20px 30px; }
+@media(max-width:600px) {
+  .barra { padding:13px 18px; }
+  .menu-campanhas { right:18px; top:60px; }
+  .camp { padding:24px 18px 48px; }
+  .camp-nav { margin-top:32px; width:100%; }
+  .camp-nav a { flex:1; text-align:center; padding:8px 10px; font-size:13px; }
+  .camp .hero { margin:34px 0 26px; }
+  .camp h1 { font-size:34px; letter-spacing:-1px; }
+  .camp .hero p { font-size:16px; }
+  .camp .folha { padding:24px; border-radius:20px; }
+  .camp .resumo-numeros { gap:12px; padding:28px 12px; }
+  .camp .resumo-numeros strong { font-size:36px; }
+  .camp .resumo-numeros span { font-size:12px; }
+  .camp .composer .enviar { align-items:end; }
+  .camp .grade { grid-template-columns:1fr; }
+}
+@media(prefers-reduced-motion:no-preference) { .camp [data-painel]:not([hidden]) { animation:aparecer .18s ease-out; } @keyframes aparecer { from { opacity:.4; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } } }
 </style>
-<div class="envolucro camp" data-campanhas>
-  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
-  <h1>Divulgue seu quiz</h1>
-  <p class="subtitulo">Crie um link para cada anúncio. Depois, veja quantas pessoas abriram o quiz, terminaram as perguntas e clicaram na oferta.</p>
-  <nav class="camp-nav" aria-label="O que você quer fazer?">
-    <a href="#criar" data-aba="criar"><b>Criar link</b><span>Para colocar no seu anúncio</span></a>
-    <a href="#resultados" data-aba="resultados"><b>Ver resultados</b><span>Para saber o que aconteceu</span></a>
-    <a href="#robo" data-aba="robo"><b>Pedir ajuda ao robô</b><span>Para conferir ou tirar dúvidas</span></a>
+<main class="camp" data-campanhas>
+  <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Quiz</a>
+  <nav class="camp-nav" aria-label="Campanhas do quiz">
+    <a href="#criar" data-aba="criar">Criar link</a>
+    <a href="#resultados" data-aba="resultados">Resultados</a>
+    <a href="#robo" data-aba="robo">Robô</a>
   </nav>
-  <section id="painel-criar" data-painel="criar" aria-label="Criar link para divulgar">
-  <div class="cartao" id="criar">
-    <h2>Crie o link do seu anúncio</h2>
-    <p class="dica">Comece pelo lugar onde vai divulgar e dê um nome ao anúncio. A campanha pode ficar com o nome automático.</p>
-    <p class="escolha-inicial">Perguntas: <b data-escolha="v">{% for v in versoes %}{% if v in escolha.v or not escolha.v and forloop.last %}{{ v }}{% if not escolha.v %} (mais recente){% endif %} {% endif %}{% endfor %}</b> · Formato: <b data-escolha="fmt">{% for chave, nome in formatos %}{% if chave in escolha.fmt or not escolha.fmt and chave == 'text' %}{% if chave == 'video' %}Vídeo no topo{% else %}{{ nome }}{% endif %} {% endif %}{% endfor %}</b> · Público: <b data-escolha="seg">{% for s in segmentos %}{% if s in escolha.seg or not escolha.seg and s == 'geral' %}{% if s == "geral" %}Qualquer pessoa{% elif s == "frio" %}Ainda não conhece você{% elif s == "quente" %}Já conhece você{% elif s == "iniciante" %}Está começando agora{% elif s == "escalando" %}Já começou e quer crescer{% else %}{{ s }}{% endif %} {% endif %}{% endfor %}</b><br><span class="dica">Para mudar essas escolhas ou o público, abra a opção abaixo do nome do anúncio.</span></p>
-    <form method="get" action="#links" id="form-links">
-      <input type="hidden" name="gerar" value="1">
-      <div class="grade">
-        <label>Onde você vai divulgar?
-          <select name="src">
-            <option value="">Escolha…</option>
-            {% for chave, nome in origens %}<option value="{{ chave }}"{% if escolha.src == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
-          </select>
-        </label>
-        <label>Como você vai divulgar?
-          <select name="med">
-            <option value="">Escolha…</option>
-            {% for chave, nome in meios %}<option value="{{ chave }}"{% if escolha.med == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}
-          </select>
-        </label>
-        <label>Nome da campanha (opcional)
-          <input type="text" name="cpg" value="{{ escolha.cpg }}" placeholder="{{ nome_exemplo }}" maxlength="200">
-          <span class="dica">Deixe vazio para o site criar o nome. A campanha agrupa seus anúncios nos resultados.</span>
-        </label>
+  <section id="painel-criar" data-painel="criar" aria-label="Criar link">
+    <div class="hero" id="criar">
+      <h1>{% if links and not aviso_links %}Pronto para divulgar.{% else %}Seu próximo anúncio.{% endif %}</h1>
+      <p>{% if links and not aviso_links %}Copie o link e coloque no seu anúncio.{% else %}Crie o link. O site cuida dos detalhes.{% endif %}</p>
+    </div>
+    {% if gerar %}
+      <div class="folha" id="links">
+      {% if aviso_links %}<p class="alerta">{{ aviso_links }} Abra “Personalizar” abaixo e ajuste suas escolhas.</p>
+      {% elif links %}
+        {% if not escolha.src %}<p class="alerta">Escolha onde vai divulgar para identificar a origem das visitas.</p>{% endif %}
+        {% for item in links %}
+          <div class="link">
+            <div class="rotulo">{% if item.ctv %}{{ item.ctv }}{% else %}Link do anúncio{% endif %}</div>
+            {% if links|length > 1 %}<div class="meta">{{ item.version_key }} · {{ item.formato_legivel }} · {{ item.publico_legivel }}</div>{% endif %}
+            <div class="acoes"><button type="button" data-copiar="{{ item.url }}">Copiar link</button><a href="{{ item.teste }}" target="_blank" rel="noopener noreferrer" aria-label="Testar sem contar visita">Testar ↗</a></div>
+            <span data-recado role="status"></span>
+            <details><summary>Ver endereço</summary><input type="text" readonly value="{{ item.url }}" aria-label="Link do anúncio"></details>
+          </div>
+        {% endfor %}
+        <p class="nota">O teste não entra nas suas visitas reais.</p>
+        <details><summary>Mais opções</summary>
+          <button type="button" data-copiar-todos>Copiar todos os links</button><span data-recado-todos role="status"></span>
+          <textarea readonly rows="3" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
+{% endfor %}</textarea>
+          {% if robo_painel.robo %}<form method="post" action="{% url 'quiz_campanhas_robo' slug %}">{% csrf_token %}<input type="hidden" name="acao" value="conferir"><input type="hidden" name="escopo" value="tela"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}"><p><button type="submit">Conferir estes links · grátis</button></p></form>{% endif %}
+          {% if cpg_sugerido %}<p class="meta">Nome da campanha criado pelo site: {{ cpg_sugerido }}</p>{% endif %}
+        </details>
+      {% else %}<p class="alerta">Nenhum link saiu com essas escolhas. Abra “Personalizar” e marque uma versão, um formato e um público.</p>{% endif %}
       </div>
-      <label class="campo">Nome do anúncio
-        <textarea name="ctv" rows="2" placeholder="Ex.: video_apresentacao">{{ criativos_texto }}</textarea>
-        <span class="dica">Escolha um nome que você reconheça depois, como video_apresentacao. Para vários anúncios, escreva um nome por linha: cada um recebe seu próprio link.</span>
-      </label>
-      <details class="personalizar">
-        <summary>Mudar as perguntas, o formato ou o público</summary>
-        <p class="dica">Você pode manter as escolhas iniciais. Marcar várias opções cria um link para cada combinação.</p>
+    {% endif %}
+    <div class="folha"{% if gerar %} style="margin-top:20px"{% endif %}>
+      {% if links %}<details class="editar-escolhas"><summary>Editar escolhas</summary>{% endif %}
+      <form method="get" action="#links" id="form-links">
+        <input type="hidden" name="gerar" value="1">
+        <label class="campo" for="origem">Onde você vai divulgar?</label>
+        <select id="origem" name="src" style="margin-top:-14px;margin-bottom:24px"><option value="">Escolha o lugar</option>{% for chave, nome in origens %}<option value="{{ chave }}"{% if escolha.src == chave %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
+        <label class="campo">Nome do anúncio<textarea name="ctv" rows="1" placeholder="Ex.: Vídeo de apresentação">{{ criativos_texto }}</textarea></label>
+        <button class="principal acao-principal" type="submit">Criar link</button>
+        <details class="ajustes"><summary>Personalizar</summary>
+          <label class="campo">Tipo de divulgação<select name="med">{% for chave, nome in meios %}<option value="{{ chave }}"{% if escolha.med == chave or not escolha.med and chave == 'cpc' %} selected{% endif %}>{{ nome }}</option>{% endfor %}</select></label>
+          <label class="campo">Nome da campanha (opcional)<input type="text" name="cpg" value="{{ escolha.cpg }}" placeholder="O site cria o nome" maxlength="200"></label>
+          <p class="dica">Para vários anúncios, escreva um nome por linha no campo acima. Cada um terá seu próprio link.</p>
       <fieldset>
         <legend>Versão das perguntas</legend>
         <p class="dica">Cada versão tem suas próprias perguntas. Se não souber, deixe só a mais nova marcada.</p>
@@ -177,9 +190,7 @@
           {% for s in segmentos %}<label><input type="checkbox" name="seg" value="{{ s }}"{% if s in escolha.seg or not escolha.seg and s == 'geral' %} checked{% endif %}> {% if s == "geral" %}Qualquer pessoa{% elif s == "frio" %}Ainda não conhece você{% elif s == "quente" %}Já conhece você{% elif s == "iniciante" %}Está começando agora{% elif s == "escalando" %}Já começou e quer crescer{% else %}{{ s }}{% endif %}</label>{% endfor %}
         </div>
       </fieldset>
-      </details>
-      <details>
-        <summary>Configurações de rastreamento (opcional)</summary>
+      <details><summary>Rastreamento avançado</summary>
         <p class="dica">Normalmente ficam vazias: o site repete a origem, o tipo, a campanha e o criativo nos campos <code>utm_*</code>, que o Google Analytics e a Meta leem.</p>
         <div class="grade">
           <label>utm_source<input type="text" name="utm_source" value="{{ escolha.utm_source }}" maxlength="200"></label>
@@ -189,97 +200,65 @@
           <label>utm_term (palavra-chave)<input type="text" name="utm_term" value="{{ escolha.utm_term }}" maxlength="200"></label>
         </div>
       </details>
-      <p><button type="submit" class="principal">Criar os links</button></p>
-    </form>
-  </div>
-
-  {% if gerar %}
-  <div class="cartao" id="links">
-    <h2>{% if links and not aviso_links %}Seu link está pronto. Teste e copie.{% else %}Confira suas escolhas{% endif %}</h2>
-    {% if aviso_links %}
-      <p class="alerta">{{ aviso_links }} Desmarque a opção que não existe e tente de novo.</p>
-    {% elif links %}
-      <p class="certo"><b>{{ links|length }} link(s) prontos.</b>{% if cpg_sugerido %} Nome da campanha criado pelo site: <code>{{ cpg_sugerido }}</code>.{% endif %}</p>
-      {% if not escolha.src %}<p class="alerta">Você não escolheu onde o anúncio vai rodar. Sem isso, os números não mostram de onde a pessoa veio.</p>{% endif %}
-      {% if not escolha.ctv %}<p class="alerta">Sem o nome do anúncio, não dá para saber qual anúncio trouxe cada pessoa.</p>{% endif %}
-      <p class="dica"><b>Testar</b> abre o mesmo quiz marcado como teste, sem entrar nos números. <b>Copiar</b> pega o link verdadeiro, para colar no anúncio.</p>
-      {% if robo_painel.robo %}
-      <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-        {% csrf_token %}
-        <input type="hidden" name="acao" value="conferir">
-        <input type="hidden" name="escopo" value="tela">
-        <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
-        <input type="hidden" name="volta" value="{{ consulta }}">
-        <p><button type="submit">Pedir ao robô para conferir estes {{ links|length }} link(s) no site</button> <span class="dica">Grátis. Veja o resultado na área “Pedir ajuda ao robô”.</span></p>
+        </details>
       </form>
-      {% endif %}
-      <details><summary>Copiar todos os links de uma vez</summary>
-      <p><button type="button" data-copiar-todos>Copiar todos os links</button> <span data-recado-todos role="status"></span></p>
-      <textarea readonly rows="4" data-todos aria-label="Todos os links, um por linha">{% for item in links %}{{ item.url }}
-{% endfor %}</textarea></details>
-      {% for item in links %}
-        <div class="link">
-          <div class="rotulo">{{ item.version_key }} · {{ item.formato_legivel }} · {{ item.publico_legivel }}{% if item.ctv %} · anúncio {{ item.ctv }}{% endif %}</div>
-          <input type="text" readonly value="{{ item.url }}" aria-label="Link do anúncio">
-          <div class="acoes">
-            <a href="{{ item.teste }}" target="_blank" rel="noopener noreferrer" class="botao">Testar sem contar visita ↗</a>
-            <button type="button" data-copiar="{{ item.url }}">Copiar link para o anúncio</button>
-          </div>
-          <span data-recado role="status"></span>
-        </div>
-      {% endfor %}
-    {% else %}
-      <p class="alerta">Nenhum link saiu com essas escolhas. Marque pelo menos uma versão, um formato e um público.</p>
-    {% endif %}
-  </div>
-  {% endif %}
-
-  </section>
-  <section id="painel-resultados" data-painel="resultados" aria-label="Resultados da divulgação">
-  <div class="cartao" id="resultados">
-    <h2>Veja o resultado da divulgação</h2>
-    <p class="dica">Escolha um período ou deixe as datas vazias para ver tudo.</p>
-    <form method="get" class="grade" action="#resultados">
-      <input type="hidden" name="aba" value="resultados">
-      <label>Data inicial<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
-      <label>Data final<input type="date" name="fim" value="{{ datas.fim }}"></label>
-      <label>Campanha<select name="ver_cpg"><option value="">Todas as campanhas</option>{% for c in campanhas_vistas %}<option value="{{ c }}"{% if ver_cpg == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
-      <div class="campo-acao"><button type="submit">Ver números</button></div>
-    </form>
-    <div class="resumo-numeros" aria-label="Resumo das visitas reais">
-      <div><strong>{{ resumo.visitas }}</strong><b>Abriram o quiz</b><span>Visitas registradas</span></div>
-      <div><strong>{{ resumo.submissoes }}</strong><b>Terminaram as perguntas</b><span>Chegaram ao resultado</span></div>
-      <div><strong>{{ resumo.saidas }}</strong><b>Clicaram na oferta</b><span>Foram ver o que você vende</span></div>
+      {% if links %}</details>{% endif %}
     </div>
-    <p class="dica">Os testes da equipe ficam fora deste resumo. Os cliques de demonstração também ficam fora do total de ofertas. <b>Clicar na oferta não significa comprar.</b> A compra é confirmada na página de pagamento.</p>
-    {% if linhas_reais %}
-      <details><summary>Ver os números de cada anúncio</summary>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_reais %}</details>
-    {% else %}<p>Nenhuma visita real neste período{% if ver_cpg %} para esta campanha{% endif %}. Quando sua divulgação trouxer pessoas, os resultados aparecem aqui.</p>{% endif %}
-    {% if linhas_testes %}<details><summary>Ver testes da equipe (fora do resumo)</summary>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_testes %}</details>{% endif %}
-    {% if avulsas or divergentes %}
-      <details><summary>Respostas sem visita registrada</summary>
-        <p class="dica">São respostas cujo início não pôde ser associado à visita, por exemplo por um bloqueador no navegador. Ficam fora do resumo acima.</p>
-        {% for linha in avulsas %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
-        {% for linha in divergentes %}<p>{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}
+  </section>
+  <section id="painel-resultados" data-painel="resultados" aria-label="Resultados">
+    <div class="hero" id="resultados"><h1>Como está indo?</h1><p>Veja até onde seus visitantes chegaram.</p></div>
+    <div class="resultados">
+      <details class="filtro"><summary>Filtrar</summary>
+        <form method="get" action="#resultados"><input type="hidden" name="aba" value="resultados"><div class="grade">
+          <label>Data inicial<input type="date" name="inicio" value="{{ datas.inicio }}"></label><label>Data final<input type="date" name="fim" value="{{ datas.fim }}"></label>
+          <label>Campanha<select name="ver_cpg"><option value="">Todas</option>{% for c in campanhas_vistas %}<option value="{{ c }}"{% if ver_cpg == c %} selected{% endif %}>{{ c }}</option>{% endfor %}</select></label>
+        </div><button type="submit">Ver números</button></form>
       </details>
-    {% endif %}
-    <details><summary>Como estes números são contados</summary><p class="dica">{{ aviso }}</p></details>
-    <p><a href="{% url 'quiz_evolucao' slug %}">Ver em qual pergunta as pessoas desistem →</a></p>
-    <p><a href="#robo" data-ir="robo">Pedir ao robô para explicar esses resultados →</a></p>
-  </div>
-  </section>
-  <section data-painel="robo" aria-label="Ajuda do robô">
-  <div class="cartao" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% endif %}>
-    <div class="robo-topo">
-      <h2>Seu robô nesta página{% if robo_painel.robo %}: {{ robo_painel.robo.nome }}{% endif %}</h2>
-      {% if robo_painel.robo %}<a href="{% url 'robo_da_pessoa' %}">Página do robô →</a>{% endif %}
+      {% if datas.inicio or datas.fim or ver_cpg %}<p class="meta">{% if ver_cpg %}{{ ver_cpg }} · {% endif %}{% if datas.inicio %}A partir de {{ datas.inicio }}{% endif %}{% if datas.fim %} até {{ datas.fim }}{% endif %} · <a href="?aba=resultados#resultados">Limpar filtro</a></p>{% endif %}
+      <div class="resumo-numeros" aria-label="Resumo das visitas reais"><div><strong>{{ resumo.visitas }}</strong><span>Visitas</span></div><div><strong>{{ resumo.submissoes }}</strong><span>Responderam</span></div><div><strong>{{ resumo.saidas }}</strong><span>Cliques na oferta</span></div></div>
+      <p class="nota">Só visitas reais. Clicar na oferta não significa comprar.</p>
+      {% if not linhas_reais %}<p class="nota">Seus primeiros visitantes vão aparecer aqui{% if ver_cpg %} para esta campanha{% endif %}.</p>{% endif %}
+      <details class="detalhes-resultados"><summary>Ver detalhes</summary>
+        {% if linhas_reais %}<h2>Por anúncio</h2>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_reais %}{% endif %}
+        {% if linhas_testes %}<details><summary>Ver testes da equipe (fora do resumo)</summary>{% include "admin/_quiz_campanhas_numeros.html" with linhas=linhas_testes %}</details>{% endif %}
+        {% if avulsas or divergentes %}<details><summary>Respostas sem visita registrada</summary><p class="dica">O início dessas respostas não pôde ser associado à visita. Ficam fora do resumo.</p>{% for linha in avulsas %}<p class="meta">{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}{% for linha in divergentes %}<p class="meta">{{ linha.version_key }} · {% firstof linha.cpg linha.campaign "—" %}: {{ linha.submissoes }} resposta(s). {{ linha.observacao }}</p>{% endfor %}</details>{% endif %}
+        <p class="dica">Os testes da equipe e os cliques de demonstração ficam fora do resumo. {{ aviso }}</p>
+        <p><a href="{% url 'quiz_evolucao' slug %}">Ver onde as pessoas desistem →</a></p>
+      </details>
     </div>
-    {% if recado_do_robo %}<p class="certo" role="status">{{ recado_do_robo }}</p>{% endif %}
-    {% if robo_painel.falhou %}
-      <p class="alerta">O painel do robô não abriu agora. Os links e os números desta página continuam funcionando.</p>
-    {% elif not robo_painel.robo %}
-      <p class="dica">Seu acesso não está ligado a uma pessoa da equipe, por isso ainda não há robô para você aqui. Quem administra a equipe confere o seu e-mail na ficha da pessoa, e o robô aparece.</p>
+  </section>
+  <section id="painel-robo" data-painel="robo" aria-label="Robô">
+    <div class="hero" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% endif %}><h1>Como posso ajudar?</h1><p>Escreva o que você precisa.</p></div>
+    {% if robo_painel.falhou %}<p class="alerta">O robô não abriu agora. Você pode continuar criando links e vendo os resultados.</p>
+    {% elif not robo_painel.robo %}<p class="alerta">Seu acesso não está ligado a uma pessoa da equipe. Confira seu cadastro na equipe para usar o robô.</p>
     {% else %}
+      {% if recado_do_robo %}<p class="certo" role="status">{{ recado_do_robo }}</p>{% endif %}
+      {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Seus pedidos ficam guardados até ele voltar.</p>{% endif %}
+      {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência gratuita continua disponível.</p>{% endif %}
+      <div class="folha composer">
+        <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+          {% csrf_token %}<input type="hidden" name="acao" value="pedir"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}">
+          <textarea name="texto" rows="4" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: Me ajude a divulgar no Instagram."></textarea>
+          <div class="enviar"><span>Usa IA dentro do limite da equipe.</span><button type="submit" class="principal">Enviar</button></div>
+        </form>
+      </div>
+      <div class="atalhos"><button type="submit" form="robo-conferir">Conferir links · grátis</button><button type="submit" form="robo-ler">Entender meus resultados</button></div>
+      <p class="nota">A análise dos resultados usa IA dentro do limite da equipe.</p>
+      {% if robo_painel.respondendo %}<p class="certo" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}O robô está respondendo…{% endif %}</p>{% endif %}
+      {% if mostrar_retorno or robo_painel.trabalhando %}{% with e=robo_painel.trabalhos.0 %}{% if e %}<div class="{% if e.tom == 'ruim' %}alerta{% else %}certo{% endif %}" role="status">{% if e.aberta %}{{ e.get_tipo_display }} · {{ e.get_situacao_display }}{% if e.etapa_atual %}<p>{{ e.etapa_atual }}</p>{% endif %}{% else %}{{ e.resultado }}{% endif %}</div>{% endif %}{% endwith %}{% endif %}
+      <div style="max-width:580px;margin:20px auto">{% if robo_painel.mensagens %}
+  <details{% if mostrar_conversa %} open{% endif %} class="conversa-anterior">
+    <summary>Conversa sobre este quiz</summary>
+    {% for m in robo_painel.mensagens %}
+      <div class="fala-quiz {{ m.papel }}">
+        {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
+        <div class="meta">{% if m.papel == 'membro' %}Você{% elif m.papel == 'robo' %}{{ robo_painel.robo.nome }}{% else %}Aviso{% endif %} · {{ m.criada_em|date:"d/m H:i" }}{% if m.papel == 'robo' and m.execucao_id %} · <a href="{% url 'execucao_do_robo' m.execucao_id %}">o que ele fez</a>{% endif %}</div>
+      </div>
+    {% endfor %}
+  </details>
+{% endif %}</div>
+      <details class="historico"><summary>Histórico e ajustes</summary>
+        <p class="meta">Seu robô nesta página: {{ robo_painel.robo.nome }} · <a href="{% url 'robo_da_pessoa' %}">Página do robô</a></p>
       <details><summary>Disponibilidade e gastos do robô</summary>
       <div class="fichas">
         <span class="ficha {% if robo_painel.ia_pronta %}bom{% else %}atencao{% endif %}">{% if robo_painel.ia_pronta %}IA pronta{% else %}IA ainda não pronta{% endif %}</span>
@@ -288,8 +267,6 @@
       </div>
       <p class="dica">Ele trabalha no servidor: pode fechar esta página que o trabalho continua, e o resultado aparece aqui embaixo e na página do robô.</p>
       </details>
-      {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Os pedidos ficam guardados e começam quando ele for reativado, na página do robô.</p>{% endif %}
-      {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência dos links funciona sem ela; a leitura dos números e os pedidos ficam guardados e são feitos quando ela voltar.</p>{% endif %}
       {% with s=robo_painel.situacao %}
       <section class="situacao" aria-labelledby="situacao-titulo">
         <h3 id="situacao-titulo">O que o robô já sabe deste quiz</h3>
@@ -323,74 +300,15 @@
         <p class="proximo"><b>Próximo passo:</b> {{ s.proximo }}</p>
       </section>
       {% endwith %}
-      <div class="robo-acoes">
-        <section class="robo-acao">
-          <h3>Conferir os links no site</h3>
-          <p>O robô verifica se as páginas do quiz abrem e se os links levam às ofertas esperadas.</p>
-          <p class="dica">Grátis. A conferência não entra nas visitas reais. O resultado aparece aqui; se houver um problema, o robô registra uma tarefa de correção.</p>
-          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-            {% csrf_token %}
-            <input type="hidden" name="acao" value="conferir">
-            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
-            <input type="hidden" name="volta" value="{{ consulta }}">
-            {% if gerar and links %}<button type="submit" name="escopo" value="tela" class="principal">Conferir os {{ links|length }} link(s) desta tela</button>{% endif %}
-            <button type="submit" name="escopo" value="tudo"{% if not gerar or not links %} class="principal"{% endif %}>Conferir todos os links do quiz</button>
-          </form>
-        </section>
-        <section class="robo-acao">
-          <h3>Ler os números e sugerir melhorias</h3>
-          <p>O robô explica os resultados e sugere o que você pode melhorar, usando os números do quiz.</p>
-          <p class="dica">Usa IA e tem um pequeno custo em dólar, descontado do limite da equipe. Você recebe sugestões para decidir o que fazer.</p>
-          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-            {% csrf_token %}
-            <input type="hidden" name="acao" value="ler">
-            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
-            <input type="hidden" name="volta" value="{{ consulta }}">
-            <details><summary>Escolher um período ou uma dúvida (opcional)</summary>
-            <div class="datas">
-              <label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label>
-              <label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label>
-            </div>
-            <label>Algo para olhar com atenção (opcional)<input type="text" name="observacao" maxlength="1000" placeholder="Ex.: por que a campanha do TikTok responde menos?"></label>
-            </details>
-            <button type="submit">Pedir a leitura dos números</button>
-          </form>
-        </section>
-        <section class="robo-acao">
-          <h3>Escreva sua dúvida ou seu pedido</h3>
-          <p class="dica">Escreva como você falaria com uma pessoa. O robô já sabe de qual quiz você está falando. Usa IA dentro do limite de gastos da equipe.</p>
-          <details><summary>Ver exemplos de pedidos</summary>
-          <div class="exemplos">
-            <button type="button" data-exemplo="Monte os links da versão mais nova para o TikTok, público frio, anúncios a1 e a2.">Links para o TikTok</button>
-            <button type="button" data-exemplo="Que oferta cada pontuação mostra em cada versão? Explique com um exemplo de respostas.">Que oferta cada pontuação mostra?</button>
-            <button type="button" data-exemplo="Como estão os números desta semana? Qual campanha trouxe mais gente até a oferta?">Números da semana</button>
-            <button type="button" data-exemplo="Confira no site os links que estão marcados na tela antes de eu subir os anúncios.">Conferir antes de anunciar</button>
-            <button type="button" data-exemplo="Registre a ideia de uma versão nova a partir da B2 com a pergunta onde mais gente desiste mais curta. Use os números para escolher a pergunta.">Ideia de versão nova</button>
-            <button type="button" data-exemplo="Crie uma tarefa para mim: gravar o vídeo da versão B2, prazo sexta-feira.">Tarefa para a equipe</button>
-          </div></details>
-          <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-            {% csrf_token %}
-            <input type="hidden" name="acao" value="pedir">
-            <input type="hidden" name="chave" value="{{ robo_painel.chave }}">
-            <input type="hidden" name="volta" value="{{ consulta }}">
-            <textarea name="texto" rows="3" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: quero divulgar no Instagram. Me ajude a criar o link."></textarea>
-            <button type="submit">Enviar ao robô</button>
-          </form>
-        </section>
-      </div>
 
-      {% if robo_painel.mensagens or robo_painel.respondendo %}
-        <details{% if recado_do_robo or robo_painel.respondendo %} open{% endif %}><summary>Conversa sobre este quiz</summary>
-        {% for m in robo_painel.mensagens %}
-          <div class="fala-quiz {{ m.papel }}">
-            {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
-            <div class="meta">{% if m.papel == 'membro' %}Você{% elif m.papel == 'robo' %}{{ robo_painel.robo.nome }}{% else %}Aviso{% endif %} · {{ m.criada_em|date:"d/m H:i" }}{% if m.papel == 'robo' and m.execucao_id %} · <a href="{% url 'execucao_do_robo' m.execucao_id %}">o que ele fez</a>{% endif %}</div>
-          </div>
-        {% endfor %}
-        {% if robo_painel.respondendo %}<p class="dica" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}{{ robo_painel.robo.nome }} está respondendo…{% endif %}</p>{% endif %}
-      {% endif %}
-
-      {% if robo_painel.mensagens or robo_painel.respondendo %}</details>{% endif %}
+        <details><summary>Ajustar a conferência</summary>
+          <form id="robo-conferir" method="post" action="{% url 'quiz_campanhas_robo' slug %}">{% csrf_token %}<input type="hidden" name="acao" value="conferir"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}"><label class="campo">Quais links?<select name="escopo">{% if gerar and links %}<option value="tela" selected>Links que acabei de criar</option>{% endif %}<option value="tudo">Todos os links do quiz</option></select></label><button type="submit">Conferir os links escolhidos</button></form>
+          <p class="dica">A conferência abre o quiz como teste e confere os links até as ofertas. Não faz compras.</p>
+        </details>
+        <details><summary>Ajustar a análise</summary>
+          <form id="robo-ler" method="post" action="{% url 'quiz_campanhas_robo' slug %}">{% csrf_token %}<input type="hidden" name="acao" value="ler"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}"><div class="grade"><label>De<input type="date" name="inicio" value="{{ datas.inicio }}"></label><label>Até<input type="date" name="fim" value="{{ datas.fim }}"></label></div><label class="campo">Algo para olhar com atenção (opcional)<input type="text" name="observacao" maxlength="1000" placeholder="Ex.: Por que poucas pessoas terminam?"></label><button type="submit">Pedir a leitura dos números</button></form>
+        </details>
+        <details><summary>Exemplos de pedidos</summary><div class="exemplos"><button type="button" data-exemplo="Monte um link para divulgar este quiz no Instagram.">Divulgar no Instagram</button><button type="button" data-exemplo="Explique os resultados deste quiz de um jeito simples.">Explicar os resultados</button><button type="button" data-exemplo="Que oferta aparece para quem termina este quiz?">Entender as ofertas</button></div></details>
       {% if robo_painel.trabalhos %}
         <details class="trabalhos-quiz"{% if robo_painel.trabalhando %} open{% endif %}>
         <summary>Trabalhos deste quiz ({{ robo_painel.trabalhos|length }} mais recentes){% if robo_painel.trabalhando %} · trabalhando agora{% endif %}</summary>
@@ -420,28 +338,12 @@
           <p class="meta">Entregas anteriores: {% for en in robo_painel.outras_entregas %}<a href="{% url 'entrega_do_robo' en.id %}">{{ en.titulo }}</a>{% if not forloop.last %} · {% endif %}{% endfor %}</p>
         {% endif %}
       {% endif %}
-      <p class="alerta" data-aviso-do-robo hidden>O robô terminou um trabalho. <a href="#robo" data-recarregar>Atualizar a página</a> para ver (o que você marcou ou escreveu nesta página será perdido).</p>
-    {% endif %}
-  </div>
 
+      </details>
+      <p class="alerta" data-aviso-do-robo hidden>Há uma nova resposta. <a href="#robo" data-recarregar>Atualizar</a> (o texto que você ainda não enviou será perdido).</p>
+    {% endif %}
   </section>
-  <div class="cartao">
-    <details>
-      <summary>Entender os termos técnicos do link (opcional)</summary>
-      <dl>
-        <dt>v = versão</dt><dd>Qual quiz a pessoa vê (perguntas e pontos). Ex.: B2.</dd>
-        <dt>fmt = formato</dt><dd>Como o quiz aparece: texto, vídeo, vídeo curto + texto, calculadora ou conversa com IA.</dd>
-        <dt>seg = público</dt><dd>Muda o título e o texto do resultado. Ex.: escalando.</dd>
-        <dt>src = onde rodou</dt><dd>Meta, TikTok, Google, e-mail…</dd>
-        <dt>med = tipo de divulgação</dt><dd>Anúncio pago (cpc), remarketing, orgânico.</dd>
-        <dt>cpg = campanha</dt><dd>O nome da campanha. Padrão: <code>qz_público_mêsano</code>, ex.: <code>qz_escalando_oct26</code>.</dd>
-        <dt>ctv = anúncio</dt><dd>O nome do criativo. Ex.: <code>vsl_47s</code>.</dd>
-        <dt>utm_…</dt><dd>As mesmas informações no padrão que o Google Analytics e a Meta leem. O site preenche sozinho.</dd>
-      </dl>
-      <p class="dica">Se alguém digitar errado a versão, o formato ou o público, o quiz mostra "página não encontrada" em vez de abrir outra coisa. Por isso, crie os links por aqui e teste antes de subir o anúncio.</p>
-    </details>
-  </div>
-</div>
+</main>
 <script>
 
 (function () {
@@ -504,7 +406,7 @@
 })();
 (function () {
   var mexeu = false;
-  var pedido = document.querySelector('#robo textarea[name=texto]');
+  var pedido = document.querySelector('[data-painel=robo] textarea[name=texto]');
   document.querySelectorAll('[data-exemplo]').forEach(function (b) {
     b.addEventListener('click', function () {
       if (!pedido) { return; }
@@ -523,7 +425,9 @@
   document.addEventListener('change', function () { mexeu = true; });
   function recarregar() {
     var url = new URL(window.location.href);
+    if (url.searchParams.get('robo') === 'pedido') { url.searchParams.set('conversa', '1'); }
     url.searchParams.delete('robo');
+    url.searchParams.set('resultado', '1');
     url.hash = 'robo';
     if (url.toString().split('#')[0] === window.location.href.split('#')[0]) {
       window.location.hash = 'robo';
@@ -554,6 +458,18 @@
       .then(function (parou) { if (parou !== 'parou') { setTimeout(perguntar, intervalo); } });
   }
   setTimeout(perguntar, intervalo);
+})();
+
+(function () {
+  var origem = document.querySelector('#form-links select[name=src]');
+  var meio = document.querySelector('#form-links select[name=med]');
+  if (!origem || !meio) { return; }
+  var editado = new URLSearchParams(window.location.search).has('med');
+  meio.addEventListener('change', function () { editado = true; });
+  origem.addEventListener('change', function () {
+    if (editado) { return; }
+    meio.value = origem.value === 'email' || origem.value === 'whatsapp' ? 'email' : origem.value === 'organico' ? 'organic' : 'cpc';
+  });
 })();
 </script>
 {% endblock %}

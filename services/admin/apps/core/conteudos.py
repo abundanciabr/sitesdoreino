@@ -565,6 +565,9 @@ def quiz_campanhas(request, slug: str):
             "aviso": relatorio.get("aviso") or "Clique de saída não confirma compra.",
             "robo_painel": robo_painel,
             "recado_do_robo": RECADOS_DO_ROBO.get(get.get("robo") or ""),
+            "mostrar_retorno": (bool(get.get("robo")) and get.get("robo") != "pedido")
+            or (get.get("resultado") == "1" and get.get("conversa") != "1"),
+            "mostrar_conversa": get.get("robo") == "pedido" or get.get("conversa") == "1",
             "consulta": get.urlencode(),
         },
     ))

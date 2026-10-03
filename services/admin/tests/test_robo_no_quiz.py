@@ -742,7 +742,7 @@ def test_a_pagina_de_links_mostra_o_robo_os_tres_pedidos_e_a_ultima_entrega():
     assert pagina.status_code == 200
     assert 'id="robo"' in texto and "Seu robô nesta página: Robô de Lívia" in texto
     assert texto.count(f'action="{reverse("quiz_campanhas_robo", args=["encontre"])}"') == 3
-    assert "Conferir todos os links do quiz" in texto and "Pedir a leitura dos números" in texto
+    assert "Conferir os links escolhidos" in texto and "Pedir a leitura dos números" in texto
     assert "A IA do robô não está pronta agora" in texto and "IA ainda não pronta" in texto
     assert "Conversa: gpt-6-luna · Leitura: gpt-6-sol" in texto
     assert "unsafe-inline" not in pagina["Content-Security-Policy"]

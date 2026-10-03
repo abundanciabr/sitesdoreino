@@ -1051,10 +1051,10 @@ várias o texto vaza para a tela (`armadilhas/087`).
 {% comment %}
 As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da
 `armadilhas/033`: solta, cada uma põe um espaço a mais entre os botões.
-{% endcomment %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if forloop.first %} class="fora"{% elif secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>
+{% endcomment %}{% block navegacao_admin %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if forloop.first %} class="fora"{% elif secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>{% endblock %}
 {% endif %}
 {% block corpo %}{% endblock %}
-{% if rodape_do_admin %}
+{% block rodape_admin %}{% if rodape_do_admin %}
 {% comment %}
 O rodapé DESTA área, que não é o do site (`apps/core/rodape.py`). O do site
 assina uma página de leitura para quem visita; este orienta quem opera.
@@ -1077,6 +1077,6 @@ trabalho, e o rodapé é o pé da casa.
   </nav>
   <p class="direitos">Meshcraft Academy &middot; área administrativa &middot; {{ rodape_do_admin.ano }}</p>
 </footer>
-{% endif %}
+{% endif %}{% endblock %}
 </body>
 </html>

@@ -331,7 +331,7 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
     assert "10" in texto and "4" in texto and "2" in texto
     assert "Sem visita registrada" in texto
     assert "clique; compra depende do checkout" in texto
-    assert "Criar os links" in texto and 'value="B1"' in texto
+    assert "Criar link" in texto and 'value="B1"' in texto
     assert "Vídeo no topo (VSL)" in texto and 'value="novo"' in texto
     assert "3 visitas" not in texto and "email@" not in texto
     assert "unsafe-inline" not in pagina["Content-Security-Policy"]
