@@ -946,3 +946,22 @@ def test_nomes_que_so_mudam_por_artigo_ou_plural_sao_a_mesma_coisa():
     assert achado["encontrados"] == ["O Crivo"]
     assert len(achado["ligacoes"]) == 1
     assert len(conhecimento.consultar(["crivo"], com_privados=True)["ligacoes"][0]["fontes"]) == 2
+
+
+def test_o_par_confirmado_por_mais_documentos_vem_primeiro():
+    from apps.agentes import conhecimento
+    from apps.core.models import Documento
+
+    Documento.objects.all().delete()
+    conhecimento.guardar_leitura(_documento("regras", "x"), {
+        "entidades": [{"nome": "Crivo", "tipo": "processo"}, {"nome": "Professor", "tipo": "pessoa"},
+                      {"nome": "Aluno", "tipo": "pessoa"}],
+        "ligacoes": [{"origem": "Crivo", "relacao": "consulta", "destino": "Professor"},
+                     {"origem": "Crivo", "relacao": "avalia", "destino": "Aluno"}],
+    })
+    conhecimento.guardar_leitura(_documento("cursos", "y"), {
+        "entidades": [{"nome": "Crivo", "tipo": "processo"}, {"nome": "Aluno", "tipo": "pessoa"}],
+        "ligacoes": [{"origem": "Aluno", "relacao": "passa pelo", "destino": "Crivo"}],
+    })
+    primeira = conhecimento.consultar(["crivo"], com_privados=True, profundidade=1, max_ligacoes=1)["ligacoes"][0]
+    assert {primeira["de"], primeira["para"]} == {"Crivo", "Aluno"}

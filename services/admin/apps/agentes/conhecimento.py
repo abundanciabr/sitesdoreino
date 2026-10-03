@@ -456,13 +456,23 @@ def consultar(termos: list[str], *, com_privados: bool, profundidade: int = 2,
                 sementes.append(c)
         sementes = sementes[:12]
     vistos = list(dict.fromkeys(sementes))
+    # Quantos documentos confirmam cada par de coisas, com a relação escrita de qualquer jeito.
+    confirmam: dict[frozenset, set] = {}
+    for l in mapa.ligacoes:
+        confirmam.setdefault(frozenset((l["de"], l["para"])), set()).update(l["fontes"])
+
+    def peso(chave: str, indice: int) -> tuple[int, int]:
+        l = mapa.ligacoes[indice]
+        outro = l["para"] if l["de"] == chave else l["de"]
+        return (-len(confirmam[frozenset((l["de"], l["para"]))]), -len(mapa.nos.get(outro, {}).get("fontes", [])))
+
     escolhidas: list[int] = []
     fronteira = list(vistos)
     for _ in range(max(1, min(profundidade, 3))):
         proxima = []
         for chave in fronteira:
-            # Primeiro as ligações que mais documentos confirmam.
-            for indice in sorted(mapa.vizinhos.get(chave, []), key=lambda i: -len(mapa.ligacoes[i]["fontes"])):
+            # Primeiro as ligações que mais documentos confirmam; depois as coisas citadas em mais documentos.
+            for indice in sorted(mapa.vizinhos.get(chave, []), key=lambda i: peso(chave, i)):
                 if indice in escolhidas or len(escolhidas) >= max_ligacoes:
                     continue
                 escolhidas.append(indice)
