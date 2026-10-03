@@ -52,6 +52,8 @@ def test_pagina_de_dados_define_api_base_do_prefixo_real(client, rede, env_de_pr
     # O valor vem do SCRIPT_NAME da requisição — nunca hardcoded no front.
     assert '"/checkout/api/checkout"' in html
     assert "window.API_BASE" in html
+    assert 'src="/checkout/static/checkout/api.js"' in html
+    assert 'src="/checkout/static/checkout/dados.js"' in html
 
 
 def test_formulario_nao_oferece_cartao_sem_campo_para_pagar(
@@ -95,6 +97,7 @@ def test_pagina_do_pix_define_api_base_do_prefixo_real(client, rede, env_de_prod
     html = resp.content.decode("utf-8")
     assert '"/checkout/api/checkout"' in html
     assert "window.API_BASE" in html
+    assert 'src="/checkout/static/checkout/pix.js"' in html
 
 
 def _pedido_no_cartao() -> OrderModel:
@@ -124,6 +127,7 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settin
     assert resp.status_code == 200, resp.content
     html = resp.content.decode("utf-8")
     assert "window.API_BASE" in html
+    assert 'src="/checkout/static/checkout/cartao.js"' in html
     assert "https://scripts.sandboxappmax.com.br/appmax.min.js" in html
     assert '"instalacao-sandbox-de-teste"' in html
     assert "data-appmax-customer" in html
@@ -133,6 +137,21 @@ def test_pagina_do_cartao_casa_sem_prefixo(client, rede, env_de_producao, settin
     assert "appmax-ip" not in html
     assert f'href="/checkout/{SLUG}/"' in html
     assert "Aguardando confirmação do pagamento" not in html
+
+
+@pytest.mark.django_db
+def test_sdk_mp_so_carrega_no_site_listado_com_chave(client, rede, env_de_producao, settings):
+    pedido = _pedido_no_cartao()
+    settings.MP_PUBLIC_KEY = "TEST-chave-publica"
+    settings.MP_CARD_FALLBACK_SITES = frozenset()
+    sem_lista = client.get(f"/pedido/{pedido.id}/cartao/", HTTP_HOST=HOST_A).content.decode()
+    assert "sdk.mercadopago.com/js/v2" not in sem_lista
+
+    settings.MP_CARD_FALLBACK_SITES = frozenset({SITE_A["id"]})
+    com_lista = client.get(f"/pedido/{pedido.id}/cartao/", HTTP_HOST=HOST_A).content.decode()
+    assert 'src="https://sdk.mercadopago.com/js/v2"' in com_lista
+    assert 'src="https://www.mercadopago.com/v2/security.js" view="checkout"' in com_lista
+    assert 'id="mp-public-key"' in com_lista
 
 
 @pytest.mark.django_db

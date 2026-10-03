@@ -29,6 +29,7 @@
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
   {{ appmax_external_id|json_script:"appmax-external-id" }}
+  {{ mp_public_key|json_script:"mp-public-key" }}
   <div class="wrap" x-data="cartaoIsland()">
     <div class="card">
       <h1>Pague com cartão</h1>
@@ -85,8 +86,10 @@
        nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
     window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
   </script>
-  <script src="{% static 'checkout/api.js' %}"></script>
+  <script src="{{ static_base }}/api.js"></script>
   <script src="{{ appmax_script_url }}"></script>
-  <script src="{% static 'checkout/cartao.js' %}"></script>
+  {% if mp_public_key %}<script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>{% endif %}
+  <script src="{{ static_base }}/cartao.js"></script>
 </body>
 </html>

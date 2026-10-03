@@ -580,3 +580,79 @@ def test_consulta_da_tentativa_que_falha_tira_o_campo_e_nao_derruba_o_pedido(
     assert resp.status_code == 200, resp.content
     assert "card_in_review" not in resp.json()
     assert resp.json()["status"] == "aguardando_pagamento"
+
+
+def test_janela_aberta_aparece_no_pedido_sem_marcar_analise(api, rede, pedido_de_cartao):
+    prazo = "2026-10-03T15:00:00+00:00"
+    corpo = _intent_no_estado(pedido_de_cartao, "pending").json()
+    corpo["card"]["segunda_opcao_ate"] = prazo
+    rede.get(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}").respond(200, json=corpo)
+
+    pedido = _consultar(api, pedido_de_cartao)
+
+    assert pedido["card_in_review"] is False
+    assert pedido["card_second_option_until"] == prazo
+
+
+def test_primeiro_envio_passa_somente_sinal_mp_e_devolve_janela(api, rede, pedido_de_cartao):
+    prazo = "2026-10-03T15:00:00+00:00"
+    corpo = _intent_confirmada(status="pending").json()
+    corpo["card"]["segunda_opcao_ate"] = prazo
+    rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card").respond(200, json=corpo)
+
+    resposta = api.post(
+        f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao",
+        {**CORPO_VALIDO, "mp_pronto": True},
+    )
+
+    assert resposta.status_code == 200
+    assert resposta.json()["payment"]["status"] == "segunda_opcao"
+    assert resposta.json()["payment"]["segunda_opcao_ate"] == prazo
+    enviado = json.loads(rota.calls[0].request.content)
+    assert enviado["mp_pronto"] is True
+    assert not any(chave.startswith("mp_token") for chave in enviado)
+
+
+def test_segunda_opcao_repassa_token_sem_alterar_snapshot(api, rede, pedido_de_cartao):
+    corpo = {
+        "mp_token": "token-de-teste",
+        "mp_payment_method_id": "visa",
+        "mp_issuer_id": "123",
+        "mp_device_id": "device-de-teste",
+        "installments": 3,
+        "holder_name": "Fulano de Tal",
+        "holder_document_number": "39053344705",
+    }
+    rota = rede.post(
+        f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card/segunda-opcao"
+    ).mock(return_value=_intent_confirmada())
+
+    resposta = api.post(
+        f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao/segunda-opcao", corpo
+    )
+
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["payment"]["status"] == "approved"
+    assert json.loads(rota.calls[0].request.content) == {
+        **corpo, "payer_email": pedido_de_cartao.customer["email"]
+    }
+    pedido_de_cartao.refresh_from_db()
+    assert pedido_de_cartao.status == "aguardando_pagamento"
+
+
+def test_segunda_opcao_publica_e_alcancavel(client, settings, rede, pedido_de_cartao):
+    settings.TOKENS_ACEITOS = {"token-da-pagina"}
+    settings.TOKENS_PUBLICOS = {"token-da-pagina"}
+    rota = rede.post(f"{PAGAMENTOS}/intents/{pedido_de_cartao.intent_id}/card/segunda-opcao")
+    rota.respond(409, json={"detail": "janela fechada"})
+    resposta = client.post(
+        f"/api/checkout/pedidos/{pedido_de_cartao.id}/cartao/segunda-opcao",
+        data=json.dumps({
+            "mp_token": "token-de-teste", "mp_payment_method_id": "visa",
+            "installments": 1, "holder_name": "Teste", "holder_document_number": "39053344705",
+        }),
+        content_type="application/json",
+        HTTP_AUTHORIZATION="Bearer token-da-pagina", HTTP_HOST=HOST_A,
+    )
+    assert resposta.status_code == 409
+    assert rota.called

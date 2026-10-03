@@ -249,7 +249,7 @@ def test_aprovacao_com_site_errado_nao_promove_cartao_recusado(api, rede, sessao
 
 
 @pytest.mark.django_db
-def test_aprovacao_nao_reabre_pix_recusado_ou_expirado(api, rede, sessao_a):
+def test_aprovacao_posterior_paga_pix_recusado_mas_nao_expirado(api, rede, sessao_a):
     order_recusado = _pedido(api, sessao_a, method="pix")
     assert aplicar(recusado_v1(order_recusado, payment_id="tentativa-pix")) is True
     aprovada_recusado = aprovado_v2(
@@ -257,7 +257,7 @@ def test_aprovacao_nao_reabre_pix_recusado_ou_expirado(api, rede, sessao_a):
     )
     assert aplicar(aprovada_recusado) is True
     order_recusado.refresh_from_db()
-    assert order_recusado.status == "recusado"
+    assert order_recusado.status == "pago"
 
     outra_sessao = api.post(
         "/api/checkout/sessoes", {"offer_slug": "curso-esqueleto"}

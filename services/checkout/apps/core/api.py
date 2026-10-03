@@ -360,7 +360,9 @@ def place_order(request, session_id: str):
     method = corpo.get("method")
     if method not in ("pix", "card"):
         raise HttpError(422, "method deve ser pix ou card")
-    pix_appmax = method == "pix" and site["id"] in settings.APPMAX_PIX_ENABLED_SITES
+    pix_appmax = method == "pix" and site["id"] in (
+        settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES
+    )
     if pix_appmax:
         telefone = "".join(c for c in str(customer.get("phone") or "") if c.isdigit())
         cpf = "".join(c for c in str(customer.get("cpf") or "") if c.isdigit())
@@ -406,7 +408,10 @@ def place_order(request, session_id: str):
         metadata["items"] = itens
     comprador_pagamento = dict(comprador)
     if pix_appmax:
-        ip_bruto = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
+        ip_enviado = corpo.get("ip")
+        if ip_enviado is not None and not isinstance(ip_enviado, str):
+            raise HttpError(422, "ip deve ser texto")
+        ip_bruto = ip_enviado or request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[
             -1
         ].strip() or request.META.get("REMOTE_ADDR", "")
         try:
@@ -566,19 +571,22 @@ class Order(Schema):
     )
 
 
-def _cartao_em_analise(pedido: OrderModel) -> bool | None:
+def _estado_cartao(pedido: OrderModel) -> tuple[bool | None, str | None]:
     """O estado real da tentativa mora em pagamentos (getIntent), e é de lá que
     ele se lê: nenhuma cópia local fica para trás quando um aviso chega fora de
     ordem. None quando a consulta falha; o campo então sai da resposta, porque
     "não sei" não é "não está em análise"."""
     aceita_cartao = pedido.status in (OrderModel.AGUARDANDO, "recusado")
     if pedido.method != "card" or not aceita_cartao:
-        return False
+        return False, None
     try:
         intent = PagamentosClient().obter_intent(intent_id=pedido.intent_id)
     except (httpx.HTTPError, ValueError):
-        return None
-    return intent.get("status") == "pending" if isinstance(intent, dict) else None
+        return None, None
+    if not isinstance(intent, dict):
+        return None, None
+    segunda_opcao_ate = (intent.get("card") or {}).get("segunda_opcao_ate")
+    return intent.get("status") == "pending" and not segunda_opcao_ate, segunda_opcao_ate
 
 
 @router.get(
@@ -610,9 +618,11 @@ def get_order(request, order_id: str):
         "total_cents": pedido.total_cents,
         "created_at": pedido.created_at.isoformat(),
     }
-    em_analise = _cartao_em_analise(pedido)
+    em_analise, segunda_opcao_ate = _estado_cartao(pedido)
     if em_analise is not None:
         corpo["card_in_review"] = em_analise
+    if segunda_opcao_ate:
+        corpo["card_second_option_until"] = segunda_opcao_ate
     return JsonResponse(corpo)
 
 
@@ -627,7 +637,7 @@ def get_order(request, order_id: str):
 # passaria despercebido em revisão e ninguém saberia dizer se ele foi usado.
 
 _CAMPOS_DA_CONFIRMACAO = frozenset(
-    {"token", "ip", "holder_name", "holder_document_number", "installments"}
+    {"token", "ip", "holder_name", "holder_document_number", "installments", "mp_pronto"}
 )
 _ESTADO_QUE_ACEITA_CARTAO = "aguardando_pagamento"
 
@@ -643,7 +653,7 @@ def _inline_card_confirmed_payment(schema: dict) -> None:
                 "intent_id": {"type": "string"},
                 "status": {
                     "type": "string",
-                    "enum": ["created", "pending", "approved", "rejected"],
+                    "enum": ["created", "pending", "approved", "rejected", "segunda_opcao"],
                     "description": (
                         "Estado da tentativa no provedor. approved aqui é a "
                         "resposta imediata dele, e não a liberação do pedido: "
@@ -654,6 +664,7 @@ def _inline_card_confirmed_payment(schema: dict) -> None:
                     "type": "string",
                     "description": "Motivo sanitizado quando status é rejected",
                 },
+                "segunda_opcao_ate": {"type": "string", "format": "date-time"},
             },
         }
     )
@@ -705,6 +716,7 @@ _CONFIRM_ORDER_CARD_OPENAPI = {
                             "minimum": 1,
                             "maximum": 12,
                         },
+                        "mp_pronto": {"type": "boolean"},
                     },
                 }
             }
@@ -782,6 +794,9 @@ def confirm_order_card(request, order_id: str):
     ip = corpo.get("ip")
     if ip is not None and (not isinstance(ip, str) or not ip.strip()):
         raise HttpError(422, "ip deve ser texto não vazio quando enviado")
+    mp_pronto = corpo.get("mp_pronto", False)
+    if not isinstance(mp_pronto, bool):
+        raise HttpError(422, "mp_pronto deve ser booleano")
 
     try:
         status_http, resposta = PagamentosClient().confirmar_cartao(
@@ -795,6 +810,7 @@ def confirm_order_card(request, order_id: str):
                 "payer_email": pedido.customer["email"],
                 **({"ip": ip.strip()} if ip else {}),
                 **titular,
+                **({"mp_pronto": True} if mp_pronto else {}),
             },
         )
     except (httpx.HTTPError, ValueError):
@@ -811,6 +827,10 @@ def confirm_order_card(request, order_id: str):
     motivo = (resposta.get("card") or {}).get("reason_code")
     if motivo:
         pagamento["reason_code"] = motivo
+    segunda_opcao_ate = (resposta.get("card") or {}).get("segunda_opcao_ate")
+    if segunda_opcao_ate:
+        pagamento["status"] = "segunda_opcao"
+        pagamento["segunda_opcao_ate"] = segunda_opcao_ate
     return JsonResponse(
         {
             "order_id": str(pedido.id),
@@ -823,6 +843,56 @@ def confirm_order_card(request, order_id: str):
             "payment": pagamento,
         }
     )
+
+
+_CAMPOS_SEGUNDA_OPCAO = frozenset({
+    "mp_token", "mp_payment_method_id", "mp_issuer_id", "mp_device_id",
+    "installments", "holder_name", "holder_document_number",
+})
+
+
+@router.post(
+    "/pedidos/{order_id}/cartao/segunda-opcao",
+    operation_id="confirmOrderCardSecondOption",
+    summary="Envia a segunda opção do cartão presente nesta página",
+)
+def confirm_order_card_second_option(request, order_id: str) -> JsonResponse:
+    try:
+        pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=request.site["id"])
+    except (OrderModel.DoesNotExist, ValueError):
+        raise HttpError(404, "pedido inexistente neste site") from None
+    if pedido.method != "card" or pedido.status not in (_ESTADO_QUE_ACEITA_CARTAO, "recusado"):
+        raise HttpError(409, "pedido não aceita cartão agora")
+    corpo = _corpo(request)
+    if set(corpo) - _CAMPOS_SEGUNDA_OPCAO:
+        raise HttpError(422, "campos inválidos na segunda opção")
+    for campo in ("mp_token", "mp_payment_method_id", "holder_name", "holder_document_number"):
+        if not isinstance(corpo.get(campo), str) or not corpo[campo].strip():
+            raise HttpError(422, f"{campo} é obrigatório")
+    for campo in ("mp_issuer_id", "mp_device_id"):
+        if campo in corpo and corpo[campo] is not None and not isinstance(corpo[campo], str):
+            raise HttpError(422, f"{campo} deve ser texto")
+    parcelas = corpo.get("installments")
+    if not isinstance(parcelas, int) or isinstance(parcelas, bool) or not 1 <= parcelas <= 12:
+        raise HttpError(422, "installments deve ser inteiro entre 1 e 12")
+    payload = {**corpo, "payer_email": pedido.customer["email"]}
+    try:
+        status_http, resposta = PagamentosClient().confirmar_cartao_segunda_opcao(
+            intent_id=pedido.intent_id, payload=payload,
+        )
+    except (httpx.HTTPError, ValueError):
+        raise HttpError(502, _TENTATIVA_NAO_CONCLUIDA) from None
+    if status_http != 200:
+        raise HttpError(status_http, str(resposta.get("detail") or "a tentativa não foi concluída"))
+    pagamento = {"method": "card", "intent_id": pedido.intent_id, "status": resposta["status"]}
+    motivo = (resposta.get("card") or {}).get("reason_code")
+    if motivo:
+        pagamento["reason_code"] = motivo
+    return JsonResponse({
+        "order_id": str(pedido.id), "site_id": pedido.site_id,
+        "status": OrderModel.objects.values_list("status", flat=True).get(pk=pedido.id),
+        "payment": pagamento,
+    })
 
 
 _CARD_INSTALLMENTS_OPENAPI = {

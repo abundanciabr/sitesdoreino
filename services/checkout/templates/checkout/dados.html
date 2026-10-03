@@ -32,7 +32,9 @@
   {{ api_base|json_script:"api-base" }}
   {{ appmax_pix_enabled|json_script:"appmax-pix-enabled" }}
   {{ appmax_card_enabled|json_script:"appmax-card-enabled" }}
+  {{ appmax_external_id|json_script:"appmax-external-id" }}
   <div class="wrap" x-data="dadosIsland()">
+    {% if appmax_pix_enabled %}<form data-appmax-customer hidden></form>{% endif %}
     <div class="card" x-show="!carregando">
       <h1 x-text="offer.product_name"></h1>
       <template x-if="offer.bumps && offer.bumps.length">
@@ -82,7 +84,8 @@
        nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
     window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
   </script>
-  <script src="{% static 'checkout/api.js' %}"></script>
-  <script src="{% static 'checkout/dados.js' %}"></script>
+  <script src="{{ static_base }}/api.js"></script>
+  {% if appmax_pix_enabled %}<script src="{{ appmax_script_url }}"></script>{% endif %}
+  <script src="{{ static_base }}/dados.js"></script>
 </body>
 </html>

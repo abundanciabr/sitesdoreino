@@ -401,6 +401,9 @@ def _parse_card_confirm(body: bytes) -> dict[str, Any]:
     identificacao = data.get("payer_identification")
     if identificacao is not None and not isinstance(identificacao, dict):
         raise HttpError(422, "payer_identification deve ser objeto")
+    mp_pronto = data.get("mp_pronto", False)
+    if not isinstance(mp_pronto, bool):
+        raise HttpError(422, "mp_pronto deve ser booleano")
     # Os três campos do titular são OPCIONAIS no contrato e só valem como texto:
     # recusar tipo errado aqui evita que um número ou uma lista chegue ao provedor
     # disfarçado de documento por causa de um `str()` complacente.

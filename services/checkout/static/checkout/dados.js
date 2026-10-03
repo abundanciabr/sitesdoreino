@@ -15,8 +15,18 @@ function dadosIsland() {
     bumpIds: [],
     customer: { name: "", email: "", phone: "", cpf: "" },
     method: "pix",
+    appmaxIp: "",
 
     async init() {
+      if (this.appmaxPix && window.AppmaxScripts?.init) {
+        try {
+          window.AppmaxScripts.init({
+            externalId: JSON.parse(document.getElementById("appmax-external-id").textContent),
+            onIp: ({ ip }) => { this.appmaxIp = ip || ""; },
+            onError: () => {},
+          });
+        } catch (_) { /* O IP do servidor continua disponível. */ }
+      }
       try {
         this.session = await api.post("/sessoes", { offer_slug: this.offerSlug, utm: this.atribuicao });
         this.offer = this.session.offer;
@@ -65,6 +75,7 @@ function dadosIsland() {
           customer: this.customer,
           bump_ids: this.bumpIds,
           method: this.method,
+          ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
         });
         const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
         // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,

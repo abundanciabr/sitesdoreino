@@ -48,6 +48,13 @@ APPMAX_CARD_ENABLED_SITES = frozenset(
     for site in os.environ.get("APPMAX_CARD_ENABLED_SITES", "").split(",")
     if site.strip()
 )
+MP_PUBLIC_KEY = os.environ.get("MP_PUBLIC_KEY", "")
+MP_CARD_FALLBACK_SITES = frozenset(
+    site.strip() for site in os.environ.get("MP_CARD_FALLBACK_SITES", "").split(",") if site.strip()
+)
+APPMAX_PIX_FALLBACK_SITES = frozenset(
+    site.strip() for site in os.environ.get("APPMAX_PIX_FALLBACK_SITES", "").split(",") if site.strip()
+)
 APPMAX_EXTERNAL_ID = os.environ.get("APPMAX_EXTERNAL_ID", "")
 # O ambiente Appmax que cobra o cartão: mesmo nome e mesmo padrão de
 # pagamentos.env. O script que lê o cartão na página precisa ser do mesmo

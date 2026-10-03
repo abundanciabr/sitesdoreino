@@ -40,7 +40,7 @@
        nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
     window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
   </script>
-  <script src="{% static 'checkout/api.js' %}"></script>
-  <script src="{% static 'checkout/pix.js' %}"></script>
+  <script src="{{ static_base }}/api.js"></script>
+  <script src="{{ static_base }}/pix.js"></script>
 </body>
 </html>

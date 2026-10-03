@@ -146,6 +146,24 @@ def test_o_documento_do_titular_vira_a_identificacao_do_pagador(
     assert enviado["payment_data"]["credit_card"]["holder_document_number"] == CPF
 
 
+def test_mp_pronto_so_e_aceito_como_sinal_booleano(client: Client, token: str, intent_de_cartao: Intent) -> None:
+    corpo = {
+        "card_token": "tok-de-teste", "installments": 1,
+        "payer_email": "cliente@exemplo.com", "ip": "203.0.113.7",
+        "holder_name": "Fulano de Tal", "holder_document_number": CPF,
+    }
+    invalido = client.post(
+        f"/api/pagamentos/intents/{intent_de_cartao.id}/card",
+        data=json.dumps({**corpo, "mp_pronto": "true"}),
+        content_type="application/json", HTTP_AUTHORIZATION=f"Bearer {token}",
+    )
+    assert invalido.status_code == 422
+    resposta, enviado = _confirmar(client, token, intent_de_cartao, {**corpo, "mp_pronto": True})
+    assert resposta.status_code == 200, resposta.content
+    assert enviado["payment_data"]["credit_card"]["holder_document_number"] == CPF
+    assert "mp_pronto" not in json.dumps(enviado)
+
+
 def test_a_identificacao_escrita_por_extenso_vence_o_numero_solto(
     client: Client, token: str, intent_de_cartao: Intent
 ) -> None:

@@ -213,7 +213,7 @@ def aplicar(envelope: dict) -> bool:
             FatoAplicado.objects.create(chave=aviso.chave)
             estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
             if aviso.status == "pago":
-                estados_elegiveis |= Q(status="recusado", method="card")
+                estados_elegiveis |= Q(status="recusado", method__in=("card", "pix"))
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,

@@ -21,6 +21,10 @@ def _api_base(request) -> str:
     return request.META.get("SCRIPT_NAME", "") + "/api/checkout"
 
 
+def _static_base(request) -> str:
+    return request.META.get("SCRIPT_NAME", "").rstrip("/") + "/static/checkout"
+
+
 def dados(request, offer_slug: str):
     return render(
         request,
@@ -30,10 +34,17 @@ def dados(request, offer_slug: str):
             "atribuicao": atribuicao_da_consulta(request.GET),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
+            "static_base": _static_base(request),
             "appmax_pix_enabled": request.site["id"]
-            in settings.APPMAX_PIX_ENABLED_SITES,
+            in (settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES),
             "appmax_card_enabled": request.site["id"]
             in settings.APPMAX_CARD_ENABLED_SITES,
+            "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
+            "appmax_script_url": (
+                "https://scripts.sandboxappmax.com.br/appmax.min.js"
+                if settings.APPMAX_API_URL == "https://api.sandboxappmax.com.br"
+                else "https://scripts.appmax.com.br/appmax.min.js"
+            ),
         },
     )
 
@@ -59,6 +70,7 @@ def pix(request, order_id: uuid.UUID):
             "pix_data": pedido.pix,
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
+            "static_base": _static_base(request),
         },
     )
 
@@ -80,7 +92,9 @@ def cartao(request, order_id: uuid.UUID):
             ),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
+            "static_base": _static_base(request),
             "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
             "appmax_script_url": script_appmax,
+            "mp_public_key": settings.MP_PUBLIC_KEY if pedido.site_id in settings.MP_CARD_FALLBACK_SITES else "",
         },
     )

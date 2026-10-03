@@ -4,6 +4,7 @@ function cartaoIsland() {
   return {
     orderId: JSON.parse(document.getElementById("order-id").textContent),
     externalId: JSON.parse(document.getElementById("appmax-external-id").textContent),
+    mpPublicKey: JSON.parse(document.getElementById("mp-public-key").textContent),
     totalCents: JSON.parse(document.getElementById("total-cents").textContent),
     status: "carregando",
     parcelas: [],
@@ -17,9 +18,18 @@ function cartaoIsland() {
     emAnalise: false,
     erro: "",
     proximaConsulta: null,
+    mpTokenizacao: null,
+    mpDados: null,
+    segundaOpcaoEnviada: false,
+    segundaOpcaoPendente: false,
 
     async init() {
       await Promise.all([this.poll(), this.carregarParcelas()]);
+      const form = document.querySelector("form[data-appmax-checkout]");
+      form?.addEventListener("click", (event) => {
+        if (event.target.closest("button[type=submit]")) this.prepararMp();
+      }, true);
+      form?.addEventListener("submit", () => this.prepararMp(), true);
       this.iniciarAppmax();
     },
 
@@ -28,7 +38,9 @@ function cartaoIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        if (this.status === "recusado" && !pedido.card_second_option_until) this.segundaOpcaoEnviada = false;
         this.emAnalise = pedido.card_in_review === true;
+        if (pedido.card_second_option_until) await this.enviarSegundaOpcao();
       } catch (e) {
         this.status = "erro";
         this.erro = "Não foi possível consultar o pedido. Tente novamente.";
@@ -40,10 +52,17 @@ function cartaoIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status;
+        if (this.status === "recusado" && !pedido.card_second_option_until) this.segundaOpcaoEnviada = false;
+        if (pedido.card_second_option_until) {
+          this.emAnalise = false;
+          await this.enviarSegundaOpcao();
+        } else {
         // Cartão aprovado sem aviso ainda não está no provedor, mas o pedido
         // também não está pago: a análise vista nesta aba segue até o aviso.
         this.emAnalise =
           pedido.card_in_review === true || (this.emAnalise && this.status === "aguardando_pagamento");
+        if (this.emAnalise || this.status !== "aguardando_pagamento") this.descartarMp();
+        }
         if (this.erro === CONSULTA_INDISPONIVEL) this.erro = "";
       } catch (e) {
         if (this.aguardandoResultado()) this.erro = CONSULTA_INDISPONIVEL;
@@ -52,7 +71,7 @@ function cartaoIsland() {
     },
 
     aguardandoResultado() {
-      return this.status === "aguardando_pagamento" || this.emAnalise;
+      return this.status === "aguardando_pagamento" || this.emAnalise || this.segundaOpcaoPendente;
     },
 
     agendarConsulta() {
@@ -104,23 +123,101 @@ function cartaoIsland() {
       });
     },
 
+    prepararMp() {
+      this.segundaOpcaoEnviada = false;
+      this.mpDados = null;
+      this.mpTokenizacao = null;
+      if (!this.mpPublicKey || !window.MercadoPago) return;
+      const campo = (nome) => document.querySelector(`[appmax-form-element="${nome}"]`)?.value?.trim() || "";
+      const numero = campo("number").replace(/\D/g, "");
+      const documento = this.holderDocumentNumber.replace(/\D/g, "");
+      let ano = campo("expiration_year");
+      if (/^\d{2}$/.test(ano)) ano = `20${ano}`;
+      if (!numero || !documento || !/^\d{4}$/.test(ano)) return;
+      const dados = {
+        cardNumber: numero,
+        cardholderName: this.holderName,
+        cardExpirationMonth: campo("expiration_month"),
+        cardExpirationYear: ano,
+        securityCode: campo("cvv"),
+        identificationType: documento.length === 14 ? "CNPJ" : "CPF",
+        identificationNumber: documento,
+      };
+      try {
+        const mp = new MercadoPago(this.mpPublicKey, { locale: "pt-BR" });
+        const trabalho = Promise.all([
+          mp.createCardToken(dados),
+          mp.getPaymentMethods({ bin: numero.slice(0, 8) }),
+        ]).then(([token, metodos]) => {
+          const metodo = metodos?.results?.find((item) => item.payment_type_id === "credit_card") || metodos?.results?.[0];
+          if (!token?.id || !metodo?.id) return null;
+          return {
+            mp_token: token.id,
+            mp_payment_method_id: metodo.id,
+            mp_issuer_id: String(metodo.issuer?.id || ""),
+            mp_device_id: window.MP_DEVICE_SESSION_ID || "",
+            installments: Number(this.installments),
+            holder_name: this.holderName,
+            holder_document_number: documento,
+          };
+        }).catch(() => null);
+        this.mpTokenizacao = Promise.race([
+          trabalho,
+          new Promise((resolve) => setTimeout(() => resolve(null), 5000)),
+        ]);
+      } catch (_) { this.mpTokenizacao = null; }
+    },
+
+    descartarMp() {
+      this.mpDados = null;
+      this.mpTokenizacao = null;
+    },
+
+    async enviarSegundaOpcao() {
+      if (this.segundaOpcaoEnviada) return;
+      this.segundaOpcaoEnviada = true;
+      this.segundaOpcaoPendente = true;
+      try {
+        if (!this.mpDados && this.mpTokenizacao) this.mpDados = await this.mpTokenizacao;
+        if (!this.mpDados) {
+          this.erro = "Não foi possível concluir a tentativa. Consulte o pedido em instantes.";
+          return;
+        }
+        const resposta = await api.post(`/pedidos/${this.orderId}/cartao/segunda-opcao`, this.mpDados);
+        if (resposta.payment?.status === "rejected") this.erro = "Cartão recusado. Confira os dados ou tente outro cartão.";
+        else this.emAnalise = resposta.status === "aguardando_pagamento";
+      } catch (_) {
+        this.erro = "Não foi possível concluir a tentativa. Consulte o pedido em instantes.";
+      } finally {
+        this.segundaOpcaoPendente = false;
+        this.descartarMp();
+      }
+    },
+
     async confirmarCartao(token) {
       if (this.enviando) return;
       this.enviando = true;
       this.erro = "";
       try {
+        if (this.mpTokenizacao) this.mpDados = await this.mpTokenizacao;
         const resposta = await api.post(`/pedidos/${this.orderId}/cartao`, {
           token,
           ip: this.ip,
           holder_name: this.holderName,
           holder_document_number: this.holderDocumentNumber.replace(/\D/g, ""),
           installments: Number(this.installments),
+          ...(this.mpDados ? { mp_pronto: true } : {}),
         });
         this.status = resposta.status;
-        if (resposta.payment.status === "rejected") {
+        if (resposta.payment.status === "segunda_opcao") {
+          await this.enviarSegundaOpcao();
+          await this.pollSemTelaTravada();
+        } else if (resposta.payment.status === "rejected") {
           this.erro = "Cartão recusado. Confira os dados ou tente outro cartão.";
+          this.descartarMp();
         } else {
           this.emAnalise = this.status === "aguardando_pagamento";
+          this.descartarMp();
           await this.pollSemTelaTravada();
         }
       } catch (e) {
@@ -137,6 +234,7 @@ function cartaoIsland() {
     },
 
     statusLabel() {
+      if (this.segundaOpcaoPendente || this.segundaOpcaoEnviada) return "Concluindo pagamento...";
       if (this.emAnalise) {
         return "Pagamento em análise. Não é preciso pagar de novo. A confirmação aparece aqui assim que a análise terminar.";
       }
@@ -153,7 +251,7 @@ function cartaoIsland() {
     },
 
     podeTentar() {
-      if (this.emAnalise) return false;
+      if (this.emAnalise || this.segundaOpcaoPendente || this.segundaOpcaoEnviada) return false;
       return this.status === "aguardando_pagamento" || this.status === "recusado";
     },
 

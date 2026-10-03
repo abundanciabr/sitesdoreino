@@ -15,6 +15,7 @@ ALCANCE_DO_TOKEN_PUBLICO = frozenset(
         "placeOrder",
         "getOrder",
         "confirmOrderCard",
+        "confirmOrderCardSecondOption",
         "getOrderCardInstallments",
     }
 )

@@ -237,6 +237,8 @@ async function sonda(navegador, saida) {
   saida.marca_do_comprador = marca;
   await pagina.fill("#name", "Sonda Pix Publica");
   await pagina.fill("#email", "sonda-pix-" + marca + "@meshcraft.top");
+  if (await pagina.locator("#phone").isVisible()) await pagina.fill("#phone", "11999999999");
+  if (await pagina.locator("#cpf").isVisible()) await pagina.fill("#cpf", "40827365144");
   await pagina.click("button[type=button]:has-text('Pix')");
 
   var resposta = pagina.waitForResponse(function (r) {

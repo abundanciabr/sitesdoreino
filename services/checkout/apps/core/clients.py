@@ -66,7 +66,9 @@ class PagamentosClient:
     def criar_intent(self, *, idempotency_key: str, payload: dict) -> dict:
         pix_appmax = (
             payload.get("method") == "pix"
-            and payload.get("site_id") in settings.APPMAX_PIX_ENABLED_SITES
+            and payload.get("site_id") in (
+                settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES
+            )
         )
         r = http().post(
             f"{self.base}/intents",
@@ -91,6 +93,17 @@ class PagamentosClient:
         """
         r = http().post(
             f"{self.base}/intents/{intent_id}/card",
+            json=payload,
+            headers=self._headers(),
+            timeout=30.0,
+        )
+        if r.status_code >= 500:
+            r.raise_for_status()
+        return r.status_code, r.json()
+
+    def confirmar_cartao_segunda_opcao(self, *, intent_id: str, payload: dict) -> tuple[int, dict]:
+        r = http().post(
+            f"{self.base}/intents/{intent_id}/card/segunda-opcao",
             json=payload,
             headers=self._headers(),
             timeout=30.0,
