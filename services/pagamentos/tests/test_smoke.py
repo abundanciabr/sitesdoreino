@@ -658,22 +658,25 @@ def test_card_divergencia_de_valor_ou_parcelas_continua_ambigua(
 
 
 @pytest.mark.smoke_pix
-def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
+def test_debug_simulate_webhook_legado_sem_tentativa_entrega_webhook_assinado(
     client: Client, token_valido: str, settings: Any
 ) -> None:
-    """Caminho local do esqueleto (ESQUELETO-QUE-ANDA.md): com DEBUG=1, o
-    endpoint de debug constrói e entrega a si mesma um webhook Pix REAL e
-    assinado — valida o caminho inteiro (assinatura → idempotência → outbox →
-    relay) sem depender do Mercado Pago alcançar localhost."""
+    """O debug preserva a simulação local das intents Pix legadas sem tentativa.
+
+    Pix novo com tentativa sempre consulta GET e confere referência, valor e
+    moeda; o corpo sintético deste endpoint não substitui essa confirmação.
+    """
     settings.DEBUG = True
-    with respx.mock(assert_all_called=True) as mp:
-        mp.post(_URL_PAGAMENTOS).mock(
-            return_value=httpx.Response(201, json=_RESPOSTA_PIX_MP)
-        )
-        resp = _post_intent(
-            client, token_valido, "55555555-5555-5555-5555-555555555555", method="pix"
-        )
-    intent = resp.json()
+    intent = Intent.objects.create(
+        idempotency_key="55555555-5555-5555-5555-555555555555",
+        site_id="site-opaco-abc123",
+        order_id="pedido-legado-debug",
+        method="pix",
+        status="pending",
+        amount_cents=1990,
+        customer={"email": "cliente@exemplo.com", "name": "Cliente Teste"},
+        provider_payment_id=str(_RESPOSTA_PIX_MP["id"]),
+    )
 
     resp_debug = client.post(
         "/debug/simulate-webhook",
@@ -691,7 +694,7 @@ def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
     corpo = resp_debug.json()
     assert corpo["webhook_status_code"] == 200
     assert (
-        Intent.objects.get(id=intent["id"]).status == "approved"
+        Intent.objects.get(id=intent.id).status == "approved"
     )  # o caminho inteiro andou
 
 

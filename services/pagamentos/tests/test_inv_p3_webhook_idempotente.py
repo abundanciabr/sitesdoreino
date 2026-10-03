@@ -10,7 +10,7 @@ import pytest
 import respx
 from django.test import Client
 
-from pagamentos.core.models import Intent, OutboxEvent
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.providers.mercadopago.client import MercadoPagoClient
 
@@ -61,6 +61,9 @@ def _criar_intent_pix(client: Client, token: str) -> str:
 
 
 def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
+    tentativa = PaymentAttempt.objects.get(
+        provider="mercadopago", provider_reference_id=_MP_PAYMENT_ID
+    )
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
     # Desde o endurecimento do webhook, o handler NÃO confia no corpo (não
@@ -71,7 +74,14 @@ def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
     with respx.mock(assert_all_called=True) as mp:
         mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
             return_value=httpx.Response(
-                200, json={"id": int(_MP_PAYMENT_ID), "status": status}
+                200,
+                json={
+                    "id": int(_MP_PAYMENT_ID),
+                    "status": status,
+                    "external_reference": str(tentativa.operation_id),
+                    "transaction_amount": 19.90,
+                    "currency_id": "BRL",
+                },
             )
         )
         return client.post(

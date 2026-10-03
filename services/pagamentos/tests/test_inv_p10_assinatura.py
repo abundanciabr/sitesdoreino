@@ -10,7 +10,7 @@ import pytest
 import respx
 from django.test import Client
 
-from pagamentos.core.models import Intent, OutboxEvent
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.providers.mercadopago.client import MercadoPagoClient
 
@@ -108,7 +108,8 @@ def test_webhook_com_assinatura_valida_e_200(client: Client, token_valido: str) 
     """Controle positivo: a MESMA construção de assinatura usada pelo endpoint
     de debug (`assinar`) é aceita pelo handler — prova que o 403 acima é sobre
     a assinatura estar errada, não sobre o endpoint estar quebrado."""
-    _criar_intent_pix(client, token_valido)
+    intent = _criar_intent_pix(client, token_valido)
+    tentativa = PaymentAttempt.objects.get(intent=intent, provider="mercadopago")
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
 
@@ -117,7 +118,14 @@ def test_webhook_com_assinatura_valida_e_200(client: Client, token_valido: str) 
     with respx.mock(assert_all_called=True) as mp:
         mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
             return_value=httpx.Response(
-                200, json={"id": int(_MP_PAYMENT_ID), "status": "approved"}
+                200,
+                json={
+                    "id": int(_MP_PAYMENT_ID),
+                    "status": "approved",
+                    "external_reference": str(tentativa.operation_id),
+                    "transaction_amount": 19.90,
+                    "currency_id": "BRL",
+                },
             )
         )
         resp = client.post(

@@ -108,4 +108,11 @@ def test_escrita_ao_mp_leva_idempotency_key_propria(
         resp = _post_intent(client, token_valido, chave)
 
     assert resp.status_code == 201
-    assert rota.calls.last.request.headers["X-Idempotency-Key"] == chave
+    from pagamentos.core.models import PaymentAttempt
+
+    tentativa = PaymentAttempt.objects.get(
+        intent__idempotency_key=chave, provider="mercadopago"
+    )
+    assert rota.calls.last.request.headers["X-Idempotency-Key"] == str(
+        tentativa.operation_id
+    )

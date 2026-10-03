@@ -21,8 +21,8 @@ from pagamentos.core.models import (
     PaymentAttempt,
     PaymentOperation,
 )
-from pagamentos.methods.pix.appmax import reconciliar
-from pagamentos.methods.pix.service import completar_intent_pix, criar_intent_pix
+from pagamentos.methods.pix.appmax import completar as completar_pix_appmax, reconciliar
+from pagamentos.methods.pix.service import completar_intent_pix
 from pagamentos.supervisao import processar_rodada
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -51,17 +51,22 @@ def _cliente() -> Mock:
 
 
 def _criar(settings: Any, cliente: Mock) -> Intent:
-    settings.APPMAX_PIX_ENABLED_SITES = frozenset({SITE})
+    # O Pix público sempre começa no MP. Estes testes exercitam diretamente a
+    # segunda tentativa Appmax com o cliente de produção substituído por mock.
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
+    settings.APPMAX_PIX_FALLBACK_SITES = frozenset({SITE})
     with patch(
         "pagamentos.core.gateway.nova_sessao_appmax", return_value=cliente
     ), patch(
         "pagamentos.core.gateway.criar_pagamento_pix",
         side_effect=AssertionError("Pix Appmax chamou Mercado Pago"),
     ):
-        return criar_intent_pix(
+        intent = Intent.objects.create(
             idempotency_key=str(uuid.uuid4()),
             site_id=SITE,
             order_id="pedido-interno",
+            method="pix",
+            status="pending",
             amount_cents=1005,
             currency="BRL",
             customer={
@@ -84,6 +89,7 @@ def _criar(settings: Any, cliente: Mock) -> Intent:
                 ],
             },
         )
+        return completar_pix_appmax(intent)
 
 
 def test_pix_gera_qr_uma_vez_com_cliente_pedido_e_tentativa_persistida(
@@ -252,7 +258,9 @@ def test_aviso_pix_forjado_nao_aprova_sem_consulta_autenticada(settings: Any) ->
     cliente = _cliente()
     intent = _criar(settings, cliente)
     InstalacaoAppmax.objects.create(
-        app_id="1888", appmax_site_id="loja-sandbox", alias="Teste",
+        app_id="1888",
+        appmax_site_id="loja-sandbox",
+        alias="Teste",
         platform_site_ids=[SITE],
     )
     AppmaxWebhookInbox.objects.create(

@@ -7,9 +7,11 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
-from pagamentos.core import gateway, ledger
+from pagamentos.core import gateway, ledger, models
 from pagamentos.core.models import (
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
@@ -34,6 +36,11 @@ _PRAZO_DO_PIX = timedelta(minutes=30)
 _MARGEM_DE_LIQUIDACAO = timedelta(days=1)
 _MOTIVO_VENCIDO = "pix_vencido"
 _PIX_VENCIDO = "Este Pix venceu; volte ao checkout e gere um pedido novo."
+_QR_TESTE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg=="
+
+
+def _sandbox() -> bool:
+    return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower()
 
 
 class DadosPixInvalidos(ValueError):
@@ -157,13 +164,28 @@ def completar(intent: Intent) -> Intent:
                 ambiguo=True,
             )
         return reconciliar(intent)
-    sessao = gateway.nova_sessao_appmax()
-    sessao.preparar()
+    sessao = None if _sandbox() else gateway.nova_sessao_appmax()
+    if sessao is not None:
+        sessao.preparar()
     resposta_pix: dict[str, str] = {}
     vencimento: datetime | None = None
 
     def enviar(tentativa: PaymentAttempt) -> ResultadoDoProvedor:
         nonlocal resposta_pix, vencimento
+        if sessao is None:
+            referencia = f"sim-{tentativa.operation_id}"
+            vencimento = timezone.now() + _PRAZO_DO_PIX
+            resposta_pix = {
+                "qr_code": f"PIX-SIMULADO-{tentativa.operation_id}",
+                "qr_code_base64": _QR_TESTE,
+                "expires_at": vencimento.isoformat(),
+            }
+            return ResultadoDoProvedor(
+                aprovada=None,
+                provider_reference_id=referencia,
+                external_order_id=referencia,
+                motivo="pendente",
+            )
         customer_id = _criar_recurso(
             tentativa, tipo="customer", corpo=cliente, enviar=sessao.criar_cliente
         )
@@ -229,6 +251,12 @@ def completar(intent: Intent) -> Intent:
         )
 
     def registrar(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -> None:
+        trocado = (
+            bool(intent.pix_qr_code)
+            and PaymentAttempt.objects.filter(
+                intent=intent, provider="mercadopago", state="rejected"
+            ).exists()
+        )
         ledger.marcar_tentativa_pendente(intent)
         intent.provider_payment_id = resultado.external_order_id
         intent.pix_qr_code = resposta_pix["qr_code"]
@@ -243,6 +271,29 @@ def completar(intent: Intent) -> Intent:
                 "updated_at",
             ]
         )
+        if trocado:
+            models.emitir(
+                "pix.codigo_trocado",
+                {
+                    "site_id": intent.site_id,
+                    "payment_id": str(intent.id),
+                    "order_id": intent.order_id,
+                    "amount_cents": intent.amount_cents,
+                    "customer": {
+                        "email": str(intent.customer.get("email") or ""),
+                        "name": str(intent.customer.get("name") or ""),
+                        "phone": str(intent.customer.get("phone") or ""),
+                    },
+                    "pix": {
+                        "qr_code": intent.pix_qr_code,
+                        "qr_code_base64": intent.pix_qr_code_base64,
+                        "expires_at": intent.pix_expires_at.isoformat(),
+                    },
+                    "pagina_url": str(intent.metadata.get("pagina_url") or ""),
+                },
+                version=1,
+            )
+            transaction.on_commit(models.relay_apos_commit)
 
     try:
         executar_tentativa(
@@ -275,6 +326,8 @@ def reconciliar(intent: Intent) -> Intent:
         .order_by("-created_at")
         .first()
     )
+    if tentativa and tentativa.external_order_id.startswith("sim-") and _sandbox():
+        return intent
     if not tentativa or not tentativa.external_order_id or not tentativa.customer_id:
         raise gateway.FalhaNoProvedor(
             "Pedido Pix sem vínculo completo; confira as operações Appmax antes de reenviar.",
@@ -361,8 +414,9 @@ def _registrar_fato(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -
     if resultado.aprovada is None:
         return
     if resultado.motivo == _MOTIVO_VENCIDO:
-        ledger.registrar_fato(
-            intent,
+        ledger.registrar_fato_da_tentativa(
+            "appmax",
+            tentativa.provider_reference_id,
             novo_status="expired",
             evento="pix.expirado",
             dados={
@@ -376,6 +430,7 @@ def _registrar_fato(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -
                 },
                 "recovery_url": str(intent.metadata.get("recovery_url") or ""),
             },
+            version=1,
         )
         return
     aprovada = resultado.aprovada
@@ -397,8 +452,9 @@ def _registrar_fato(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -
         dados["product_id"] = produto
     if not aprovada:
         dados["reason_code"] = resultado.motivo
-    ledger.registrar_fato(
-        intent,
+    ledger.registrar_fato_da_tentativa(
+        "appmax",
+        tentativa.provider_reference_id,
         novo_status="approved" if aprovada else "rejected",
         evento="pagamento.aprovado" if aprovada else "pagamento.recusado",
         dados=dados,

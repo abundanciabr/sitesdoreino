@@ -115,7 +115,12 @@ def test_200_feliz_cria_intent_completa_e_leva_idempotency_key(
 
     assert rota.call_count == 1
     requisicao = rota.calls.last.request
-    assert requisicao.headers["X-Idempotency-Key"] == chave
+    from pagamentos.core.models import PaymentAttempt
+
+    tentativa = PaymentAttempt.objects.get(
+        intent__idempotency_key=chave, provider="mercadopago"
+    )
+    assert requisicao.headers["X-Idempotency-Key"] == str(tentativa.operation_id)
     assert requisicao.headers["Authorization"].startswith("Bearer ")
 
 
@@ -242,7 +247,14 @@ def test_replay_de_intent_incompleta_nao_devolve_qr_vazio(
     corpo = segunda.json()
     assert corpo["pix"]["qr_code"] == "00020126-copia-e-cola-de-verdade"
     assert Intent.objects.filter(idempotency_key=chave).count() == 1
-    assert rota.calls.last.request.headers["X-Idempotency-Key"] == chave
+    from pagamentos.core.models import PaymentAttempt
+
+    tentativa = PaymentAttempt.objects.get(
+        intent__idempotency_key=chave, provider="mercadopago"
+    )
+    assert rota.calls.last.request.headers["X-Idempotency-Key"] == str(
+        tentativa.operation_id
+    )
 
 
 def test_replay_com_provedor_ainda_quebrado_nao_devolve_qr_vazio(

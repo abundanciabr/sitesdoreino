@@ -6,11 +6,20 @@ import pytest
 import respx
 from django.test import Client
 from test_smoke import (
-    _URL_PAGAMENTOS, _RESPOSTA_PIX_MP, _APP_AUTH, _APP_API,
-    _post_intent, _configurar_appmax, _appmax, _card_metadata,
-    _confirmar_cartao_appmax, token_valido,
+    _URL_PAGAMENTOS,
+    _RESPOSTA_PIX_MP,
+    _APP_AUTH,
+    _APP_API,
+    _post_intent,
+    _configurar_appmax,
+    _appmax,
+    _card_metadata,
+    _confirmar_cartao_appmax,
+    token_valido,
 )
+
 pytestmark = pytest.mark.django_db
+
 
 @pytest.mark.smoke_pix
 def test_caminho_feliz_pix_gera_qr_e_expiracao(
@@ -34,9 +43,13 @@ def test_caminho_feliz_pix_gera_qr_e_expiracao(
     assert corpo["pix"]["expires_at"]
     assert "card" not in corpo
     assert rota.call_count == 1
-    assert (
-        rota.calls.last.request.headers["X-Idempotency-Key"]
-        == "11111111-1111-1111-1111-111111111111"
+    from pagamentos.core.models import PaymentAttempt
+
+    tentativa = PaymentAttempt.objects.get(
+        intent_id=corpo["id"], provider="mercadopago"
+    )
+    assert rota.calls.last.request.headers["X-Idempotency-Key"] == str(
+        tentativa.operation_id
     )
 
     resp_get = client.get(
@@ -204,5 +217,3 @@ def test_cross_smoke_prova_isolamento_pix_appmax_e_rollback(
     assert terminal.status_code == 200
     assert terminal.json()["status"] == "approved"
     assert consulta.call_count == 1
-
-

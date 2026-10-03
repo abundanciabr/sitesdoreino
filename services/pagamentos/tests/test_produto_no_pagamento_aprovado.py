@@ -25,7 +25,7 @@ import pytest
 import respx
 from django.test import Client
 
-from pagamentos.core.models import Intent, OutboxEvent
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.providers.mercadopago.client import MercadoPagoClient
 
@@ -76,12 +76,22 @@ def _criar_intent_pix(
 
 
 def _aprovar_via_webhook(client: Client, mp_payment_id: str) -> Any:
+    tentativa = PaymentAttempt.objects.get(
+        provider="mercadopago", provider_reference_id=mp_payment_id
+    )
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=mp_payment_id, request_id=request_id)
     with respx.mock(assert_all_called=True) as mp:
         mp.get(f"https://api.mercadopago.com/v1/payments/{mp_payment_id}").mock(
             return_value=httpx.Response(
-                200, json={"id": int(mp_payment_id), "status": "approved"}
+                200,
+                json={
+                    "id": int(mp_payment_id),
+                    "status": "approved",
+                    "external_reference": str(tentativa.operation_id),
+                    "transaction_amount": 19.90,
+                    "currency_id": "BRL",
+                },
             )
         )
         return client.post(
