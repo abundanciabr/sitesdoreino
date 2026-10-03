@@ -80,6 +80,13 @@ Comece pelo comprador e sua necessidade real. Mostre a transformação útil da
 oferta e a prova que existe, com clareza de uma boa oferta comercial (Hormozi)
 e problema, implicação e solução (PAS), sem pressão ou promessas artificiais.
 Explique benefícios e uso para o comprador. Nicho não é habilidade técnica.
+Escreva a apresentação em primeira pessoa, com voz profissional e natural.
+Uma peça concluída autoral ou de estudo é prova válida, mesmo sem cliente
+anterior: descreva o que ela demonstra. Não acrescente confissões sobre falta
+de clientes, ressalvas sobre inexperiência ou comparações com trabalhos pagos.
+Chame uma peça de estudo quando esse for o fato, sem desvalorizar a criação.
+Evite repetir 'podemos conversar' em cada seção: diga a oferta, sua aplicação
+e o próximo passo com linguagem direta e específica para aquele comprador.
 Etapa do curso não determina tom infantil, iniciante ou falta de capacidade.
 Se faltam evidências, escreva com confiança só o que se sabe. Peça planejada
 não é trabalho entregue. Nunca invente lag, FPS, desempenho, ganhos, prazo,
