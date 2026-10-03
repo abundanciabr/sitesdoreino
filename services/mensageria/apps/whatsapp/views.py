@@ -51,7 +51,7 @@ def webhook_whatsapp(request):
             continue
         chave = item.get("key") or {}
         identificador = chave.get("id") if isinstance(chave, dict) else None
-        identificador = identificador or item.get("id")
+        identificador = identificador or item.get("keyId") or item.get("id")
         atualizacao = item.get("update") or {}
         estado_cru = (atualizacao.get("status") if isinstance(atualizacao, dict) else None) or item.get("status")
         estado = ESTADOS.get(estado_cru) or ESTADOS.get(str(estado_cru).upper())

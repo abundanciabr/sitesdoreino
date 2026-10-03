@@ -189,3 +189,24 @@ def test_estado_close_conecta_sem_restart(configurado, settings, monkeypatch):
     monkeypatch.setattr('apps.whatsapp.service._gateway', gateway)
     assert conectar('site-a', renovar=True)['qr'].startswith('data:image/png;base64,')
     assert ('POST', 'instance/restart/instancia-a') not in chamadas
+
+
+def test_retorno_real_evolution_keyid_avanca_ate_lido_sem_regredir(configurado):
+    msg = MensagemWhatsApp.objects.create(
+        site_id='site-a', instancia='instancia-a', origem='manual', referencia='retorno-keyid',
+        destinatario='5511988887777', corpo='teste', provider_id='provider-real', status='aceito',
+    )
+    cliente = Client()
+    for recebido, esperado in (
+        ('SERVER_ACK', 'enviado'), ('DELIVERY_ACK', 'entregue'),
+        ('READ', 'lido'), ('SERVER_ACK', 'lido'),
+    ):
+        corpo = {'event': 'messages.update', 'instance': 'instancia-a',
+                 'data': {'keyId': 'provider-real', 'status': recebido,
+                          'instanceId': 'id-opaco', 'remoteJid': '5511988887777@s.whatsapp.net',
+                          'fromMe': True}}
+        resposta = cliente.post('/webhooks/whatsapp', json.dumps(corpo),
+                               content_type='application/json', HTTP_X_WEBHOOK_TOKEN='retorno-local')
+        assert resposta.status_code == 200
+        msg.refresh_from_db()
+        assert msg.status == esperado
