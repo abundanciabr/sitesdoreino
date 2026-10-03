@@ -65,6 +65,8 @@
   .camp .rotulo-situacao { display: block; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .75; margin-bottom: 4px; }
   .camp .proximo { margin: 12px 0 0 !important; padding: 8px 12px; border-left: 4px solid #60a5fa; background: rgba(96,165,250,.12); border-radius: 6px; }
   .camp .trabalhos-quiz summary { font-size: 16px; margin: 12px 0 4px; }
+  .camp .tom-bom { color: #16a34a; }
+  .camp .tom-ruim { color: #dc2626; }
 </style>
 <div class="envolucro camp">
   <a class="volta" href="{% url 'conteudo_editar' 'quiz' slug %}">← Voltar ao quiz</a>
@@ -104,7 +106,13 @@
             <span class="rotulo-situacao">Links dos anúncios</span>
             {% if s.conferencia %}
               <div class="veredito {{ s.conferencia.tom }}">{{ s.conferencia.veredito }}</div>
-              <div class="meta">Conferência de {{ s.conferencia.quando|date:"d/m H:i" }}{% if s.conferencia.paginas %} · {{ s.conferencia.paginas }} página(s) abertas como visitante{% endif %}{% if s.conferencia.entrega %} · <a href="{% url 'entrega_do_robo' s.conferencia.entrega.id %}">relatório</a>{% endif %}{% if s.conferencia.tarefa %} · <a href="{% url 'tarefa_ver' s.conferencia.tarefa.id %}">tarefa de correção nº {{ s.conferencia.tarefa.id }}</a>{% endif %}. Mudou o quiz? Confira de novo.</div>
+              <div class="meta">Conferência de {{ s.conferencia.quando|date:"d/m H:i" }} · {{ s.conferencia.escolha }}{% if s.conferencia.paginas %} · {{ s.conferencia.paginas }} página(s) abertas como visitante{% endif %}{% if s.conferencia.entrega %} · <a href="{% url 'entrega_do_robo' s.conferencia.entrega.id %}">relatório</a>{% endif %}{% if s.conferencia.tarefa %} · <a href="{% url 'tarefa_ver' s.conferencia.tarefa.id %}">tarefa de correção nº {{ s.conferencia.tarefa.id }}</a>{% endif %}</div>
+              {% if s.conferencia.parcial %}
+                {% with t=s.conferencia.todos %}
+                <p class="meta">Todos os links do quiz: {% if t %}<b class="tom-{{ t.tom }}">{{ t.veredito }}</b> na conferência de {{ t.quando|date:"d/m H:i" }}{% if t.paginas %} ({{ t.paginas }} páginas){% endif %}{% if t.entrega %} · <a href="{% url 'entrega_do_robo' t.entrega.id %}">relatório</a>{% endif %}{% if t.tarefa %} · <a href="{% url 'tarefa_ver' t.tarefa.id %}">tarefa de correção nº {{ t.tarefa.id }}</a>{% endif %}{% else %}ainda não conferidos{% endif %}.</p>
+                {% endwith %}
+              {% endif %}
+              <p class="meta">Mudou o quiz? Confira de novo antes de anunciar.</p>
             {% else %}
               <p>Ainda não conferidos.</p>
             {% endif %}

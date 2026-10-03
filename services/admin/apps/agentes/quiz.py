@@ -1532,35 +1532,57 @@ def _tom(texto: str) -> str:
     return "ruim" if texto.startswith("NÃO SUBA") else "bom" if texto.startswith("PODE SUBIR") else ""
 
 
+def _escolha_conferida(params: dict) -> str:
+    """O que a conferência cobriu, em palavras: o quiz todo ou a escolha."""
+    if not params:
+        return "todos os links do quiz"
+    formatos = ", ".join(
+        FORMATOS_LEGIVEIS.get(f, f) for f in str(params.get("fmt") or "").split(",") if f
+    )
+    partes = [params.get("v"), formatos, params.get("seg"), params.get("cpg")]
+    return "links escolhidos: " + " · ".join(str(p) for p in partes if p)
+
+
+def _resumo_da_conferencia(conferencia: Execucao) -> dict:
+    estado = conferencia.estado or {}
+    veredito = re.sub(r"\s*Entrega (?:parcial )?nº \d+.*$", "", conferencia.resultado, flags=re.S)
+    veredito = veredito.rstrip(" .;")
+    tarefa = None
+    if estado.get("tarefa_de_correcao"):
+        tarefa = (
+            Tarefa.objects.filter(pk=estado["tarefa_de_correcao"])
+            .exclude(situacao=Tarefa.Situacao.CONCLUIDA)
+            .first()
+        )
+    return {
+        "veredito": veredito,
+        "tom": _tom(veredito),
+        "escolha": _escolha_conferida(estado.get("params") or {}),
+        "quando": conferencia.terminada_em or conferencia.atualizada_em,
+        "paginas": len(estado.get("paginas") or {}),
+        "entrega": conferencia.entregas.order_by("-id").first(),
+        "tarefa": tarefa,
+    }
+
+
 def situacao_do_quiz(execucoes) -> dict:
     """O que o robô já sabe deste quiz, no topo do painel: a última
-    conferência, a última leitura com as primeiras ações, a tarefa de correção
-    ainda aberta e o próximo passo. Só lê o que os trabalhos já guardaram."""
+    conferência (e a do quiz todo, se a última foi só de alguns links), a
+    última leitura com as primeiras ações, a tarefa de correção ainda aberta
+    e o próximo passo. Só lê o que os trabalhos já guardaram."""
     concluidas = execucoes.filter(situacao=S.CONCLUIDA).order_by(
         F("terminada_em").desc(nulls_last=True), "-id"
     )
-    conferencia = concluidas.filter(tipo=Execucao.Tipo.CONFERENCIA_QUIZ).first()
+    conferencias = concluidas.filter(tipo=Execucao.Tipo.CONFERENCIA_QUIZ)
+    conferencia = conferencias.first()
     leitura = concluidas.filter(tipo=Execucao.Tipo.LEITURA_QUIZ).first()
     conf = nums = None
     if conferencia is not None:
-        estado = conferencia.estado or {}
-        veredito = re.sub(r"\s*Entrega (?:parcial )?nº \d+.*$", "", conferencia.resultado, flags=re.S)
-        veredito = veredito.rstrip(" .;")
-        tarefa = None
-        if estado.get("tarefa_de_correcao"):
-            tarefa = (
-                Tarefa.objects.filter(pk=estado["tarefa_de_correcao"])
-                .exclude(situacao=Tarefa.Situacao.CONCLUIDA)
-                .first()
-            )
-        conf = {
-            "veredito": veredito,
-            "tom": _tom(veredito),
-            "quando": conferencia.terminada_em or conferencia.atualizada_em,
-            "paginas": len(estado.get("paginas") or {}),
-            "entrega": conferencia.entregas.order_by("-id").first(),
-            "tarefa": tarefa,
-        }
+        conf = _resumo_da_conferencia(conferencia)
+        conf["parcial"] = bool((conferencia.estado or {}).get("params"))
+        if conf["parcial"]:
+            toda = next((e for e in conferencias[:20] if not (e.estado or {}).get("params")), None)
+            conf["todos"] = _resumo_da_conferencia(toda) if toda is not None else None
     if leitura is not None:
         estado = leitura.estado or {}
         dados = estado.get("dados") or {}
@@ -1593,9 +1615,10 @@ def situacao_do_quiz(execucoes) -> dict:
             "Antes de subir os anúncios, peça a conferência dos links: não custa nada e "
             "mostra a oferta de cada pontuação."
         )
-    elif conf["tom"] == "ruim":
+    elif "ruim" in (conf["tom"], (conf.get("todos") or {}).get("tom")):
+        tarefa = conf["tarefa"] or (conf.get("todos") or {}).get("tarefa")
         proximo = "Corrija o que a conferência apontou" + (
-            f" (tarefa nº {conf['tarefa'].id})" if conf["tarefa"] else ""
+            f" (tarefa nº {tarefa.id})" if tarefa else ""
         ) + " e peça outra conferência antes de anunciar."
     elif nums is None:
         proximo = "Links conferidos. Quando os anúncios trouxerem visitas, peça a leitura dos números."

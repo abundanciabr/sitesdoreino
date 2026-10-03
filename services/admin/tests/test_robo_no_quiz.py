@@ -859,6 +859,26 @@ def test_o_topo_do_robo_diz_o_que_ele_ja_sabe_e_o_proximo_passo():
         "Ainda é pouca gente: 11 de 30 visitas de verdade para decidir. Enquanto isso: "
         "Medir a pergunta 1. Peça outra leitura quando chegar a 30." in pronta
     )
+    assert "Conferência de" in pronta and "todos os links do quiz · 1 página(s)" in pronta
+
+    # A última conferência foi só dos links escolhidos: o quadro diz o que ela
+    # cobriu e mostra também a do quiz todo.
+    Execucao.objects.create(
+        robo=robo,
+        tipo=Execucao.Tipo.CONFERENCIA_QUIZ,
+        situacao=S.CONCLUIDA,
+        terminada_em=agora + timedelta(minutes=5),
+        resultado="PODE SUBIR OS ANÚNCIOS, com avisos para saber. Entrega nº 12.",
+        estado={
+            "quiz": "encontre",
+            "params": {"v": "B2", "fmt": "video", "seg": "escalando", "cpg": "qz_x"},
+            "paginas": {"a": {}},
+        },
+    )
+    parcial = cliente.get(url).content.decode()
+    assert 'class="veredito bom">PODE SUBIR OS ANÚNCIOS, com avisos para saber</div>' in parcial
+    assert "links escolhidos: B2 · Vídeo no topo (VSL) · escalando · qz_x" in parcial
+    assert 'Todos os links do quiz: <b class="tom-bom">PODE SUBIR OS ANÚNCIOS: tudo conferido</b>' in parcial
 
 
 @respx.mock
