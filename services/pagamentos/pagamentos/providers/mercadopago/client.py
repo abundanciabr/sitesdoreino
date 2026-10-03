@@ -1,19 +1,16 @@
 # pagamentos/providers/mercadopago/client.py  # [RECEITA:R1 v1]
 # O ÚNICO módulo desta célula que fala HTTP com api.mercadopago.com.
-# Credencial: settings.MP_ACCESS_TOKEN — em dev/CI/worktrees é sempre TEST- (INV-P8;
-# a credencial de produção APP_USR- só existe na VPS, fora do alcance deste código e
-# guardada mecanicamente por ci/guarda-de-segredos.sh, dona: plataforma/CI).
+# Credencial: settings.MP_ACCESS_TOKEN; o serviço recebe a credencial do ambiente.
 from __future__ import annotations
 
 from decimal import Decimal
-import json
 from typing import Any
-from urllib.parse import quote
 
 import httpx
+import mercadopago
 from django.conf import settings
-
-_BASE_URL = "https://api.mercadopago.com"
+from mercadopago.config import RequestOptions
+from mercadopago.http import HttpClient
 
 
 class MercadoPagoError(Exception):
@@ -47,22 +44,6 @@ def _motivo_do_status(status_code: int) -> str:
     return "resposta inesperada do Mercado Pago"
 
 
-def _trecho(corpo: str, limite: int = 300) -> str:
-    """Um erro do provedor pode ecoar token ou pagador; só nomes de campos saem."""
-    del limite
-    try:
-        data = json.loads(corpo)
-    except ValueError:
-        return "[corpo omitido]"
-    if not isinstance(data, dict):
-        return "[corpo omitido]"
-    campos = sorted(
-        key for key in data
-        if isinstance(key, str) and key in {"message", "error", "status", "cause"}
-    )
-    return f"[campos do erro: {', '.join(campos)}]"
-
-
 def _valor_em_reais(amount_cents: int) -> float:
     """Dinheiro é `amount_cents` inteiro em toda a plataforma; Decimal só na
     borda do provider (regra da célula). A API do MP exige um número JSON
@@ -73,142 +54,94 @@ def _valor_em_reais(amount_cents: int) -> float:
     return float(Decimal(amount_cents) / Decimal(100))
 
 
+class _TransporteHTTPX(HttpClient):
+    """Transporte do SDK sem retries implícitos e com resposta bruta verificável."""
+
+    def request(
+        self, method: str, url: str, maxretries: int | None = None,
+        retry_on: list[int] | None = None, backoff_factor: float | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        # O SDK chama este método pelos recursos oficiais. Nunca repetir POST:
+        # a recuperação de envio ambíguo pertence à tentativa persistida.
+        del maxretries, retry_on, backoff_factor
+        resp = httpx.request(method, url, **kwargs)
+        try:
+            corpo = resp.json()
+        except ValueError:
+            corpo = None
+        return {"status": resp.status_code, "response": corpo}
+
+
 class MercadoPagoClient:
     def __init__(
         self, *, access_token: str | None = None, timeout: float = 10.0
     ) -> None:
         self._token = access_token or settings.MP_ACCESS_TOKEN
         self._timeout = timeout
-
-    def _headers(self, idempotency_key: str, device_id: str = "") -> dict[str, str]:
-        headers = {
-            "Authorization": f"Bearer {self._token}",
-            "X-Idempotency-Key": idempotency_key,  # toda escrita ao MP leva chave própria
-            "Content-Type": "application/json",
-        }
-        if device_id:
-            headers["X-meli-session-id"] = device_id
-        return headers
-
-    def _post(
-        self, path: str, *, idempotency_key: str, json_body: dict[str, Any],
-        device_id: str = "", envio_ambiguo_anterior: bool = False,
-    ) -> dict[str, Any]:
-        """FALHA FECHADA: nada sai daqui que não seja um 2xx com corpo JSON de
-        objeto. Antes, só `status_code >= 500` levantava — qualquer 400, 401,
-        403, 404 ou 429 atravessava como se fosse um pagamento, e o corpo de erro
-        do MP (que não tem `id` nem `point_of_interaction`) era traduzido em
-        campos vazios lá na frente: a intent-fantasma, com QR em branco e 201
-        na cara do cliente.
-
-        Este método é COMPARTILHADO por Pix e cartão — o mesmo buraco servia os
-        dois, e no cartão o estrago era pior (status vazio virava "pending", que
-        não é confirmável, e travava a intent em 409 permanente)."""
-        try:
-            resp = httpx.post(
-                f"{_BASE_URL}{path}",
-                json=json_body,
-                headers=self._headers(idempotency_key, device_id),
-                timeout=self._timeout,
-            )
-        except httpx.TimeoutException as exc:
-            # TimeoutException É subclasse de HTTPError: precisa vir ANTES, ou o
-            # timeout se disfarça de "falha de rede" genérica no diagnóstico. E a
-            # distinção importa de verdade — num timeout a cobrança PODE ter sido
-            # criada do lado do MP, ao contrário de um erro de conexão.
-            raise MercadoPagoError(
-                f"timeout ({self._timeout}s) ao chamar o Mercado Pago em {path}: "
-                f"{exc}. A cobranca pode ter sido criada do lado do MP — retentar "
-                "com a MESMA X-Idempotency-Key e seguro (o MP deduplica por ela).",
-                ambiguo=True,
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise MercadoPagoError(
-                f"falha de rede ao chamar o Mercado Pago em {path}: {exc}",
-                ambiguo=not isinstance(exc, httpx.ConnectError),
-            ) from exc
-        return self._corpo_json_de_2xx(
-            resp, path, escrita=True,
-            envio_ambiguo_anterior=envio_ambiguo_anterior,
+        self._sdk = mercadopago.SDK(
+            self._token,
+            http_client=_TransporteHTTPX(),
+            request_options=RequestOptions(
+                connection_timeout=float(timeout), max_retries=0,
+            ),
         )
 
-    def _get(self, path: str) -> dict[str, Any]:
-        """Leitura fail-closed — mesmas três muralhas do `_post` (status, corpo,
-        tipo), porque a resposta de um GET decide coisas tão caras quanto a de
-        um POST: é ela que diz se um webhook vira "aprovado" ou "recusado".
-        Sem X-Idempotency-Key: INV-P4 cobre ESCRITAS; um GET não cria nada do
-        lado do MP e retentar é sempre seguro."""
-        try:
-            resp = httpx.get(
-                f"{_BASE_URL}{path}",
-                headers={"Authorization": f"Bearer {self._token}"},
-                timeout=self._timeout,
-            )
-        except httpx.TimeoutException as exc:
-            # Ver comentário no _post: TimeoutException É subclasse de HTTPError
-            # e precisa vir antes. Aqui a mensagem difere de propósito — numa
-            # LEITURA o timeout não deixa nada criado do outro lado.
-            raise MercadoPagoError(
-                f"timeout ({self._timeout}s) ao consultar o Mercado Pago em "
-                f"{path}: {exc}. Consulta e leitura pura — retentar e seguro."
-            ) from exc
-        except httpx.HTTPError as exc:
-            raise MercadoPagoError(
-                f"falha de rede ao consultar o Mercado Pago em {path}: {exc}"
-            ) from exc
-        return self._corpo_json_de_2xx(resp, path)
+    def _options(self, idempotency_key: str, device_id: str = "") -> RequestOptions:
+        # Mesmo casing do SDK: substitui a chave aleatória dele no dict,
+        # deixando exatamente uma chave HTTP, a da operação persistida.
+        headers = {"x-idempotency-key": idempotency_key}
+        if device_id:
+            headers["X-meli-session-id"] = device_id
+        return RequestOptions(
+            access_token=self._token, connection_timeout=float(self._timeout),
+            max_retries=0, custom_headers=headers,
+        )
 
-    def _corpo_json_de_2xx(
-        self, resp: httpx.Response, path: str, *, escrita: bool = False,
+    def _executar(
+        self, operacao: Any, *, escrita: bool,
         envio_ambiguo_anterior: bool = False,
     ) -> dict[str, Any]:
-        """As três muralhas compartilhadas por _post e _get:
-        todo não-2xx levanta; corpo não-JSON levanta; corpo que não é objeto
-        levanta. Nada sai daqui que não seja um 2xx com um objeto JSON."""
-        if not 200 <= resp.status_code < 300:
-            raise MercadoPagoError(
-                f"{_motivo_do_status(resp.status_code)} "
-                f"(HTTP {resp.status_code} em {path}): {_trecho(resp.text)}",
-                ambiguo=escrita and (
-                    resp.status_code >= 500 or envio_ambiguo_anterior
-                ),
-            )
-
         try:
-            data = resp.json()
-        except ValueError as exc:
-            # `resp.json()` levanta JSONDecodeError, subclasse de ValueError — que
-            # NÃO é httpx.HTTPError e portanto escapava do `except` acima. Uma
-            # página HTML de erro de CDN/WAF na frente do MP virava 500 não
-            # tratado, sem nome e sem diagnóstico.
+            resultado = operacao()
+        except httpx.TimeoutException:
             raise MercadoPagoError(
-                f"corpo nao-JSON na resposta do Mercado Pago (HTTP "
-                f"{resp.status_code} em {path}, content-type="
-                f"{resp.headers.get('content-type', 'ausente')}): "
-                f"{_trecho(resp.text)}",
+                f"timeout ({self._timeout}s) ao chamar o Mercado Pago",
                 ambiguo=escrita,
-            ) from exc
-
-        if not isinstance(data, dict):
+            ) from None
+        except httpx.HTTPError as exc:
             raise MercadoPagoError(
-                f"resposta do Mercado Pago nao e um objeto JSON (HTTP "
-                f"{resp.status_code} em {path}, tipo={type(data).__name__})",
+                "falha de rede ao chamar o Mercado Pago",
+                ambiguo=escrita and not isinstance(exc, httpx.ConnectError),
+            ) from None
+        status = resultado.get("status")
+        corpo = resultado.get("response")
+        if not isinstance(status, int) or not 200 <= status < 300:
+            status_num = status if isinstance(status, int) else 0
+            raise MercadoPagoError(
+                f"{_motivo_do_status(status_num)} (HTTP {status_num})",
+                ambiguo=escrita and (status_num >= 500 or envio_ambiguo_anterior),
+            )
+        if not isinstance(corpo, dict):
+            raise MercadoPagoError(
+                f"resposta do Mercado Pago sem objeto JSON (HTTP {status})",
                 ambiguo=escrita,
             )
-        resultado: dict[str, Any] = data
-        return resultado
+        return corpo
 
     def obter_pagamento(self, payment_id: str) -> dict[str, Any]:
         """GET /v1/payments/{id} — a fonte de verdade do status. O webhook do MP
         assina só `data.id` + request-id + ts (o corpo NÃO é coberto pela
         x-signature); quem decide aprovar/recusar é ESTA consulta, nunca o corpo
-        do webhook. `quote(...)` porque o id entra no path da URL — mesmo vindo
-        do manifesto assinado, id não vira fragmento de rota sem escape."""
-        return self._get(f"/v1/payments/{quote(payment_id, safe='')}")
+        do webhook. O recurso do SDK escapa o id no path."""
+        return self._executar(lambda: self._sdk.payment().get(payment_id), escrita=False)
 
     def buscar_por_referencia(self, external_reference: str) -> list[dict[str, Any]]:
-        resposta = self._get(
-            f"/v1/payments/search?external_reference={quote(external_reference, safe='')}"
+        resposta = self._executar(
+            lambda: self._sdk.payment().search(
+                {"external_reference": external_reference}
+            ),
+            escrita=False,
         )
         resultados = resposta.get("results")
         if not isinstance(resultados, list) or any(
@@ -220,10 +153,11 @@ class MercadoPagoClient:
     def estornar_pagamento(
         self, *, payment_id: str, idempotency_key: str
     ) -> dict[str, Any]:
-        return self._post(
-            f"/v1/payments/{quote(payment_id, safe='')}/refunds",
-            idempotency_key=idempotency_key,
-            json_body={},
+        return self._executar(
+            lambda: self._sdk.refund().create(
+                payment_id, {}, self._options(idempotency_key)
+            ),
+            escrita=True,
         )
 
     def criar_pagamento_pix(
@@ -257,10 +191,11 @@ class MercadoPagoClient:
             body["date_of_expiration"] = date_of_expiration
         if notification_url:
             body["notification_url"] = notification_url
-        return self._post(
-            "/v1/payments",
-            idempotency_key=idempotency_key or order_id,
-            json_body=body,
+        return self._executar(
+            lambda: self._sdk.payment().create(
+                body, self._options(idempotency_key or order_id)
+            ),
+            escrita=True,
             envio_ambiguo_anterior=envio_ambiguo_anterior,
         )
 
@@ -295,8 +230,10 @@ class MercadoPagoClient:
             body["issuer_id"] = issuer_id
         if notification_url:
             body["notification_url"] = notification_url
-        return self._post(
-            "/v1/payments", idempotency_key=idempotency_key,
-            json_body=body, device_id=device_id,
+        return self._executar(
+            lambda: self._sdk.payment().create(
+                body, self._options(idempotency_key, device_id)
+            ),
+            escrita=True,
             envio_ambiguo_anterior=envio_ambiguo_anterior,
         )

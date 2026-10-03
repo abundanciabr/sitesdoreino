@@ -18,6 +18,7 @@ from pagamentos.core.gateway import (
     estornar_pagamento,
     recusa_antifraude_mp,
 )
+from pagamentos.providers.mercadopago.client import MercadoPagoClient, MercadoPagoError
 
 URL = "https://api.mercadopago.com/v1/payments"
 
@@ -62,6 +63,7 @@ def test_cartao_envia_corpo_e_cabecalhos_completos(status: str, detail: str) -> 
     )
     request = rota.calls.last.request
     assert request.headers["X-Idempotency-Key"] == "operacao-1"
+    assert request.headers.get_list("X-Idempotency-Key") == ["operacao-1"]
     assert request.headers["X-meli-session-id"] == "device-sintetico"
     body = json.loads(request.content)
     assert body["transaction_amount"] == 19.9
@@ -187,6 +189,7 @@ def test_estorno_total_nao_envia_amount() -> None:
         resposta = estornar_pagamento(payment_id="123", idempotency_key="refund-1")
     assert resposta["id"] == 987
     assert rota.calls.last.request.headers["X-Idempotency-Key"] == "refund-1"
+    assert rota.calls.last.request.headers.get_list("X-Idempotency-Key") == ["refund-1"]
     assert "amount" not in json.loads(rota.calls.last.request.content)
 
 
@@ -266,6 +269,60 @@ def test_pix_opcionais_sao_enviados_quando_presentes() -> None:
             notification_url="https://meshcraft.top/api/pagamentos/webhooks/mp/pix",
         )
     body = json.loads(rota.calls.last.request.content)
+    assert rota.calls.last.request.headers.get_list("X-Idempotency-Key") == ["pix-1"]
     assert body["date_of_expiration"] == "2026-10-03T12:30:00-03:00"
     assert body["payer"]["first_name"] == "Ana"
     assert body["notification_url"].endswith("/mp/pix")
+
+
+def test_sdk_escapa_id_de_pagamento_no_get_e_no_estorno() -> None:
+    payment_id = "id/?#"
+    path = f"{URL}/id%2F%3F%23"
+    cliente = MercadoPagoClient(access_token="TEST-token")
+    with respx.mock(assert_all_called=True) as rede:
+        consulta = rede.get(path).mock(return_value=httpx.Response(200, json={"id": payment_id}))
+        estorno = rede.post(f"{path}/refunds").mock(
+            return_value=httpx.Response(201, json={"id": "estorno-1"})
+        )
+        assert cliente.obter_pagamento(payment_id)["id"] == payment_id
+        assert cliente.estornar_pagamento(
+            payment_id=payment_id, idempotency_key="estorno-operacao-1"
+        )["id"] == "estorno-1"
+    assert consulta.call_count == estorno.call_count == 1
+    assert estorno.calls.last.request.headers.get_list("X-Idempotency-Key") == [
+        "estorno-operacao-1"
+    ]
+
+
+@pytest.mark.parametrize("metodo", ["pix", "estorno"])
+def test_sdk_503_nao_repete_escrita(metodo: str) -> None:
+    url = URL if metodo == "pix" else f"{URL}/123/refunds"
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(url).mock(return_value=httpx.Response(503, json={"error": "unavailable"}))
+        cliente = MercadoPagoClient(access_token="TEST-token")
+        with pytest.raises(MercadoPagoError) as exc:
+            if metodo == "pix":
+                cliente.criar_pagamento_pix(
+                    idempotency_key="operacao-503", amount_cents=100,
+                    order_id="pedido-503", payer_email="teste@example.com",
+                )
+            else:
+                cliente.estornar_pagamento(
+                    payment_id="123", idempotency_key="operacao-503",
+                )
+    assert exc.value.ambiguo
+    assert rota.call_count == 1
+    assert rota.calls.last.request.headers.get_list("X-Idempotency-Key") == ["operacao-503"]
+
+
+def test_sdk_usa_timeout_configurado(monkeypatch: pytest.MonkeyPatch) -> None:
+    chamadas: list[dict[str, Any]] = []
+
+    def responder(method: str, url: str, **kwargs: Any) -> httpx.Response:
+        chamadas.append(kwargs)
+        return httpx.Response(200, json={"id": "123"})
+
+    monkeypatch.setattr(httpx, "request", responder)
+    assert MercadoPagoClient(access_token="TEST-token", timeout=2.5).obter_pagamento("123") == {"id": "123"}
+    assert len(chamadas) == 1
+    assert chamadas[0]["timeout"] == 2.5
