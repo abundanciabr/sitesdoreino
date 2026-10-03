@@ -82,6 +82,14 @@ AVISOS = {
         "chave_entre_versoes": ("payment_id",),
         "no_v1": {"payment_id": "data.payment_id"},
     },
+    "pagamento.reversao_confirmada": {
+        # Estorno ou contestação confirmados pelo fornecedor. Só tira do
+        # "pago": um pedido que nunca foi pago não tem o que devolver.
+        "versoes": (2,),
+        "status": "reembolsado",
+        "chave_entre_versoes": ("provider", "provider_reference_id"),
+        "no_v1": {},
+    },
     "pix.expirado": {
         # Sem v2 e sem ponte a transcrever: o Rito de Contrato de 20/09/2026
         # não tocou nesta carta. A identidade é o id local do pagamento.
@@ -214,6 +222,8 @@ def aplicar(envelope: dict) -> bool:
             estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
             if aviso.status == "pago":
                 estados_elegiveis |= Q(status="recusado", method__in=("card", "pix"))
+            if aviso.status == "reembolsado":
+                estados_elegiveis = Q(status="pago")
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,

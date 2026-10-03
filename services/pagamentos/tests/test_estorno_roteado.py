@@ -110,6 +110,7 @@ def test_registro_duravel_antes_do_post_e_comando_repetido_nao_reenvia() -> None
     assert OutboxEvent.objects.get(event="pagamento.reversao_confirmada").payload == {
         "platform_site_id": intent.site_id, "provider": "appmax",
         "provider_reference_id": "3531", "motivo": "estorno",
+        "order_id": intent.order_id,
     }
     _rodada_appmax(_pedido("estornado"))
     assert OutboxEvent.objects.filter(event="pagamento.reversao_confirmada").count() == 1

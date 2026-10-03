@@ -243,16 +243,17 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
       {% if vendas %}
       <div class="rolagem" tabindex="0" role="region" aria-label="Vendas pagas por campanha">
         <table>
-          <thead><tr><th>Dia</th><th>Campanha</th><th>Anúncio</th><th>Quiz escolhido</th><th>Vendas pagas</th><th>Receita</th></tr></thead>
+          <thead><tr><th>Dia</th><th>Campanha</th><th>Anúncio</th><th>Quiz escolhido</th><th>Vendas pagas</th><th>Receita</th><th>Reembolsos</th></tr></thead>
           <tbody>
             {% for linha in vendas %}
-              <tr><td>{{ linha.dia }}</td><td>{{ linha.cpg|default:"Sem nome de campanha" }}</td><td>{{ linha.ctv|default:"Sem nome de anúncio" }}</td><td>{{ linha.v|default:"—" }} · {{ linha.formato_legivel|default:"—" }}<br><span class="meta">{{ linha.publico_legivel }}</span></td><td>{{ linha.pedidos }}</td><td>{{ linha.receita }}</td></tr>
+              <tr><td>{{ linha.dia }}</td><td>{{ linha.cpg|default:"Sem nome de campanha" }}</td><td>{{ linha.ctv|default:"Sem nome de anúncio" }}</td><td>{{ linha.v|default:"—" }} · {{ linha.formato_legivel|default:"—" }}<br><span class="meta">{{ linha.publico_legivel }}</span></td><td>{{ linha.pedidos }}</td><td>{{ linha.receita }}</td><td>{% if linha.reembolsos %}{{ linha.reembolsos }} · {{ linha.reembolsado }}{% else %}—{% endif %}</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
       {% else %}<p class="nota">Nenhuma venda paga veio deste quiz{% if ver_cpg %} nesta campanha{% endif %} no período.</p>{% endif %}
-      <p class="nota">Só pedidos com pagamento confirmado pelo provedor. Dia em UTC, valores em reais. A porcentagem inclui testes da equipe que compraram.</p>
+      {% if resumo_vendas.reembolsos %}<p class="nota">{{ resumo_vendas.reembolsos }} venda(s) estornada(s) ou contestada(s) ficaram fora da receita.</p>{% endif %}
+      <p class="nota">Só pedidos com pagamento confirmado pelo provedor. Estornos e contestações saem da receita e aparecem em Reembolsos. Dia em UTC, valores em reais. A porcentagem inclui testes da equipe que compraram.</p>
       {% endif %}
       {% if not linhas_reais %}<p class="nota">Seus primeiros visitantes vão aparecer aqui{% if ver_cpg %} para esta campanha{% endif %}.</p>{% endif %}
       <details class="detalhes-resultados"><summary>Ver detalhes</summary>
