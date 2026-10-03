@@ -78,6 +78,24 @@ def test_saida_para_checkout_do_mesmo_site_leva_lead_e_externa_nao(client, compr
     assert resposta.status_code == 302
     assert "lead=" not in resposta["Location"]
 
+    banda.botao_destino = "/checkout/curso/?origem=quiz"
+    banda.save(update_fields=["botao_destino"])
+    pagina = client.get("/crivo/resultado", {"lead": str(submissao.id)}, HTTP_HOST=site.host)
+    assert pagina.status_code == 200
+    assert b'action="/crivo/sair"' in pagina.content
+    assert b'href="/checkout/curso/?origem=quiz"' not in pagina.content
+    resposta = client.post("/crivo/sair", {"resposta": str(submissao.id)}, HTTP_HOST=site.host)
+    assert resposta.status_code == 302
+    assert resposta["Location"].startswith(f"https://{site.host}/checkout/curso/?")
+    assert "origem=quiz" in resposta["Location"]
+    assert f"lead={submissao.id}" in resposta["Location"]
+
+    client.cookies.pop(COOKIE_SESSAO)
+    pagina = client.get("/crivo/resultado", {"lead": str(submissao.id)}, HTTP_HOST=site.host)
+    assert pagina.status_code == 200
+    assert b'href="/checkout/curso/?origem=quiz"' in pagina.content
+    assert b'action="/crivo/sair"' not in pagina.content
+
 
 def test_concluir_formulario_grava_cookie_do_comprador(client, comprador):
     site, submissao_antiga = comprador

@@ -822,21 +822,40 @@ async function provarPrefillDoQuiz() {
   try {
     await pagina.goto(BASE + "/quiz/" + encodeURIComponent(slug) + "/", { waitUntil: "networkidle" });
     await pagina.locator("form.crivo").waitFor();
-    await pagina.locator("form.crivo").evaluate(function (form) {
-      var grupos = new Set(Array.from(form.querySelectorAll("input[type=radio]")).map(function (input) { return input.name; }));
-      grupos.forEach(function (nome) { form.querySelector('input[name="' + nome + '"]').checked = true; });
-    });
-    await pagina.fill('form.crivo input[name="email"]', email);
-    await pagina.fill('form.crivo input[name="nome"]', "Ana Teste");
-    await pagina.fill('form.crivo input[name="telefone"]', "11999999999");
+    var perguntas = await pagina.locator("form.crivo .passo[data-pergunta]:not([data-pergunta=lead])").count();
+    for (var i = 0; i < perguntas; i++) {
+      var passo = pagina.locator("form.crivo .passo.ativo");
+      await passo.locator('input[type="radio"]').last().check();
+      await pagina.locator("form.crivo button.avancar").click();
+    }
+    await pagina.locator("form.crivo .passo.ativo[data-pergunta=lead]").waitFor({ state: "visible" });
+    await pagina.locator('form.crivo .passo.ativo input[name="email"]').fill(email);
+    await pagina.locator('form.crivo .passo.ativo input[name="nome"]').fill("Ana Teste");
+    await pagina.locator('form.crivo .passo.ativo input[name="telefone"]').fill("11999999999");
     await Promise.all([
       pagina.waitForURL(/\/quiz\/[^/]+\/resultado\?lead=/, { timeout: 30000 }),
-      pagina.locator("form.crivo").evaluate(function (form) { form.submit(); }),
+      pagina.locator("form.crivo button.enviar").click(),
     ]);
-    await Promise.all([
-      pagina.waitForURL(/\/checkout\/[^/]+\/\?.*lead=/, { timeout: 30000 }),
-      pagina.locator('form[action$="/sair"] button[type="submit"]').click(),
-    ]);
+    var lead = new URL(pagina.url()).searchParams.get("lead");
+    if (!lead) throw new Error("resultado sem identificador do lead");
+    var saida = pagina.locator('form[action$="/sair"] button[type="submit"]');
+    if (await saida.count()) {
+      await Promise.all([
+        pagina.waitForURL(/\/checkout\/[^/]+\/\?.*lead=/, { timeout: 30000 }),
+        saida.click(),
+      ]);
+    } else {
+      var link = pagina.locator('main a.botao[href^="/checkout/"]');
+      if (!(await link.count())) throw new Error("o resultado do quiz não oferece saída para checkout no mesmo site");
+      await Promise.all([
+        pagina.waitForURL(/\/checkout\/[^/]+\//, { timeout: 30000 }),
+        link.first().click(),
+      ]);
+    }
+    var destino = new URL(pagina.url());
+    if (destino.searchParams.get("lead") !== lead) {
+      throw new Error("o botão do resultado chega ao checkout sem o parâmetro lead correto");
+    }
     await pagina.locator("#email").waitFor({ state: "visible" });
     var endereco = pagina.url();
     var nome = await pagina.inputValue("#name");

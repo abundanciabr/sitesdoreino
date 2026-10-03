@@ -85,11 +85,20 @@ def test_o_resultado_mostra_o_botao_da_faixa_que_a_pessoa_caiu(client, quiz_a):
 
     pagina = _submeter(client, quiz_a, pontos=10).content.decode()
 
-    assert f'href="{DESTINO}"' in pagina
+    assert 'action="/crivo/sair"' in pagina
+    assert f'href="{DESTINO}"' not in pagina
     assert "Quero escalar agora" in pagina
     # O botão da OUTRA faixa não pode aparecer: é isso que "por faixa" quer dizer.
     assert "Começar pelo básico" not in pagina
     assert "/comece-aqui/" not in pagina
+
+    client.cookies.pop("quiz_session")
+    submissao = Submission.objects.get(quiz=quiz_a)
+    anonima = client.get(
+        f"/{quiz_a.slug}/resultado", {"lead": str(submissao.id)}, HTTP_HOST=HOST
+    ).content.decode()
+    assert f'href="{DESTINO}"' in anonima
+    assert 'action="/crivo/sair"' not in anonima
 
 
 def test_faixa_sem_botao_mostra_o_diagnostico_e_nenhum_link(client, quiz_a):

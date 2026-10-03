@@ -507,6 +507,12 @@ def resultado(request, slug):
             "banda": banda,
             "entrada": entrada if propria else None,
             "saida_rastreavel": propria,
+            "saida_com_formulario": bool(
+                propria and banda and (
+                    banda.botao_destino.startswith("https://")
+                    or banda.botao_destino.startswith("/checkout/")
+                )
+            ),
             "demonstracao": demonstracao,
             "oferta": oferta,
             "recomecar_url": url_da_experiencia(
@@ -543,9 +549,12 @@ def sair(request, slug):
     quiz = _quiz_do_site(request, slug)
     submissao, entrada = _submissao_da_sessao(request, quiz)
     banda = get_object_or_404(submissao.version.bands, key=submissao.result_key)
+    destino = banda.botao_destino
+    if destino.startswith("/checkout/"):
+        destino = f"https://{request.site['host']}{destino}"
     try:
         endereco = destino_com_parametros(
-            banda.botao_destino,
+            destino,
             submissao.utm,
             submissao.context,
             tentativa=submissao.session_id,
