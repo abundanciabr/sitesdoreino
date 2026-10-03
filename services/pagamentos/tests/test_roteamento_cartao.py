@@ -321,6 +321,9 @@ def test_fechar_janela_sem_segunda_chamada(client: Client, loja: str) -> None:
     assert fechar_segundas_opcoes_vencidas(intent) == 1
     assert fechar_segundas_opcoes_vencidas(intent) == 0
     assert OutboxEvent.objects.filter(event="pagamento.recusado").count() == 1
+    intent.refresh_from_db()
+    assert intent.card_reason_code == "segunda_opcao_nao_enviada"
+    assert OutboxEvent.objects.get(event="pagamento.recusado").payload["reason_code"] == intent.card_reason_code
 
 
 @pytest.mark.parametrize("primeiro_nome", ["APRO", "BLAC", "OUTRO"])

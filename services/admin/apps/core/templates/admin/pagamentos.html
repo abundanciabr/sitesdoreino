@@ -12,6 +12,7 @@
   {% elif not compras %}
     <p>Nenhuma compra encontrada neste site.</p>
   {% else %}
+  <p>{{ total }} compra{{ total|pluralize }} neste site · página {{ pagina }}</p>
   <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse">
       <thead><tr><th>Data</th><th>Pedido</th><th>Meio</th><th>Valor</th><th>Empresa</th><th>Estado</th><th>Segunda empresa</th><th>Devolução</th><th>Ação</th></tr></thead>
@@ -25,6 +26,7 @@
           <td>{% if compra.pode_devolver %}
             <form method="post" action="{% url 'pagamentos_devolver' %}" onsubmit="return confirm('Devolver R$ {{ compra.valor_exibicao }} pela {{ compra.empresa }}?');">
               {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
+              <input type="hidden" name="pagina" value="{{ pagina }}">
               <button type="submit">Devolver</button>
             </form>
           {% endif %}</td>
@@ -33,6 +35,10 @@
       </tbody>
     </table>
   </div>
+  <nav aria-label="Páginas de compras">
+    {% if pagina_anterior %}<a href="?pagina={{ pagina_anterior }}">Compras mais recentes</a>{% endif %}
+    {% if pagina_seguinte %}<a href="?pagina={{ pagina_seguinte }}">Compras mais antigas</a>{% endif %}
+  </nav>
   {% endif %}
 </div>
 {% endblock %}

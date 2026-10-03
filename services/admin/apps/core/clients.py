@@ -93,11 +93,22 @@ class PagamentosClient:
             return None
 
     def compras(self, site_id: str):
-        resultado = self._pedir("GET", f"/interno/admin/compras/{quote(site_id, safe='')}")
+        pagina = self.compras_pagina(site_id, 1)
+        return pagina["compras"] if pagina is not None else None
+
+    def compras_pagina(self, site_id: str, pagina: int):
+        caminho = f"/interno/admin/compras/{quote(site_id, safe='')}?pagina={pagina}"
+        resultado = self._pedir("GET", caminho)
         if not resultado or resultado[0] != 200 or not isinstance(resultado[1], dict):
             return None
-        linhas = resultado[1].get("compras")
-        return linhas if isinstance(linhas, list) else None
+        dados = resultado[1]
+        if (not isinstance(dados.get("compras"), list)
+                or type(dados.get("pagina")) is not int
+                or type(dados.get("total")) is not int
+                or type(dados.get("paginas")) is not int
+                or type(dados.get("mais")) is not bool):
+            return None
+        return dados
 
     def devolver(self, site_id: str, tentativa_id: str):
         return self._pedir("POST", f"/interno/admin/compras/{quote(site_id, safe='')}/{quote(tentativa_id, safe='')}/devolver")

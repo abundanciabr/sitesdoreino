@@ -74,3 +74,44 @@ def test_principal_prevalece_sobre_duplicada_e_mostra_valor_pago(monkeypatch):
     assert compra["tentativa_id"] == str(principal.pk)
     assert compra["pode_devolver"] is True
     assert compra["valor_centavos"] == 1090
+
+
+def test_paginacao_alcanca_compra_antiga_e_isola_total_por_site(monkeypatch):
+    monkeypatch.setenv("TOKENS_ACEITOS_ADMIN", "token-admin")
+    antiga = _attempt(_intent("site-um", "pedido-antigo"))
+    for numero in range(100):
+        _intent("site-um", f"pedido-{numero:03d}")
+    for numero in range(3):
+        _intent("site-outro", f"outro-{numero}")
+    cliente = Client()
+    url = "/api/pagamentos/interno/admin/compras/site-um"
+    cabecalho = {"HTTP_AUTHORIZATION": "Bearer token-admin"}
+    primeira = cliente.get(url, **cabecalho).json()
+    segunda = cliente.get(url, {"pagina": 2}, **cabecalho).json()
+    assert primeira["pagina"] == 1
+    assert primeira["total"] == 101
+    assert primeira["paginas"] == 2
+    assert primeira["mais"] is True
+    assert len(primeira["compras"]) == 100
+    assert segunda["pagina"] == 2
+    assert segunda["total"] == 101
+    assert segunda["mais"] is False
+    assert len(segunda["compras"]) == 1
+    assert segunda["compras"][0]["tentativa_id"] == str(antiga.pk)
+    ids_primeira = {compra["id"] for compra in primeira["compras"]}
+    assert ids_primeira.isdisjoint({compra["id"] for compra in segunda["compras"]})
+    assert [compra["id"] for compra in cliente.get(url, **cabecalho).json()["compras"]] == [
+        compra["id"] for compra in primeira["compras"]
+    ]
+    assert segunda["compras"][0]["pode_devolver"] is True
+    with patch("pagamentos.api.relatorio.estornar", return_value=antiga) as estornar:
+        resposta = cliente.post(
+            f"{url}/{antiga.pk}/devolver", **cabecalho,
+        )
+    assert resposta.status_code == 200
+    estornar.assert_called_once_with(antiga, "painel")
+    outro = cliente.get(
+        "/api/pagamentos/interno/admin/compras/site-outro", **cabecalho,
+    ).json()
+    assert outro["total"] == 3
+    assert len(outro["compras"]) == 3

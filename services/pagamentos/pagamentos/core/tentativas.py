@@ -449,7 +449,8 @@ def fechar_segundas_opcoes_vencidas(intent: Intent | None = None) -> int:
                 continue
             ultima = PaymentAttempt.objects.filter(intent=travada).order_by("-created_at", "-pk").first()
             travada.segunda_opcao_ate = None
-            travada.save(update_fields=["segunda_opcao_ate", "updated_at"])
+            travada.card_reason_code = "segunda_opcao_nao_enviada"
+            travada.save(update_fields=["segunda_opcao_ate", "card_reason_code", "updated_at"])
             dados = {
                 "platform_site_id": travada.site_id,
                 "payment_id": str(ultima.operation_id) if ultima else str(travada.id),

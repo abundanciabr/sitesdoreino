@@ -11,10 +11,19 @@ from .clients import PagamentosClient
 from .placar import site_de
 
 
+def _pagina(valor):
+    try:
+        return max(1, int(valor))
+    except (TypeError, ValueError):
+        return 1
+
+
 @require_GET
 def pagamentos(request):
     site_id = site_de(request)
-    compras = PagamentosClient().compras(site_id) if site_id else None
+    pagina_pedida = _pagina(request.GET.get("pagina"))
+    dados = PagamentosClient().compras_pagina(site_id, pagina_pedida) if site_id else None
+    compras = dados["compras"] if dados is not None else None
     if compras is not None:
         for compra in compras:
             centavos = compra.get("valor_centavos", 0)
@@ -25,6 +34,10 @@ def pagamentos(request):
         "compras": compras,
         "indisponivel": compras is None,
         "resultado": request.GET.get("resultado", ""),
+        "pagina": dados["pagina"] if dados else pagina_pedida,
+        "pagina_anterior": dados["pagina"] - 1 if dados and dados["pagina"] > 1 else None,
+        "pagina_seguinte": dados["pagina"] + 1 if dados and dados["mais"] else None,
+        "total": dados["total"] if dados else None,
     })
 
 
@@ -49,4 +62,7 @@ def pagamentos_devolver(request):
         desfecho = "conferir"
     else:
         desfecho = "incerto"
-    return HttpResponseRedirect(reverse("pagamentos") + f"?resultado={desfecho}")
+    pagina = _pagina(request.POST.get("pagina"))
+    return HttpResponseRedirect(
+        reverse("pagamentos") + f"?pagina={pagina}&resultado={desfecho}"
+    )
