@@ -101,6 +101,79 @@ class ReversaoDePagamento(models.Model):
         ]
 
 
+class CompraDaOportunidade(models.Model):
+    """Uma compra é um pedido de um site, e uma compra é uma receita.
+
+    Liga o pedido à oportunidade certa (`oportunidade`), guarda o que o
+    provedor confirmou (aprovação, estorno ou contestação) e as falhas de
+    pagamento da mesma compra. Aprovação repetida, tardia ou fora de ordem
+    cai na mesma linha: a unicidade (site, pedido) é o que impede a segunda
+    venda. Oferta inicial e recuperação da mesma compra apontam para esta
+    linha; a receita é contada aqui, não por oportunidade.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=100)
+    pedido_id = models.CharField(max_length=200)
+    lead = models.ForeignKey(Lead, on_delete=models.PROTECT, related_name="compras")
+    oportunidade = models.ForeignKey(
+        "Oportunidade", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="compras",
+    )
+    oportunidade_ref = models.CharField(max_length=200, blank=True, default="")
+    oferta_ref = models.CharField(max_length=200, blank=True, default="")
+    produtos = models.JSONField(default=list, blank=True)
+    valor_pedido_centavos = models.BigIntegerField(null=True, blank=True)
+    falhas = models.JSONField(default=list, blank=True)
+    aprovado_em = models.DateTimeField(null=True, blank=True)
+    valor_aprovado_centavos = models.BigIntegerField(null=True, blank=True)
+    aprovacao_evidencia = models.CharField(max_length=200, blank=True, default="")
+    revertida_em = models.DateTimeField(null=True, blank=True)
+    valor_revertido_centavos = models.BigIntegerField(default=0)
+    motivo_reversao = models.CharField(max_length=40, blank=True, default="")
+    sandbox = models.BooleanField(default=False)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "pedido_id"], name="uniq_compra_site_pedido"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["lead", "aprovado_em"]),
+            models.Index(fields=["oportunidade"]),
+        ]
+
+    @property
+    def situacao(self) -> str:
+        if self.revertida_em is not None:
+            return "revertida"
+        if self.aprovado_em is not None:
+            return "aprovada"
+        if self.falhas:
+            return "recuperacao"
+        return "pendente"
+
+    @property
+    def aprovado_centavos(self) -> int:
+        return int(self.valor_aprovado_centavos or 0) if self.aprovado_em else 0
+
+    @property
+    def estornos_centavos(self) -> int:
+        return int(self.valor_revertido_centavos or 0) if self.revertida_em else 0
+
+    @property
+    def liquido_centavos(self) -> int:
+        return self.aprovado_centavos - self.estornos_centavos
+
+    @property
+    def recuperada(self) -> bool:
+        """Aprovada depois de uma tentativa que falhou."""
+        return self.aprovado_em is not None and bool(self.falhas)
+
+
 class Oportunidade(models.Model):
     """O acompanhamento comercial humano de UMA pessoa já conhecida da casa.
 

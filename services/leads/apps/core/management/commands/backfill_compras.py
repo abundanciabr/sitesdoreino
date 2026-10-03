@@ -1,16 +1,19 @@
-"""Reconstrói oportunidades dos eventos já guardados, sem remover registros."""
+"""Registra as compras já guardadas na linha do tempo, uma receita por pedido.
+
+Pode rodar de novo: cada pedido vira uma linha só, e cada fato a muda uma vez.
+"""
 
 import uuid
 
 from django.core.management.base import BaseCommand
 
 from apps.core.compras import reconstruir_compras
-from apps.core.models import Oportunidade, TimelineEvent
+from apps.core.models import CompraDaOportunidade, TimelineEvent
 from apps.core.recuperacao import sincronizar_reversao
 
 
 class Command(BaseCommand):
-    help = "Cria oportunidades de recuperação a partir da timeline existente"
+    help = "Liga pedidos e pagamentos já guardados à oportunidade certa"
 
     def add_arguments(self, parser):
         parser.add_argument("--site-id", default="")
@@ -19,16 +22,20 @@ class Command(BaseCommand):
         eventos = TimelineEvent.objects.all()
         if options["site_id"]:
             eventos = eventos.filter(lead__site_id=options["site_id"])
-        antes = Oportunidade.objects.filter(fonte_tipo="pagamento").count()
         reconstruir_compras(eventos)
-        reversoes = eventos.select_related("lead").filter(
+        for evento in eventos.select_related("lead").filter(
             event="pagamento.reversao_confirmada"
-        )
-        for evento in reversoes.iterator():
+        ).iterator():
             identidade = evento.event_id or uuid.uuid5(
                 uuid.NAMESPACE_URL,
                 f"reversao:{evento.lead.site_id}:{evento.payload.get('order_id')}",
             )
             sincronizar_reversao(identidade, evento.payload)
-        criadas = Oportunidade.objects.filter(fonte_tipo="pagamento").count() - antes
-        self.stdout.write(f"Oportunidades criadas: {criadas}")
+        compras = CompraDaOportunidade.objects.all()
+        if options["site_id"]:
+            compras = compras.filter(site_id=options["site_id"])
+        self.stdout.write(
+            f"Compras: {compras.count()}; aprovadas: "
+            f"{compras.filter(aprovado_em__isnull=False).count()}; ligadas a "
+            f"oportunidade: {compras.filter(oportunidade__isnull=False).count()}"
+        )

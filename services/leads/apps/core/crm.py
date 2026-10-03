@@ -41,7 +41,9 @@ def _admin(request):
         raise HttpError(403, "Acesso exclusivo do painel admin")
 
 
-def _item(oportunidade, historico=False):
+def _item(oportunidade, historico=False, compras=None):
+    from .receita import acompanhamento, compras_da_oportunidade, receita
+
     item = _como_oportunidade(oportunidade, com_historico=historico)
     lead = oportunidade.lead
     item["contato"] = {
@@ -49,6 +51,11 @@ def _item(oportunidade, historico=False):
         "telefone": lead.phone, "site_id": lead.site_id,
     }
     item["registro_de_teste"] = _registro_de_teste(lead)
+    if compras is None:
+        compras = compras_da_oportunidade(oportunidade)
+    # Compra aprovada: nenhum acompanhamento insiste nesta oferta.
+    item["acompanhamento"] = acompanhamento(oportunidade, compras)
+    item["receita"] = receita(oportunidade, compras)
     return item
 
 
@@ -120,9 +127,13 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
         raise HttpError(422, "situacao inválida")
     total = consulta.count()
     inicio = (pagina - 1) * por_pagina
-    itens = consulta.order_by("-criada_em", "-id")[inicio:inicio + por_pagina]
+    itens = list(consulta.order_by("-criada_em", "-id")[inicio:inicio + por_pagina])
+    from .receita import resumo_para_quadro
+
+    compras = resumo_para_quadro(itens)
     return JsonResponse({
-        "itens": [_item(item) for item in itens], "resumo": resumo,
+        "itens": [_item(item, compras=compras[item.pk]) for item in itens],
+        "resumo": resumo,
         "pagina": pagina, "total": total, "tem_mais": inicio + por_pagina < total,
     })
 
