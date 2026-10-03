@@ -15,7 +15,7 @@ def pedido(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "card",
         },
@@ -77,7 +77,7 @@ def test_refechar_a_mesma_sessao_devolve_o_pedido_existente_sem_tocar_o_snapshot
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "invasor@exemplo.com", "name": "Invasor"},
+            "customer": {"email": "invasor@exemplo.com", "name": "Invasor Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [],
             "method": "card",
         },

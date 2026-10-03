@@ -2,6 +2,16 @@
 // Não sabe nada de Pix nem de cartão além do valor de `method` que o cliente
 // escolheu; quem decide o que fazer com isso é o servidor.
 function dadosIsland() {
+  const cpfValido = (valor) => {
+    const cpf = String(valor || "").replace(/\D/g, "");
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    for (const tamanho of [9, 10]) {
+      const soma = [...cpf.slice(0, tamanho)].reduce((total, digito, indice) => total + Number(digito) * (tamanho + 1 - indice), 0);
+      const verificador = (soma * 10) % 11;
+      if ((verificador === 10 ? 0 : verificador) !== Number(cpf[tamanho])) return false;
+    }
+    return true;
+  };
   return {
     offerSlug: JSON.parse(document.getElementById("offer-slug").textContent),
     atribuicao: JSON.parse(document.getElementById("atribuicao").textContent),
@@ -14,6 +24,9 @@ function dadosIsland() {
     offer: { product_name: "", price_cents: 0, bumps: [] },
     bumpIds: [],
     customer: { name: "", email: "", phone: "", cpf: "" },
+    cpfMascarado: "",
+    usarCpfAnterior: false,
+    trocandoCpf: false,
     method: "pix",
     appmaxIp: "",
 
@@ -28,8 +41,19 @@ function dadosIsland() {
         } catch (_) { /* O IP do servidor continua disponível. */ }
       }
       try {
-        this.session = await api.post("/sessoes", { offer_slug: this.offerSlug, utm: this.atribuicao });
+        let anteriores = {};
+        try { anteriores = JSON.parse(localStorage.getItem("checkout-comprador") || "{}"); } catch (_) {}
+        const leadId = new URLSearchParams(window.location.search).get("lead") || "";
+        this.session = await api.post("/sessoes", {
+          offer_slug: this.offerSlug, utm: this.atribuicao, lead_id: leadId,
+          email_para_cpf: anteriores.email || "",
+        });
         this.offer = this.session.offer;
+        for (const campo of ["name", "email", "phone"]) {
+          if (!this.customer[campo]) this.customer[campo] = this.session.prefill?.[campo] || anteriores[campo] || "";
+        }
+        this.cpfMascarado = this.session.cpf_mascarado || "";
+        this.usarCpfAnterior = Boolean(this.cpfMascarado);
       } catch (e) {
         this.erro = "Não foi possível carregar esta oferta.";
       } finally {
@@ -61,23 +85,22 @@ function dadosIsland() {
 
     async finalizar() {
       this.erro = "";
-      if (this.appmaxPix && this.method === "pix") {
-        const telefone = this.customer.phone.replace(/\D/g, "");
-        const cpf = this.customer.cpf.replace(/\D/g, "");
-        if (this.customer.name.trim().split(/\s+/).length < 2 || ![10, 11].includes(telefone.length) || cpf.length !== 11) {
-          this.erro = "Informe nome completo, telefone com DDD e CPF com 11 dígitos para pagar por Pix.";
-          return;
-        }
+      const telefone = this.customer.phone.replace(/\D/g, "");
+      if (this.customer.name.trim().split(/\s+/).length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customer.email.trim()) || ![10, 11].includes(telefone.length) || (!this.usarCpfAnterior && !cpfValido(this.customer.cpf))) {
+        this.erro = "Informe nome completo, e-mail, telefone com DDD e CPF válido.";
+        return;
       }
       this.enviando = true;
       try {
         const pedido = await api.post(`/sessoes/${this.session.id}/pedido`, {
-          customer: this.customer,
+          customer: { ...this.customer, phone: telefone, cpf: this.usarCpfAnterior ? "" : this.customer.cpf.replace(/\D/g, "") },
+          usar_cpf_anterior: this.usarCpfAnterior,
           bump_ids: this.bumpIds,
           method: this.method,
           ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
         });
         const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
+        try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
         // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
         // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
         // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).

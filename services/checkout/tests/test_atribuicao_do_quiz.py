@@ -32,7 +32,7 @@ def _sessao(api, utm):
 def _pedido(api, sessao):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao['id']}/pedido",
-        {"customer": {"email": "c@exemplo.com", "name": "C"}, "method": "pix"},
+        {"customer": {"email": "c@exemplo.com", "name": "C Teste", "phone": "11999999999", "cpf": "40827365144"}, "method": "pix"},
     )
     assert resp.status_code == 201, resp.content
     return Order.objects.get(pk=resp.json()["order_id"])

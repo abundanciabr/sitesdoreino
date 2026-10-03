@@ -43,7 +43,7 @@ def test_sessao_do_site_a_nao_fecha_pedido_pelo_host_do_site_b(api, rede, sessao
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "pix",
         },
         host=HOST_B,
@@ -56,7 +56,7 @@ def test_pedido_do_site_a_nao_e_visivel_pelo_host_do_site_b(api, rede, sessao_a)
     criado = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "pix",
         },

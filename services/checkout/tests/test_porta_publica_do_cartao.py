@@ -41,7 +41,7 @@ def pedido_de_cartao(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "card",
         },
@@ -57,7 +57,7 @@ def test_intent_de_cartao_usa_itens_e_total_calculados_pelo_catalogo(
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "card",
             "total_cents": 1,
@@ -255,7 +255,7 @@ def test_falha_do_provedor_ao_fechar_pedido_de_cartao_nao_cria_pedido(
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "card",
         },
     )
@@ -273,7 +273,7 @@ def test_pedido_de_pix_nao_aceita_cartao(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "pix",
         },
     )
@@ -368,7 +368,7 @@ def test_a_oferta_continua_fechando_pedido_de_cartao(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "card",
         },
     )
@@ -555,7 +555,7 @@ def test_pedido_de_pix_nao_esta_em_analise_nem_consulta_pagamentos(api, rede, se
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "pix",
         },
     )

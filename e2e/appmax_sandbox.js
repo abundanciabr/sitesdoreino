@@ -672,6 +672,7 @@ async function comprar(playwright, navegador, perfil, linha, inicio) {
     await pagina.fill("#name", "Teste Sandbox Appmax");
     await pagina.fill("#email", "e2e-appmax-" + crypto.randomBytes(6).toString("hex") + "@exemplo.test");
     await pagina.fill("#phone", "11999990000");
+    await pagina.fill("#cpf", "40827365144");
     await pagina.click(".metodo button[aria-pressed]:has-text('Cartão')");
     await Promise.all([
       pagina.waitForURL(/\/pedido\/[0-9a-f-]{36}\/cartao\/$/, { timeout: 60000 }),
@@ -811,9 +812,55 @@ function etapaConferir(selecao) {
   }
 }
 
+async function provarPrefillDoQuiz() {
+  var playwright = require("playwright");
+  var browser = await playwright.chromium.launch({ headless: true });
+  var contexto = await browser.newContext();
+  var pagina = await contexto.newPage();
+  var slug = argumento("quiz", "crivo");
+  var email = "e2e-prefill-" + crypto.randomBytes(6).toString("hex") + "@exemplo.test";
+  try {
+    await pagina.goto(BASE + "/quiz/" + encodeURIComponent(slug) + "/", { waitUntil: "networkidle" });
+    await pagina.locator("form.crivo").waitFor();
+    await pagina.locator("form.crivo").evaluate(function (form) {
+      var grupos = new Set(Array.from(form.querySelectorAll("input[type=radio]")).map(function (input) { return input.name; }));
+      grupos.forEach(function (nome) { form.querySelector('input[name="' + nome + '"]').checked = true; });
+    });
+    await pagina.fill('form.crivo input[name="email"]', email);
+    await pagina.fill('form.crivo input[name="nome"]', "Ana Teste");
+    await pagina.fill('form.crivo input[name="telefone"]', "11999999999");
+    await Promise.all([
+      pagina.waitForURL(/\/quiz\/[^/]+\/resultado\?lead=/, { timeout: 30000 }),
+      pagina.locator("form.crivo").evaluate(function (form) { form.submit(); }),
+    ]);
+    await Promise.all([
+      pagina.waitForURL(/\/checkout\/[^/]+\/\?.*lead=/, { timeout: 30000 }),
+      pagina.locator('form[action$="/sair"] button[type="submit"]').click(),
+    ]);
+    await pagina.locator("#email").waitFor({ state: "visible" });
+    var endereco = pagina.url();
+    var nome = await pagina.inputValue("#name");
+    var recebido = await pagina.inputValue("#email");
+    var telefone = await pagina.inputValue("#phone");
+    caso("quiz e checkout no mesmo navegador preenchem nome, e-mail e telefone", nome === "Ana Teste" && recebido === email && telefone === "11999999999");
+    var novoContexto = await browser.newContext();
+    try {
+      var novaPagina = await novoContexto.newPage();
+      await novaPagina.goto(endereco, { waitUntil: "networkidle" });
+      await novaPagina.locator("#email").waitFor({ state: "visible" });
+      caso("o mesmo link em outro navegador deixa os campos vazios", (await novaPagina.inputValue("#name")) === "" && (await novaPagina.inputValue("#email")) === "" && (await novaPagina.inputValue("#phone")) === "");
+    } finally { await novoContexto.close(); }
+  } finally {
+    await contexto.close();
+    await browser.close();
+  }
+}
+
 async function principal() {
   if (ETAPA === "auto-teste") {
     autoTeste();
+  } else if (ETAPA === "prefill") {
+    await provarPrefillDoQuiz();
   } else if (ETAPA === "comprar") {
     var selecaoDaCompra = selecaoDaLinhaDeComando();
     autoTeste();
@@ -822,7 +869,7 @@ async function principal() {
   } else if (ETAPA === "conferir") {
     etapaConferir(selecaoDaLinhaDeComando());
   } else {
-    erro("--etapa desconhecida: '" + ETAPA + "' (use auto-teste, comprar ou conferir)");
+    erro("--etapa desconhecida: '" + ETAPA + "' (use auto-teste, prefill, comprar ou conferir)");
   }
   console.log("");
   if (falhas.length) {

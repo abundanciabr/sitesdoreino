@@ -25,7 +25,7 @@ def test_caminho_feliz_sessao_pedido_e_status(api, rede):
     pedido = api.post(
         f"/api/checkout/sessoes/{sessao.json()['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "pix",
         },
@@ -51,7 +51,7 @@ def test_pedido_criado_vai_para_a_outbox_na_mesma_transacao(api, rede, sessao_a)
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "pix",
         },
     )
@@ -73,7 +73,7 @@ def test_card_nao_leva_bloco_pix_na_resposta(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "card",
         },
     )
@@ -86,7 +86,7 @@ def test_metodo_invalido_e_422(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "boleto",
         },
     )
