@@ -24,9 +24,11 @@ import hashlib
 import json
 import unicodedata
 from collections import defaultdict
+from datetime import timedelta
 
 from django.db import transaction
 from django.urls import NoReverseMatch, reverse
+from django.utils import timezone
 
 from apps.core.models import Comentario, Compromisso, Documento, MembroDaEquipe, Objetivo, Tarefa
 
@@ -156,32 +158,26 @@ def _instrucoes_de_leitura() -> str:
     )
 
 
-def ler_documento(documento: Documento, *, execucao=None, robo=None) -> dict:
-    """Pede ao modelo rápido as entidades e ligações de cada pedaço."""
-    conexao = modelo.conexao()
-    instrucoes = _instrucoes_de_leitura()
-    entidades, ligacoes = [], []
-    for numero, pedaco in enumerate(pedacos(documento.corpo), start=1):
-        resposta = modelo.responder(
-            modelo=conexao.modelo_rapido,
-            instrucoes=instrucoes,
-            itens=[{
-                "role": "user",
-                "content": f"Documento: {documento.titulo} (parte {numero})\n\n{pedaco}",
-            }],
-            max_saida=MAX_SAIDA,
-            esforco="low",
-            execucao=execucao,
-            robo=robo,
-            formato=ESQUEMA,
-        )
-        try:
-            dados = json.loads(resposta.texto or "{}")
-        except ValueError:
-            continue
-        entidades.extend(dados.get("entidades") or [])
-        ligacoes.extend(dados.get("ligacoes") or [])
-    return {"entidades": entidades, "ligacoes": ligacoes}
+def ler_pedaco(documento: Documento, numero: int, pedaco: str, *, execucao=None, robo=None) -> dict:
+    """Pede ao modelo rápido as entidades e ligações de um pedaço."""
+    resposta = modelo.responder(
+        modelo=modelo.conexao().modelo_rapido,
+        instrucoes=_instrucoes_de_leitura(),
+        itens=[{
+            "role": "user",
+            "content": f"Documento: {documento.titulo} (parte {numero})\n\n{pedaco}",
+        }],
+        max_saida=MAX_SAIDA,
+        esforco="low",
+        execucao=execucao,
+        robo=robo,
+        formato=ESQUEMA,
+    )
+    try:
+        dados = json.loads(resposta.texto or "{}")
+    except ValueError:
+        return {"entidades": [], "ligacoes": []}
+    return {"entidades": dados.get("entidades") or [], "ligacoes": dados.get("ligacoes") or []}
 
 
 def guardar_leitura(documento: Documento, dados: dict) -> FonteDoConhecimento:
@@ -233,36 +229,72 @@ def esquecer_os_que_sairam() -> int:
     return n
 
 
+DAR_A_VEZ = timedelta(seconds=2)
+
+
 def executar(execucao: Execucao) -> None:
-    """O trabalho do servidor: lê os documentos novos ou mudados, um por um.
-    Cada documento é gravado ao terminar: se o processo cair, a retomada
-    pula os que já ficaram com a impressão nova."""
+    """O trabalho do servidor: lê UM pedaço de documento por vez e volta para
+    a fila, para a conversa de alguém da equipe passar na frente entre um
+    pedaço e outro. O que já foi lido do documento fica em `estado`; o
+    documento é gravado no mapa quando o último pedaço chega."""
     estado = execucao.estado or {}
     a_ler = documentos_a_ler()
-    total = estado.setdefault("total", len(a_ler))
+    estado.setdefault("total", len(a_ler))
     feitos = estado.setdefault("feitos", 0)
-    for documento in a_ler:
+    if a_ler:
+        documento = a_ler[0]
+        atual = estado.get("atual") or {}
+        if atual.get("impressao") != _impressao(documento):
+            atual = {"impressao": _impressao(documento), "parte": 0, "entidades": [], "ligacoes": []}
+        partes = pedacos(documento.corpo)
+        numero = atual["parte"] + 1
         batimento(
             execucao,
-            f"Lendo: {documento.titulo}"[:200],
-            progresso=min(95, int(100 * feitos / max(total, 1))),
+            f"Lendo: {documento.titulo} ({numero} de {len(partes)})"[:200],
+            progresso=min(95, int(100 * feitos / max(estado["total"], 1))),
         )
-        guardar_leitura(documento, ler_documento(documento, execucao=execucao, robo=execucao.robo))
-        feitos += 1
-        estado["feitos"] = feitos
+        if numero <= len(partes):
+            dados = ler_pedaco(documento, numero, partes[numero - 1], execucao=execucao, robo=execucao.robo)
+            atual["entidades"] += dados["entidades"]
+            atual["ligacoes"] += dados["ligacoes"]
+            atual["parte"] = numero
+        if atual["parte"] >= len(partes):
+            guardar_leitura(documento, atual)
+            atual = {}
+            estado["feitos"] = feitos + 1
+        estado["atual"] = atual
         execucao.estado = estado
         guardar_estado(execucao)
+        if atual or len(a_ler) > 1:
+            _dar_a_vez(execucao)
+            return
     saiu = esquecer_os_que_sairam()
     terminar(
         execucao,
         Execucao.Situacao.CONCLUIDA,
         resultado=(
-            f"{feitos} documento(s) lido(s) para o mapa"
+            f"{estado.get('feitos', 0)} documento(s) lido(s) para o mapa"
             + (f"; {saiu} saiu(saíram) do mapa" if saiu else "")
             + f". O mapa tem {EntidadeDoConhecimento.objects.count()} coisas e "
             f"{LigacaoDoConhecimento.objects.count()} ligações vindas dos documentos."
         ),
     )
+
+
+def _dar_a_vez(execucao: Execucao) -> None:
+    """De volta à fila sem contar como tentativa que parou no meio."""
+    from .executor import PerdeuAPosse, _minha
+
+    agora = timezone.now()
+    if not _minha(execucao).update(
+        situacao=Execucao.Situacao.NA_FILA,
+        trabalhador="",
+        ocupada_ate=None,
+        tentativas=0,
+        nao_antes_de=agora + DAR_A_VEZ,
+        atualizada_em=agora,
+    ):
+        raise PerdeuAPosse()
 
 
 # ------------------------------------------------------------------ o mapa

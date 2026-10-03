@@ -842,26 +842,39 @@ def _leitura_do_modelo() -> httpx.Response:
 
 
 @respx.mock
-def test_simulacao_o_mapa_le_o_documento_e_liga_ao_painel():
+def test_simulacao_o_mapa_le_o_documento_e_liga_ao_painel(monkeypatch):
     from apps.agentes import conhecimento
 
+    monkeypatch.setattr(conhecimento, "TAMANHO_DO_PEDACO", 40)
     livia = _pessoa("Lívia", LIVIA)
     Tarefa.objects.create(titulo="Gravar aula 3 de Blender", responsavel=livia)
     from apps.core.models import Documento
 
-    Documento.objects.all().delete()  # só o documento deste teste no mapa
+    Documento.objects.all().delete()  # só os documentos deste teste no mapa
     _documento("cursos", "A Lívia cuida do Curso de Blender.\n\nA Oferta Anual vende o Curso de Blender.")
+    _documento("outro", "Um texto sem nada.")
     _guardar_chave()
     robo = trabalhos.robo_de(livia)
     execucao = conhecimento.pedir_leitura(robo, "teste")
     assert conhecimento.pedir_leitura(robo, "teste").pk == execucao.pk
     with respx.mock as rede:
         rota = rede.post(RESPOSTAS).mock(return_value=_leitura_do_modelo())
+        # Um pedaço por vez, de volta à fila: a conversa de alguém passa na frente.
         executor.rodar_uma("teste")
+        execucao.refresh_from_db()
+        assert execucao.situacao == S.NA_FILA and execucao.tentativas == 0
+        trabalhos.pedir_resposta(robo, livia, "Oi", chave="k-vez", autor="Lívia")
+        assert executor.rodar_uma("teste").tipo == Execucao.Tipo.CONVERSA
+        for _ in range(6):
+            Execucao.objects.filter(pk=execucao.pk).update(nao_antes_de=None)
+            executor.rodar_uma("teste")
+    # pedaço 1, a conversa, pedaço 2, o outro documento
+    assert rota.call_count == 4
     execucao.refresh_from_db()
     assert execucao.situacao == S.CONCLUIDA, execucao.motivo
     corpo = json.loads(rota.calls[0].request.content)
     assert corpo["text"]["format"]["name"] == "mapa_de_conhecimento"
+    assert "(parte 2)" in json.loads(rota.calls[2].request.content)["input"][0]["content"]
     assert Consumo.objects.filter(execucao=execucao).exists()
     assert conhecimento.documentos_a_ler() == []
 
