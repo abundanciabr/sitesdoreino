@@ -104,6 +104,9 @@ def pedir_resposta(
             )
             mensagem.execucao = execucao
             mensagem.save(update_fields=["execucao"])
+            if contexto and contexto.get("novo_fluxo"):
+                execucao.estado["contexto"]["inicio_fluxo"] = mensagem.pk
+                execucao.save(update_fields=["estado"])
             registrar(execucao, "Mensagem recebida; resposta na fila do servidor.")
             _acordar_o_executor()
             return mensagem, execucao

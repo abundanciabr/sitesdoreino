@@ -75,6 +75,26 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
 .camp .atalhos { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; margin:24px 0 8px; }
 .camp .atalhos button { font-size:14px; padding:10px 16px; }
 .camp .composer textarea { border:0; background:#f5f5f7; min-height:136px; margin:0; font-size:17px; padding:18px; }
+.camp .chat-recente { max-width:580px; margin:0 auto 20px; }
+.camp .balao { background:#fff; border-radius:20px; padding:18px 22px; margin:12px 0; font-size:15px; overflow-wrap:anywhere; }
+.camp .balao.membro { background:#e7eff9; margin-left:36px; }
+.camp .balao p { margin:6px 0; }
+.camp .voz { color:var(--texto-2); font-size:11px; }
+.camp .pergunta-robo fieldset { border:0; padding:0; margin:0; }
+.camp .pergunta-robo legend { font-size:22px; line-height:1.3; letter-spacing:-.3px; padding:0; }
+.camp .escolhas-chat { display:grid; gap:10px; margin-top:22px; }
+.camp .escolhas-chat label { display:flex; align-items:center; gap:12px; padding:15px 16px; border:1px solid var(--linha); border-radius:14px; cursor:pointer; font-size:15px; }
+.camp .escolhas-chat label:has(input:checked) { border-color:var(--azul); background:#f0f6fd; }
+.camp .escolhas-chat input { width:18px; height:18px; flex:none; accent-color:var(--azul); margin:0; }
+.camp .resposta-outra { display:none; margin-top:18px; }
+.camp .pergunta-robo:has(input[value=outro]:checked) .resposta-outra, .camp .pergunta-robo:has(option[value=outro]:checked) .resposta-outra { display:block; }
+.camp .resposta-livre, .camp .novo-assunto { max-width:580px; margin:20px auto; }
+.camp .resposta-livre > summary, .camp .novo-assunto > summary { text-align:center; }
+.camp .chat-espera { text-align:center; font-size:14px; color:var(--texto-2); }
+.camp .boas-vindas { text-align:center; font-size:17px; }
+.camp .boas-vindas p { margin-top:0; }
+.camp .quiz-pronto { margin:20px auto; }
+.camp .quiz-pronto a.botao { display:inline-block; background:#0071e3; color:#fff; }
 .camp .composer .enviar { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:20px; }
 .camp .composer .enviar span { color:var(--texto-2); font-size:12px; }
 .camp .historico { margin:26px auto; max-width:620px; }
@@ -228,26 +248,17 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
     </div>
   </section>
   <section id="painel-robo" data-painel="robo" aria-label="Robô">
-    <div class="hero" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% endif %}><h1>Como posso ajudar?</h1><p>Escreva o que você precisa.</p></div>
+    <div class="hero" id="robo"{% if robo_painel.robo and robo_painel.acompanhar %} data-acompanhar-quiz="{% url 'quiz_campanhas_robo_andamento' slug %}" data-marca="{{ robo_painel.marca }}" data-intervalo="{{ robo_painel.intervalo }}"{% if robo_painel.respondendo %} data-acompanhar-conversa{% endif %}{% endif %}><h1>Vamos criar juntos.</h1><p>Uma pergunta de cada vez.</p></div>
     {% if robo_painel.falhou %}<p class="alerta">O robô não abriu agora. Você pode continuar criando links e vendo os resultados.</p>
     {% elif not robo_painel.robo %}<p class="alerta">Seu acesso não está ligado a uma pessoa da equipe. Confira seu cadastro na equipe para usar o robô.</p>
     {% else %}
-      {% if recado_do_robo %}<p class="certo" role="status">{{ recado_do_robo }}</p>{% endif %}
+      {% if recado_do_robo and not mostrar_conversa %}<p class="certo" role="status">{{ recado_do_robo }}</p>{% endif %}
       {% if robo_painel.robo.situacao == 'pausado' %}<p class="alerta">O robô está pausado. Seus pedidos ficam guardados até ele voltar.</p>{% endif %}
       {% if not robo_painel.ia_pronta %}<p class="alerta">A IA do robô não está pronta agora. A conferência gratuita continua disponível.</p>{% endif %}
-      <div class="folha composer">
-        <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
-          {% csrf_token %}<input type="hidden" name="acao" value="pedir"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}">
-          <textarea name="texto" rows="4" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Ex.: Me ajude a divulgar no Instagram."></textarea>
-          <div class="enviar"><span>Usa IA dentro do limite da equipe.</span><button type="submit" class="principal">Enviar</button></div>
-        </form>
-      </div>
-      <div class="atalhos"><button type="submit" form="robo-conferir">Conferir links · grátis</button><button type="submit" form="robo-ler">Entender meus resultados</button></div>
-      <p class="nota">A análise dos resultados usa IA dentro do limite da equipe.</p>
-      {% if robo_painel.respondendo %}<p class="certo" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}O robô está respondendo…{% endif %}</p>{% endif %}
+      <div id="conversa-quiz">{% include "admin/_quiz_chat.html" %}</div>
       {% if mostrar_retorno or robo_painel.trabalhando %}{% with e=robo_painel.trabalhos.0 %}{% if e %}<div class="{% if e.tom == 'ruim' %}alerta{% else %}certo{% endif %}" role="status">{% if e.aberta %}{{ e.get_tipo_display }} · {{ e.get_situacao_display }}{% if e.etapa_atual %}<p>{{ e.etapa_atual }}</p>{% endif %}{% else %}{{ e.resultado }}{% endif %}</div>{% endif %}{% endwith %}{% endif %}
       <div style="max-width:580px;margin:20px auto">{% if robo_painel.mensagens %}
-  <details{% if mostrar_conversa %} open{% endif %} class="conversa-anterior">
+  <details{% if mostrar_conversa and not robo_painel.conversa_ativa %} open{% endif %} class="conversa-anterior">
     <summary>Conversa sobre este quiz</summary>
     {% for m in robo_painel.mensagens %}
       <div class="fala-quiz {{ m.papel }}">
@@ -258,6 +269,7 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
   </details>
 {% endif %}</div>
       <details class="historico"><summary>Histórico e ajustes</summary>
+        <div class="atalhos"><button type="submit" form="robo-conferir">Conferir links · grátis</button><button type="submit" form="robo-ler">Entender meus resultados</button></div><p class="nota">A conversa e a análise usam IA dentro do limite da equipe.</p>
         <p class="meta">Seu robô nesta página: {{ robo_painel.robo.nome }} · <a href="{% url 'robo_da_pessoa' %}">Página do robô</a></p>
       <details><summary>Disponibilidade e gastos do robô</summary>
       <div class="fichas">
@@ -396,8 +408,9 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
       navigator.clipboard.writeText(texto).then(feito, function () { avisar('Não consegui copiar. Selecione o link e copie com Ctrl+C.'); });
     } else { avisar('Selecione o link e copie com Ctrl+C.'); }
   }
-  document.querySelectorAll('[data-copiar]').forEach(function (b) {
-    b.addEventListener('click', function () { copiar(b.getAttribute('data-copiar'), b); });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-copiar]');
+    if (b) { copiar(b.getAttribute('data-copiar'), b); }
   });
   var todos = document.querySelector('[data-copiar-todos]');
   var caixa = document.querySelector('[data-todos]');
@@ -406,12 +419,13 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
 })();
 (function () {
   var mexeu = false;
-  var pedido = document.querySelector('[data-painel=robo] textarea[name=texto]');
   document.querySelectorAll('[data-exemplo]').forEach(function (b) {
     b.addEventListener('click', function () {
+      var pedido = document.querySelector('[data-painel=robo] textarea[name=texto]');
       if (!pedido) { return; }
       pedido.value = b.getAttribute('data-exemplo');
       mexeu = true;
+      if (pedido.closest('details')) { pedido.closest('details').open = true; }
       pedido.focus();
     });
   });
@@ -419,6 +433,7 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
   if (!painel || !window.fetch) { return; }
   var endereco = painel.getAttribute('data-acompanhar-quiz');
   var marca = painel.getAttribute('data-marca');
+  var conversando = painel.hasAttribute('data-acompanhar-conversa');
   var intervalo = parseInt(painel.getAttribute('data-intervalo'), 10) || 3000;
   var fim = Date.now() + 30 * 60 * 1000;
   document.addEventListener('input', function () { mexeu = true; });
@@ -440,7 +455,11 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
   if (botao) { botao.addEventListener('click', function (e) { e.preventDefault(); recarregar(); }); }
   function perguntar() {
     if (Date.now() > fim) { return; }
-    fetch(endereco, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+    var url = new URL(endereco, window.location.href);
+    if (conversando) { url.searchParams.set('chat', '1'); }
+    url.searchParams.set('marca', marca);
+    url.searchParams.set('volta', window.location.search.slice(1));
+    fetch(url.toString(), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (d) {
         if (d && d.marca && d.marca !== marca) {
@@ -448,6 +467,16 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
             var aviso = document.querySelector('[data-aviso-do-robo]');
             if (aviso) { aviso.hidden = false; }
             marca = d.marca;
+            return;
+          }
+          var chat = document.getElementById('conversa-quiz');
+          if (d.conversa_html && chat) {
+            chat.innerHTML = d.conversa_html;
+            marca = d.marca;
+            conversando = d.conversando;
+            var pergunta = chat.querySelector('.pergunta-robo');
+            if (pergunta) { pergunta.scrollIntoView({ block:'start', behavior:window.matchMedia('(prefers-reduced-motion:reduce)').matches ? 'instant' : 'smooth' }); }
+            if (!d.acompanhar) { return 'parou'; }
             return;
           }
           recarregar();
@@ -458,6 +487,15 @@ body { background:var(--fundo); color:var(--texto); font-family:-apple-system,Bl
       .then(function (parou) { if (parou !== 'parou') { setTimeout(perguntar, intervalo); } });
   }
   setTimeout(perguntar, intervalo);
+})();
+
+(function () {
+  document.addEventListener('change', function (e) {
+    var f = e.target.closest('[data-pergunta-robo]');
+    if (!f) { return; }
+    var outro = f.querySelector('[data-outro-texto]');
+    if (outro) { outro.required = !!f.querySelector('input[value=outro]:checked, option[value=outro]:checked'); }
+  });
 })();
 
 (function () {

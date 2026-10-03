@@ -282,6 +282,47 @@ PERIODO = {
 
 DEFINICOES_DO_QUIZ = [
     _ferramenta(
+        "perguntar_com_opcoes",
+        "Mostra UMA pergunta na conversa com um formulário clicável. Encerra esta "
+        "resposta e espera a escolha da pessoa. Use radio para uma escolha, "
+        "checkbox para várias, select para uma lista ou texto para resposta livre. "
+        "Para nomes de campanha, ofereça 2 ou 3 sugestões e aceite outro nome.",
+        {
+            "pergunta": {"type": "string"},
+            "tipo": {"type": "string", "enum": ["radio", "checkbox", "select", "texto"]},
+            "opcoes": {"type": "array", "items": {"type": "string"}},
+            "ajuda": _texto_ou_nulo("Uma explicação curta, se precisar."),
+            "aceita_outro": {"type": "boolean"},
+            "outro_rotulo": _texto_ou_nulo("Ex.: Prefiro informar outro nome."),
+        },
+    ),
+    _ferramenta(
+        "consultar_rascunho_do_quiz",
+        "Lê as perguntas, formatos, resultados e ofertas do estúdio. Use antes "
+        "de criar uma nova versão ou oferecer as ofertas existentes. Os endereços "
+        "de pagamento ficam no servidor; não invente nem peça chaves.",
+        {"slug": SLUG_DO_QUIZ},
+    ),
+    _ferramenta(
+        "criar_rascunho_do_quiz",
+        "Cria de verdade o quiz no estúdio do site com as respostas coletadas. "
+        "modo novo cria outro quiz; nova_versao acrescenta uma versão preservando "
+        "as existentes e suas ofertas. O documento segue quiz-low-ticket/2, com "
+        "quiz {slug,title}, 2 ofertas {id,nome,para_quem,entrega,checkout_url:null} "
+        "e uma versoes [{key,default_format,formats,segments,perguntas,faixas}]. "
+        "Perguntas {id,texto,opcoes:[{id,texto,pontos}]}. Faixas "
+        "{key,title,description,min_score,max_score,oferta_id,botao_rotulo} sem "
+        "sobreposição e cobrindo todas as somas possíveis. formats.text contém "
+        "headline e subheadline. IDs minúsculos com hífens, versão A ou B3. "
+        "Salva o rascunho e devolve o botão para ver, testar e publicar no estúdio.",
+        {
+            "slug": SLUG_DO_QUIZ,
+            "modo": {"type": "string", "enum": ["novo", "nova_versao"]},
+            "usar_ofertas_do_quiz_atual": {"type": "boolean"},
+            "documento_json": {"type": "string", "description": "Documento inteiro em JSON válido, com uma única versão nova."},
+        },
+    ),
+    _ferramenta(
         "consultar_quiz",
         "A estrutura de um quiz do site: versões ativas, perguntas, pontos "
         "possíveis, faixas de pontuação, a oferta e a saída de cada faixa, "
@@ -380,6 +421,8 @@ def definicoes_para(membro: MembroDaEquipe) -> list[dict]:
 
 
 ESCREVEM = {
+    "perguntar_com_opcoes",
+    "criar_rascunho_do_quiz",
     "criar_tarefa",
     "alterar_tarefa",
     "mudar_situacao_da_tarefa",
@@ -821,12 +864,45 @@ def consultar_quiz(ctx: Contexto, args: dict) -> dict:
     return _pelo_quiz(quiz.retrato_do_quiz, host, slug, levantar=True)
 
 
+def perguntar_com_opcoes(ctx: Contexto, args: dict) -> dict:
+    from .quiz_guiado import montar_pergunta
+
+    if (ctx.execucao.estado.get("contexto") or {}).get("pagina") != "campanhas":
+        raise Recusa("As opções clicáveis estão na conversa da página de campanhas do quiz.")
+    if ctx.execucao.estado.get("pergunta_guiada"):
+        raise Recusa("Já há uma pergunta nesta resposta. Espere a pessoa escolher.")
+    try:
+        pergunta = montar_pergunta(args)
+    except ValueError as erro:
+        raise Recusa(str(erro)) from None
+    ctx.execucao.estado["pergunta_guiada"] = pergunta
+    Execucao.objects.filter(pk=ctx.execucao.pk).update(estado=ctx.execucao.estado)
+    return {"pergunta_exibida": True, "pergunta": pergunta, "aguardando_resposta": True}
+
+
+def consultar_rascunho_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from .quiz_guiado import consultar_rascunho
+
+    host, slug = _no_quiz(ctx, args)
+    return _pelo_quiz(consultar_rascunho, host, slug)
+
+
+def criar_rascunho_do_quiz(ctx: Contexto, args: dict) -> dict:
+    from .quiz_guiado import criar_rascunho
+
+    host, slug = _no_quiz(ctx, args)
+    return _pelo_quiz(criar_rascunho, ctx, host, slug, args)
+
+
 def montar_links_do_quiz(ctx: Contexto, args: dict) -> dict:
     from . import quiz
 
     host, slug = _no_quiz(ctx, args)
     params = quiz.selecao_dos_argumentos(args, sugerir_campanha=True)
-    return _pelo_quiz(quiz.kit_de_links, ctx.robo, ctx.execucao, host, slug, params)
+    kit = _pelo_quiz(quiz.kit_de_links, ctx.robo, ctx.execucao, host, slug, params)
+    ctx.execucao.estado.setdefault("kits_guiados", []).append(kit)
+    Execucao.objects.filter(pk=ctx.execucao.pk).update(estado=ctx.execucao.estado)
+    return kit
 
 
 def delegar_conferencia_dos_links(ctx: Contexto, args: dict) -> dict:
@@ -941,6 +1017,9 @@ def decidir_proposta_de_versao(ctx: Contexto, args: dict) -> dict:
 
 
 ACOES = {
+    "perguntar_com_opcoes": perguntar_com_opcoes,
+    "consultar_rascunho_do_quiz": consultar_rascunho_do_quiz,
+    "criar_rascunho_do_quiz": criar_rascunho_do_quiz,
     "consultar_membros": consultar_membros,
     "consultar_objetivos": consultar_objetivos,
     "consultar_tarefas": consultar_tarefas,
@@ -967,6 +1046,9 @@ ACOES = {
 
 # Como cada ação aparece para a pessoa no passo a passo e na página da execução.
 ROTULOS = {
+    "perguntar_com_opcoes": "mostrar uma pergunta com opções",
+    "consultar_rascunho_do_quiz": "ler as perguntas e ofertas do quiz",
+    "criar_rascunho_do_quiz": "montar o quiz no site",
     "consultar_membros": "consultar as pessoas da equipe",
     "consultar_objetivos": "consultar os objetivos",
     "consultar_tarefas": "consultar as tarefas",

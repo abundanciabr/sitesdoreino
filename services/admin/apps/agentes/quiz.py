@@ -1479,6 +1479,7 @@ def decidir_proposta(host: str, slug: str, proposta_id: int, decisao: str, resul
 
 
 RESULTADOS = {
+    "opcoes": "Escolha uma opção ou escreva sua outra resposta na pergunta mais recente.",
     "conferencia": (
         "Conferência pedida. O robô abre as páginas no servidor; o relatório "
         "aparece aqui em instantes."
@@ -1649,7 +1650,7 @@ def painel_na_pagina(request, slug: str) -> dict:
     for execucao in lista:
         execucao.tom = _tom(execucao.resultado)
     conversas = list(execucoes.filter(tipo=Execucao.Tipo.CONVERSA).order_by("-criada_em")[:5])
-    mensagens = list(Mensagem.objects.filter(execucao__in=conversas).order_by("id"))[-14:]
+    mensagens = list(Mensagem.objects.filter(execucao__in=conversas).select_related("execucao").order_by("id"))[-14:]
     for mensagem in mensagens:
         if mensagem.papel == Mensagem.Papel.ROBO:
             mensagem.html = para_html(mensagem.texto)
@@ -1659,6 +1660,33 @@ def painel_na_pagina(request, slug: str) -> dict:
         if e.situacao in (Execucao.Situacao.NA_FILA, Execucao.Situacao.EXECUTANDO)
     ]
     respondendo = next((e for e in conversas if e.situacao in Execucao.ABERTAS), None)
+    guiadas = execucoes.filter(tipo=Execucao.Tipo.CONVERSA, estado__contexto__guiado=True).order_by("-id")
+    ultima_guiada = guiadas.first()
+    recentes = []
+    pergunta = None
+    rascunho = None
+    if ultima_guiada:
+        inicio = (ultima_guiada.estado.get("contexto") or {}).get("inicio_fluxo")
+        if inicio:
+            guiadas = guiadas.filter(estado__contexto__inicio_fluxo=inicio)
+        recentes = list(Mensagem.objects.filter(execucao__in=guiadas).select_related("execucao").order_by("-id")[:3])[::-1]
+        if recentes and recentes[-1].papel == Mensagem.Papel.ROBO and not respondendo:
+            from .quiz_guiado import pergunta_da_mensagem
+
+            pergunta = pergunta_da_mensagem(recentes[-1])
+            if pergunta:
+                pergunta = {**pergunta, "mensagem_id": recentes[-1].pk}
+                recentes = recentes[:-1]
+        for m in recentes:
+            if m.papel == Mensagem.Papel.ROBO:
+                m.html = para_html(m.texto)
+            else:
+                contexto_m = (m.execucao.estado or {}).get("contexto") or {}
+                if contexto_m.get("novo_fluxo"):
+                    m.texto = "Vamos criar um quiz." if contexto_m.get("fluxo") == "quiz" else "Vamos criar uma campanha."
+                elif contexto_m.get("resposta_guiada"):
+                    m.texto = m.texto.split("\n\n", 1)[-1]
+        rascunho = ultima_guiada.estado.get("rascunho_guiado")
     conexao = modelo.conexao()
     autorizacao = modelo.autorizacao_ativa()
     gasto = modelo.gasto_do_mes(autorizacao.pk) if autorizacao else None
@@ -1677,6 +1705,11 @@ def painel_na_pagina(request, slug: str) -> dict:
         "trabalhos": lista,
         "trabalhando": any(e.aberta for e in lista),
         "mensagens": mensagens,
+        "conversa_ativa": bool(ultima_guiada),
+        "recentes": recentes,
+        "pergunta_guiada": pergunta,
+        "rascunho_guiado": rascunho,
+        "kits_guiados": ultima_guiada.estado.get("kits_guiados") or [] if ultima_guiada else [],
         "respondendo": respondendo,
         "entrega": entregas[0] if entregas else None,
         "entrega_html": para_html(entregas[0].conteudo) if entregas else "",

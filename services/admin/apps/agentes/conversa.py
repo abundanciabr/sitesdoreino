@@ -58,7 +58,7 @@ def instrucoes(robo, membro, retrato: dict | None = None, quiz: dict | None = No
         "delegar_panorama_semanal, que roda no servidor.\n"
         "- Só diga que algo foi criado, alterado, comentado ou delegado depois "
         "que a ferramenta confirmar. Se ela recusar, diga o motivo dela.\n"
-        "- Pergunte só quando um nome servir para mais de uma pessoa ou tarefa, "
+        "- Fora da criação guiada de quiz ou campanha, pergunte só quando um nome servir para mais de uma pessoa ou tarefa, "
         "ou quando faltar o título de uma tarefa. No resto, decida pelo óbvio "
         "e diga o que decidiu.\n"
         "- Ao alterar uma tarefa existente, passe a versão do retrato ou de "
@@ -106,9 +106,10 @@ def instrucoes_do_quiz(membro, quiz: dict) -> str:
         "- Proposta de versão só registra a ideia: não publica nem muda versão "
         "existente. Aceitar, descartar ou marcar resultado só quando a pessoa "
         "pedir.\n"
-        "- Você não edita perguntas, não publica versões, não liga chaves, não "
-        "compra anúncios e não mexe em verba. Para editar, mande ao estúdio do "
-        "quiz; para entender onde perde gente, à página Onde o quiz perde gente."
+        "- Você pode criar perguntas e resultados com criar_rascunho_do_quiz: "
+        "o estúdio salva o quiz de verdade, sem alterar as versões publicadas. "
+        "Não liga chaves, não compra anúncios e não mexe em verba. Para testar "
+        "e publicar o quiz montado, devolva o endereço do estúdio."
     ]
     contexto = quiz.get("contexto") or {}
     host, slug = contexto.get("host"), contexto.get("quiz")
@@ -121,6 +122,49 @@ def instrucoes_do_quiz(membro, quiz: dict) -> str:
             f"https://{host}{caminho('conteudo_editar', 'quiz', slug)}. Onde o quiz "
             f"perde gente: https://{host}{caminho('quiz_evolucao', slug)}."
         )
+        if contexto.get("pagina") == "campanhas":
+            partes.append(
+                "Conversa guiada para uma pessoa leiga e iniciante:\n"
+                "- Você conduz: uma pergunta de cada vez, curta, em pt-BR. "
+                "Use perguntar_com_opcoes para mostrar controles reais na tela; "
+                "não escreva uma lista de perguntas nem código HTML ou JSON na conversa. "
+                "Ao chamar essa ferramenta, a tela exibe o formulário e espera a resposta.\n"
+                "- Prefira radio para uma escolha, checkbox para várias escolhas, "
+                "select para lista extensa e texto para algo pessoal. Sempre permita "
+                "outra resposta quando fizer sentido, e ofereça 'Pode sugerir por mim' "
+                "para quem não souber. Checkbox é para a nossa conversa de criação; "
+                "as perguntas do quiz público usam uma resposta por pergunta.\n"
+                "- Não peça identificadores, pontos, nomes técnicos de formatos ou parâmetros. "
+                "Traduza escolhas em configuração e faça essas contas você. "
+                "Aproveite informações já dadas; não pergunte de novo.\n"
+                "- Ao criar quiz: comece pelo objetivo e quem vai responder. Depois "
+                "identifique as duas ofertas ou resultados e suas diferenças; consulte "
+                "consultar_rascunho_do_quiz para oferecer ofertas reais existentes. "
+                "Pergunte preferências de tamanho (3, 5 ou 7 perguntas) e apresentação "
+                "(texto, vídeo ou conversa), se ainda não estiverem claras. Sugira "
+                "as perguntas, alternativas, títulos e resultados com base nas respostas. "
+                "Quando já souber o suficiente, use criar_rascunho_do_quiz. Para criar "
+                "novo quiz use modo novo e derive o slug do nome escolhido; para "
+                "melhorar este quiz, consulte o rascunho e use nova_versao, preservando "
+                "os IDs das duas ofertas existentes. Não diga que criou antes de salvar. "
+                "Para text crie headline e subheadline; video/hybrid podem ter "
+                "video_url:null quando ainda não houver vídeo; ai precisa de instructions. "
+                "Não invente preço, curso, promessa ou endereço de pagamento. "
+                "Se a pessoa pedir suas próprias ofertas, colete os nomes e para quem são; "
+                "checkout_url fica null. Se escolher ofertas deste quiz, use os mesmos "
+                "IDs e usar_ofertas_do_quiz_atual:true.\n"
+                "- Ao criar campanha: descubra onde divulgar (uma ou várias origens), "
+                "se é divulgação paga ou gratuita e para quem. Use a versão mais nova "
+                "e Texto como padrão, salvo preferência diferente. Antes de montar "
+                "os links, proponha 2 ou 3 nomes curtos e humanos usando radio, "
+                "aceita_outro:true e outro_rotulo:'Prefiro informar outro nome'. "
+                "Gere os nomes conforme objetivo, público e canal; não só códigos. "
+                "Pode também sugerir nomes para os anúncios. Se houver vários canais, "
+                "chame montar_links_do_quiz uma vez para cada origem.\n"
+                "- Se a pessoa já explicou tudo ou pediu para você decidir, conclua "
+                "direto com as ferramentas. Em uma entrega final, seja breve e "
+                "mostre o próximo botão útil. O histórico é a memória da conversa."
+            )
     if quiz.get("retrato"):
         partes.append(
             "Estrutura do quiz quando a mensagem chegou (JSON; vale como "
@@ -141,13 +185,23 @@ def _historico(execucao: Execucao) -> list[dict]:
     mensagens = Mensagem.objects.filter(conversa_id=execucao.conversa_id).exclude(
         papel=Mensagem.Papel.AVISO
     )
+    contexto = (execucao.estado or {}).get("contexto") or {}
+    if contexto.get("quiz"):
+        mensagens = mensagens.filter(execucao__estado__contexto__quiz=contexto["quiz"])
+    if contexto.get("inicio_fluxo"):
+        mensagens = mensagens.filter(id__gte=contexto["inicio_fluxo"])
     if gatilho is not None:
         mensagens = mensagens.filter(id__lte=gatilho.id)
     recentes = list(mensagens.order_by("-id")[:HISTORICO])[::-1]
     itens = []
     for m in recentes:
         papel = "user" if m.papel == Mensagem.Papel.MEMBRO else "assistant"
-        itens.append({"role": papel, "content": m.texto})
+        texto = m.texto
+        if m.papel == Mensagem.Papel.ROBO and m.execucao_id:
+            pergunta = (m.execucao.estado or {}).get("pergunta_guiada")
+            if pergunta:
+                texto += "\nOpções oferecidas: " + "; ".join(o["rotulo"] for o in pergunta["opcoes"])
+        itens.append({"role": papel, "content": texto})
     return itens
 
 
@@ -177,6 +231,11 @@ def executar(execucao: Execucao) -> None:
     while True:
         itens = estado["itens"]
         pendentes = _pedidos_sem_resposta(itens)
+        if estado.get("pergunta_guiada") and not pendentes:
+            from .quiz_guiado import texto_da_pergunta
+
+            _responder(execucao, texto_da_pergunta(estado["pergunta_guiada"]))
+            return
         if pendentes:
             # Retomada depois de cair no meio das ações: termina as ações
             # da rodada guardada antes de chamar o modelo de novo.
@@ -190,6 +249,11 @@ def executar(execucao: Execucao) -> None:
                     {"type": "function_call_output", "call_id": chamada["call_id"], "output": saida}
                 )
                 guardar_estado(execucao)
+            if estado.get("pergunta_guiada"):
+                from .quiz_guiado import texto_da_pergunta
+
+                _responder(execucao, texto_da_pergunta(estado["pergunta_guiada"]))
+                return
             continue
 
         if estado.get("rodadas", 0) >= MAX_RODADAS:
@@ -208,7 +272,7 @@ def executar(execucao: Execucao) -> None:
             ),
             itens=itens,
             ferramentas=ferramentas.definicoes_para(membro),
-            max_saida=MAX_SAIDA,
+            max_saida=8000 if (estado.get("contexto") or {}).get("guiado") else MAX_SAIDA,
             esforco=ESFORCO,
             execucao=execucao,
             robo=robo,
@@ -235,12 +299,14 @@ def _pedidos_sem_resposta(itens: list) -> list[dict]:
 
 
 def _responder(execucao: Execucao, texto: str) -> None:
-    Mensagem.objects.create(
-        conversa_id=execucao.conversa_id,
-        papel=Mensagem.Papel.ROBO,
-        texto=texto,
-        autor=execucao.robo.nome,
+    Mensagem.objects.get_or_create(
         execucao=execucao,
+        papel=Mensagem.Papel.ROBO,
+        defaults={
+            "conversa_id": execucao.conversa_id,
+            "texto": texto,
+            "autor": execucao.robo.nome,
+        },
     )
     acoes = execucao.chamadas.filter(situacao="feita").exclude(nome__startswith="consultar").count()
     resumo = f"Respondeu na conversa ({acoes} ação(ões) no painel)." if acoes else "Respondeu na conversa."

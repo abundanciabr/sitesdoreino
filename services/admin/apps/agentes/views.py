@@ -325,7 +325,34 @@ def robo_no_quiz(request, slug: str):
             chave=chave,
         )
         return HttpResponseRedirect(volta("leitura" if nova else "leitura_rodando"))
+    contexto = {"host": host, "quiz": slug, "pagina": "campanhas", "selecao": tela, "guiado": True}
+    ultima = quiz._do_quiz(robo, slug).filter(tipo=Execucao.Tipo.CONVERSA).order_by("-id").first()
+    if ultima:
+        anterior = (ultima.estado or {}).get("contexto") or {}
+        for campo in ("fluxo", "inicio_fluxo"):
+            if anterior.get(campo):
+                contexto[campo] = anterior[campo]
     texto = (request.POST.get("texto") or "").replace("\r\n", "\n").strip()
+    if acao == "iniciar":
+        fluxo = request.POST.get("fluxo")
+        pedidos = {
+            "quiz": "Quero criar um novo quiz. Me guie com uma pergunta por vez e opções para escolher. Ajude a definir as perguntas, os resultados e as ofertas, e monte o quiz no site com minhas respostas.",
+            "campanha": "Quero criar uma campanha para este quiz. Me guie com uma pergunta por vez e opções para escolher. Sugira de 2 a 3 nomes para a campanha, permitindo informar outro nome, e monte meus links.",
+        }
+        texto = pedidos.get(fluxo, "")
+        contexto.update(fluxo=fluxo, novo_fluxo=True)
+        contexto.pop("inicio_fluxo", None)
+    elif acao == "responder_opcoes":
+        from .quiz_guiado import responder_pergunta
+
+        try:
+            texto, anterior = responder_pergunta(robo, slug, request.POST)
+        except ValueError:
+            return HttpResponseRedirect(volta("opcoes"))
+        for campo in ("fluxo", "inicio_fluxo"):
+            if anterior.get(campo):
+                contexto[campo] = anterior[campo]
+        contexto["resposta_guiada"] = True
     if not texto:
         return HttpResponseRedirect(volta("vazia"))
     if len(texto) > TAMANHO_DA_MENSAGEM:
@@ -336,7 +363,7 @@ def robo_no_quiz(request, slug: str):
         texto,
         chave=chave,
         autor=_quem(request),
-        contexto={"host": host, "quiz": slug, "pagina": "campanhas", "selecao": tela},
+        contexto=contexto,
     )
     return HttpResponseRedirect(volta("pedido"))
 
@@ -344,12 +371,26 @@ def robo_no_quiz(request, slug: str):
 @require_GET
 def andamento_no_quiz(request, slug: str):
     """A pergunta curta da página do quiz: o robô mudou alguma coisa aqui?"""
-    from .quiz import marca_do_quiz
+    from .quiz import marca_do_quiz, painel_na_pagina
 
     _, robo = _meu_robo(request)
     if robo is None or not SLUG.fullmatch(slug):
         return JsonResponse({"marca": ""})
-    return JsonResponse({"marca": marca_do_quiz(robo, slug)})
+    marca = marca_do_quiz(robo, slug)
+    dados = {"marca": marca}
+    if request.GET.get("chat") == "1" and request.GET.get("marca") != marca:
+        from django.template.loader import render_to_string
+
+        painel = painel_na_pagina(request, slug)
+        dados.update(
+            conversa_html=render_to_string("admin/_quiz_chat.html", {
+                "robo_painel": painel, "slug": slug,
+                "consulta": (request.GET.get("volta") or "")[:4000],
+            }, request=request),
+            acompanhar=painel["acompanhar"],
+            conversando=bool(painel["respondendo"]),
+        )
+    return JsonResponse(dados)
 
 
 def _execucao_visivel(request, id: int) -> Execucao | None:

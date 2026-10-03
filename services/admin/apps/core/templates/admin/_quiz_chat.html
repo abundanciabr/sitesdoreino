@@ -1,0 +1,52 @@
+{% if robo_painel.conversa_ativa %}
+  <div class="chat-recente" aria-live="polite" aria-label="Conversa com o robô">
+  {% for m in robo_painel.recentes %}
+    <div class="balao {{ m.papel }}">
+      <span class="voz">{% if m.papel == 'membro' %}Você{% else %}Robô{% endif %}</span>
+      {% if m.papel == 'robo' %}<div class="documento">{{ m.html|safe }}</div>{% else %}<p>{{ m.texto|linebreaksbr }}</p>{% endif %}
+    </div>
+  {% endfor %}
+  </div>
+{% else %}
+  <div class="folha boas-vindas">
+    <p>Eu faço as perguntas e monto tudo com suas respostas.</p>
+    <form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+      {% csrf_token %}<input type="hidden" name="acao" value="iniciar"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}">
+      <div class="atalhos"><button type="submit" class="principal" name="fluxo" value="quiz">Criar um quiz comigo</button><button type="submit" name="fluxo" value="campanha">Criar uma campanha</button></div>
+    </form>
+  </div>
+{% endif %}
+{% if robo_painel.respondendo %}
+  <p class="chat-espera" role="status">{% if robo_painel.respondendo.esperando %}Seu pedido está guardado: {{ robo_painel.respondendo.motivo }}{% else %}<span class="pontos" aria-hidden="true">•••</span> O robô está respondendo…{% endif %}</p>
+{% endif %}
+{% if robo_painel.pergunta_guiada %}{% with p=robo_painel.pergunta_guiada %}
+  <div class="folha pergunta-robo">
+    <form method="post" action="{% url 'quiz_campanhas_robo' slug %}" data-pergunta-robo>
+      {% csrf_token %}<input type="hidden" name="acao" value="responder_opcoes"><input type="hidden" name="pergunta_id" value="{{ p.mensagem_id }}"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}">
+      <fieldset><legend>{{ p.pergunta }}</legend>
+        {% if p.ajuda %}<p class="dica">{{ p.ajuda }}</p>{% endif %}
+        {% if p.tipo == 'texto' %}
+          <textarea name="resposta_livre" rows="3" maxlength="2000" required aria-label="{{ p.pergunta }}" placeholder="Escreva do seu jeito."></textarea>
+        {% elif p.tipo == 'select' %}
+          <select name="resposta" required aria-label="{{ p.pergunta }}"><option value="">Escolha uma opção</option>{% for o in p.opcoes %}<option value="{{ o.valor }}">{{ o.rotulo }}</option>{% endfor %}{% if p.aceita_outro %}<option value="outro">{{ p.outro_rotulo }}</option>{% endif %}</select>
+        {% else %}
+          <div class="escolhas-chat">{% for o in p.opcoes %}<label><input type="{{ p.tipo }}" name="resposta" value="{{ o.valor }}"{% if p.tipo == 'radio' %} required{% endif %}> <span>{{ o.rotulo }}</span></label>{% endfor %}{% if p.aceita_outro %}<label><input type="{{ p.tipo }}" name="resposta" value="outro"{% if p.tipo == 'radio' %} required{% endif %}> <span>{{ p.outro_rotulo }}</span></label>{% endif %}</div>
+        {% endif %}
+        {% if p.aceita_outro and p.tipo != 'texto' %}<div class="resposta-outra"><label class="campo">Sua resposta<input type="text" name="resposta_livre" maxlength="2000" placeholder="Escreva aqui" data-outro-texto></label></div>{% endif %}
+      </fieldset>
+      <button type="submit" class="principal acao-principal">Continuar</button>
+    </form>
+  </div>
+{% endwith %}{% endif %}
+{% if robo_painel.rascunho_guiado %}{% with q=robo_painel.rascunho_guiado %}
+  <div class="folha quiz-pronto"><h2>{{ q.titulo }}</h2><p class="dica">Seu quiz está salvo, com {{ q.perguntas }} pergunta{{ q.perguntas|pluralize:"s" }}.</p><a class="botao" href="{{ q.estudio_url }}">Ver meu quiz →</a><p class="dica">Você pode testar e publicar por lá.</p></div>
+{% endwith %}{% endif %}
+{% for kit in robo_painel.kits_guiados %}<div class="folha quiz-pronto"><h2>{{ kit.campanha }}</h2>{% if kit.total <= 3 %}{% for l in kit.primeiros %}<div class="link"><p class="dica">{{ l.link }}</p><button type="button" data-copiar="{{ l.url }}">Copiar link</button><span data-recado role="status"></span></div>{% endfor %}{% endif %}<p><a href="{{ kit.pagina_com_os_links }}">Ver e testar os links →</a></p></div>{% endfor %}
+<details class="resposta-livre"{% if robo_painel.conversa_ativa and not robo_painel.pergunta_guiada and not robo_painel.respondendo %} open{% endif %}><summary>{% if robo_painel.conversa_ativa %}Escrever uma resposta{% else %}Escrever outro pedido{% endif %}</summary>
+  <div class="folha composer"><form method="post" action="{% url 'quiz_campanhas_robo' slug %}">
+    {% csrf_token %}<input type="hidden" name="acao" value="pedir"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}">
+    <textarea name="texto" rows="3" maxlength="4000" required aria-label="Seu pedido ao robô" placeholder="Pode escrever do seu jeito."></textarea>
+    <div class="enviar"><span>Usa IA dentro do limite da equipe.</span><button type="submit" class="principal">Enviar</button></div>
+  </form></div>
+</details>
+{% if robo_painel.conversa_ativa %}<details class="novo-assunto"><summary>Começar outra criação</summary><form method="post" action="{% url 'quiz_campanhas_robo' slug %}">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><input type="hidden" name="chave" value="{{ robo_painel.chave }}"><input type="hidden" name="volta" value="{{ consulta }}"><div class="atalhos"><button type="submit" name="fluxo" value="quiz">Novo quiz</button><button type="submit" name="fluxo" value="campanha">Nova campanha</button></div></form></details>{% endif %}
