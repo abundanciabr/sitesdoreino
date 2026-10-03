@@ -245,7 +245,7 @@ async function sonda(navegador, saida) {
   var resposta = pagina.waitForResponse(function (r) {
     return r.request().method() === "POST" && /\/sessoes\/[^/]+\/pedido$/.test(r.url());
   }).then(async function (r) {
-    return { ok: r.ok(), status: r.status(), pedido: r.ok() ? await r.json() : null };
+    return { ok: r.ok(), status: r.status(), pedido: r.ok() ? await r.json().catch(function () { return null; }) : null };
   });
   saida.pedidos_criados = "incerto";
   await pagina.click("button.cta");
@@ -263,6 +263,10 @@ async function sonda(navegador, saida) {
   );
   caso("o comprador chegou à tela do Pix", naTelaDoPix, "o pedido foi aceito, mas a página não abriu a tela do Pix");
   if (!naTelaDoPix) return;
+  if (!saida.pedido_ref) {
+    var idNaPagina = new URL(pagina.url()).pathname.match(/\/checkout\/pedido\/([^/]+)\/pix\/$/);
+    saida.pedido_ref = idNaPagina ? referencia(idNaPagina[1]) : null;
+  }
   await pagina
     .waitForFunction(function () {
       var img = document.querySelector("img.qr");
