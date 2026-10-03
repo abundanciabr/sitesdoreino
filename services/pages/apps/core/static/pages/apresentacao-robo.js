@@ -24,6 +24,209 @@
     ["proposta", "Texto da proposta", "Proposta", "textarea"]
   ];
   const positionFields = [["comprador", "Comprador"], ["necessidade", "Necessidade"], ["oferta", "Oferta prioritária"], ["prova", "O que demonstra meu trabalho"]];
+  const fieldGuides = {
+    oferta_encomenda: {
+      description: "É o serviço que uma pessoa pode contratar de você. Diga qual criação você faz e qual é o tamanho dessa encomenda: uma peça, um conjunto ou uma cena.",
+      steps: ["Comece com o que você cria: acessório de avatar, objeto de cenário, arma, cabelo ou outra peça que você oferece.", "Acrescente o estilo ou tema e a quantidade. Se oferece vários serviços, destaque aqui uma encomenda fácil de entender; os detalhes dos arquivos vêm em ‘O que você entrega’."],
+      examples: ["Modelagem de um chapéu floral para avatar Roblox.", "Criação de uma espada estilizada para um jogo de aventura.", "Modelagem de um objeto temático para uma experiência Roblox de marca."],
+      unknown: "Se estiver em dúvida sobre como escrever, descreva a peça com suas palavras. Você pode ajustar esse texto depois de gerar a apresentação.",
+      hint: "Ex.: Modelagem de uma espada estilizada para Roblox"
+    },
+    oferta_comprador: {
+      description: "É o tipo de pessoa ou equipe que pode precisar do seu serviço. Isso ajuda o robô a escrever uma oferta que faça sentido para aquele comprador.",
+      steps: ["Pense em quem encomenda a peça e decide contratar: um criador de itens de avatar, uma equipe de jogo ou um estúdio que atende marcas.", "Escolha o público mais relacionado à encomenda que você quer destacar. Você pode definir um tipo de comprador mesmo sem conhecer uma pessoa específica."],
+      examples: ["Criadores de coleções de acessórios para avatares Roblox.", "Equipes que desenvolvem jogos de aventura.", "Estúdios que criam experiências Roblox para marcas."],
+      unknown: "Use como ponto de partida o público sugerido pelo quiz. Na seção do kit, você poderá informar o nome de um cliente específico.",
+      hint: "Ex.: Equipes que criam jogos de aventura"
+    },
+    oferta_uso: {
+      description: "Conte onde a peça vai aparecer e qual função terá no projeto do comprador. Isso ajuda a explicar por que alguém precisaria da sua criação.",
+      steps: ["Imagine a peça dentro do projeto: equipada por um avatar, colocada em um cenário ou usada na decoração de um evento virtual.", "Descreva esse uso em uma frase. Se ainda depende do pedido do cliente, apresente um uso possível que seja compatível com o seu serviço."],
+      examples: ["Acessório para compor uma coleção de avatares com tema floral.", "Espada para equipar os personagens de um jogo de aventura.", "Objeto decorativo para a área de encontro de um evento virtual de marca."],
+      unknown: "Você pode escrever ‘Uso definido conforme o projeto do cliente’ e detalhar isso na conversa sobre a encomenda.",
+      hint: "Ex.: Equipar personagens de um jogo de aventura"
+    },
+    oferta_entregaveis: {
+      description: "Liste o que o cliente recebe quando a encomenda termina. ‘Entregáveis’ significa o conjunto de arquivos e materiais incluídos no serviço.",
+      steps: ["Separe os itens da entrega: modelo 3D, texturas, imagem de apresentação, arquivo editável ou variações, conforme o que você oferece.", "Indique a quantidade e os itens incluídos. Informe separadamente se também fará a importação ou a montagem no Roblox Studio, quando esse trabalho fizer parte do seu serviço."],
+      examples: ["Um modelo 3D de espada e suas texturas.", "Um modelo de chapéu e duas imagens para apresentar a peça.", "Três objetos de cenário, cada um com seu arquivo de modelo e textura."],
+      unknown: "Se o pedido ainda não está definido, use ‘Arquivos e materiais a definir conforme o escopo’. Escopo é a descrição do trabalho combinado com o cliente.",
+      hint: "Ex.: Um modelo de espada, texturas e uma imagem da peça"
+    },
+    oferta_formatos: {
+      description: "São os tipos dos arquivos entregues, normalmente reconhecidos pelo final do nome: .fbx, .obj, .blend ou .png, por exemplo.",
+      steps: ["Confira quais arquivos você consegue exportar e quais o cliente precisa abrir. O .blend é o projeto do Blender; formatos como FBX e OBJ levam o modelo para outros programas; PNG pode ser usado para imagens de textura.", "Informe apenas os formatos incluídos na entrega. Entregar um arquivo de modelo, importar no Studio e publicar um item são serviços que você pode combinar separadamente."],
+      examples: ["Modelo em FBX e texturas em PNG.", "Modelo em OBJ; arquivo editável .blend incluído.", "Formatos a combinar conforme o projeto do cliente."],
+      unknown: "Se você ainda não sabe qual formato o comprador precisa, pode deixar a combinar e perguntar qual programa ele vai usar.",
+      hint: "Ex.: FBX e PNG",
+      source: {label: "Consultar a documentação de importação do Roblox Studio", url: "https://create.roblox.com/docs/studio/importer"}
+    },
+    oferta_prazo: {
+      description: "É o tempo previsto para fazer a entrega e o momento em que essa contagem começa. O comprador precisa entender as duas coisas.",
+      steps: ["Pense no tempo necessário para criar, conferir os arquivos e fazer os ajustes combinados. Considere também o tempo que você tem disponível.", "Diga se conta dias úteis ou corridos e quando começa: após receber as referências, aprovar o escopo ou outro ponto que você combinar. Os números dos exemplos são apenas ilustrativos."],
+      examples: ["7 dias úteis após receber as referências e definir o escopo.", "Prazo informado depois de analisar o pedido.", "Entrega em etapas, com datas combinadas antes do início."],
+      unknown: "Se precisa ver a complexidade da peça antes, escreva ‘Prazo a combinar após análise do pedido’. Você pode preencher sem escolher uma data agora.",
+      hint: "Ex.: Prazo a combinar após análise do pedido"
+    },
+    oferta_revisoes: {
+      description: "São as oportunidades para o cliente pedir ajustes durante a criação. Uma rodada de revisão reúne os ajustes enviados pelo cliente naquele momento.",
+      steps: ["Defina quantas rodadas pretende incluir e em qual etapa o cliente verá o trabalho para comentar.", "Explique quais mudanças cabem nessa revisão. Ajustar uma cor ou uma proporção é diferente de trocar o pedido por outra peça; você pode combinar como tratar mudanças no escopo."],
+      examples: ["Uma rodada de ajustes de cor e proporção após a primeira prévia.", "Duas rodadas de revisão dentro do escopo combinado.", "Revisões definidas na proposta de cada encomenda."],
+      unknown: "Se ainda não decidiu, escreva ‘Quantidade e tipo de ajustes a combinar’. Escolha depois o que consegue incluir no seu serviço.",
+      hint: "Ex.: Uma rodada de ajustes dentro do escopo"
+    },
+    oferta_suporte: {
+      description: "É a ajuda oferecida depois de entregar os arquivos. Pode incluir esclarecer como abrir um arquivo ou corrigir um problema da entrega, conforme o combinado.",
+      steps: ["Diga qual ajuda você oferece, por qual canal e por quanto tempo. Revisões acontecem durante a criação; suporte é o atendimento após a entrega.", "Informe se a ajuda inclui algum trabalho no Roblox Studio. Defina o que entra no atendimento para o cliente entender o que pode pedir."],
+      examples: ["Ajuda pelo canal de contato para abrir os arquivos entregues.", "Ajustes de problemas nos arquivos entregues durante 7 dias.", "Suporte após a entrega definido na proposta."],
+      unknown: "Se ainda não definiu esse atendimento, deixe em branco ou escreva ‘Suporte a combinar’. Os exemplos não acrescentam atendimento automaticamente à sua oferta.",
+      hint: "Ex.: Suporte a combinar na proposta"
+    },
+    oferta_preco: {
+      description: "É o valor ou a maneira de orçar o serviço. O cliente precisa saber se o valor corresponde a uma peça, a um conjunto ou ao projeto completo.",
+      steps: ["Escolha a forma de apresentar: valor fechado para uma entrega definida, valor inicial com condições ou orçamento após analisar o pedido.", "Se escrever um número, diga a que ele se refere. A moeda tem um campo próprio. Os valores abaixo mostram apenas o formato de escrita; não são uma recomendação de quanto cobrar."],
+      examples: ["250 por uma peça com o escopo descrito — valor fictício para exemplo.", "Orçamento após receber referências e definir o escopo.", "Valor combinado por conjunto de objetos."],
+      unknown: "Você pode escrever ‘Sob orçamento’ ou deixar em branco. Para pensar no seu valor, liste o trabalho envolvido, os arquivos e os ajustes que pretende incluir.",
+      hint: "Ex.: Sob orçamento"
+    },
+    oferta_moeda: {
+      description: "Identifica em qual moeda um valor foi informado. BRL representa reais brasileiros; USD representa dólares americanos.",
+      steps: ["Escolha a moeda em que pretende informar o preço ao comprador e escreva o nome ou a sigla.", "Use a mesma moeda ao combinar a proposta. Este campo identifica o valor; ele não converte preços nem define o meio de pagamento."],
+      examples: ["BRL (reais brasileiros).", "USD (dólares americanos)."],
+      unknown: "Se ainda vai combinar a moeda com o cliente, deixe em branco ou escreva ‘A combinar’.",
+      hint: "Ex.: BRL ou USD"
+    },
+    oferta_condicoes: {
+      description: "São os combinados que explicam como a contratação e a entrega acontecem: início do trabalho, pagamento, aprovação e mudanças no pedido.",
+      steps: ["Escreva em frases simples o que o cliente precisa enviar para começar e como vocês confirmarão a encomenda.", "Acrescente as condições que você já definiu: etapas de pagamento, aprovação de prévias, envio dos arquivos e como serão combinados pedidos adicionais. Se tratar de uso dos arquivos ou exclusividade, diga apenas o que vocês realmente combinaram."],
+      examples: ["O trabalho começa após definirmos a peça e recebermos as referências.", "Etapas de pagamento e entrega combinadas na proposta.", "Mudanças que acrescentem novas peças serão orçadas separadamente."],
+      unknown: "Você pode escrever ‘Condições definidas na proposta antes do início’. Adapte os exemplos aos seus próprios combinados.",
+      hint: "Ex.: Condições combinadas na proposta antes do início"
+    },
+    oferta_continuidade: {
+      description: "É uma possibilidade de novo trabalho depois da primeira entrega. Ajuda o comprador a enxergar como você pode contribuir com outras partes do projeto.",
+      steps: ["Pense no que faria sentido depois da peça inicial: outros itens da coleção, objetos do mesmo cenário ou uma nova variação.", "Apresente isso como uma nova encomenda que pode ser conversada. Descreva uma continuação relacionada ao serviço que você quer oferecer."],
+      examples: ["Depois do chapéu, podemos definir outros acessórios para a mesma coleção.", "Novos objetos para ampliar a vila na mesma direção visual.", "Outras peças temáticas para as próximas áreas da experiência de marca."],
+      unknown: "Pode deixar em branco se ainda não vê uma continuação útil. A oferta da primeira peça pode ser apresentada normalmente.",
+      hint: "Ex.: Novos objetos para o mesmo cenário"
+    },
+    oferta_contato: {
+      description: "É o endereço que o visitante poderá abrir para falar com você. Esse link fica público e será usado nos botões de contato da sua página.",
+      steps: ["Abra o perfil, página de contato ou formulário que você quer usar e copie o endereço completo, começando com https://.", "Teste o link em uma janela sem login para ver se outra pessoa consegue chegar ao canal certo. Escolha um canal que você acompanha e deseja compartilhar com possíveis clientes."],
+      examples: ["Link completo do seu perfil profissional com uma forma de contato.", "Link completo de uma página ou formulário para receber pedidos.", "Link público do canal que você usa para atender encomendas."],
+      unknown: "Se ainda não escolheu um canal, pode deixar em branco e voltar depois. Um nome de usuário sozinho não é um endereço que o botão consegue abrir.",
+      hint: "https://..."
+    },
+    oferta_exibir_preco: {
+      description: "Escolha se o preço informado acima deve aparecer para qualquer visitante da sua página pública.",
+      steps: ["Marque quando quiser mostrar um valor que o comprador consiga relacionar a uma entrega definida. O site usa os campos ‘Preço’ e ‘Moeda’ para exibi-lo.", "Deixe desmarcado quando preferir combinar o valor por orçamento. O preço informado ainda pode ser usado no texto privado da proposta do kit."],
+      examples: ["Marcado: mostrar o valor de uma peça com entrega definida.", "Desmarcado: conversar sobre a encomenda e enviar o valor na proposta."],
+      unknown: "Pode manter desmarcado enquanto decide como apresentar seus valores. Marcar essa opção sem preencher o preço não cria um valor automaticamente."
+    },
+    prospeccao_nome: {
+      description: "É o nome da pessoa para quem você quer preparar a mensagem. O robô pode usá-lo na saudação para deixar o kit mais pessoal.",
+      steps: ["Use o nome que a pessoa utiliza na conversa ou no perfil profissional. Pode ser o primeiro nome ou o nome público pelo qual ela se apresenta.", "Se o contato é com uma equipe e você ainda não sabe quem responde, deixe o nome vazio e informe a equipe em ‘Projeto ou empresa’."],
+      examples: ["Ana.", "Lucas.", "Nome público usado pelo criador no perfil."],
+      unknown: "Este campo é opcional. Sem um nome, a mensagem pode começar com uma saudação geral. Esses dados servem ao kit privado.",
+      hint: "Ex.: Ana — se você já conhece o nome"
+    },
+    prospeccao_projeto: {
+      description: "É o nome do jogo, coleção, estúdio ou empresa com que essa pessoa trabalha. Ajuda a relacionar a mensagem ao projeto dela.",
+      steps: ["Informe o nome que aparece no perfil, anúncio ou conversa. Se o nome ainda não foi informado, uma descrição simples do projeto também ajuda.", "Você pode citar uma equipe, uma coleção de acessórios ou uma experiência de marca, conforme o caso."],
+      examples: ["Vila Aurora — jogo de aventura (nome fictício).", "Coleção de acessórios com tema floral.", "Estúdio que produz um evento virtual de marca."],
+      unknown: "Se ainda não conhece um projeto específico, deixe em branco. Você pode gerar um kit geral e personalizá-lo quando encontrar um possível cliente.",
+      hint: "Ex.: Nome do jogo, coleção ou estúdio"
+    },
+    prospeccao_detalhe: {
+      description: "Conte o que você já sabe sobre esse possível cliente: tema do projeto, estilo visual, momento da produção ou algo que ele publicou.",
+      steps: ["Escreva de onde veio a informação: um anúncio de encomenda, uma publicação, o perfil ou uma conversa que vocês tiveram.", "Inclua um detalhe que conecte seu trabalho ao projeto. Se algo é apenas uma impressão sua, explique isso com palavras como ‘parece’ ou ‘talvez’."],
+      examples: ["A equipe publicou que procura objetos para uma vila medieval.", "O perfil mostra uma coleção de acessórios inspirados em flores.", "Na conversa, a pessoa disse que está preparando uma área de encontro para um evento."],
+      unknown: "Pode deixar em branco quando ainda não tiver informações. A mensagem será geral, sem fingir que você conhece o projeto.",
+      hint: "Ex.: A equipe publicou que procura objetos para uma vila"
+    },
+    prospeccao_necessidade: {
+      description: "É o que esse cliente precisa criar, completar ou resolver agora. Quanto mais claro o pedido, mais útil fica a abordagem e a proposta.",
+      steps: ["Procure uma necessidade ligada ao seu serviço: uma peça que falta no cenário, um acessório para a coleção ou um objeto temático para um evento.", "Se a pessoa já contou o que precisa, resuma esse pedido. Se você está sugerindo uma possibilidade, escreva como hipótese para o robô manter esse tom."],
+      examples: ["Precisa de uma lanterna para a praça da vila.", "Busca um chapéu floral para a nova coleção de avatares.", "Talvez precise de objetos temáticos para a área de encontro do evento."],
+      unknown: "Se ainda não sabe, deixe em branco. A primeira mensagem pode perguntar quais peças a pessoa está procurando.",
+      hint: "Ex.: Precisa de uma lanterna para a praça da vila"
+    },
+    prospeccao_demonstracao: {
+      description: "Escolha um trabalho seu que ajude esse cliente a visualizar o tipo de criação que você oferece. É o exemplo que pode acompanhar a conversa.",
+      steps: ["Escolha a peça mais próxima do tema, estilo ou uso do pedido e diga o que ela demonstra.", "Você pode usar o título de um trabalho da seção ‘Imagens e trabalhos’ ou um link acessível. Diga qual parte foi feita por você quando o trabalho teve colaboração."],
+      examples: ["Minha espada de fantasia: mostra as formas e as cores que criei para esse tipo de peça.", "Meu chapéu floral: modelagem do acessório que aparece no portfólio.", "Meu objeto temático: exemplo de uma peça criada para compor uma cena."],
+      unknown: "Se ainda não escolheu, deixe em branco. O robô pode relacionar a mensagem aos trabalhos que você selecionar para a geração.",
+      hint: "Ex.: Minha espada de fantasia, na seção de trabalhos"
+    },
+    prospeccao_pedido: {
+      description: "Cole aqui a mensagem ou o anúncio em que o cliente explica o que procura. Isso ajuda o robô a preparar uma proposta relacionada ao pedido.",
+      steps: ["Copie a parte que descreve a peça, referências, quantidade, formatos, data desejada e outras informações úteis à encomenda.", "Pode colar o texto inteiro do pedido ou resumir os pontos principais. Dúvidas ainda abertas podem ser indicadas para a proposta pedir esse esclarecimento."],
+      examples: ["‘Preciso de uma espada estilizada para meu jogo de aventura. Posso enviar as referências. Vocês entregam em FBX?’", "‘Estou procurando três objetos para uma vila. Quero saber o prazo e o que vem na entrega.’"],
+      unknown: "Se você ainda vai fazer o primeiro contato e não recebeu um pedido, deixe este campo vazio. O kit pode ser gerado normalmente.",
+      hint: "Cole o pedido ou descreva os pontos que o cliente informou"
+    },
+    prospeccao_idioma: {
+      description: "Escolha o idioma dos quatro textos do kit: apresentação principal, bio curta, primeira abordagem e proposta.",
+      steps: ["Use Português para conversas em português e English para preparar os textos em inglês.", "Depois de mudar o idioma, clique em ‘Gerar kit’ para criar uma nova versão. A troca da opção sozinha não traduz os textos existentes. A página pública continua em português."],
+      examples: ["Português: kit para conversar com um cliente em português.", "English: kit em inglês para uma equipe que usa esse idioma."],
+      unknown: "Se ainda não sabe quem vai receber o kit, pode manter Português e gerar uma versão em inglês depois."
+    },
+    posicionamento_comprador: {
+      description: "Resuma quem você quer alcançar com esta apresentação. É o comprador principal que você escolheu em ‘Para quem’ na sua oferta.",
+      steps: ["Escreva um tipo de pessoa ou equipe em poucas palavras. Se atende públicos diferentes, escolha o que deseja destacar nesta apresentação.", "Pergunte a si mesmo: quem precisa da criação que eu quero oferecer e pode encomendar esse trabalho?"],
+      examples: ["Equipes de jogos de aventura.", "Criadores de coleções de acessórios de avatar.", "Estúdios de experiências Roblox para marcas."],
+      unknown: "Você pode aproveitar o público da sua oferta. Ao gerar página e kit, o robô também sugere este resumo.",
+      hint: "Ex.: Equipes de jogos de aventura"
+    },
+    posicionamento_necessidade: {
+      description: "Resuma o que esse comprador quer conseguir com a sua criação. Pense no projeto dele e na peça que falta para avançar.",
+      steps: ["Ligue o público à finalidade da peça: completar um cenário, criar uma coleção ou compor uma experiência temática.", "Escreva uma necessidade principal em uma frase curta. Aqui você pode falar do tipo de projeto; o pedido de uma pessoa específica fica nos dados do kit."],
+      examples: ["Equipar os personagens com uma espada que combine com o jogo.", "Adicionar um acessório floral à coleção de avatares.", "Compor a área de encontro de um evento com objetos temáticos."],
+      unknown: "Use a aplicação descrita em ‘Como o cliente vai usar’. O robô pode ajudar a resumir isso quando você gerar a apresentação.",
+      hint: "Ex.: Equipar personagens com uma espada que combine com o jogo"
+    },
+    posicionamento_oferta: {
+      description: "Escolha a encomenda que você quer colocar em destaque. A oferta completa reúne os detalhes; aqui você resume o serviço principal.",
+      steps: ["Use uma criação que esteja dentro do serviço que você oferece e que atenda à necessidade descrita acima.", "Escreva uma frase curta com a peça e o trabalho incluído. Se oferece várias criações, escolha uma para ser a entrada desta apresentação."],
+      examples: ["Modelagem de uma espada estilizada com texturas.", "Modelagem de um chapéu floral para avatar.", "Criação de um objeto temático para a experiência da marca."],
+      unknown: "Comece pela encomenda que escreveu em ‘O que podem encomendar’. Você pode escolher outro destaque depois.",
+      hint: "Ex.: Modelagem de uma espada estilizada com texturas"
+    },
+    posicionamento_prova: {
+      description: "Diga qual trabalho seu sustenta essa oferta e o que o comprador pode observar nele. Um projeto autoral ou estudo concluído também pode demonstrar sua criação.",
+      steps: ["Escolha um trabalho que você possa mostrar e cite uma característica concreta: formas, acabamento visual, texturas ou sua participação na criação.", "Você pode indicar a imagem da peça, detalhes, a visualização da malha ou um teste no Studio quando tiver esse material. Ao citar colaboração, explique o que foi feito por você."],
+      examples: ["Minha espada de fantasia mostra a modelagem e as texturas que criei.", "Meu chapéu floral demonstra o visual de um acessório autoral.", "Meu totem temático mostra como desenvolvi formas e cores para uma cena."],
+      unknown: "Se ainda não escolheu uma prova, deixe em branco e selecione seus trabalhos mais abaixo. Um teste técnico pode ser citado quando você tiver esse teste para mostrar.",
+      hint: "Ex.: Minha espada mostra a modelagem e as texturas que criei"
+    }
+  };
+  function addFieldGuide(wrap, input, guide) {
+    if (!guide) return;
+    const description = document.createElement("p"); description.className = "ap-help-description";
+    description.id = `ajuda-${input.name}`; description.textContent = guide.description;
+    input.setAttribute("aria-describedby", description.id);
+    const anchor = input.closest("label") || input;
+    anchor.after(description);
+    if (guide.hint && input.tagName !== "SELECT" && input.type !== "checkbox") input.placeholder = guide.hint;
+    const details = document.createElement("details"); details.className = "ap-field-guide";
+    const summary = document.createElement("summary"); summary.textContent = "Como preencher e exemplos";
+    const label = wrap.querySelector("label")?.textContent.trim() || input.name;
+    summary.setAttribute("aria-label", `Como preencher e exemplos: ${label}`);
+    const instructions = document.createElement("ol");
+    guide.steps.forEach(step => { const item = document.createElement("li"); item.textContent = step; instructions.append(item); });
+    const heading = document.createElement("h3"); heading.textContent = "Exemplos para adaptar ao seu trabalho";
+    const examples = document.createElement("ul"); examples.className = "ap-guide-examples";
+    guide.examples.forEach(example => { const item = document.createElement("li"); item.textContent = example; examples.append(item); });
+    const unknown = document.createElement("p"); unknown.className = "ap-guide-unknown";
+    const unknownTitle = document.createElement("strong"); unknownTitle.textContent = "Se ainda não souber: ";
+    unknown.append(unknownTitle, document.createTextNode(guide.unknown));
+    details.append(summary, instructions, heading, examples, unknown);
+    if (guide.source) {
+      const source = document.createElement("a"); source.href = guide.source.url; source.textContent = guide.source.label;
+      source.target = "_blank"; source.rel = "noopener noreferrer"; details.append(source);
+    }
+    wrap.append(details);
+  }
   const allFields = [...pageFields.map(([key]) => `pagina.${key}`), ...kitFields.map(([key]) => `kit.${key}`)];
   const initial = {
     versao: 1,
@@ -45,16 +248,25 @@
   const fieldElements = new Map();
   const positionPanel = document.createElement("section"); positionPanel.className = "ap-panel";
   const positionHeading = document.createElement("h2"); positionHeading.textContent = "Síntese do meu posicionamento";
-  const positionHelp = document.createElement("p"); positionHelp.textContent = "Resuma para quem você trabalha, qual necessidade atende e o que pode mostrar como prova.";
+  const positionHelp = document.createElement("p"); positionHelp.textContent = "Posicionamento é uma forma simples de explicar por que seu trabalho interessa a um comprador: quem você atende, o que ele precisa, qual serviço você oferece e qual peça demonstra isso. O robô sugere esse resumo ao gerar página e kit; você pode ajustar as quatro respostas.";
+  const positionExample = document.createElement("details"); positionExample.className = "ap-walkthrough";
+  const positionSummary = document.createElement("summary"); positionSummary.textContent = "Veja um exemplo das quatro respostas juntas";
+  const positionExampleText = document.createElement("p"); positionExampleText.textContent = "Exemplo ilustrativo: atendo equipes de jogos de aventura (comprador) que precisam equipar seus personagens (necessidade). Ofereço a modelagem de uma espada estilizada com texturas (oferta prioritária), e minha espada autoral mostra o tipo de formas e cores que crio (prova). Use trabalhos e serviços seus ao preencher.";
+  positionExample.append(positionSummary, positionExampleText);
   const positionGrid = document.createElement("div"); positionGrid.className = "ap-fields";
-  positionPanel.append(positionHeading, positionHelp, positionGrid);
+  positionPanel.append(positionHeading, positionHelp, positionExample, positionGrid);
   $(".ap-tabs").before(positionPanel);
   for (const [key, label] of positionFields) {
     const wrap = document.createElement("div"); wrap.className = "ap-field";
     const caption = document.createElement("label"); caption.htmlFor = `posicionamento_${key}`; caption.textContent = label;
     const input = document.createElement("input"); input.id = caption.htmlFor; input.name = input.id; input.value = String(content.posicionamento[key] || "");
-    wrap.append(caption, input); positionGrid.append(wrap); fieldElements.set(`posicionamento.${key}`, input);
+    wrap.append(caption, input); addFieldGuide(wrap, input, fieldGuides[input.name]); positionGrid.append(wrap); fieldElements.set(`posicionamento.${key}`, input);
   }
+  Object.entries(fieldGuides).forEach(([name, guide]) => {
+    if (name.startsWith("posicionamento_")) return;
+    const input = form.elements.namedItem(name);
+    if (input) addFieldGuide(input.closest(".ap-field"), input, guide);
+  });
   function makeField(group, spec, mount) {
     const [key, label, title, kind, max] = spec;
     const path = `${group}.${key}`;
