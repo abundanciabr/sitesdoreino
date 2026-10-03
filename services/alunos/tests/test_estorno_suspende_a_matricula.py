@@ -114,10 +114,10 @@ def _matricula() -> Matricula:
 
 
 def _cortes() -> list[OutboxEvent]:
-    """Os fatos de situação que dizem `suspensa` — um por corte de acesso."""
+    """Os fatos de situação que dizem `reembolsada` — um por estorno."""
     return list(
         OutboxEvent.objects.filter(
-            event=SITUACAO_ALTERADA, payload__situacao_nova=Matricula.STATUS_SUSPENSA
+            event=SITUACAO_ALTERADA, payload__situacao_nova=Matricula.STATUS_REEMBOLSADA
         ).order_by("id")
     )
 
@@ -135,7 +135,7 @@ def test_o_estorno_suspende_a_matricula_daquele_pagamento():
     processar_envelope(_estornado(), HANDLERS)
 
     matricula.refresh_from_db()
-    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
     # O acesso fecha de verdade: a consulta que decide quem é aluno deixa de
     # enxergá-la. Sem isto, "suspensa" seria um rótulo na tela do painel.
     assert not matriculas_que_valem(COMPRADOR["email"]).exists()
@@ -185,7 +185,7 @@ def test_o_mesmo_estorno_reentregue_suspende_uma_vez_so():
         processar_envelope(envelope, HANDLERS)
 
     matricula.refresh_from_db()
-    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
     assert len(_cortes()) == 1
     assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
 
@@ -294,7 +294,7 @@ def test_uma_aprovacao_depois_do_estorno_nao_reabre_o_acesso():
     processar_envelope(_aprovado(), HANDLERS)
 
     matricula.refresh_from_db()
-    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
     assert not matriculas_que_valem(COMPRADOR["email"]).exists()
     assert Matricula.objects.filter(order_id=PEDIDO).count() == 1
 
@@ -311,7 +311,7 @@ def test_estorno_antes_da_aprovacao_mantem_a_matricula_suspensa():
     processar_envelope(_aprovado(), HANDLERS)
 
     matricula = Matricula.objects.get(order_id=PEDIDO)
-    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
     assert not matriculas_que_valem(COMPRADOR["email"]).exists()
     assert len(_cortes()) == 1
 
@@ -326,7 +326,7 @@ def test_estorno_pendente_isola_site_e_reentregas():
 
     suspensa = Matricula.objects.get(order_id=PEDIDO)
     outra_escola = Matricula.objects.get(order_id="pedido-escola-b")
-    assert suspensa.status == Matricula.STATUS_SUSPENSA
+    assert suspensa.status == Matricula.STATUS_REEMBOLSADA
     assert outra_escola.status == Matricula.STATUS_ATIVA
     assert len(_cortes()) == 1
 
@@ -360,7 +360,7 @@ def test_estorno_e_aprovacao_simultaneos_nao_abrem_acesso():
     assert not erros, erros
     assert not [thread for thread in threads if thread.is_alive()], "thread travada"
     matricula = Matricula.objects.get(order_id=PEDIDO)
-    assert matricula.status == Matricula.STATUS_SUSPENSA
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
     assert not matriculas_que_valem(COMPRADOR["email"]).exists()
 
 
@@ -401,7 +401,7 @@ def test_o_estorno_nao_alcanca_a_matricula_de_outra_escola():
     processar_envelope(_estornado(site="escola-b"), HANDLERS)
 
     da_outra.refresh_from_db()
-    assert da_outra.status == Matricula.STATUS_SUSPENSA
+    assert da_outra.status == Matricula.STATUS_REEMBOLSADA
     assert Matricula.objects.get(order_id=PEDIDO).status == Matricula.STATUS_ATIVA
 
 

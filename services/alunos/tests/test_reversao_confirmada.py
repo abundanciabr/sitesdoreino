@@ -18,6 +18,7 @@ from apps.eventos.models import EventoProcessado
 from apps.matriculas.eventos import SITUACAO_ALTERADA
 from apps.matriculas.handlers import ao_pagamento_aprovado
 from apps.matriculas.models import Matricula, OutboxEvent
+from apps.matriculas.services import atualizar_matricula, suspender_por_estorno
 
 pytestmark = pytest.mark.django_db
 
@@ -226,7 +227,7 @@ def test_reversao_que_se_diz_v1_e_recusada_sem_cortar_ninguem() -> None:
     assert not EventoProcessado.objects.filter(event_id=envelope["event_id"]).exists()
 
 
-def _estorno() -> dict:
+def _estorno(*, motivo: str = "estorno") -> dict:
     return {
         "event": "pagamento.estornado",
         "version": 2,
@@ -237,9 +238,41 @@ def _estorno() -> dict:
             "provider": PROVEDOR,
             "provider_reference_id": REFERENCIA,
             "amount_cents": 9900,
-            "motivo": "estorno",
+            "motivo": motivo,
         },
     }
+
+
+@pytest.mark.parametrize("primeiro", ["reversao", "estorno"])
+def test_outro_tipo_de_aviso_da_mesma_contestacao_nao_desfaz_reativacao_humana(
+    primeiro: str,
+) -> None:
+    matricula = _matricula()
+    avisos = [_reversao(motivo="contestacao"), _estorno(motivo="contestacao")]
+    if primeiro == "estorno":
+        avisos.reverse()
+
+    processar_envelope(avisos[0], HANDLERS)
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_SUSPENSA
+    linha, resultado = atualizar_matricula(
+        id_da_linha=str(matricula.pk),
+        mudancas={"status": Matricula.STATUS_ATIVA},
+        decidido_por="mantenedor@exemplo.test",
+    )
+    assert resultado == "ok"
+    assert linha is not None
+
+    processar_envelope(avisos[1], HANDLERS)
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_ATIVA
+    assert len(_cortes()) == 1
+    assert EventoProcessado.objects.filter(
+        identidade_logica__in=[
+            f"{SITE}|pagamento.reversao_confirmada|{PROVEDOR}|{REFERENCIA}",
+            f"{SITE}|pagamento.estornado|{PROVEDOR}|{REFERENCIA}",
+        ]
+    ).count() == 2
 
 
 @pytest.mark.parametrize("primeiro", ["reversao", "estorno"])
@@ -253,8 +286,60 @@ def test_reversao_e_estorno_do_mesmo_pagamento_cortam_uma_vez(primeiro: str) -> 
         processar_envelope(aviso, HANDLERS)
 
     matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
+    assert len(_cortes()) == (1 if primeiro == "reversao" else 0)
+    assert OutboxEvent.objects.filter(
+        event=SITUACAO_ALTERADA,
+        payload__situacao_nova=Matricula.STATUS_REEMBOLSADA,
+    ).count() == 1
+
+
+def test_reversao_confirmada_de_estorno_reembolsa_sem_valor_no_evento() -> None:
+    matricula = _matricula()
+    aviso = _reversao(motivo="estorno")
+    assert "amount_cents" not in aviso["data"]
+    processar_envelope(aviso, HANDLERS)
+    processar_envelope(_reversao(motivo="estorno"), HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
+    assert OutboxEvent.objects.filter(
+        event=SITUACAO_ALTERADA,
+        payload__situacao_nova=Matricula.STATUS_REEMBOLSADA,
+    ).count() == 1
+
+
+def test_estorno_confirmado_atualiza_suspensa_ja_consumida_sem_nova_api() -> None:
+    matricula = _matricula()
+    processar_envelope(_reversao(motivo="contestacao"), HANDLERS)
+    matricula.refresh_from_db()
     assert matricula.status == Matricula.STATUS_SUSPENSA
-    assert len(_cortes()) == 1
+
+    chamada = {
+        "site_id": SITE, "provider": PROVEDOR,
+        "provider_reference_id": REFERENCIA, "motivo": "estorno",
+    }
+    _, alteradas = suspender_por_estorno(**chamada)
+    assert [linha.pk for linha in alteradas] == [matricula.pk]
+    _, repetidas = suspender_por_estorno(**chamada)
+    assert repetidas == []
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
+    assert OutboxEvent.objects.filter(
+        event=SITUACAO_ALTERADA,
+        payload__situacao_nova=Matricula.STATUS_REEMBOLSADA,
+    ).count() == 1
+
+
+@pytest.mark.parametrize("motivo,destino", [
+    ("estorno", Matricula.STATUS_REEMBOLSADA),
+    ("contestacao", Matricula.STATUS_SUSPENSA),
+])
+def test_reversao_antes_da_aprovacao_preserva_motivo(motivo: str, destino: str) -> None:
+    processar_envelope(_reversao(motivo=motivo), HANDLERS)
+    processar_envelope(_aprovado(), HANDLERS)
+    matricula = Matricula.objects.get(provider_reference_id=REFERENCIA)
+    assert matricula.status == destino
 
 
 def test_aprovacao_que_chega_depois_da_reversao_nao_reativa() -> None:

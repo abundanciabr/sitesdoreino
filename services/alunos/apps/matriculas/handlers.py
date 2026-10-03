@@ -62,15 +62,13 @@ def ao_pagamento_aprovado(data: dict) -> None:
 
 
 def ao_pagamento_estornado(data: dict) -> None:
-    """[ESTORNO] O dinheiro voltou: o acesso do aluno fecha na hora.
+    """[ESTORNO] O dinheiro voltou: a matrícula reflete o motivo confirmado.
 
     `data` é o campo `data` de `pagamento.estornado.v2`, o único formato que
     este aviso tem (ele nasceu na versão 2 e não tem v1).
 
-    Decisão do mantenedor em 20/09/2026: **estorno e contestação cortam igual e
-    na hora**. Por isso o `motivo` não é lido aqui, e a ausência dessa leitura é
-    a decisão, não esquecimento. O que difere entre os dois é o que a plataforma
-    faz DEPOIS (contestação tem prazo de defesa), e isso não é desta célula.
+    Estorno confirmado vira `reembolsada`; contestação fica `suspensa`.
+    Ambos fecham o acesso na hora.
 
     **Matrícula que não existe não derruba o consumidor.** O estado de estorno
     fica registrado pela chave (site, provedor, referência), e a aprovação
@@ -84,17 +82,16 @@ def ao_pagamento_estornado(data: dict) -> None:
 
 
 def ao_pagamento_reversao_confirmada(data: dict) -> None:
-    """[REVERSAO] A Appmax confirmou estorno ou contestação: o acesso fecha.
+    """[REVERSAO] Estorno vira reembolso; contestação suspende o acesso.
 
     `data` é o campo `data` de `pagamento.reversao_confirmada.v2`, já conferido
     contra o contrato na borda (`validar_reversao_confirmada`). O aviso não
     carrega valor nenhum, e é isso que o separa de `pagamento.estornado`: ele
     prova que a reversão aconteceu, não quanto dinheiro voltou.
 
-    O corte é o MESMO do estorno, pela mesma chave (site, provedor, referência).
-    Por isso os dois avisos do mesmo pagamento cortam uma vez só, em qualquer
-    ordem, e a aprovação que chegar depois nasce suspensa. Reabrir continua
-    sendo decisão humana, pelo painel: nenhum aviso posterior reativa o acesso.
+    A chave é a mesma do estorno (site, provedor, referência). A confirmação
+    de estorno também atualiza uma matrícula já suspensa por aviso anterior.
+    Uma aprovação posterior não reabre o acesso.
     """
     _fechar_o_acesso_do_pagamento(
         data, evento="pagamento.reversao_confirmada", etiqueta="REVERSAO"
@@ -102,11 +99,13 @@ def ao_pagamento_reversao_confirmada(data: dict) -> None:
 
 
 def _fechar_o_acesso_do_pagamento(data: dict, *, evento: str, etiqueta: str) -> None:
-    """Suspende as matrículas daquele pagamento e conta o que aconteceu no log."""
-    encontradas, suspensas = suspender_por_estorno(
+    """Atualiza as matrículas daquele pagamento e conta o que aconteceu."""
+    encontradas, alteradas = suspender_por_estorno(
         site_id=data["platform_site_id"],
         provider=data["provider"],
         provider_reference_id=data["provider_reference_id"],
+        motivo=data["motivo"],
+        evento=evento,
     )
 
     if not encontradas:
@@ -115,7 +114,7 @@ def _fechar_o_acesso_do_pagamento(data: dict, *, evento: str, etiqueta: str) -> 
         # nem o pagamento nem a pessoa.
         logger.warning(
             "%s de (%s, %s) no site %s não encontrou matrícula. O corte ficou "
-            "registrado e uma aprovação posterior nascerá suspensa; o consumidor "
+            "registrado e uma aprovação posterior nascerá sem acesso; o consumidor "
             "segue. [%s]",
             evento,
             data["provider"],
@@ -126,13 +125,13 @@ def _fechar_o_acesso_do_pagamento(data: dict, *, evento: str, etiqueta: str) -> 
         return
 
     # Só o corte de VERDADE se anuncia: a reentrega do mesmo aviso, ou o outro
-    # aviso do mesmo pagamento, encontra a matrícula já suspensa, não muda nada
+    # aviso do mesmo pagamento, encontra a matrícula no destino, não muda nada
     # e não tem o que contar.
-    for linha in suspensas:
+    for linha in alteradas:
         logger.info(
-            "matrícula %s suspensa por %s de (%s, %s): motivo %r. A ficha "
-            "continua inteira e reabrir é decisão humana, pelo painel. [%s]",
+            "matrícula %s em %s por %s de (%s, %s): motivo %r. [%s]",
             linha.pk,
+            linha.status,
             evento,
             data["provider"],
             data["provider_reference_id"],
