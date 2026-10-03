@@ -75,6 +75,44 @@ def _aviso_pix(**pix: Any) -> dict[str, Any]:
     }
 
 
+def test_aviso_casa_app_uuid_e_preenche_site_da_instalacao(settings: Any) -> None:
+    _preparar_tentativa_appmax()
+    InstalacaoAppmax.objects.filter(app_id="123").update(appmax_site_id="")
+    settings.APPMAX_INSTALACOES = {
+        "123": {
+            "alias": "Loja",
+            "sites": ["site-interno"],
+            "app_uuid": "uuid-da-appmax",
+        }
+    }
+    aviso = _aviso_pix()
+    aviso["app_id"] = "uuid-da-appmax"
+
+    resposta = Client().post(URL, data=json.dumps(aviso), content_type="application/json")
+
+    assert resposta.status_code == 200
+    assert InstalacaoAppmax.objects.get(app_id="123").appmax_site_id == "site-appmax"
+    gravado = AppmaxWebhookInbox.objects.get()
+    assert gravado.app_id == "123"
+    assert gravado.appmax_site_id == "site-appmax"
+
+
+def test_aviso_com_uuid_diferente_nao_casa(settings: Any, caplog: Any) -> None:
+    _preparar_tentativa_appmax()
+    settings.APPMAX_INSTALACOES = {
+        "123": {"alias": "Loja", "sites": ["site-interno"], "app_uuid": "uuid-certo"}
+    }
+    aviso = _aviso_pix()
+    aviso["app_id"] = "uuid-errado"
+
+    resposta = Client().post(URL, data=json.dumps(aviso), content_type="application/json")
+
+    assert resposta.status_code == 403
+    assert AppmaxWebhookInbox.objects.count() == 0
+    assert "uuid-errado" in caplog.text
+    assert "site-appmax" in caplog.text
+
+
 @pytest.mark.parametrize("aprovada", [False, True])
 def test_aviso_forjado_dizendo_aprovado_nao_decide_dinheiro(
     aprovada: bool, record_property: Callable[[str, object], None]

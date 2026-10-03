@@ -9,6 +9,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from pagamentos.core import gateway
+from pagamentos.core.instalacoes_appmax import instalacao_do_inbox
 from pagamentos.core.models import (
     ESTADOS_EM_ABERTO,
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
@@ -158,9 +159,9 @@ def _consultar_pos_aprovacao(
         raise _IdentidadePosAprovacaoInvalida
     if tentativa.provider_reference_id != aviso.external_order_id:
         raise _IdentidadePosAprovacaoInvalida
-    instalacao = InstalacaoAppmax.objects.filter(
-        app_id=aviso.app_id, appmax_site_id=aviso.appmax_site_id
-    ).first()
+    instalacao = instalacao_do_inbox(aviso.app_id)
+    if instalacao is not None and instalacao.appmax_site_id != aviso.appmax_site_id:
+        instalacao = None
     sites = instalacao.platform_site_ids if instalacao is not None else None
     if (
         instalacao is None
@@ -247,29 +248,17 @@ def _processar_aviso(aviso_id: int) -> bool:
         if tentativa.state not in ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO:
             _registrar_falha(aviso, "tentativa_nao_ativa", definitiva=True)
             return False
+        instalacao = instalacao_do_inbox(aviso.app_id)
+        if (
+            instalacao is None
+            or instalacao.appmax_site_id != aviso.appmax_site_id
+            or aviso.platform_site_id not in instalacao.platform_site_ids
+            or tentativa.intent.site_id != aviso.platform_site_id
+        ):
+            _registrar_falha(aviso, "appmax_identidade_posterior_invalida", definitiva=True)
+            return False
         if tentativa.state == "approved":
             return _processar_aviso_pos_aprovacao(aviso, tentativa)
-        if tentativa.state != "approved" and aviso.event != "order_approved":
-            try:
-                codigo = _consultar_pos_aprovacao(aviso, tentativa)
-            except _IdentidadePosAprovacaoInvalida:
-                _registrar_falha(
-                    aviso, "appmax_identidade_posterior_invalida", definitiva=True
-                )
-                return False
-            except _StatusPosAprovacaoDesconhecido:
-                _registrar_falha(
-                    aviso, "appmax_status_posterior_desconhecido", definitiva=True
-                )
-                return False
-            except (gateway.FalhaNoProvedor, ValueError, TypeError):
-                _registrar_falha(
-                    aviso, "appmax_consulta_posterior_indisponivel", definitiva=False
-                )
-                return False
-            if codigo:
-                _registrar_falha(aviso, "appmax_aviso_fora_da_ordem", definitiva=True)
-                return False
         try:
             if tentativa.intent.method == "pix":
                 reconciliar_pix_appmax(tentativa.intent)

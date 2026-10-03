@@ -38,7 +38,7 @@ def _instalacoes_appmax(bruto: str) -> dict[str, dict[str, Any]]:
     nossos, com que nome de loja responder a cada um e quais site_id internos
     a instalação está autorizada a cobrar. Formato:
 
-        {"<app_id numérico>": {"alias": "Loja", "sites": ["site-a"]}}
+        {"<app_id numérico>": {"alias": "Loja", "sites": ["site-a"], "app_uuid": "uuid-do-app"}}
 
     Fail closed sem exceção: env ausente, JSON inválido, forma errada ou
     entrada sem alias resultam em NENHUMA instalação autorizada, e a rota de
@@ -62,7 +62,7 @@ def _instalacoes_appmax(bruto: str) -> dict[str, dict[str, Any]]:
         if not alias:
             continue
         sites = dados.get("sites", [])
-        catalogo[str(app_id)] = {
+        configuracao = {
             "alias": alias,
             "sites": (
                 [str(s) for s in sites if str(s).strip()]
@@ -70,6 +70,10 @@ def _instalacoes_appmax(bruto: str) -> dict[str, dict[str, Any]]:
                 else []
             ),
         }
+        app_uuid = str(dados.get("app_uuid", "")).strip()
+        if app_uuid:
+            configuracao["app_uuid"] = app_uuid
+        catalogo[str(app_id)] = configuracao
     return catalogo
 
 
@@ -102,6 +106,20 @@ APPMAX_PIX_ENABLED_SITES = frozenset(
     site.strip()
     for site in os.environ.get("APPMAX_PIX_ENABLED_SITES", "").split(",")
     if site.strip()
+)
+MP_CARD_FALLBACK_SITES = frozenset(
+    site.strip() for site in os.environ.get("MP_CARD_FALLBACK_SITES", "").split(",")
+    if site.strip()
+)
+APPMAX_PIX_FALLBACK_SITES = frozenset(
+    site.strip() for site in os.environ.get("APPMAX_PIX_FALLBACK_SITES", "").split(",")
+    if site.strip()
+)
+PAGAMENTOS_PUBLIC_BASE_URL = os.environ.get("PAGAMENTOS_PUBLIC_BASE_URL", "").strip().rstrip("/")
+PROVA_SEGUNDA_EMPRESA_EMAILS = frozenset(
+    email.strip().lower()
+    for email in os.environ.get("PROVA_SEGUNDA_EMPRESA_EMAILS", "").split(",")
+    if email.strip()
 )
 
 # [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.

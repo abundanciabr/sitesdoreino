@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import uuid
 from datetime import datetime
@@ -27,11 +28,13 @@ from pagamentos.core.models import (
     InstalacaoAppmax,
     PaymentAttempt,
 )
+from pagamentos.core.instalacoes_appmax import instalacao_do_webhook
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.methods.card.webhook import processar_webhook_card
 from pagamentos.methods.pix.webhook import processar_webhook_pix
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 _WEBHOOK_PIX_OPENAPI = {
     "security": [],
@@ -241,10 +244,14 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
         return _resposta_appmax(
             "Origem ou pedido excede o tamanho aceito. Confira o aviso.", 400
         )
-    instalacao = InstalacaoAppmax.objects.filter(
-        app_id=app_id, appmax_site_id=appmax_site_id
-    ).first()
+    instalacao = instalacao_do_webhook(app_id)
     if instalacao is None:
+        logger.warning("aviso Appmax recusado: app_id=%s site_id=%s", app_id, appmax_site_id)
+        return _resposta_appmax(
+            "Instalação desconhecida. Confira app_id e site_id.", 403
+        )
+    if instalacao.appmax_site_id and instalacao.appmax_site_id != appmax_site_id:
+        logger.warning("aviso Appmax recusado: app_id=%s site_id=%s", app_id, appmax_site_id)
         return _resposta_appmax(
             "Instalação desconhecida. Confira app_id e site_id.", 403
         )
@@ -268,9 +275,21 @@ def webhook_appmax(request: HttpRequest) -> JsonResponse:
         envelope, order_id=order_id, tentativa_pix=tentativa_pix
     )
     with transaction.atomic():
+        if not instalacao.appmax_site_id:
+            instalacao = InstalacaoAppmax.objects.select_for_update().get(pk=instalacao.pk)
+        else:
+            instalacao.refresh_from_db(fields=["appmax_site_id"])
+        if instalacao.appmax_site_id and instalacao.appmax_site_id != appmax_site_id:
+            logger.warning("aviso Appmax recusado: app_id=%s site_id=%s", app_id, appmax_site_id)
+            return _resposta_appmax(
+                "Instalação desconhecida. Confira app_id e site_id.", 403
+            )
+        if not instalacao.appmax_site_id:
+            instalacao.appmax_site_id = appmax_site_id
+            instalacao.save(update_fields=["appmax_site_id"])
         aviso, criado = AppmaxWebhookInbox.objects.get_or_create(
-            app_id=app_id,
-            appmax_site_id=appmax_site_id,
+            app_id=instalacao.app_id,
+            appmax_site_id=instalacao.appmax_site_id,
             event=event.strip(),
             event_type=event_type.strip(),
             external_order_id=str(order_id),

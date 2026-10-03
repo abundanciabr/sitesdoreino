@@ -98,6 +98,14 @@ http:
         permanent: false
 
   routers:
+    mp-webhooks-meshcraft:
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/api/pagamentos/webhooks/mp`)"
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pagamentos
+      tls: {}
+
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
       rule: "Host(`basileiatoutheou.org`) && PathPrefix(`/api/pagamentos/webhooks`)"

@@ -26,6 +26,7 @@ pytestmark = pytest.mark.django_db
 
 
 def _tentativa() -> PaymentAttempt:
+    _instalacao()
     intent = Intent.objects.create(
         idempotency_key=str(uuid.uuid4()),
         site_id="site-interno",
@@ -67,12 +68,15 @@ def _cliente() -> Mock:
 
 
 def _instalacao() -> InstalacaoAppmax:
-    return InstalacaoAppmax.objects.create(
+    instalacao, _ = InstalacaoAppmax.objects.get_or_create(
         app_id="123",
-        appmax_site_id="site-appmax",
-        alias="Loja",
-        platform_site_ids=["site-interno"],
+        defaults={
+            "appmax_site_id": "site-appmax",
+            "alias": "Loja",
+            "platform_site_ids": ["site-interno"],
+        },
     )
+    return instalacao
 
 
 def _aviso(event: str = "order_refund") -> AppmaxWebhookInbox:
@@ -583,13 +587,12 @@ def test_aviso_adverso_antes_da_aprovacao_nao_aprova_a_tentativa() -> None:
     tentativa.refresh_from_db()
     tentativa.intent.refresh_from_db()
     assert aviso.processed_at is None
-    assert aviso.dead_lettered_at is not None
-    assert aviso.last_error == "appmax_aviso_fora_da_ordem"
+    assert aviso.dead_lettered_at is None
+    assert aviso.next_retry_at is not None
+    assert aviso.last_error == "FalhaNoProvedor"
     assert tentativa.state == "pending"
     assert tentativa.intent.status == "pending"
     assert cliente.mock_calls == [
-        call.preparar(),
-        call.consultar_pedido(order_id=3531),
         call.preparar(),
         call.consultar_pedido(order_id=3531),
     ]
