@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+import json
 from typing import Any
 from urllib.parse import quote
 
@@ -17,6 +18,10 @@ _BASE_URL = "https://api.mercadopago.com"
 
 class MercadoPagoError(Exception):
     """Erro de comunicação ou resposta de erro do Mercado Pago."""
+
+    def __init__(self, message: str, *, ambiguo: bool = False) -> None:
+        super().__init__(message)
+        self.ambiguo = ambiguo
 
 
 # O motivo entra na MENSAGEM, não em subclasses de exceção: é o que aparece no
@@ -43,12 +48,19 @@ def _motivo_do_status(status_code: int) -> str:
 
 
 def _trecho(corpo: str, limite: int = 300) -> str:
-    """O corpo do erro é o que diz QUAL erro foi — vai junto na mensagem, e daí
-    para o log. Truncado e com espaços colapsados: uma página HTML inteira de CDN
-    no log não ajuda ninguém. Nunca contém a credencial (ela viaja no header
-    Authorization, jamais no corpo), então INV-P8 fica intacto."""
-    corpo = " ".join(corpo.split())
-    return (corpo[:limite] + "...") if len(corpo) > limite else corpo
+    """Um erro do provedor pode ecoar token ou pagador; só nomes de campos saem."""
+    del limite
+    try:
+        data = json.loads(corpo)
+    except ValueError:
+        return "[corpo omitido]"
+    if not isinstance(data, dict):
+        return "[corpo omitido]"
+    campos = sorted(
+        key for key in data
+        if isinstance(key, str) and key in {"message", "error", "status", "cause"}
+    )
+    return f"[campos do erro: {', '.join(campos)}]"
 
 
 def _valor_em_reais(amount_cents: int) -> float:
@@ -68,15 +80,19 @@ class MercadoPagoClient:
         self._token = access_token or settings.MP_ACCESS_TOKEN
         self._timeout = timeout
 
-    def _headers(self, idempotency_key: str) -> dict[str, str]:
-        return {
+    def _headers(self, idempotency_key: str, device_id: str = "") -> dict[str, str]:
+        headers = {
             "Authorization": f"Bearer {self._token}",
             "X-Idempotency-Key": idempotency_key,  # toda escrita ao MP leva chave própria
             "Content-Type": "application/json",
         }
+        if device_id:
+            headers["X-meli-session-id"] = device_id
+        return headers
 
     def _post(
-        self, path: str, *, idempotency_key: str, json_body: dict[str, Any]
+        self, path: str, *, idempotency_key: str, json_body: dict[str, Any],
+        device_id: str = "", envio_ambiguo_anterior: bool = False,
     ) -> dict[str, Any]:
         """FALHA FECHADA: nada sai daqui que não seja um 2xx com corpo JSON de
         objeto. Antes, só `status_code >= 500` levantava — qualquer 400, 401,
@@ -92,7 +108,7 @@ class MercadoPagoClient:
             resp = httpx.post(
                 f"{_BASE_URL}{path}",
                 json=json_body,
-                headers=self._headers(idempotency_key),
+                headers=self._headers(idempotency_key, device_id),
                 timeout=self._timeout,
             )
         except httpx.TimeoutException as exc:
@@ -103,13 +119,18 @@ class MercadoPagoClient:
             raise MercadoPagoError(
                 f"timeout ({self._timeout}s) ao chamar o Mercado Pago em {path}: "
                 f"{exc}. A cobranca pode ter sido criada do lado do MP — retentar "
-                "com a MESMA X-Idempotency-Key e seguro (o MP deduplica por ela)."
+                "com a MESMA X-Idempotency-Key e seguro (o MP deduplica por ela).",
+                ambiguo=True,
             ) from exc
         except httpx.HTTPError as exc:
             raise MercadoPagoError(
-                f"falha de rede ao chamar o Mercado Pago em {path}: {exc}"
+                f"falha de rede ao chamar o Mercado Pago em {path}: {exc}",
+                ambiguo=not isinstance(exc, httpx.ConnectError),
             ) from exc
-        return self._corpo_json_de_2xx(resp, path)
+        return self._corpo_json_de_2xx(
+            resp, path, escrita=True,
+            envio_ambiguo_anterior=envio_ambiguo_anterior,
+        )
 
     def _get(self, path: str) -> dict[str, Any]:
         """Leitura fail-closed — mesmas três muralhas do `_post` (status, corpo,
@@ -137,14 +158,20 @@ class MercadoPagoClient:
             ) from exc
         return self._corpo_json_de_2xx(resp, path)
 
-    def _corpo_json_de_2xx(self, resp: httpx.Response, path: str) -> dict[str, Any]:
+    def _corpo_json_de_2xx(
+        self, resp: httpx.Response, path: str, *, escrita: bool = False,
+        envio_ambiguo_anterior: bool = False,
+    ) -> dict[str, Any]:
         """As três muralhas compartilhadas por _post e _get:
         todo não-2xx levanta; corpo não-JSON levanta; corpo que não é objeto
         levanta. Nada sai daqui que não seja um 2xx com um objeto JSON."""
         if not 200 <= resp.status_code < 300:
             raise MercadoPagoError(
                 f"{_motivo_do_status(resp.status_code)} "
-                f"(HTTP {resp.status_code} em {path}): {_trecho(resp.text)}"
+                f"(HTTP {resp.status_code} em {path}): {_trecho(resp.text)}",
+                ambiguo=escrita and (
+                    resp.status_code >= 500 or envio_ambiguo_anterior
+                ),
             )
 
         try:
@@ -158,13 +185,15 @@ class MercadoPagoClient:
                 f"corpo nao-JSON na resposta do Mercado Pago (HTTP "
                 f"{resp.status_code} em {path}, content-type="
                 f"{resp.headers.get('content-type', 'ausente')}): "
-                f"{_trecho(resp.text)}"
+                f"{_trecho(resp.text)}",
+                ambiguo=escrita,
             ) from exc
 
         if not isinstance(data, dict):
             raise MercadoPagoError(
                 f"resposta do Mercado Pago nao e um objeto JSON (HTTP "
-                f"{resp.status_code} em {path}, tipo={type(data).__name__})"
+                f"{resp.status_code} em {path}, tipo={type(data).__name__})",
+                ambiguo=escrita,
             )
         resultado: dict[str, Any] = data
         return resultado
@@ -177,21 +206,97 @@ class MercadoPagoClient:
         do manifesto assinado, id não vira fragmento de rota sem escape."""
         return self._get(f"/v1/payments/{quote(payment_id, safe='')}")
 
+    def buscar_por_referencia(self, external_reference: str) -> list[dict[str, Any]]:
+        resposta = self._get(
+            f"/v1/payments/search?external_reference={quote(external_reference, safe='')}"
+        )
+        resultados = resposta.get("results")
+        if not isinstance(resultados, list) or any(
+            not isinstance(item, dict) for item in resultados
+        ):
+            raise MercadoPagoError("busca do Mercado Pago sem lista de pagamentos")
+        return resultados
+
+    def estornar_pagamento(
+        self, *, payment_id: str, idempotency_key: str
+    ) -> dict[str, Any]:
+        return self._post(
+            f"/v1/payments/{quote(payment_id, safe='')}/refunds",
+            idempotency_key=idempotency_key,
+            json_body={},
+        )
+
     def criar_pagamento_pix(
         self,
         *,
-        idempotency_key: str,
+        idempotency_key: str | None = None,
         amount_cents: int,
         order_id: str,
         payer_email: str,
+        date_of_expiration: str | None = None,
+        notification_url: str | None = None,
+        payer_first_name: str = "",
+        payer_last_name: str = "",
+        payer_identification: dict[str, str] | None = None,
+        envio_ambiguo_anterior: bool = False,
     ) -> dict[str, Any]:
+        payer: dict[str, Any] = {"email": payer_email}
+        if payer_first_name:
+            payer["first_name"] = payer_first_name
+        if payer_last_name:
+            payer["last_name"] = payer_last_name
+        if payer_identification:
+            payer["identification"] = payer_identification
+        body: dict[str, Any] = {
+            "transaction_amount": _valor_em_reais(amount_cents),
+            "payment_method_id": "pix",
+            "external_reference": order_id,
+            "payer": payer,
+        }
+        if date_of_expiration:
+            body["date_of_expiration"] = date_of_expiration
+        if notification_url:
+            body["notification_url"] = notification_url
         return self._post(
             "/v1/payments",
-            idempotency_key=idempotency_key,
-            json_body={
-                "transaction_amount": _valor_em_reais(amount_cents),
-                "payment_method_id": "pix",
-                "external_reference": order_id,
-                "payer": {"email": payer_email},
-            },
+            idempotency_key=idempotency_key or order_id,
+            json_body=body,
+            envio_ambiguo_anterior=envio_ambiguo_anterior,
+        )
+
+    def criar_pagamento_cartao(
+        self, *, idempotency_key: str, amount_cents: int,
+        order_id: str, card_token: str, installments: int,
+        payment_method_id: str, payer_email: str,
+        payer_first_name: str = "", payer_last_name: str = "",
+        payer_identification: dict[str, str] | None = None,
+        issuer_id: str | None = None, device_id: str = "",
+        items: list[dict[str, Any]] | None = None,
+        notification_url: str | None = None,
+        envio_ambiguo_anterior: bool = False,
+    ) -> dict[str, Any]:
+        payer: dict[str, Any] = {"email": payer_email}
+        if payer_first_name:
+            payer["first_name"] = payer_first_name
+        if payer_last_name:
+            payer["last_name"] = payer_last_name
+        if payer_identification:
+            payer["identification"] = payer_identification
+        body: dict[str, Any] = {
+            "transaction_amount": _valor_em_reais(amount_cents),
+            "token": card_token,
+            "installments": installments,
+            "payment_method_id": payment_method_id,
+            "external_reference": order_id,
+            "payer": payer,
+            "additional_info": {"items": items or []},
+        }
+        if issuer_id:
+            body["issuer_id"] = issuer_id
+        if notification_url:
+            body["notification_url"] = notification_url
+        return self._post(
+            "/v1/payments", idempotency_key=idempotency_key,
+            json_body=body, device_id=device_id,
+            envio_ambiguo_anterior=envio_ambiguo_anterior,
         )
