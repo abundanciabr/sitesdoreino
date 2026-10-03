@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Contato | CRM{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'contatos' %}">&larr; Contatos</a>
+  {% if tela.veredito == "sem-configuracao" %}
+  <h1>Ficha indisponível</h1>
+  <p class="aviso borda-amarela espaco-20">A administração ainda não está ligada à área que guarda os contatos. Não foi possível consultar esta ficha.</p>
+  {% elif tela.veredito != "ok" %}
+  <h1>Ficha indisponível</h1>
+  <p class="aviso borda-vermelha espaco-20">A área que guarda os contatos não respondeu agora. Recarregue a página em alguns minutos.</p>
+  {% else %}
+  <h1>{{ tela.nome }}</h1>
+  <p class="subtitulo">Ficha do contato · {% if tela.criado_em %}chegou em {{ tela.criado_em|date:"d/m/Y H:i" }}{% else %}data de chegada desconhecida{% endif %}</p>
+
+  <div class="cartoes">
+    <section class="cartao">
+      <h2 class="titulo-de-bloco">Contato</h2>
+      {% if tela.email %}<p>E-mail: <a href="mailto:{{ tela.email|urlencode }}">{{ tela.email }}</a></p>{% endif %}
+      {% if tela.telefone %}<p>Telefone: <a href="tel:{{ tela.telefone|urlencode }}">{{ tela.telefone }}</a></p>{% endif %}
+      {% if not tela.email and not tela.telefone %}<p class="nota">Sem e-mail ou telefone registrado.</p>{% endif %}
+      {% if tela.site_id %}<p class="nota">Site: {{ tela.site_id }}</p>{% endif %}
+      {% if tela.atualizado_em %}<p class="nota">Atualizado em {{ tela.atualizado_em|date:"d/m/Y H:i" }}</p>{% endif %}
+    </section>
+    <section class="cartao">
+      <h2 class="titulo-de-bloco">Origem e tags</h2>
+      <p>{% if tela.origem %}{{ tela.origem }}{% else %}Origem não informada{% endif %}</p>
+      {% if tela.tags %}<p>{% for etiqueta in tela.tags %}<a class="selo" href="{% url 'contatos' %}?tag={{ etiqueta|urlencode }}">{{ etiqueta }}</a> {% endfor %}</p>{% else %}<p class="nota">Sem tags.</p>{% endif %}
+    </section>
+    <section class="cartao">
+      <h2 class="titulo-de-bloco">Consentimentos</h2>
+      {% if tela.consentimento %}
+        {% for nome, valor in tela.consentimento %}<p>{{ nome }}: <b>{{ valor }}</b></p>{% endfor %}
+      {% else %}<p class="nota">Nenhum consentimento registrado.</p>{% endif %}
+    </section>
+  </div>
+
+  {% if tela.id %}<p class="espaco-20"><a class="botao" href="{% url 'crm' %}?lead_id={{ tela.id|urlencode }}">Ver oportunidades no CRM</a></p>{% endif %}
+
+  <h2 class="titulo-de-bloco espaco-34">Linha do tempo</h2>
+  {% if tela.eventos %}
+    <div class="cartoes">
+      {% for evento in tela.eventos %}
+      <article class="cartao">
+        <div class="valor"><b>{{ evento.rotulo }}</b></div>
+        <p class="nota">{% if evento.quando %}{{ evento.quando|date:"d/m/Y H:i" }}{% else %}Data não informada{% endif %}</p>
+        {% if evento.produto %}<p>Produto: {{ evento.produto }}</p>{% endif %}
+        {% if evento.valor %}<p>Valor: {{ evento.valor }}</p>{% endif %}
+        {% if evento.forma %}<p>Forma de pagamento: {{ evento.forma }}</p>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% if tela.eventos_cortados %}<p class="nota">Mostrando {{ tela.eventos|length }} das {{ tela.total_eventos }} atividades mais recentes.</p>{% endif %}
+  {% else %}<p class="aviso">Ainda não há atividades registradas para este contato.</p>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

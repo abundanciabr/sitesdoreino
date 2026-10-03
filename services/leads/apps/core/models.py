@@ -84,6 +84,23 @@ class FatoDePagamentoProcessado(models.Model):
         ]
 
 
+class ReversaoDePagamento(models.Model):
+    """Reversão por compra; guarda o fato mesmo se a aprovação chegar depois."""
+
+    site_id = models.CharField(max_length=100)
+    order_id = models.CharField(max_length=200)
+    event_id = models.UUIDField()
+    payload = models.JSONField()
+    registrada_na_timeline = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "order_id"], name="uniq_reversao_site_pedido"
+            ),
+        ]
+
+
 class Oportunidade(models.Model):
     """O acompanhamento comercial humano de UMA pessoa já conhecida da casa.
 

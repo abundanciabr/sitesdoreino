@@ -2187,6 +2187,132 @@ class MedicaoClient:
         return desfecho, None if fila is None else fila["total"]
 
 
+class LeadsClient:
+    """services/leads/apps/core/api.py — `listLeads` e `getLead`.
+
+    A `leads` é a MEMÓRIA DE QUEM É CADA PESSOA: contato, de onde veio e o que
+    fez na casa. Como célula não lê banco de outra, o Admin não abre o banco
+    dela; pergunta por aqui, com o Bearer do par provisionado. Só LEITURA: nada
+    desta classe grava contato, tag ou histórico.
+
+    FALHA ABERTA, como a `MedicaoClient`, e pelo mesmo motivo: a tela de
+    contatos é consulta, e derrubá-la porque a `leads` não respondeu trocaria um
+    aviso por um apagão. Mas fail-open NÃO é fingir lista vazia: cada desfecho
+    tem nome próprio, e a tela diz qual aconteceu. "Não perguntei" e "perguntei
+    e não há ninguém" são coisas diferentes.
+    """
+
+    TIMEOUT = 2.0
+
+    OK = "ok"
+    NAO_RESPONDEU = "nao-respondeu"
+    SEM_CONFIGURACAO = "sem-configuracao"
+    #: Só a ficha de UM contato usa este: o contrato promete 404 para id que não
+    #: existe, e a tela precisa saber a diferença entre "esse contato não
+    #: existe" (endereço digitado errado) e "a `leads` não respondeu".
+    NAO_EXISTE = "nao-existe"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Endereço e token do par, ou `None` se o env não os tiver.
+
+        Lido NO PONTO DE USO: o par nasce vazio e é escrito na VPS por
+        `infra/provisionar-par-dos-contatos.sh`, depois do deploy. Ler no import
+        transformaria a janela entre as duas coisas em HTTP 500 em toda abertura
+        da tela de contatos.
+        """
+        base = (os.environ.get("LEADS_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("LEADS_API_TOKEN") or "").strip()
+        if not base or not token:
+            return None
+        return base, token
+
+    def _pedir(
+        self, caminho: str, params: dict, *, aceita_404: bool = False
+    ) -> "tuple[str, object]":
+        """`aceita_404` é opt-in de propósito: para a lista, um 404 é a porta
+        fora do lugar, e vira `NAO_RESPONDEU` como qualquer outra resposta
+        estranha. Só quem pede UM contato por id tem um 404 que significa
+        alguma coisa."""
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "contatos: LEADS_API_URL/LEADS_API_TOKEN ainda não estão no "
+                "env desta célula (par admin→leads não provisionado)"
+            )
+            return self.SEM_CONFIGURACAO, None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}{caminho}",
+                params=params,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("contatos: a leads não respondeu: %s", erro)
+            return self.NAO_RESPONDEU, None
+        if aceita_404 and r.status_code == 404:
+            return self.NAO_EXISTE, None
+        if r.status_code != 200:
+            logger.error("contatos: a leads respondeu HTTP %s", r.status_code)
+            return self.NAO_RESPONDEU, None
+        try:
+            return self.OK, r.json()
+        except ValueError as erro:
+            logger.error("contatos: resposta fora do contrato: %s", erro)
+            return self.NAO_RESPONDEU, None
+
+    def listar(
+        self,
+        *,
+        q: str = "",
+        site_id: str = "",
+        tag: str = "",
+        pagina: int = 1,
+        por_pagina: int = 50,
+    ) -> "tuple[str, dict | None]":
+        """Uma página de contatos, do mais novo para o mais antigo.
+
+        `{"itens": [...], "pagina": int, "por_pagina": int, "total": int,
+        "tem_mais": bool}`. Filtro vazio NÃO vai na pergunta: a `leads` trata
+        `q=` e a ausência de `q` do mesmo jeito, mas mandar só o que foi pedido
+        deixa o registro de acesso dela dizer o que a tela de fato procurou.
+        """
+        params: dict = {"pagina": pagina, "por_pagina": por_pagina}
+        for nome, valor in (("q", q), ("site_id", site_id), ("tag", tag)):
+            if valor:
+                params[nome] = valor
+        desfecho, corpo = self._pedir("/leads", params)
+        if desfecho != self.OK:
+            return desfecho, None
+        itens = (corpo or {}).get("itens") if isinstance(corpo, dict) else None
+        total = corpo.get("total") if isinstance(corpo, dict) else None
+        if not isinstance(itens, list) or not isinstance(total, int):
+            logger.error("contatos: a lista veio fora do contrato")
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
+    def ficha(self, lead_id: "uuid.UUID | str") -> "tuple[str, dict | None]":
+        """UM contato, com a linha do tempo: dados, origem, consentimento.
+
+        Devolve `NAO_EXISTE` para id que não existe, e nunca um dicionário
+        vazio: ficha vazia que parece ficha é pior do que dizer que não achou.
+        """
+        desfecho, corpo = self._pedir(
+            f"/leads/{quote(str(lead_id), safe='')}", {}, aceita_404=True
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        if (
+            not isinstance(corpo, dict)
+            or "id" not in corpo
+            or not isinstance(corpo.get("linha_do_tempo"), list)
+        ):
+            logger.error("contatos: a ficha veio fora do contrato")
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
+
 class MensageriaClient:
     """As sequências de mensagens da escola: o que existe, quem está dentro, o
     que saiu, o que NÃO saiu, e as duas escritas.

@@ -2,6 +2,7 @@
 from django.db import IntegrityError, transaction
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
+from .recuperacao import sincronizar_pagamento, sincronizar_reversao
 
 
 def processar_envelope(envelope: dict, handler) -> bool:
@@ -176,9 +177,10 @@ def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),
         )
-        TimelineEvent.objects.create(
+        evento = TimelineEvent.objects.create(
             lead=lead, event="pagamento.aprovado", event_id=event_id, payload=data
         )
+        sincronizar_pagamento(lead, "pagamento.aprovado", data, event_id, evento)
 
 
 def ao_pagamento_recusado(event_id: str, data: dict) -> None:
@@ -195,9 +197,10 @@ def ao_pagamento_recusado(event_id: str, data: dict) -> None:
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),
         )
-        TimelineEvent.objects.create(
+        evento = TimelineEvent.objects.create(
             lead=lead, event="pagamento.recusado", event_id=event_id, payload=data
         )
+        sincronizar_pagamento(lead, "pagamento.recusado", data, event_id, evento)
 
 
 def ao_pix_expirado(event_id: str, data: dict) -> None:
@@ -209,6 +212,11 @@ def ao_pix_expirado(event_id: str, data: dict) -> None:
             name=cliente.get("name", ""),
             phone=cliente.get("phone", ""),
         )
-        TimelineEvent.objects.create(
+        evento = TimelineEvent.objects.create(
             lead=lead, event="pix.expirado", event_id=event_id, payload=data
         )
+        sincronizar_pagamento(lead, "pix.expirado", data, event_id, evento)
+
+
+def ao_reversao_confirmada(event_id: str, data: dict) -> None:
+    sincronizar_reversao(event_id, data)

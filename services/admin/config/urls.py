@@ -77,6 +77,7 @@ from apps.core.parametros_da_fila import (
 )
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
+from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -154,6 +155,7 @@ from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.funil import funil
+from apps.core.contatos import contato, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
@@ -230,6 +232,9 @@ from config.api import api
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 
 urlpatterns = [
+    path("crm/", crm, name="crm"),
+    path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
+    path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
@@ -786,6 +791,13 @@ urlpatterns = [
     # memória. Sub-rota do placar porque é o caminho da venda do placar,
     # aceso: como seção própria do menu ele viveria longe dos números que move.
     path("placar/funil/", funil, name="funil"),
+    # OS CONTATOS (`apps/core/contatos.py`, 03/10/2026) — a primeira tela de
+    # CRM: a lista de quem deixou o contato (com busca) e a ficha de cada um,
+    # com a linha do tempo em português. Só leitura, perguntando à `leads` pela
+    # API. Seção própria do menu, e FORA de `equipe/` de propósito: nome, e-mail
+    # e telefone de cliente são dado de dono, e `equipe/` abre para o crachá.
+    path("contatos/", contatos, name="contatos"),
+    path("contatos/<uuid:lead_id>/", contato, name="contato"),
     # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
     # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
     # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta
