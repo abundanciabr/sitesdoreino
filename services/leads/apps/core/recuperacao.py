@@ -42,7 +42,7 @@ def _aprovado_no_site(site_id, pedido):
     ).order_by("occurred_at", "id").first()
 
 
-def _ganhar(oportunidade, evidencia):
+def _ganhar(oportunidade, evidencia, descricao="Compra recuperada: pagamento aprovado."):
     if oportunidade.etapa == "ganha" and oportunidade.encerrada:
         return False
     oportunidade.etapa = "ganha"
@@ -56,7 +56,7 @@ def _ganhar(oportunidade, evidencia):
     ])
     RegistroHistoricoOportunidade.objects.create(
         oportunidade=oportunidade, autor_id="sistema", tipo="encerramento",
-        descricao="Compra recuperada: pagamento aprovado.", evidencia=evidencia,
+        descricao=descricao, evidencia=evidencia,
     )
     return True
 

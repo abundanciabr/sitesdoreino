@@ -7,6 +7,17 @@ em 03/10/2026. Cadastro de aluno, pedido ou pagamento sozinho não cria um conta
 A lista, as fichas, o quadro e seus totais usam a origem registrada no quiz, inclusive
 quando essa captura está preservada no histórico e a origem atual mudou.
 
+## Todo contato é uma oportunidade de venda (03/10/2026)
+
+Alunos e testes de sandbox não são contatos. Cada contato do quiz abre uma
+oportunidade de venda do produto indicado pelo quiz. Os acontecimentos da pessoa
+movem essa oportunidade: responder o quiz abre a oferta, fazer o pedido leva a
+Negociação, pagamento aprovado fecha como venda feita, e recusa ou Pix vencido abrem
+uma recuperação. O cartão "Acontecimentos registrados" saiu do quadro e foi trocado
+por "Contatos sem oportunidade" e "Vendas feitas". Testes ficam fora da lista e dos
+totais, sem apagar nada. O comando `backfill_ofertas_quiz` abre a oferta de quem já
+tinha respondido antes.
+
 ## Levantamento inicial da base técnica (03/10/2026)
 
 - Serviço `leads`: **100 registros de pessoas**, 83 com telefone, 99 no site principal.

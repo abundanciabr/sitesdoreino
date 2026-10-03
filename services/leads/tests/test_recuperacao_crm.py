@@ -186,7 +186,7 @@ def test_crm_oculta_testes_explicitos_por_padrao_sem_perder_contagem(
     assert padrao.status_code == 200
     assert padrao.json()["total"] == 1
     assert padrao.json()["resumo"] == {
-        "contatos": 4, "eventos": 4, "testes": 3, "abertas": 1,
+        "contatos": 1, "sem_oportunidade": 0, "testes": 3, "abertas": 1,
         "atrasadas": 0, "ganhas": 0, "recuperadas": 0, "perdidas": 0,
     }
     assert padrao.json()["itens"][0]["registro_de_teste"] is False

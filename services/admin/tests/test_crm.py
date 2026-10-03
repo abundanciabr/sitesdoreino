@@ -38,10 +38,10 @@ def oportunidade(**mudancas):
 
 @respx.mock
 def test_crm_quadro_renderiza_dados_e_filtros():
-    rota = respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json={"itens": [oportunidade()], "resumo": {"contatos": 100, "eventos": 188, "abertas": 1, "atrasadas": 1, "ganhas": 0}, "pagina": 1, "total": 1, "tem_mais": False}))
+    rota = respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json={"itens": [oportunidade()], "resumo": {"contatos": 100, "sem_oportunidade": 3, "abertas": 1, "atrasadas": 1, "ganhas": 0}, "pagina": 1, "total": 1, "tem_mais": False}))
     r = dentro().get(reverse("crm"), {"q": "Ana", "etapa": "nova"})
     assert r.status_code == 200
-    assert "Ana" in r.content.decode() and "188" in r.content.decode()
+    assert "Ana" in r.content.decode() and "Contatos sem oportunidade" in r.content.decode()
     assert reverse("crm_oportunidade", args=[ID]) in r.content.decode()
     assert rota.calls.last.request.url.params["q"] == "Ana"
 

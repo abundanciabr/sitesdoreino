@@ -14,7 +14,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
-from .contatos import contatos_dos_quizzes
+from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
 
 router = Router()
 
@@ -265,7 +265,8 @@ def listar_leads(
     ultimo = TimelineEvent.objects.filter(lead=OuterRef("pk")).order_by(
         "-occurred_at", "-id"
     )
-    base = contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    base = (contatos_dos_quizzes().exclude(LEAD_DE_TESTE) if origem == "quiz"
+            else Lead.objects.all())
     consulta = base.annotate(
         ultimo_evento=Subquery(ultimo.values("event")[:1]),
         ultimo_evento_em=Subquery(ultimo.values("occurred_at")[:1]),

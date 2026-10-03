@@ -11,18 +11,19 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
-from .models import Oportunidade, RegistroHistoricoOportunidade, TimelineEvent
-from .contatos import contatos_dos_quizzes
+from .models import Oportunidade, RegistroHistoricoOportunidade
+from .contatos import LEAD_DE_TESTE as _LEAD_DE_TESTE, PALAVRA_DE_TESTE, contatos_dos_quizzes
 from .oportunidades import _como_oportunidade, _corpo, _escolha, _proximo_passo, _texto
 
 router = Router()
 
-_PALAVRA_DE_TESTE = r"(^|[^a-z0-9])(teste|test|sandbox)([^a-z0-9]|$)"
+_PALAVRA_DE_TESTE = PALAVRA_DE_TESTE
 _PALAVRA_DE_TESTE_PY = re.compile(_PALAVRA_DE_TESTE, re.IGNORECASE)
 _INDICADOR_DE_TESTE = (
     Q(lead__name__iregex=_PALAVRA_DE_TESTE)
     | Q(lead__source__icontains="sandbox")
     | Q(lead__email__iendswith="@example.com")
+    | Q(lead__email__iendswith="@exemplo.test")
 )
 
 
@@ -30,7 +31,7 @@ def _registro_de_teste(lead):
     return bool(
         _PALAVRA_DE_TESTE_PY.search(lead.name or "")
         or "sandbox" in (lead.source or "").lower()
-        or (lead.email or "").lower().endswith("@example.com")
+        or (lead.email or "").lower().endswith(("@example.com", "@exemplo.test"))
     )
 
 
@@ -75,19 +76,20 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
         raise HttpError(422, "testes deve ser ocultar, mostrar ou somente")
     leads = contatos_dos_quizzes()
     base = Oportunidade.objects.select_related("lead").filter(lead__in=leads)
-    eventos = TimelineEvent.objects.filter(lead__in=leads)
     if site_id:
         base = base.filter(lead__site_id=site_id)
         leads = leads.filter(site_id=site_id)
-        eventos = eventos.filter(lead__site_id=site_id)
     quantidade_de_testes = base.filter(_INDICADOR_DE_TESTE).count()
     if testes == "ocultar":
         base = base.exclude(_INDICADOR_DE_TESTE)
+        leads = leads.exclude(_LEAD_DE_TESTE)
     elif testes == "somente":
         base = base.filter(_INDICADOR_DE_TESTE)
+        leads = leads.filter(_LEAD_DE_TESTE)
     agora = timezone.now()
     resumo = {
-        "contatos": leads.count(), "eventos": eventos.count(),
+        "contatos": leads.count(),
+        "sem_oportunidade": leads.exclude(pk__in=base.values("lead_id")).count(),
         "testes": quantidade_de_testes,
         "abertas": base.filter(desfecho_encerrada_em__isnull=True).count(),
         "atrasadas": base.filter(desfecho_encerrada_em__isnull=True,

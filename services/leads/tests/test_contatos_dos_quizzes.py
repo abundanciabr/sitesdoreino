@@ -61,7 +61,7 @@ def test_crm_conta_so_quiz_e_nao_abre_oportunidade_de_cadastro_direto(client, au
     assert resposta.status_code == 200
     assert resposta.json()["total"] == 1
     assert resposta.json()["resumo"]["contatos"] == 1
-    assert resposta.json()["resumo"]["eventos"] == 1
+    assert resposta.json()["resumo"]["sem_oportunidade"] == 0
     assert resposta.json()["resumo"]["abertas"] == 1
     fora = Oportunidade.objects.get(lead__source="escola")
     assert client.get(f"/api/leads/crm/{fora.pk}", **autorizado).status_code == 404
