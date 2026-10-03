@@ -336,6 +336,62 @@ def test_gatilho_sandbox_somente_nomes_previstos(client: Client, loja: str,
     assert resposta.json()["status"] == ("pending" if primeiro_nome in {"APRO", "BLAC"} else "rejected")
 
 
+def test_consulta_durante_envio_nao_fecha_recusa_antes_do_clique(
+    client: Client, loja: str,
+) -> None:
+    intent = nova(client, loja)
+    observado = {}
+
+    def durante_envio(request: httpx.Request) -> httpx.Response:
+        consulta = client.get(
+            f"/api/pagamentos/intents/{intent.pk}",
+            HTTP_AUTHORIZATION=f"Bearer {loja}",
+        )
+        observado["status"] = consulta.json()["status"]
+        observado["state"] = PaymentAttempt.objects.get(intent=intent).state
+        observado["recusas"] = OutboxEvent.objects.filter(event="pagamento.recusado").count()
+        return httpx.Response(201, json={"data": {"payment": {"status": "pendente"}}})
+
+    with respx.mock(assert_all_called=False) as rede:
+        _appmax(rede, statuses=["cancelado"])
+        rede.get("https://api.sandboxappmax.com.br/v1/orders/3531").respond(
+            200, json={"data": {"order": {
+                "id": 3531, "customer": {"id": 42}, "status": "cancelado",
+                "total_paid": 1990, "amounts": {"sub_total": 1990},
+            }}}
+        )
+        rede.post("https://api.sandboxappmax.com.br/v1/payments/credit-card").mock(
+            side_effect=durante_envio
+        )
+        resposta = primeira(client, loja, intent, holder_name="APRO SANDBOX")
+    assert observado["state"] == "sending", observado
+    assert observado["status"] != "rejected", observado
+    assert observado["recusas"] == 0
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["card"]["segunda_opcao_ate"]
+    assert not OutboxEvent.objects.filter(event="pagamento.recusado").exists()
+
+
+def test_consulta_recupera_envio_orfao_depois_do_intervalo(client: Client, loja: str) -> None:
+    intent = nova(client, loja)
+    tentativa = PaymentAttempt.objects.create(
+        intent=intent, platform_site_id=SITE, provider="appmax",
+        customer_id="42", external_order_id="3531", request_hash="envio-orfao",
+        amount_cents=1990, effective_amount_cents=1990, state="sending",
+    )
+    PaymentAttempt.objects.filter(pk=tentativa.pk).update(
+        updated_at=timezone.now() - timedelta(minutes=6)
+    )
+    with respx.mock(assert_all_called=False) as rede:
+        _appmax(rede, statuses=["aprovado"])
+        resposta = client.get(
+            f"/api/pagamentos/intents/{intent.pk}",
+            HTTP_AUTHORIZATION=f"Bearer {loja}",
+        )
+    assert resposta.json()["status"] == "approved"
+    assert OutboxEvent.objects.filter(event="pagamento.aprovado").count() == 1
+
+
 def test_email_de_prova_janela_expira(client: Client, loja: str, settings: Any) -> None:
     settings.PROVA_SEGUNDA_EMPRESA_EMAILS = {"prova@exemplo.com"}
     intent = nova(client, loja, "prova@exemplo.com")

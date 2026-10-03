@@ -481,6 +481,13 @@ def reconciliar_intent_card(intent: Intent) -> Intent:
         .order_by("-created_at")
         .first()
     )
+    # A consulta da página não fecha o envio que o clique ainda está concluindo.
+    # Um sending órfão continua recuperável no intervalo de cinco minutos já
+    # usado pela supervisão; pending e reconciliation_required consultam agora.
+    if (tentativa is not None and tentativa.state == "sending"
+        and tentativa.updated_at > timezone.now() - timedelta(minutes=5)):
+        intent.refresh_from_db()
+        return intent
     if tentativa is not None and tentativa.provider == "mercadopago":
         return _reconciliar_mp(intent, tentativa)
     if tentativa is None or not tentativa.external_order_id:
