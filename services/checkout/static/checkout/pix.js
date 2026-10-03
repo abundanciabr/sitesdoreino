@@ -5,6 +5,8 @@ function pixIsland() {
   return {
     orderId: JSON.parse(document.getElementById("order-id").textContent),
     qr: JSON.parse(document.getElementById("pix-data").textContent) || {},
+    pixTrocado: JSON.parse(document.getElementById("pix-trocado").textContent),
+    codigoAntigo: "",
     status: "aguardando_pagamento",
 
     async init() {
@@ -15,6 +17,11 @@ function pixIsland() {
       try {
         const pedido = await api.get(`/pedidos/${this.orderId}`);
         this.status = pedido.status; // [INV-P7] única fonte de status
+        if (pedido.pix?.qr_code && pedido.pix.qr_code !== this.qr.qr_code) {
+          this.codigoAntigo = this.qr.qr_code || "";
+          this.qr = pedido.pix;
+          this.pixTrocado = true;
+        }
       } catch (e) {
         // rede falhou nesta rodada; tenta de novo no próximo ciclo
       }

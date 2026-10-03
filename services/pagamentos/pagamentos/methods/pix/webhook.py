@@ -20,8 +20,13 @@ from ninja.errors import HttpError
 
 from pagamentos.core.gateway import FalhaNoProvedor, consultar_status_do_pagamento
 from pagamentos.core.ledger import transicionar_e_emitir
-from pagamentos.core.models import Intent
+from pagamentos.core.models import Intent, PaymentAttempt
 from pagamentos.core.webhook_signature import assinatura_valida
+from pagamentos.methods.pix.service import (
+    aplicar_status_mp,
+    conferir_consulta_mp,
+    _sandbox,
+)
 
 _EVENTO_POR_STATUS = {
     "approved": "pagamento.aprovado",
@@ -45,14 +50,45 @@ def processar_webhook_pix(request: HttpRequest) -> dict[str, Any]:
     if not mp_payment_id:
         return {"ignorado": True}  # inalcançável com assinatura válida; defensivo
 
-    intent = Intent.objects.filter(
-        provider_payment_id=mp_payment_id, method="pix"
-    ).first()
+    tentativa = (
+        PaymentAttempt.objects.filter(
+            provider="mercadopago",
+            provider_reference_id=mp_payment_id,
+            intent__method="pix",
+        )
+        .select_related("intent")
+        .first()
+    )
+    intent = (
+        tentativa.intent
+        if tentativa is not None
+        else Intent.objects.filter(
+            provider_payment_id=mp_payment_id, method="pix", tentativas__isnull=True
+        ).first()
+    )
     if intent is None:
         # Antes de consultar o MP: id desconhecido não gasta chamada de API
         # (e um atacante com assinatura velha não vira gerador de tráfego).
         return {"ignorado": True}
 
+    if tentativa is not None:
+        try:
+            consulta = consultar_status_do_pagamento(payment_id=mp_payment_id)
+            conferir_consulta_mp(tentativa, consulta)
+        except FalhaNoProvedor as exc:
+            raise HttpError(
+                502, "nao foi possivel confirmar o Pix junto ao provedor"
+            ) from exc
+        status_alvo, reason_code = consulta.status, consulta.reason_code
+        if (
+            _sandbox()
+            and tentativa.state == "pending"
+            and str(intent.customer.get("name") or "").strip().upper()
+            == "RISCO TARDIO SANDBOX"
+        ):
+            status_alvo, reason_code = "rejected", "cc_rejected_high_risk"
+        aplicar_status_mp(tentativa, status_alvo, reason_code)
+        return {"recebido": True}
     status_alvo, reason_code = _status_confiavel(request, mp_payment_id)
     evento = _EVENTO_POR_STATUS.get(status_alvo)
     if evento is None:

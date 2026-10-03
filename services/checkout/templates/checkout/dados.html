@@ -54,17 +54,17 @@
 
     <form class="card" @submit.prevent="finalizar" x-show="!carregando">
       <label for="name">Nome completo</label>
-      <input id="name" type="text" x-model="customer.name" required>
+      <input id="name" type="text" autocomplete="name" x-model="customer.name" required>
       <label for="email">E-mail</label>
-      <input id="email" type="email" x-model="customer.email" required>
+      <input id="email" type="email" autocomplete="email" x-model="customer.email" required>
       <label for="phone">Telefone</label>
-      <input id="phone" type="tel" x-model="customer.phone" :required="appmaxPix && method === 'pix'">
-      <template x-if="appmaxPix && method === 'pix'">
-        <div>
-          <label for="cpf">CPF</label>
-          <input id="cpf" type="text" inputmode="numeric" autocomplete="off" x-model="customer.cpf" required>
-        </div>
-      </template>
+      <input id="phone" type="tel" autocomplete="tel" x-model="customer.phone" required>
+      <label for="cpf">CPF</label>
+      <div x-show="cpfMascarado && usarCpfAnterior && !trocandoCpf">
+        <span x-text="cpfMascarado"></span>
+        <button type="button" @click="trocandoCpf = true; usarCpfAnterior = false">Usar outro CPF</button>
+      </div>
+      <input id="cpf" type="text" inputmode="numeric" autocomplete="off" x-model="customer.cpf" :required="!usarCpfAnterior" x-show="!cpfMascarado || trocandoCpf">
 
       <label>Forma de pagamento</label>
       <div class="metodo">

@@ -23,7 +23,7 @@ def test_a_intent_leva_o_product_id_do_item_principal(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [],
             "method": "pix",
         },
@@ -44,7 +44,7 @@ def test_com_bump_marcado_o_product_id_continua_sendo_o_do_principal(
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "pix",
         },
@@ -64,7 +64,7 @@ def test_o_checkout_session_id_continua_na_metadata_junto_do_produto(
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [],
             "method": "card",
         },
@@ -91,7 +91,7 @@ def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_b['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [],
             "method": "card",
         },

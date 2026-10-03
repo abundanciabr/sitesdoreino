@@ -136,6 +136,7 @@ from apps.agentes.views import (
     robo_da_pessoa,
     robo_no_quiz,
     robos_admin,
+    mapa_de_conhecimento,
 )
 from apps.core.equipe_acesso import (
     conectar_meu_celular,
@@ -158,6 +159,7 @@ from apps.core.contatos import contato, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.pagamentos import pagamentos, pagamentos_devolver
 from apps.core.gestao_do_placar import gestao_do_placar
 from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.talentos import talentos
@@ -233,6 +235,8 @@ urlpatterns = [
     path("crm/", crm, name="crm"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
+    path("pagamentos/", pagamentos, name="pagamentos"),
+    path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
@@ -341,6 +345,7 @@ urlpatterns = [
     ),
     path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
     path("robos/", robos_admin, name="robos_admin"),
+    path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),

@@ -25,6 +25,7 @@ from pagamentos.core.models import (
     ESTADOS_EM_ABERTO,
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
+    OutboxEvent,
     PaymentAttempt,
     PaymentOperation,
 )
@@ -163,7 +164,8 @@ def executar_tentativa(
             motivo=resultado.motivo,
             resultado=resultado,
         )
-        if registrar_resultado is not None and finalizada.fechada_agora:
+        if (registrar_resultado is not None and finalizada.fechada_agora
+                and finalizada.state != "approved_duplicate"):
             registrar_resultado(finalizada, resultado)
     return finalizada
 
@@ -189,8 +191,11 @@ def fechar_reconciliacao(
         else "rejected" if resultado.aprovada is False else "pending"
     )
     with transaction.atomic():
+        Intent.objects.select_for_update().get(pk=tentativa.intent_id)
         travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-        if travada.state not in ESTADOS_EM_ABERTO:
+        if travada.state not in ESTADOS_EM_ABERTO and not (
+            travada.state == "rejected" and resultado.aprovada is True
+        ):
             tentativa.refresh_from_db()
             travada.fechada_agora = False
             return travada
@@ -200,7 +205,8 @@ def fechar_reconciliacao(
             motivo=resultado.motivo,
             resultado=resultado,
         )
-        if registrar_resultado is not None and finalizada.fechada_agora:
+        if (registrar_resultado is not None and finalizada.fechada_agora
+                and finalizada.state != "approved_duplicate"):
             registrar_resultado(finalizada, resultado)
         return finalizada
 
@@ -344,12 +350,17 @@ def _fechar(
     motivo: str,
     resultado: ResultadoDoProvedor | None = None,
 ) -> PaymentAttempt:
+    intent = Intent.objects.select_for_update().get(pk=tentativa.intent_id)
     atual = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-    if atual.state not in ESTADOS_EM_ABERTO:
+    duplicada = state == "approved" and _aprovacao_duplicada(intent, atual, resultado)
+    if atual.state not in ESTADOS_EM_ABERTO and not (
+        atual.state == "rejected" and state == "approved"
+        and resultado is not None and resultado.aprovada is True
+    ):
         atual.fechada_agora = False
         return atual
     tentativa = atual
-    tentativa.state = state
+    tentativa.state = "approved_duplicate" if duplicada else state
     tentativa.reason = _sanitizar_motivo(motivo)
     campos = ["state", "reason", "updated_at"]
     if resultado is not None:
@@ -359,6 +370,10 @@ def _fechar(
             tentativa.external_order_id = resultado.external_order_id
             campos.append("external_order_id")
     tentativa.save(update_fields=campos)
+    if duplicada:
+        from pagamentos.core.ledger import agendar_estorno_duplicada
+
+        agendar_estorno_duplicada(tentativa.pk)
     if tentativa.provider == "mercadopago":
         estado_operacao = (
             "reconciliation_required" if state == "reconciliation_required"
@@ -369,6 +384,31 @@ def _fechar(
         ).update(state=estado_operacao, provider_resource_id=tentativa.provider_reference_id)
     tentativa.fechada_agora = True
     return tentativa
+
+
+def _aprovacao_duplicada(
+    intent: Intent, tentativa: PaymentAttempt, resultado: ResultadoDoProvedor | None
+) -> bool:
+    if resultado is None or not resultado.provider_reference_id:
+        return False
+    outra_aprovada = PaymentAttempt.objects.filter(
+        intent=intent, state="approved"
+    ).exclude(pk=tentativa.pk).exists()
+    if outra_aprovada:
+        return True
+    aprovacoes_v2 = OutboxEvent.objects.filter(
+        event="pagamento.aprovado", version=2,
+        payload__payment_id=str(intent.pk),
+    )
+    if aprovacoes_v2.exists():
+        return not aprovacoes_v2.filter(
+            payload__provider=tentativa.provider,
+            payload__provider_reference_id=resultado.provider_reference_id,
+        ).exists()
+    if intent.status == "approved" and intent.provider_payment_id:
+        return intent.provider_payment_id != resultado.provider_reference_id
+    ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+    return ultima is not None and ultima.pk != tentativa.pk
 
 
 def fechar_tentativa_sem_fato(tentativa: PaymentAttempt, motivo: str) -> tuple[PaymentAttempt, bool]:

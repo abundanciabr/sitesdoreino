@@ -465,9 +465,13 @@ def op_sonda_pix(ctx: Contexto, valores: dict) -> int:
 
 
 def op_appmax_sandbox_tela(ctx: Contexto, valores: dict) -> int:
-    selecao = [f"--cartao={valores.get('cartao') or ''}", f"--perfil={valores.get('perfil') or ''}"]
+    selecao = [f"--cartao={valores.get('cartao') or ''}", f"--perfil={valores.get('perfil') or ''}", f"--cenario={valores.get('cenario') or ''}"]
     env = ambiente_do_filho(ctx)
     local = node_local(ctx)
+    if valores.get("cenario"):
+        comando = comando_do_navegador(ctx, local, "appmax_sandbox.js", ["--etapa=cenario", *selecao])
+        codigo, _ = ctx.processo(comando, env=env, timeout=20 * 60)
+        return codigo
     with tempfile.TemporaryDirectory(prefix="operar-tela-") as pasta:
         dados = Path(pasta)
         base = str(dados) if local else "/dados"
@@ -502,6 +506,22 @@ def op_appmax_sandbox_tela(ctx: Contexto, valores: dict) -> int:
         if resumo.is_file():
             print(resumo.read_text(encoding="utf-8"), end="")
         return codigo
+
+
+def op_rotas_pagamento(ctx: Contexto, valores: dict) -> int:
+    script = ctx.raiz / "infra" / "rotas-de-pagamento.py"
+    argumentos = []
+    for chave in ("cartao_mp", "pix_appmax", "prova_emails"):
+        if valores.get(chave) is not None:
+            argumentos += ["--" + chave.replace("_", "-"), valores[chave]]
+    for chave in ("limpar_prova", "desativar", "executar"):
+        if valores.get(chave):
+            argumentos.append("--" + chave.replace("_", "-"))
+    codigo, saida = ctx.processo(
+        [sys.executable, str(script), *argumentos], env=ambiente_do_filho(ctx),
+        timeout=5 * 60,
+    )
+    return 1 if codigo == 0 and parou_por_seguranca(saida) else codigo
 
 
 # ---------------------------------------------------------------------------
@@ -670,6 +690,7 @@ OPERACOES: dict[str, Operacao] = {
                 Param("cartao", "4 últimos dígitos de um cartão da matriz; vazio compra todos",
                       regex=r"(?:[0-9]{4})?"),
                 Param("perfil", "desktop ou celular; vazio compra os dois", escolhas=("", "desktop", "celular")),
+                Param("cenario", "cenário de roteamento; vazio usa a matriz", escolhas=("", "risco-mp-aprova", "risco-mp-recusa", "risco-pagina-fechada", "pix-risco-appmax", "pix-risco-tardio")),
             ),
             prazo=60 * 60,
         ),
@@ -768,6 +789,19 @@ OPERACOES: dict[str, Operacao] = {
         _script(
             "semear-quiz", "publica o Crivo (quiz) de um site", "idempotente, aditivo",
             (Param("host", HOST_DO_SITE, env="HOST_QUIZ", padrao="meshcraft.top", regex=REGEX_HOST),),
+        ),
+        Operacao(
+            "rotas-pagamento",
+            "mostra ou altera as listas de segunda empresa nos env da aplicação",
+            "só altera com --executar; --desativar aplica diretamente",
+            op_rotas_pagamento,
+            (Param("cartao_mp", "UUIDs dos sites separados por vírgula"),
+             Param("pix_appmax", "UUIDs dos sites separados por vírgula"),
+             Param("prova_emails", "e-mails separados por vírgula"),
+             Param("limpar_prova", "esvazia só e-mails de prova", booleano=True),
+             Param("desativar", "esvazia as três listas e aplica", booleano=True),
+             Param("executar", "aplica as alterações", booleano=True)),
+            prazo=5 * 60,
         ),
         Operacao(
             "sonda-pix-publica",

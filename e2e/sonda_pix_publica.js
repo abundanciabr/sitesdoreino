@@ -244,16 +244,18 @@ async function sonda(navegador, saida) {
 
   var resposta = pagina.waitForResponse(function (r) {
     return r.request().method() === "POST" && /\/sessoes\/[^/]+\/pedido$/.test(r.url());
+  }).then(async function (r) {
+    return { ok: r.ok(), status: r.status(), pedido: r.ok() ? await r.json().catch(function () { return null; }) : null };
   });
   saida.pedidos_criados = "incerto";
   await pagina.click("button.cta");
   var r = await resposta;
-  saida.pedidos_criados = r.ok() ? 1 : 0;
-  saida.http_do_pedido = r.status();
-  caso("o checkout aceitou o pedido Pix", r.ok(), "HTTP " + r.status());
-  if (!r.ok()) return;
+  saida.pedidos_criados = r.ok ? 1 : 0;
+  saida.http_do_pedido = r.status;
+  caso("o checkout aceitou o pedido Pix", r.ok, "HTTP " + r.status);
+  if (!r.ok) return;
 
-  var pedido = (await r.json()) || {};
+  var pedido = r.pedido || {};
   saida.pedido_ref = pedido.order_id ? referencia(pedido.order_id) : null;
   var naTelaDoPix = await pagina.waitForURL(/\/checkout\/pedido\/[^/]+\/pix\/$/).then(
     function () { return true; },
@@ -261,6 +263,10 @@ async function sonda(navegador, saida) {
   );
   caso("o comprador chegou à tela do Pix", naTelaDoPix, "o pedido foi aceito, mas a página não abriu a tela do Pix");
   if (!naTelaDoPix) return;
+  if (!saida.pedido_ref) {
+    var idNaPagina = new URL(pagina.url()).pathname.match(/\/checkout\/pedido\/([^/]+)\/pix\/$/);
+    saida.pedido_ref = idNaPagina ? referencia(idNaPagina[1]) : null;
+  }
   await pagina
     .waitForFunction(function () {
       var img = document.querySelector("img.qr");

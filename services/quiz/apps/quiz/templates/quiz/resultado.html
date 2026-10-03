@@ -38,7 +38,7 @@
     <button class="botao" type="submit">{{ banda.botao_rotulo }}</button>
   </form>
   {% elif banda.botao_destino %}
-  {% if saida_rastreavel and banda.botao_destino|slice:':8' == 'https://' %}
+  {% if saida_com_formulario %}
   <form method="post" action="{% url 'quiz-sair' quiz.slug %}">
     {% csrf_token %}<input type="hidden" name="resposta" value="{{ submissao.id }}">
     {% if quiz.directed %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">{% endif %}

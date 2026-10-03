@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
+from uuid import UUID
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from pagamentos.core import gateway
+from pagamentos.core.ledger import emitir_reversao_confirmada
 from pagamentos.core.instalacoes_appmax import instalacao_do_inbox
 from pagamentos.core.models import (
     ESTADOS_EM_ABERTO,
@@ -16,15 +20,25 @@ from pagamentos.core.models import (
     AppmaxWebhookInbox,
     InstalacaoAppmax,
     OutboxEvent,
+    Intent,
     PaymentAttempt,
+    PaymentOperation,
     emitir,
     relay_outbox,
 )
 from pagamentos.methods.card.service import (
     IntentNaoConfirmavel,
     reconciliar_intent_card,
+    registrar_aprovacao_tardia_appmax as aprovar_card_appmax,
+    registrar_risco_appmax_sem_janela,
 )
 from pagamentos.methods.pix.appmax import reconciliar as reconciliar_pix_appmax
+from pagamentos.methods.pix.service import (
+    reconciliar_intent_pix,
+    trocar_pix_para_appmax,
+    registrar_aprovacao_tardia_appmax as aprovar_pix_appmax,
+)
+from pagamentos.core.tentativas import fechar_segundas_opcoes_vencidas
 
 _INTERVALO = timedelta(minutes=5)
 _LIMITE_FALHAS = 3
@@ -107,9 +121,15 @@ def _validar_identidade_pos_aprovacao(
     tentativa: PaymentAttempt,
     pedido: object,
 ) -> str:
+    return _validar_pedido_appmax(aviso.external_order_id, tentativa, pedido)
+
+
+def _validar_pedido_appmax(
+    referencia: str, tentativa: PaymentAttempt, pedido: object
+) -> str:
     if not isinstance(pedido, dict):
         raise _IdentidadePosAprovacaoInvalida
-    if str(pedido.get("id")) != aviso.external_order_id:
+    if str(pedido.get("id")) != referencia:
         raise _IdentidadePosAprovacaoInvalida
     try:
         cliente = pedido["customer"]
@@ -180,28 +200,82 @@ def _consultar_pos_aprovacao(
 
 
 def _emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> None:
-    motivo = _MOTIVO_REVERSAO[codigo]
-    payload = {
-        "platform_site_id": tentativa.platform_site_id,
-        "provider": "appmax",
-        "provider_reference_id": tentativa.provider_reference_id,
-        "motivo": motivo,
-        # O checkout acha o pedido por aqui e o marca como reembolsado.
-        "order_id": tentativa.intent.order_id,
-    }
-    # A tentativa é a identidade local que todas as entregas deste pedido
-    # compartilham. Travá-la antes da leitura da outbox serializa reentregas
-    # de avisos diferentes sem alterar o ledger financeiro.
-    PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-    if OutboxEvent.objects.filter(
-        event="pagamento.reversao_confirmada",
-        version=2,
-        payload__platform_site_id=payload["platform_site_id"],
-        payload__provider=payload["provider"],
-        payload__provider_reference_id=payload["provider_reference_id"],
-    ).exists():
-        return
-    emitir("pagamento.reversao_confirmada", payload, version=2)
+    emitir_reversao_confirmada(tentativa, codigo)
+
+
+def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
+    """GET do provedor confirma o estorno; POST jamais é repetido aqui."""
+    if (tentativa.platform_site_id != tentativa.intent.site_id or
+            not tentativa.provider_reference_id):
+        return False
+    try:
+        if tentativa.provider == "appmax":
+            referencia = tentativa.provider_reference_id
+            if (not referencia.isdecimal() or int(referencia) <= 0 or
+                    tentativa.external_order_id != referencia):
+                return False
+            sessao = gateway.nova_sessao_appmax()
+            sessao.preparar()
+            pedido = sessao.consultar_pedido(order_id=int(referencia))
+            codigo = _validar_pedido_appmax(referencia, tentativa, pedido)
+            confirmado = codigo == "appmax_estornado"
+        elif tentativa.provider == "mercadopago":
+            consulta = gateway.consultar_status_do_pagamento(
+                payment_id=tentativa.provider_reference_id
+            )
+            principal = Decimal(tentativa.amount_cents) / Decimal(100)
+            pago = Decimal(tentativa.effective_amount_cents) / Decimal(100)
+            operacao_nova = PaymentOperation.objects.filter(
+                attempt=tentativa, operation_type="payment"
+            ).exists()
+            replica_da_principal = (
+                tentativa.state == "approved_duplicate" and bool(tentativa.external_order_id)
+            )
+            if replica_da_principal:
+                try:
+                    operacao_principal = UUID(tentativa.external_order_id)
+                except ValueError:
+                    return False
+                if not PaymentAttempt.objects.filter(
+                    intent=tentativa.intent, provider="mercadopago", state="approved",
+                    operation_id=operacao_principal,
+                ).exclude(pk=tentativa.pk).exists():
+                    return False
+            referencia_esperada = (
+                str(operacao_principal)
+                if replica_da_principal
+                else str(tentativa.operation_id) if operacao_nova else tentativa.intent.order_id
+            )
+            confirmado = (
+                consulta.payment_id == tentativa.provider_reference_id
+                and consulta.status == "refunded"
+                and consulta.external_reference == referencia_esperada
+                and consulta.currency_id == tentativa.intent.currency
+                and consulta.transaction_amount == principal
+                and (consulta.total_paid_amount is None or consulta.total_paid_amount == pago)
+                and (tentativa.intent.method != "card" or
+                     consulta.installments == tentativa.installments)
+            )
+            codigo = "refunded"
+        else:
+            return False
+    except (gateway.FalhaNoProvedor, _IdentidadePosAprovacaoInvalida,
+            _StatusPosAprovacaoDesconhecido, ValueError, TypeError):
+        return False
+    if not confirmado:
+        return False
+    with transaction.atomic():
+        travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
+        if travada.estorno_estado not in {"solicitado", "ambiguo"}:
+            return False
+        if travada.state == "approved":
+            emitir_reversao_confirmada(travada, codigo)
+        travada.estorno_estado = "confirmado"
+        travada.save(update_fields=["estorno_estado", "updated_at"])
+        PaymentOperation.objects.filter(
+            attempt=travada, operation_type="refund"
+        ).update(state="completed", updated_at=timezone.now())
+    return True
 
 
 def _processar_aviso_pos_aprovacao(
@@ -247,7 +321,15 @@ def _processar_aviso(aviso_id: int) -> bool:
             _registrar_falha(aviso, "pedido_sem_vinculo_unico", definitiva=True)
             return False
         tentativa = tentativas[0]
-        if tentativa.state not in ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO:
+        duplicada_em_estorno = (
+            tentativa.state == "approved_duplicate"
+            and aviso.event == "order_refund"
+            and tentativa.estorno_estado in {"solicitado", "ambiguo", "confirmado"}
+        )
+        aprovacao_tardia = tentativa.state == "rejected" and aviso.event == "order_approved"
+        if tentativa.state not in ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO and not (
+            duplicada_em_estorno or aprovacao_tardia
+        ):
             _registrar_falha(aviso, "tentativa_nao_ativa", definitiva=True)
             return False
         instalacao = instalacao_do_inbox(aviso.app_id)
@@ -259,6 +341,35 @@ def _processar_aviso(aviso_id: int) -> bool:
         ):
             _registrar_falha(aviso, "appmax_identidade_posterior_invalida", definitiva=True)
             return False
+        if duplicada_em_estorno:
+            if tentativa.estorno_estado != "confirmado" and not _consultar_estorno(tentativa):
+                aviso.next_retry_at = timezone.now() + _INTERVALO
+                aviso.save(update_fields=["next_retry_at"])
+                return False
+            aviso.processed_at = timezone.now()
+            aviso.next_retry_at = None
+            aviso.save(update_fields=["processed_at", "next_retry_at"])
+            return True
+        if aprovacao_tardia:
+            try:
+                codigo = _consultar_pos_aprovacao(aviso, tentativa)
+            except (_IdentidadePosAprovacaoInvalida, _StatusPosAprovacaoDesconhecido):
+                _registrar_falha(aviso, "appmax_aprovacao_tardia_invalida", definitiva=True)
+                return False
+            except (gateway.FalhaNoProvedor, ValueError, TypeError):
+                _registrar_falha(aviso, "appmax_consulta_tardia_indisponivel", definitiva=False)
+                return False
+            if codigo:
+                _registrar_falha(aviso, "appmax_aprovacao_tardia_nao_confirmada", definitiva=False)
+                return False
+            if tentativa.intent.method == "pix":
+                aprovar_pix_appmax(tentativa)
+            else:
+                aprovar_card_appmax(tentativa)
+            aviso.processed_at = timezone.now()
+            aviso.next_retry_at = None
+            aviso.save(update_fields=["processed_at", "next_retry_at"])
+            return True
         if tentativa.state == "approved":
             return _processar_aviso_pos_aprovacao(aviso, tentativa)
         try:
@@ -280,6 +391,22 @@ def _processar_aviso(aviso_id: int) -> bool:
 
 def _reconciliar_tentativa(tentativa_id: int) -> bool:
     tentativa = PaymentAttempt.objects.select_related("intent").get(pk=tentativa_id)
+    if tentativa.provider == "mercadopago":
+        try:
+            if tentativa.intent.method == "pix":
+                reconciliar_intent_pix(tentativa.intent)
+            else:
+                reconciliar_intent_card(tentativa.intent)
+        except (gateway.FalhaNoProvedor, IntentNaoConfirmavel, ValueError):
+            return False
+        tentativa.refresh_from_db()
+        if tentativa.intent.method == "pix" and tentativa.state == "pending":
+            # Move o Pix ainda pagável para o fim da fila: todos os QR abertos
+            # recebem uma consulta, inclusive os criados depois dos 50 mais velhos.
+            PaymentAttempt.objects.filter(pk=tentativa.pk, state="pending").update(
+                updated_at=timezone.now()
+            )
+        return tentativa.state in {"approved", "rejected"}
     if not tentativa.external_order_id:
         PaymentAttempt.objects.filter(pk=tentativa_id).update(
             reason="sem_id_do_pedido_conferir_operacoes", updated_at=timezone.now()
@@ -327,8 +454,65 @@ def medir_pendencias() -> dict[str, int]:
     }
 
 
+def _resgatar_intents_sem_tentativa(*, limite: int, agora: object) -> tuple[int, int]:
+    """Recupera a queda entre uma recusa de risco e o passo seguinte."""
+    candidatas = list(
+        PaymentAttempt.objects.filter(state="rejected", intent__status="pending")
+        .filter(
+            Q(provider="appmax", intent__method="card",
+              reason="recusado_por_risco", updated_at__lte=agora - _INTERVALO)
+            | (Q(provider="mercadopago", intent__method="pix",
+                 intent__site_id__in=settings.APPMAX_PIX_FALLBACK_SITES)
+               & (Q(reason__endswith="high_risk") | Q(reason__endswith="blacklist")))
+        )
+        .order_by("updated_at", "id")
+        .values_list("intent_id", flat=True)[:limite]
+    )
+    riscos_finais = 0
+    pix_para_trocar: list[object] = []
+    for pk in candidatas:
+        with transaction.atomic():
+            intent = Intent.objects.select_for_update().get(pk=pk)
+            if intent.status != "pending" or PaymentAttempt.objects.filter(
+                intent=intent, state__in=ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO
+            ).exists():
+                continue
+            ultima = (PaymentAttempt.objects.filter(intent=intent)
+                      .exclude(state="approved_duplicate")
+                      .order_by("-created_at", "-pk").first())
+            if ultima is None or ultima.state != "rejected":
+                continue
+            if (intent.method == "card" and ultima.provider == "appmax"
+                and ultima.reason == "recusado_por_risco"
+                and intent.segunda_opcao_ate is None
+                and ultima.updated_at <= agora - _INTERVALO):
+                registrar_risco_appmax_sem_janela(ultima)
+                riscos_finais += 1
+            elif (intent.method == "pix" and ultima.provider == "mercadopago"
+                  and gateway.recusa_antifraude_mp("rejected", ultima.reason)
+                  and intent.site_id in settings.APPMAX_PIX_FALLBACK_SITES
+                  and not PaymentAttempt.objects.filter(
+                      intent=intent, provider="appmax"
+                  ).exists()):
+                pix_para_trocar.append(pk)
+    trocas_pix = 0
+    for pk in pix_para_trocar:
+        intent = Intent.objects.get(pk=pk)
+        try:
+            antes = PaymentAttempt.objects.filter(intent=intent, provider="appmax").exists()
+            trocar_pix_para_appmax(intent)
+            if not antes and PaymentAttempt.objects.filter(
+                intent=intent, provider="appmax"
+            ).exists():
+                trocas_pix += 1
+        except (gateway.FalhaNoProvedor, ValueError):
+            continue
+    return riscos_finais, trocas_pix
+
+
 def processar_rodada(*, limite: int = 50) -> dict[str, int]:
     agora = timezone.now()
+    fechar_segundas_opcoes_vencidas()
     avisos = list(
         AppmaxWebhookInbox.objects.filter(
             processed_at__isnull=True, dead_lettered_at__isnull=True
@@ -340,9 +524,14 @@ def processar_rodada(*, limite: int = 50) -> dict[str, int]:
     processados = sum(_processar_aviso(aviso_id) for aviso_id in avisos)
     tentativas = list(
         PaymentAttempt.objects.filter(
-            provider="appmax",
-            state__in=ESTADOS_EM_ABERTO,
-            updated_at__lte=agora - _INTERVALO,
+            Q(provider="appmax", state__in=ESTADOS_EM_ABERTO,
+              updated_at__lte=agora - _INTERVALO)
+            | Q(provider="mercadopago", state__in=ESTADOS_EM_ABERTO,
+                intent__method="card", reason="in_process")
+            | Q(provider="mercadopago", state__in=ESTADOS_EM_ABERTO,
+                intent__method="card", updated_at__lte=agora - _INTERVALO)
+            | Q(provider="mercadopago", state__in=ESTADOS_EM_ABERTO,
+                intent__method="pix")
         )
         .order_by("updated_at", "id")
         .values_list("id", flat=True)[:limite]
@@ -350,10 +539,23 @@ def processar_rodada(*, limite: int = 50) -> dict[str, int]:
     reconciliadas = sum(
         _reconciliar_tentativa(tentativa_id) for tentativa_id in tentativas
     )
+    riscos_finais, trocas_pix = _resgatar_intents_sem_tentativa(limite=limite, agora=agora)
+    estornos = list(
+        PaymentAttempt.objects.filter(estorno_estado__in=["solicitado", "ambiguo"])
+        .order_by("estorno_solicitado_em", "id")
+        .values_list("id", flat=True)[:limite]
+    )
+    estornos_confirmados = sum(
+        _consultar_estorno(PaymentAttempt.objects.select_related("intent").get(pk=tentativa_id))
+        for tentativa_id in estornos
+    )
     publicados = relay_outbox()
     return {
         "inbox_processada": processados,
         "reconciliadas": reconciliadas,
+        "riscos_finais": riscos_finais,
+        "trocas_pix_recuperadas": trocas_pix,
+        "estornos_confirmados": estornos_confirmados,
         "outbox_publicada": publicados,
         **medir_pendencias(),
     }

@@ -69,6 +69,7 @@ def pix(request, order_id: uuid.UUID):
         {
             "order_id": str(pedido.id),
             "pix_data": pedido.pix,
+            "pix_trocado": bool((pedido.pix or {}).get("trocado_em")),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
             "static_base": _static_base(request),

@@ -146,7 +146,7 @@ def test_o_despachante_recusa_os_canais_que_ainda_nao_sabe_entregar():
     passo = inscricao.jornada_versao.passos.get()
 
     with transaction.atomic():
-        for canal in ("email", "whatsapp"):
+        for canal in ("email",):
             with pytest.raises(motor.CanalNaoSuportado, match=canal):
                 despacho.despachar(inscricao, passo, canal)
     assert not OutboxEvent.objects.exists()

@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Instala o app Meshcraft na loja sandbox e valida o merchant sem expor segredos."""
+"""Instala o app Meshcraft em sandbox ou produção sem expor segredos."""
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import urllib.error
@@ -13,12 +14,30 @@ from pathlib import Path
 
 ENV = Path("/opt/plataforma/env/pagamentos.env")
 ROTEIRO_MERCHANT = Path("/tmp/appmax.sh")
-AUTH = "https://auth.sandboxappmax.com.br/oauth2/token"
-API = "https://api.sandboxappmax.com.br"
-LOJA = "meshcraft.top"
-CALLBACK = f"https://{LOJA}/api/pagamentos/appmax/retorno"
-APP_ID_NUMERICO = "1888"
+AUTH_SANDBOX = "https://auth.sandboxappmax.com.br/oauth2/token"
+API_SANDBOX = "https://api.sandboxappmax.com.br"
+AUTH_PRODUCAO = "https://auth.appmax.com.br/oauth2/token"
+API_PRODUCAO = "https://api.appmax.com.br"
+LOJA_PADRAO = "meshcraft.top"
+AUTH = AUTH_SANDBOX  # compatibilidade com chamadas locais do instalador sandbox
+CALLBACK = f"https://{LOJA_PADRAO}/api/pagamentos/appmax/retorno"
 SITE_INTERNO = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
+
+
+def host() -> str:
+    valor = os.environ.get("APPMAX_LOJA_HOST", LOJA_PADRAO).strip().lower()
+    if not valor or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789.-" for c in valor):
+        raise FalhaDeInstalacao("APPMAX_LOJA_HOST inválido")
+    return valor
+
+
+def endpoints() -> tuple[str, str, str]:
+    auth, api = valor_do_env("APPMAX_AUTH_URL"), valor_do_env("APPMAX_API_URL")
+    if (auth, api) == (AUTH_SANDBOX, API_SANDBOX):
+        return auth, api, "https://breakingcode.sandboxappmax.com.br"
+    if (auth, api) == (AUTH_PRODUCAO, API_PRODUCAO):
+        return auth, api, "https://admin.appmax.com.br"
+    raise FalhaDeInstalacao("Os endereços Appmax não formam um par sandbox ou produção")
 
 
 class FalhaDeInstalacao(Exception):
@@ -48,25 +67,23 @@ def conferir_ambiente() -> tuple[str, str, str]:
         raise FalhaDeInstalacao(
             "Falta o env ou /tmp/appmax.sh na VPS; prepare o app antes da instalação."
         )
-    if valor_do_env("APPMAX_AUTH_URL") != AUTH or valor_do_env("APPMAX_API_URL") != API:
-        raise FalhaDeInstalacao(
-            "Os endereços Appmax não apontam ao sandbox; nenhuma chamada foi feita."
-        )
+    auth, api, _ = endpoints()
     configuracao = json.loads(valor_do_env("APPMAX_INSTALACOES"))
-    if set(configuracao) != {APP_ID_NUMERICO}:
+    if not isinstance(configuracao, dict):
         raise FalhaDeInstalacao(
-            "O env não contém apenas o app 1888; confira a loja antes de instalar."
+            "As instalações da Appmax não formam um objeto; confira o env."
         )
-    sites = configuracao[APP_ID_NUMERICO]["sites"]
-    if not isinstance(sites, list) or sites != [SITE_INTERNO]:
+    site_esperado = os.environ.get("APPMAX_SITE_ID", SITE_INTERNO)
+    uuid.UUID(site_esperado)
+    entradas = [entrada for entrada in configuracao.values() if isinstance(entrada, dict) and site_esperado in entrada.get("sites", [])]
+    if len(entradas) != 1:
         raise FalhaDeInstalacao(
-            "A instalação não aponta a uma única loja interna; confira o env."
+            "A instalação não aponta a exatamente uma loja interna; confira o env."
         )
-    uuid.UUID(sites[0])
     return (
         valor_do_env("APPMAX_APP_CLIENT_ID"),
         valor_do_env("APPMAX_APP_CLIENT_SECRET"),
-        str(sites[0]),
+        site_esperado,
     )
 
 
@@ -80,6 +97,7 @@ def postar(url: str, body: bytes, *, bearer: str = "", form: bool = False) -> di
             else "geração das credenciais MERCHANT"
         )
     )
+    ambiente = "sandbox" if "sandboxappmax.com.br" in url else "produção"
     configuracao = (
         'silent\nshow-error\nmax-time = 20\nrequest = "POST"\n'
         f"url = {json.dumps(url)}\n"
@@ -99,42 +117,43 @@ def postar(url: str, body: bytes, *, bearer: str = "", form: bool = False) -> di
         )
     except (OSError, subprocess.TimeoutExpired):
         raise FalhaDeInstalacao(
-            f"Falha de rede em {etapa}; confira a conexão da VPS com o sandbox e tente novamente."
+            f"Falha de rede em {etapa}; confira a conexão da VPS com o ambiente {ambiente} e tente novamente."
         ) from None
     if resultado.returncode:
         raise FalhaDeInstalacao(
-            f"Falha de rede em {etapa}; confira a conexão da VPS com o sandbox e tente novamente."
+            f"Falha de rede em {etapa}; confira a conexão da VPS com o ambiente {ambiente} e tente novamente."
         )
     try:
         resposta, codigo = resultado.stdout.rsplit(b"\n", 1)
         status = int(codigo)
     except (ValueError, TypeError):
         raise FalhaDeInstalacao(
-            f"Resposta HTTP inválida em {etapa}; confira a disponibilidade do sandbox."
+            f"Resposta HTTP inválida em {etapa}; confira a disponibilidade do ambiente {ambiente}."
         ) from None
     if status not in {200, 201}:
         raise FalhaDeInstalacao(
-            f"HTTP {status} em {etapa}; confira as credenciais e permissões no painel sandbox da Appmax."
+            f"HTTP {status} em {etapa}; confira as credenciais e permissões no painel da Appmax em {ambiente}."
         )
     try:
         payload = json.loads(resposta)
     except json.JSONDecodeError:
         raise FalhaDeInstalacao(
-            f"JSON inválido em {etapa}; confira a disponibilidade da API sandbox."
+            f"JSON inválido em {etapa}; confira a disponibilidade da API em {ambiente}."
         ) from None
     if not isinstance(payload, dict):
         raise FalhaDeInstalacao(
-            "A Appmax devolveu JSON inesperado; confira a API sandbox."
+            f"A Appmax devolveu JSON inesperado; confira a API em {ambiente}."
         )
     return payload
 
 
 def conferir_callback() -> None:
-    request = urllib.request.Request(f"{CALLBACK}?probe=1", method="GET")
+    loja = host()
+    request = urllib.request.Request(f"https://{loja}/api/pagamentos/appmax/retorno?probe=1", method="GET")
     try:
         urllib.request.build_opener(SemRedirecionamento()).open(request, timeout=10)
     except urllib.error.HTTPError as exc:
-        if exc.code == 302 and exc.headers.get("Location") == f"https://{LOJA}/":
+        if exc.code == 302 and exc.headers.get("Location") == f"https://{loja}/":
             return
     except (urllib.error.URLError, TimeoutError):
         pass
@@ -145,6 +164,9 @@ def conferir_callback() -> None:
 
 def instalar() -> None:
     client_id, client_secret, site_id = conferir_ambiente()
+    auth, api, appstore = endpoints()
+    loja = host()
+    callback = f"https://{loja}/api/pagamentos/appmax/retorno"
     conferir_callback()
     try:
         app_uuid = str(
@@ -161,7 +183,7 @@ def instalar() -> None:
     from urllib.parse import urlencode
 
     oauth = postar(
-        AUTH,
+        auth,
         urlencode(
             {
                 "grant_type": "client_credentials",
@@ -183,13 +205,13 @@ def instalar() -> None:
             "O OAuth APP não devolveu Bearer válido; confira o par do aplicativo."
         )
     autorizado = postar(
-        f"{API}/app/authorize",
+        f"{api}/app/authorize",
         json.dumps(
             {
                 "app_id": app_uuid,
                 "external_key": site_id,
-                "url_callback": CALLBACK,
-                "domain_name": LOJA,
+                "url_callback": callback,
+                "domain_name": loja,
             }
         ).encode(),
         bearer=token_app,
@@ -199,18 +221,17 @@ def instalar() -> None:
         raise FalhaDeInstalacao(
             "A autorização não devolveu um hash válido; confira o app UUID."
         )
+    ambiente = "sandbox" if api == API_SANDBOX else "produção"
+    print(f"\nAbra este endereço no navegador, selecione a loja em {ambiente} e autorize a instalação:")
     print(
-        "\nAbra este endereço no navegador, selecione a loja sandbox e autorize a instalação:"
-    )
-    print(
-        f"https://breakingcode.sandboxappmax.com.br/appstore/integration/{hash_instalacao}"
+        f"{appstore}/appstore/integration/{hash_instalacao}"
     )
     print(
         "O retorno ao site Meshcraft é esperado. Não compartilhe o link de autorização."
     )
     input("Após clicar em Autorizar no painel, volte a este terminal e aperte Enter: ")
     gerado = postar(
-        f"{API}/app/client/generate",
+        f"{api}/app/client/generate",
         json.dumps({"token": hash_instalacao}).encode(),
         bearer=token_app,
     )
@@ -237,7 +258,7 @@ def instalar() -> None:
             "O par MERCHANT foi emitido, mas a validação local falhou. Não reinicie a instalação antes de conferir o env e a API."
         )
     print(
-        "INSTALACAO_SANDBOX_OK: health check, OAuth MERCHANT e leitura de produtos concluídos."
+        "INSTALACAO_OK: health check, OAuth MERCHANT e leitura de produtos concluídos."
     )
 
 

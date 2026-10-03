@@ -7,7 +7,7 @@ import pytest
 
 from apps.core import api as api_do_checkout
 from apps.pedidos.models import Order
-from tests.conftest import BUMP_A, OFERTA_A, PAGAMENTOS
+from tests.conftest import BUMP_A, HOST_A, OFERTA_A, PAGAMENTOS
 
 pytestmark = pytest.mark.django_db
 
@@ -16,7 +16,7 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "pix",
             # Tudo abaixo é adulteração deliberada — o DevTools do atacante:
@@ -60,6 +60,7 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     assert cobranca["metadata"] == {
         "checkout_session_id": sessao_a["id"],
         "product_id": OFERTA_A["product"]["id"],
+        "pagina_url": f"https://{HOST_A}/checkout/pedido/{pedido.id}/pix/",
     }
 
 
@@ -68,7 +69,7 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
 # propósito: uma lista de nomes proibidos deixa passar o nome que ninguém
 # previu (um `cupom_cents` acrescentado amanhã), e a promessa do cabeçalho é
 # que nada além da intenção é lido, nem para conferência.
-INTENCAO_DO_COMPRADOR = frozenset({"customer", "method", "bump_ids"})
+INTENCAO_DO_COMPRADOR = frozenset({"customer", "method", "bump_ids", "usar_cpf_anterior"})
 
 
 class _CorpoEspiao(dict):
@@ -110,7 +111,7 @@ def test_o_servidor_nem_le_dinheiro_do_payload(api, rede, sessao_a, monkeypatch)
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [BUMP_A["id"]],
             "method": "pix",
             "total_cents": 1,
@@ -157,7 +158,7 @@ def test_bump_nao_marcado_nao_entra_no_snapshot(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": [],
             "method": "pix",
         },
@@ -173,7 +174,7 @@ def test_bump_inexistente_no_catalogo_e_ignorado(api, rede, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "bump_ids": ["bump-que-nunca-existiu"],
             "method": "pix",
         },

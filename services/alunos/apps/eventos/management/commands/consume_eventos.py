@@ -133,7 +133,9 @@ def validar_reversao_confirmada(dados: dict) -> None:
     no PEL e vai para a fila morta depois de MAX_ENTREGAS, onde alguém a lê.
     """
     campos_recebidos = set(dados)
-    if campos_recebidos != REVERSAO_CAMPOS:
+    # O pedido passou a acompanhar a reversão para o checkout localizar a
+    # compra. A matrícula continua identificada pelo site e pela cobrança.
+    if campos_recebidos not in (REVERSAO_CAMPOS, REVERSAO_CAMPOS | {"order_id"}):
         raise ValueError(
             "pagamento.reversao_confirmada exige identidade e motivo, sem "
             "campos financeiros adicionais"

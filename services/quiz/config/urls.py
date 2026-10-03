@@ -9,9 +9,11 @@ from apps.quiz import painel_campanhas
 from apps.quiz.conferencia import conferencia as conferencia_de_links
 from apps.quiz import conversa as quiz_conversa
 from apps.quiz import evolucao
+from apps.quiz import comprador
 from apps.quiz.previa import previa as previa_editor
 
 urlpatterns = [
+    path("interno/comprador", comprador.comprador),
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
     path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),

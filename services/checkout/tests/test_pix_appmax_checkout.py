@@ -23,7 +23,7 @@ def test_pix_appmax_recusa_telefone_ou_cpf_ausente_antes_de_cobrar(
         },
     )
     assert resposta.status_code == 422
-    assert "telefone" in resposta.json()["detail"]
+    assert "phone" in resposta.json()["detail"]
     assert not any(
         str(chamada.request.url) == f"{PAGAMENTOS}/intents" for chamada in rede.calls
     )

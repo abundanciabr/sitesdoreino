@@ -1,5 +1,6 @@
 import json
 import uuid
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from datetime import datetime, timezone as datetime_timezone
 from types import SimpleNamespace
 
@@ -17,6 +18,7 @@ from django.views.decorators.http import require_POST
 from redis.exceptions import RedisError
 
 from .models import OutboxEvent, Quiz, QuizVersion, Submission, TelemetryEvent
+from .comprador import gravar_cookie
 from .direcionadas import (
     destino_com_parametros,
     entrada_da_tentativa,
@@ -259,7 +261,7 @@ def _render_formulario(
 def _ir_ao_resultado(request, quiz, entrada, submissao):
     destino = reverse("quiz-resultado", args=[quiz.slug])
     resposta = redirect(f"{destino}?lead={submissao.id}")
-    return _escrever_cookie(resposta, request, quiz.slug, entrada)
+    return gravar_cookie(_escrever_cookie(resposta, request, quiz.slug, entrada), request, submissao)
 
 
 def formulario(request, slug):
@@ -505,6 +507,12 @@ def resultado(request, slug):
             "banda": banda,
             "entrada": entrada if propria else None,
             "saida_rastreavel": propria,
+            "saida_com_formulario": bool(
+                propria and banda and (
+                    banda.botao_destino.startswith("https://")
+                    or banda.botao_destino.startswith("/checkout/")
+                )
+            ),
             "demonstracao": demonstracao,
             "oferta": oferta,
             "recomecar_url": url_da_experiencia(
@@ -541,9 +549,12 @@ def sair(request, slug):
     quiz = _quiz_do_site(request, slug)
     submissao, entrada = _submissao_da_sessao(request, quiz)
     banda = get_object_or_404(submissao.version.bands, key=submissao.result_key)
+    destino = banda.botao_destino
+    if destino.startswith("/checkout/"):
+        destino = f"https://{request.site['host']}{destino}"
     try:
         endereco = destino_com_parametros(
-            banda.botao_destino,
+            destino,
             submissao.utm,
             submissao.context,
             tentativa=submissao.session_id,
@@ -551,6 +562,11 @@ def sair(request, slug):
         )
     except ValueError:
         raise Http404("destino indisponível")
+    partes = urlsplit(endereco)
+    if partes.hostname == request.site["host"] and partes.path.startswith("/checkout/"):
+        parametros = dict(parse_qsl(partes.query, keep_blank_values=True))
+        parametros["lead"] = str(submissao.id)
+        endereco = urlunsplit(partes._replace(query=urlencode(parametros)))
     metadados = {"utm": submissao.utm}
     if submissao.context:
         metadados["context"] = submissao.context

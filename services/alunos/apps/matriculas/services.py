@@ -36,6 +36,20 @@ def _pagamento_bloqueado(*, site_id: str, provider: str, provider_reference_id: 
         )
 
 
+def _contestacao_ja_processada(
+    *, site_id: str, provider: str, provider_reference_id: str,
+    exceto_evento: str = "",
+) -> bool:
+    """O livro do consumidor guarda o corte anterior mesmo sem matrícula."""
+    from apps.eventos.models import EventoProcessado
+
+    return EventoProcessado.objects.filter(identidade_logica__in=[
+        f"{site_id}|{evento}|{provider}|{provider_reference_id}"
+        for evento in ("pagamento.estornado", "pagamento.reversao_confirmada")
+        if evento != exceto_evento
+    ]).exists()
+
+
 def matriculas_que_valem(email: str):
     """[FILA] As matrículas que RESPONDEM "esta pessoa é aluna" — a consulta que
     decide acesso, e a única que a Caixa de Sugestões enxerga.
@@ -78,7 +92,9 @@ def matricular(
     conta é a pessoa que já pagou e não foi matriculada.
 
     Quem chega pelo evento grava o par, e é ele que `suspender_por_estorno()` usa
-    para achar esta linha quando o dinheiro voltar. **Reenvio não regrava nada**:
+    para achar esta linha quando o dinheiro voltar. Uma reversão anterior faz a
+    linha nascer sem acesso: `reembolsada` para estorno, `suspensa` para
+    contestação. **Reenvio não regrava nada**:
     a idempotência devolve a linha existente sem tocá-la, e é isso que impede um
     aviso repetido de reescrever a história de uma matrícula já cortada.
     """
@@ -118,13 +134,18 @@ def matricular(
                     provider=provider,
                     provider_reference_id=provider_reference_id,
                     status=(
-                        Matricula.STATUS_SUSPENSA
+                        Matricula.STATUS_REEMBOLSADA
                         if pagamento is not None and pagamento.estornado
+                        else Matricula.STATUS_SUSPENSA
+                        if pagamento is not None and _contestacao_ja_processada(
+                            site_id=site_id, provider=provider,
+                            provider_reference_id=provider_reference_id,
+                        )
                         else Matricula.STATUS_ATIVA
                     ),
                 )
-                # [FATO] A matrícula nasce ativa, exceto quando um estorno já
-                # foi registrado para este pagamento.
+                # [FATO] A matrícula nasce ativa só se nenhuma reversão tiver
+                # sido registrada antes desta aprovação.
                 fato_de_situacao(nova)
             return nova, True
         except IntegrityError:
@@ -132,12 +153,13 @@ def matricular(
 
 
 def suspender_por_estorno(
-    *, site_id: str, provider: str, provider_reference_id: str
+    *, site_id: str, provider: str, provider_reference_id: str,
+    motivo: str = "estorno", evento: str = "",
 ) -> tuple[list[Matricula], list[Matricula]]:
-    """[ESTORNO] O dinheiro voltou: fecha o acesso que aquele pagamento abriu.
+    """[ESTORNO] Fecha o acesso e registra o resultado financeiro confirmado.
 
-    Devolve `(encontradas, suspensas)`. `encontradas` são as matrículas daquele
-    pagamento; `suspensas` são as que ESTE estorno cortou agora. As duas listas
+    Devolve `(encontradas, alteradas)`. `encontradas` são as matrículas daquele
+    pagamento; `alteradas` são as que ESTE aviso mudou agora. As duas listas
     existem porque o chamador precisa separar dois silêncios que parecem um só:
     "não achei matrícula nenhuma" (o estorno órfão, que vira aviso no log) e "já
     estava suspensa" (a reentrega, que é normal e não se anuncia).
@@ -146,21 +168,14 @@ def suspender_por_estorno(
     aparecer. Hoje é sempre uma; escolher uma entre várias exigiria um critério
     que ninguém decidiu, e o fato do mundo é que aquele dinheiro voltou inteiro.
 
-    **`suspensa`, e não `reembolsada`.** Decisão do mantenedor em 20/09/2026: o
-    acesso fecha na hora e reabrir é decisão humana, pelo painel. `reembolsada`
-    carregaria junto uma segunda regra que ele não decidiu aqui (quem está nela
-    não pede para voltar pela fila, `DECISAO-reembolso-tira-o-acesso.md`).
+    Estorno confirmado deixa `reembolsada`; contestação deixa `suspensa`.
+    Uma matrícula já suspensa por uma reversão anterior ainda passa a
+    `reembolsada` quando chega a confirmação do estorno.
 
-    **Estorno e contestação cortam igual.** O `motivo` nem chega nesta função: o
-    que difere entre os dois é o que a plataforma faz depois (contestação tem
-    prazo de defesa), e um `if` aqui seria a primeira pedra de um tratamento
-    diferente que ninguém pediu.
-
-    **Quem decide se houve mudança é `fato_de_situacao()`, não um `if` daqui.**
-    A função já é a juíza disso para os cinco outros caminhos que mexem em
-    status nesta célula, e um sexto juízo escrito à mão divergiria dela no
-    primeiro estado novo. Suspender o já suspenso reescreve o mesmo valor na
-    coluna e não produz fato: nem erro, nem efeito novo.
+    A segunda entrega não reverte uma reativação manual. O único caso que
+    ainda muda após `Pagamento.estornado=True` é `suspensa -> reembolsada`,
+    necessário para a matrícula que recebeu a reversão antes deste ajuste.
+    `fato_de_situacao()` grava cada mudança efetiva uma vez.
     """
     # Referência vazia casaria com TODA matrícula nascida antes deste par
     # existir (elas ficam com os dois campos em branco, e é permanente): um
@@ -177,19 +192,10 @@ def suspender_por_estorno(
             provider=provider,
             provider_reference_id=provider_reference_id,
         )
-        if pagamento.estornado:
-            return (
-                list(
-                    Matricula.objects.filter(
-                        site_id=site_id,
-                        provider=provider,
-                        provider_reference_id=provider_reference_id,
-                    ).order_by("pk")
-                ),
-                [],
-            )
-        pagamento.estornado = True
-        pagamento.save(update_fields=["estornado"])
+        ja_estornado = pagamento.estornado
+        if motivo == "estorno" and not pagamento.estornado:
+            pagamento.estornado = True
+            pagamento.save(update_fields=["estornado"])
 
         # O site entra no casamento: `provider_reference_id` é o id da
         # cobrança NA CONTA do fornecedor, e cada escola tem a sua. Duas escolas
@@ -205,15 +211,35 @@ def suspender_por_estorno(
             )
             .order_by("pk")
         )
-        suspensas = []
+        # O consumidor já gravou o envelope corrente na mesma transação.
+        # Apenas o OUTRO tipo prova um corte anterior por contestação; assim
+        # a primeira entrega continua cortando e a segunda não desfaz uma
+        # reativação humana. Estorno confirmado pode chegar depois e reembolsa.
+        if motivo == "contestacao" and _contestacao_ja_processada(
+            site_id=site_id, provider=provider,
+            provider_reference_id=provider_reference_id, exceto_evento=evento,
+        ):
+            return encontradas, []
+        alteradas = []
         for linha in encontradas:
             anterior = linha.status
-            linha.status = Matricula.STATUS_SUSPENSA
+            if motivo == "estorno" and ja_estornado and anterior != Matricula.STATUS_SUSPENSA:
+                continue
+            if motivo == "contestacao" and pagamento.estornado:
+                continue
+            destino = (
+                Matricula.STATUS_REEMBOLSADA
+                if motivo == "estorno" or anterior == Matricula.STATUS_REEMBOLSADA
+                else Matricula.STATUS_SUSPENSA
+            )
+            if anterior == destino:
+                continue
+            linha.status = destino
             linha.save(update_fields=["status"])
             fato = fato_de_situacao(linha, anterior=anterior)
             if fato is not None:
-                suspensas.append(linha)
-        return encontradas, suspensas
+                alteradas.append(linha)
+        return encontradas, alteradas
 
 
 def entrar_na_fila(

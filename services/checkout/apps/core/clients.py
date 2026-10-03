@@ -53,6 +53,20 @@ class CatalogoClient:
         return r.json() if r.status_code == 200 else None
 
 
+class QuizClient:
+    def __init__(self) -> None:
+        self.base = os.environ.get("QUIZ_COMPRADOR_API_URL", "http://quiz:8000/interno/comprador")
+
+    def comprador(self, *, host: str, lead_id: str, cookie: str) -> dict | None:
+        if not lead_id or not cookie:
+            return None
+        resposta = http().get(
+            self.base, params={"lead_id": lead_id},
+            headers={"Host": host, "Cookie": f"quiz_comprador={cookie}"},
+            timeout=2.0,
+        )
+        return resposta.json() if resposta.status_code == 200 else None
+
 class PagamentosClient:
     """contracts/pagamentos.openapi.yaml (somente-leitura)."""
 

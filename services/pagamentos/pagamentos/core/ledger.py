@@ -163,21 +163,44 @@ def registrar_fato_da_tentativa(
             return "desconhecido"
         intent = Intent.objects.select_for_update().get(pk=tentativa.intent_id)
         tentativa = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-        ultima = PaymentAttempt.objects.filter(intent=intent).order_by("-created_at", "-pk").first()
+        ultima = (PaymentAttempt.objects.filter(intent=intent)
+                  .exclude(state="approved_duplicate")
+                  .order_by("-created_at", "-pk").first())
         substituida = ultima is not None and ultima.pk != tentativa.pk
-        if novo_status == "approved" and (substituida or (
-            intent.status == "approved" and not OutboxEvent.objects.filter(
-                event="pagamento.aprovado", version=2,
-                payload__provider=provider,
-                payload__provider_reference_id=provider_reference_id,
-            ).exists()
-        )):
+        aprovacoes_v2 = OutboxEvent.objects.filter(
+            event="pagamento.aprovado", version=2,
+            payload__payment_id=str(intent.pk),
+        )
+        aprovacao_desta_tentativa = aprovacoes_v2.filter(
+            payload__provider=provider,
+            payload__provider_reference_id=provider_reference_id,
+        ).exists()
+        if not aprovacao_desta_tentativa and not aprovacoes_v2.exists():
+            # O livro antigo não identificava a empresa no evento. O ID que a
+            # intent guardou e a referência da aprovação v1 identificam a
+            # cobrança original sem tomar o state=approved como prova: _fechar
+            # já põe esse state ANTES de chamar este método.
+            aprovacao_desta_tentativa = (
+                intent.status == "approved"
+                and intent.provider_payment_id == provider_reference_id
+                and OutboxEvent.objects.filter(
+                    event="pagamento.aprovado", version=1,
+                    payload__payment_id=str(intent.pk),
+                    payload__mp_payment_id=provider_reference_id,
+                ).exists()
+            )
+        if novo_status == "approved" and not aprovacao_desta_tentativa and (
+            substituida or intent.status == "approved"
+        ):
             if tentativa.state != "approved_duplicate":
                 tentativa.state = "approved_duplicate"
                 tentativa.save(update_fields=["state", "updated_at"])
                 logger.error("cobranca_duplicada intent=%s tentativa=%s provider=%s", intent.pk, tentativa.pk, provider)
+            agendar_estorno_duplicada(tentativa.pk)
             return "approved_duplicate"
         if tentativa.state == "approved_duplicate":
+            if novo_status == "approved":
+                agendar_estorno_duplicada(tentativa.pk)
             return "approved_duplicate"
         if tentativa.state == "approved" and novo_status != "approved":
             return "ignorado"
@@ -211,7 +234,7 @@ def emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> bool:
     motivo = _MOTIVOS_REVERSAO[codigo]
     with transaction.atomic():
         travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
-        if not travada.provider_reference_id:
+        if travada.state != "approved" or not travada.provider_reference_id:
             return False
         payload = {
             "platform_site_id": travada.platform_site_id,
@@ -231,6 +254,22 @@ def emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> bool:
         models.emitir("pagamento.reversao_confirmada", payload, version=2)
     transaction.on_commit(models.relay_apos_commit)
     return True
+
+
+def agendar_estorno_duplicada(tentativa_id: int) -> None:
+    transaction.on_commit(lambda: _estornar_duplicada(tentativa_id))
+
+
+def _estornar_duplicada(tentativa_id: int) -> None:
+    """O callback corre após o commit externo, exigido pelo registro durável."""
+    from pagamentos.core.estorno import estornar
+
+    try:
+        estornar(PaymentAttempt.objects.get(pk=tentativa_id), "cobranca_duplicada")
+    except Exception as exc:
+        # A aprovação duplicada já foi gravada. A entrega do webhook não deve
+        # voltar ao início e gerar um segundo fato por falha do provedor.
+        logger.error("estorno_automatico_pendente tentativa=%s erro=%s", tentativa_id, type(exc).__name__)
 
 
 def _exigir_fato_financeiro(novo_status: str) -> None:

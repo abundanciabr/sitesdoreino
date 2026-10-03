@@ -150,7 +150,7 @@ def test_o_token_publicado_no_html_continua_fechando_a_compra(
     pedido = client.post(
         f"/api/checkout/sessoes/{sessao.json()['id']}/pedido",
         data=json.dumps(
-            {"customer": {"email": "a@b.test", "name": "A"}, "method": "pix"}
+            {"customer": {"email": "a@b.test", "name": "A Teste", "phone": "11999999999", "cpf": "40827365144"}, "method": "pix"}
         ),
         content_type="application/json",
         **cabecalho,

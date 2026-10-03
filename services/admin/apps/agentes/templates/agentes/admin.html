@@ -61,6 +61,18 @@
     {% endif %}
   </section>
 
+  <section id="mapa">
+    <h2 class="titulo-de-secao">Mapa de conhecimento</h2>
+    <p>O robô de cada pessoa responde perguntas que cruzam o painel com os documentos do site ("quem cuida disso?", "o que depende daquilo?", "por que isso existe?"), andando por um mapa de coisas e ligações e dizendo de onde tirou cada uma. O painel entra sozinho, na hora; os documentos são lidos uma vez pelo modelo rápido, e de novo só quando mudam.</p>
+    <p>{{ mapa.documentos }} de {{ mapa.documentos_no_site }} documento{{ mapa.documentos_no_site|pluralize }} lido{{ mapa.documentos_no_site|pluralize }} &middot; {{ mapa.coisas }} coisa{{ mapa.coisas|pluralize }} &middot; {{ mapa.ligacoes }} ligaç{{ mapa.ligacoes|pluralize:"ão,ões" }}{% if mapa.ultima %} &middot; última leitura em {{ mapa.ultima|date:"d/m/Y H:i" }}{% endif %}{% if mapa.a_ler %} &middot; <b>{{ mapa.a_ler }} para ler</b>{% endif %}</p>
+    {% if mapa.leitura_aberta %}<p class="nota">Leitura em andamento: <a href="{% url 'execucao_do_robo' mapa.leitura_aberta.id %}">nº {{ mapa.leitura_aberta.id }} ({{ mapa.leitura_aberta.get_situacao_display|lower }}{% if mapa.leitura_aberta.etapa_atual %}, {{ mapa.leitura_aberta.etapa_atual }}{% endif %})</a>.</p>{% endif %}
+    <div class="equipe-gestos">
+      <form method="post" action="{% url 'robos_admin' %}">{% csrf_token %}<input type="hidden" name="acao" value="mapa"><button class="botao-pequeno" type="submit"{% if not mapa.a_ler %} title="Nada mudou desde a última leitura"{% endif %}>Ler os documentos agora</button></form>
+      <a class="botao-pequeno" href="{% url 'mapa_de_conhecimento' %}">Procurar no mapa</a>
+    </div>
+    <p class="nota">Custa centavos (modelo rápido, dentro do teto acima). Depois da primeira leitura, documento novo ou mudado entra no mapa sozinho, a cada meia hora.</p>
+  </section>
+
   <section id="alunos">
     <h2 class="titulo-de-secao">Robô dos alunos</h2>
     <p>Um robô distinto, com modelo e instruções próprios. Usa a mesma chave da conexão acima para gerar exemplos nos campos do portfólio.</p>

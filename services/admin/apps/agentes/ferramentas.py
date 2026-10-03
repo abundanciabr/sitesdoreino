@@ -200,6 +200,27 @@ DEFINICOES = [
         {},
     ),
     _ferramenta(
+        "consultar_conhecimento",
+        "Anda pelo mapa de conhecimento: as coisas (pessoas, tarefas, objetivos, "
+        "medidas do placar, cursos, ofertas, sistemas, decisões...) e as ligações "
+        "entre elas, juntando o painel e os documentos do site, cada ligação com "
+        "o trecho e a fonte. Use para perguntas que cruzam informações: quem "
+        "cuida de quê, o que depende de quê, por que algo existe, como uma coisa "
+        "afeta outra, o que os documentos dizem de um assunto.",
+        {
+            "termos": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "1 a 5 nomes ou palavras-chave curtas do assunto.",
+            },
+            "profundidade": {
+                "type": "integer",
+                "enum": [1, 2, 3],
+                "description": "Quantos passos andar a partir do que achar; 2 serve quase sempre.",
+            },
+        },
+    ),
+    _ferramenta(
         "salvar_entrega",
         "Salva no site um documento que você escreveu (texto em Markdown), "
         "opcionalmente ligado a uma tarefa. A pessoa abre pela página do robô.",
@@ -605,6 +626,24 @@ def consultar_compromissos(ctx: Contexto, args: dict) -> dict:
         "domingo": domingo.isoformat(),
         "compromissos": saida,
     }
+
+
+def consultar_conhecimento(ctx: Contexto, args: dict) -> dict:
+    from . import conhecimento
+
+    termos = [str(t)[:80] for t in (args.get("termos") or [])][:5]
+    if not termos:
+        raise Recusa("Diga pelo menos um nome ou palavra do assunto.")
+    resultado = conhecimento.consultar(
+        termos,
+        com_privados=pode_usar_o_quiz(ctx.membro),
+        profundidade=int(args.get("profundidade") or 2),
+    )
+    if not resultado["achou"]:
+        resultado["aviso"] = (
+            "Nada no mapa casou esses termos. Tente outro nome ou diga que não achou."
+        )
+    return resultado
 
 
 def consultar_trabalhos_do_robo(ctx: Contexto, args: dict) -> dict:
@@ -1019,6 +1058,7 @@ def decidir_proposta_de_versao(ctx: Contexto, args: dict) -> dict:
 
 
 ACOES = {
+    "consultar_conhecimento": consultar_conhecimento,
     "perguntar_com_opcoes": perguntar_com_opcoes,
     "consultar_rascunho_do_quiz": consultar_rascunho_do_quiz,
     "criar_rascunho_do_quiz": criar_rascunho_do_quiz,
@@ -1048,6 +1088,7 @@ ACOES = {
 
 # Como cada ação aparece para a pessoa no passo a passo e na página da execução.
 ROTULOS = {
+    "consultar_conhecimento": "consultar o mapa de conhecimento",
     "perguntar_com_opcoes": "mostrar uma pergunta com opções",
     "consultar_rascunho_do_quiz": "ler as perguntas e ofertas do quiz",
     "criar_rascunho_do_quiz": "montar o quiz no site",

@@ -91,7 +91,12 @@ def test_as_fronteiras_das_duas_versoes_no_servidor(
     pagina = cliente.get(resposta["Location"], HTTP_HOST=HOST).content.decode()
     faixa = versao.bands.get(key=resultado)
     assert faixa.title in pagina and faixa.description in pagina
-    assert faixa.botao_destino in pagina and faixa.botao_rotulo in pagina
+    assert faixa.botao_rotulo in pagina
+    if resultado == "entrega":
+        assert f'action="/{SLUG}/sair"' in pagina
+        assert f'href="{faixa.botao_destino}"' not in pagina
+    else:
+        assert f'href="{faixa.botao_destino}"' in pagina
 
 
 def test_o_semeador_preserva_crivo_e_edicoes_e_nao_duplica(laboratorio):

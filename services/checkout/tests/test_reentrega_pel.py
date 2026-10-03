@@ -24,6 +24,7 @@ import pytest
 import redis as redis_lib
 
 from apps.pedidos.models import Order
+from apps.pedidos.management.commands.consume_eventos import STREAMS
 from conftest import aprovado_v1
 
 pytestmark = pytest.mark.django_db
@@ -31,12 +32,7 @@ pytestmark = pytest.mark.django_db
 STREAM = "eventos.pagamento.aprovado"
 DLQ = f"{STREAM}.dlq"
 GRUPO = "checkout"
-TODOS_OS_STREAMS = (
-    "eventos.pagamento.aprovado",
-    "eventos.pagamento.recusado",
-    "eventos.pagamento.reversao_confirmada",
-    "eventos.pix.expirado",
-)
+TODOS_OS_STREAMS = STREAMS
 
 
 @pytest.fixture
@@ -71,7 +67,7 @@ def _pedido(api, sessao_a):
     resp = api.post(
         f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
         {
-            "customer": {"email": "cliente@exemplo.com", "name": "Cliente"},
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
             "method": "pix",
         },
     )

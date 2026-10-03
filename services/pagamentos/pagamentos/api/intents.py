@@ -22,6 +22,7 @@ from ninja.errors import HttpError
 from pagamentos.core import gateway
 from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.core.tentativas import SegundaOpcaoIndisponivel, fechar_segundas_opcoes_vencidas
 from pagamentos.methods.card.service import (
     CartaoAppmaxDesativado,
     DadosCartaoInvalidos,
@@ -29,11 +30,13 @@ from pagamentos.methods.card.service import (
     confirmar_intent_card,
     criar_intent_card,
     reconciliar_intent_card,
+    confirmar_segunda_opcao_card,
 )
 from pagamentos.methods.pix.service import (
     completar_intent_pix,
     criar_intent_pix,
     intent_pix_incompleta,
+    reconciliar_intent_pix,
 )
 from pagamentos.methods.pix.appmax import (
     DadosPixInvalidos,
@@ -84,7 +87,7 @@ def _falha_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
 
 def _falha_cartao_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
     """Cartão Appmax é ambíguo até reconciliar; nunca mande cobrar outra vez."""
-    logger.warning("falha do provedor Appmax: %s", exc)
+    logger.warning("falha do provedor de cartão: %s", exc)
     return JsonResponse(
         {
             "detail": (
@@ -163,6 +166,8 @@ def _intent_to_dict(intent: Intent) -> dict[str, Any]:
         }
     if intent.method == "card":
         data["card"] = {"reason_code": intent.card_reason_code}
+        if intent.segunda_opcao_ate is not None and intent.status == "pending":
+            data["card"]["segunda_opcao_ate"] = intent.segunda_opcao_ate.isoformat()
     return data
 
 
@@ -332,20 +337,26 @@ def _get_intent_ou_404(intent_id: str) -> Intent:
 )
 def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
     intent = _get_intent_ou_404(intent_id)
+    if intent.method == "card":
+        fechar_segundas_opcoes_vencidas(intent)
+        intent.refresh_from_db()
     if (
         PaymentAttempt.objects.filter(
             intent=intent,
-            provider="appmax",
-            state__in=("pending", "reconciliation_required"),
+            state__in=("sending", "pending", "reconciliation_required"),
         )
-        .exclude(external_order_id="")
         .exists()
     ):
         try:
             if intent.method == "card":
                 reconciliar_intent_card(intent)
-            else:
+            elif PaymentAttempt.objects.filter(
+                intent=intent, provider="appmax",
+                state__in=("sending", "pending", "reconciliation_required"),
+            ).exists():
                 reconciliar_pix_appmax(intent)
+            else:
+                reconciliar_intent_pix(intent)
         except (FalhaNoProvedor, IntentNaoConfirmavel):
             intent.refresh_from_db()
     return _intent_to_dict(intent)
@@ -420,6 +431,7 @@ def _parse_card_confirm(body: bytes) -> dict[str, Any]:
         "installments": installments,
         "payer_email": str(data["payer_email"]),
         "payer_identification": identificacao,
+        "mp_pronto": mp_pronto,
         **titular,
     }
 
@@ -446,6 +458,7 @@ def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonR
             ip=payload.get("ip", ""),
             holder_name=payload.get("holder_name", ""),
             holder_document_number=payload.get("holder_document_number", ""),
+            mp_pronto=payload["mp_pronto"],
         )
     except IntentNaoConfirmavel as exc:
         raise HttpError(
@@ -460,6 +473,41 @@ def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonR
     except FalhaNoProvedor as exc:
         return _falha_cartao_de_provedor(exc)
     return _intent_to_dict(intent)
+
+
+@router.post(
+    "/intents/{intent_id}/card/segunda-opcao",
+    operation_id="confirmCardSegundaOpcao",
+    summary="Confirma a segunda opção de cartão durante a janela aberta",
+)
+def confirm_card_second_option(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonResponse:
+    intent = _get_intent_ou_404(intent_id)
+    try:
+        dados = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise HttpError(422, "JSON invalido") from exc
+    if not isinstance(dados, dict):
+        raise HttpError(422, "corpo deve ser objeto JSON")
+    campos = ("mp_token", "mp_payment_method_id", "mp_issuer_id", "mp_device_id",
+              "holder_name", "holder_document_number")
+    if any(not isinstance(dados.get(c), str) for c in campos):
+        raise HttpError(422, "dados do cartão incompletos")
+    parcelas = dados.get("installments")
+    if type(parcelas) is not int or not 1 <= parcelas <= 12:
+        raise HttpError(422, "installments deve ser inteiro entre 1 e 12")
+    try:
+        resultado = confirmar_segunda_opcao_card(
+            intent, mp_token=dados["mp_token"],
+            mp_payment_method_id=dados["mp_payment_method_id"],
+            mp_issuer_id=dados["mp_issuer_id"], mp_device_id=dados["mp_device_id"],
+            installments=parcelas, holder_name=dados["holder_name"],
+            holder_document_number=dados["holder_document_number"],
+        )
+    except (SegundaOpcaoIndisponivel, IntentNaoConfirmavel):
+        raise HttpError(409, "segunda opcao indisponivel") from None
+    except DadosCartaoInvalidos as exc:
+        raise HttpError(422, str(exc)) from None
+    return _intent_to_dict(resultado)
 
 
 _CARD_INSTALLMENTS_OPENAPI = {

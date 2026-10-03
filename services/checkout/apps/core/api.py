@@ -9,16 +9,19 @@
 import ipaddress
 import json
 import uuid
+import re
 
 import httpx
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 from django.http import JsonResponse
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError
 
-from apps.core.clients import CatalogoClient, PagamentosClient
+from apps.core.clients import CatalogoClient, PagamentosClient, QuizClient
 from apps.pedidos.atribuicao import separar_atribuicao
 from apps.pedidos.emitir import emitir
 from apps.pedidos.tasks import relay_apos_commit
@@ -55,6 +58,31 @@ def _visitor_id_do_cookie(request) -> str | None:
     if lido.version != 4 or str(lido) != bruto:
         return None
     return bruto
+
+
+def _cpf_valido(cpf: str) -> bool:
+    if len(cpf) != 11 or len(set(cpf)) == 1:
+        return False
+    for tamanho in (9, 10):
+        soma = sum(int(digito) * peso for digito, peso in zip(cpf[:tamanho], range(tamanho + 1, 1, -1)))
+        verificador = (soma * 10) % 11
+        if (0 if verificador == 10 else verificador) != int(cpf[tamanho]):
+            return False
+    return True
+
+
+def _cpf_anterior(site_id: str, visitor_id: str | None, email: str) -> str | None:
+    if not visitor_id or not email:
+        return None
+    pedidos = OrderModel.objects.filter(
+        site_id=site_id, session__visitor_id=visitor_id,
+        customer__email__iexact=email.strip(),
+    ).order_by("-created_at").values_list("customer", flat=True)[:20]
+    for comprador in pedidos:
+        cpf = re.sub(r"\D", "", str(comprador.get("cpf") or ""))
+        if _cpf_valido(cpf):
+            return cpf
+    return None
 
 
 def _corpo(request) -> dict:
@@ -152,6 +180,7 @@ _CREATE_SESSION_OPENAPI = {
                     "properties": {
                         "offer_slug": {"type": "string"},
                         "lead_id": {"type": "string"},
+                        "email_para_cpf": {"type": "string"},
                         "utm": {
                             "type": "object",
                             "additionalProperties": {"type": "string"},
@@ -195,12 +224,27 @@ def create_session(request):
     if not isinstance(utm_bruto, dict):
         raise HttpError(422, "utm deve ser um objeto")
     utm, contexto = separar_atribuicao(utm_bruto)
+    lead_id = str(corpo.get("lead_id") or "")
+    prefill = None
+    try:
+        prefill = QuizClient().comprador(
+            host=site["host"], lead_id=lead_id,
+            cookie=request.COOKIES.get("quiz_comprador", ""),
+        )
+    except (httpx.HTTPError, ValueError, TypeError):
+        pass
+    if not isinstance(prefill, dict):
+        prefill = None
+    else:
+        prefill = {chave: str(prefill.get(chave) or "") for chave in ("name", "email", "phone")}
+    cpf_email = str(prefill.get("email") if prefill else corpo.get("email_para_cpf") or "")
+    cpf_anterior = _cpf_anterior(site["id"], _visitor_id_do_cookie(request), cpf_email)
     with transaction.atomic():
         sessao = SessionModel.objects.create(
             site_id=site["id"],
             offer_slug=offer_slug,
             offer=oferta,
-            lead_id=str(corpo.get("lead_id") or ""),
+            lead_id=lead_id,
             utm=utm,
             contexto=contexto,
             visitor_id=_visitor_id_do_cookie(request),
@@ -233,6 +277,8 @@ def create_session(request):
                     for b in oferta.get("bumps") or []
                 ],
             },
+            **({"prefill": prefill} if prefill else {}),
+            **({"cpf_mascarado": f"***.***.***-{cpf_anterior[-2:]}"} if cpf_anterior else {}),
         },
         status=201,
     )
@@ -302,6 +348,7 @@ _PLACE_ORDER_OPENAPI = {
                             "description": "IDs dos bumps MARCADOS — nunca preços, nunca totais.",
                         },
                         "method": {"type": "string", "enum": ["pix", "card"]},
+                        "usar_cpf_anterior": {"type": "boolean"},
                     },
                 }
             }
@@ -355,26 +402,31 @@ def place_order(request, session_id: str):
     customer = corpo.get("customer")
     if not isinstance(customer, dict) or not customer.get("email"):
         raise HttpError(422, "customer.email é obrigatório")
-    if not customer.get("name"):
-        raise HttpError(422, "customer.name é obrigatório")
+    email = str(customer["email"]).strip()
+    try:
+        validate_email(email)
+    except ValidationError:
+        raise HttpError(422, "customer.email inválido") from None
+    nome = " ".join(str(customer.get("name") or "").split())
+    if len(nome.split()) < 2:
+        raise HttpError(422, "customer.name deve ser completo")
+    telefone = re.sub(r"\D", "", str(customer.get("phone") or ""))
+    if len(telefone) not in (10, 11):
+        raise HttpError(422, "customer.phone deve ter DDD e 10 ou 11 dígitos")
+    cpf = re.sub(r"\D", "", str(customer.get("cpf") or ""))
+    if corpo.get("usar_cpf_anterior") is True and not cpf:
+        visitante_atual = _visitor_id_do_cookie(request)
+        if not visitante_atual or visitante_atual != sessao.visitor_id:
+            raise HttpError(422, "customer.cpf inválido")
+        cpf = _cpf_anterior(site["id"], visitante_atual, email) or ""
+    if not _cpf_valido(cpf):
+        raise HttpError(422, "customer.cpf inválido")
     method = corpo.get("method")
     if method not in ("pix", "card"):
         raise HttpError(422, "method deve ser pix ou card")
     pix_appmax = method == "pix" and site["id"] in (
         settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES
     )
-    if pix_appmax:
-        telefone = "".join(c for c in str(customer.get("phone") or "") if c.isdigit())
-        cpf = "".join(c for c in str(customer.get("cpf") or "") if c.isdigit())
-        if (
-            len(str(customer["name"]).split()) < 2
-            or len(telefone) not in {10, 11}
-            or len(cpf) != 11
-        ):
-            raise HttpError(
-                422,
-                "Informe nome completo, telefone com DDD e CPF com 11 dígitos para pagar por Pix",
-            )
     bump_ids = corpo.get("bump_ids") or []
     if not isinstance(bump_ids, list):
         raise HttpError(422, "bump_ids deve ser uma lista de ids")
@@ -395,15 +447,19 @@ def place_order(request, session_id: str):
 
     order_id = uuid.uuid4()
     comprador = {
-        "email": str(customer["email"]),
-        "name": str(customer["name"]),
-        **({"phone": str(customer["phone"])} if customer.get("phone") else {}),
-        **({"cpf": str(customer["cpf"])} if customer.get("cpf") else {}),
+        "email": email,
+        "name": nome,
+        "phone": telefone,
+        "cpf": cpf,
     }
     metadata = {
         "checkout_session_id": str(sessao.id),
         "product_id": str(itens[0]["product_id"]),
     }
+    if method == "pix":
+        metadata["pagina_url"] = (
+            f"https://{site['host']}/checkout/pedido/{order_id}/pix/"
+        )
     if method == "card" or pix_appmax:
         metadata["items"] = itens
     comprador_pagamento = dict(comprador)
@@ -594,7 +650,7 @@ def _estado_cartao(pedido: OrderModel) -> tuple[bool | None, str | None]:
     response={200: Order},
     operation_id="getOrder",
     summary="Status do pedido — a ÚNICA fonte que o front consulta (INV-P7)",
-    description="Atualizado pelos eventos pagamento.aprovado/recusado e pix.expirado.",
+    description="Status atualizado pelos avisos de pagamento; Pix atual vem do pedido.",
     openapi_extra={
         "responses": {
             200: {"description": "Pedido com snapshot e status corrente"},
@@ -618,6 +674,12 @@ def get_order(request, order_id: str):
         "total_cents": pedido.total_cents,
         "created_at": pedido.created_at.isoformat(),
     }
+    if pedido.method == "pix":
+        corpo["pix"] = {
+            campo: (pedido.pix or {}).get(campo)
+            for campo in ("qr_code", "qr_code_base64", "expires_at")
+        }
+        corpo["pix_trocado"] = bool((pedido.pix or {}).get("trocado_em"))
     em_analise, segunda_opcao_ate = _estado_cartao(pedido)
     if em_analise is not None:
         corpo["card_in_review"] = em_analise

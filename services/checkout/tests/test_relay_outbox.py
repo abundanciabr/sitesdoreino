@@ -76,7 +76,7 @@ def test_pedido_criado_e_publicado_apos_o_commit_do_post(api, rede):
         resp = api.post(
             f"/api/checkout/sessoes/{sessao['id']}/pedido",
             {
-                "customer": {"name": "Ana Teste", "email": "ana@teste.exemplo"},
+                "customer": {"name": "Ana Teste", "email": "ana@teste.exemplo", "phone": "11999999999", "cpf": "40827365144"},
                 "bump_ids": [],
                 "method": "pix",
             },

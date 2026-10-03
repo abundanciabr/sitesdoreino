@@ -380,6 +380,21 @@ class AppmaxWebhookInbox(models.Model):
         return f"appmax:{self.event}:{self.external_order_id}"
 
 
+class MercadoPagoWebhookInbox(models.Model):
+    """Metadados mínimos de avisos ainda sem processamento."""
+
+    topic = models.CharField(max_length=64)
+    resource_id_hash = models.CharField(max_length=64)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["topic", "resource_id_hash"], name="mp_aviso_futuro_unico"
+            )
+        ]
+
+
 class OutboxEvent(models.Model):
     """[RECEITA:R3 v1] Uma linha por evento emitido. `emitir()` grava SEMPRE na
     MESMA transação da mudança de estado que a justifica — o relay

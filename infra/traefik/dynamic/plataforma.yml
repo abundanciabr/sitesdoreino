@@ -99,7 +99,7 @@ http:
 
   routers:
     mp-webhooks-meshcraft:
-      rule: "Host(`meshcraft.top`) && PathPrefix(`/api/pagamentos/webhooks/mp`)"
+      rule: "Host(`meshcraft.top`) && (PathPrefix(`/api/pagamentos/webhooks/mp`) || Path(`/api/pagamentos/mp/webhooks`, `/api/pagamentos/mp/webhooks/`, `/api/pagamentos/mercadopago/webhooks`, `/api/pagamentos/mercadopago/webhooks/`))"
       priority: 100
       entryPoints: [websecure]
       middlewares: [seguranca]

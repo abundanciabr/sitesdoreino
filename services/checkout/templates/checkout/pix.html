@@ -17,20 +17,28 @@
     .copia code { flex: 1; overflow-wrap: anywhere; font-size: .75rem; text-align: left; }
     .copia button { padding: .5rem .75rem; border-radius: .5rem; border: 1px solid #ccc; background: #fff; }
     .status { margin-top: 1rem; font-weight: 600; }
+    .codigo-antigo { margin-top: 1rem; color: #666; overflow-wrap: anywhere; }
+    .codigo-antigo code { display: block; text-decoration: line-through; font-size: .75rem; }
   </style>
 </head>
 <body>
   {{ order_id|json_script:"order-id" }}
   {{ pix_data|json_script:"pix-data" }}
+  {{ pix_trocado|json_script:"pix-trocado" }}
   {{ api_token|json_script:"api-token" }}
   {{ api_base|json_script:"api-base" }}
   <div class="wrap" x-data="pixIsland()">
     <div class="card">
       <h1>Pague com Pix</h1>
+      <p x-show="pixTrocado">Não conseguimos concluir este pagamento. Pague com este novo código.</p>
       <img :src="`data:image/png;base64,${qr.qr_code_base64}`" alt="QR Code Pix" class="qr" x-show="qr.qr_code_base64">
       <p class="copia" x-show="qr.qr_code">
         <code x-text="qr.qr_code"></code>
         <button type="button" @click="copiar">Copiar</button>
+      </p>
+      <p class="codigo-antigo" x-show="codigoAntigo">
+        Este código não vale mais.
+        <code x-text="codigoAntigo"></code>
       </p>
       <p class="status" x-text="statusLabel()"></p>
     </div>

@@ -68,8 +68,11 @@ def service_for_path(
             if service in _HOST_LOCKED and host != "meshcraft.top":
                 continue
             if service == "pagamentos":
-                if path.startswith("/api/pagamentos/webhooks"):
-                    if host != "basileiatoutheou.org":
+                if path.startswith("/api/pagamentos/webhooks") or path.rstrip("/") in (
+                    "/api/pagamentos/mp/webhooks",
+                    "/api/pagamentos/mercadopago/webhooks",
+                ):
+                    if host != "meshcraft.top":
                         continue
                 elif not (path.startswith("/api/pagamentos/appmax") and host == "meshcraft.top"):
                     continue

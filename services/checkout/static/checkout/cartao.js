@@ -61,7 +61,7 @@ function cartaoIsland() {
         // também não está pago: a análise vista nesta aba segue até o aviso.
         this.emAnalise =
           pedido.card_in_review === true || (this.emAnalise && this.status === "aguardando_pagamento");
-        if (this.emAnalise || this.status !== "aguardando_pagamento") this.descartarMp();
+        if (!this.enviando && (this.emAnalise || this.status !== "aguardando_pagamento")) this.descartarMp();
         }
         if (this.erro === CONSULTA_INDISPONIVEL) this.erro = "";
       } catch (e) {
@@ -234,7 +234,7 @@ function cartaoIsland() {
     },
 
     statusLabel() {
-      if (this.segundaOpcaoPendente || this.segundaOpcaoEnviada) return "Concluindo pagamento...";
+      if (this.segundaOpcaoPendente) return "Concluindo pagamento...";
       if (this.emAnalise) {
         return "Pagamento em análise. Não é preciso pagar de novo. A confirmação aparece aqui assim que a análise terminar.";
       }

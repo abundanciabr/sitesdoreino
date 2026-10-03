@@ -10,7 +10,7 @@ import pytest
 import respx
 from django.test import Client
 
-from pagamentos.core.models import Intent, OutboxEvent, relay_outbox
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt, relay_outbox
 from pagamentos.core.webhook_signature import assinar
 from pagamentos.providers.mercadopago.client import MercadoPagoClient
 
@@ -61,6 +61,9 @@ def _criar_intent_pix(client: Client, token: str) -> Intent:
 
 
 def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
+    tentativa = PaymentAttempt.objects.get(
+        provider="mercadopago", provider_reference_id=_MP_PAYMENT_ID
+    )
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
     # Desde o endurecimento do webhook, a decisão vem da consulta GET à API do
@@ -69,7 +72,14 @@ def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
     with respx.mock(assert_all_called=True) as mp:
         mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
             return_value=httpx.Response(
-                200, json={"id": int(_MP_PAYMENT_ID), "status": status}
+                200,
+                json={
+                    "id": int(_MP_PAYMENT_ID),
+                    "status": status,
+                    "external_reference": str(tentativa.operation_id),
+                    "transaction_amount": 19.90,
+                    "currency_id": "BRL",
+                },
             )
         )
         return client.post(
@@ -103,8 +113,10 @@ def test_aprovacao_grava_outbox_na_mesma_transacao_e_relay_publica(
     assert intent.status == "approved"
     evento = OutboxEvent.objects.get(event="pagamento.aprovado")
     assert evento.payload["order_id"] == intent.order_id
-    assert evento.payload["site_id"] == intent.site_id
-    assert evento.payload["mp_payment_id"] == _MP_PAYMENT_ID
+    assert evento.version == 2
+    assert evento.payload["platform_site_id"] == intent.site_id
+    assert evento.payload["provider"] == "mercadopago"
+    assert evento.payload["provider_reference_id"] == _MP_PAYMENT_ID
     assert evento.published_at is not None  # relay já publicou no Redis Streams
 
 
@@ -112,7 +124,7 @@ def test_aprovacao_grava_outbox_na_mesma_transacao_e_relay_publica(
 def test_falha_do_relay_nao_perde_o_evento_fica_pendente_e_republicavel(
     client: Client, token_valido: str
 ) -> None:
-    """"falha simulada do relay ⇒ evento permanece pendente e é
+    """ "falha simulada do relay ⇒ evento permanece pendente e é
     republicado, nunca perdido". A transação de estado+outbox
     já commitou ANTES do relay rodar (on_commit) — um Redis fora do ar não
     derruba a resposta do webhook nem perde o evento. `transaction=True`: ver
@@ -140,7 +152,7 @@ def test_falha_do_relay_nao_perde_o_evento_fica_pendente_e_republicavel(
 def test_falha_entre_transicao_e_emitir_desfaz_os_dois_estado_sem_evento_impossivel(
     client: Client, token_valido: str
 ) -> None:
-    """"Estado sem evento e evento sem estado são ambos impossíveis."
+    """ "Estado sem evento e evento sem estado são ambos impossíveis."
     Prova a atomicidade de verdade: uma falha injetada DEPOIS do
     intent.save(status) mas DENTRO do transaction.atomic() (em emitir()) desfaz
     a transição de status também — nunca fica um pagamento "approved" sem o
