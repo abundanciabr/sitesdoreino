@@ -4,6 +4,7 @@ from ninja import NinjaAPI
 from pagamentos.api.auth import bearerAuth
 from pagamentos.api.intents import router as intents_router
 from pagamentos.api.webhooks import router as webhooks_router
+from pagamentos.api.relatorio import router as relatorio_router
 
 api = NinjaAPI(
     title="Pagamentos API",
@@ -20,3 +21,4 @@ api = NinjaAPI(
 )
 api.add_router("", intents_router)
 api.add_router("/webhooks", webhooks_router, auth=None)
+api.add_router("/interno/admin", relatorio_router)

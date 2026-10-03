@@ -72,9 +72,9 @@ TEMPLATES_PADRAO = {
         "corpo": "Olá {name}, seu Pix expirou. Finalize aqui: {recovery_url}",
     },
     "recuperacao_recusado": {
-        "versao": 1,
+        "versao": 2,
         "assunto": "Seu pagamento não foi aprovado",
-        "corpo": "Olá {name}, seu pagamento foi recusado ({reason_code}). Tente novamente.",
+        "corpo": "Olá {name}, não conseguimos concluir seu pagamento. Confira seus dados e tente novamente.",
     },
     "pix_codigo_novo": {
         "versao": 1,
@@ -221,7 +221,9 @@ def ao_pagamento_recusado(
     cliente = data["customer"]
     site_id = _site_id_do_evento(data)
     tpl = _resolver_template("recuperacao_recusado", site_id)
-    contexto = {"name": cliente["name"], "reason_code": data["reason_code"]}
+    # Overrides antigos por site ainda podem usar {reason_code}; nunca deixar
+    # o código técnico ou o nome da empresa chegar ao comprador.
+    contexto = {"name": cliente["name"], "reason_code": "pagamento não concluído"}
     _registrar_e_enfileirar(
         event="pagamento.recusado",
         site_id=site_id,

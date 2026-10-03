@@ -69,6 +69,40 @@ class PendenciasClient:
         return ResumoDePendencias(None)
 
 
+class PagamentosClient:
+    """Par interno da célula de pagamentos; o site vem do domínio do admin."""
+
+    def _configuracao(self):
+        base = (os.environ.get("PAGAMENTOS_API_URL") or "").rstrip("/")
+        token = os.environ.get("PAGAMENTOS_API_TOKEN") or ""
+        return (base, token) if base and token else None
+
+    def _pedir(self, metodo: str, caminho: str):
+        config = self._configuracao()
+        if not config:
+            return None
+        base, token = config
+        try:
+            resposta = http().request(
+                metodo, f"{base}{caminho}",
+                headers={"Authorization": f"Bearer {token}"}, timeout=10.0,
+            )
+            return resposta.status_code, resposta.json()
+        except (httpx.HTTPError, ValueError):
+            logger.exception("pagamentos não respondeu ao admin")
+            return None
+
+    def compras(self, site_id: str):
+        resultado = self._pedir("GET", f"/interno/admin/compras/{quote(site_id, safe='')}")
+        if not resultado or resultado[0] != 200 or not isinstance(resultado[1], dict):
+            return None
+        linhas = resultado[1].get("compras")
+        return linhas if isinstance(linhas, list) else None
+
+    def devolver(self, site_id: str, tentativa_id: str):
+        return self._pedir("POST", f"/interno/admin/compras/{quote(site_id, safe='')}/{quote(tentativa_id, safe='')}/devolver")
+
+
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 

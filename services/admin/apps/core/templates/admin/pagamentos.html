@@ -1,0 +1,38 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Pagamentos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Pagamentos</h1>
+  <p class="subtitulo">Compras deste site, por empresa e estado.</p>
+  {% if resultado == "solicitado" %}<p class="aviso">Devolução solicitada. A confirmação aparece após a consulta à empresa.</p>{% endif %}
+  {% if resultado == "conferir" %}<p class="aviso">A devolução já pode estar em andamento. Confira o estado antes de agir.</p>{% endif %}
+  {% if resultado == "incerto" %}<p class="aviso">Não foi possível confirmar o resultado. Confira o estado antes de tentar de novo.</p>{% endif %}
+  {% if indisponivel %}
+    <p class="aviso">Não foi possível consultar os pagamentos agora.</p>
+  {% elif not compras %}
+    <p>Nenhuma compra encontrada neste site.</p>
+  {% else %}
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th>Data</th><th>Pedido</th><th>Meio</th><th>Valor</th><th>Empresa</th><th>Estado</th><th>Segunda empresa</th><th>Devolução</th><th>Ação</th></tr></thead>
+      <tbody>
+      {% for compra in compras %}
+        <tr {% if compra.presa %}style="background:#513218"{% endif %}>
+          <td>{{ compra.data }}</td><td>{{ compra.pedido }}</td><td>{{ compra.metodo }}</td>
+          <td>R$ {{ compra.valor_exibicao }}</td>
+          <td>{{ compra.empresa|default:"—" }}</td><td>{{ compra.estado }}{% if compra.presa %} · conferir{% endif %}</td>
+          <td>{% if compra.segunda_empresa %}Sim{% else %}Não{% endif %}</td><td>{{ compra.estorno|default:"—" }}</td>
+          <td>{% if compra.pode_devolver %}
+            <form method="post" action="{% url 'pagamentos_devolver' %}" onsubmit="return confirm('Devolver R$ {{ compra.valor_exibicao }} pela {{ compra.empresa }}?');">
+              {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
+              <button type="submit">Devolver</button>
+            </form>
+          {% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

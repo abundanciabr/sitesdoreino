@@ -157,6 +157,7 @@ from apps.core.funil import funil
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
+from apps.core.pagamentos import pagamentos, pagamentos_devolver
 from apps.core.gestao_do_placar import gestao_do_placar
 from apps.core.resultado_do_experimento import resultado_do_experimento
 from apps.core.talentos import talentos
@@ -229,6 +230,8 @@ from config.api import api
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 
 urlpatterns = [
+    path("pagamentos/", pagamentos, name="pagamentos"),
+    path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
