@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.eventos",
     "apps.whatsapp",
+    # Áudio do WhatsApp: nota de voz recebida, transcrição e resposta em voz.
+    "apps.audio",
     # O motor das sequências (`PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.1: o
     # mantenedor escolheu em 30/08/2026 que ele mora DENTRO desta célula, e não
     # numa célula nova). App separado, banco compartilhado: ele lê e escreve as

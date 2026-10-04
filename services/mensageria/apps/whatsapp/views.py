@@ -37,6 +37,16 @@ def webhook_whatsapp(request):
     if not isinstance(payload, dict):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     evento = str(payload.get("event") or "").upper().replace(".", "_")
+    if evento == "MESSAGES_UPSERT":
+        # Nota de voz do lead: guarda a referência (e a mídia, se veio junto)
+        # para o admin transcrever. Texto recebido fica com as conversas.
+        from apps.audio.webhook import receber_audios
+
+        recebidos = receber_audios(payload)
+        if recebidos is None:
+            return JsonResponse({"erro": "instancia desconhecida"}, status=404)
+        if recebidos:
+            return JsonResponse({"audios": recebidos})
     if evento != "MESSAGES_UPDATE":
         return JsonResponse({"ignorado": True})
     instancia = payload.get("instance")
@@ -71,6 +81,9 @@ def webhook_whatsapp(request):
                 site_id=config.site_id, instancia=config.instancia, provider_id=identificador,
             ).first()
             if msg is None:
+                from apps.audio.servico import atualizar_estado_de_voz
+
+                alteradas += atualizar_estado_de_voz(config.instancia, identificador, estado)
                 # A resposta HTTP ainda pode estar a caminho. O retorno ficou
                 # persistido para ser aplicado quando o provider_id for gravado.
                 continue

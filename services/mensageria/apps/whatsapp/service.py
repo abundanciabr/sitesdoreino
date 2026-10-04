@@ -135,7 +135,7 @@ def conectar(site_id: str, renovar: bool = False) -> dict:
             })
         _gateway("POST", f"webhook/set/{_instancia(config)}", {"webhook": {
             "enabled": True, "url": webhook_url, "byEvents": False,
-            "events": ["MESSAGES_UPDATE", "CONNECTION_UPDATE"],
+            "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"],
             "headers": {"X-Webhook-Token": webhook_token},
         }})
         if ja_aberta:
