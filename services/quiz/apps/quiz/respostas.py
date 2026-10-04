@@ -17,6 +17,8 @@ Formato combinado com as outras células (CRM com agentes, onda 1):
 
 from __future__ import annotations
 
+from django.db import connection
+
 from .models import OutboxEvent
 
 
@@ -74,6 +76,47 @@ def lead_do_contato(email: str, nome: str, telefone: str) -> dict:
     return lead
 
 
+def travar_sessao(quiz_id, session_id) -> None:
+    """Fila única por (quiz, sessão) até o fim da transação de quem chama.
+
+    A captura (`views.captura`), a conclusão (`emitir_quiz_completado`) e o aviso
+    de abandono (`tasks.publicar_capturas_paradas`) passam por aqui antes de
+    olhar um para o outro. Sem a fila, a captura e o "Ver resultado" que chegam
+    juntos não se enxergam (nenhum confirmou ainda) e a captura fica solta.
+    Ordem fixa: esta trava primeiro, a linha da captura depois.
+    """
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT pg_advisory_xact_lock(hashtext(%s))",
+            [f"quiz-sessao:{quiz_id}:{session_id}"],
+        )
+
+
+def emitir_captura_parcial(captura) -> OutboxEvent:
+    """Grava `quiz.captura_parcial` com o contato e as respostas de agora.
+
+    Mesmo `captura_id` em todas as publicações da mesma captura; `publicacao`
+    conta 1, 2... para o consumidor saber que é a mesma pessoa, atualizada.
+    """
+    versao = captura.version
+    payload = {
+        "captura_id": str(captura.id),
+        "site_id": captura.site_id,
+        "sessao": str(captura.session_id),
+        "quiz_slug": captura.quiz.slug,
+        "version_key": versao.key,
+        "lead": lead_do_contato(
+            captura.lead_email, captura.lead_name, captura.lead_phone
+        ),
+        "respostas": respostas_legiveis(versao, captura.answers),
+        "utm": captura.utm,
+        "publicacao": captura.publicacoes,
+    }
+    if captura.context:
+        payload["context"] = captura.context
+    return OutboxEvent.objects.create(event="quiz.captura_parcial", payload=payload)
+
+
 def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     """Grava `quiz.completado` na outbox (mesma transação de quem chama).
 
@@ -102,6 +145,7 @@ def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     if submissao.context:
         payload["context"] = submissao.context
     if submissao.session_id:
+        travar_sessao(quiz.id, submissao.session_id)
         captura = CapturaParcial.objects.filter(
             quiz=quiz, session_id=submissao.session_id
         ).first()
