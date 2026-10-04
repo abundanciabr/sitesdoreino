@@ -96,3 +96,41 @@ def test_worker_encontra_a_task_periodica_registrada():
     assert "huey.contrib.djhuey" in settings.INSTALLED_APPS
     registrados = " ".join(map(str, huey._registry._registry.keys()))
     assert "relay_outbox_periodico" in registrados
+
+
+def test_redis_mudo_nao_prende_o_clique_de_comprar(monkeypatch):
+    """O relay roda no on_commit de createSession/placeOrder, dentro do clique.
+    Um Redis que aceita a conexão e não responde não pode prender a resposta:
+    a falha vira log e o evento fica pendente para a task periódica.
+
+    O Redis mudo daqui solta a conexão sozinho em 8 s, para que, sem prazo, o
+    teste falhe pelo tempo em vez de travar a suíte."""
+    import socket
+    import threading
+    import time
+
+    from apps.pedidos.tasks import relay_apos_commit
+
+    servidor = socket.socket()
+    servidor.bind(("127.0.0.1", 0))
+    servidor.listen(5)
+
+    def mudo():
+        conexao, _ = servidor.accept()
+        time.sleep(8)
+        conexao.close()
+
+    threading.Thread(target=mudo, daemon=True).start()
+    monkeypatch.setenv(
+        "REDIS_STREAMS_URL", f"redis://127.0.0.1:{servidor.getsockname()[1]}/0"
+    )
+    evento = emitir("pedido.criado", {"order_id": "abc", "site_id": "site-aaa"})
+
+    inicio = time.monotonic()
+    relay_apos_commit()
+    gasto = time.monotonic() - inicio
+    servidor.close()
+
+    assert gasto < 5, f"Redis mudo prendeu o relay por {gasto:.1f} s"
+    evento.refresh_from_db()
+    assert evento.published_at is None  # fica para a task periódica

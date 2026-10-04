@@ -157,7 +157,8 @@ def receita_da_oportunidade(request, opportunity_id: str):
     return JsonResponse(receita(_oportunidade(opportunity_id)))
 
 
-@router.get("/crm/{opportunity_id}/acompanhamento")
+# Rota GET /crm/{id}/acompanhamento: registrada em crm.py, no mesmo router do
+# PATCH, para o mesmo caminho atender os dois métodos.
 def acompanhamento_da_oportunidade(request, opportunity_id: str):
     _admin(request)
     return JsonResponse(acompanhamento(_oportunidade(opportunity_id)))

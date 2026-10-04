@@ -3,6 +3,7 @@ from django.db import IntegrityError, transaction
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
 from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido
+from .quiz_do_lead import ao_quiz_captura_parcial, registrar_quiz_completo  # noqa: F401
 from .recuperacao import sincronizar_pagamento, sincronizar_reversao
 
 
@@ -91,6 +92,7 @@ def ao_quiz_completado(event_id: str, data: dict) -> None:
             lead=lead, event="quiz.completado", event_id=event_id, payload=data
         )
         abrir_oferta_do_quiz(lead, data, event_id, evento)
+        registrar_quiz_completo(lead, event_id, data)
 
 
 def ao_pedido_criado(event_id: str, data: dict) -> None:
