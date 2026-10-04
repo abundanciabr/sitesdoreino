@@ -338,11 +338,11 @@ def _enviar_email(conversa: Conversa, mensagem: MensagemDaConversa) -> MensagemD
     except (smtplib.SMTPConnectError, smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused,
             smtplib.SMTPSenderRefused, ConnectionError, TimeoutError) as exc:
         registrar_falha()
-        logger.warning("e-mail da conversa %s: provedor recusou: %r", conversa.pk, exc)
+        logger.warning("e-mail da conversa %s: provedor recusou (%s)", conversa.pk, type(exc).__name__)
         return falhar(f"provedor recusou ({type(exc).__name__}: {exc})")
     except (smtplib.SMTPException, OSError) as exc:
         registrar_falha()
-        logger.warning("e-mail da conversa %s: resultado incerto: %r", conversa.pk, exc)
+        logger.warning("e-mail da conversa %s: resultado incerto (%s)", conversa.pk, type(exc).__name__)
         # Pode ter saído; não reenviar às cegas com a mesma chave.
         return falhar(f"resultado incerto ({type(exc).__name__}: {exc})", "desconhecido")
     if quantos != 1:
