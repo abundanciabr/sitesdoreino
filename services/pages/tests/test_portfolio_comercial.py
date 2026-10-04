@@ -61,17 +61,12 @@ def test_percurso_comercial_separa_experiencia_curso_e_selecao_privada(
             "experiencia_comercial": "nunca",
             "tem_trabalhos": "prontos",
         },
-        {"caminho_comercial": "ugc_clientes", "publico": "marcas"},
+        {"caminho_comercial": "ugc_clientes"},
         {
             "trabalhos_selecionados": ["Chapéu de aventura"],
-            "pronta_entrega": "comercial",
-            "interesses": ["chapeus"],
+            "primeira_peca": "nenhuma",
         },
-        {"primeira_peca": "nenhuma", "acrescentar": "nao"},
-        {
-            "apresentacao_itens": ["imagens", "descricao", "roblox"],
-            "divulgacao": "comunidades",
-        },
+        {},
     ]
     for etapa, dados in zip(CAMINHO_COMERCIAL, respostas):
         url = reverse("quiz_etapa", kwargs={"exploracao_id": eid, "etapa": etapa})
@@ -82,10 +77,13 @@ def test_percurso_comercial_separa_experiencia_curso_e_selecao_privada(
             assert (
                 "Como está sua experiência em modelagem 3D?" in pagina.content.decode()
             )
-            assert "Em que ponto do curso você está?" in pagina.content.decode()
-        if etapa == "interesses":
+            assert "Em que ponto do curso você está?" not in pagina.content.decode()
+        if etapa == "projeto":
             assert "Chapéu de aventura" in pagina.content.decode()
             assert "Segredo do outro aluno" not in pagina.content.decode()
+        if etapa == "apresentacao":
+            assert 'name="oferta_' not in pagina.content.decode()
+            assert "perfil de desenvolvedor" in pagina.content.decode()
         avancar = cliente.post(url, dados, **como())
         assert avancar.status_code == 302
     final = cliente.get(
@@ -94,10 +92,9 @@ def test_percurso_comercial_separa_experiencia_curso_e_selecao_privada(
     )
     texto = final.content.decode()
     for rotulo in (
-        "1. Como pretendo ganhar dinheiro",
-        "2. Trabalhos que já escolhi",
-        "5. Composição inicial",
-        "8. Minha próxima ação",
+        "O que você quer fazer",
+        "Com o que começar",
+        "Agora",
     ):
         assert rotulo in texto
     assert tentativa["respostas"]["experiencia"] == "iniciante"
@@ -129,3 +126,26 @@ def test_legado_continua_no_mesmo_endereco_com_aviso(aluna, site_declarado, quiz
     assert pagina.status_code == 200
     assert "tentativa foi criada na experiência anterior" in pagina.content.decode()
     assert quiz_falso.tentativas[eid]["respostas"] == {}
+
+
+@pytest.mark.django_db
+def test_quiz_enxuto_preserva_respostas_antigas_e_permite_desmarcar_trabalho(
+    aluna, site_declarado, quiz_falso
+):
+    cliente = Client()
+    cliente.post(reverse("iniciar_quiz"), {"entrada": "descobrir"}, **como())
+    eid = quiz_falso.atual
+    tentativa = tornar_comercial(quiz_falso, eid)
+    antigas = {"apresentacao_itens": ["imagens"], "oferta_moeda": "Robux",
+               "trabalhos_selecionados": ["Chapéu"]}
+    tentativa["respostas"].update(antigas)
+    url = reverse("quiz_etapa", kwargs={"exploracao_id": eid, "etapa": "apresentacao"})
+    assert cliente.post(url, {}, **como()).status_code == 302
+    assert all(tentativa["respostas"][k] == v for k, v in antigas.items())
+    url = reverse("quiz_etapa", kwargs={"exploracao_id": eid, "etapa": "interesses"})
+    assert cliente.get(url, **como())["Location"].endswith("/projeto")
+    url = reverse("quiz_etapa", kwargs={"exploracao_id": eid, "etapa": "projeto"})
+    assert cliente.post(url, {"campos_lista": "trabalhos_selecionados", "primeira_peca": "cabelo"}, **como()).status_code == 302
+    assert tentativa["respostas"]["trabalhos_selecionados"] == []
+    assert tentativa["respostas"]["acrescentar"] == "sim"
+    assert tentativa["respostas"]["oferta_moeda"] == "Robux"

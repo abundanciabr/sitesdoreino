@@ -68,30 +68,29 @@ TAMANHOS = [
 CAMINHO_COMERCIAL = [
     "ponto_partida",
     "contexto",
-    "interesses",
     "projeto",
     "apresentacao",
     "escolha_final",
 ]
 TITULOS_COMERCIAIS = {
-    "ponto_partida": "Comece pelo que você já sabe e já criou",
+    "ponto_partida": "Qual é seu ponto de partida?",
     "contexto": "Como você pretende ganhar dinheiro com 3D?",
     "interesses": "Que trabalhos vão mostrar o que você oferece?",
-    "projeto": "Com o que seu portfólio vai começar?",
-    "apresentacao": "Prepare sua apresentação para clientes ou compradores",
-    "escolha_final": "Seu portfólio para buscar oportunidades",
+    "projeto": "Escolha sua primeira peça",
+    "apresentacao": "Um passo de cada vez",
+    "escolha_final": "Seu próximo passo",
 }
 EXPERIENCIAS_COMERCIAIS = [
-    ("iniciante", "Iniciante: estou começando ou fiz poucos modelos"),
+    ("iniciante", "Estou começando"),
     (
         "intermediario",
-        "Intermediário: já criei vários modelos e consigo concluir trabalhos; talvez já tenha feito encomendas",
+        "Já consigo criar modelos",
     ),
     (
         "avancado",
-        "Avançado: tenho bastante experiência e trabalhos concluídos, inclusive para clientes ou projetos profissionais",
+        "Tenho bastante experiência",
     ),
-    ("nao_sei", "Não sei dizer: quero escolher meu caminho pelo que já tenho criado"),
+    ("nao_sei", "Ainda não sei dizer"),
 ]
 ANDAMENTOS = [
     ("nao_comecou", "Ainda não comecei"),
@@ -113,17 +112,17 @@ TRABALHOS = [
 CAMINHOS_RENDA = [
     (
         "experiencias",
-        "Modelagem por encomenda para criadores de experiências Roblox, como objetos, armas, animais ou cenários",
+        "Criar modelos para jogos do Roblox",
     ),
     (
         "ugc_clientes",
-        "Produção de acessórios ou itens UGC para clientes, como cabelos, roupas 3D e chapéus",
+        "Criar acessórios para clientes",
     ),
     (
         "marketplace",
-        "Preparação de itens próprios para vender no Marketplace do Roblox",
+        "Vender meus próprios itens no Roblox",
     ),
-    ("explorar", "Ainda não sei: quero conhecer essas possibilidades"),
+    ("explorar", "Ainda quero descobrir"),
 ]
 PUBLICOS = [
     ("criadores", "Criadores de experiências Roblox"),
@@ -177,6 +176,8 @@ CAMPOS_COMERCIAIS = {
     ),
     "projeto": (
         "primeira_peca",
+        "modelos_prontos",
+        "trabalhos_selecionados",
         "acrescentar",
         "proximas_pecas",
         "projeto_chave",
@@ -370,7 +371,8 @@ def quiz_etapa(request, exploracao_id, etapa):
         tentativa = exploracao_de(request, exploracao_id)
         caminho = caminho_de(tentativa)
         if etapa not in caminho:
-            return redirect("quiz_etapa", exploracao_id=exploracao_id, etapa=caminho[0])
+            destino = "projeto" if comercial(tentativa) and etapa == "interesses" else caminho[0]
+            return redirect("quiz_etapa", exploracao_id=exploracao_id, etapa=destino)
         posicao = caminho.index(etapa)
         seguinte = caminho[min(posicao + 1, len(caminho) - 1)]
         recusa = ""
@@ -378,10 +380,19 @@ def quiz_etapa(request, exploracao_id, etapa):
             respostas = {}
             campos_etapa = CAMPOS_COMERCIAIS if comercial(tentativa) else CAMPOS_ETAPA
             for chave in campos_etapa[etapa]:
+                if (
+                    comercial(tentativa)
+                    and chave in LISTAS_COMERCIAIS
+                    and chave not in request.POST
+                    and chave not in request.POST.getlist("campos_lista")
+                ):
+                    continue
                 if chave in LISTAS_COMERCIAIS:
                     respostas[chave] = request.POST.getlist(chave)
                 elif chave in request.POST:
                     respostas[chave] = request.POST[chave]
+            if comercial(tentativa) and etapa == "projeto" and "primeira_peca" in respostas:
+                respostas["acrescentar"] = "nao" if respostas["primeira_peca"] == "nenhuma" else "sim"
             if etapa == "escolha_final":
                 respostas["proposta_editada"] = edicoes_da_proposta(request, tentativa)
             try:
