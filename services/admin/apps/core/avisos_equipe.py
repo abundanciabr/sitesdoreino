@@ -26,7 +26,9 @@ no mesmo `(tipo, site_id, fato)` único, e é isso que torna o aviso idempotente
 Para não virar ruído: só fato das últimas 24 horas vira aviso (na primeira
 volta depois de publicar, o que já era velho fica de fora), uma volta manda no
 máximo `EMAILS_POR_VOLTA` e-mails (o resto sai nas voltas seguintes) e o
-trabalho parado avisa uma vez por trabalho, com teto de avisos novos por volta.
+trabalho parado avisa uma vez por causa (e por site, e por dia), com a contagem
+no texto, e não uma vez por trabalho: dez trabalhos parados pela mesma falha do
+modelo são um problema só, e com teto de avisos novos por volta.
 
 Fato de teste não vira aviso nem e-mail, em nenhum dos tipos. É teste o que o
 resto do projeto já chama de teste: contato de e-mail `@example.com` ou
@@ -49,6 +51,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 from datetime import timedelta, timezone as dt_timezone
 from urllib.parse import quote
 
@@ -73,7 +76,8 @@ Email = AvisoDaEquipe.Email
 
 #: Quanto um trabalho ou um envio pode ficar sem resposta antes de virar aviso.
 MINUTOS_DE_TOLERANCIA = 10
-#: Depois de tantas tentativas o e-mail desiste; o aviso continua no painel.
+#: Depois de tantas tentativas o e-mail desiste por ora (o aviso continua no painel
+#: e o e-mail volta à fila quando o correio responde de novo, em até 24 horas).
 MAXIMO_DE_TENTATIVAS = 10
 #: Conversas recentes em que procurar envio incerto, por site e por volta.
 CONVERSAS_POR_VOLTA = 30
@@ -348,11 +352,55 @@ def _enviar_sem_derrubar(aviso_id: int) -> None:
         log.exception("Avisos da equipe: e-mail do aviso %s falhou", aviso_id)
 
 
+def _sem_email_recente():
+    """Os avisos de hoje cujo e-mail desistiu ou ficou sem destinatário."""
+    return AvisoDaEquipe.objects.filter(
+        email_situacao__in=(Email.DESISTIU, Email.SEM_DESTINATARIO),
+        criado_em__gte=timezone.now() - JANELA_DOS_FATOS,
+    )
+
+
+def reabrir_emails_que_desistiram(limite: int) -> int:
+    """Faz o e-mail que desistiu voltar à fila quando a causa passou.
+
+    - Sem destinatário: volta quando há de novo alguém a quem avisar.
+    - Desistiu depois de muitas falhas: o correio caiu e voltou? Uma tentativa
+      de prova por volta (a mais antiga); se ela sai, os outros voltam à fila e
+      saem nas voltas seguintes. Se falha, continua desistido, sem rajada.
+
+    Só vale para aviso das últimas 24 horas (mais velho que isso já não serve).
+    Devolve quantos e-mails foram pedidos nesta chamada."""
+    if limite <= 0:
+        return 0
+    if administradores():
+        _sem_email_recente().filter(email_situacao=Email.SEM_DESTINATARIO).update(
+            email_situacao=Email.PENDENTE, email_tentativas=0, email_erro=""
+        )
+    prova = _sem_email_recente().filter(email_situacao=Email.DESISTIU).order_by("pk").first()
+    if prova is None:
+        return 0
+    # Uma falha a mais já devolve este aviso a "desistiu".
+    AvisoDaEquipe.objects.filter(pk=prova.pk).update(
+        email_situacao=Email.PENDENTE, email_tentativas=MAXIMO_DE_TENTATIVAS - 1
+    )
+    _enviar_sem_derrubar(prova.pk)
+    prova.refresh_from_db()
+    if prova.email_situacao == Email.PEDIDO:
+        _sem_email_recente().filter(email_situacao=Email.DESISTIU).update(
+            email_situacao=Email.PENDENTE, email_tentativas=0, email_erro=""
+        )
+    return 1
+
+
 def enviar_emails_pendentes(limite: int = EMAILS_POR_VOLTA) -> int:
     n = 0
     for pk in AvisoDaEquipe.objects.filter(email_situacao=Email.PENDENTE).order_by("pk").values_list("pk", flat=True)[:limite]:
         _enviar_sem_derrubar(pk)
         n += 1
+    try:
+        n += reabrir_emails_que_desistiram(limite - n)
+    except Exception:  # noqa: BLE001 - reabrir é um extra; não derruba a volta
+        log.exception("Avisos da equipe: reabrir e-mails que desistiram")
     return n
 
 
@@ -521,6 +569,13 @@ class _PerguntasALeads:
         if _contato_de_teste(contato.get("nome"), contato.get("email"), dados=entrada):
             return True
         return self.lead_de_teste(str(getattr(trabalho, "contato_id", "") or ""))
+
+
+def _causa(motivo: str) -> str:
+    """O que os trabalhos parados têm em comum: o motivo sem números nem
+    maiúsculas (o número de um trabalho ou de uma tentativa não é a causa)."""
+    texto = " ".join(re.sub(r"\d+", "#", (motivo or "").lower()).split())[:120]
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()[:12]
 
 
 def _chave(site_id: str, fato: str) -> tuple[str, str]:
@@ -818,44 +873,68 @@ def varrer_trabalhos_comerciais(limite, desde=None, perguntas: _PerguntasALeads 
         consulta = consulta.exclude(tipo=Modelo.Tipo.ANALISAR_RESULTADOS)
     if "teste" in campos:
         consulta = consulta.filter(teste=False)
-    candidatos = []
+    # Parado: um aviso por causa, por site e por dia (a causa de dez trabalhos
+    # parados costuma ser uma só: o modelo ou o provedor fora do ar). Envio
+    # incerto: um aviso por trabalho, porque cada um é uma mensagem a conferir.
+    dia = (limite + timedelta(minutes=MINUTOS_DE_TOLERANCIA)).strftime("%Y%m%d")
+    parados: dict[tuple[str, str], list] = {}
+    incertos = []
     for trabalho in consulta.order_by("-pk")[:100]:
         estado = getattr(trabalho, campo_estado)
-        candidatos.append((trabalho, estado, str(getattr(trabalho, "site_id", "") or ""), f"trabalho_comercial:{trabalho.pk}:{estado}"))
+        site = str(getattr(trabalho, "site_id", "") or "")
+        if tipos[estado] == Tipo.TRABALHO_PARADO:
+            causa = _causa(str(getattr(trabalho, "motivo", "") or ""))
+            parados.setdefault((site, f"trabalhos_parados:{causa}:{dia}"), []).append(trabalho)
+        else:
+            incertos.append((trabalho, site, f"trabalho_comercial:{trabalho.pk}:{estado}"))
     novos = 0
-    for tipo in set(tipos.values()):
-        ja = _ja_avisados(tipo, [(site, fato) for _, estado, site, fato in candidatos if tipos[estado] == tipo])
-        for trabalho, estado, site, fato in candidatos:
-            if tipos[estado] != tipo or _chave(site, fato) in ja:
-                continue
-            if novos >= AVISOS_DE_TRABALHO_POR_VOLTA:
-                return
-            if perguntas.trabalho_de_teste(trabalho) is not False:
-                continue
-            motivo = str(getattr(trabalho, "motivo", "") or "")
-            if tipo == Tipo.ENVIO_INCERTO:
-                titulo = "Mensagem do agente sem confirmação de envio"
-                texto = (
-                    f"O agente mandou uma mensagem há mais de {MINUTOS_DE_TOLERANCIA} minutos e o provedor "
-                    "não confirmou se ela saiu. Ela não será reenviada sozinha: confira a conversa."
-                )
-            else:
-                titulo = "Trabalho comercial parado"
-                texto = (
-                    f"Um trabalho comercial espera o provedor ou o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos"
-                    + (f": {motivo[:200]}" if motivo else ".")
-                    + " Ele volta sozinho quando o serviço responder."
-                )
-            _, criado = avisar(
-                tipo,
-                site_id=site,
-                fato=fato,
-                titulo=titulo,
-                texto=texto,
-                link=_link_do_trabalho(trabalho),
-                enviar_agora=False,
-            )
-            novos += 1 if criado else 0
+    ja = _ja_avisados(Tipo.TRABALHO_PARADO, list(parados))
+    for (site, fato), grupo in parados.items():
+        if _chave(site, fato) in ja:
+            continue
+        if novos >= AVISOS_DE_TRABALHO_POR_VOLTA:
+            return
+        reais = [t for t in grupo if perguntas.trabalho_de_teste(t) is False]
+        if not reais:
+            continue
+        motivo = str(getattr(reais[0], "motivo", "") or "")
+        complemento = (f": {motivo[:200]}" if motivo else ".") + " Eles voltam sozinhos quando o serviço responder."
+        if len(reais) == 1:
+            complemento = complemento.replace("Eles voltam", "Ele volta")
+            texto = f"Um trabalho comercial espera o provedor ou o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos" + complemento
+        else:
+            texto = f"{len(reais)} trabalhos comerciais esperam o provedor ou o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos" + complemento
+        _, criado = avisar(
+            Tipo.TRABALHO_PARADO,
+            site_id=site,
+            fato=fato,
+            titulo="Trabalho comercial parado" if len(reais) == 1 else "Trabalhos comerciais parados",
+            texto=texto,
+            link=_link_do_trabalho(reais[0]),
+            enviar_agora=False,
+        )
+        novos += 1 if criado else 0
+    ja = _ja_avisados(Tipo.ENVIO_INCERTO, [(site, fato) for _, site, fato in incertos])
+    for trabalho, site, fato in incertos:
+        if _chave(site, fato) in ja:
+            continue
+        if novos >= AVISOS_DE_TRABALHO_POR_VOLTA:
+            return
+        if perguntas.trabalho_de_teste(trabalho) is not False:
+            continue
+        _, criado = avisar(
+            Tipo.ENVIO_INCERTO,
+            site_id=site,
+            fato=fato,
+            titulo="Mensagem do agente sem confirmação de envio",
+            texto=(
+                f"O agente mandou uma mensagem há mais de {MINUTOS_DE_TOLERANCIA} minutos e o provedor "
+                "não confirmou se ela saiu. Ela não será reenviada sozinha: confira a conversa."
+            ),
+            link=_link_do_trabalho(trabalho),
+            enviar_agora=False,
+        )
+        novos += 1 if criado else 0
 
 
 def varrer_trabalhos_parados(agora=None, perguntas: _PerguntasALeads | None = None) -> None:
@@ -875,26 +954,41 @@ def varrer_trabalhos_parados(agora=None, perguntas: _PerguntasALeads | None = No
         atualizada_em__lte=limite,
         atualizada_em__gte=desde,
     ).exclude(tipo=Execucao.Tipo.CONVERSA)
-    candidatas = list(esperando.order_by("-pk")[:100])
-    ja = _ja_avisados(Tipo.TRABALHO_PARADO, [("", f"execucao:{e.pk}") for e in candidatas])
+    # Um aviso por pessoa, por causa e por dia: dez trabalhos do mesmo robô
+    # parados pela mesma queda da conexão são um problema só.
+    dia = (limite + timedelta(minutes=MINUTOS_DE_TOLERANCIA)).strftime("%Y%m%d")
+    grupos: dict[str, list] = {}
+    for execucao in esperando.order_by("-pk")[:100]:
+        responsavel = str(execucao.pedido_por_membro_id or "-")
+        grupos.setdefault(f"execucoes_paradas:{responsavel}:{_causa(execucao.motivo)}:{dia}", []).append(execucao)
+    ja = _ja_avisados(Tipo.TRABALHO_PARADO, [("", fato) for fato in grupos])
     novos = 0
-    for execucao in candidatas:
-        fato = f"execucao:{execucao.pk}"
+    for fato, grupo in grupos.items():
         if _chave("", fato) in ja:
             continue
         if novos >= AVISOS_DE_TRABALHO_POR_VOLTA:
             return
+        execucao = grupo[0]
         responsavel = str(execucao.pedido_por_membro_id or "")
+        motivo = (f": {execucao.motivo[:200]}" if execucao.motivo else ".")
+        if len(grupo) == 1:
+            titulo = f"Trabalho parado: {execucao.get_tipo_display()}"
+            texto = (
+                f"Este trabalho espera a conexão com o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos"
+                + motivo + " Ele volta sozinho quando a conexão voltar."
+            )
+        else:
+            titulo = "Trabalhos parados: conexão com o modelo"
+            texto = (
+                f"{len(grupo)} trabalhos esperam a conexão com o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos"
+                + motivo + " Eles voltam sozinhos quando a conexão voltar."
+            )
         _, criado = avisar(
             Tipo.TRABALHO_PARADO,
             fato=fato,
             responsavel=responsavel,
-            titulo=f"Trabalho parado: {execucao.get_tipo_display()}",
-            texto=(
-                f"Este trabalho espera a conexão com o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos"
-                + (f": {execucao.motivo[:200]}" if execucao.motivo else ".")
-                + " Ele volta sozinho quando a conexão voltar."
-            ),
+            titulo=titulo,
+            texto=texto,
             link=_rota(("execucao_do_robo",), [execucao.pk]) or "/admin/equipe/robo/",
             enviar_agora=False,
         )

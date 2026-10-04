@@ -102,7 +102,7 @@ def crm_modelos(request):
         elif acao == "mapear":
             modelo_id = request.POST.get("modelo_id", "")
             mapa = {k[len("lugar:"):]: v for k, v in request.POST.items() if k.startswith("lugar:")}
-            if not modelo_id.isdigit():
+            if not (modelo_id.isascii() and modelo_id.isdigit() and len(modelo_id) <= 12):
                 contexto["erro"] = "Este modelo não foi reconhecido."
             else:
                 dados, erro = _pedir("POST", "modelos/mapeamento", {"modelo_id": int(modelo_id), "mapeamento": mapa})

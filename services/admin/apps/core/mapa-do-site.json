@@ -2932,6 +2932,39 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/conversas/",
+      "endereco": "/admin/crm/conversas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Conversas do CRM",
+      "descricao": "O que os contatos escreveram no WhatsApp e no e-mail, e quem está respondendo: o agente ou uma pessoa da equipe. Dá para filtrar por estado e por canal.",
+      "observacao": "Só administradores. Se a mensageria não responder, a página avisa em vez de mostrar uma lista vazia."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/conversas/<uuid:conversa_id>/",
+      "endereco": "/admin/crm/conversas/<uuid:conversa_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Uma conversa do CRM",
+      "descricao": "As mensagens de uma conversa, o contato e a oportunidade ligados a ela, e os botões para assumir, devolver ao agente e responder pela equipe.",
+      "observacao": "Só administradores. Responder, assumir e devolver são feitos nesta mesma página."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/assistente/",
+      "endereco": "/admin/crm/assistente/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Assistente do site",
+      "descricao": "Nome, apresentação, assinatura, tom e voz do assistente que conversa com os contatos deste site.",
+      "observacao": "Só administradores. Mudar aqui vale para as próximas conversas."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/modelos/",
       "endereco": "/admin/crm/modelos/",
       "alcance": "publico",
@@ -2971,6 +3004,28 @@
       "titulo": "Agentes do CRM",
       "descricao": "O bloco Pronto para vender? (o que falta para um lead real receber o link de compra, linha a linha, com o que fazer e a tela certa), o interruptor da equipe comercial e a escolha dos quizzes em que ela atua; trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação, com falha e concluídos (inclusive os encerrados porque o pagamento foi aprovado); a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; o botão Analisar agora, que pede a análise de resultados do dia; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
       "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/equipe/",
+      "endereco": "/admin/crm/agentes/equipe/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Equipe comercial de agentes",
+      "descricao": "A fila de trabalhos dos quatro papéis do atendimento comercial, as decisões de cada um e as estratégias, com o detalhe de um trabalho.",
+      "observacao": "Só administradores. Aceita ?trabalho=<número> para abrir um trabalho; número inválido ou inexistente mostra a página sem detalhe."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/comparacao/",
+      "endereco": "/admin/crm/agentes/comparacao/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Grupo de comparação dos agentes",
+      "descricao": "Grava o percentual de contatos novos que ficam sem o agente, para comparar com quem foi atendido por ele. Pede confirmação e vale só para contatos que chegarem depois.",
+      "observacao": "Só administradores; é o botão da página Agentes do CRM."
     },
     {
       "celula": "admin",

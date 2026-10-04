@@ -452,3 +452,35 @@ def test_periodo_acima_do_teto_da_medicao_pede_periodo_menor_sem_perguntar(monke
     respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=_corpo_do_funil()))
     ok = dentro().get(reverse("crm_resultados"), {"site_id": "site-a", "desde": "2025-10-04", "ate": "2026-10-04"})
     assert ok.context["funil"]["disponivel"] is True
+
+
+@pytest.mark.skipif(not apps.is_installed("apps.comercial"), reason="agentes comerciais ainda não estão nesta célula")
+def test_fatos_dos_agentes_consulta_em_lotes_e_da_o_mesmo_resultado(monkeypatch):
+    from django.db import connection
+
+    Trabalho = apps.get_model("comercial", "TrabalhoComercial")
+    Decisao = apps.get_model("comercial", "DecisaoComercial")
+    oportunidades, compras = [], []
+    for n in range(7):
+        t = Trabalho.objects.create(tipo="abordar", chave_idempotencia=f"k{n}", oportunidade_id=f"op-{n}",
+                                    contato_id=f"l-{n}", site_id="site-a", custo_usd=Decimal("0.10"))
+        Decisao.objects.create(trabalho=t, call_id=f"c{n}", papel="abordagem", versao_estrategia=3,
+                               ferramenta="enviar_mensagem", resultado="feito", custo_usd=Decimal("0.30"),
+                               saida={"canal": "whatsapp", "conversa_id": f"cv-{n}"})
+        oportunidades.append({"id": f"op-{n}", "lead_id": f"l-{n}"})
+    # Trabalho sem oportunidade, achado só pelo contato.
+    Trabalho.objects.create(tipo="abordar", chave_idempotencia="sem-op", oportunidade_id="", contato_id="l-3", site_id="site-a")
+    inteiro = crm_resultados.fatos_dos_agentes(oportunidades, compras)
+
+    maior = []
+
+    def espiar(execute, sql, params, many, context):
+        maior.append(len(params or ()))
+        return execute(sql, params, many, context)
+
+    monkeypatch.setattr(crm_resultados, "LOTE_DO_IN", 2)
+    with connection.execute_wrapper(espiar):
+        em_lotes = crm_resultados.fatos_dos_agentes(oportunidades, compras)
+    assert max(maior) <= 2 + 1  # o lote mais a marca de teste
+    assert em_lotes["envios"]["whatsapp"]["enviadas"] == inteiro["envios"]["whatsapp"]["enviadas"] == 7
+    assert em_lotes["custo_modelos_usd"] == inteiro["custo_modelos_usd"]

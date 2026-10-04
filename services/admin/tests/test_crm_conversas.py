@@ -767,3 +767,13 @@ def test_filtro_aguardando_traz_quem_so_recebeu_a_orientacao_automatica():
     html = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"}).content.decode()
     assert "Orientação enviada" in html and "Confirmação automática" in html
     assert "Pedido de e-mail" not in html  # essa espera a pessoa, não a equipe
+
+
+@respx.mock
+def test_as_telas_de_conversas_levam_o_menu_das_areas_do_crm():
+    respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(conversa(ultima_mensagem=mensagem())))
+    html = dentro().get(reverse("crm_conversas")).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html and reverse("crm_resultados") in html
+    leitura_da_conversa(None, mensagem())
+    html = dentro().get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html and reverse("crm_resultados") in html
