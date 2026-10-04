@@ -319,9 +319,9 @@ class InstalacaoAppmax(models.Model):
 
     Durante `POST /app/client/generate` a Appmax chama a nossa URL de validação
     e só emite a credencial se a resposta for 200 com um `external_id` válido e
-    inédito. Por isso `app_id` é único e `external_id` nasce UMA vez: a segunda
-    chamada do mesmo `app_id` devolve o MESMO UUID, nunca um novo, que
-    derrubaria a instalação já existente.
+    inédito. Por isso `app_id` é único e cada health check do mesmo `app_id`
+    grava um `external_id` NOVO no lugar do anterior: a Appmax rejeita valor
+    repetido e o anterior deixa de valer (guides/instalacao).
 
     `client_secret`, `client_key` e `external_key` NUNCA são
     persistidos. Do segredo fica no máximo `client_secret_recebido`, a marca de
