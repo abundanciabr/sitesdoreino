@@ -29,6 +29,11 @@ def test_pagina_mostra_empresa_valor_e_confirmacao():
     assert b"R$ 9,90" in resposta.content
     assert b"mercadopago" in resposta.content
     assert b"Devolver" in resposta.content
+    # A confirmação não pode depender de script embutido: o CSP da área
+    # administrativa (script-src 'self') o bloqueia e o clique devolveria direto.
+    assert b"onsubmit" not in resposta.content
+    assert b"<details>" in resposta.content
+    assert "Confirmar: devolver R$ 9,90 pela mercadopago".encode() in resposta.content
 
 
 def test_pagina_antiga_mostra_devolver_e_volta_a_mesma_pagina():

@@ -21,7 +21,7 @@ def contatos_dos_quizzes():
     # O campo source pode mudar em um upsert posterior. O histórico preserva
     # a captura e evita transformar cadastro de aluno ou compra em contato.
     capturas = TimelineEvent.objects.filter(
-        Q(event="quiz.completado")
+        Q(event__in=("quiz.completado", "quiz.captura_parcial"))
         | Q(event="lead.upsert", payload__source__iregex=ORIGEM_QUIZ)
     ).values("lead_id")
     return Lead.objects.filter(

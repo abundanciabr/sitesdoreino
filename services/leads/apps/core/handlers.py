@@ -2,7 +2,8 @@
 from django.db import IntegrityError, transaction
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
-from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido, ganhar_ofertas
+from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido
+from .quiz_do_lead import ao_quiz_captura_parcial, registrar_quiz_completo  # noqa: F401
 from .recuperacao import sincronizar_pagamento, sincronizar_reversao
 
 
@@ -91,6 +92,7 @@ def ao_quiz_completado(event_id: str, data: dict) -> None:
             lead=lead, event="quiz.completado", event_id=event_id, payload=data
         )
         abrir_oferta_do_quiz(lead, data, event_id, evento)
+        registrar_quiz_completo(lead, event_id, data)
 
 
 def ao_pedido_criado(event_id: str, data: dict) -> None:
@@ -103,10 +105,10 @@ def ao_pedido_criado(event_id: str, data: dict) -> None:
             phone=cliente.get("phone", ""),
             utm=data.get("utm"),
         )
-        TimelineEvent.objects.create(
+        evento = TimelineEvent.objects.create(
             lead=lead, event="pedido.criado", event_id=event_id, payload=data
         )
-        avancar_ofertas_com_pedido(lead, data, event_id)
+        avancar_ofertas_com_pedido(lead, data, event_id, evento)
 
 
 def _site_id_de(data: dict) -> str:
@@ -169,9 +171,8 @@ def _fato_ja_processado(evento: str, site_id: str, chave: str) -> bool:
 def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         site_id = _site_id_de(data)
-        if _fato_ja_processado(
-            "pagamento.aprovado", site_id, _chave_pagamento_aprovado(data)
-        ):
+        chave = _chave_pagamento_aprovado(data)
+        if _fato_ja_processado("pagamento.aprovado", site_id, chave):
             return  # mesmo fato já registrado (v1 ou v2, entrega anterior)
         cliente = data["customer"]
         lead = _upsert_lead(
@@ -183,8 +184,10 @@ def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
         evento = TimelineEvent.objects.create(
             lead=lead, event="pagamento.aprovado", event_id=event_id, payload=data
         )
-        sincronizar_pagamento(lead, "pagamento.aprovado", data, event_id, evento)
-        ganhar_ofertas(lead, event_id)
+        # Fecha só a oportunidade desta compra; ver compras.py.
+        sincronizar_pagamento(
+            lead, "pagamento.aprovado", data, event_id, evento, chave=chave
+        )
 
 
 def ao_pagamento_recusado(event_id: str, data: dict) -> None:

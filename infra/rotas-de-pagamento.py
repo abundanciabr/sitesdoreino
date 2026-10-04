@@ -97,13 +97,26 @@ def lista_email(texto: str) -> str:
     return ",".join(dict.fromkeys(itens))
 
 
+def mascarar_emails(texto: str) -> str:
+    """Mostra a***@dominio: dá para conferir sem pôr o e-mail inteiro na tela."""
+    itens = []
+    for item in texto.split(","):
+        local, arroba, dominio = item.strip().rpartition("@")
+        if item.strip():
+            itens.append(f"{local[:1]}***@{dominio}" if arroba and local else "***")
+    return ",".join(itens)
+
+
 def executar(raiz: Path, args: argparse.Namespace) -> None:
     caminhos = [raiz / "env" / nome for nome in AMBIENTES]
     estado = {caminho: ler(caminho) for caminho in caminhos}
     for caminho, (_, valores) in estado.items():
         print(f"{caminho.name}:")
         for chave in CHAVES:
-            print(f"  {chave}={valores.get(chave, '') or '(vazia)'}")
+            valor = valores.get(chave, "")
+            if chave == "PROVA_SEGUNDA_EMPRESA_EMAILS":
+                valor = mascarar_emails(valor)
+            print(f"  {chave}={valor or '(vazia)'}")
     if args.desativar and (args.cartao_mp is not None or args.pix_appmax is not None or args.prova_emails is not None or args.limpar_prova):
         raise Falha("--desativar não aceita outras alterações")
     if args.limpar_prova and args.prova_emails is not None:

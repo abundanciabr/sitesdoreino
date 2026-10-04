@@ -8,8 +8,8 @@
 #
 # Por que cada caso importa: a Appmax devolve 500 e NÃO emite credencial
 # nenhuma quando a nossa resposta não é 200 ou quando o external_id volta
-# inválido ou repetido. Um segundo UUID para o mesmo app_id quebraria a
-# instalação que já existe.
+# inválido ou repetido. Por isso cada health check do mesmo app_id recebe um
+# UUID novo, em qualquer ambiente, e o banco guarda sempre o último.
 import json
 import logging
 import uuid
@@ -90,14 +90,54 @@ def test_mesmo_app_id_duas_vezes_renova_o_external_id_no_sandbox(
     )
 
 
-def test_producao_conserva_external_id_existente(
+@pytest.mark.parametrize("loja_atual", ["loja-verdadeira", ""])
+def test_chamada_sem_assinatura_nao_escolhe_a_loja_dos_avisos(
+    instalacoes_configuradas: None, loja_atual: str
+) -> None:
+    # Esta rota não tem assinatura e o app_id é um número curto. A loja
+    # (site_id) é o que o aviso de cobrança confere: quem a escolhesse por aqui
+    # faria a Appmax receber 403 em todos os avisos. Ela é preenchida pelo
+    # próprio aviso, que exige o app_uuid.
+    InstalacaoAppmax.objects.create(
+        app_id=_APP_ID,
+        alias="Meshcraft",
+        platform_site_ids=["meshcraft-top"],
+        appmax_site_id=loja_atual,
+    )
+
+    resposta = _postar(_corpo(site_id="loja-do-intruso"))
+
+    assert resposta.status_code == 200
+    assert InstalacaoAppmax.objects.get(app_id=_APP_ID).appmax_site_id == loja_atual
+
+
+def test_primeira_instalacao_nao_amarra_loja_vinda_do_corpo(
+    instalacoes_configuradas: None,
+) -> None:
+    resposta = _postar(_corpo(site_id="loja-do-intruso"))
+
+    assert resposta.status_code == 200
+    assert InstalacaoAppmax.objects.get(app_id=_APP_ID).appmax_site_id == ""
+
+
+def test_producao_tambem_renova_external_id(
     instalacoes_configuradas: None, settings: Any
 ) -> None:
+    """Documentação da Appmax: 'Gere um UUID novo a cada requisição do health
+    check'. Repetido, ela troca pelo client_id e o external-id do checkout
+    para de valer, igual ao 404 do cartão no sandbox."""
+    settings.APPMAX_AUTH_URL = "https://auth.appmax.com.br/oauth2/token"
     settings.APPMAX_API_URL = "https://api.appmax.com.br"
     primeira = _postar(_corpo())
     segunda = _postar(_corpo())
 
-    assert segunda.json()["external_id"] == primeira.json()["external_id"]
+    assert primeira.status_code == 200
+    assert segunda.status_code == 200
+    assert segunda.json()["external_id"] != primeira.json()["external_id"]
+    assert (
+        str(InstalacaoAppmax.objects.get(app_id=_APP_ID).external_id)
+        == segunda.json()["external_id"]
+    )
 
 
 def test_corpo_sem_app_id_recusa_e_nao_cria_vinculo(
