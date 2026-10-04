@@ -373,7 +373,15 @@ def resolver_oportunidade(compra, lead, momento=None):
             if _sinais_da_oferta(o, conhecidas[o.pk]) & da_compra
         ]
         if casadas:
-            return casadas[0]
+            # Mais de uma casa: vale a que conhece a oferta exata da compra, depois
+            # a de atividade mais recente, depois o id (não depende da ordem de criação).
+            oferta = _chave(compra.oferta_ref)
+            # O id é UUID: no empate, o maior (em texto) ganha, sempre o mesmo.
+            casadas.sort(key=lambda o: str(o.pk), reverse=True)
+            return min(casadas, key=lambda o: (
+                0 if oferta and oferta in _chaves(conhecidas[o.pk]) else 1,
+                -o.atualizada_em.timestamp(),
+            ))
     if len(abertas) == 1 and not compra.oportunidade_ref:
         unica = abertas[0]
         if not da_compra:

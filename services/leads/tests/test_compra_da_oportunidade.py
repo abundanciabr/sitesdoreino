@@ -140,6 +140,49 @@ def test_sem_referencia_e_com_duas_ofertas_a_compra_nao_fecha_nenhuma():
     assert compra.oportunidade_id is None and compra.aprovado_em is not None
 
 
+def _mexer_em(oportunidade, quando):
+    Oportunidade.objects.filter(pk=oportunidade.pk).update(atualizada_em=quando)
+
+
+@pytest.mark.parametrize("ordem", [("crivo", "cura"), ("cura", "crivo")])
+def test_duas_abertas_casando_a_compra_vale_a_da_oferta_exata(ordem):
+    from django.utils import timezone
+
+    feitas = {slug: quiz(slug) for slug in ordem}
+    exata, outra = feitas["crivo"], feitas["cura"]
+    pedido("ped-1", oportunidade_ref=str(exata.id), produto="iniciante",
+           oferta_ref="oferta-exata")
+    recusado("ped-1")
+    # A outra é a de atividade mais recente, mas só a exata conhece a oferta.
+    _mexer_em(exata, timezone.now() - timezone.timedelta(days=2))
+    _mexer_em(outra, timezone.now())
+
+    pedido("ped-2", produto="iniciante", oferta_ref="oferta-exata")
+    aprovado("ped-2")
+    compra = CompraDaOportunidade.objects.get(pedido_id="ped-2")
+    assert compra.oportunidade_id == exata.id
+
+
+@pytest.mark.parametrize("ordem", [("crivo", "cura"), ("cura", "crivo")])
+def test_duas_abertas_sem_oferta_exata_vale_a_mais_recente_e_depois_o_id(ordem):
+    from django.utils import timezone
+
+    feitas = {slug: quiz(slug) for slug in ordem}
+    crivo, cura = feitas["crivo"], feitas["cura"]
+    agora = timezone.now()
+    _mexer_em(crivo, agora - timezone.timedelta(days=1))
+    _mexer_em(cura, agora)
+    pedido("ped-1", produto="iniciante")
+    assert CompraDaOportunidade.objects.get(pedido_id="ped-1").oportunidade_id == cura.id
+
+    # Empate de atividade: o maior id.
+    _mexer_em(crivo, agora)
+    _mexer_em(cura, agora)
+    pedido("ped-2", produto="iniciante")
+    esperado = max(crivo.id, cura.id, key=str)
+    assert CompraDaOportunidade.objects.get(pedido_id="ped-2").oportunidade_id == esperado
+
+
 def test_oferta_indicada_pelo_quiz_liga_o_pedido_pela_oferta():
     crivo = quiz("crivo", context={"oferta_ref": "oferta-crivo"})
     cura = quiz("cura", context={"oferta_ref": "oferta-cura"})
