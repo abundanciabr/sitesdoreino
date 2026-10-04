@@ -202,7 +202,12 @@ def _emitir_pedido_pago(aviso: Aviso) -> None:
             "visitor_id": pedido.session.visitor_id,
             "valor_centavos": pedido.total_cents,
             "moeda": "BRL",
-            "pago_em": django_timezone.now().isoformat(),
+            "pago_em": (pedido.pago_em or django_timezone.now()).isoformat(),
+            **(
+                {"oportunidade_ref": pedido.oportunidade_ref, "oferta_ref": pedido.oferta_ref}
+                if pedido.oportunidade_ref
+                else {}
+            ),
         },
     )
 
@@ -257,13 +262,16 @@ def aplicar(envelope: dict) -> bool:
                 estados_elegiveis |= Q(status="recusado", method__in=("card", "pix"))
             if aviso.status == "reembolsado":
                 estados_elegiveis = Q(status="pago")
+            mudancas = {"status": aviso.status}
+            if aviso.status == "pago":
+                mudancas["pago_em"] = django_timezone.now()
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,
                     site_id=aviso.site_id,  # o site do evento tem de bater
                 )
                 .filter(estados_elegiveis)
-                .update(status=aviso.status)
+                .update(**mudancas)
             )
             if aviso.status == "pago" and atualizados:
                 _emitir_pedido_pago(aviso)
