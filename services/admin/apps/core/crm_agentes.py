@@ -54,6 +54,7 @@ RECADOS = {
     "nao_encontrada": "Essa versão não foi encontrada.",
     "indisponivel": "A equipe comercial de agentes ainda não está disponível.",
     "papel": "Esse papel não existe.",
+    "mudou": "A versão no ar já mudou desde que esta tela abriu. Confira a versão atual antes de voltar de novo.",
     "retomado": "O trabalho voltou para a fila.",
     "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
 }
@@ -248,10 +249,12 @@ def _estrategias() -> list[dict]:
 
 def _detalhe(trabalho_id: str):
     """Um trabalho com todas as decisões, na ordem em que aconteceram."""
-    if not str(trabalho_id).isdigit():
+    # Só dígitos ASCII curtos: '²' passa em isdigit() mas não vira número.
+    texto = str(trabalho_id)
+    if not (texto.isascii() and texto.isdigit() and len(texto) <= 18):
         return None
     TrabalhoComercial, DecisaoComercial, _ = _modelos()
-    trabalho = TrabalhoComercial.objects.filter(pk=int(trabalho_id)).first()
+    trabalho = TrabalhoComercial.objects.filter(pk=int(texto)).first()
     if trabalho is None:
         return None
     decisoes = list(
@@ -350,7 +353,16 @@ def crm_agentes_voltar(request, papel: str):
     if papel not in EstrategiaComercial.Papel.values:
         return _volta("papel")
     motivo = (request.POST.get("motivo") or "").strip()[:1000]
-    voltou = papeis.voltar_a_anterior(papel, _quem(request), motivo)
+    esperada = request.POST.get("versao_no_ar", "")
+    try:
+        voltou = papeis.voltar_a_anterior(
+            papel,
+            _quem(request),
+            motivo,
+            versao_esperada=int(esperada) if esperada.isascii() and esperada.isdigit() and len(esperada) <= 9 else None,
+        )
+    except papeis.VersaoMudou:
+        return _volta("mudou", f"papel-{papel}")
     if voltou is None:
         return _volta("sem_anterior", f"papel-{papel}")
     _auditar(request, f"estrategia:{papel}:v{voltou.versao}", "CRM agentes: voltar à versão anterior")
