@@ -747,3 +747,23 @@ def test_conversa_em_que_a_equipe_confirma_nao_mostra_ficha():
     html = dentro().get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
     assert "A equipe confirma" in html and "Confirme com ela" in html and not leads.called
 
+
+
+
+@respx.mock
+def test_filtro_aguardando_traz_quem_so_recebeu_a_orientacao_automatica():
+    """Orientação e confirmação do sistema não são resposta da equipe: sem origem e 'a equipe confirma' seguem esperando."""
+    def saida(texto, autor_id):
+        return mensagem(texto=texto, direcao="saida", autor="sistema", autor_id=autor_id, estado_envio="enviado")
+
+    comum = {"lead_id": None, "ultima_entrada_em": "2026-10-03T10:00:00Z", "ultima_mensagem_em": "2026-10-03T10:01:00Z"}
+    orientada = conversa(id=str(uuid.uuid4()), ligacao="desconhecida", etiqueta="sem_origem_quiz",
+                         ultima_mensagem=saida("Orientação enviada", "orientacao:desconhecida"), **comum)
+    confirma = conversa(id=str(uuid.uuid4()), ligacao="ambigua", ambigua=True, etiqueta="equipe_confirma",
+                        ultima_mensagem=saida("Confirmação automática", "orientacao:confirmacao"), **comum)
+    pedindo_email = conversa(id=str(uuid.uuid4()), ligacao="ambigua", ambigua=True, etiqueta="telefone_ambiguo",
+                             ultima_mensagem=saida("Pedido de e-mail", "orientacao:ambigua"), **comum)
+    respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(orientada, confirma, pedindo_email))
+    html = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"}).content.decode()
+    assert "Orientação enviada" in html and "Confirmação automática" in html
+    assert "Pedido de e-mail" not in html  # essa espera a pessoa, não a equipe

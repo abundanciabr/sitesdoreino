@@ -151,7 +151,7 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
 
 def _espera_o_email(conversa: Conversa | None, recebida: Recebida) -> bool:
     """A conversa é ambígua, a orientação pediu o e-mail e a equipe ainda não está confirmando?"""
-    return (conversa is not None and recebida.canal == "whatsapp" and conversa.ligacao == "ambigua"
+    return (conversa is not None and recebida.canal == "whatsapp" and conversa.ligacao != "ligada"
             and conversa.orientacao_tipo == "ambigua" and not conversa.equipe_confirma)
 
 
@@ -202,7 +202,11 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
         if conversa.estado == "encerrada" and not historica:
             conversa.estado = "agente"
             campos.append("estado")
-        if ligacao is not None and conversa.ligacao != "ligada":
+        # Falha momentânea da célula de leads ("pendente") não desfaz o que já se sabe:
+        # conversa ambígua ou sem origem continua assim até uma resposta de verdade.
+        sem_resposta_da_leads = ligacao is not None and ligacao.ligacao == "pendente" and conversa.ligacao in (
+            "ambigua", "desconhecida")
+        if ligacao is not None and conversa.ligacao != "ligada" and not sem_resposta_da_leads:
             conversa.ligacao = ligacao.ligacao
             conversa.lead_id = ligacao.lead_id if ligacao.ligacao == "ligada" else ""
             campos += ["ligacao", "lead_id"]
