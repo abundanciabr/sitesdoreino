@@ -78,6 +78,7 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
 from apps.core.crm_conversas import crm_conversa, crm_conversas
+from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -351,6 +352,11 @@ urlpatterns = [
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
     path("robos/conhecimento/comercial", conhecimento_comercial_tela, name="conhecimento_comercial"),
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`).
+    path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
+    path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
+    path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),
