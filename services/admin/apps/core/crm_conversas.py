@@ -87,6 +87,7 @@ RESULTADOS = {
 NAO_CONFIRMADA = "Enviada, mas a entrega não foi confirmada; veja o histórico antes de reenviar."
 PODE_TER_SAIDO = "O envio pode ter saído: o serviço de mensagens demorou para responder. Confira o histórico antes de reenviar."
 CONTINUA_COM_O_AGENTE = " Nada foi enviado; a conversa continua com o agente."
+CONTINUA_ENCERRADA = " Nada foi enviado; a conversa continua encerrada."
 NOME_DO_AGENTE = "Assistente da equipe"
 
 
@@ -171,11 +172,15 @@ def aguardando(conversa):
 
     Com o último recado em mãos vale ele: resposta que falhou no envio não
     responde ninguém, mas já atualizou a hora da última mensagem da conversa.
-    Quem pediu para parar não espera resposta: não há o que responder."""
+    Quem pediu para parar não espera resposta, a não ser que tenha escrito
+    de novo depois do PARAR: a mensageria libera uma resposta a cada fala nova
+    e só uma pessoa pode decidir o que dizer."""
     entrada = conversa.get("ultima_entrada")
-    if conversa.get("estado") == "encerrada" or conversa.get("descadastrado") or not entrada:
-        return False
     recado = conversa.get("recado")
+    if conversa.get("estado") == "encerrada" or not entrada:
+        return False
+    if conversa.get("descadastrado"):
+        return bool(recado and recado.get("direcao") == "entrada" and not recado.get("descadastro"))
     if (recado and recado.get("direcao") == "saida" and recado.get("autor") == "sistema"
             and str(recado.get("autor_id") or "").startswith("orientacao:")
             and conversa.get("etiqueta") in ("sem_origem_quiz", "equipe_confirma")):
@@ -190,6 +195,7 @@ def aguardando(conversa):
 
 def preparar_conversa(item):
     item = dict(item)
+    item["recado_na_lista"] = "ultima_mensagem" in item  # a mensageria atual sempre manda (ou manda None: sem mensagem)
     item["canal_nome"] = CANAIS.get(item.get("canal"), item.get("canal") or "")
     item["estado_nome"] = ESTADOS.get(item.get("estado"), item.get("estado") or "")
     item["ultima"] = instante(item.get("ultima_mensagem_em"))
@@ -231,14 +237,15 @@ def erro_da_fonte(estado):
 
 
 def ultimo_recado(cliente, site_id, conversas):
-    """Quando a lista não traz o texto do último recado, busca um por conversa.
+    """Só para a mensageria antiga: a lista dela não traz o último recado.
 
-    A lista da mensageria ainda não traz o recado (`ultima_mensagem`); por isso
-    a busca é limitada: no máximo `RECADOS_POR_PAGINA` por chamada, e para no
-    primeiro tropeço. A lista abre mesmo sem os recados."""
+    A mensageria atual manda `ultima_mensagem` de todas as conversas da página
+    na própria lista e aqui nada é buscado. Contra a antiga, a busca é limitada:
+    no máximo `RECADOS_POR_PAGINA` por chamada, e para no primeiro tropeço. A
+    lista abre mesmo sem os recados."""
     buscas = 0
     for conversa in conversas:
-        if conversa["recado"] is not None or not conversa.get("ultima"):
+        if conversa["recado"] is not None or not conversa.get("ultima") or conversa["recado_na_lista"]:
             continue
         if buscas >= RECADOS_POR_PAGINA:
             return
@@ -327,7 +334,8 @@ def varrer_aguardando(cliente, site_id, pagina, params):
             conversa = preparar_conversa(bruta)
             if conversa["estado"] == "encerrada" or not conversa["ultima_entrada"]:
                 continue
-            if not conversa["aguardando"] and conversa["recado"] is None and conferidas < CONFERENCIAS_MAXIMAS:
+            if (not conversa["aguardando"] and conversa["recado"] is None and not conversa["recado_na_lista"]
+                    and conferidas < CONFERENCIAS_MAXIMAS):
                 # Pela hora parece respondida, mas a resposta pode ter falhado: confere o último recado.
                 conferidas += 1
                 ultimo_recado(cliente, site_id, [conversa])
@@ -464,6 +472,17 @@ def quem_atende(request, assumida_por):
     return "outra pessoa da equipe"
 
 
+def cursor_valido(texto):
+    """O `antes_de` da página anterior: id de mensagem (preciso) ou uma data."""
+    if not isinstance(texto, str) or not texto.strip() or len(texto) > 64:
+        return False
+    try:
+        uuid.UUID(texto.strip())
+        return True
+    except ValueError:
+        return instante(texto.strip()) is not None
+
+
 def contexto_da_conversa(request, site_id, conversa_id, antes_de=""):
     estado, dados = ConversasClient().mensagens(site_id, conversa_id, antes_de=antes_de)
     if estado == NAO_EXISTE:
@@ -478,9 +497,13 @@ def contexto_da_conversa(request, site_id, conversa_id, antes_de=""):
     anteriores = ""
     if len(mensagens) >= MENSAGENS_POR_PAGINA:
         # A página veio cheia: pode haver mais antigas. O ponto de corte é a mais velha daqui.
-        datadas = [m for m in mensagens if m["momento"] and isinstance(m.get("ocorrida_em"), str)]
-        if datadas:
-            anteriores = "?" + urlencode({"antes_de": min(datadas, key=lambda m: m["momento"])["ocorrida_em"]})
+        # Com o id da mais antiga, mensagens do mesmo instante não se perdem na virada da página.
+        cursor = dados.get("proxima_antes_de")
+        if not cursor_valido(cursor):
+            datadas = [m for m in mensagens if m["momento"] and isinstance(m.get("ocorrida_em"), str)]
+            cursor = min(datadas, key=lambda m: m["momento"])["ocorrida_em"] if datadas else ""
+        if cursor:
+            anteriores = "?" + urlencode({"antes_de": cursor})
     return {
         "admin": request.admin, "erro": "", "recado": "",
         "conversa": conversa,
@@ -504,12 +527,20 @@ def registrar(request, conversa_id, gesto, estado):
     )
 
 
-def devolver_se_assumi(request, cliente, site_id, conversa_id, assumiu):
-    """Se foi ESTE pedido que assumiu a conversa e nada saiu, ela volta ao agente
-    sozinha: a pessoa não fica dona de uma conversa em que não falou nada.
+def devolver_se_assumi(request, cliente, site_id, conversa_id, assumiu, era_encerrada=False):
+    """Se foi ESTE pedido que assumiu a conversa e nada saiu, ela volta ao que era
+    sozinha: ao agente, ou encerrada se estava encerrada. A pessoa não fica dona de
+    uma conversa em que não falou nada, e uma conversa encerrada não é reaberta
+    (nem devolvida ao robô) por um envio que não saiu.
     Devolve a frase que diz isso na tela."""
     if not assumiu:
         return ""
+    if era_encerrada:
+        encerrada, _ = cliente.gesto(conversa_id, "encerrar", {"site_id": site_id})
+        registrar(request, conversa_id, "encerrar (envio recusado)", encerrada)
+        if encerrada == OK:
+            return CONTINUA_ENCERRADA
+        return " Nada foi enviado, mas não conseguimos deixar a conversa encerrada: ela ficou com você. Use o botão \"Devolver ao agente\" se não quiser atendê-la."
     devolvido, _ = cliente.gesto(conversa_id, "devolver", {"site_id": site_id})
     registrar(request, conversa_id, "devolver (envio recusado)", devolvido)
     if devolvido == OK:
@@ -558,7 +589,8 @@ def responder(request, cliente, site_id, conversa_id, autor, lido=None):
         return INCERTO, PODE_TER_SAIDO
     # Só devolve ao agente quando a mensageria diz que NADA saiu.
     nao_saiu = estado == RECUSADO or desfecho == "falhou" or (desfecho in MENSAGENS_DA_RECUSA and desfecho != "conversa_com_pessoa")
-    volta = devolver_se_assumi(request, cliente, site_id, conversa_id, assumiu and nao_saiu)
+    volta = devolver_se_assumi(request, cliente, site_id, conversa_id, assumiu and nao_saiu,
+                               era_encerrada=conversa.get("estado") == "encerrada")
     if estado == RECUSADO:
         return estado, "A mensageria recusou o envio" + (f": {resultado}" if resultado else ".") + volta
     if estado != OK:
@@ -595,7 +627,7 @@ def crm_conversa(request, conversa_id):
         return render(request, "admin/crm_conversa.html", {"admin": request.admin, "erro": "Não consegui identificar este site. Tente novamente em alguns instantes."}, status=503)
     if request.method == "GET":
         antes_de = request.GET.get("antes_de", "").strip()[:64]
-        if antes_de and instante(antes_de) is None:
+        if not cursor_valido(antes_de):
             antes_de = ""
         contexto, status = contexto_da_conversa(request, site_id, conversa_id, antes_de=antes_de)
         contexto["recado"] = {"1": "Conversa assumida. O agente não responde enquanto você atende.", "2": "Conversa devolvida ao agente.", "3": "Mensagem enviada."}.get(request.GET.get("feito", ""), "")

@@ -1301,3 +1301,33 @@ def test_envios_de_pedido_mostra_so_a_recuperacao_automatica_do_pedido_e_do_site
     assert "ana@exemplo.com" not in resposta.content.decode()
     assert _api(Client(), "GET", "/envios-de-pedido?site_id=&pedido_id=ped-1", token=LEITURA).status_code == 422
     assert _api(Client(), "GET", f"/envios-de-pedido?site_id={SITE}&pedido_id=ped-1", token="").status_code in (401, 403)
+
+
+def test_lista_traz_a_ultima_mensagem_de_cada_conversa_numa_consulta_so(base):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    agora = timezone.now()
+    conversas = [Conversa.objects.create(site_id=SITE, canal="whatsapp", endereco=f"551191111{n:04d}", ligacao="ligada",
+                                         lead_id=f"lead-{n}", ultima_mensagem_em=agora - timedelta(hours=n))
+                 for n in range(12)]
+    for conversa in conversas[:11]:
+        MensagemDaConversa.objects.create(conversa=conversa, direcao="entrada", autor="lead", texto="oi",
+                                          estado_envio="recebida", ocorrida_em=agora - timedelta(hours=2))
+    # A última da 11ª é uma resposta que falhou; o texto longo vem cortado.
+    MensagemDaConversa.objects.create(conversa=conversas[10], direcao="saida", autor="agente", texto="x" * 500,
+                                      estado_envio="falhou", ocorrida_em=agora - timedelta(hours=1))
+    with CaptureQueriesContext(connection) as consultas:
+        itens = _api(Client(), "GET", f"/conversas?site_id={SITE}", token=LEITURA).json()["itens"]
+    por_id = {c["id"]: c["ultima_mensagem"] for c in itens}
+    assert por_id[str(conversas[11].id)] is None
+    assert all(por_id[str(c.id)]["direcao"] == "entrada" for c in conversas[:10])
+    assert por_id[str(conversas[10].id)]["estado_envio"] == "falhou" and len(por_id[str(conversas[10].id)]["texto"]) == 160
+    assert sum("conversas_mensagemdaconversa" in c["sql"] for c in consultas.captured_queries) == 1
+
+
+def test_encerrar_tira_o_dono_da_conversa(base):
+    conversa = _conversa_ligada(base)
+    _api(Client(), "POST", f"/conversas/{conversa.id}/assumir", {"site_id": SITE, "pessoa_id": "equipe-7"})
+    encerrada = _api(Client(), "POST", f"/conversas/{conversa.id}/encerrar", {"site_id": SITE}).json()
+    assert encerrada["estado"] == "encerrada" and encerrada["assumida_por"] is None and encerrada["assumida_em"] is None
