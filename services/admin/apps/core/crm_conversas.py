@@ -176,6 +176,12 @@ def aguardando(conversa):
     if conversa.get("estado") == "encerrada" or conversa.get("descadastrado") or not entrada:
         return False
     recado = conversa.get("recado")
+    if (recado and recado.get("direcao") == "saida" and recado.get("autor") == "sistema"
+            and str(recado.get("autor_id") or "").startswith("orientacao:")
+            and conversa.get("etiqueta") in ("sem_origem_quiz", "equipe_confirma")):
+        # A orientação e a confirmação automáticas não são resposta da equipe:
+        # quem está sem origem ou espera confirmação ainda precisa de uma pessoa.
+        return True
     if recado and recado.get("direcao") in ("entrada", "saida"):
         return recado["direcao"] == "entrada" or recado.get("estado_envio") == "falhou"
     ultima = conversa.get("ultima")

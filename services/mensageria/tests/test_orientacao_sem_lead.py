@@ -277,3 +277,18 @@ def test_porta_das_orientacoes_do_site(mundo):
     assert gravar(ESCRITA).json() == {"site_id": SITE, **corpo}
     assert _api(cliente, "/orientacoes/" + SITE) == {"site_id": SITE, **corpo}
     assert _api(cliente, "/orientacoes/outro") == {"site_id": "outro", "endereco_quiz": "", "atendimento_geral": ""}
+
+
+def test_falha_momentanea_da_leads_no_meio_nao_perde_o_email_depois(mundo, monkeypatch):
+    _dois_contatos_no_mesmo_telefone(mundo)
+    cliente = Client()
+    _upsert(cliente, texto="Oi", ident="F1")
+    boa = __import__("apps.conversas.leads", fromlist=["x"]).httpx.get
+    monkeypatch.setattr("apps.conversas.leads.httpx.get", lambda *a, **k: Resposta(503, {}))
+    _upsert(cliente, texto="alguem ai?", ident="F2")
+    conversa = Conversa.objects.get()
+    assert conversa.ligacao == "ambigua" and conversa.orientacao_tipo == "ambigua"
+    monkeypatch.setattr("apps.conversas.leads.httpx.get", boa)
+    _upsert(cliente, texto="ana@exemplo.com", ident="F3")
+    conversa = Conversa.objects.get()
+    assert conversa.ligacao == "ligada" and conversa.lead_id == LEAD_A
