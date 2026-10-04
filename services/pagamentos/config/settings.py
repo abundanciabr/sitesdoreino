@@ -85,6 +85,11 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 # apenas o hash do token previamente confirmado como test_user habilita sandbox.
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 MP_TEST_ACCOUNT_TOKEN_SHA256 = os.environ.get("MP_TEST_ACCOUNT_TOKEN_SHA256", "")
+# Nome na fatura do cartão (até 13 caracteres) e categoria dos itens enviados ao
+# MP. O cartão pelo MP só roda em meshcraft.top, que vende cursos ("learnings"
+# na lista pública GET https://api.mercadopago.com/item_categories).
+MP_STATEMENT_DESCRIPTOR = os.environ.get("MP_STATEMENT_DESCRIPTOR", "MESHCRAFT")
+MP_ITEM_CATEGORY_ID = os.environ.get("MP_ITEM_CATEGORY_ID", "learnings")
 
 # Segredo do HMAC de x-signature. Vazio não derruba a partida: o
 # webhook responde 403 a tudo (core/webhook_signature.py) e nada vira "pago".

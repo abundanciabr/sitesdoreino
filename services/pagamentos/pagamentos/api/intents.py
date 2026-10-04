@@ -356,7 +356,7 @@ def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
             ).exists():
                 reconciliar_pix_appmax(intent)
             else:
-                reconciliar_intent_pix(intent)
+                reconciliar_intent_pix(intent, origem="get_intent")
         except (FalhaNoProvedor, IntentNaoConfirmavel):
             intent.refresh_from_db()
     return _intent_to_dict(intent)

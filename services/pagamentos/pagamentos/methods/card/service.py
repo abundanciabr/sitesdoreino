@@ -393,6 +393,9 @@ def confirmar_segunda_opcao_card(
                 payer_email=str(intent.customer.get("email") or ""),
                 payer_first_name=nome[0], payer_last_name=" ".join(nome[1:]),
                 payer_identification=identificacao,
+                itens_do_pedido=_itens_informados(intent),
+                comprador_nome=str(intent.customer.get("name") or ""),
+                comprador_telefone=str(intent.customer.get("phone") or ""),
                 notification_url=(url_base + "/api/pagamentos/mp/webhooks") if url_base else None,
                 envio_ambiguo_anterior=envio_ambiguo_anterior,
             )
@@ -440,6 +443,12 @@ def confirmar_segunda_opcao_card(
         logger.error("mp_sem_resposta intent=%s", intent.pk)
     intent.refresh_from_db()
     return intent
+
+
+def _itens_informados(intent: Intent) -> list[dict[str, Any]] | None:
+    """Itens do pedido como o checkout congelou; o provedor só os descreve."""
+    itens = intent.metadata.get("items")
+    return itens if isinstance(itens, list) else None
 
 
 def _resultado_mp(tentativa: PaymentAttempt, resposta: gateway.ResultadoCard) -> ResultadoDoProvedor:
