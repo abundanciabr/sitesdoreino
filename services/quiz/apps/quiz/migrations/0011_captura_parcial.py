@@ -24,6 +24,8 @@ class Migration(migrations.Migration):
                 ('answers', models.JSONField(blank=True, default=dict)),
                 ('utm', models.JSONField(blank=True, default=dict)),
                 ('context', models.JSONField(blank=True, default=dict)),
+                ('publicada_em', models.DateTimeField(blank=True, null=True)),
+                ('publicacoes', models.PositiveIntegerField(default=0)),
                 ('criada_em', models.DateTimeField(auto_now_add=True)),
                 ('atualizada_em', models.DateTimeField(auto_now=True)),
                 ('quiz', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='capturas_parciais', to='quiz.quiz')),
@@ -31,7 +33,7 @@ class Migration(migrations.Migration):
                 ('version', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='capturas_parciais', to='quiz.quizversion')),
             ],
             options={
-                'indexes': [models.Index(fields=['site_id', 'lead_email'], name='captura_site_email')],
+                'indexes': [models.Index(fields=['site_id', 'lead_email'], name='captura_site_email'), models.Index(condition=models.Q(('publicada_em__isnull', True), ('submissao__isnull', True)), fields=['atualizada_em'], name='captura_a_publicar')],
                 'constraints': [models.UniqueConstraint(fields=('quiz', 'session_id'), name='captura_quiz_sessao_unica')],
             },
         ),

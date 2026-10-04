@@ -31,7 +31,7 @@
   {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
 
   {% if fallback %}
-  <form class="crivo" method="post" action="{{ acao_url }}">
+  <form class="crivo" method="post" action="{{ acao_url }}" data-captura="{% url 'quiz-captura' quiz.slug %}">
     {% csrf_token %}
     <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
     <input type="hidden" name="estado" value="{{ estado_token }}">
@@ -66,7 +66,7 @@
     {% for papel, texto in turnos %}<p class="fala {{ papel }}">{{ texto }}</p>{% endfor %}
   </section>
   {% if completo %}
-  <form class="crivo" method="post" action="{{ acao_url }}">
+  <form class="crivo" method="post" action="{{ acao_url }}" data-captura="{% url 'quiz-captura' quiz.slug %}">
     {% csrf_token %}
     <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
     <input type="hidden" name="estado" value="{{ estado_token }}">
@@ -98,5 +98,6 @@
   {% endif %}
   {% endif %}
 </main>
+{% if fallback or completo %}{% include 'quiz/_captura.html' %}{% endif %}
 </body>
 </html>

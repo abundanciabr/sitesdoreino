@@ -152,6 +152,13 @@ def submissoes_do_contato(request):
 
     Do mais novo ao mais antigo, no máximo 50 de cada. Sem respostas na lista
     de submissões: quem precisa delas pede `/interno/crm/submissoes/<id>`.
+
+    O e-mail identifica a pessoa; o telefone só completa. Registro com OUTRO
+    e-mail nunca entra, mesmo com o mesmo telefone. Registro sem e-mail entra
+    pelo telefone só quando o número não aparece com e-mail de outra pessoa.
+    Consulta só por telefone que aparece com mais de um e-mail devolve listas
+    vazias e `telefone_ambiguo: true`: quem consulta pede o e-mail, sem ver os
+    dados de ninguém.
     """
     site_id = _site_id(request)
     if not site_id:
@@ -161,36 +168,54 @@ def submissoes_do_contato(request):
     if not email and not telefones:
         return _erro("Informe email ou telefone.", 400)
 
-    def do_contato(consulta, campo_email, campo_telefone):
-        consulta = consulta.filter(site_id=site_id)
-        por_email = consulta.none()
-        por_telefone = consulta.none()
-        if email:
-            por_email = consulta.filter(**{f"{campo_email}__iexact": email})
-        if telefones:
-            por_telefone = (
-                consulta.exclude(**{campo_telefone: ""})
-                .annotate(_digitos=_so_digitos(campo_telefone))
-                .filter(_digitos__in=telefones)
-            )
-        ids = set(por_email.values_list("id", flat=True)) | set(
-            por_telefone.values_list("id", flat=True)
+    def por_telefone(modelo):
+        return (
+            modelo.objects.filter(site_id=site_id)
+            .exclude(lead_phone="")
+            .annotate(_digitos=_so_digitos("lead_phone"))
+            .filter(_digitos__in=telefones)
         )
-        return consulta.filter(id__in=ids)
+
+    outros_emails = set()
+    if telefones:
+        for modelo in (Submission, CapturaParcial):
+            outros_emails |= {
+                e.lower()
+                for e in por_telefone(modelo)
+                .exclude(lead_email="")
+                .values_list("lead_email", flat=True)
+            }
+        outros_emails.discard(email.lower())
+    telefone_ambiguo = bool(outros_emails) if email else len(outros_emails) > 1
+
+    def do_contato(modelo):
+        ids = set()
+        if email:
+            ids |= set(
+                modelo.objects.filter(site_id=site_id, lead_email__iexact=email)
+                .values_list("id", flat=True)
+            )
+        if telefones and not telefone_ambiguo:
+            consulta = por_telefone(modelo)
+            if email:
+                consulta = consulta.filter(lead_email="")
+            ids |= set(consulta.values_list("id", flat=True))
+        return modelo.objects.filter(site_id=site_id, id__in=ids)
 
     submissoes = (
-        do_contato(Submission.objects, "lead_email", "lead_phone")
+        do_contato(Submission)
         .select_related("quiz", "version")
         .order_by("-created_at")[:LIMITE_LISTA]
     )
     capturas = (
-        do_contato(CapturaParcial.objects, "lead_email", "lead_phone")
+        do_contato(CapturaParcial)
         .select_related("quiz", "version")
         .order_by("-criada_em")[:LIMITE_LISTA]
     )
     return JsonResponse(
         {
             "site_id": site_id,
+            "telefone_ambiguo": telefone_ambiguo,
             "submissoes": [_resumo_da_submissao(s) for s in submissoes],
             "capturas_parciais": [_captura(c) for c in capturas],
         }

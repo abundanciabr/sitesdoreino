@@ -1,0 +1,55 @@
+<script>
+// Captura parcial: o contato vai ao servidor quando a pessoa o informa, para
+// que sair antes de "Ver resultado" não perca quem já se identificou. Espera
+// um instante depois de cada campo: quem clica em "Ver resultado" logo em
+// seguida conclui e não gera captura. O servidor guarda uma por sessão.
+(function () {
+  var form = document.querySelector("form[data-captura]");
+  if (!form) return;
+  var url = form.getAttribute("data-captura");
+  var enviado = false;
+  var ultima = "";
+  var espera = null;
+
+  function contatoInformado() {
+    var email = form.querySelector("input[name=email]");
+    var telefone = form.querySelector("input[name=telefone]");
+    var emailOk = email && email.value.trim() && email.checkValidity();
+    var digitos = telefone ? telefone.value.replace(/\D/g, "") : "";
+    return Boolean(emailOk || digitos.length >= 8);
+  }
+  function capturar(saindo) {
+    clearTimeout(espera);
+    if (enviado || !contatoInformado()) return;
+    var dados = new FormData(form);
+    var assinatura = new URLSearchParams(dados).toString();
+    if (assinatura === ultima) return;
+    ultima = assinatura;
+    if (saindo && navigator.sendBeacon) {
+      navigator.sendBeacon(url, dados);
+      return;
+    }
+    fetch(url, {
+      method: "POST",
+      body: dados,
+      credentials: "same-origin",
+      keepalive: true
+    }).catch(function () { ultima = ""; });
+  }
+  ["email", "nome", "telefone"].forEach(function (nome) {
+    var campo = form.querySelector("input[name=" + nome + "]");
+    if (!campo) return;
+    campo.addEventListener("change", function () {
+      clearTimeout(espera);
+      espera = setTimeout(function () { capturar(false); }, 2000);
+    });
+  });
+  form.addEventListener("submit", function () {
+    enviado = true;
+    clearTimeout(espera);
+  });
+  window.addEventListener("pagehide", function () {
+    if (!enviado) capturar(true);
+  });
+})();
+</script>

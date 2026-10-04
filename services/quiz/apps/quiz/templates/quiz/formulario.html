@@ -169,47 +169,13 @@
     if (ev.persisted && enviado) location.reload();
   });
 
-  // Captura parcial: o contato vai ao servidor assim que a pessoa o informa,
-  // para que um abandono antes de "Ver resultado" não perca quem já se
-  // identificou. O servidor guarda uma captura por sessão; reenviar só completa.
-  var urlCaptura = form.getAttribute("data-captura");
-  var ultimaCaptura = "";
-  function contatoInformado() {
-    var email = form.querySelector("input[name=email]");
-    var telefone = form.querySelector("input[name=telefone]");
-    var emailOk = email && email.value.trim() && email.checkValidity();
-    var digitos = telefone ? telefone.value.replace(/\D/g, "") : "";
-    return Boolean(emailOk || digitos.length >= 8);
-  }
-  function capturar(saindo) {
-    if (enviado || !urlCaptura || !contatoInformado()) return;
-    var dados = new FormData(form);
-    var assinatura = new URLSearchParams(dados).toString();
-    if (assinatura === ultimaCaptura) return;
-    ultimaCaptura = assinatura;
-    if (saindo && navigator.sendBeacon) {
-      navigator.sendBeacon(urlCaptura, dados);
-      return;
-    }
-    fetch(urlCaptura, {
-      method: "POST",
-      body: dados,
-      credentials: "same-origin",
-      keepalive: true
-    }).catch(function () { ultimaCaptura = ""; });
-  }
-  ["email", "nome", "telefone"].forEach(function (nome) {
-    var campo = form.querySelector("input[name=" + nome + "]");
-    if (campo) campo.addEventListener("change", function () { capturar(false); });
-  });
-
   window.addEventListener("pagehide", function () {
     if (enviado) return;
-    capturar(true);
     var atual = passos[indice];
     emitir("abandon", atual ? atual.getAttribute("data-pergunta") : "lead", {});
   });
 })();
 </script>
+{% include 'quiz/_captura.html' %}
 </body>
 </html>
