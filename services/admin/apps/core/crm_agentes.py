@@ -8,7 +8,10 @@ voltar à anterior.
 
 Os registros moram no app `apps.comercial` (coordenador). Enquanto ele não
 estiver instalado ou não responder, a tela diz que a capacidade ainda não está
-disponível — nunca erro 500.
+disponível — nunca erro 500. Esta é a única página dos agentes comerciais: o
+que a primeira página do coordenador fazia (ver um trabalho com todas as
+decisões, retomar um trabalho parado, pôr no ar a proposta do otimizador) mora
+aqui.
 """
 from __future__ import annotations
 
@@ -51,7 +54,12 @@ RECADOS = {
     "nao_encontrada": "Essa versão não foi encontrada.",
     "indisponivel": "A equipe comercial de agentes ainda não está disponível.",
     "papel": "Esse papel não existe.",
+    "retomado": "O trabalho voltou para a fila.",
+    "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
 }
+
+# Estados em que o botão "Retomar" aparece (`coordenador.retomar`).
+RETOMAVEIS = ("falhou", "aguardando_dependencia", "aguardando_autorizacao", "envio_incerto")
 
 
 def comercial_disponivel() -> bool:
@@ -161,6 +169,7 @@ def _preparar_trabalho(trabalho, decisoes) -> dict:
         "tokens": tokens,
         "versao": versao,
         "decisoes": len(decisoes),
+        "retomavel": trabalho.estado in RETOMAVEIS,
         "ultima": None
         if ultima is None
         else {
@@ -223,8 +232,55 @@ def _estrategias() -> list[dict]:
             v.usos = usos.get(v.pk, 0)
             v.marcas = list(reversed(v.historico or []))
         anterior = ativa.anterior if ativa.anterior_id and ativa.anterior_id != ativa.pk else None
-        lista.append({"papel": papel, "nome": nome, "ativa": ativa, "anterior": anterior, "versoes": versoes})
+        lista.append(
+            {
+                "papel": papel,
+                "nome": nome,
+                "ativa": ativa,
+                "anterior": anterior,
+                "versoes": versoes,
+                "propostas": [v for v in versoes if v.situacao == "proposta"],
+                "ferramentas": papeis.FERRAMENTAS_DO_PAPEL.get(papel, ()),
+            }
+        )
     return lista
+
+
+def _detalhe(trabalho_id: str):
+    """Um trabalho com todas as decisões, na ordem em que aconteceram."""
+    if not str(trabalho_id).isdigit():
+        return None
+    TrabalhoComercial, DecisaoComercial, _ = _modelos()
+    trabalho = TrabalhoComercial.objects.filter(pk=int(trabalho_id)).first()
+    if trabalho is None:
+        return None
+    decisoes = list(
+        DecisaoComercial.objects.filter(trabalho=trabalho).select_related("consumo").order_by("criada_em", "id")
+    )
+    preparado = _preparar_trabalho(trabalho, decisoes)
+    preparado["todas"] = [
+        {
+            "obj": d,
+            "resultado": d.get_resultado_display(),
+            "contexto": contexto_resumido(d.contexto_usado),
+            "entrada": contexto_resumido(d.entrada),
+            "saida": _curto(d.saida, 600) if d.saida else "",
+        }
+        for d in decisoes
+    ]
+    return preparado
+
+
+def _ligado() -> bool:
+    from apps.comercial import coordenador
+
+    return coordenador.ligado()
+
+
+def _min_amostra() -> int:
+    from apps.comercial import resultados
+
+    return resultados.MIN_AMOSTRA
 
 
 @require_GET
@@ -254,6 +310,9 @@ def crm_agentes(request):
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
             estrategias=_estrategias(),
+            detalhe=_detalhe(request.GET.get("trabalho", "")),
+            ligado=_ligado(),
+            min_amostra=_min_amostra(),
         )
     except (DatabaseError, ImportError, LookupError):
         contexto["disponivel"] = False
@@ -318,3 +377,21 @@ def crm_agentes_nova(request, papel: str):
         papeis.ativar(nova, quem, motivo)
     _auditar(request, f"estrategia:{papel}:v{nova.versao}", "CRM agentes: nova versão" + (" ativada" if pos_no_ar else ""))
     return _volta("nova_ativa" if pos_no_ar else "nova", f"papel-{papel}")
+
+
+@require_POST
+def crm_agentes_retomar(request, trabalho_id: int):
+    """Devolve à fila um trabalho que falhou ou esperava. Envio sem confirmação
+    volta com a mesma chave de idempotência: a mensagem não sai duas vezes."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "trabalhos")
+    TrabalhoComercial, _, _ = _modelos()
+    from apps.comercial import coordenador
+
+    trabalho = TrabalhoComercial.objects.filter(pk=trabalho_id).first()
+    if trabalho is None:
+        return _volta("nao_retomado", "trabalhos")
+    if not coordenador.retomar(trabalho, _quem(request)):
+        return _volta("nao_retomado", "trabalhos")
+    _auditar(request, f"trabalho_comercial:{trabalho.pk}", f"CRM agentes: retomar ({trabalho.estado})")
+    return _volta("retomado", "trabalhos")

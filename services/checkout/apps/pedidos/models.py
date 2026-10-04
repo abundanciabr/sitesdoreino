@@ -170,6 +170,29 @@ def link_da_sessao(sessao: "Session"):
     return LinkDeCompra.objects.filter(session_id=sessao.pk).first()
 
 
+class CondicaoDoAgente(models.Model):
+    """Uma condição de compra que o mantenedor deixou o agente oferecer.
+
+    Existir a linha é estar liberada. A condição em si (Pix, parcela do cartão,
+    cupom) continua sendo a que o checkout calcula agora; aqui só se guarda a
+    escolha. Nada aqui cria preço, desconto ou prazo.
+    """
+
+    site_id = models.CharField(max_length=64)
+    oferta_slug = models.CharField(max_length=200)
+    condicao_id = models.CharField(max_length=80)
+    liberada_por = models.CharField(max_length=200, blank=True, default="")
+    liberada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "oferta_slug", "condicao_id"],
+                name="condicao_agente_unica_por_oferta",
+            )
+        ]
+
+
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     event_id = models.UUIDField(default=uuid.uuid4, unique=True)
     event = models.CharField(max_length=100)

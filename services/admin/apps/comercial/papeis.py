@@ -15,6 +15,8 @@ from __future__ import annotations
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from apps.assistente.identidade import trecho_das_instrucoes
+
 from .models import EstrategiaComercial
 
 P = EstrategiaComercial.Papel
@@ -274,8 +276,10 @@ def estrategia_ativa(papel: str) -> EstrategiaComercial:
     return ativar(ultima, "sistema", "nenhuma versão ativa; a mais nova voltou")
 
 
-def instrucoes_completas(estrategia: EstrategiaComercial) -> str:
-    return COMUM + "\n\n" + estrategia.instrucoes
+def instrucoes_completas(estrategia: EstrategiaComercial, site_id: str = "") -> str:
+    """As instruções do papel, com a identidade do assistente DESTE site."""
+    identidade = trecho_das_instrucoes(site_id)
+    return COMUM + ("\n\n" + identidade if identidade else "") + "\n\n" + estrategia.instrucoes
 
 
 def _marca(acao: str, quem: str, motivo: str) -> dict:

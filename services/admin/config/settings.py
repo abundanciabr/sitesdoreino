@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     # Áudio do atendimento: transcrição do que o lead fala e resposta em voz,
     # com a chave e o teto de gasto dos robôs.
     "apps.voz",
+    "apps.assistente",
 ]
 
 MIDDLEWARE = [

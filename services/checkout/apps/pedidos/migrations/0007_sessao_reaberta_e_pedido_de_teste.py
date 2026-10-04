@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('pedidos', '0005_link_de_compra'),
+        ('pedidos', '0006_condicao_do_agente'),
     ]
 
     operations = [

@@ -67,7 +67,7 @@ ROTAS = {
     "assumir": ("mensageria", "POST", "/conversas/{}/assumir"),
     "devolver": ("mensageria", "POST", "/conversas/{}/devolver"),
     # checkout (CHECKOUT_API_URL); o site vem do cabeçalho Host
-    "condicoes": ("checkout", "GET", "/interno/ofertas/{}/condicoes"),
+    "condicoes": ("checkout", "GET", "/interno/ofertas/{}/condicoes-agente"),
     "link_de_compra": ("checkout", "POST", "/interno/links-de-compra"),
     "pagamento_do_pedido": ("checkout", "GET", "/interno/pedidos/{}/pagamento"),
     "pedidos_da_oportunidade": ("checkout", "GET", "/interno/pedidos"),
