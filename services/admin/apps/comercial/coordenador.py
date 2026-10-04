@@ -65,6 +65,8 @@ PAPEL_DO_TIPO = {
     T.ACOMPANHAR_PAGAMENTO: P.ATENDIMENTO,
     T.ANALISAR_RESULTADOS: P.RESULTADOS,
     T.REANALISAR_PERFIL: P.ANALISTA,
+    T.RECUPERAR_COMPRA: P.ATENDIMENTO,
+    T.REGISTRAR_ESTORNO: P.ATENDIMENTO,
 }
 
 
@@ -294,6 +296,11 @@ def _executar(trabalho: TrabalhoComercial) -> None:
     if trabalho.tipo == T.ANALISAR_RESULTADOS:
         resultados.executar(trabalho)
         return
+    if trabalho.tipo in (T.RECUPERAR_COMPRA, T.REGISTRAR_ESTORNO):
+        from . import recuperacao
+
+        recuperacao.executar(trabalho)
+        return
     if trabalho.tipo in (T.ABORDAR, T.ACOMPANHAR_PAGAMENTO):
         if ferramentas.pagamento_aprovado(trabalho) or _pago_no_checkout(trabalho):
             terminar(trabalho, E.ENCERRADO,
@@ -384,6 +391,9 @@ def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
             # A leads grava a referência da oportunidade do quiz como 'oferta:<quiz>'
             # (services/leads/apps/core/oferta.py, PREFIXO).
             referencia = f"oferta:{entrada.get('quiz')}" if entrada.get("quiz") else ""
+            if not referencia and trabalho.tipo == T.RECUPERAR_COMPRA and trabalho.pedido_id:
+                # A leads abre a recuperação da compra com a referência 'recuperar:<pedido>'.
+                referencia = f"recuperar:{trabalho.pedido_id}"
             escolhida = next(
                 (o for o in abertas if referencia and (o.get("fonte") or {}).get("referencia_id") == referencia),
                 abertas[0] if abertas else None,
@@ -898,7 +908,7 @@ def _fechar_por_pagamento(evento: EventoComercial, *, email: str = "", site_id: 
     if not filtro:
         return 0
     agora = timezone.now()
-    alvo = TrabalhoComercial.objects.filter(filtro, tipo__in=[T.ABORDAR, T.ACOMPANHAR_PAGAMENTO])
+    alvo = TrabalhoComercial.objects.filter(filtro, tipo__in=[T.ABORDAR, T.ACOMPANHAR_PAGAMENTO, T.RECUPERAR_COMPRA])
     n = alvo.filter(estado__in=[E.NA_FILA, E.AGUARDANDO_DEPENDENCIA, E.AGUARDANDO_AUTORIZACAO]).update(
         estado=E.ENCERRADO, motivo="Pagamento aprovado pelo provedor: o acompanhamento foi encerrado.",
         terminado_em=agora, atualizado_em=agora,

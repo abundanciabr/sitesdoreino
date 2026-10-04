@@ -1004,7 +1004,7 @@ def _antes_de_enviar(ctx: Contexto, args: dict) -> None:
         raise Recusa("A mensagem está vazia.")
     if TrabalhoComercial.objects.filter(pk=t.pk, encerrar_pedido_em__isnull=False).exists():
         raise Recusa("O pagamento desta oportunidade foi aprovado: o acompanhamento foi encerrado.")
-    if t.tipo in (T.ABORDAR, T.ACOMPANHAR_PAGAMENTO) and pagamento_aprovado(t):
+    if t.tipo in (T.ABORDAR, T.ACOMPANHAR_PAGAMENTO, T.RECUPERAR_COMPRA) and pagamento_aprovado(t):
         raise Recusa("O pagamento já foi aprovado pelo provedor: a cobrança não sai.")
     if not (t.contato_id or t.conversa_id):
         raise Recusa("Sem conversa nem ficha deste lead, não há para onde enviar.")
