@@ -536,6 +536,12 @@ def test_pagina_mostra_o_teste_e_a_pessoa_pode_encerra_lo():
     assert otimizador.encerrar(experimento, "dono") is False
 
 
+def test_a_tabela_do_experimento_tem_o_nome_que_o_banco_do_site_ja_tem():
+    # No site, o app se chama `admin_comercial`; sem o nome escrito, a tela da
+    # equipe procuraria uma tabela que não existe e cairia com erro 500.
+    assert ExperimentoEstrategia._meta.db_table == "comercial_experimentoestrategia"
+
+
 # ---------------------------------------------------------------- olhar toda hora sem errar à toa
 
 
