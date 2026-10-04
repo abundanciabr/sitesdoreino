@@ -510,3 +510,82 @@ def test_a_tela_marca_atualiza_e_procura(settings):
 
     _pessoa("Lívia", LIVIA)
     assert _cliente(LIVIA, "Lívia").get(reverse("conhecimento_comercial")).status_code == 404
+
+
+# ------------------------------------------- achados da segunda revisão
+
+
+def test_preco_escrito_so_com_numero_tambem_sai():
+    for frase in (
+        "Hoje por 497 em vez de 997.",
+        "Só 97 por mês.",
+        "Garanta por apenas 497 hoje.",
+        "Oferta de lançamento: de 997 por 497.",
+        "Entrada de 97 mais três de 150.",
+    ):
+        assert cc.sem_preco(frase) == "(preço e condições: consultar ao vivo)", frase
+    # Medida do curso não é preço.
+    for frase in ("Acesso por 365 dias.", "Mais de 200 alunos já fizeram.", "Carga de 40 horas.",
+                  "São 12 aulas, por 6 meses de acesso.", "Dura 90 minutos por encontro."):
+        assert cc.sem_preco(frase) == frase, frase
+
+
+@respx.mock
+def test_preco_no_nome_do_complemento_e_do_curso_nao_e_lembrado():
+    oferta = _oferta("site-a", "anual", PRODUTOS[0])
+    oferta["bumps"][0]["name"] = "Pacote de texturas por R$ 97"
+    _catalogo(cursos_a=[_curso("blender", "Blender Essencial por 497", "prod-blender")])
+    respx.get(f"{CATALOGO}/sites/site-a/ofertas/anual").mock(return_value=httpx.Response(200, json=oferta))
+    cc.atualizar_host("a.test")
+    tudo = [t.texto + " " + t.titulo + " " + t.fonte.titulo for t in TrechoComercial.objects.filter(site_id="site-a")]
+    assert not any("97" in x for x in tudo), tudo
+    nos = [(l.origem, l.destino) for l in LigacaoDoConhecimento.objects.all()]
+    assert not any("97" in a or "97" in b for a, b in nos), nos
+
+
+@respx.mock
+def test_revogar_depoimento_com_catalogo_de_produtos_fora_tira_do_indice_e_guarda_o_resto():
+    _catalogo()
+    _documento("dep-ana", "A Ana conseguiu o primeiro cliente.", titulo="Ana")
+    _documento("guia", "Correção humana das entregas.", titulo="Guia")
+    MaterialComercial.objects.create(documento_nome="dep-ana", site_id="site-a", site_host="a.test",
+                                     tipo="depoimento", utilizavel=True, produto="Escola de Blender")
+    MaterialComercial.objects.create(documento_nome="guia", site_id="site-a", site_host="a.test",
+                                     tipo="material", produto="Escola de Blender")
+    cc.atualizar_host("a.test")
+    assert TrechoComercial.objects.filter(ref="dep-ana").exists()
+    MaterialComercial.objects.filter(documento_nome="dep-ana").update(utilizavel=False)
+    respx.get(f"{CATALOGO}/produtos").mock(return_value=httpx.Response(503))
+    relatorio = cc.atualizar_host("a.test")
+    assert relatorio["faltou"] and relatorio["sairam"] == 1
+    assert not TrechoComercial.objects.filter(ref="dep-ana").exists()
+    # O documento marcado com produto, que não dá para reler sem o catálogo, fica.
+    guia = TrechoComercial.objects.get(ref="guia", ordem=0)
+    assert guia.produto_ref == "prod-blender"
+
+
+@respx.mock
+def test_uma_atualizacao_por_site_de_cada_vez(monkeypatch):
+    """Outra sessão segura a trava do site: esta espera e, passado o prazo, não
+    grava nada (a leitura velha não regrava o que outra acabou de tirar)."""
+    import psycopg
+    from django.conf import settings
+
+    _catalogo()
+    banco = settings.DATABASES["default"]
+    outra = psycopg.connect(
+        dbname=banco["NAME"], user=banco["USER"], password=banco["PASSWORD"],
+        host=banco["HOST"], port=banco["PORT"], autocommit=True,
+    )
+    try:
+        outra.execute("SELECT pg_advisory_lock(%s)", [cc.numero_da_trava("site-a")])
+        monkeypatch.setattr(cc, "ESPERA_DA_TRAVA", 0.3)
+        relatorio = cc.atualizar_host("a.test")
+        assert relatorio["novas"] == 0 and "ainda está rodando" in relatorio["faltou"][0]
+        assert not TrechoComercial.objects.exists()
+        # Outro site não espera por este.
+        assert cc.atualizar_host("b.test")["novas"] == 2
+        outra.execute("SELECT pg_advisory_unlock(%s)", [cc.numero_da_trava("site-a")])
+        assert cc.atualizar_host("a.test")["novas"] == 2
+    finally:
+        outra.close()

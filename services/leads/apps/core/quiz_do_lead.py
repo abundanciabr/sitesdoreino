@@ -21,6 +21,7 @@ from django.http import JsonResponse
 from .models import (
     Lead, Oportunidade, QuizDoLead, RegistroHistoricoOportunidade, TimelineEvent,
 )
+from .oferta import PASSO_DA_CAPTURA
 
 log = logging.getLogger("leads.quiz_do_lead")
 
@@ -322,11 +323,6 @@ def lead_do_quiz_completo(event_id, data: dict):
         source=f"quiz:{data['quiz_slug']}",
         utm=data.get("utm"),
     )
-
-
-PASSO_DA_CAPTURA = (
-    "Retomar com a pessoa o quiz {slug}: ela deixou o contato e não chegou ao resultado"
-)
 
 
 def _oferta_concluida(tentativa, lead, slug, resultado, event_id):

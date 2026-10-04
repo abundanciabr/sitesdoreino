@@ -31,7 +31,7 @@ ORDEM = {"desconhecido": 0, "aceito": 1, "enviado": 2, "falhou": 2, "entregue": 
 def webhook_whatsapp(request):
     esperado = getattr(settings, "WHATSAPP_WEBHOOK_TOKEN", "")
     recebido = request.headers.get("X-Webhook-Token", "")
-    if not esperado or not secrets.compare_digest(recebido, esperado):
+    if not esperado or not secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8")):
         return JsonResponse({"erro": "nao autorizado"}, status=403)
     try:
         payload = json.loads(request.body)
@@ -145,7 +145,7 @@ def _assinatura_valida(request) -> bool:
     if not segredo or not recebida.startswith("sha256="):
         return False
     esperada = hmac.new(segredo.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
-    return secrets.compare_digest(recebida[len("sha256="):].lower(), esperada)
+    return secrets.compare_digest(recebida[len("sha256="):].lower().encode("utf-8"), esperada.encode("utf-8"))
 
 
 @csrf_exempt
@@ -161,7 +161,7 @@ def webhook_whatsapp_cloud(request):
         esperado = getattr(settings, "WHATSAPP_CLOUD_VERIFY_TOKEN", "")
         recebido = request.GET.get("hub.verify_token", "")
         if (request.GET.get("hub.mode") == "subscribe" and esperado
-                and secrets.compare_digest(recebido, esperado)):
+                and secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8"))):
             return HttpResponse(request.GET.get("hub.challenge", ""), content_type="text/plain")
         return HttpResponse("nao autorizado", status=403, content_type="text/plain")
     if not _assinatura_valida(request):
@@ -174,12 +174,24 @@ def webhook_whatsapp_cloud(request):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     from apps.conversas.entrada import de_cloud, receber
 
+    from apps.whatsapp_modelos.modelos import aplicar_status, atualizar_estado_de_modelo
+
     recebidas = atualizadas = ignoradas = 0
     for entrada in payload.get("entry") or []:
         for mudanca in (entrada.get("changes") or []) if isinstance(entrada, dict) else []:
-            if not isinstance(mudanca, dict) or mudanca.get("field") != "messages":
+            if not isinstance(mudanca, dict):
+                continue
+            if mudanca.get("field") == "message_template_status_update":
+                # Aprovação, pausa ou rejeição de um modelo de mensagem.
+                atualizadas += int(atualizar_estado_de_modelo(mudanca.get("value")))
+                continue
+            if mudanca.get("field") != "messages":
                 continue
             valor = mudanca.get("value") if isinstance(mudanca.get("value"), dict) else {}
+            # Envios de modelo aprovado (primeiro contato) vão direto pela Cloud
+            # API, sem instância da Evolution: o estado vale pelo wamid.
+            for item in valor.get("statuses") or []:
+                atualizadas += int(aplicar_status(item))
             metadados = valor.get("metadata") if isinstance(valor.get("metadata"), dict) else {}
             numero_id = str(metadados.get("phone_number_id") or "")
             config = ConfiguracaoWhatsApp.objects.filter(instancia=numero_id).first() if numero_id else None

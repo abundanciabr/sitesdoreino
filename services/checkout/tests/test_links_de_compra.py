@@ -15,12 +15,13 @@ import httpx
 import pytest
 
 from apps.pedidos.management.commands.consume_eventos import aplicar
-from apps.pedidos.models import LinkDeCompra, Order, OutboxEvent, Session
+from apps.pedidos.models import CondicaoDoAgente, LinkDeCompra, Order, OutboxEvent, Session
 from conftest import (
     HOST_A,
     HOST_B,
     PAGAMENTOS,
     SITE_A,
+    SITE_B,
     SLUG,
     aprovado_v2,
     pix_expirado_v1,
@@ -62,7 +63,15 @@ def cartao_no_site_a(settings, rede):
     return rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(side_effect=_cotacao)
 
 
-def _link(api, *, chave="chave-1", condicao="pix", host=HOST_A, **extra):
+def _link(api, *, chave="chave-1", condicao="pix", host=HOST_A, liberar=True, **extra):
+    # O servidor só cria link com condição que o mantenedor liberou ao agente;
+    # estes testes liberam a que pedem, salvo `liberar=False`.
+    if liberar:
+        CondicaoDoAgente.objects.get_or_create(
+            site_id=(SITE_B if host == HOST_B else SITE_A)["id"],
+            oferta_slug=SLUG,
+            condicao_id=condicao,
+        )
     corpo = {
         "oferta": SLUG,
         "oportunidade_ref": "op-123",
@@ -573,6 +582,38 @@ def test_pedidos_da_oportunidade_exige_a_referencia(api, rede):
 
 
 # --------------------------------------------------------------------------
+# Só condição liberada pelo mantenedor vira link
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_condicao_existente_mas_nao_liberada_e_recusada(api, cartao_no_site_a):
+    CondicaoDoAgente.objects.create(site_id=SITE_A["id"], oferta_slug=SLUG, condicao_id="pix")
+    resp = _link(api, condicao="card_3x", liberar=False)
+    assert resp.status_code == 422
+    assert "não foi liberada" in resp.json()["detail"] and "liberadas: pix" in resp.json()["detail"]
+    assert LinkDeCompra.objects.count() == 0
+    assert _link(api, condicao="pix", chave="chave-2").status_code == 201
+
+
+@pytest.mark.django_db
+def test_sem_nenhuma_liberacao_nao_sai_link(api, rede):
+    resp = _link(api, liberar=False)
+    assert resp.status_code == 422
+    assert "liberadas: nenhuma" in resp.json()["detail"]
+    assert LinkDeCompra.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_condicao_desmarcada_depois_da_consulta_nao_gera_link(api, rede):
+    assert _link(api, chave="a").status_code == 201
+    CondicaoDoAgente.objects.all().delete()  # o mantenedor desmarcou
+    assert _link(api, chave="b", liberar=False).status_code == 422
+    # Repetir a chave antiga devolve o link que já existia.
+    assert _link(api, chave="a", liberar=False).status_code == 200
+
+
+# --------------------------------------------------------------------------
 # O link serve um pedido por vez
 # --------------------------------------------------------------------------
 
@@ -677,7 +718,7 @@ def test_crm_acompanha_pelo_id_do_link_o_pedido_que_vale(api, rede):
     assert pago["pedido_id"] == link["pedido_id"]
     assert pago["pedido_atual_id"] == pedido2["order_id"]
     assert pago["status"] == "pago" and pago["confirmado"] is True
-    # A lista da oportunidade segue dizendo a verdade sobre cada pedido.
+
     corpo = api.get("/api/checkout/interno/pedidos?oportunidade_ref=op-123").json()
     assert {i["pedido_id"]: i["status"] for i in corpo["pedidos"]} == {
         pedido1["order_id"]: "expirado",

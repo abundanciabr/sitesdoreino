@@ -26,7 +26,7 @@ from ninja.errors import HttpError
 
 from apps.core.clients import CatalogoClient, PagamentosClient
 from apps.pedidos.atribuicao import separar_atribuicao
-from apps.pedidos.models import LinkDeCompra
+from apps.pedidos.models import CondicaoDoAgente, LinkDeCompra
 from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
@@ -282,6 +282,20 @@ def create_purchase_link(request):
         validas = ", ".join(c["id"] for c in condicoes["condicoes"])
         raise HttpError(
             422, f"condição {condicao_id!r} não existe agora para esta oferta; existem: {validas}"
+        )
+    # O agente só oferece o que o mantenedor marcou em /admin/crm/condicoes/.
+    # A trava mora aqui, no servidor: a lista que o modelo viu pode estar velha
+    # ou ele pode pedir um id que existe e não foi marcado.
+    liberadas = set(
+        CondicaoDoAgente.objects.filter(
+            site_id=site["id"], oferta_slug=oferta["slug"]
+        ).values_list("condicao_id", flat=True)
+    )
+    if condicao_id not in liberadas:
+        raise HttpError(
+            422,
+            f"condição {condicao_id!r} não foi liberada para esta oferta; "
+            f"liberadas: {', '.join(sorted(liberadas)) or 'nenhuma'}",
         )
 
     # A venda que sai deste link carrega de onde veio: a oportunidade (op), a

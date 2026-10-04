@@ -813,11 +813,13 @@ def captura(request, slug):
             if contato_mudou and registro.publicada_em is not None:
                 registro.publicada_em = None  # volta para a fila do aviso
             registro.save()
+        # O aceite do WhatsApp segue o contato. O bloco `consentimento` sai junto
+        # do aviso da captura; se a escolha mudar depois de o aviso já ter saído,
+        # sai `quiz.consentimento` (o aviso da captura não se repete por isso).
         aceite, aceite_mudou = consentimento.registrar(
             quiz, session_id, request.POST, registro.lead_phone
         )
         if not criada and aceite_mudou and registro.publicada_em is not None:
-            # O aviso da captura já saiu com a escolha antiga: avisa a mudança.
             consentimento.emitir_mudanca(quiz, registro, aceite)
             transaction.on_commit(relay_apos_commit)
     return _resposta_da_captura(

@@ -6,7 +6,13 @@ Quem é a oportunidade de um pedido, nesta ordem:
 2. a oportunidade já ligada a esse pedido;
 3. a oferta ou o produto do pedido, comparados com as compras já ligadas às
    ofertas abertas da pessoa;
-4. a única oferta aberta da pessoa, quando ela não é de outro produto.
+4. a única oferta aberta da pessoa, quando ela não é de outro produto e o
+   pedido não aponta, por `oportunidade_ref`, para uma oportunidade que não
+   existe.
+
+"A pessoa" é sempre a dona do pedido (`compra.lead`), nunca quem mandou o
+evento: o e-mail do pagamento pode ser outro, e a compra de uma pessoa não
+fecha a oferta de outra.
 
 Fora disso, a compra fica sem oportunidade. Nunca se fecha todas as ofertas
 da pessoa por causa de um pagamento.
@@ -20,11 +26,14 @@ import uuid
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import (
     CompraDaOportunidade,
     Oportunidade,
+    PerfilDoLead,
+    QuizDoLead,
     RegistroHistoricoOportunidade,
     ReversaoDePagamento,
     TimelineEvent,
@@ -155,12 +164,20 @@ def compra_do_evento(lead, data: dict):
     return compra
 
 
-def _aprovacao_na_timeline(site_id: str, pedido: str, ate=None):
+def _aprovacao_na_timeline(site_id: str, pedido: str, antes_de=None):
+    """A primeira aprovação do pedido; com `antes_de`, só a que veio antes dele.
+
+    A ordem dos fatos é (`occurred_at`, `id`): o relógio pode repetir o mesmo
+    instante, e então vale a ordem em que foram gravados.
+    """
     consulta = TimelineEvent.objects.filter(
         lead__site_id=site_id, event="pagamento.aprovado", payload__order_id=pedido
     )
-    if ate is not None:
-        consulta = consulta.filter(occurred_at__lte=ate)
+    if antes_de is not None:
+        consulta = consulta.filter(
+            Q(occurred_at__lt=antes_de.occurred_at)
+            | Q(occurred_at=antes_de.occurred_at, id__lt=antes_de.id)
+        )
     return consulta.order_by("occurred_at", "id").first()
 
 
@@ -176,11 +193,11 @@ def _marcar_aprovada(compra, *, momento, valor, evidencia) -> None:
     ])
 
 
-def _hidratar_aprovacao(compra, ate) -> None:
+def _hidratar_aprovacao(compra, antes_de=None) -> None:
     """Aprovação gravada antes desta linha existir (base antiga) também conta."""
     if compra.aprovado_em is not None:
         return
-    aprovado = _aprovacao_na_timeline(compra.site_id, compra.pedido_id, ate)
+    aprovado = _aprovacao_na_timeline(compra.site_id, compra.pedido_id, antes_de)
     if aprovado is None:
         return
     _marcar_aprovada(
@@ -246,12 +263,92 @@ def _quiz_respondido_em(oportunidade):
     return primeiro.occurred_at if primeiro is not None else None
 
 
+def _chave(valor) -> str:
+    return _texto(valor).lower()
+
+
+def _chaves(valores) -> set:
+    return {c for c in (_chave(v) for v in valores) if c}
+
+
+def _slug_do_quiz(oportunidade) -> str:
+    referencia = oportunidade.fonte_referencia_id or ""
+    if oportunidade.fonte_tipo != FONTE_OFERTA or not referencia.startswith("oferta:"):
+        return ""
+    return referencia[len("oferta:"):]
+
+
+def _sinais_da_oferta(oportunidade, conhecidas: set) -> set:
+    """O que liga a oferta a um produto: o que ela já conhece e o resultado do quiz.
+
+    O resultado do quiz (`QuizDoLead.resultado` e o `result_key` do evento) é
+    um sinal mais fraco que uma referência de oferta: só compara por igualdade
+    com o produto ou a oferta do pedido.
+    """
+    sinais = _chaves(conhecidas)
+    slug = _slug_do_quiz(oportunidade)
+    if not slug:
+        return sinais
+    sinais |= _chaves(
+        QuizDoLead.objects.filter(
+            lead_id=oportunidade.lead_id, quiz_slug=slug
+        ).values_list("resultado", flat=True)
+    )
+    for payload in TimelineEvent.objects.filter(
+        lead_id=oportunidade.lead_id, event="quiz.completado",
+        payload__quiz_slug=slug,
+    ).values_list("payload", flat=True):
+        sinais |= _chaves([(payload or {}).get("result_key")])
+    return sinais
+
+
+def _oferta_indicada_do_perfil(lead_id) -> set:
+    """Produto ou oferta que o perfil vigente da pessoa indica (vale para a pessoa
+    toda, não para uma oferta só)."""
+    perfil = PerfilDoLead.objects.filter(lead_id=lead_id).order_by("-versao").first()
+    indicada = perfil.oferta_indicada if perfil is not None else None
+    if isinstance(indicada, str):
+        return _chaves([indicada])
+    if not isinstance(indicada, dict):
+        return set()
+    return _chaves(
+        indicada.get(campo)
+        for campo in ("oferta_ref", "product_id", "produto_id")
+    )
+
+
+def _produtos_das_outras(lead, excecao, compra) -> set:
+    """Produtos já conhecidos de todas as outras oportunidades da pessoa.
+
+    Inclui as já fechadas (uma recompra de produto ganho não é a oferta que
+    ainda está aberta). Recuperação ainda aberta é tentativa que falhou, não
+    compra, e não conta.
+    """
+    outras = Oportunidade.objects.filter(lead=lead)
+    if excecao is not None:
+        outras = outras.exclude(pk=excecao.pk)
+    produtos = set()
+    for outra in outras:
+        if outra.fonte_tipo == FONTE_RECUPERACAO and not outra.encerrada:
+            continue
+        conhecidas = _ofertas_conhecidas(outra, exceto=compra)
+        produtos |= _sinais_da_oferta(outra, conhecidas)
+    return produtos
+
+
 def resolver_oportunidade(compra, lead, momento=None):
     """A oportunidade desta compra, ou None quando não dá para saber qual é.
 
     `momento` é quando o fato aconteceu; sem referência explícita, uma oferta
-    de quiz respondido depois da compra não é a desta compra.
+    de quiz respondido depois da compra não é a desta compra. `lead` fica na
+    assinatura por compatibilidade: vale sempre a dona da compra.
+
+    Sem referência, casa por produto: o produto ou a oferta do pedido contra o
+    que cada oferta aberta conhece (compras já ligadas, oferta indicada pelo
+    quiz e resultado do quiz). A única oferta aberta só vale se o produto do
+    pedido não é de outra oportunidade da pessoa, aberta ou já fechada.
     """
+    lead = compra.lead
     achada = _por_referencia(compra, lead)
     if achada is not None:
         return achada
@@ -267,22 +364,69 @@ def resolver_oportunidade(compra, lead, momento=None):
             o for o in abertas
             if (_quiz_respondido_em(o) or momento) <= momento
         ]
-    da_compra = ({compra.oferta_ref} | set(compra.produtos or [])) - {""}
+    da_compra = _chaves({compra.oferta_ref} | set(compra.produtos or []))
     conhecidas = {o.pk: _ofertas_conhecidas(o, exceto=compra) for o in abertas}
     if da_compra:
-        casadas = [o for o in abertas if conhecidas[o.pk] & da_compra]
+        casadas = [
+            o for o in abertas
+            if _sinais_da_oferta(o, conhecidas[o.pk]) & da_compra
+        ]
         if casadas:
             return casadas[0]
-    if len(abertas) == 1:
+    if len(abertas) == 1 and not compra.oportunidade_ref:
         unica = abertas[0]
-        if not conhecidas[unica.pk] or not da_compra:
+        if da_compra and da_compra & _produtos_das_outras(lead, unica, compra):
+            return None
+        if (
+            not conhecidas[unica.pk] or not da_compra
+            or da_compra & _oferta_indicada_do_perfil(lead.pk)
+        ):
             return unica
     return None
+
+
+def _desfazer_fechamento_errado(compra, anterior) -> None:
+    """A compra passou para outra oportunidade: a que ela fechou antes reabre.
+
+    Só desfaz o que esta mesma compra causou (mesma evidência) e só se nenhuma
+    outra compra aprovada da pessoa sustenta esse fechamento. A recuperação do
+    pedido continua sendo da compra, então não reabre.
+    """
+    if anterior.fonte_tipo == FONTE_RECUPERACAO or not anterior.encerrada:
+        return
+    if anterior.desfecho_motivo not in ("Pagamento aprovado", "Pagamento revertido"):
+        return
+    if anterior.desfecho_evidencia != _texto(compra.aprovacao_evidencia or compra.pedido_id):
+        return
+    outras = CompraDaOportunidade.objects.filter(oportunidade=anterior).exclude(
+        pk=compra.pk
+    )
+    if outras.filter(aprovado_em__isnull=False).exists():
+        return
+    anterior.etapa = "negociacao" if outras.exists() else "nova"
+    anterior.desfecho_resultado = ""
+    anterior.desfecho_motivo = ""
+    anterior.desfecho_evidencia = ""
+    anterior.desfecho_encerrada_em = None
+    anterior.save(update_fields=[
+        "etapa", "desfecho_resultado", "desfecho_motivo", "desfecho_evidencia",
+        "desfecho_encerrada_em", "atualizada_em",
+    ])
+    _registrar(
+        anterior, "etapa_alterada",
+        f"Reaberta: o pedido {compra.pedido_id} é de outra oportunidade.",
+        compra.pedido_id,
+    )
 
 
 def _vincular(compra, oportunidade) -> bool:
     if oportunidade is None or compra.oportunidade_id == oportunidade.pk:
         return False
+    if compra.oportunidade_id is not None:
+        anterior = Oportunidade.objects.select_for_update().get(
+            pk=compra.oportunidade_id
+        )
+        _desfazer_fechamento_errado(compra, anterior)
     compra.oportunidade = oportunidade
     compra.save(update_fields=["oportunidade", "atualizada_em"])
     return True
@@ -523,7 +667,7 @@ def registrar_falha(lead, evento, data, event_id, evento_timeline=None):
     compra = compra_do_evento(lead, data)
     if compra is None:
         return None
-    _hidratar_aprovacao(compra, _momento(evento_timeline))
+    _hidratar_aprovacao(compra, evento_timeline)
     if compra.aprovado_em is not None:
         return None
     identidade = f"{evento}:{event_id}"
@@ -544,7 +688,7 @@ def registrar_falha(lead, evento, data, event_id, evento_timeline=None):
         if nova:
             _levar_para_recuperacao(oportunidade, compra, evento, event_id)
         return oportunidade
-    recuperacao = _abrir_recuperacao(lead, compra, evento, event_id)
+    recuperacao = _abrir_recuperacao(compra.lead, compra, evento, event_id)
     if compra.oportunidade_id is None:
         _vincular(compra, recuperacao)
     return recuperacao

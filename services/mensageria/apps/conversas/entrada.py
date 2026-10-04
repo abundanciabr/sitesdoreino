@@ -19,6 +19,7 @@ from .models import Conversa, MensagemDaConversa
 logger = logging.getLogger(__name__)
 JANELA_WHATSAPP = timedelta(hours=24)
 MENSAGEM_RECEBIDA = "mensagem.recebida"
+REENTREGA_SEM_ID = timedelta(minutes=10)
 
 
 @dataclass
@@ -36,7 +37,11 @@ class Recebida:
 
 
 def _momento(valor) -> datetime | None:
-    """Timestamp do provedor (segundos) aceito só quando é plausível."""
+    """Timestamp do provedor (segundos); None quando inválido ou no futuro.
+
+    Mensagem antiga (histórico reentregue) mantém a hora verdadeira: ela não
+    abre janela de 24h nem vira evento novo para o agente.
+    """
     if isinstance(valor, dict):
         valor = valor.get("low")
     try:
@@ -45,7 +50,7 @@ def _momento(valor) -> datetime | None:
         return None
     agora = timezone.now()
     momento = datetime.fromtimestamp(segundos, tz=dt_timezone.utc) if segundos > 0 else None
-    if momento is None or momento > agora + timedelta(minutes=5) or momento < agora - timedelta(days=7):
+    if momento is None or momento > agora + timedelta(minutes=5):
         return None
     return momento
 
@@ -58,6 +63,17 @@ def _ligar(conversa: Conversa | None, recebida: Recebida) -> leads.Ligacao | Non
     except Exception:  # noqa: BLE001 - ligação é melhoria; a mensagem não se perde
         logger.exception("conversas: falha ao ligar a conversa ao lead")
         return leads.Ligacao("pendente")
+
+
+def _repetida_sem_id(conversa: Conversa, recebida: Recebida) -> bool:
+    """E-mail sem Message-ID reentregue: mesmo conteúdo na mesma conversa em poucos minutos."""
+    if recebida.id_externo or recebida.canal != "email":
+        return False
+    return conversa.mensagens.filter(
+        direcao="entrada", texto=recebida.texto or "", assunto=(recebida.assunto or "")[:300],
+        em_resposta_a=(recebida.em_resposta_a or "")[:300],
+        ocorrida_em__gte=timezone.now() - REENTREGA_SEM_ID,
+    ).exists()
 
 
 def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
@@ -85,8 +101,9 @@ def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
 def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
     """Grava a mensagem e publica `mensagem.recebida`. Volta (mensagem, nova)."""
     recebida.endereco = enderecos.endereco_do_canal(recebida.canal, recebida.endereco)
-    if not recebida.endereco:
-        return None, False
+    recebida.site_id = (recebida.site_id or "").strip()
+    if not recebida.endereco or not recebida.site_id:
+        return None, False  # sem site não há conversa: dado de um site nunca cai em outro
     existente = Conversa.objects.filter(
         site_id=recebida.site_id, canal=recebida.canal, endereco=recebida.endereco,
     ).first()
@@ -94,6 +111,8 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
         direcao="entrada", id_externo=recebida.id_externo,
     ).exists():
         return existente.mensagens.get(direcao="entrada", id_externo=recebida.id_externo), False
+    if existente is not None and _repetida_sem_id(existente, recebida):
+        return None, False
     ligacao = _ligar(existente, recebida)
     momento = recebida.ocorrida_em or timezone.now()
     pede_parar = enderecos.pede_descadastro(recebida.texto) or (
@@ -153,8 +172,10 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar) -> tuple[MensagemD
             campos += ["ligacao", "lead_id"]
         conversa.save(update_fields=campos)
         registro = descadastros.registrar(conversa, momento) if pede_parar else None
-        emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
-        transaction.on_commit(relay_apos_commit)
+        if momento >= timezone.now() - JANELA_WHATSAPP:
+            # Histórico antigo reentregue fica gravado, mas o agente não o trata como fala nova.
+            emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
+            transaction.on_commit(relay_apos_commit)
     if registro is not None:
         try:
             descadastros.aplicar_preferencia(registro)

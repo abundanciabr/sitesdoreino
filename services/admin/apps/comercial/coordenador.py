@@ -39,7 +39,7 @@ from django.utils import timezone
 from apps.agentes import modelo
 from apps.agentes.models import Conexao
 
-from . import ferramentas, papeis, servicos
+from . import ferramentas, otimizador, papeis, servicos
 from .models import DecisaoComercial, EstrategiaComercial, EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -358,7 +358,9 @@ def _estrategia(trabalho: TrabalhoComercial) -> EstrategiaComercial:
         achada = EstrategiaComercial.objects.filter(pk=guardada).first()
         if achada is not None:
             return achada
-    return papeis.estrategia_ativa(trabalho.papel)
+    # Sem versão guardada: a do ar, ou a do teste que o otimizador está fazendo
+    # (a mesma oportunidade fica sempre na mesma versão).
+    return otimizador.escolher_para(trabalho)
 
 
 def conversar(trabalho: TrabalhoComercial, pedido: str, *, forte: bool = False) -> dict:
@@ -401,7 +403,7 @@ def conversar(trabalho: TrabalhoComercial, pedido: str, *, forte: bool = False) 
         batimento(trabalho)
         resposta = modelo.responder(
             modelo=trabalho.modelo,
-            instrucoes=papeis.instrucoes_completas(estrategia),
+            instrucoes=papeis.instrucoes_completas(estrategia, trabalho.site_id),
             itens=itens,
             ferramentas=definicoes or None,
             max_saida=MAX_SAIDA,
