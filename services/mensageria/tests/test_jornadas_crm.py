@@ -404,3 +404,75 @@ def test_sem_caixa_de_conversas_o_registro_na_conversa_e_indisponivel(monkeypatc
     entrega = _entrega_whatsapp()
     assert crm.registrar_na_conversa(entrega, telefone="+55 11 98888-7777", corpo="x",
                                      mensagem_whatsapp=None) is False
+
+
+# ---------------------------------------------------------------------------
+# Quem fala com o cliente: o robô comercial. A jornada só termina junto com a compra.
+# ---------------------------------------------------------------------------
+
+
+def test_nenhum_evento_do_sistema_inscreve_lead_com_oportunidade():
+    """Inscrever com `oportunidade_id` é decisão do mantenedor, não de um evento:
+    o robô comercial já aborda, acompanha e recupera, e a jornada em cima disso
+    seria mensagem em dobro."""
+    import inspect
+
+    from apps.eventos import handlers
+
+    fontes = [
+        inspect.getsource(getattr(handlers, nome))
+        for nome in dir(handlers)
+        if nome.startswith("ao_") and callable(getattr(handlers, nome))
+    ]
+    assert fontes
+    assert not any("oportunidade_id" in fonte for fonte in fontes)
+
+
+def aviso_de_compra(oportunidade_ref=None, site=SITE):
+    dados = {
+        "site_id": site, "payment_id": "pay-op", "order_id": "ord-op", "amount_cents": 1000,
+        "method": "pix", "customer": {"email": "cliente@example.com", "name": "Cliente"},
+    }
+    if oportunidade_ref:
+        dados["oportunidade_ref"] = oportunidade_ref
+    return dados
+
+
+def test_pagamento_aprovado_encerra_na_hora_a_jornada_da_oportunidade(monkeypatch):
+    from apps.eventos import handlers
+
+    monkeypatch.setattr(handlers, "enviar_notificacao", lambda *a, **k: None)
+    jornada = uma_jornada(atrasos=(0, 2))
+    daquela = da_oportunidade(jornada)
+    de_outra_oferta = da_oportunidade(jornada, oportunidade=OUTRA)
+    de_aluno = motor.inscrever(uma_jornada(slug="aluno"), destinatario_id=PESSOA,
+                               site_id=SITE, momento=quando(16, 10))
+
+    handlers.ao_pagamento_aprovado(aviso_de_compra(OPORTUNIDADE))
+
+    daquela.refresh_from_db()
+    assert (daquela.estado, daquela.motivo_de_saida) == ("cancelada", "CRM: compra aprovada")
+    assert daquela.proximo_em is None
+    for outra in (de_outra_oferta, de_aluno):
+        outra.refresh_from_db()
+        assert outra.estado == "andando"
+
+
+def test_pagamento_aprovado_de_outro_site_nao_encerra_a_jornada(monkeypatch):
+    from apps.eventos import handlers
+
+    monkeypatch.setattr(handlers, "enviar_notificacao", lambda *a, **k: None)
+    daquela = da_oportunidade(uma_jornada(atrasos=(0, 2)))
+    handlers.ao_pagamento_aprovado(aviso_de_compra(OPORTUNIDADE, site="outro-site"))
+    daquela.refresh_from_db()
+    assert daquela.estado == "andando"
+
+
+def test_pagamento_aprovado_sem_oportunidade_nao_mexe_em_jornada(monkeypatch):
+    from apps.eventos import handlers
+
+    monkeypatch.setattr(handlers, "enviar_notificacao", lambda *a, **k: None)
+    daquela = da_oportunidade(uma_jornada(atrasos=(0, 2)))
+    handlers.ao_pagamento_aprovado(aviso_de_compra())
+    daquela.refresh_from_db()
+    assert daquela.estado == "andando"
