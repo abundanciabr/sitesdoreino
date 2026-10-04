@@ -130,6 +130,11 @@ def test_conversa_completa_leva_a_oferta_da_faixa_certa(client, quiz):
     evento = OutboxEvent.objects.get()
     assert evento.event == "quiz.completado"
     assert evento.payload["context"]["fmt"] == "ai"
+    assert [r["respostas"] for r in evento.payload["respostas"]] == [
+        [{"id": avanco.id, "texto": avanco.text}],
+        [{"id": rapido.id, "texto": rapido.text}],
+    ]
+    assert evento.payload["submissao_id"] == str(submissao.id)
     percurso = TelemetryEvent.objects.get(event_type="ai_percurso")
     assert [t[0] for t in percurso.metadata["percurso"]] == ["u", "a", "u", "a"]
     assert CHAVE_FALSA not in str(percurso.metadata)

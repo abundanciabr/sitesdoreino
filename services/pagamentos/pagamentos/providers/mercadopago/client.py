@@ -3,6 +3,7 @@
 # Credencial: settings.MP_ACCESS_TOKEN; o serviço recebe a credencial do ambiente.
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from typing import Any
 
@@ -59,6 +60,9 @@ def _valor_em_reais(amount_cents: int) -> float:
 # statement_descriptor). Sem eles a cobrança chega "anônima" e recusa mais.
 _LIMITE_TEXTO_ITEM = 256
 _LIMITE_FATURA = 13  # statement_descriptor aceita até 13 caracteres
+# O aparelho (security.js do MP) vira cabeçalho HTTP de saída: só o formato que
+# o script gera; qualquer outra coisa é descartada e a cobrança segue sem ele.
+_APARELHO_VALIDO = re.compile(r"[A-Za-z0-9._:-]{1,200}")
 
 
 def _itens_mp(itens_do_pedido: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -171,7 +175,7 @@ class MercadoPagoClient:
         # Mesmo casing do SDK: substitui a chave aleatória dele no dict,
         # deixando exatamente uma chave HTTP, a da operação persistida.
         headers = {"x-idempotency-key": idempotency_key}
-        if device_id:
+        if device_id and _APARELHO_VALIDO.fullmatch(device_id):
             headers["X-meli-session-id"] = device_id
         return RequestOptions(
             access_token=self._token, connection_timeout=float(self._timeout),
@@ -320,7 +324,7 @@ class MercadoPagoClient:
         )
         fatura = str(getattr(settings, "MP_STATEMENT_DESCRIPTOR", "") or "").strip()
         if fatura:
-            body["statement_descriptor"] = fatura[:_LIMITE_FATURA]
+            body["statement_descriptor"] = fatura[:_LIMITE_FATURA].strip()
         if issuer_id:
             body["issuer_id"] = issuer_id
         if notification_url:

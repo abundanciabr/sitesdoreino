@@ -40,6 +40,11 @@ router = Router()
 _PAGAMENTO_NAO_INICIADO = "não foi possível iniciar o pagamento; tente novamente"
 _TENTATIVA_NAO_CONCLUIDA = "não foi possível concluir a tentativa; tente novamente"
 
+# Identificador do aparelho do security.js do Mercado Pago: só letras, números e
+# . _ : - (até 200). Ele vai para um cabeçalho de saída; o que sai disso é
+# descartado, não consertado.
+_APARELHO_MP = re.compile(r"[A-Za-z0-9._:-]{1,200}")
+
 
 # [DESENHO-COMUM.md F10] Mesmo cookie e MESMO formato que o funil sorteia e
 # guarda (`services/funil/apps/core/visitante.py`): UUID4 canônico em
@@ -465,11 +470,17 @@ def place_order(request, session_id: str):
         metadata["pagina_url"] = (
             f"https://{site['host']}/checkout/pedido/{order_id}/pix/"
         )
+        # Link do e-mail "seu Pix expirou" (`pix.expirado.recovery_url`): a
+        # página da oferta, onde a pessoa gera um Pix novo. Sem isto o e-mail
+        # saía com "Finalize aqui:" e nenhum link.
+        metadata["recovery_url"] = (
+            f"https://{site['host']}/checkout/{sessao.offer_slug}/"
+        )
         # Identificador do aparelho gerado pelo security.js do Mercado Pago na
         # página de dados; vai no cabeçalho X-meli-session-id do Pix. Ausente
         # ou fora do formato, o Pix segue sem ele, como seguia antes.
         aparelho = corpo.get("mp_device_id")
-        if isinstance(aparelho, str) and 0 < len(aparelho.strip()) <= 200:
+        if isinstance(aparelho, str) and _APARELHO_MP.fullmatch(aparelho.strip()):
             metadata["mp_device_id"] = aparelho.strip()
     if method == "card" or pix_appmax:
         metadata["items"] = itens

@@ -34,6 +34,16 @@ def test_leitura_padrao_nao_muda_env_nem_expoe_segredo(tmp_path, capsys):
     assert not list(pasta.glob("*.bak*"))
 
 
+def test_leitura_mascara_emails_de_prova(tmp_path, capsys):
+    pasta = preparar(tmp_path)
+    for p in pasta.iterdir():
+        p.write_text(p.read_text().replace("PROVA_SEGUNDA_EMPRESA_EMAILS=", "PROVA_SEGUNDA_EMPRESA_EMAILS=prova@exemplo.com,b@outro.com.br"))
+    assert chamar(tmp_path) == 0
+    saida = capsys.readouterr().out
+    assert "PROVA_SEGUNDA_EMPRESA_EMAILS=p***@exemplo.com,b***@outro.com.br" in saida
+    assert "prova@" not in saida and "b@outro" not in saida
+
+
 def test_liga_limpa_prova_e_desativa_ambos_env(tmp_path):
     pasta = preparar(tmp_path)
     with patch.object(rotas, "reiniciar") as reiniciar:

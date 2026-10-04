@@ -15,6 +15,8 @@ from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
 from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
+from .perfil import resumo_do_perfil
+from .quiz_do_lead import quizzes_do_lead
 
 router = Router()
 
@@ -334,6 +336,16 @@ _FICHA_LEAD_OPENAPI = {
                             "consentimento": {"type": "object"},
                             "criado_em": {"type": "string"},
                             "atualizado_em": {"type": "string"},
+                            "quizzes": {
+                                "type": "array",
+                                "description": "Quizzes com perguntas e respostas legíveis",
+                                "items": {"type": "object"},
+                            },
+                            "perfil": {
+                                "type": "object",
+                                "nullable": True,
+                                "description": "Perfil vigente do contato, se já analisado",
+                            },
                             "linha_do_tempo_total": {"type": "integer"},
                             "linha_do_tempo": {
                                 "type": "array",
@@ -393,6 +405,8 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
             "consentimento": lead.consent,
             "criado_em": _data(lead.created_at),
             "atualizado_em": _data(lead.updated_at),
+            "quizzes": quizzes_do_lead(lead),
+            "perfil": resumo_do_perfil(lead),
             "linha_do_tempo_total": eventos.count(),
             "linha_do_tempo": [
                 {

@@ -335,6 +335,76 @@ def test_pix_leva_aparelho_itens_e_comprador_sem_nome_na_fatura() -> None:
     assert "statement_descriptor" not in body
 
 
+@pytest.mark.parametrize(
+    "aparelho",
+    ["a\r\nb", " aparelho", "aparelho ", "ação-1", "é😀", "a" * 201],
+)
+def test_aparelho_fora_do_formato_nao_vira_cabecalho_e_a_cobranca_sai(
+    aparelho: str,
+) -> None:
+    resposta = {"id": 456, "status": "pending",
+                "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}}}
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json=resposta))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=2980, order_id="pix-1",
+            payer_email="teste@example.com", device_id=aparelho,
+        )
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+            card_token="token-sintetico", installments=1, payment_method_id="visa",
+            payer_email="teste@example.com", device_id=aparelho,
+        )
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
+
+
+def test_qualidade_nos_bordos_telefone_item_e_textos_longos(settings: Any) -> None:
+    settings.MP_STATEMENT_DESCRIPTOR = "MESHCRAFT    CURSOS"
+    longo = "x" * 300
+    casos = [
+        # telefone inválido some do comprador, o resto do comprador fica
+        ([{"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"}],
+         "Ana Silva", "123"),
+        # item sem product_id derruba só a lista de itens
+        ([{"name": "Curso", "price_cents": 1990, "kind": "principal"}], "Ana Silva", "11987654321"),
+        # nome do item longo é cortado em 256, e a descrição também
+        ([{"product_id": "curso", "name": longo, "price_cents": 1990, "kind": "principal"}],
+         "Ana Silva", "11987654321"),
+    ]
+    corpos = []
+    for itens, nome, telefone in casos:
+        with respx.mock(assert_all_called=True) as rede:
+            rota = rede.post(URL).mock(return_value=httpx.Response(
+                201, json={"id": 123, "status": "approved"}
+            ))
+            criar_pagamento_card(
+                idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+                card_token="token-sintetico", installments=1, payment_method_id="visa",
+                payer_email="teste@example.com", itens_do_pedido=itens,
+                comprador_nome=nome, comprador_telefone=telefone,
+            )
+        corpos.append(json.loads(rota.calls.last.request.content))
+    telefone_ruim, sem_produto, longo_cortado = corpos
+    assert telefone_ruim["additional_info"]["payer"] == {
+        "first_name": "Ana", "last_name": "Silva",
+    }
+    assert telefone_ruim["additional_info"]["items"][0]["id"] == "curso"
+    assert sem_produto["additional_info"]["items"] == []
+    assert "description" not in sem_produto
+    assert sem_produto["additional_info"]["payer"]["phone"] == {
+        "area_code": "11", "number": "987654321",
+    }
+    assert len(longo_cortado["description"]) == 256
+    assert len(longo_cortado["additional_info"]["items"][0]["title"]) == 256
+    # corte da fatura em 13 não termina em espaço
+    assert all(c["statement_descriptor"] == "MESHCRAFT" for c in corpos)
+
+
 def test_sdk_escapa_id_de_pagamento_no_get_e_no_estorno() -> None:
     payment_id = "id/?#"
     path = f"{URL}/id%2F%3F%23"

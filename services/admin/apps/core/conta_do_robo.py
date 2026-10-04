@@ -75,6 +75,7 @@ PALAVRAS_SEM_VOLTA = (
     "apagar",  # apagar dado
     "estorn",  # devolver dinheiro
     "reembols",
+    "devolver",  # o botão Devolver de /pagamentos/ pede o estorno
     "senha",  # a senha nova sai em texto na tela
     "associar",  # mudar quem entra no painel da equipe
     "link",  # convite que dá entrada a alguém

@@ -5,15 +5,19 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import subprocess
 import sys
+import tempfile
+import time
 import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
 
 ENV = Path("/opt/plataforma/env/pagamentos.env")
-ROTEIRO_MERCHANT = Path("/tmp/appmax.sh")
+CHAVES_MERCHANT = ("APPMAX_MERCHANT_CLIENT_ID", "APPMAX_MERCHANT_CLIENT_SECRET")
+TENTATIVAS_DE_VALIDACAO = 3
 AUTH_SANDBOX = "https://auth.sandboxappmax.com.br/oauth2/token"
 API_SANDBOX = "https://api.sandboxappmax.com.br"
 AUTH_PRODUCAO = "https://auth.appmax.com.br/oauth2/token"
@@ -63,9 +67,14 @@ def valor_do_env(chave: str) -> str:
 
 
 def conferir_ambiente() -> tuple[str, str, str]:
-    if not ENV.is_file() or not ROTEIRO_MERCHANT.is_file():
+    if not ENV.is_file():
         raise FalhaDeInstalacao(
-            "Falta o env ou /tmp/appmax.sh na VPS; prepare o app antes da instalação."
+            "Falta o env de pagamentos na VPS; prepare o app antes da instalação."
+        )
+    # O par MERCHANT sai uma vez só: sem poder gravar o env, nem começar.
+    if not os.access(ENV, os.W_OK) or not os.access(ENV.parent, os.W_OK | os.X_OK):
+        raise FalhaDeInstalacao(
+            "Não consigo gravar o env de pagamentos nem a cópia ao lado dele; rode como o dono do env."
         )
     auth, api, _ = endpoints()
     configuracao = json.loads(valor_do_env("APPMAX_INSTALACOES"))
@@ -87,8 +96,16 @@ def conferir_ambiente() -> tuple[str, str, str]:
     )
 
 
-def postar(url: str, body: bytes, *, bearer: str = "", form: bool = False) -> dict:
-    etapa = (
+def postar(
+    url: str,
+    body: bytes,
+    *,
+    bearer: str = "",
+    form: bool = False,
+    etapa: str = "",
+    metodo: str = "POST",
+) -> dict:
+    etapa = etapa or (
         "OAuth APP"
         if form
         else (
@@ -99,12 +116,15 @@ def postar(url: str, body: bytes, *, bearer: str = "", form: bool = False) -> di
     )
     ambiente = "sandbox" if "sandboxappmax.com.br" in url else "produção"
     configuracao = (
-        'silent\nshow-error\nmax-time = 20\nrequest = "POST"\n'
+        f"silent\nshow-error\nmax-time = 20\nrequest = {json.dumps(metodo)}\n"
         f"url = {json.dumps(url)}\n"
-        f"header = {json.dumps('Content-Type: application/x-www-form-urlencoded' if form else 'Content-Type: application/json')}\n"
-        f"data-binary = {json.dumps(body.decode('utf-8'))}\n"
         'write-out = "\\n%{http_code}"\n'
     )
+    if metodo == "POST":
+        configuracao += (
+            f"header = {json.dumps('Content-Type: application/x-www-form-urlencoded' if form else 'Content-Type: application/json')}\n"
+            f"data-binary = {json.dumps(body.decode('utf-8'))}\n"
+        )
     if bearer:
         configuracao += f"header = {json.dumps('Authorization: Bearer ' + bearer)}\n"
     try:
@@ -160,6 +180,80 @@ def conferir_callback() -> None:
     raise FalhaDeInstalacao(
         "O retorno seguro da instalação não redireciona à página inicial; confira a rota pública antes de autorizar."
     )
+
+
+def validar_merchant(auth: str, api: str, merchant_id: str, merchant_secret: str) -> None:
+    """Prova OAuth MERCHANT e leitura de produtos no mesmo ambiente do instalador."""
+    from urllib.parse import urlencode
+
+    oauth = postar(
+        auth,
+        urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": merchant_id,
+                "client_secret": merchant_secret,
+            }
+        ).encode(),
+        form=True,
+        etapa="OAuth MERCHANT",
+    )
+    token = oauth.get("access_token")
+    tipo = oauth.get("token_type")
+    if not isinstance(token, str) or not token or not isinstance(tipo, str) or tipo.lower() != "bearer":
+        raise FalhaDeInstalacao("O OAuth MERCHANT não devolveu Bearer válido.")
+    produtos = postar(
+        f"{api}/v1/products",
+        b"",
+        bearer=token,
+        etapa="leitura de produtos MERCHANT",
+        metodo="GET",
+    )
+    dados = produtos.get("data")
+    if not isinstance(dados, dict) or not isinstance(dados.get("products"), list):
+        raise FalhaDeInstalacao("A API não devolveu a lista de produtos do MERCHANT.")
+
+
+def gravar_merchant(merchant_id: str, merchant_secret: str) -> Path:
+    """Grava o par no env com cópia antes e troca atômica; devolve a cópia."""
+    original = ENV.read_bytes()
+    valores = dict(zip(CHAVES_MERCHANT, (merchant_id, merchant_secret)))
+    linhas, gravadas = [], set()
+    for linha in original.decode("utf-8").splitlines(keepends=True):
+        chave = linha.partition("=")[0]
+        if "=" in linha and chave in valores:
+            if chave not in gravadas:
+                linhas.append(f"{chave}={valores[chave]}\n")
+                gravadas.add(chave)
+            continue
+        linhas.append(linha)
+    if linhas and not linhas[-1].endswith("\n"):
+        linhas[-1] += "\n"
+    linhas += [f"{chave}={valor}\n" for chave, valor in valores.items() if chave not in gravadas]
+    estado = ENV.stat()
+    copia = ENV.with_name(f"{ENV.name}.bak-instalador-{time.time_ns()}")
+    fd = os.open(copia, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as arquivo:
+        arquivo.write(original)
+        arquivo.flush()
+        os.fsync(arquivo.fileno())
+    fd, temporario = tempfile.mkstemp(prefix=".instalador-", dir=ENV.parent)
+    try:
+        with os.fdopen(fd, "wb") as arquivo:
+            arquivo.write("".join(linhas).encode("utf-8"))
+            arquivo.flush()
+            os.fsync(arquivo.fileno())
+        os.chmod(temporario, stat.S_IMODE(estado.st_mode))
+        if hasattr(os, "chown"):
+            try:
+                os.chown(temporario, estado.st_uid, estado.st_gid)
+            except PermissionError:
+                pass
+        os.replace(temporario, ENV)
+    finally:
+        if os.path.exists(temporario):
+            os.unlink(temporario)
+    return copia
 
 
 def instalar() -> None:
@@ -247,18 +341,24 @@ def instalar() -> None:
         raise FalhaDeInstalacao(
             "A instalação não retornou o par MERCHANT; confira o health check antes de nova tentativa."
         )
-    validacao = subprocess.run(
-        ["bash", str(ROTEIRO_MERCHANT), "--oauth-merchant"],
-        input=f"{merchant_id}\n{merchant_secret}\n",
-        text=True,
-        check=False,
-    )
-    if validacao.returncode:
-        raise FalhaDeInstalacao(
-            "O par MERCHANT foi emitido, mas a validação local falhou. Não reinicie a instalação antes de conferir o env e a API."
-        )
+    # O par só existe nesta memória: validar aqui, no mesmo ambiente, e gravar
+    # direto no env, sem depender do roteiro sandbox nem do estado do cartão.
+    for tentativa in range(1, TENTATIVAS_DE_VALIDACAO + 1):
+        try:
+            validar_merchant(auth, api, merchant_id, merchant_secret)
+            break
+        except FalhaDeInstalacao as exc:
+            if tentativa == TENTATIVAS_DE_VALIDACAO or input(
+                f"Validação MERCHANT em {ambiente} falhou ({exc}). Enter tenta de novo; N desiste: "
+            ).strip().lower() == "n":
+                raise FalhaDeInstalacao(
+                    f"O par MERCHANT foi emitido, mas a validação em {ambiente} falhou e nada foi gravado. {exc}"
+                ) from None
+    copia = gravar_merchant(merchant_id, merchant_secret)
     print(
-        "INSTALACAO_OK: health check, OAuth MERCHANT e leitura de produtos concluídos."
+        f"INSTALACAO_OK: OAuth MERCHANT e leitura de produtos validados em {ambiente}; "
+        f"par gravado em {ENV} (cópia anterior em {copia}). Nada foi reiniciado: "
+        "o par vale quando a aplicação for recarregada."
     )
 
 

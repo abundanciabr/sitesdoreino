@@ -77,8 +77,9 @@ from datetime import datetime, timezone
 import redis
 from django.core.management.base import BaseCommand
 
+from apps.fatos.crm import projetar
 from apps.fatos.models import EventoMorto
-from apps.fatos.recepcao import MORTO, receber
+from apps.fatos.recepcao import GUARDADO, JA_TINHA, MORTO, receber
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +121,18 @@ STREAMS = [
     "eventos.checkout.pedido-atribuido",
     "eventos.checkout.pedido-pago",
     "eventos.checkout.iniciado",
+    # O CRM com agentes (etapa 6, medição comercial): toda mudança de
+    # oportunidade que a `leads` afirma (E3) e toda mensagem que uma pessoa
+    # mandou (E2). Além do livro, cada um vira uma projeção em colunas
+    # (`apps/fatos/crm.py`), de onde sai `/api/metricas/crm/funil`.
+    #
+    # O nome do E2 é o que a `mensageria` publica DE FATO
+    # (`apps/conversas/entrada.py`: `emitir("mensagem.recebida", ...)`, relay em
+    # `eventos.<nome>`), e não o `mensageria.mensagem-recebida` que a
+    # especificação do lote 1 escreveu. Assinar o nome do papel criaria um grupo
+    # vazio e nenhuma resposta seria contada.
+    "eventos.crm.oportunidade-atualizada",
+    "eventos.mensagem.recebida",
 ]
 
 #: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
@@ -147,8 +160,17 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
 #: `quiz.completado` leva `lead` (e-mail, nome, telefone) e entra sem ele:
 #: decisao 6 do mantenedor, sessao de 26/09/2026, "Limpar na entrada e
 #: expurgar" (LGPD). Os fatos guardados antes dela perderam `lead` na migracao
-#: `0004_quiz_completado_sem_lead`.
-DESCARTADOS_NA_ENTRADA = {"quiz.completado": frozenset({"lead"})}
+#: `0004_quiz_completado_sem_lead`. Desde 03/10/2026 o evento leva tambem
+#: `respostas` (texto do que a pessoa escolheu, e um dia o que ela digitou);
+#: o livro nao precisa delas e elas ficam de fora pelo mesmo motivo.
+DESCARTADOS_NA_ENTRADA = {"quiz.completado": frozenset({"lead", "respostas"})}
+# Os dois assuntos do CRM trazem dado pessoal por contrato (E2: o texto e o
+# assunto que a pessoa escreveu; E3: e-mail), e o livro não o guarda. Ficam as
+# chaves que ligam a resposta da pessoa à oportunidade dela
+# (`apps/fatos/crm.py`): `lead` no E2, `lead_id` e `telefone` no E3. Sem elas,
+# "com resposta" não se mede.
+DESCARTADOS_NA_ENTRADA["mensagem.recebida"] = frozenset({"texto", "assunto"})
+DESCARTADOS_NA_ENTRADA["crm.oportunidade-atualizada"] = frozenset({"email"})
 
 #: Comparado por chave, sem distinguir maiusculas.
 CAMPOS_PESSOAIS_PROIBIDOS = frozenset(
@@ -229,6 +251,10 @@ def processar(cru: bytes) -> str:
             )
             return MORTO
     desfecho, objeto = receber(cru)
+    if desfecho in (GUARDADO, JA_TINHA):
+        # A projeção do CRM vem DEPOIS do fato e também na reentrega: se o
+        # processo caiu entre gravar e projetar, a próxima entrega completa.
+        projetar(objeto)
     if desfecho == MORTO:
         # ERROR e não WARNING: um evento que a plataforma afirmou e o livro não
         # pôde guardar é um buraco na contagem, e alguém precisa olhar.

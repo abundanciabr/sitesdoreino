@@ -518,6 +518,27 @@ def test_25_evento_codigo_trocado_tem_dados_sem_cpf(settings):
     assert "40827365144" not in str(evento.payload)
 
 
+def test_26_pix_simulado_vence_sem_chamar_a_appmax(settings):
+    from pagamentos.methods.pix.appmax import reconciliar as reconciliar_pix_appmax
+
+    with patch(
+        "pagamentos.core.gateway.nova_sessao_appmax",
+        side_effect=AssertionError("API Appmax sandbox"),
+    ):
+        intent, _ = _novo(settings, nome="RISCO SANDBOX")
+        assert _tentativa(intent, "appmax").provider_reference_id.startswith("sim-")
+        reconciliar_pix_appmax(intent)
+        intent.refresh_from_db()
+        assert intent.status == "pending"
+        depois = intent.pix_expires_at + timedelta(days=1, minutes=1)
+        with patch("pagamentos.methods.pix.appmax.timezone.now", return_value=depois):
+            reconciliar_pix_appmax(intent)
+    intent.refresh_from_db()
+    assert intent.status == "expired"
+    assert _tentativa(intent, "appmax").state not in {"pending", "sending"}
+    assert len(_eventos("pix.expirado")) == 1
+
+
 @pytest.mark.parametrize("status", ["approved", "refunded"])
 @pytest.mark.parametrize(
     "campo,valor",
