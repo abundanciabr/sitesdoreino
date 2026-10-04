@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+import hashlib
 from decimal import Decimal
 from datetime import timedelta
 
@@ -11,6 +12,7 @@ from pagamentos.marketplace import service
 from pagamentos.marketplace.models import Charge, Recebivel
 from django.utils import timezone
 from django.test import Client
+import httpx
 
 
 def test_paypal_so_aprova_captura_concluida_com_mesmo_valor():
@@ -167,3 +169,49 @@ def test_api_cobranca_exige_token_e_site(settings):
     ok = client.get(url, HTTP_AUTHORIZATION="Bearer token-somente-teste", HTTP_X_SITE_ID="site-a")
     assert ok.status_code == 200
     assert ok.json()["order_id"] == str(charge.order_id)
+
+
+@pytest.mark.django_db
+def test_pix_marketplace_recusa_conta_normal_mesmo_com_fingerprint(monkeypatch, settings):
+    token = "APP_USR-conta-normal-de-teste-local"
+    settings.MP_ACCESS_TOKEN = token
+    settings.MP_TEST_ACCOUNT_TOKEN_SHA256 = hashlib.sha256(token.encode()).hexdigest()
+    settings.MARKETPLACE_API_TOKEN = "token-interno-local"
+    service._MP_TEST_ACCOUNT_CACHE.clear()
+    calls = []
+    monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: (
+        calls.append(args[0]) or httpx.Response(200, json={"tags": ["business", "normal"]})
+    ))
+    monkeypatch.setattr(gateway, "criar_pagamento_pix", lambda **_: pytest.fail("Pix não pode ser criado"))
+    client = Client()
+    status = client.get("/api/pagamentos/marketplace/status", HTTP_AUTHORIZATION="Bearer token-interno-local")
+    assert status.status_code == 200
+    assert status.json()["pix_configured"] is False
+    response = client.post("/api/pagamentos/marketplace/charges", data={
+        "idempotency_key": str(uuid.uuid4()), "site_id": "site-a",
+        "order_id": str(uuid.uuid4()), "order_version": 1,
+        "amount_cents": 1250, "currency": "BRL", "environment": "sandbox",
+        "method": "pix", "customer_email": "x@example.test",
+    }, content_type="application/json", HTTP_AUTHORIZATION="Bearer token-interno-local")
+    assert response.status_code == 503
+    assert Charge.objects.count() == 0
+    assert calls == ["https://api.mercadopago.com/users/me"]
+
+
+@pytest.mark.django_db
+def test_pix_marketplace_aceita_app_usr_somente_com_tag_test_user(monkeypatch, settings):
+    token = "APP_USR-conta-teste-local"
+    settings.MP_ACCESS_TOKEN = token
+    settings.MP_TEST_ACCOUNT_TOKEN_SHA256 = hashlib.sha256(token.encode()).hexdigest()
+    service._MP_TEST_ACCOUNT_CACHE.clear()
+    calls = []
+    monkeypatch.setattr(httpx, "get", lambda *args, **kwargs: (
+        calls.append(args[0]) or httpx.Response(200, json={"tags": ["test_user"]})
+    ))
+    monkeypatch.setattr(gateway, "criar_pagamento_pix", lambda **_: gateway.ResultadoPix("MP-SANDBOX", "qr", "base64", None))
+    kwargs = dict(idempotency_key=uuid.uuid4(), site_id="site-a", order_id=uuid.uuid4(),
+                  order_version=1, amount_cents=1250, currency="BRL", environment="sandbox",
+                  method="pix", customer_email="x@example.test")
+    assert service.criar(**kwargs)["status"] == "pending"
+    assert service.pix_marketplace_em_teste() is True
+    assert calls == ["https://api.mercadopago.com/users/me"]

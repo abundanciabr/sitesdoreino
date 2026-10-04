@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import logging
+import hashlib
+import threading
+import time
 import uuid
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
@@ -19,6 +22,43 @@ from pagamentos.marketplace.models import Charge, Recebivel
 
 logger = logging.getLogger(__name__)
 PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
+_MP_TEST_ACCOUNT_CACHE: dict[str, tuple[float, bool]] = {}
+_MP_TEST_ACCOUNT_LOCK = threading.Lock()
+
+
+def pix_marketplace_em_teste() -> bool:
+    """A marca local e a conta remota precisam concordar para tokens APP_USR.
+
+    O fingerprint sozinho pode ter sido gerado para uma conta normal. TEST-
+    identifica a credencial de teste por prefixo; APP_USR precisa da tag
+    `test_user` em GET /users/me. Falha de rede ou resposta ambígua fecha Pix.
+    """
+    token = settings.MP_ACCESS_TOKEN
+    if not token or not mp_em_teste():
+        return False
+    if token.startswith("TEST-"):
+        return True
+    if not token.startswith("APP_USR-"):
+        return False
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    now = time.monotonic()
+    with _MP_TEST_ACCOUNT_LOCK:
+        cached = _MP_TEST_ACCOUNT_CACHE.get(digest)
+        if cached and cached[0] > now:
+            return cached[1]
+        try:
+            response = httpx.get(
+                "https://api.mercadopago.com/users/me",
+                headers={"Authorization": "Bearer " + token}, timeout=5,
+            )
+            payload = response.json() if response.status_code == 200 else None
+            tags = payload.get("tags") if isinstance(payload, dict) else None
+            confirmed = isinstance(tags, list) and "test_user" in tags
+        except (httpx.HTTPError, ValueError):
+            confirmed = False
+        _MP_TEST_ACCOUNT_CACHE.clear()
+        _MP_TEST_ACCOUNT_CACHE[digest] = (now + 60, confirmed)
+        return confirmed
 
 
 class CobrançaIndisponivel(RuntimeError):
@@ -203,7 +243,7 @@ def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
         raise ConflitoDeCobranca("somente Pix e PayPal em BRL sandbox")
     if not customer_email or len(customer_email) > 254:
         raise ConflitoDeCobranca("email do cliente inválido")
-    if method == "pix" and not mp_em_teste():
+    if method == "pix" and not pix_marketplace_em_teste():
         raise CobrançaIndisponivel("Mercado Pago de teste não configurado")
     if method == "paypal" and (not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET):
         raise CobrançaIndisponivel("PayPal sandbox não configurado")

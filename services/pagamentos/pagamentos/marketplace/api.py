@@ -13,7 +13,6 @@ from pagamentos.core import gateway
 from pagamentos.core.webhook_signature import assinatura_valida
 from pagamentos.marketplace import service
 from pagamentos.marketplace.models import Charge
-from pagamentos.core.ambiente_mp import mp_em_teste
 
 
 def _auth(request):
@@ -126,7 +125,7 @@ def marketplace_status(request):
         return _error("não autorizado", 401)
     return JsonResponse({
         "environment": "sandbox",
-        "pix_configured": mp_em_teste(),
+        "pix_configured": service.pix_marketplace_em_teste(),
         "paypal_configured": bool(settings.PAYPAL_CLIENT_ID and settings.PAYPAL_CLIENT_SECRET),
         "paypal_webhook_configured": bool(settings.PAYPAL_WEBHOOK_ID),
         "paypal_return_configured": bool(settings.MARKETPLACE_PAYPAL_RETURN_BASE_URL),
