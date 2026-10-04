@@ -38,6 +38,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_GET
 
+from . import crm_resultados_atendimento as atendimento
 from .clients import LeadsClient, http
 
 logger = logging.getLogger("admin.crm_resultados")
@@ -528,6 +529,9 @@ def montar(request) -> "tuple[dict, int]":
     contexto["custo_por_venda"] = int((custo_centavos / vendas).to_integral_value()) if componentes and vendas else None
     contexto["margem_centavos"] = liquido - contexto["custo_centavos"] if componentes else None
     contexto["amostra_geral_suficiente"] = _suficiente(int(totais.get("elegiveis") or 0), vendas)
+    contexto["funil"] = atendimento.funil(request, desde, ate, filtros["site_id"])
+    contexto["qualidade"] = atendimento.qualidade(desde, ate, filtros["site_id"])
+    contexto["desempenho"] = atendimento.desempenho(desde, ate, filtros["site_id"])
     _formatar(contexto)
     return contexto, 200
 
