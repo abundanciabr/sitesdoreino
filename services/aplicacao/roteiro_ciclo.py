@@ -16,12 +16,17 @@ O que ele NÃO faz, por construção (tudo dentro do processo do roteiro):
 * qualquer outra conexão para fora: barrada ao nível do socket (só vale
   rede local, banco e Redis do próprio site);
 * mexer no barramento do site: os avisos entre células trafegam num Redis de
-  ensaio (banco separado, que precisa estar vazio) e a caixa de saída deixa a
+  ensaio (banco separado, acima do 9, que precisa estar vazio; o roteiro recusa
+  os bancos 0 a 9 e só apaga o banco depois de confirmá-lo vazio) e a caixa de saída deixa a
   linha já publicada, então os trabalhadores do site não a veem;
 * tarefas em segundo plano do site (Huey): ficam descartadas dentro do roteiro.
 
 Os dados criados são de teste (e-mail @example.com, nome com "Sandbox"): ficam
-fora dos totais do CRM e nada é apagado. O relatório diz o contato criado.
+fora dos totais do CRM e nada é apagado. O pedido do roteiro também nasce
+marcado como teste (`em_teste`), mesmo com a chave de produção do provedor, e
+fica fora da receita do checkout. A tentativa de pagamento simulada fica no
+registro da célula de pagamentos, com identificador de provedor falso (faixa
+que o Mercado Pago de verdade não usa). O relatório diz o contato criado.
 
 Falta de configuração aparece como "indisponível" com o motivo, nunca como erro.
 Saída: 0 tudo certo, 1 algum passo falhou, 2 ambiente não permite rodar.
@@ -53,6 +58,7 @@ from ciclo_comercial import (  # noqa: E402
 )
 
 BANCO_DE_ENSAIO = 15
+BANCO_MAIOR_DO_SITE = 9  # no site no ar: 0 barramento de eventos, 1 a 8 filas, 9 cache do WhatsApp
 
 
 class Indisponivel(Exception):
@@ -85,13 +91,41 @@ class Isolamento:
         self.conexoes_barradas: list[str] = []
         self._desfazer: list = []
         self._cliente = None
+        # Só vira True depois de o Redis de ensaio responder "vazio": só então o que há
+        # nele é do roteiro e pode ser apagado no fim.
+        self._vazio_confirmado = False
 
     # -- ligar / desligar -----------------------------------------------------
+
+    def _recusar_banco_do_site(self) -> None:
+        """O Redis de ensaio nunca é um banco que o site usa, nem um servidor de fora do site.
+
+        No site no ar, os bancos 0 a 9 são o barramento de eventos, as filas e o cache
+        (e o roteiro apaga o banco de ensaio no fim): só vale um banco acima deles. O
+        servidor tem de ser local ou o mesmo Redis que o site já usa.
+        """
+        from config import runtime
+
+        partes = urlsplit(self.redis_ensaio)
+        numero = (partes.path or "/").strip("/") or "0"
+        if not numero.isdigit() or int(numero) <= BANCO_MAIOR_DO_SITE:
+            raise Indisponivel(
+                f"o banco de ensaio do Redis tem de ser um número acima de {BANCO_MAIOR_DO_SITE} "
+                f"(os bancos 0 a {BANCO_MAIOR_DO_SITE} são do site); recebi '{numero}'"
+            )
+        do_site = {urlsplit(str(v.get("REDIS_STREAMS_URL") or "")).hostname
+                   for v in runtime._service_environments.values()}
+        if (partes.hostname or "") not in (do_site | {"127.0.0.1", "localhost", "::1"}):
+            raise Indisponivel(
+                f"o Redis de ensaio ({partes.hostname}) não é local nem o Redis do próprio site; "
+                "o roteiro não usa servidor de fora"
+            )
 
     def ligar(self) -> "Isolamento":
         import redis as redis_lib
         from django.conf import settings
 
+        self._recusar_banco_do_site()
         self._cliente = redis_lib.from_url(self.redis_ensaio)
         try:
             ocupadas = self._cliente.dbsize()
@@ -101,6 +135,7 @@ class Isolamento:
             raise Indisponivel(
                 "o banco de ensaio do Redis não está vazio; o roteiro só usa um banco que ele mesmo criou"
             )
+        self._vazio_confirmado = True
         permitidos = _ips(self.redis_ensaio)
         for configuracao in settings.DATABASES.values():
             permitidos |= _ips(str(configuracao.get("HOST") or ""))
@@ -108,6 +143,7 @@ class Isolamento:
         self._publicar_ao_gravar()
         self._calar_relays()
         self._descartar_tarefas()
+        self._marcar_pedidos_como_teste()
         self._barrar_rede(permitidos)
         return self
 
@@ -118,11 +154,12 @@ class Isolamento:
             except Exception:  # noqa: BLE001 - desfazer o resto mesmo assim
                 traceback.print_exc()
         self._desfazer.clear()
-        if self._cliente is not None:
-            try:
-                self._cliente.flushdb()  # só existe o que este roteiro criou: o banco começou vazio
+        if self._cliente is not None and self._vazio_confirmado:
+            try:  # só existe o que este roteiro criou: o banco começou vazio (confirmado em ligar())
+                self._cliente.flushdb()
             except Exception:  # noqa: BLE001
                 pass
+        self._vazio_confirmado = False
 
     # -- peças ------------------------------------------------------------------
 
@@ -217,6 +254,19 @@ class Isolamento:
 
             instancia.enqueue = descartar
             self._desfazer.append(lambda i=instancia, o=original: setattr(i, "enqueue", o))
+
+    def _marcar_pedidos_como_teste(self) -> None:
+        """Todo pedido criado dentro do roteiro nasce marcado como teste.
+
+        O checkout só marca `em_teste` quando a chave do provedor é de sandbox; no
+        site no ar a chave é de produção, e o pedido simulado entraria na receita
+        real. Dentro do roteiro o dinheiro nunca é real (o provedor é simulado),
+        então o pedido é sempre de teste. Vale só neste processo e é desfeito no fim.
+        """
+        api = import_module("modules.checkout.apps.core.api")
+        original = api._ambiente_de_teste
+        api._ambiente_de_teste = lambda *a, **k: True
+        self._desfazer.append(lambda: setattr(api, "_ambiente_de_teste", original))
 
     def _barrar_rede(self, permitidos: set[str]) -> None:
         """Só rede local, banco e Redis do site. O resto é recusado na hora."""
@@ -434,6 +484,8 @@ def executar_ciclo(cena: Cena, amb: Ambiente, *, pessoa: Pessoa | None = None) -
     def envio():
         exigir_whatsapp()
         primeira = ciclo.enviar(pessoa, "Oi! Aqui é a equipe. Já te explico.", chave)
+        if primeira["resultado"] == "fora_do_horario":  # só se a hora fixada do roteiro não valer
+            raise Indisponivel("o robô só envia entre 08h e 20h de São Paulo; rode o roteiro nesse horário")
         if primeira["resultado"] != "enviada":
             raise FalhaDoCiclo(f"primeiro envio deu {primeira['resultado']}: {primeira.get('detalhe')}")
         repetida = ciclo.enviar(pessoa, "Oi! Aqui é a equipe. Já te explico.", chave)
@@ -452,6 +504,7 @@ def executar_ciclo(cena: Cena, amb: Ambiente, *, pessoa: Pessoa | None = None) -
         if ciclo.link_de_compra(pessoa, cena.quiz_a, chave + "-link")["link_id"] != link["link_id"]:
             raise FalhaDoCiclo("o mesmo pedido de link criou dois links")
         estado["link"] = link
+        estado["pedido_opp"] = link["oportunidade_ref"]
         pedido = ciclo.fechar_pedido_na_pagina(pessoa, link)
         estado["pedido"] = pedido
         situacao = ciclo.estado_do_pedido(pedido["id"])
@@ -473,6 +526,11 @@ def executar_ciclo(cena: Cena, amb: Ambiente, *, pessoa: Pessoa | None = None) -
         depois = ciclo.crm(testes="mostrar")["resumo"]["ganhas"]
         if depois != antes + 1:
             raise FalhaDoCiclo(f"o total de ganhas devia subir 1 (era {antes}, agora {depois})")
+        lista = ciclo.pedidos_da_oportunidade(estado["pedido_opp"])
+        if not lista["pedidos"] or not all(p["em_teste"] for p in lista["pedidos"]):
+            raise FalhaDoCiclo("o pedido do roteiro não ficou marcado como teste")
+        if lista["resumo"]["aprovado_cents"] != 0 or lista["resumo"]["liquido_cents"] != 0:
+            raise FalhaDoCiclo(f"o pedido do roteiro contou como receita real: {lista['resumo']}")
 
     def so_a_certa():
         if not cena.quiz_b:

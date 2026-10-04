@@ -665,6 +665,11 @@ class Ciclo:
         pessoa.conversa_id = conversa["id"]
         return conversa
 
+    def conversas_do_site(self, **params) -> dict:
+        """As conversas do site (`ligacao=todas` traz também as não ligadas a contato)."""
+        return _json(interno(self.amb.rotas.mensageria, "GET", "/conversas", params={
+            "site_id": self.cena.site_id, "ligacao": "todas", "por_pagina": 100, **params}), o_que="conversas do site")
+
     def consentimento_whatsapp(self, pessoa: Pessoa) -> dict:
         """Pode chamar este número sem ele ter escrito antes? (a mensageria responde)"""
         return _json(interno(self.amb.rotas.mensageria, "GET", "/consentimentos/whatsapp", params={

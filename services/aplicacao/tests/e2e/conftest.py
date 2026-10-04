@@ -8,8 +8,16 @@ Roda sozinho (`pytest tests/e2e`): as outras provas da aplicação sobem a
 configuração com banco em memória no mesmo processo, e uma configuração só
 vale por processo.
 
+Materializa `modules/` sozinho (o mesmo que `preparar.py --origem .. --destino modules`),
+sempre a partir dos fontes atuais.
+
 Cria (apaga e recria) os bancos `e2e_<celula>` do servidor de teste e usa os
-bancos 7, 8 e 9 do Redis de teste. Nada disto toca o site no ar.
+bancos 7, 8, 9 e 15 do Redis de teste (o 15 é do roteiro). Nada disto toca o
+site no ar: só servidor local (127.0.0.1 ou localhost) é aceito, e os bancos
+e os fluxos de teste são apagados no fim.
+
+Os módulos (`modules/`) são gerados aqui mesmo a partir dos fontes, com o
+mesmo `preparar.py` da imagem; não precisa rodá-lo antes.
 """
 
 from __future__ import annotations
@@ -18,6 +26,7 @@ import os
 import sys
 import tempfile
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -28,6 +37,8 @@ if str(RAIZ) not in sys.path:
     sys.path.insert(0, str(RAIZ))
 
 HOST = "ciclo.e2e.test"
+HOST_OUTRO = "outro.e2e.test"  # um segundo site, para provar que um não enxerga o outro
+SERVIDORES_LOCAIS = ("127.0.0.1", "localhost", "::1")
 USADAS = ("catalogo", "quiz", "leads", "checkout", "pagamentos", "mensageria", "identidade")
 SCRIPTS = {"checkout": "/checkout", "quiz": "/quiz"}
 
@@ -71,6 +82,43 @@ def _criar_bancos(url_postgres: str) -> None:
             nome = f"e2e_{servico}"
             conexao.execute(f'DROP DATABASE IF EXISTS "{nome}" WITH (FORCE)')
             conexao.execute(f'CREATE DATABASE "{nome}"')
+
+
+def _preparar_modulos() -> None:
+    """Materializa `modules/` a partir dos fontes (o `preparar.py` da imagem) quando falta ou ficou velho.
+
+    Sem isto o teste falharia por falta da pasta ou, pior, rodaria um `modules/` de outra
+    versão do código. Com a pasta em dia ela não é refeita, para não apagá-la debaixo de
+    outra rodada de testes que já a esteja usando.
+    """
+    import importlib
+
+    from preparar import MODULOS, preparar
+
+    destino, marca = RAIZ / "modules", RAIZ / "modules" / ".preparado"
+    fontes = RAIZ.parent
+    ultima_edicao = max((p.stat().st_mtime for m in MODULOS for p in (fontes / m).rglob("*.py")
+                         if "tests" not in p.parts and ".venv" not in p.parts), default=0)
+    if marca.is_file() and marca.stat().st_mtime >= ultima_edicao:
+        return
+    preparar(fontes, destino)
+    marca.write_text("pronto\n", encoding="utf-8")
+    importlib.invalidate_caches()
+
+
+def _limpar(url_postgres: str, url_redis: str) -> None:
+    """No fim, o servidor de teste fica como estava: sem os bancos e2e_* e sem os fluxos de teste."""
+    import psycopg
+    import redis as redis_lib
+
+    try:
+        for numero in (7, 8, 9, 15):
+            redis_lib.from_url(_redis(url_redis, numero)).flushdb()
+        with psycopg.connect(_banco(url_postgres, "postgres"), autocommit=True) as conexao:
+            for servico in USADAS:
+                conexao.execute(f'DROP DATABASE IF EXISTS "e2e_{servico}" WITH (FORCE)')
+    except Exception as erro:  # noqa: BLE001 - a limpeza nunca derruba o resultado dos testes
+        print(f"[e2e] limpeza do servidor de teste incompleta: {type(erro).__name__}", file=sys.stderr)
 
 
 def _escrever_ambientes(pasta: Path, postgres: str, redis_url: str, gateway_url: str) -> None:
@@ -140,8 +188,8 @@ def _subir_aplicacao() -> None:
     import config.asgi  # noqa: F401  (constrói os handlers antes das threads)
 
 
-def _semear() -> dict:
-    """O catálogo, dois quizzes e a conexão do WhatsApp do site de ensaio."""
+def _semear(host: str = HOST, instancia: str = "instancia-do-ciclo", preco_cents: int = 19700) -> dict:
+    """O catálogo, dois quizzes e a conexão do WhatsApp de um site de ensaio."""
     from config.runtime import serving
     from modules.catalogo.apps.ofertas.models import Offer
     from modules.catalogo.apps.produtos.models import Product
@@ -152,12 +200,12 @@ def _semear() -> dict:
 
     sufixo = uuid.uuid4().hex[:6]
     with serving("catalogo"):
-        site = SiteDoCatalogo.objects.create(host=HOST, name="Loja do ciclo")
-        produto = Product.objects.create(slug=f"curso-{sufixo}", name="Curso do ciclo", price_cents=19700)
-        oferta = Offer.objects.create(site=site, slug="curso-do-ciclo", product=produto, price_cents=19700)
+        site = SiteDoCatalogo.objects.create(host=host, name="Loja do ciclo")
+        produto = Product.objects.create(slug=f"curso-{sufixo}", name="Curso do ciclo", price_cents=preco_cents)
+        oferta = Offer.objects.create(site=site, slug="curso-do-ciclo", product=produto, price_cents=preco_cents)
     site_id = str(site.id)
     with serving("quiz"):
-        espelho = SiteDoQuiz.objects.create(id=site_id, host=HOST, name="Loja do ciclo")
+        espelho = SiteDoQuiz.objects.create(id=site_id, host=host, name="Loja do ciclo")
         for slug in ("quiz-a", "quiz-b"):
             quiz = Quiz.objects.create(site=espelho, slug=slug, title=f"Quiz {slug}")
             versao = QuizVersion.objects.create(quiz=quiz, key="v1")
@@ -168,7 +216,7 @@ def _semear() -> dict:
             ResultBand.objects.create(version=versao, key="geral", title="Perfil geral",
                                       description="Resultado do ciclo", min_score=0, max_score=100)
     with serving("mensageria"):
-        ConfiguracaoWhatsApp.objects.create(site_id=site_id, instancia="instancia-do-ciclo", ativo=True)
+        ConfiguracaoWhatsApp.objects.create(site_id=site_id, instancia=instancia, ativo=True)
     from modules.checkout.apps.pedidos.models import CondicaoDoAgente
 
     with serving("checkout"):  # o mantenedor libera o Pix da oferta ao agente
@@ -183,6 +231,13 @@ def mundo():
         pytest.skip("defina E2E_POSTGRES_URL e E2E_REDIS_URL para rodar o ciclo ponta a ponta")
     if "config.settings" in sys.modules:
         pytest.skip("rode `pytest tests/e2e` sozinho: a configuração da aplicação já foi carregada por outra prova")
+    # Esta fixture apaga bancos `e2e_*` e esvazia bancos do Redis: nunca num servidor que não seja local.
+    for nome, url in (("E2E_POSTGRES_URL", postgres), ("E2E_REDIS_URL", redis_url)):
+        servidor = urlsplit(url).hostname or ""
+        if servidor not in SERVIDORES_LOCAIS:
+            pytest.fail(f"{nome} aponta para '{servidor}': o ciclo ponta a ponta só roda em servidor local "
+                        f"({', '.join(SERVIDORES_LOCAIS)}), porque apaga e recria bancos de teste", pytrace=False)
+    _preparar_modulos()
     import redis as redis_lib
 
     for numero in (7, 8, 9):
@@ -202,6 +257,7 @@ def mundo():
     _subir_aplicacao()
     provedores = ProvedoresFalsos().instalar()
     dados = _semear()
+    outro = _semear(HOST_OUTRO, "instancia-do-outro-site", 29700)
     cena = Cena(host=HOST, site_id=dados["site_id"], quiz_a="quiz-a", quiz_b="quiz-b",
                 oferta=dados["oferta"], preco_cents=dados["preco_cents"])
     rotas = Rotas.de(leads=T["leads_mensageria"], leads_admin=T["leads_admin"],
@@ -211,8 +267,14 @@ def mundo():
                         instancia="instancia-do-ciclo")
     trabalhadores = iniciar_consumidores()
     import_module("time").sleep(1)
-    yield Ciclo(cena, ambiente)
+    ciclo = Ciclo(cena, ambiente)
+    ciclo.outro_site = Ciclo(
+        Cena(host=HOST_OUTRO, site_id=outro["site_id"], quiz_a="quiz-a", quiz_b="quiz-b",
+             oferta=outro["oferta"], preco_cents=outro["preco_cents"]),
+        replace(ambiente, instancia="instancia-do-outro-site"))
+    yield ciclo
     trabalhadores.parar.set()
     provedores.remover()
     gateway.parar()
     pasta.cleanup()
+    _limpar(postgres, redis_url)

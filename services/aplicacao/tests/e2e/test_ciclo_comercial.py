@@ -19,6 +19,8 @@ from __future__ import annotations
 import json
 import time
 import uuid
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -157,19 +159,20 @@ def test_07_envio_com_a_mesma_chave_sai_uma_vez(mundo, elenco):
 
 def test_07b_de_madrugada_o_robo_nao_fala(mundo, elenco):
     """O robô só fala entre 08h e 20h de São Paulo; o ciclo roda a qualquer hora."""
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-
     ana = elenco["ana"]
     _precisa(ana.conversa_id, "conversa da Ana")
     antes = len(mundo.amb.gateway.enviados)
-    mundo.amb.provedores.hora_do_envio = datetime.now(ZoneInfo("America/Sao_Paulo")).replace(hour=23, minute=0)
+    agora_falsa = datetime.now(ZoneInfo("America/Sao_Paulo")).replace(hour=23, minute=0, second=0, microsecond=0)
+    mundo.amb.provedores.hora_do_envio = agora_falsa
     try:
         resposta = mundo.enviar(ana, "Oi de madrugada!", f"madrugada-{mundo.cena.sufixo}")
     finally:
         mundo.amb.provedores.hora_do_envio = None
     assert resposta["resultado"] == "fora_do_horario", resposta
-    assert resposta["reagendar_para"], resposta
+    # O próximo horário permitido é amanhã às 08h de São Paulo: nem antes, nem em outro dia.
+    reagendado = datetime.fromisoformat(resposta["reagendar_para"]).astimezone(ZoneInfo("America/Sao_Paulo"))
+    esperado = (agora_falsa + timedelta(days=1)).replace(hour=8, minute=0, second=0, microsecond=0)
+    assert reagendado == esperado, (reagendado, esperado)
     assert len(mundo.amb.gateway.enviados) == antes
 
 
@@ -181,6 +184,33 @@ def test_08_sem_conversa_aberta_nao_ha_envio_fora_da_janela(mundo, elenco):
     resposta = mundo.enviar(bruno, "Oi Bruno, tudo bem?", f"frio-{mundo.cena.sufixo}")
     assert resposta["resultado"] == "fora_da_janela", resposta
     assert len(mundo.amb.gateway.enviados) == antes
+
+
+def test_08b_com_conversa_aberta_mas_janela_de_24h_vencida_nao_ha_envio(mundo):
+    """Quem escreveu abre a janela; 24h depois dela, o robô só falaria com modelo aprovado."""
+    from config.runtime import serving
+    from django.utils import timezone
+    from modules.mensageria.apps.conversas.models import Conversa
+
+    sufixo = uuid.uuid4().hex[:6]
+    diego = Pessoa("Diego Rocha", f"diego.rocha.{sufixo}@loja-cliente.com.br", "11988880004", aceita_whatsapp=True)
+    mundo.concluir_quiz(diego, mundo.cena.quiz_a)
+    mundo.contato(diego)
+    mundo.receber_mensagem(diego, "Oi, vi o quiz.", f"WA-{uuid.uuid4().hex[:10]}")
+    mundo.conversa_do_contato(diego)
+    assert mundo.mensagens(diego)["conversa"]["janela_aberta"] is True
+    dentro = mundo.enviar(diego, "Oi Diego, já te explico.", f"dentro-{sufixo}")
+    assert dentro["resultado"] == "enviada", dentro
+
+    with serving("mensageria"):  # passaram 25 horas desde a última fala dele
+        Conversa.objects.filter(pk=diego.conversa_id).update(
+            ultima_entrada_em=timezone.now() - timedelta(hours=25),
+            janela_aberta_ate=timezone.now() - timedelta(hours=1))
+    enviados = len(mundo.amb.gateway.para(diego.whatsapp))
+    fora = mundo.enviar(diego, "Oi Diego, ainda está por aí?", f"fora-{sufixo}")
+    assert fora["resultado"] == "fora_da_janela", fora
+    assert mundo.mensagens(diego)["conversa"]["janela_aberta"] is False
+    assert len(mundo.amb.gateway.para(diego.whatsapp)) == enviados
 
 
 # --- 5. link de compra, pedido e Pix ----------------------------------------
@@ -315,6 +345,26 @@ def test_15_pedido_de_parar_interrompe_os_envios(mundo, elenco):
     assert mundo.consentimento_whatsapp(ana)["permite_proativo"] is False
 
 
+def test_15b_segundo_pedido_de_parar_e_ignorado_sem_erro(mundo, elenco):
+    ana = elenco["ana"]
+    _precisa(ana.conversa_id, "conversa da Ana")
+    antes_gateway = len(mundo.amb.gateway.para(ana.whatsapp))
+    antes = mundo.mensagens(ana)["mensagens"]
+    conversas_antes = mundo.conversas_do_site()["total"]
+    mundo.pedir_para_parar(ana, f"WA-{uuid.uuid4().hex[:10]}")  # o webhook responde 200 (conferido lá)
+    mundo.pedir_para_parar(ana, f"WA-{uuid.uuid4().hex[:10]}")
+    time.sleep(1.5)
+    assert mundo.conversas_do_site()["total"] == conversas_antes, "o PARAR repetido não pode abrir outra conversa"
+    assert mundo.conversa_do_contato(ana)["descadastrado"] is True
+    assert mundo.consentimento_whatsapp(ana)["permite_proativo"] is False
+    assert len(mundo.amb.gateway.para(ana.whatsapp)) == antes_gateway, "nada sai por causa do PARAR repetido"
+    depois = mundo.mensagens(ana)["mensagens"]
+    assert len({m["id"] for m in depois}) == len(depois), "mensagens duplicadas na conversa"
+    assert len(depois) >= len(antes)
+    resposta = mundo.enviar(ana, "Só mais uma!", f"depois-do-segundo-parar-{mundo.cena.sufixo}")
+    assert resposta["resultado"] == "descadastrado", resposta
+
+
 def test_16_quem_pediu_para_parar_nao_afeta_outra_pessoa(mundo, elenco):
     bruno = elenco["bruno"]
     _precisa(bruno.conversa_id, "conversa do Bruno")
@@ -324,13 +374,95 @@ def test_16_quem_pediu_para_parar_nao_afeta_outra_pessoa(mundo, elenco):
 # --- 8. nada de uma pessoa na resposta de outra ----------------------------
 
 
-def test_17_dado_de_uma_pessoa_nunca_aparece_na_resposta_de_outra(mundo, elenco):
+def test_17_dado_de_uma_pessoa_nunca_aparece_na_resposta_de_outra(mundo, elenco, estado):
     ana, bruno = elenco["ana"], elenco["bruno"]
     _precisa(ana.conversa_id and bruno.conversa_id, "conversas")
-    resposta_do_bruno = json.dumps([mundo.mensagens(bruno), mundo.conversa_do_contato(bruno),
-                                    mundo.ficha(bruno)], ensure_ascii=False)
-    for segredo in (ana.email, ana.telefone, ana.whatsapp, ana.nome, ana.lead_id, INSTRUCAO_NA_MENSAGEM):
-        assert segredo not in resposta_do_bruno
+    quiz = mundo.cena.quiz_a
+    pedido = estado.get("pedido")
+    pix = mundo.pix_do_pedido.get(pedido["id"], "") if pedido else ""
+    # Todas as respostas que a equipe e os robôs leem sobre o Bruno: conversa, ficha, quadro,
+    # lista de contatos, consentimento e pedidos da oportunidade dele.
+    resposta_do_bruno = json.dumps([
+        mundo.mensagens(bruno), mundo.conversa_do_contato(bruno), mundo.ficha(bruno),
+        mundo.contato(bruno), mundo.oportunidades(bruno), mundo.crm(lead_id=bruno.lead_id, testes="mostrar"),
+        mundo.consentimento_whatsapp(bruno), mundo.conversas_do_site(lead_id=bruno.lead_id),
+        mundo.pedidos_da_oportunidade(bruno.oportunidades[quiz]),
+    ], ensure_ascii=False, default=str)
+    segredos = [ana.email, ana.telefone, ana.whatsapp, ana.nome, ana.lead_id, INSTRUCAO_NA_MENSAGEM,
+                *ana.oportunidades.values()]
+    if pedido:
+        segredos += [pedido["id"], pix]
+    for segredo in segredos:
+        assert segredo and segredo not in resposta_do_bruno, f"dado da Ana apareceu na resposta do Bruno: {segredo}"
+    assert mundo.pedidos_da_oportunidade(bruno.oportunidades[quiz])["pedidos"] == []
+
+
+# --- 8b. um site não enxerga o outro -------------------------------------------
+
+
+def test_17b_um_site_nao_enxerga_contato_conversa_nem_oportunidade_do_outro(mundo, elenco):
+    """O mesmo ciclo num segundo site (outro Host, outro site_id, outro WhatsApp)."""
+    from ciclo_comercial import interno
+    from ciclo_comercial import _json as json_da_resposta
+
+    outro = mundo.outro_site
+    ana, bruno = elenco["ana"], elenco["bruno"]
+    sufixo = mundo.cena.sufixo
+    dora = Pessoa("Dora Alves", f"dora.alves.{sufixo}@outra-loja.com.br", "11988880005", aceita_whatsapp=True)
+    quadro_do_site_antes = mundo.crm(testes="mostrar")["resumo"]
+    conversas_do_site_antes = mundo.conversas_do_site()["total"]
+
+    outro.concluir_quiz(dora, outro.cena.quiz_a)
+    outro.contato(dora)
+    outro.oportunidade_do_quiz(dora, outro.cena.quiz_a)
+    outro.receber_mensagem(dora, "Oi, escrevi pelo outro site.", f"WA-{uuid.uuid4().hex[:10]}")
+    outro.conversa_do_contato(dora)
+
+    # O site 1 não vê a Dora em lugar nenhum...
+    assert mundo.crm(testes="mostrar")["resumo"] == quadro_do_site_antes
+    do_site_1 = json.dumps([
+        mundo.crm(testes="mostrar"), mundo.conversas_do_site(),
+        json_da_resposta(interno(mundo.amb.rotas.leads, "GET", "/leads",
+                                 params={"q": dora.email, "site_id": mundo.cena.site_id}), o_que="contatos"),
+        json_da_resposta(interno(mundo.amb.rotas.leads, "GET", "/leads",
+                                 params={"q": "Dora", "site_id": mundo.cena.site_id}), o_que="contatos"),
+    ], ensure_ascii=False, default=str)
+    for dado in (dora.email, dora.telefone, dora.lead_id, dora.nome, *dora.oportunidades.values()):
+        assert dado not in do_site_1, f"dado do outro site apareceu no site 1: {dado}"
+    assert mundo.conversas_do_site()["total"] == conversas_do_site_antes
+    assert mundo.conversas_do_site(lead_id=dora.lead_id)["itens"] == []
+
+    # ...e o outro site só vê a Dora, nunca a Ana nem o Bruno.
+    do_site_2 = json.dumps([outro.crm(testes="mostrar"), outro.conversas_do_site()], ensure_ascii=False, default=str)
+    for pessoa in (ana, bruno):
+        for dado in (pessoa.email, pessoa.telefone, pessoa.lead_id, pessoa.nome, *pessoa.oportunidades.values()):
+            assert dado and dado not in do_site_2, f"dado do site 1 apareceu no outro site: {dado}"
+    assert {i["contato"]["email"] for i in outro.crm(testes="mostrar")["itens"]} == {dora.email}
+
+    # O link do site dela leva o preço do catálogo dele.
+    link = outro.link_de_compra(dora, outro.cena.quiz_a, f"dora-{sufixo}")
+    assert link["valor_cents"] == outro.cena.preco_cents != mundo.cena.preco_cents
+    assert link["url"].startswith(f"https://{outro.cena.host}/")
+    elenco["dora"] = dora
+
+
+def test_17c_pagamento_num_site_nunca_fecha_a_oportunidade_do_outro(mundo, elenco):
+    """Mesmo que um link de compra do site 1 nasça com a oportunidade do site 2 (o checkout não
+    enxerga o leads), o leads só fecha oportunidade do mesmo site do pedido."""
+    dora = elenco.get("dora")
+    _precisa(dora and dora.oportunidades, "a Dora do outro site")
+    outro = mundo.outro_site
+    cruzado = mundo.link_de_compra(dora, outro.cena.quiz_a, f"cruzado-{mundo.cena.sufixo}")
+    pedido = mundo.fechar_pedido_na_pagina(dora, cruzado)
+    pix = mundo.pix_do_pedido[pedido["id"]]
+    ganhas_do_site_2 = outro.crm(testes="mostrar")["resumo"]["ganhas"]
+    mundo.amb.provedores.mp.aprovar(pix)
+    assert mundo.aviso_do_provedor(pix).status_code in (200, 202)
+    esperar(lambda: mundo.estado_do_pedido(pedido["id"])["confirmado"], 40, "pedido do site 1 confirmado")
+    time.sleep(3)  # tempo de sobra para o leads ter processado o pagamento
+    da_dora = outro.oportunidade(dora, outro.cena.quiz_a)
+    assert da_dora["etapa"] != "ganha" and da_dora["situacao"] == "aberta", da_dora
+    assert outro.crm(testes="mostrar")["resumo"]["ganhas"] == ganhas_do_site_2
 
 
 # --- 9. teste/sandbox fora dos totais ----------------------------------------
@@ -392,7 +524,20 @@ def test_21_roteiro_do_site_no_ar_roda_o_mesmo_ciclo_com_dados_de_teste(mundo):
     antes = {f: do_site.xlen(f) for f in fluxos}
     pendentes_antes = _pendentes_na_caixa_de_saida()
     cena = mundo.cena
-    relatorio = roteiro_ciclo.rodar(cena.host, cena.quiz_a, cena.quiz_b, cena.oferta, ensaio)
+    # No site no ar a chave do Mercado Pago é de produção: o checkout, sozinho, NÃO marcaria o
+    # pedido como teste. O roteiro tem de marcar, senão a venda simulada entra na receita real.
+    from config import runtime
+
+    ajustes = runtime._service_settings["checkout"]
+    chave_de_ensaio = ajustes.get("MP_PUBLIC_KEY")
+    ajustes["MP_PUBLIC_KEY"] = "APP_USR-chave-de-producao-simulada"
+    try:
+        relatorio = roteiro_ciclo.rodar(cena.host, cena.quiz_a, cena.quiz_b, cena.oferta, ensaio)
+    finally:
+        if chave_de_ensaio is None:
+            ajustes.pop("MP_PUBLIC_KEY", None)
+        else:
+            ajustes["MP_PUBLIC_KEY"] = chave_de_ensaio
     resumo = relatorio.texto()
     assert not relatorio.falhou, resumo
     assert all(p.estado == "ok" for p in relatorio.passos), resumo
@@ -400,6 +545,66 @@ def test_21_roteiro_do_site_no_ar_roda_o_mesmo_ciclo_com_dados_de_teste(mundo):
     assert len(relatorio.passos) >= 11
     assert {f: do_site.xlen(f) for f in fluxos} == antes, "o roteiro não pode publicar no barramento do site"
     assert _pendentes_na_caixa_de_saida() == pendentes_antes, "o roteiro não pode deixar linha para o relé do site"
+    # O pedido do roteiro existe, está pago e não conta como receita real.
+    pessoa = relatorio.pessoa
+    pedidos = []
+    for oportunidade in mundo.crm(testes="mostrar", lead_id=pessoa.lead_id)["itens"]:
+        lista = mundo.pedidos_da_oportunidade(oportunidade["id"])
+        pedidos += lista["pedidos"]
+        assert lista["resumo"]["aprovado_cents"] == 0, f"pedido do roteiro contou como receita real: {lista}"
+        assert lista["resumo"]["liquido_cents"] == 0, lista
+    assert len(pedidos) == 1 and pedidos[0]["em_teste"] is True and pedidos[0]["confirmado"] is True, pedidos
+    assert ajustes.get("MP_PUBLIC_KEY") == chave_de_ensaio, "o roteiro tem de devolver a configuração como estava"
+
+
+def _redis_de_ensaio(numero: int):
+    import os
+    from urllib.parse import urlsplit, urlunsplit
+
+    import redis as redis_lib
+
+    url = urlunsplit(urlsplit(os.environ["E2E_REDIS_URL"])._replace(path=f"/{numero}"))
+    return url, redis_lib.from_url(url)
+
+
+@pytest.mark.parametrize("numero", [0, 3, 9])
+def test_22_roteiro_recusa_os_bancos_do_redis_que_o_site_usa_e_nao_apaga_nada(mundo, numero):
+    """No site no ar os bancos 0 a 9 são do barramento, das filas e do cache: o roteiro não os usa nem os esvazia."""
+    import roteiro_ciclo
+
+    url, cliente = _redis_de_ensaio(numero)
+    chave = f"roteiro-nao-pode-apagar-{uuid.uuid4().hex}"
+    cliente.set(chave, "do site")
+    try:
+        cena = mundo.cena
+        with pytest.raises(roteiro_ciclo.Indisponivel, match="acima de 9"):
+            roteiro_ciclo.rodar(cena.host, cena.quiz_a, cena.quiz_b, cena.oferta, url)
+        assert cliente.get(chave) == b"do site", "o roteiro apagou o banco que recusou"
+    finally:
+        cliente.delete(chave)
+
+
+def test_23_roteiro_recusa_banco_de_ensaio_ocupado_e_nao_apaga_o_que_ha_nele(mundo):
+    import roteiro_ciclo
+
+    url, cliente = _redis_de_ensaio(14)
+    chave = f"roteiro-nao-pode-apagar-{uuid.uuid4().hex}"
+    cliente.set(chave, "de outra pessoa")
+    try:
+        cena = mundo.cena
+        with pytest.raises(roteiro_ciclo.Indisponivel, match="não está vazio"):
+            roteiro_ciclo.rodar(cena.host, cena.quiz_a, cena.quiz_b, cena.oferta, url)
+        assert cliente.get(chave) == b"de outra pessoa", "o roteiro apagou um banco que não estava vazio"
+    finally:
+        cliente.delete(chave)
+
+
+def test_24_roteiro_recusa_redis_de_fora(mundo):
+    import roteiro_ciclo
+
+    cena = mundo.cena
+    with pytest.raises(roteiro_ciclo.Indisponivel, match="nem o Redis do próprio site"):
+        roteiro_ciclo.rodar(cena.host, cena.quiz_a, cena.quiz_b, cena.oferta, "redis://redis.de-outro.example:6379/15")
 
 
 def _pendentes_na_caixa_de_saida() -> dict:
