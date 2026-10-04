@@ -588,6 +588,8 @@ def projeto(request, projeto_id):
 @require_POST
 def contexto_trabalho(request, peca_id):
     item = get_object_or_404(Peca.objects.do_aluno(**dono(request)), pk=peca_id)
+    from apps.portfolio import vitrine
+    vitrine.garantir_publicacao_legada(item.portfolio)
     identificador = request.POST.get("projeto_id", "")
     try:
         projeto_escolhido = (
@@ -645,6 +647,7 @@ def script_robo(request):
 
 @require_http_methods(["GET", "POST"])
 def apresentacao_publica(request):
+    from apps.portfolio import vitrine
     escola = site_atual()
     if not escola:
         return sem_escola(request)
@@ -664,6 +667,9 @@ def apresentacao_publica(request):
     except ValueError as erro:
         return problema(request, str(erro), 422)
     if request.method == "POST":
+        if "materiais_selecao" in request.POST:
+            permitidos = {str(m["id"]) for trabalho in trabalhos for m in vitrine.materiais_de(trabalho)}
+            conteudo["pagina"]["materiais_ids"] = [str(i) for i in request.POST.getlist("materiais_ids") if str(i) in permitidos]
         textos = {
             chave: request.POST.get(chave, "").strip()
             for chave in ("apresentacao_publica", "servico_publico")
@@ -677,6 +683,7 @@ def apresentacao_publica(request):
             textos = {"apresentacao_publica": conteudo["pagina"]["apresentacao"], "servico_publico": conteudo["pagina"]["oferta"]}
         with transaction.atomic():
             portfolio, _ = Portfolio.objects.get_or_create(**dono(request))
+            vitrine.garantir_publicacao_legada(portfolio)
             for chave, valor in textos.items():
                 setattr(portfolio, chave, valor)
             portfolio.oferta_comercial = oferta
@@ -695,15 +702,37 @@ def apresentacao_publica(request):
                     campos.append("provas_comerciais")
                 if campos:
                     trabalho.save(update_fields=[*campos, "atualizada_em"])
+        if request.POST.get("acao") == "publicar":
+            try:
+                portfolio = vitrine.publicar(**dono(request), texto=request.POST.get("apelido") or portfolio.apelido)
+            except vitrine.VitrineRecusada as erro:
+                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                    return JsonResponse({"erro": str(erro), "salvo": False}, status=422)
+                return problema(request, str(erro), 422)
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            resposta = JsonResponse({"salvo": True, "publicada": portfolio.vitrine_publicada,
+                "endereco_publico": request.build_absolute_uri(vitrine.endereco(portfolio.apelido)) if portfolio.vitrine_publicada else ""})
+            resposta["Cache-Control"] = "no-store"
+            return resposta
         return redirect("apresentacao_publica")
+    selecionados_materiais = set(conteudo["pagina"].get("materiais_ids", []))
+    escolhas_explicitas = "materiais_ids" in (getattr(portfolio, "apresentacao_comercial", {}) or {}).get("pagina", {})
+    rotulos = {"render": "Render principal", "vistas": "Vistas da peça", "wireframe": "Wireframe", "uv": "Mapa UV"}
+    for trabalho in trabalhos:
+        trabalho.materiais_montagem = vitrine.materiais_de(trabalho)
+        for material in trabalho.materiais_montagem:
+            material["rotulo"] = rotulos.get(material["categoria"], "Imagem")
+            material["selecionado"] = str(material["id"]) in selecionados_materiais if escolhas_explicitas else material["principal"]
+        trabalho.imagem_montagem = next((m["url"] for m in trabalho.materiais_montagem if m["principal"]), trabalho.link)
     return desenhar(
         request,
-        "apresentacao.html",
+        "apresentacao.html" if request.GET.get("avancado") == "1" else "montagem.html",
         {
             "portfolio": portfolio,
             "oferta": oferta,
             "prospeccao": prospeccao,
             "conteudo": conteudo,
+            "endereco_publico": request.build_absolute_uri(vitrine.endereco(portfolio.apelido)) if portfolio and portfolio.vitrine_publicada else "",
             "trabalhos": textos_comerciais.preparar_trabalhos(trabalhos, conteudo),
             "selecionados": (
                 portfolio.pecas.filter(mostrar_na_pagina_publica=True)

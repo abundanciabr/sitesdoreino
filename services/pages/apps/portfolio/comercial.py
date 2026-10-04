@@ -96,6 +96,14 @@ def normalizar_conteudo(valor, ids=None):
             continue
         vistas.add(peca_id)
         pagina["legendas"].append({"peca_id": peca_id, "titulo": texto(item.get("titulo"), 200), "texto": texto(item.get("texto"), 3000)})
+    origem_pagina = valor.get("pagina") or {}
+    for campo in ("ordem_trabalhos", "materiais_ids"):
+        recebidos = origem_pagina.get(campo) or []
+        if not isinstance(recebidos, list):
+            raise ValueError("Não foi possível ler a seleção da apresentação.")
+        pagina[campo] = list(dict.fromkeys(str(item) for item in recebidos[:200] if isinstance(item, (str, int))))
+    if permitidos is not None:
+        pagina["ordem_trabalhos"] = [item for item in pagina["ordem_trabalhos"] if item in permitidos]
     return resultado
 
 
@@ -151,8 +159,8 @@ def preparar_trabalhos(trabalhos, conteudo):
     legendas = {i["peca_id"]: i for i in conteudo["pagina"]["legendas"]}
     for obra in trabalhos:
         legenda = legendas.get(str(obra.pk), {})
-        obra.titulo_comercial = legenda.get("titulo") or obra.legenda
-        obra.texto_comercial = legenda.get("texto") or obra.uso_pretendido
+        obra.titulo_comercial = legenda.get("titulo") or getattr(obra, "titulo", "") or obra.legenda
+        obra.texto_comercial = legenda.get("texto") or getattr(obra, "descricao", "") or obra.uso_pretendido
         obra.provas_visiveis = provas_de(obra.provas_comerciais)
         obra.provas_texto = "\n".join(f"{i['tipo']} | {i['link']} | {i['descricao']}" for i in obra.provas_visiveis)
     return trabalhos

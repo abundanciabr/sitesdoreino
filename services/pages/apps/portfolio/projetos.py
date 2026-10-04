@@ -120,6 +120,8 @@ def editar_do_aluno(
         site_id=site_id, aluno_id=aluno_id, projeto_id=projeto_id
     )
     if edicoes:
+        from .vitrine import garantir_publicacao_legada
+        garantir_publicacao_legada(projeto.portfolio)
         for nome, valor in edicoes.items():
             setattr(projeto, nome, valor)
         projeto.save(update_fields=[*edicoes, "atualizado_em"])
@@ -160,6 +162,8 @@ def editar_peca_do_aluno(
     for nome, valor in edicoes.items():
         setattr(peca, nome, valor)
     if edicoes:
+        from .vitrine import garantir_publicacao_legada
+        garantir_publicacao_legada(peca.portfolio)
         peca.save(update_fields=[*edicoes, "atualizada_em"])
     return peca
 
@@ -178,6 +182,8 @@ def editar_apresentacao_publica_do_aluno(
         "apresentacao_publica", apresentacao_publica, 3000
     )
     portfolio.servico_publico = _texto("servico_publico", servico_publico, 3000)
+    from .vitrine import garantir_publicacao_legada
+    garantir_publicacao_legada(portfolio)
     portfolio.save(
         update_fields=["apresentacao_publica", "servico_publico", "atualizado_em"]
     )
@@ -197,6 +203,8 @@ def selecionar_peca_do_aluno(
             "Trabalho não encontrado para este aluno e site."
         ) from exc
     peca.mostrar_na_pagina_publica = mostrar
+    from .vitrine import garantir_publicacao_legada
+    garantir_publicacao_legada(peca.portfolio)
     peca.save(update_fields=["mostrar_na_pagina_publica", "atualizada_em"])
     return peca
 

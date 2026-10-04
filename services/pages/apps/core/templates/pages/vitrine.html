@@ -86,7 +86,9 @@
 </style>
 </head>
 <body>
-{% if comercial %}
+{% if publico %}
+{% include "pages/_portfolio_publico.html" %}
+{% elif comercial %}
 <header class="topo"><div class="wrap"><a class="marca" href="#inicio">{{ apelido }}</a><nav aria-label="Navegação da página"><a href="#trabalhos">Trabalhos</a>{% if oferta or comercial.oferta %}<a href="#encomendas">Encomendas</a>{% endif %}{% if contato_url %}<a href="#contato">Contato</a>{% endif %}</nav></div></header>
 <main id="inicio">
   <section class="hero wrap" aria-labelledby="titulo-principal">

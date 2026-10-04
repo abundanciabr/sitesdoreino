@@ -431,3 +431,350 @@ def nome_do_arquivo(apelido: str) -> str:
     (critério AC-14).
     """
     return f"portfolio-{apelido}.pdf" if apelido else "portfolio.pdf"
+
+
+def bytes_de_imagens_publicadas(portfolio, publico: dict) -> dict[str, bytes]:
+    """Lê imagens escolhidas no snapshot; tenta incorporar links públicos."""
+    from apps.portfolio.models import ImagemDoPortfolio, MaterialDaPeca
+
+    ids = {str(valor) for valor in publico.get("imagens_ids", [])}
+    imagens = {}
+    for modelo in (ImagemDoPortfolio, MaterialDaPeca):
+        for item in modelo.objects.filter(
+            id__in=ids, peca__portfolio=portfolio
+        ).only("id", "bytes"):
+            imagens[str(item.id)] = bytes(item.bytes)
+    urls = set()
+    for obra in publico.get("obras") or []:
+        urls.add(obra.get("imagem_principal") or obra.get("link") or "")
+        for material in (obra.get("complementos") or []) + (obra.get("tecnicos") or []):
+            urls.add(material.get("url") or material.get("link") or "")
+        for prova in obra.get("provas_comerciais") or []:
+            if prova.get("tipo") in {"render", "detalhe", "wireframe", "studio"}:
+                urls.add(prova.get("link") or "")
+    for url in urls:
+        chave = url.rstrip("/").split("/")[-1]
+        if url.startswith("https://") and chave not in imagens:
+            imagem = _baixar_imagem_publica(url)
+            if imagem:
+                imagens[url] = imagem
+    return imagens
+
+
+def _baixar_imagem_publica(url: str) -> bytes | None:
+    """Baixa uma imagem externa limitada, validando cada salto e destino DNS."""
+    import ipaddress
+    import io
+    import socket
+    from urllib.parse import urljoin, urlsplit
+
+    import httpx
+
+    from .conferencia_do_link import recusa_pela_forma
+    from .imagens import LIMITE_ORIGINAL, _normalizar, ImagemRecusada
+
+    atual = url
+    try:
+        with httpx.Client(timeout=5.0, follow_redirects=False, trust_env=False) as cliente:
+            for _ in range(4):
+                if recusa_pela_forma(atual):
+                    return None
+                partes = urlsplit(atual)
+                if partes.username or partes.password or partes.port not in (None, 443):
+                    return None
+                enderecos = socket.getaddrinfo(partes.hostname, 443, type=socket.SOCK_STREAM)
+                if not enderecos or any(
+                    not ipaddress.ip_address(item[4][0]).is_global for item in enderecos
+                ):
+                    return None
+                ip_publico = enderecos[0][4][0]
+                url_fixada = httpx.URL(atual).copy_with(host=ip_publico)
+                with cliente.stream(
+                    "GET", url_fixada,
+                    headers={"Host": partes.hostname},
+                    extensions={"sni_hostname": partes.hostname},
+                ) as resposta:
+                    if resposta.status_code in (301, 302, 303, 307, 308):
+                        atual = urljoin(atual, resposta.headers.get("location", ""))
+                        continue
+                    if resposta.status_code != 200:
+                        return None
+                    if not resposta.headers.get("content-type", "").lower().startswith("image/"):
+                        return None
+                    partes_do_corpo = bytearray()
+                    for pedaco in resposta.iter_bytes(65536):
+                        partes_do_corpo.extend(pedaco)
+                        if len(partes_do_corpo) > LIMITE_ORIGINAL:
+                            return None
+                    normalizada, _, _ = _normalizar(io.BytesIO(partes_do_corpo))
+                    return normalizada
+    except (httpx.HTTPError, OSError, ValueError, ImagemRecusada):
+        return None
+    return None
+
+
+def _visual_imagem(url: str, imagens: dict[str, bytes]):
+    """JPEG estável para incorporar; URLs externas nunca provocam rede."""
+    import io
+    from PIL import Image, ImageOps
+
+    chave = str(url or "").rstrip("/").split("/")[-1]
+    cru = imagens.get(chave) or imagens.get(url)
+    if not cru:
+        return None
+    with Image.open(io.BytesIO(cru)) as original:
+        imagem = ImageOps.exif_transpose(original).convert("RGB")
+        imagem.thumbnail((1800, 1800))
+        destino = io.BytesIO()
+        imagem.save(destino, format="JPEG", quality=85, optimize=False)
+        return imagem.width, imagem.height, destino.getvalue()
+
+
+def _visual_fluxo(pagina: dict, numero: int, total: int) -> bytes:
+    """Texto e moldura vetoriais de uma folha do portfólio visual."""
+    linhas = [b"0.055 0.17 0.15 rg", b"0.965 0.972 0.958 rg 0 0 595.28 841.89 re f"]
+    linhas += [b"0.055 0.17 0.15 rg", b"BT"]
+    for texto, tamanho, x, y in pagina["textos"]:
+        linhas.append(_desenhar(legivel(texto), tamanho, x, y))
+    linhas.append(_desenhar("Meshcraft Academy", 8, 49, 37))
+    linhas.append(_desenhar(f"{numero} / {total}", 8, 505, 37))
+    linhas.append(b"ET")
+    for nome, x, y, largura, altura in pagina["imagens"]:
+        linhas.append(
+            b"q %s 0 0 %s %s %s cm /%s Do Q"
+            % (_numero(largura), _numero(altura), _numero(x), _numero(y), nome.encode())
+        )
+    return b"\n".join(linhas)
+
+
+def _visual_pdf(paginas: list[dict]) -> bytes:
+    """Monta PDF com JPEGs incorporados e texto selecionável."""
+    objetos = [b"", b"", b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"]
+
+    def colocar(corpo):
+        objetos.append(corpo)
+        return len(objetos)
+
+    referencias = []
+    for pagina in paginas:
+        recursos = []
+        for nome, imagem in pagina["recursos"].items():
+            largura, altura, jpeg = imagem
+            numero = colocar(
+                b"<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB "
+                b"/BitsPerComponent 8 /Filter /DCTDecode /Length %d >>\nstream\n" %
+                (largura, altura, len(jpeg)) + jpeg + b"\nendstream"
+            )
+            recursos.append(b"/%s %d 0 R" % (nome.encode(), numero))
+        fluxo = _visual_fluxo(pagina, len(referencias) + 1, len(paginas))
+        conteudo = colocar(b"<< /Length %d >>\nstream\n" % len(fluxo) + fluxo + b"\nendstream")
+        ligacoes = []
+        if pagina.get("endereco"):
+            ligacoes.append(
+                b"<< /Type /Annot /Subtype /Link /Border [0 0 0] /Rect [49 55 545 73] "
+                b"/A << /S /URI /URI (%s) >> >>" % _texto_do_pdf(pagina["endereco"])
+            )
+        pagina_ref = colocar(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] "
+            b"/Resources << /Font << /F1 3 0 R >> /XObject << %s >> >> "
+            b"/Contents %d 0 R /Annots [%s] >>"
+            % (b" ".join(recursos), conteudo, b" ".join(ligacoes))
+        )
+        referencias.append(pagina_ref)
+    objetos[0] = b"<< /Type /Catalog /Pages 2 0 R /Lang (pt-BR) >>"
+    objetos[1] = b"<< /Type /Pages /Kids [%s] /Count %d >>" % (
+        b" ".join(b"%d 0 R" % ref for ref in referencias), len(referencias)
+    )
+    saida = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    posicoes = []
+    for numero, corpo in enumerate(objetos, 1):
+        posicoes.append(len(saida))
+        saida += b"%d 0 obj\n" % numero + corpo + b"\nendobj\n"
+    tabela = len(saida)
+    saida += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objetos) + 1)
+    for posicao in posicoes:
+        saida += b"%010d 00000 n \n" % posicao
+    saida += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objetos) + 1, tabela
+    )
+    return bytes(saida)
+
+
+def _folha_visual(titulo: str = "") -> dict:
+    folha = {"textos": [], "imagens": [], "recursos": {}, "endereco": ""}
+    if titulo:
+        folha["textos"].append((titulo, 11, 49, 783))
+    return folha
+
+
+def _texto_visual_em_paginas(paginas: list[dict], folha: dict, y: float,
+                             blocos: list[tuple[str, float, float]],
+                             *, piso: float, cabecalho: str) -> None:
+    """Distribui todo o texto, abrindo continuação antes de invadir imagem/rodapé."""
+    for texto, tamanho, espaco in blocos:
+        if not texto:
+            continue
+        y -= espaco
+        passo = max(15, tamanho * 1.3)
+        for linha in quebrar(legivel(str(texto)), tamanho, limite=490):
+            if y < piso:
+                folha = _folha_visual(cabecalho)
+                paginas.append(folha)
+                y, piso = 750, 70
+            folha["textos"].append((linha, tamanho, 49, y))
+            y -= passo
+
+
+def montar_visual(*, apelido: str, publico: dict, imagens: dict[str, bytes] | None = None,
+                  endereco_publico: str = "", selo_em=None) -> bytes:
+    """PDF offline a partir do snapshot recebido e de seus bytes de imagem."""
+    imagens = imagens or {}
+    pagina = (publico.get("conteudo") or {}).get("pagina") or {}
+    obras = publico.get("obras") or []
+    abertura = _folha_visual()
+    abertura["textos"].append(("PORTFÓLIO DE MODELAGEM 3D", 10, 49, 774))
+    paginas = [abertura]
+    capa = None
+    if obras:
+        capa = _visual_imagem(obras[0].get("imagem_principal") or obras[0].get("link"), imagens)
+    if capa:
+        abertura["recursos"]["Capa"] = capa
+        largura_imagem, altura_imagem = capa[:2]
+        escala = min(495 / largura_imagem, 290 / altura_imagem)
+        w, h = largura_imagem * escala, altura_imagem * escala
+        abertura["imagens"].append(("Capa", 49 + (495 - w) / 2, 145 + (290 - h) / 2, w, h))
+    _texto_visual_em_paginas(
+        paginas, abertura, 710,
+        [
+            (pagina.get("titulo") or apelido or SEM_APELIDO, 30, 0),
+            (pagina.get("subtitulo") or "", 13, 19),
+            (pagina.get("apresentacao") or "", 12, 18),
+            (pagina.get("diferenciais") or "", 11, 18),
+            (pagina.get("oferta") or "", 11, 18),
+            (pagina.get("continuidade") or "", 11, 18),
+            (pagina.get("condicoes") or "", 11, 18),
+            (pagina.get("duvidas") or "", 11, 18),
+        ],
+        piso=455 if capa else 130,
+        cabecalho="Apresentação (continuação)",
+    )
+    if endereco_publico:
+        abertura["textos"].append(("Página pública:", 10, 49, 96))
+        linhas_do_endereco = quebrar(legivel(endereco_publico), 9, limite=490)
+        for numero, linha in enumerate(linhas_do_endereco[:2]):
+            abertura["textos"].append((linha, 9, 49, 78 - numero * 13))
+        if len(linhas_do_endereco) > 2:
+            endereco_extra = _folha_visual("Endereço público completo")
+            paginas.append(endereco_extra)
+            _texto_visual_em_paginas(
+                paginas, endereco_extra, 748,
+                [(endereco_publico, 9, 0)], piso=70,
+                cabecalho="Endereço público (continuação)",
+            )
+    if selo_em is not None:
+        dia = timezone.localtime(selo_em).strftime("%d/%m/%Y")
+        abertura["textos"].append((frase_do_selo(dia), 10, 49, 124))
+
+    for obra in obras:
+        titulo = (obra.get("titulo_comercial") or obra.get("titulo") or
+                  obra.get("legenda") or OBRA_SEM_LEGENDA)
+        descricao = obra.get("texto_comercial") or obra.get("descricao") or ""
+        titulos = quebrar(legivel(titulo), 23, limite=490)
+        descricoes = quebrar(legivel(descricao), 11, limite=490) if descricao else []
+        auxiliares = list(obra.get("complementos") or []) + list(obra.get("tecnicos") or [])
+        auxiliares += [
+            {"url": prova.get("link"), "legenda": prova.get("descricao") or prova.get("tipo")}
+            for prova in obra.get("provas_comerciais") or []
+            if prova.get("tipo") in {"render", "detalhe", "wireframe", "studio"}
+            and prova.get("link")
+        ]
+        lotes = [auxiliares[i:i + 6] for i in range(0, len(auxiliares), 6)] or [[]]
+        faltantes = []
+        legendas_longas = []
+        detalhe_longo = ""
+        for indice, lote in enumerate(lotes):
+            folha = _folha_visual()
+            paginas.append(folha)
+            if indice == 0:
+                folha["endereco"] = obra.get("link") or ""
+                y = 783
+                for linha in titulos[:3]:
+                    folha["textos"].append((linha, 23, 49, y))
+                    y -= 28
+                cabem_desc = 2 if len(titulos) == 1 else 1 if len(titulos) == 2 else 0
+                for linha in descricoes[:cabem_desc]:
+                    folha["textos"].append((linha, 11, 49, y - 4))
+                    y -= 16
+                if obra.get("destaque"):
+                    folha["textos"].append((EM_DESTAQUE, 9, 49, 324))
+                principal_url = obra.get("imagem_principal") or obra.get("link") or ""
+                principal = _visual_imagem(principal_url, imagens)
+                if principal:
+                    folha["recursos"]["I0"] = principal
+                    largura_imagem, altura_imagem = principal[:2]
+                    topo = min(700, y - 12)
+                    escala = min(495 / largura_imagem, (topo - 350) / altura_imagem)
+                    w, h = largura_imagem * escala, altura_imagem * escala
+                    folha["imagens"].append(("I0", 49 + (495 - w) / 2, 350 + (topo - 350 - h) / 2, w, h))
+                else:
+                    folha["textos"].append(("Imagem principal indisponível neste arquivo", 11, 49, 520))
+                    if principal_url:
+                        faltantes.append(("Imagem principal", principal_url))
+                        folha["textos"].append((legivel(principal_url)[:95], 8, 49, 60))
+            else:
+                folha["textos"].append(("Mais imagens deste trabalho", 11, 49, 783))
+            for numero, imagem in enumerate(lote):
+                url = imagem.get("url") or imagem.get("link") or ""
+                dados = _visual_imagem(url, imagens)
+                col, linha = numero % 3, numero // 3
+                x, base = 49 + col * 168, 234 - linha * 112
+                if dados:
+                    nome = f"I{numero + 1}"
+                    folha["recursos"][nome] = dados
+                    largura_imagem, altura_imagem = dados[:2]
+                    escala = min(155 / largura_imagem, 86 / altura_imagem)
+                    w, h = largura_imagem * escala, altura_imagem * escala
+                    folha["imagens"].append((nome, x + (155 - w) / 2, base + (86 - h) / 2, w, h))
+                else:
+                    faltantes.append((imagem.get("legenda") or imagem.get("categoria") or "Vista", url))
+                legenda = imagem.get("legenda") or imagem.get("categoria") or "Vista"
+                folha["textos"].append((legivel(legenda)[:25], 9, x, base - 11))
+                if len(legivel(legenda)) > 25:
+                    legendas_longas.append(legenda)
+            if indice == len(lotes) - 1 and (obra.get("triangulos") or obra.get("textura")):
+                detalhes = []
+                if obra.get("triangulos"):
+                    detalhes.append(f"{obra['triangulos']} triângulos")
+                if obra.get("textura"):
+                    detalhes.append(f"Textura {obra['textura']}")
+                detalhe_texto = " · ".join(detalhes)
+                if largura(legivel(detalhe_texto), 9) <= 490:
+                    folha["textos"].append((detalhe_texto, 9, 49, 85))
+                else:
+                    detalhe_longo = detalhe_texto
+                folha["textos"].append(("Dados informados pelo autor", 8, 49, 71))
+
+        restante = []
+        if len(titulos) > 3:
+            restante.append(("Título: " + " ".join(titulos[3:]), 13, 0))
+        if len(descricoes) > cabem_desc:
+            restante.append(("Descrição: " + " ".join(descricoes[cabem_desc:]), 11, 12))
+        for campo, rotulo in (("contribuicao", "Minha participação"),
+                              ("uso_pretendido", "Uso previsto"), ("duvida", "Dúvida")):
+            if obra.get(campo):
+                restante.append((f"{rotulo}: {obra[campo]}", 11, 16))
+        if detalhe_longo:
+            restante.append((f"Dados informados pelo autor: {detalhe_longo}", 9, 15))
+        for legenda in legendas_longas:
+            restante.append((f"Legenda da imagem: {legenda}", 9, 15))
+        for rotulo, url in faltantes:
+            if url:
+                restante.append((f"{rotulo} indisponível neste arquivo: {url}", 9, 15))
+        if restante:
+            continuacao = _folha_visual(f"{titulo[:55]} - detalhes")
+            paginas.append(continuacao)
+            _texto_visual_em_paginas(
+                paginas, continuacao, 748, restante, piso=70,
+                cabecalho=f"{titulo[:55]} - continuação",
+            )
+    return _visual_pdf(paginas)

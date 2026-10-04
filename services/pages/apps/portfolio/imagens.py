@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .models import EstadoDoLink, ImagemDoPortfolio, Peca, Portfolio
+from .models import EstadoDoLink, ImagemDoPortfolio, MaterialDaPeca, Peca, Portfolio
 
 LIMITE_ORIGINAL = 5 * 1024 * 1024
 LIMITE_PIXELS = 20_000_000
@@ -111,18 +111,15 @@ def guardar(
         portfolio = Portfolio.objects.select_for_update().get(
             site_id=site_id, aluno_id=aluno_id
         )
-        usado = (
-            ImagemDoPortfolio.objects.filter(peca__portfolio=portfolio).aggregate(
-                total=models.Sum("tamanho")
-            )["total"]
-            or 0
-        )
+        from .vitrine import garantir_publicacao_legada
+        garantir_publicacao_legada(portfolio)
+        usado = _uso_do_portfolio(portfolio)
         if usado + len(dados) > LIMITE_PORTFOLIO:
             raise ImagemRecusada(
                 "Este portfólio atingiu o limite de 50 MiB em imagens."
             )
         ordem = (
-            portfolio.pecas.aggregate(ultima=models.Max("ordem"))["ultima"] or 0
+            Peca.todas.filter(portfolio=portfolio).aggregate(ultima=models.Max("ordem"))["ultima"] or 0
         ) + 1
         imagem = ImagemDoPortfolio(
             tamanho=len(dados), largura=largura, altura=altura, bytes=dados
@@ -139,6 +136,118 @@ def guardar(
         imagem.peca = peca
         imagem.save()
         return peca
+
+
+def _peca_do_aluno(*, site_id, aluno_id, peca_id):
+    try:
+        return Peca.objects.do_aluno(site_id=site_id, aluno_id=aluno_id).select_related("portfolio").get(pk=peca_id)
+    except (Peca.DoesNotExist, ValueError, TypeError) as exc:
+        raise ImagemRecusada("Trabalho não encontrado para este aluno e site.") from exc
+
+
+def _uso_do_portfolio(portfolio):
+    antigo = ImagemDoPortfolio.objects.filter(peca__portfolio=portfolio).aggregate(total=models.Sum("tamanho"))["total"] or 0
+    novos = MaterialDaPeca.objects.filter(peca__portfolio=portfolio).aggregate(total=models.Sum("tamanho"))["total"] or 0
+    return antigo + novos
+
+
+def adicionar_material(arquivo, *, site_id: str, aluno_id: str, peca_id: int,
+                       categoria: str = "render", legenda: str = "", principal: bool = False) -> MaterialDaPeca:
+    if categoria not in MaterialDaPeca.Categoria.values:
+        raise ImagemRecusada("Escolha render, vistas, wireframe ou UV.")
+    legenda = (legenda or "").strip()
+    if len(legenda) > 200:
+        raise ImagemRecusada("A legenda deve ter até 200 caracteres.")
+    dados, largura, altura = _normalizar(arquivo)
+    with transaction.atomic():
+        peca = _peca_do_aluno(site_id=site_id, aluno_id=aluno_id, peca_id=peca_id)
+        Portfolio.objects.select_for_update().get(pk=peca.portfolio_id)
+        from .vitrine import garantir_publicacao_legada
+        garantir_publicacao_legada(peca.portfolio)
+        if _uso_do_portfolio(peca.portfolio) + len(dados) > LIMITE_PORTFOLIO:
+            raise ImagemRecusada("Este portfólio atingiu o limite de 50 MiB em imagens.")
+        ordem = (peca.materiais.aggregate(ultima=models.Max("ordem"))["ultima"] or 0) + 1
+        if principal:
+            peca.materiais.filter(substituido_por__isnull=True, principal=True).update(principal=False)
+        return MaterialDaPeca.objects.create(
+            peca=peca, categoria=categoria, legenda=legenda, ordem=ordem,
+            principal=bool(principal), tamanho=len(dados), largura=largura,
+            altura=altura, bytes=dados,
+        )
+
+
+@transaction.atomic
+def editar_material(*, site_id: str, aluno_id: str, peca_id: int, imagem_id,
+                    categoria=None, legenda=None, ordem=None, principal=None) -> MaterialDaPeca:
+    peca = _peca_do_aluno(site_id=site_id, aluno_id=aluno_id, peca_id=peca_id)
+    try:
+        material = peca.materiais.get(pk=imagem_id, substituido_por__isnull=True)
+    except (MaterialDaPeca.DoesNotExist, ValueError, TypeError) as exc:
+        raise ImagemRecusada("Imagem não encontrada neste trabalho.") from exc
+    from .vitrine import garantir_publicacao_legada
+    garantir_publicacao_legada(peca.portfolio)
+    campos = []
+    if categoria is not None:
+        if categoria not in MaterialDaPeca.Categoria.values:
+            raise ImagemRecusada("Escolha render, vistas, wireframe ou UV.")
+        material.categoria = categoria
+        campos.append("categoria")
+    if legenda is not None:
+        if not isinstance(legenda, str) or len(legenda.strip()) > 200:
+            raise ImagemRecusada("A legenda deve ter até 200 caracteres.")
+        material.legenda = legenda.strip()
+        campos.append("legenda")
+    if ordem is not None:
+        try:
+            valor = int(ordem)
+        except (ValueError, TypeError) as exc:
+            raise ImagemRecusada("A ordem da imagem deve ser um número positivo.") from exc
+        if valor < 1:
+            raise ImagemRecusada("A ordem da imagem deve ser um número positivo.")
+        material.ordem = valor
+        campos.append("ordem")
+    if principal is not None:
+        if principal:
+            peca.materiais.filter(substituido_por__isnull=True, principal=True).exclude(pk=material.pk).update(principal=False)
+        material.principal = bool(principal)
+        campos.append("principal")
+    if campos:
+        material.save(update_fields=campos)
+    return material
+
+
+def substituir_material(arquivo, *, site_id: str, aluno_id: str, peca_id: int, imagem_id) -> MaterialDaPeca:
+    """Nova URL para novos bytes; a URL antiga continua válida no publicado."""
+    dados, largura, altura = _normalizar(arquivo)
+    with transaction.atomic():
+        peca = _peca_do_aluno(site_id=site_id, aluno_id=aluno_id, peca_id=peca_id)
+        Portfolio.objects.select_for_update().get(pk=peca.portfolio_id)
+        try:
+            antigo = peca.materiais.get(pk=imagem_id, substituido_por__isnull=True)
+        except (MaterialDaPeca.DoesNotExist, ValueError, TypeError) as exc:
+            raise ImagemRecusada("Imagem não encontrada neste trabalho.") from exc
+        from .vitrine import garantir_publicacao_legada
+        garantir_publicacao_legada(peca.portfolio)
+        if _uso_do_portfolio(peca.portfolio) + len(dados) > LIMITE_PORTFOLIO:
+            raise ImagemRecusada("Este portfólio atingiu o limite de 50 MiB em imagens.")
+        novo = MaterialDaPeca.objects.create(
+            peca=peca, categoria=antigo.categoria, legenda=antigo.legenda,
+            ordem=antigo.ordem, principal=antigo.principal,
+            selecionado_publicacao=antigo.selecionado_publicacao,
+            tamanho=len(dados), largura=largura, altura=altura, bytes=dados,
+        )
+        antigo.substituido_por = novo
+        antigo.save(update_fields=["substituido_por"])
+        return novo
+
+
+def imagem_do_portfolio(imagem_id, portfolio=None):
+    imagem = ImagemDoPortfolio.objects.select_related("peca__portfolio").filter(pk=imagem_id).first()
+    if imagem is None:
+        imagem = MaterialDaPeca.objects.select_related("peca__portfolio").filter(pk=imagem_id).first()
+    if imagem is not None and portfolio is not None and imagem.peca.portfolio_id != portfolio.pk:
+        return None
+    return imagem
 
 
 def _recusa() -> HttpResponse:
@@ -163,18 +272,19 @@ def servir_imagem(request, imagem_id):
     from apps.core.views import site_atual
 
     site_id = site_atual()
-    imagem = (
-        ImagemDoPortfolio.objects.select_related("peca__portfolio")
-        .filter(id=imagem_id, peca__portfolio__site_id=site_id)
-        .first()
-        if site_id
-        else None
-    )
+    imagem = imagem_do_portfolio(imagem_id) if site_id else None
+    if imagem is not None and imagem.peca.portfolio.site_id != site_id:
+        imagem = None
     if imagem is None:
         return _recusa()
     portfolio = imagem.peca.portfolio
-    publica = portfolio.vitrine_publicada and imagem.peca.mostrar_na_pagina_publica
-    if portfolio.vitrine_publicada and not publica:
+    from .vitrine import dados_publicados
+    snapshot = dados_publicados(portfolio)
+    if snapshot is not None:
+        publica = portfolio.vitrine_publicada and str(imagem.pk) in snapshot.get("imagens_ids", [])
+    else:
+        publica = portfolio.vitrine_publicada and isinstance(imagem, ImagemDoPortfolio) and imagem.peca.mostrar_na_pagina_publica
+    if snapshot is None and portfolio.vitrine_publicada and not publica:
         from .comercial import provas_de
         # Uma prova escolhida para uma peça pública pertence ao mesmo portfólio.
         publica = any(

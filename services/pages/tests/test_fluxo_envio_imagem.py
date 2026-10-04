@@ -41,6 +41,11 @@ def test_envio_publicacao_e_despublicacao_protegem_os_bytes(
         {"legenda": "Meu veículo", "mostrar_na_pagina_publica": "1"},
         HTTP_COOKIE=COOKIE,
     ).status_code == 302
+    # A seleção altera o rascunho; só uma nova publicação muda a vitrine.
+    assert client.get(caminho).status_code == 404
+    assert client.post(
+        "/vitrine/publicar", {"apelido": "ana-3d"}, HTTP_COOKIE=COOKIE
+    ).status_code == 302
     assert client.get(caminho).status_code == 200
     assert peca.link in client.get("/ana-3d").content.decode()
     assert client.post("/vitrine/despublicar", HTTP_COOKIE=COOKIE).status_code == 302

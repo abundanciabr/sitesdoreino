@@ -206,7 +206,10 @@ def test_o_dossie_mostra_AS_MESMAS_obras_que_a_vitrine_publica(
 
     no_dossie = enderecos_clicaveis(logada.get(ENDERECO).content)
     pagina = client.get(f"/{APELIDO}").content.decode()
-    na_vitrine = re.findall(r'<img src="([^"]+)"', pagina)
+    na_vitrine = re.findall(
+        r'<a class="pp-imagem pp-imagem-principal"[^>]*><img src="([^"]+)"',
+        pagina,
+    )
 
     assert no_dossie == na_vitrine
 

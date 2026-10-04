@@ -158,7 +158,7 @@ def _isento(caminho: str) -> bool:
         return True
     try:
         # Uma única página pública; nunca isentar todo /portfolio.
-        return resolve(caminho).url_name in {"vitrine", "imagem_portfolio"}
+        return resolve(caminho).url_name in {"vitrine", "imagem_portfolio", "pdf_publico"}
     except Resolver404:
         return False
 

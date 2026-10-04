@@ -526,7 +526,8 @@ def guardar_peca(request):
             site_id=site_id, aluno_id=request.aluno["id"]
         )
         portfolio = Portfolio.objects.select_for_update().get(pk=portfolio.pk)
-        ultima = portfolio.pecas.aggregate(fim=models.Max("ordem"))["fim"] or 0
+        vitrine.garantir_publicacao_legada(portfolio)
+        ultima = Peca.todas.filter(portfolio=portfolio).aggregate(fim=models.Max("ordem"))["fim"] or 0
         Peca.objects.create(
             portfolio=portfolio,
             projeto=projeto,
@@ -590,8 +591,11 @@ def mudar_peca(request):
         if peca is None:
             raise Http404("essa peça não está na sua estante")
 
+        vitrine.garantir_publicacao_legada(peca.portfolio)
+
         if acao == "remover":
-            peca.delete()
+            peca.arquivada = True
+            peca.save(update_fields=["arquivada", "atualizada_em"])
         elif acao in ("destacar", "tirar-destaque"):
             peca.destaque = acao == "destacar"
             peca.save(update_fields=["destaque", "atualizada_em"])
@@ -976,6 +980,7 @@ def vitrine_publica(request, apelido: str):
                 "portfolio": portfolio,
                 "apelido": portfolio.apelido,
                 **vitrine.contexto_comercial(portfolio),
+                "pdf_url": request.build_absolute_uri(reverse("pdf_publico", kwargs={"apelido": portfolio.apelido})),
                 # O SELO DA ESCOLA (AC-12) é o que mais vale para quem contrata,
                 # e ele sai do estado do aluno, nunca do último pedido, pelo
                 # mesmo motivo escrito na estante. `getattr` com padrão dá conta
@@ -1070,22 +1075,20 @@ def baixar_dossie(request):
         return sem_escola(request)
 
     portfolio = meu_portfolio(request, site_id)
-    obras = vitrine.obras(portfolio) if portfolio is not None else []
+    publico = vitrine.snapshot_rascunho(portfolio) if portfolio is not None else None
+    obras = publico["obras"] if publico is not None else []
     if not obras:
         return desenhar_estante(
             request, site_id, recusa_do_dossie=dossie.SEM_OBRAS, status=422
         )
 
     resposta = HttpResponse(
-        dossie.montar(
+        dossie.montar_visual(
             apelido=portfolio.apelido,
-            # O SELO (AC-12) sai do estado do aluno, e nunca do último pedido,
-            # pelo mesmo motivo escrito na estante e na vitrine: quem pediu uma
-            # conferência nova continua com o selo da anterior.
-            selo_em=getattr(
-                getattr(portfolio, "estado", None), "selo_conferido_em", None
-            ),
-            obras=obras,
+            publico=publico,
+            imagens=dossie.bytes_de_imagens_publicadas(portfolio, publico),
+            selo_em=getattr(getattr(portfolio, "estado", None), "selo_conferido_em", None),
+            endereco_publico=request.build_absolute_uri(vitrine.endereco(portfolio.apelido)) if portfolio.vitrine_publicada else "",
         ),
         content_type="application/pdf",
     )

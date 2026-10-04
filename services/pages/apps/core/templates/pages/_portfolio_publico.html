@@ -1,0 +1,43 @@
+{% include "pages/_portfolio_estilo.html" %}
+{% with pagina=publico.conteudo.pagina %}
+<div class="pp" id="inicio">
+  <header class="pp-topo"><div class="pp-wrap pp-topo-inner">
+    <a class="pp-marca" href="#inicio">Meshcraft <span>Academy</span></a>
+    <nav aria-label="Navegação do portfólio"><a href="#trabalhos">Trabalhos</a><a href="#sobre">Sobre</a>{% if contato_url %}<a href="#contato">Contato</a>{% endif %}</nav>
+  </div></header>
+  <main>
+    <section class="pp-hero" aria-labelledby="titulo-principal"><div class="pp-wrap pp-hero-inner">
+      <div class="pp-hero-texto">
+        <p class="pp-sobretitulo">{{ apelido }} · Artista 3D</p>
+        <h1 id="titulo-principal">{{ pagina.titulo|default:apelido }}</h1>
+        {% if pagina.subtitulo %}<p class="pp-intro">{{ pagina.subtitulo }}</p>{% endif %}
+        {% if contato_url %}<a class="pp-cta" href="{{ contato_url }}" rel="noopener noreferrer">{{ pagina.cta|default:"Conversar sobre um projeto" }} <span aria-hidden="true">→</span></a>{% endif %}
+      </div>
+      {% if hero.imagem_principal %}<a class="pp-hero-imagem" href="#trabalhos" aria-label="Ver o trabalho em destaque"><img src="{{ hero.imagem_principal }}" alt="{{ hero.titulo_comercial|default:hero.titulo|default:hero.legenda }}"></a>{% endif %}
+    </div></section>
+
+    <section class="pp-wrap pp-trabalhos" id="trabalhos" aria-labelledby="pp-titulo-trabalhos">
+      <h2 id="pp-titulo-trabalhos" class="pp-visually-hidden">Trabalhos</h2>
+      {% if publico.obras %}<ol class="pp-obras obras">
+      {% for obra in publico.obras %}<li class="pp-obra" id="trabalho-{{ forloop.counter }}">
+        <div class="pp-obra-cabecalho"><div><h3>{{ obra.titulo_comercial|default:obra.titulo|default:obra.legenda|default:"Trabalho" }}</h3>{% if obra.texto_comercial %}<p>{{ obra.texto_comercial }}</p>{% elif obra.descricao %}<p>{{ obra.descricao }}</p>{% endif %}</div>{% if obra.destaque %}<span class="pp-destaque">Em destaque</span>{% endif %}</div>
+        <div class="pp-galeria">
+          {% if obra.imagem_principal %}<a class="pp-imagem pp-imagem-principal" href="#pp-foto-{{ forloop.counter }}-0"><img src="{{ obra.imagem_principal }}" alt="{{ obra.titulo_comercial|default:obra.titulo|default:obra.legenda|default:'Imagem principal do trabalho' }}" loading="lazy"></a>{% else %}<div class="pp-sem-imagem">Imagem principal ainda não selecionada pelo autor.</div>{% endif %}
+          {% for imagem in obra.complementos %}{% if imagem.url %}<a class="pp-imagem pp-imagem-complemento" href="#pp-foto-{{ forloop.parentloop.counter }}-c{{ forloop.counter }}"><img src="{{ imagem.url }}" alt="{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria|default:'Vista complementar' }}" loading="lazy"><span>{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria|default:'Vista' }}</span></a>{% endif %}{% endfor %}
+          {% for imagem in obra.tecnicos %}{% if imagem.url %}<a class="pp-imagem pp-imagem-tecnica" href="#pp-foto-{{ forloop.parentloop.counter }}-t{{ forloop.counter }}"><img src="{{ imagem.url }}" alt="{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria|default:'Imagem técnica' }}" loading="lazy"><span>{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria|default:'Detalhe técnico' }}</span></a>{% endif %}{% endfor %}
+        </div>
+        {% if obra.triangulos or obra.textura or obra.contribuicao or obra.uso_pretendido %}<div class="pp-dados"><div>{% if obra.triangulos %}<span>{{ obra.triangulos }} triângulos</span>{% endif %}{% if obra.textura %}<span>Textura {{ obra.textura }}</span>{% endif %}{% if obra.contribuicao %}<span>{{ obra.contribuicao }}</span>{% endif %}{% if obra.uso_pretendido %}<span>{{ obra.uso_pretendido }}</span>{% endif %}</div><small>Dados informados pelo autor</small></div>{% endif %}
+        {% if obra.provas_comerciais %}<ul class="pp-provas" aria-label="Materiais informados pelo autor">{% for prova in obra.provas_comerciais %}{% if prova.link %}<li><a href="{{ prova.link }}" target="_blank" rel="noopener noreferrer">{{ prova.descricao|default:prova.tipo|default:"Ver material" }}</a></li>{% endif %}{% endfor %}</ul>{% endif %}
+        {% if obra.imagem_principal %}<div class="pp-lightbox" id="pp-foto-{{ forloop.counter }}-0"><a class="pp-fechar" href="#trabalho-{{ forloop.counter }}" aria-label="Fechar imagem">×</a><img src="{{ obra.imagem_principal }}" alt="{{ obra.titulo_comercial|default:obra.titulo|default:obra.legenda }}"></div>{% endif %}
+        {% for imagem in obra.complementos %}{% if imagem.url %}<div class="pp-lightbox" id="pp-foto-{{ forloop.parentloop.counter }}-c{{ forloop.counter }}"><a class="pp-fechar" href="#trabalho-{{ forloop.parentloop.counter }}" aria-label="Fechar imagem">×</a><img src="{{ imagem.url }}" alt="{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria }}"></div>{% endif %}{% endfor %}
+        {% for imagem in obra.tecnicos %}{% if imagem.url %}<div class="pp-lightbox" id="pp-foto-{{ forloop.parentloop.counter }}-t{{ forloop.counter }}"><a class="pp-fechar" href="#trabalho-{{ forloop.parentloop.counter }}" aria-label="Fechar imagem">×</a><img src="{{ imagem.url }}" alt="{{ imagem.legenda|default:imagem.rotulo|default:imagem.categoria }}"></div>{% endif %}{% endfor %}
+      </li>{% endfor %}</ol>{% else %}<p>O autor ainda não selecionou trabalhos para esta página.</p>{% endif %}
+    </section>
+    {% if publico.obras|length > 1 %}<section class="pp-wrap pp-outros" aria-labelledby="pp-outros-titulo"><h2 id="pp-outros-titulo">Outros trabalhos</h2><div class="pp-outros-grade">{% for obra in publico.obras %}{% if not forloop.first %}<a href="#trabalho-{{ forloop.counter }}">{% if obra.imagem_principal %}<img src="{{ obra.imagem_principal }}" alt="">{% endif %}<span><strong>{{ obra.titulo_comercial|default:obra.titulo|default:obra.legenda|default:"Trabalho" }}</strong>{% if obra.texto_comercial %}<small>{{ obra.texto_comercial|truncatechars:90 }}</small>{% elif obra.descricao %}<small>{{ obra.descricao|truncatechars:90 }}</small>{% endif %}</span></a>{% endif %}{% endfor %}</div></section>{% endif %}
+
+    <section class="pp-wrap pp-final" id="sobre"><div><h2>Sobre</h2>{% if pagina.apresentacao %}<p>{{ pagina.apresentacao|linebreaksbr }}</p>{% endif %}{% if pagina.diferenciais %}<p>{{ pagina.diferenciais|linebreaksbr }}</p>{% endif %}</div>{% if pdf_url %}<a class="pp-pdf" href="{{ pdf_url }}" download>↓&nbsp; Baixar portfólio em PDF</a>{% endif %}</section>
+    {% if contato_url %}<section class="pp-contato" id="contato"><div class="pp-wrap"><h2>Vamos conversar sobre seu projeto?</h2><a class="pp-cta" href="{{ contato_url }}" rel="noopener noreferrer">{{ pagina.cta|default:"Entrar em contato" }} <span aria-hidden="true">→</span></a></div></section>{% endif %}
+  </main>
+  <footer class="pp-wrap pp-rodape"><span><strong>Meshcraft</strong> Academy</span><span>Portfólio de {{ apelido }}</span></footer>
+</div>
+{% endwith %}

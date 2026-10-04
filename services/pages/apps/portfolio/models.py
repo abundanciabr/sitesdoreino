@@ -167,6 +167,11 @@ class DoPortfolioQuerySet(models.QuerySet):
         return self.filter(portfolio__site_id=site_id, portfolio__aluno_id=aluno_id)
 
 
+class PecasAtivasManager(models.Manager.from_queryset(DoPortfolioQuerySet)):
+    def get_queryset(self):
+        return super().get_queryset().filter(arquivada=False)
+
+
 class Portfolio(models.Model):
     """Um por aluno por site: a identidade do portfólio e o estado da vitrine.
 
@@ -194,6 +199,7 @@ class Portfolio(models.Model):
     apresentacao_comercial = models.JSONField(default=dict, blank=True, db_default={})
     kit_vendas = models.JSONField(default=dict, blank=True, db_default={})
     prospeccao_comercial = models.JSONField(default=dict, blank=True, db_default={})
+    publicacao_comercial = models.JSONField(default=dict, blank=True, db_default={})
 
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -322,6 +328,12 @@ class Peca(models.Model):
     duvida = models.TextField(blank=True, default="", db_default="")
     provas_comerciais = models.JSONField(default=list, blank=True, db_default=[])
     mostrar_na_pagina_publica = models.BooleanField(default=False, db_default=False)
+    arquivada = models.BooleanField(default=False, db_default=False)
+    titulo = models.CharField(max_length=200, blank=True, default="", db_default="")
+    descricao = models.TextField(blank=True, default="", db_default="")
+    triangulos = models.CharField(max_length=120, blank=True, default="", db_default="")
+    textura = models.CharField(max_length=200, blank=True, default="", db_default="")
+    checklist_preparacao = models.JSONField(default=list, blank=True, db_default=[])
 
     link = models.URLField(max_length=500)
     legenda = models.CharField(max_length=200, blank=True, default="")
@@ -365,7 +377,8 @@ class Peca(models.Model):
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
-    objects = DoPortfolioQuerySet.as_manager()
+    objects = PecasAtivasManager()
+    todas = DoPortfolioQuerySet.as_manager()
 
     class Meta:
         verbose_name = "peça"
@@ -460,6 +473,37 @@ class ImagemDoPortfolio(models.Model):
                 condition=models.Q(altura__gte=1), name="imagem_tem_altura"
             ),
         ]
+
+
+class MaterialDaPeca(models.Model):
+    """Versão imutável de uma imagem da galeria; edições criam outra linha."""
+
+    class Categoria(models.TextChoices):
+        RENDER = "render", "Render"
+        VISTAS = "vistas", "Vistas e detalhes"
+        WIREFRAME = "wireframe", "Wireframe"
+        UV = "uv", "UV"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    peca = models.ForeignKey(Peca, on_delete=models.CASCADE, related_name="materiais")
+    categoria = models.CharField(max_length=16, choices=Categoria.choices, default=Categoria.RENDER)
+    legenda = models.CharField(max_length=200, blank=True, default="")
+    ordem = models.PositiveIntegerField(default=1)
+    principal = models.BooleanField(default=False)
+    selecionado_publicacao = models.BooleanField(default=False)
+    substituido_por = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
+    bytes = models.BinaryField()
+    tamanho = models.PositiveIntegerField()
+    largura = models.PositiveIntegerField()
+    altura = models.PositiveIntegerField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def url(self):
+        return "/portfolio/imagens/" + str(self.pk)
+
+    class Meta:
+        ordering = ["ordem", "criado_em"]
 
 
 class ItemDeConferencia(models.Model):

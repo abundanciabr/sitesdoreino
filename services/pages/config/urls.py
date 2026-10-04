@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 from apps.core import jornada
+from apps.core import preparar, montagem
 
 from apps.core.views import (
     assumir,
@@ -42,6 +43,9 @@ urlpatterns = [
         name="trabalho_contexto",
     ),
     path("apresentacao", jornada.apresentacao_publica, name="apresentacao_publica"),
+    path("apresentacao/previa", montagem.previa, name="apresentacao_previa"),
+    path("apresentacao/montagem.js", montagem.script_montagem, name="script_montagem"),
+    path("trabalhos/<int:peca_id>/preparar", preparar.preparar_trabalho, name="preparar_trabalho"),
     path("apresentacao/gerar-exemplo", jornada.gerar_exemplo, name="gerar_exemplo"),
     path("apresentacao/robo.js", jornada.script_robo, name="script_robo"),
     path("equipe/quiz", jornada.catalogo_equipe, name="catalogo_equipe"),
@@ -66,6 +70,7 @@ urlpatterns = [
     path("pecas", trabalhos_antigos),
     path("pecas/<path:restante>", trabalhos_antigos),
     path("", jornada.inicio, name="prancheta"),
+    path("<slug:apelido>/pdf", montagem.pdf_publico, name="pdf_publico"),
     re_path(r"^(?P<apelido>[a-z0-9-]+)/?$", vitrine_publica, name="vitrine"),
 ]
 

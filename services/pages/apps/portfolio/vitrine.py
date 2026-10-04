@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -94,11 +96,13 @@ def publicar(*, site_id: str, aluno_id: str, texto: str) -> Portfolio:
             portfolio, _ = Portfolio.objects.get_or_create(
                 site_id=site_id, aluno_id=aluno_id
             )
+            portfolio = Portfolio.objects.select_for_update().get(pk=portfolio.pk)
+            portfolio.publicacao_comercial = snapshot_rascunho(portfolio)
             portfolio.apelido = apelido
             portfolio.vitrine_publicada = True
             portfolio.publicada_em = timezone.now()
             portfolio.save(
-                update_fields=["apelido", "vitrine_publicada", "publicada_em"]
+                update_fields=["apelido", "vitrine_publicada", "publicada_em", "publicacao_comercial"]
             )
     except IntegrityError as erro:
         raise VitrineRecusada(JA_E_DE_OUTRO) from erro
@@ -152,6 +156,9 @@ def obras(portfolio: Portfolio) -> list[Peca]:
     nossa rede caiu", e esconder a obra do aluno por causa de uma tosse da nossa
     rede seria a mesma injustiça que aquele módulo recusou.
     """
+    snapshot = dados_publicados(portfolio)
+    if snapshot is not None:
+        return [_obra_do_snapshot(item) for item in snapshot.get("obras", [])]
     return list(
         portfolio.pecas.filter(mostrar_na_pagina_publica=True)
         .exclude(estado_do_link=EstadoDoLink.QUEBRADO)
@@ -161,4 +168,125 @@ def obras(portfolio: Portfolio) -> list[Peca]:
 
 def contexto_comercial(portfolio):
     from .comercial import contexto_publico
-    return contexto_publico(portfolio, obras(portfolio))
+    snapshot = dados_publicados(portfolio)
+    if snapshot is None:
+        contexto = contexto_publico(portfolio, obras(portfolio))
+        contexto["publico"] = snapshot_rascunho(portfolio)
+        return contexto
+    obras_publicas = obras(portfolio)
+    pagina = snapshot.get("conteudo", {}).get("pagina", {})
+    oferta = dict(snapshot.get("oferta", {}))
+    from .comercial import url_publica
+    if not oferta.get("exibir_preco"):
+        oferta["preco"] = ""
+    hero = next((obra for obra in obras_publicas if str(obra.pk) == pagina.get("trabalho_destaque")), None)
+    hero = hero or next((obra for obra in obras_publicas if obra.destaque), None) or next(iter(obras_publicas), None)
+    return {"publico": snapshot, "comercial": pagina, "oferta": oferta,
+            "contato_url": url_publica(oferta.get("contato")), "hero": hero, "obras": obras_publicas}
+
+
+def materiais_de(peca: Peca) -> list[dict]:
+    """Imagens disponíveis ao editor, inclusive imagem antiga e link externo."""
+    resultado = []
+    ativos = list(peca.materiais.filter(substituido_por__isnull=True).order_by("ordem", "criado_em"))
+    principal_novo = any(material.principal for material in ativos)
+    antiga = getattr(peca, "imagem_enviada", None)
+    if antiga is not None:
+        resultado.append({"id": str(antiga.pk), "link": peca.link, "url": peca.link,
+                          "categoria": "render", "legenda": peca.legenda,
+                          "principal": not principal_novo, "ordem": 0})
+    elif peca.link:
+        resultado.append({"id": "externo:" + str(peca.pk), "link": peca.link, "url": peca.link,
+                          "categoria": "render", "legenda": peca.legenda,
+                          "principal": not principal_novo, "ordem": 0})
+    for material in ativos:
+        resultado.append({"id": str(material.pk), "link": material.url, "url": material.url,
+                          "categoria": material.categoria, "legenda": material.legenda,
+                          "principal": material.principal, "ordem": material.ordem})
+    rotulos = {"render": "Render principal", "vistas": "Vistas da peça", "wireframe": "Wireframe", "uv": "Mapa UV"}
+    for material in resultado:
+        material["rotulo"] = rotulos.get(material["categoria"], "Imagem")
+    return resultado
+
+
+def snapshot_rascunho(portfolio: Portfolio) -> dict:
+    """Copia textos, ordem, seleção e IDs de imagem para publicação atômica."""
+    from .comercial import conteudo_de, oferta_de, provas_de
+    pecas = list(portfolio.pecas.filter(mostrar_na_pagina_publica=True).exclude(
+        estado_do_link=EstadoDoLink.QUEBRADO).order_by("ordem", "pk"))
+    conteudo = conteudo_de(portfolio, ids=[peca.pk for peca in pecas])
+    pagina = conteudo["pagina"]
+    selecao_explicita = "materiais_ids" in (portfolio.apresentacao_comercial or {}).get("pagina", {})
+    ordem = {str(valor): pos for pos, valor in enumerate(pagina.get("ordem_trabalhos", []))}
+    pecas.sort(key=lambda p: (ordem.get(str(p.pk), len(ordem) + p.ordem), p.ordem))
+    selecionados = set(pagina.get("materiais_ids", []))
+    legendas = {i["peca_id"]: i for i in pagina.get("legendas", [])}
+    obras = []
+    imagens_ids = []
+    for peca in pecas:
+        materiais = materiais_de(peca)
+        if not selecao_explicita:
+            escolhidos = materiais[:1]
+        else:
+            escolhidos = [item for item in materiais if item["id"] in selecionados]
+        imagens_ids.extend(item["id"] for item in escolhidos if not item["id"].startswith("externo:"))
+        provas = provas_de(peca.provas_comerciais)
+        if not selecao_explicita:
+            for prova in provas:
+                imagem_legada = portfolio.pecas.filter(link=prova["link"], imagem_enviada__isnull=False).first()
+                if imagem_legada is not None:
+                    imagens_ids.append(str(imagem_legada.imagem_enviada.pk))
+        principal = next((item for item in escolhidos if item["principal"]), None)
+        principal = principal or next(iter(escolhidos), None)
+        complementos = [item for item in escolhidos if item != principal and item["categoria"] in {"render", "vistas"}]
+        tecnicos = [item for item in escolhidos if item != principal and item["categoria"] in {"wireframe", "uv"}]
+        legenda = legendas.get(str(peca.pk), {})
+        obras.append({
+            "id": peca.pk, "link": principal["link"] if principal else "",
+            "imagem_principal": principal["link"] if principal else "",
+            "legenda": peca.legenda, "ordem": peca.ordem, "destaque": peca.destaque,
+            "titulo": peca.titulo, "descricao": peca.descricao,
+            "titulo_comercial": legenda.get("titulo") or peca.titulo or peca.legenda,
+            "texto_comercial": legenda.get("texto") or peca.descricao or peca.uso_pretendido,
+            "uso_pretendido": peca.uso_pretendido, "contribuicao": peca.contribuicao,
+            "triangulos": peca.triangulos, "textura": peca.textura,
+            "provas_comerciais": provas,
+            "complementos": complementos, "tecnicos": tecnicos,
+        })
+    oferta = oferta_de(portfolio)
+    if not oferta.get("exibir_preco"):
+        oferta["preco"] = ""
+    publicados = set(imagens_ids)
+    for obra in obras:
+        obra["provas_comerciais"] = [
+            prova for prova in obra["provas_comerciais"]
+            if not urlsplit(prova["link"]).path.startswith("/portfolio/imagens/")
+            or urlsplit(prova["link"]).path.rsplit("/", 1)[-1] in publicados
+        ]
+    return {"versao": 2, "conteudo": {"pagina": pagina}, "oferta": oferta,
+            "obras": obras, "imagens_ids": list(dict.fromkeys(imagens_ids))}
+
+
+def dados_publicados(portfolio: Portfolio) -> dict | None:
+    valor = portfolio.publicacao_comercial or {}
+    return valor if valor.get("versao") == 2 else None
+
+
+def garantir_publicacao_legada(portfolio: Portfolio) -> None:
+    """Congela página antiga antes da primeira edição de seu rascunho."""
+    if not portfolio.vitrine_publicada or dados_publicados(portfolio) is not None:
+        return
+    with transaction.atomic():
+        atual = Portfolio.objects.select_for_update().get(pk=portfolio.pk)
+        if atual.vitrine_publicada and dados_publicados(atual) is None:
+            atual.publicacao_comercial = snapshot_rascunho(atual)
+            atual.save(update_fields=["publicacao_comercial"])
+            portfolio.publicacao_comercial = atual.publicacao_comercial
+
+
+def _obra_do_snapshot(dados):
+    obra = SimpleNamespace(**dados)
+    obra.pk = dados["id"]
+    obra.provas_visiveis = dados.get("provas_comerciais", [])
+    obra.provas_texto = "\n".join(f"{i['tipo']} | {i['link']} | {i['descricao']}" for i in obra.provas_visiveis)
+    return obra

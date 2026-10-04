@@ -48,6 +48,7 @@
       <p class="miudo"><a href="{{ peca.link }}" target="_blank" rel="noopener noreferrer">Abrir imagem</a> · {{ peca.get_estado_do_link_display }}{% if peca.quebrado_desde %}, desde {{ peca.quebrado_desde|date:"d/m/Y" }}{% endif %}.</p>
       {% if peca.projeto %}<p><strong>Projeto:</strong> <a href="{% url 'projeto' peca.projeto.pk %}">{{ peca.projeto.titulo }}</a></p>{% endif %}
       <div class="botoes">
+        <a class="j-btn secundario" href="{% url 'preparar_trabalho' peca_id=peca.pk %}">Preparar trabalho</a>
         {% if not forloop.first %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="subir">Subir</button></form>{% endif %}
         {% if not forloop.last %}<form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="descer">Descer</button></form>{% endif %}
         <form method="post" action="{% url 'mudar_peca' %}">{% csrf_token %}<input type="hidden" name="peca" value="{{ peca.pk }}"><button type="submit" name="acao" value="{% if peca.destaque %}tirar-destaque{% else %}destacar{% endif %}">{% if peca.destaque %}Tirar destaque{% else %}Pôr em destaque{% endif %}</button></form>
@@ -70,7 +71,7 @@
           <label for="duvida-{{ peca.pk }}">Sobre o que você gostaria de receber feedback?</label>
           <textarea id="duvida-{{ peca.pk }}" name="duvida" maxlength="3000" rows="3">{{ peca.duvida }}</textarea>
           <label for="mostrar-{{ peca.pk }}"><input type="checkbox" id="mostrar-{{ peca.pk }}" name="mostrar_na_pagina_publica" value="1"{% if peca.mostrar_na_pagina_publica %} checked{% endif %}> Selecionar para minha página pública</label>
-          <p class="miudo">A página mostra a imagem, o nome e o uso imaginado dos trabalhos selecionados. Suas dúvidas ficam privadas. Se a página já estiver publicada, a mudança aparecerá nela ao salvar.</p>
+          <p class="miudo">A página mostra os materiais selecionados. Suas dúvidas ficam privadas. As mudanças ficam no rascunho até você publicar a atualização.</p>
           <button class="j-btn" type="submit">Salvar este trabalho</button>
         </form>
       </details>
