@@ -12,6 +12,7 @@ from apps.core.handlers import (
     ao_pagamento_recusado,
     ao_pedido_criado,
     ao_pix_expirado,
+    ao_quiz_captura_parcial,
     ao_quiz_completado,
     ao_reversao_confirmada,
     processar_envelope,
@@ -29,6 +30,7 @@ MAX_ENTREGAS = 5  # delivery_count do PEL já em 5 ⇒ fila morta, sem reprocess
 
 STREAMS = {
     "eventos.quiz.completado": ao_quiz_completado,
+    "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
     "eventos.pedido.criado": ao_pedido_criado,
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
