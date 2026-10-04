@@ -12,6 +12,8 @@ SERVICES = (
 # A cell behind SCRIPT_NAME used a local URLconf; identidade and payments did not.
 PUBLIC_PREFIXES = (
     ("/webhooks/whatsapp", "mensageria", ""),
+    # Respostas de e-mail recebidas pelo provedor (inbound), com token próprio.
+    ("/webhooks/email/recebido", "mensageria", ""),
     ("/static/checkout", "checkout", ""),
     ("/api/pagamentos", "pagamentos", ""),
     ("/api/checkout", "checkout", ""),
