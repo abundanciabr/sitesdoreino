@@ -22,7 +22,9 @@ def _authorized(request):
         scheme.lower() == "bearer"
         and bool(token)
         and bool(settings.TOKEN_EDITOR_ADMIN)
-        and secrets.compare_digest(token, settings.TOKEN_EDITOR_ADMIN)
+        and secrets.compare_digest(
+            token.encode("utf-8"), settings.TOKEN_EDITOR_ADMIN.encode("utf-8")
+        )
     )
 
 
@@ -93,6 +95,22 @@ def _directed(payload, slug):
     if payload["quiz"]["slug"] != slug:
         raise ValueError("O slug do documento difere do endereço do quiz.")
     return True
+
+
+def destino_do_botao_valido(destination):
+    """Levanta ValueError se o destino do botão não for caminho local ou URL HTTP(S)."""
+    if not destination:
+        return
+    parsed = urlsplit(destination)
+    safe_relative = destination.startswith("/") and not destination.startswith("//")
+    safe_absolute = parsed.scheme in {"http", "https"} and bool(parsed.hostname)
+    if (
+        destination != destination.strip()
+        or "\\" in destination
+        or any(ord(char) < 32 for char in destination)
+        or not (safe_relative or safe_absolute)
+    ):
+        raise ValueError("Destino do botão deve ser caminho local ou URL HTTP(S).")
 
 
 def _validate(payload):
@@ -188,22 +206,7 @@ def _validate(payload):
                 raise ValueError(f"{key} inválido.")
         if bool(band.get("botao_destino")) != bool(band.get("botao_rotulo")):
             raise ValueError("Destino e rótulo do botão devem ser preenchidos juntos.")
-        destination = band.get("botao_destino", "")
-        if destination:
-            parsed = urlsplit(destination)
-            safe_relative = destination.startswith("/") and not destination.startswith(
-                "//"
-            )
-            safe_absolute = parsed.scheme in {"http", "https"} and bool(parsed.hostname)
-            if (
-                destination != destination.strip()
-                or "\\" in destination
-                or any(ord(char) < 32 for char in destination)
-                or not (safe_relative or safe_absolute)
-            ):
-                raise ValueError(
-                    "Destino do botão deve ser caminho local ou URL HTTP(S)."
-                )
+        destino_do_botao_valido(band.get("botao_destino", ""))
     ranges = sorted((b["min_score"], b["max_score"]) for b in bands)
     if any(right[0] <= left[1] for left, right in zip(ranges, ranges[1:])):
         raise ValueError("Faixas de pontuação não podem se sobrepor.")

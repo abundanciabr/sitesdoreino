@@ -8,7 +8,10 @@ voltar à anterior.
 
 Os registros moram no app `apps.comercial` (coordenador). Enquanto ele não
 estiver instalado ou não responder, a tela diz que a capacidade ainda não está
-disponível — nunca erro 500.
+disponível — nunca erro 500. Esta é a única página dos agentes comerciais: o
+que a primeira página do coordenador fazia (ver um trabalho com todas as
+decisões, retomar um trabalho parado, pôr no ar a proposta do otimizador) mora
+aqui.
 """
 from __future__ import annotations
 
@@ -59,10 +62,15 @@ RECADOS = {
     "nao_encontrada": "Essa versão não foi encontrada.",
     "indisponivel": "A equipe comercial de agentes ainda não está disponível.",
     "papel": "Esse papel não existe.",
+    "retomado": "O trabalho voltou para a fila.",
+    "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
     "analise_pedida": "Análise de resultados pedida. Ela entra na fila e aparece em Trabalhos.",
     "analise_ja_pedida": "A análise de hoje já foi pedida; ela está em Trabalhos. Uma nova só amanhã.",
     "analise_desligada": "Os agentes comerciais estão desligados neste ambiente: a análise não foi pedida.",
 }
+
+# Estados em que o botão "Retomar" aparece (`coordenador.retomar`).
+RETOMAVEIS = ("falhou", "aguardando_dependencia", "aguardando_autorizacao", "envio_incerto")
 
 
 def comercial_disponivel() -> bool:
@@ -169,6 +177,7 @@ def _preparar_trabalho(trabalho, decisoes) -> dict:
         "tokens": tokens,
         "versao": versao,
         "decisoes": len(decisoes),
+        "retomavel": trabalho.estado in RETOMAVEIS,
         "ultima": None
         if ultima is None
         else {
@@ -214,47 +223,6 @@ def _grupos(mostrar_testes: bool) -> list[dict]:
     return grupos
 
 
-def _numero_do_trabalho(bruto) -> int | None:
-    """O `?trabalho=` da tela: só dígitos ASCII, até 12. Qualquer outra coisa
-    (letras, sinal, dígitos de outro alfabeto, texto enorme) é ignorada."""
-    s = bruto if isinstance(bruto, str) else ""
-    if s.isascii() and s.isdigit() and len(s) <= 12:
-        return int(s)
-    return None
-
-
-def _detalhe(bruto) -> dict | None:
-    """O trabalho pedido por `?trabalho=<id>`, com todas as decisões dele.
-    Número que não existe vira um aviso; valor inválido some."""
-    numero = _numero_do_trabalho(bruto)
-    if numero is None:
-        return None
-    TrabalhoComercial, DecisaoComercial, _ = _modelos()
-    trabalho = TrabalhoComercial.objects.filter(pk=numero).first()
-    if trabalho is None:
-        return {"numero": numero, "nao_encontrado": True}
-    decisoes = list(
-        DecisaoComercial.objects.filter(trabalho=trabalho).select_related("consumo").order_by("criada_em", "id")
-    )
-    preparado = _preparar_trabalho(trabalho, decisoes)
-    preparado["numero"] = numero
-    preparado["resumo"] = _curto(trabalho.resumo, 600) if trabalho.resumo else ""
-    preparado["linha_do_tempo"] = [
-        {
-            "acao": d.acao or "—",
-            "ferramenta": d.ferramenta or "—",
-            "resultado": d.get_resultado_display(),
-            "resultado_chave": d.resultado,
-            "contexto": contexto_resumido(d.contexto_usado),
-            "saida": _curto(d.saida, 300) if d.saida else "",
-            "quando": d.terminada_em or d.criada_em,
-            "versao": d.versao_estrategia,
-        }
-        for d in decisoes
-    ]
-    return preparado
-
-
 def _estrategias() -> list[dict]:
     _, DecisaoComercial, EstrategiaComercial = _modelos()
     from apps.comercial import papeis
@@ -272,8 +240,65 @@ def _estrategias() -> list[dict]:
             v.usos = usos.get(v.pk, 0)
             v.marcas = list(reversed(v.historico or []))
         anterior = ativa.anterior if ativa.anterior_id and ativa.anterior_id != ativa.pk else None
-        lista.append({"papel": papel, "nome": nome, "ativa": ativa, "anterior": anterior, "versoes": versoes})
+        lista.append(
+            {
+                "papel": papel,
+                "nome": nome,
+                "ativa": ativa,
+                "anterior": anterior,
+                "versoes": versoes,
+                "propostas": [v for v in versoes if v.situacao == "proposta"],
+                "ferramentas": papeis.FERRAMENTAS_DO_PAPEL.get(papel, ()),
+            }
+        )
     return lista
+
+
+def _numero_do_trabalho(bruto) -> int | None:
+    """O `?trabalho=` da tela: só dígitos ASCII, até 12. Qualquer outra coisa
+    (letras, sinal, dígitos de outro alfabeto, texto enorme) é ignorada."""
+    s = bruto if isinstance(bruto, str) else ""
+    if s.isascii() and s.isdigit() and len(s) <= 12:
+        return int(s)
+    return None
+
+
+def _detalhe(trabalho_id: str):
+    """Um trabalho com todas as decisões, na ordem em que aconteceram."""
+    numero = _numero_do_trabalho(trabalho_id)
+    if numero is None:
+        return None
+    TrabalhoComercial, DecisaoComercial, _ = _modelos()
+    trabalho = TrabalhoComercial.objects.filter(pk=numero).first()
+    if trabalho is None:
+        return None
+    decisoes = list(
+        DecisaoComercial.objects.filter(trabalho=trabalho).select_related("consumo").order_by("criada_em", "id")
+    )
+    preparado = _preparar_trabalho(trabalho, decisoes)
+    preparado["todas"] = [
+        {
+            "obj": d,
+            "resultado": d.get_resultado_display(),
+            "contexto": contexto_resumido(d.contexto_usado),
+            "entrada": contexto_resumido(d.entrada),
+            "saida": _curto(d.saida, 600) if d.saida else "",
+        }
+        for d in decisoes
+    ]
+    return preparado
+
+
+def _ligado() -> bool:
+    from apps.comercial import coordenador
+
+    return coordenador.ligado()
+
+
+def _min_amostra() -> int:
+    from apps.comercial import resultados
+
+    return resultados.MIN_AMOSTRA
 
 
 @require_GET
@@ -283,16 +308,12 @@ def crm_agentes(request):
         "admin": getattr(request, "admin", None),
         "disponivel": False,
         "mostrar_testes": mostrar_testes,
-        "ligado": True,
         "recado": RECADOS.get(request.GET.get("recado", ""), ""),
     }
     if not comercial_disponivel():
         return render(request, "admin/crm_agentes.html", contexto)
     try:
-        from apps.comercial import coordenador
-
         TrabalhoComercial, _, _ = _modelos()
-        contexto["ligado"] = coordenador.ligado()
         inicio = _inicio_do_mes()
         gasto_comercial = (
             TrabalhoComercial.objects.filter(criado_em__gte=inicio).aggregate(s=Sum("custo_usd"))["s"]
@@ -307,7 +328,9 @@ def crm_agentes(request):
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
             estrategias=_estrategias(),
-            detalhe=_detalhe(request.GET.get("trabalho")),
+            detalhe=_detalhe(request.GET.get("trabalho", "")),
+            ligado=_ligado(),
+            min_amostra=_min_amostra(),
         )
     except (DatabaseError, ImportError, LookupError):
         logger.exception("Não foi possível ler os registros dos agentes do CRM")
@@ -318,33 +341,6 @@ def crm_agentes(request):
 
 def _volta(recado: str, ancora: str = "estrategias"):
     return HttpResponseRedirect(f"{reverse('crm_agentes')}?recado={recado}#{ancora}")
-
-
-@require_POST
-def crm_agentes_analisar(request):
-    """"Analisar agora": põe na fila UMA análise de resultados por dia.
-
-    Usa o tipo que já existe para isso (`analisar_resultados`, o mesmo que o
-    relógio põe a cada hora); a chave é estável por dia, então apertar de
-    novo no mesmo dia devolve o mesmo trabalho e não cria outro. Se ainda não
-    houver o mínimo de abordagens para comparar, o próprio trabalho conclui
-    como inconclusivo sem chamar o modelo (sem gasto)."""
-    if not comercial_disponivel():
-        return _volta("indisponivel", "trabalhos")
-    from apps.comercial import coordenador
-
-    if not coordenador.ligado():
-        return _volta("analise_desligada", "trabalhos")
-    hoje = timezone.localdate()
-    trabalho, criado = coordenador.criar(
-        coordenador.T.ANALISAR_RESULTADOS, f"resultados:painel:{hoje:%Y%m%d}", origem="painel"
-    )
-    _auditar(
-        request,
-        f"trabalho:{trabalho.pk}",
-        "CRM agentes: analisar agora" + ("" if criado else " (já pedida hoje)"),
-    )
-    return _volta("analise_pedida" if criado else "analise_ja_pedida", "trabalhos")
 
 
 @require_POST
@@ -400,3 +396,48 @@ def crm_agentes_nova(request, papel: str):
         papeis.ativar(nova, quem, motivo)
     _auditar(request, f"estrategia:{papel}:v{nova.versao}", "CRM agentes: nova versão" + (" ativada" if pos_no_ar else ""))
     return _volta("nova_ativa" if pos_no_ar else "nova", f"papel-{papel}")
+
+
+@require_POST
+def crm_agentes_analisar(request):
+    """"Analisar agora": põe na fila UMA análise de resultados por dia.
+
+    Usa o tipo que já existe para isso (`analisar_resultados`, o mesmo que o
+    relógio põe a cada hora); a chave é estável por dia, então apertar de
+    novo no mesmo dia devolve o mesmo trabalho e não cria outro. Se ainda não
+    houver o mínimo de abordagens para comparar, o próprio trabalho conclui
+    como inconclusivo sem chamar o modelo (sem gasto)."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "trabalhos")
+    from apps.comercial import coordenador
+
+    if not coordenador.ligado():
+        return _volta("analise_desligada", "trabalhos")
+    hoje = timezone.localdate()
+    trabalho, criado = coordenador.criar(
+        coordenador.T.ANALISAR_RESULTADOS, f"resultados:painel:{hoje:%Y%m%d}", origem="painel"
+    )
+    _auditar(
+        request,
+        f"trabalho_comercial:{trabalho.pk}",
+        "CRM agentes: analisar agora" + ("" if criado else " (já pedida hoje)"),
+    )
+    return _volta("analise_pedida" if criado else "analise_ja_pedida", "trabalhos")
+
+
+@require_POST
+def crm_agentes_retomar(request, trabalho_id: int):
+    """Devolve à fila um trabalho que falhou ou esperava. Envio sem confirmação
+    volta com a mesma chave de idempotência: a mensagem não sai duas vezes."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "trabalhos")
+    TrabalhoComercial, _, _ = _modelos()
+    from apps.comercial import coordenador
+
+    trabalho = TrabalhoComercial.objects.filter(pk=trabalho_id).first()
+    if trabalho is None:
+        return _volta("nao_retomado", "trabalhos")
+    if not coordenador.retomar(trabalho, _quem(request)):
+        return _volta("nao_retomado", "trabalhos")
+    _auditar(request, f"trabalho_comercial:{trabalho.pk}", f"CRM agentes: retomar ({trabalho.estado})")
+    return _volta("retomado", "trabalhos")

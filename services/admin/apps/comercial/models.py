@@ -216,3 +216,7 @@ class EventoComercial(models.Model):
 
     class Meta:
         ordering = ["-recebido_em"]
+
+
+# O teste entre duas versões de estratégia mora em experimentos.py (ver o módulo).
+from .experimentos import ExperimentoEstrategia  # noqa: E402,F401

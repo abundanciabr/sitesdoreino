@@ -167,3 +167,15 @@ def retomar_whatsapp_das_jornadas() -> int:
     from .despacho import processar_pendentes
 
     return processar_pendentes()
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def registrar_contatos_no_crm() -> int:
+    """Último contato que o CRM não recebeu na hora do envio, retomado aqui."""
+    from .crm import registrar_pendentes
+
+    try:
+        return registrar_pendentes()
+    except Exception:  # noqa: BLE001 - a próxima passada tenta de novo
+        logger.exception("jornadas: falha ao retomar contatos no CRM")
+        return 0

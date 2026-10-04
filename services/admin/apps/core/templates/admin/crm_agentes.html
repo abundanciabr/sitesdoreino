@@ -5,9 +5,7 @@
 .crmag{max-width:1300px}.crmag h1{font-size:32px;letter-spacing:-1px;margin-bottom:4px}.crmag h2{font-size:20px;margin:32px 0 6px}.crmag h3{font-size:16px;margin:0 0 6px}
 .crmag-numeros{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin:20px 0}.crmag-numeros strong{display:block;font-size:26px}.crmag-numeros span{color:var(--texto-2);font-size:13px}
 .crmag-medidor{display:block;width:100%;height:10px;margin-top:8px}
-.crmag-info{margin:6px 0;font-size:14px}.crmag-motivo{margin:6px 0;font-size:14px;color:var(--texto-2)}.crmag-saida{margin:6px 0 0;font-size:13px;color:var(--texto-2)}.crmag-sem{margin:6px 0 0;font-size:13px;color:var(--texto-3)}.crmag-nota{font-size:14px;margin:6px 0}
-.crmag-detalhe{border:1px solid var(--azul);border-radius:12px;background:var(--painel);padding:16px 18px;margin:16px 0}.crmag-passo{border-top:1px solid var(--linha);padding:10px 0}.crmag-passo:first-of-type{border-top:0}
-.crmag-aviso-desligado{border:1px solid var(--amarelo);color:var(--amarelo);border-radius:10px;padding:10px 14px;margin:12px 0}
+.crmag-info{margin:6px 0;font-size:14px}.crmag-motivo{margin:6px 0;font-size:14px;color:var(--texto-2)}.crmag-saida{margin:6px 0 0;font-size:13px;color:var(--texto-2)}.crmag-sem{margin:6px 0 0;font-size:13px;color:var(--texto-3)}.crmag-nota{font-size:14px;margin:6px 0}.crmag-nota-pequena{font-size:13px;margin:6px 0;color:var(--texto-2)}.crmag-texto{font-size:14px}
 .crmag-analisar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:8px 0 16px}.crmag-analisar .crmag-explica{margin:0}
 .crmag-grupo{margin-bottom:8px}.crmag-explica{color:var(--texto-2);font-size:14px;margin:0 0 12px}
 .crmag-trabalho{border:1px solid var(--linha);border-radius:10px;background:var(--painel);padding:14px 16px;margin-bottom:10px}
@@ -29,11 +27,10 @@
   <p class="subtitulo">O que o assistente comercial está fazendo, o que decidiu, quanto gastou e com que estratégia.</p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
 
-  {% if disponivel and not ligado %}<p class="crmag-aviso-desligado" role="status"><b>Desligado neste ambiente (COMERCIAL_AGENTES=desligado).</b> Os agentes comerciais não pegam trabalhos novos aqui.</p>{% endif %}
-
   {% if not disponivel %}
   <p class="aviso" role="status">{% if falha_de_leitura %}Não foi possível ler os registros dos agentes agora. Tente novamente em alguns instantes.{% else %}A equipe comercial de agentes ainda não está disponível. Quando ela entrar no ar, os trabalhos, as decisões, o gasto e as estratégias aparecem aqui.{% endif %}</p>
   {% else %}
+  {% if not ligado %}<p class="aviso" role="status"><b>Desligado neste ambiente (COMERCIAL_AGENTES=desligado).</b> Os agentes comerciais estão desligados neste ambiente: nenhum trabalho novo é executado. O que já aconteceu continua visível abaixo.</p>{% endif %}
 
   <section aria-label="Gasto do mês">
     <div class="crmag-numeros">
@@ -50,33 +47,6 @@
     {% if gasto.autorizacao %}<p class="crmag-explica">Limite: {{ gasto.autorizacao.descricao }}. Para mudar o limite, use <a href="{% url 'robos_admin' %}">robôs e conexão</a>.</p>{% endif %}
   </section>
 
-  {% if detalhe %}
-  <section id="detalhe" class="crmag-detalhe" aria-label="Detalhe do trabalho">
-    {% if detalhe.nao_encontrado %}
-    <h2>Trabalho #{{ detalhe.numero }}</h2>
-    <p class="crmag-explica">Esse trabalho não foi encontrado. <a href="?#trabalhos">Voltar à lista</a></p>
-    {% else %}
-    <h2>Trabalho #{{ detalhe.obj.pk }} · {{ detalhe.tipo }}</h2>
-    <p class="crmag-info"><span class="crmag-etiqueta">{{ detalhe.estado }}</span>{% if detalhe.obj.teste %} <span class="crmag-etiqueta">Teste</span>{% endif %}
-      criado {{ detalhe.obj.criado_em|date:"d/m H:i" }} · atualizado {{ detalhe.obj.atualizado_em|date:"d/m H:i" }}
-      · Custo: US$ {{ detalhe.custo|floatformat:4 }}{% if detalhe.tokens %} · {{ detalhe.tokens }} tokens{% endif %}
-      · Estratégia: {% if detalhe.versao %}v{{ detalhe.versao }}{% else %}—{% endif %}{% if detalhe.papel %} ({{ detalhe.papel }}){% endif %}
-      {% if detalhe.oportunidade %}· <a href="{% url 'crm_oportunidade' detalhe.oportunidade %}">Abrir oportunidade →</a>{% endif %}</p>
-    {% if detalhe.resumo %}<p class="crmag-motivo">Resumo: {{ detalhe.resumo }}</p>{% endif %}
-    {% if detalhe.obj.motivo %}<p class="crmag-motivo">Motivo: {{ detalhe.obj.motivo|truncatechars:300 }}</p>{% endif %}
-    {% for d in detalhe.linha_do_tempo %}
-    <div class="crmag-passo">
-      <b>{{ d.acao }}</b> · {{ d.ferramenta }} · <span class="crmag-etiqueta {% if d.resultado_chave == 'incerto' %}incerto{% elif d.resultado_chave == 'recusado' %}falha{% endif %}">{{ d.resultado }}</span>
-      <small>{{ d.quando|date:"d/m H:i" }}{% if d.versao %} · v{{ d.versao }}{% endif %}</small>
-      {% if d.contexto %}<ul class="crmag-contexto">{% for chave, valor in d.contexto %}<li><b>{{ chave }}:</b> {{ valor }}</li>{% endfor %}</ul>{% endif %}
-      {% if d.saida %}<p class="crmag-saida">Saída: {{ d.saida }}</p>{% endif %}
-    </div>
-    {% empty %}<p class="crmag-sem">Ainda sem decisão registrada.</p>{% endfor %}
-    <p class="crmag-info"><a href="?#trabalhos">Fechar o detalhe</a></p>
-    {% endif %}
-  </section>
-  {% endif %}
-
   <section id="trabalhos" aria-label="Trabalhos">
     <h2>Trabalhos</h2>
     <form method="post" action="{% url 'crm_agentes_analisar' %}" class="crmag-analisar">{% csrf_token %}
@@ -92,7 +62,7 @@
       <article class="crmag-trabalho">
         <header>
           <div><b>{{ t.tipo }}</b> <span class="crmag-etiqueta {{ grupo.chave }}">{{ t.estado }}</span>{% if t.obj.teste %} <span class="crmag-etiqueta">Teste</span>{% endif %}</div>
-          <small><a href="?trabalho={{ t.obj.pk }}{% if mostrar_testes %}&amp;testes=mostrar{% endif %}#detalhe">#{{ t.obj.pk }}</a> · criado {{ t.obj.criado_em|date:"d/m H:i" }} · atualizado {{ t.obj.atualizado_em|date:"d/m H:i" }}{% if t.obj.tentativas %} · {{ t.obj.tentativas }} tentativa{{ t.obj.tentativas|pluralize }}{% endif %}</small>
+          <small><a href="?trabalho={{ t.obj.pk }}#detalhe">#{{ t.obj.pk }}</a> · criado {{ t.obj.criado_em|date:"d/m H:i" }} · atualizado {{ t.obj.atualizado_em|date:"d/m H:i" }}{% if t.obj.tentativas %} · {{ t.obj.tentativas }} tentativa{{ t.obj.tentativas|pluralize }}{% endif %}</small>
         </header>
         <p class="crmag-info">
           {% if t.oportunidade %}<a href="{% url 'crm_oportunidade' t.oportunidade %}">Abrir oportunidade →</a> · {% endif %}
@@ -111,20 +81,66 @@
         {% if t.ultima.contexto %}<ul class="crmag-contexto">{% for chave, valor in t.ultima.contexto %}<li><b>{{ chave }}:</b> {{ valor }}</li>{% endfor %}</ul>{% endif %}
         {% if t.ultima.saida %}<p class="crmag-saida">Saída: {{ t.ultima.saida }}</p>{% endif %}
         {% else %}<p class="crmag-sem">Ainda sem decisão registrada.</p>{% endif %}
+        <div class="crmag-linha">
+          <a href="?trabalho={{ t.obj.pk }}#detalhe">Ver todas as decisões →</a>
+          {% if t.retomavel %}
+          <form method="post" action="{% url 'crm_agentes_retomar' t.obj.pk %}">{% csrf_token %}<button class="botao">Retomar</button></form>
+          {% if t.obj.estado == "envio_incerto" %}<small>Volta com a mesma chave: a mensagem não sai duas vezes.</small>{% endif %}
+          {% endif %}
+        </div>
       </article>
       {% empty %}<p class="crmag-explica">Nenhum trabalho aqui.</p>{% endfor %}
     </div>
     {% endfor %}
   </section>
 
+  {% if detalhe %}
+  <section id="detalhe" aria-label="Trabalho escolhido">
+    <h2>Trabalho #{{ detalhe.obj.pk }} · {{ detalhe.tipo }}</h2>
+    <p class="crmag-explica"><span class="crmag-etiqueta">{{ detalhe.estado }}</span>{% if detalhe.obj.teste %} <span class="crmag-etiqueta">Teste</span>{% endif %}
+      · Estratégia: {% if detalhe.versao %}v{{ detalhe.versao }}{% else %}—{% endif %}{% if detalhe.papel %} ({{ detalhe.papel }}){% endif %}
+      · Custo: US$ {{ detalhe.custo|floatformat:4 }}{% if detalhe.tokens %} · {{ detalhe.tokens }} tokens{% endif %}
+      {% if detalhe.oportunidade %}· <a href="{% url 'crm_oportunidade' detalhe.oportunidade %}">Abrir oportunidade →</a>{% endif %}
+      {% if detalhe.obj.anterior_id %}· veio do <a href="?trabalho={{ detalhe.obj.anterior_id }}#detalhe">#{{ detalhe.obj.anterior_id }}</a>{% endif %}
+      · <a href="?#trabalhos">Fechar</a></p>
+    {% if detalhe.obj.motivo %}<p class="crmag-texto">Motivo: {{ detalhe.obj.motivo }}</p>{% endif %}
+    {% if detalhe.obj.resumo %}<p class="crmag-texto">Resumo: {{ detalhe.obj.resumo }}</p>{% endif %}
+    {% for d in detalhe.todas %}
+    <article class="crmag-trabalho">
+      <dl class="crmag-decisao">
+        <div><dt>Ação</dt><dd>{{ d.obj.acao|default:"—" }}</dd></div>
+        <div><dt>Ferramenta</dt><dd>{{ d.obj.ferramenta|default:"decisão final" }}</dd></div>
+        <div><dt>Resultado</dt><dd>{{ d.resultado }}</dd></div>
+        <div><dt>Quando</dt><dd>{{ d.obj.criada_em|date:"d/m H:i" }}{% if d.obj.versao_estrategia %} · v{{ d.obj.versao_estrategia }}{% endif %}{% if d.obj.custo_usd %} · US$ {{ d.obj.custo_usd|floatformat:4 }}{% endif %}</dd></div>
+      </dl>
+      {% if d.contexto %}<ul class="crmag-contexto">{% for chave, valor in d.contexto %}<li><b>{{ chave }}:</b> {{ valor }}</li>{% endfor %}</ul>{% endif %}
+      {% if d.entrada %}<ul class="crmag-contexto">{% for chave, valor in d.entrada %}<li>entrada · <b>{{ chave }}:</b> {{ valor }}</li>{% endfor %}</ul>{% endif %}
+      {% if d.saida %}<p class="crmag-saida">Saída: {{ d.saida }}</p>{% endif %}
+    </article>
+    {% empty %}<p class="crmag-explica">Nenhuma decisão ainda.</p>{% endfor %}
+  </section>
+  {% endif %}
+
   <section id="estrategias" aria-label="Estratégias">
     <h2>Estratégias por papel</h2>
-    <p class="crmag-explica">Cada papel usa uma versão de instruções por vez. Mudar a estratégia não muda o catálogo, os preços nem o que conta como pagamento aprovado. As conversas já feitas continuam ligadas à versão que usaram.</p>
+    <p class="crmag-explica">Cada papel usa uma versão de instruções por vez. Mudar a estratégia não muda o catálogo, os preços nem o que conta como pagamento aprovado. As conversas já feitas continuam ligadas à versão que usaram. O agente de resultados só propõe uma versão nova com pelo menos {{ min_amostra }} abordagens na versão atual; proposta não entra no ar sozinha.</p>
     {% for e in estrategias %}
     <div class="crmag-papel" id="papel-{{ e.papel }}">
       <h3>{{ e.nome }} · no ar: v{{ e.ativa.versao }}</h3>
       <small>{% if e.ativa.ativada_em %}Ativada em {{ e.ativa.ativada_em|date:"d/m/Y H:i" }}{% endif %}{% if e.ativa.criada_por %} · escrita por {{ e.ativa.criada_por }}{% endif %}</small>
       {% if e.ativa.motivo %}<p class="crmag-nota">Motivo: {{ e.ativa.motivo }}</p>{% endif %}
+      <p class="crmag-nota-pequena">Ferramentas: {{ e.ferramentas|join:", "|default:"nenhuma (só lê os números)" }}</p>
+      {% for v in e.propostas %}
+      <div class="crmag-versao">
+        <b>Proposta v{{ v.versao }}</b> <small>{% if v.criada_por %}de {{ v.criada_por }}{% endif %}{% if v.origem %} · origem: {{ v.origem }}{% endif %} · {{ v.criada_em|date:"d/m/Y H:i" }}</small>
+        {% if v.motivo %}<p class="crmag-nota">Motivo: {{ v.motivo }}</p>{% endif %}
+        <details><summary>Ver as instruções propostas</summary><pre>{{ v.instrucoes }}</pre></details>
+        <form method="post" action="{% url 'crm_agentes_ativar' v.pk %}" class="crmag-linha">{% csrf_token %}
+          <label>Motivo<input type="text" name="motivo" maxlength="1000" placeholder="Por que pôr esta versão no ar"></label>
+          <button class="botao">Pôr no ar a v{{ v.versao }}</button>
+        </form>
+      </div>
+      {% endfor %}
       <details><summary>Ver as instruções da v{{ e.ativa.versao }}</summary><pre>{{ e.ativa.instrucoes }}</pre></details>
       {% if e.anterior %}
       <form method="post" action="{% url 'crm_agentes_voltar' e.papel %}" class="crmag-linha">{% csrf_token %}
@@ -142,7 +158,7 @@
           {% if not v.ativa %}
           <form method="post" action="{% url 'crm_agentes_ativar' v.pk %}" class="crmag-linha">{% csrf_token %}
             <label>Motivo<input type="text" name="motivo" maxlength="1000" placeholder="Por que pôr esta versão no ar"></label>
-            <button class="botao">Ativar a v{{ v.versao }}</button>
+            <button class="botao">Pôr no ar a v{{ v.versao }}</button>
           </form>
           {% endif %}
         </div>

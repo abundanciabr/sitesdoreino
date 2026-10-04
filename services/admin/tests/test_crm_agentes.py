@@ -118,6 +118,7 @@ def test_painel_mostra_grupos_ultima_decisao_versao_custo_e_limite():
     from apps.comercial import papeis
     from apps.comercial.models import DecisaoComercial
 
+    AutorizacaoDeGasto.objects.all().delete()  # a migração 0002 já semeia uma autorização
     AutorizacaoDeGasto.objects.create(descricao="Robôs da equipe", destino="equipe", teto_mensal_usd=Decimal("10.00"), fonte="teste")
     estrategia = papeis.estrategia_ativa("atendimento")
     em_curso = _trabalho("executando", 1, oportunidade_id=OPORTUNIDADE, custo_usd=Decimal("0.250000"), motivo="")
@@ -162,7 +163,7 @@ def test_painel_mostra_grupos_ultima_decisao_versao_custo_e_limite():
 def test_sem_limite_autorizado_a_pagina_diz_isso():
     from apps.agentes.models import AutorizacaoDeGasto
 
-    AutorizacaoDeGasto.objects.update(ativa=False)  # a migração 0002 já deixa uma autorizada
+    AutorizacaoDeGasto.objects.update(ativa=False)  # a migração 0002 já semeia uma autorização
     r = dentro().get(reverse("crm_agentes"))
     assert r.status_code == 200
     assert "Nenhum limite de gasto autorizado" in r.content.decode()
@@ -222,6 +223,65 @@ def test_nova_versao_sem_texto_e_papel_inexistente_nao_mudam_nada():
     assert "recado=sem_anterior" in r["Location"]
 
 
+@com_comercial
+@respx.mock
+def test_trabalho_escolhido_mostra_todas_as_decisoes_e_retomar_devolve_a_fila():
+    from apps.comercial.models import DecisaoComercial, TrabalhoComercial
+
+    c = dentro()
+    falhou = _trabalho("falhou", 9, motivo="Modelo fora do ar.")
+    DecisaoComercial.objects.create(
+        trabalho=falhou, papel="atendimento", call_id="d1", acao="consultar", ferramenta="consultar_contato",
+        entrada={"oportunidade_ref": OPORTUNIDADE}, resultado="feito",
+    )
+    DecisaoComercial.objects.create(
+        trabalho=falhou, papel="atendimento", call_id="d2", acao="responder", ferramenta="consultar_pagamento",
+        resultado="indisponivel",
+    )
+    html = c.get(reverse("crm_agentes"), {"trabalho": falhou.pk}).content.decode()
+    assert f"Trabalho #{falhou.pk}" in html
+    assert "consultar_contato" in html and "consultar_pagamento" in html and "Capacidade indisponível" in html
+    assert reverse("crm_agentes_retomar", args=[falhou.pk]) in html
+
+    r = c.post(reverse("crm_agentes_retomar", args=[falhou.pk]))
+    assert r.status_code == 302 and "recado=retomado" in r["Location"]
+    falhou.refresh_from_db()
+    assert falhou.estado == "na_fila"
+    assert Registro.objects.filter(alvo=f"trabalho_comercial:{falhou.pk}").exists()
+
+    concluido = _trabalho("concluido", 9)
+    r = c.post(reverse("crm_agentes_retomar", args=[concluido.pk]))
+    assert "recado=nao_retomado" in r["Location"]
+    assert TrabalhoComercial.objects.get(pk=concluido.pk).estado == "concluido"
+    r = c.post(reverse("crm_agentes_retomar", args=[999999]))
+    assert "recado=nao_retomado" in r["Location"]
+    # Um número de trabalho que não existe não derruba a página.
+    assert c.get(reverse("crm_agentes"), {"trabalho": "999999"}).status_code == 200
+
+
+@com_comercial
+@respx.mock
+def test_proposta_do_otimizador_aparece_para_por_no_ar_e_desligado_avisa(monkeypatch):
+    from apps.comercial import papeis
+
+    monkeypatch.setenv("COMERCIAL_AGENTES", "desligado")
+    papeis.estrategia_ativa("abordagem")
+    proposta = papeis.propor_versao("abordagem", "Fale da carga horária.", criada_por="agente:resultados",
+                                    motivo="mais respostas na v1", origem="otimizador")
+    html = dentro().get(reverse("crm_agentes")).content.decode()
+    assert f"Proposta v{proposta.versao}" in html and "mais respostas na v1" in html
+    assert reverse("crm_agentes_ativar", args=[proposta.pk]) in html
+    assert "desligados neste ambiente" in html
+    assert "enviar_mensagem" in html  # ferramentas do papel de abordagem
+
+
+@respx.mock
+def test_retomar_sem_a_equipe_comercial_nao_quebra(monkeypatch):
+    monkeypatch.setattr(crm_agentes, "comercial_disponivel", lambda: False)
+    r = dentro().post(reverse("crm_agentes_retomar", args=[1]))
+    assert r.status_code == 302 and "recado=indisponivel" in r["Location"]
+
+
 # --- ajustes sobre a tela que já está no ar (04/10/2026) --------------------------------------
 
 
@@ -264,7 +324,9 @@ def test_concluidos_recentes_mostra_os_ultimos_20_com_link_para_o_detalhe():
     html = dentro().get(reverse("crm_agentes")).content.decode()
     assert "Concluídos recentes · 23" in html
     assert "Mostrando os 20 mais recentes" in html
-    assert html.count('href="?trabalho=') == 20
+    import re
+
+    assert len(set(re.findall(r'href="\?trabalho=(\d+)', html))) == 20
 
 
 @com_comercial
@@ -292,9 +354,9 @@ def test_detalhe_do_trabalho_mostra_as_decisoes():
 
 @com_comercial
 @respx.mock
-def test_detalhe_de_trabalho_que_nao_existe_avisa():
-    html = dentro().get(reverse("crm_agentes"), {"trabalho": "999999"}).content.decode()
-    assert "Esse trabalho não foi encontrado" in html
+def test_detalhe_de_trabalho_que_nao_existe_nao_derruba_a_pagina():
+    r = dentro().get(reverse("crm_agentes"), {"trabalho": "999999"})
+    assert r.status_code == 200 and 'id="detalhe"' not in r.content.decode()
 
 
 @com_comercial
@@ -364,7 +426,7 @@ def test_analisar_agora_cria_uma_analise_por_dia_e_audita():
     r = c.post(reverse("crm_agentes_analisar"))
     assert r.status_code == 302 and "recado=analise_ja_pedida" in r["Location"]
     assert TrabalhoComercial.objects.filter(tipo="analisar_resultados", origem="painel").count() == 1
-    assert Registro.objects.filter(alvo=f"trabalho:{analise.pk}", detalhe__startswith="CRM agentes: analisar agora").count() == 2
+    assert Registro.objects.filter(alvo=f"trabalho_comercial:{analise.pk}", detalhe__startswith="CRM agentes: analisar agora").count() == 2
 
     html = c.get(reverse("crm_agentes") + "?recado=analise_pedida").content.decode()
     assert "Análise de resultados pedida" in html and f'action="{reverse("crm_agentes_analisar")}"' in html

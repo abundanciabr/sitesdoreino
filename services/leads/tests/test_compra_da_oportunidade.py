@@ -365,3 +365,67 @@ def test_backfill_de_compras_reconstroi_sem_duplicar(capsys):
     compra = CompraDaOportunidade.objects.get()
     assert compra.aprovado_centavos == 500 and compra.oportunidade_id == oferta.id
     assert "Compras: 1; aprovadas: 1" in capsys.readouterr().out
+
+
+def test_ate_com_data_simples_vale_ate_o_fim_do_dia(client, admin):
+    from django.utils import timezone
+
+    oferta = quiz("crivo")
+    pedido("ped-1", oportunidade_ref=str(oferta.id))
+    aprovado("ped-1")
+    hoje = timezone.localdate().isoformat()
+    sem_filtro = client.get("/api/leads/receita/fatos", **admin).json()
+    assert sem_filtro["totais"]["compras_aprovadas"] == 1
+    ate_hoje = client.get("/api/leads/receita/fatos", {"ate": hoje}, **admin).json()
+    assert ate_hoje["totais"]["compras_aprovadas"] == 1
+    so_hoje = client.get(
+        "/api/leads/receita/fatos", {"desde": hoje, "ate": hoje}, **admin
+    ).json()
+    assert so_hoje["totais"]["compras_aprovadas"] == 1
+    assert client.get(
+        "/api/leads/receita/fatos", {"ate": "2026-13-45"}, **admin
+    ).status_code == 422
+
+
+def test_pagamento_com_email_de_outra_pessoa_nao_fecha_a_oferta_dela():
+    maria_crivo = quiz("crivo")
+    maria_cura = quiz("cura")
+    joao_crivo = quiz("crivo", email="joao@gmail.com")
+    pedido("ped-1")
+    aprovado("ped-1", email="joao@gmail.com")
+    _recarregar(maria_crivo, maria_cura, joao_crivo)
+    assert not joao_crivo.encerrada and joao_crivo.etapa == "nova"
+    assert not maria_crivo.encerrada and not maria_cura.encerrada
+    compra = CompraDaOportunidade.objects.get()
+    assert compra.lead.email == EMAIL and compra.oportunidade_id is None
+
+
+def test_referencia_inexistente_nao_fecha_a_unica_oferta_aberta():
+    crivo = quiz("crivo")
+    pedido("ped-1", oportunidade_ref="lixo-qualquer", produto="outro")
+    aprovado("ped-1")
+    crivo.refresh_from_db()
+    assert not crivo.encerrada and crivo.etapa == "nova"
+    assert CompraDaOportunidade.objects.get().oportunidade_id is None
+
+
+def test_aprovacao_antes_do_pedido_corrigida_pela_referencia_reabre_a_oferta_errada():
+    from django.utils import timezone
+
+    crivo = quiz("crivo")
+    cura = quiz("cura")
+    cura.desfecho_resultado = "perdida"
+    cura.desfecho_motivo = "Sem interesse"
+    cura.desfecho_encerrada_em = timezone.now()
+    cura.etapa = "perdida"
+    cura.save()
+
+    aprovado("ped-1")  # chega antes do pedido, sem referência
+    crivo.refresh_from_db()
+    assert crivo.etapa == "ganha"
+
+    pedido("ped-1", oportunidade_ref=str(cura.id))
+    _recarregar(crivo, cura)
+    assert cura.etapa == "ganha" and cura.encerrada
+    assert crivo.etapa != "ganha" and not crivo.encerrada
+    assert CompraDaOportunidade.objects.get().oportunidade_id == cura.id

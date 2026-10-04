@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import smtplib
 from dataclasses import dataclass
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.mail import EmailMessage, make_msgid
@@ -19,6 +20,7 @@ from . import descadastro as descadastros
 from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
+PENDENTE_ABANDONADA = timedelta(minutes=2)
 
 
 @dataclass
@@ -45,6 +47,12 @@ def bloqueio_por_descadastro(conversa: Conversa) -> bool:
     ).exists()
 
 
+def _pendente_abandonada(mensagem: MensagemDaConversa) -> bool:
+    """Linha criada e nunca enviada: o processo caiu antes de chamar o provedor."""
+    return (mensagem.estado_envio == "pendente" and mensagem.mensagem_whatsapp_id is None
+            and mensagem.ocorrida_em < timezone.now() - PENDENTE_ABANDONADA)
+
+
 def _estado_whatsapp(status: str) -> str:
     return status if status in {"desconhecido", "aceito", "enviado", "entregue", "lido", "falhou"} else "desconhecido"
 
@@ -53,8 +61,11 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
            autor_id: str = "", modelo: dict | None = None, assunto: str = "") -> Resultado:
     chave = chave_idempotencia.strip()
     existente = conversa.mensagens.filter(chave_idempotencia=chave).first()
+    retomada = False
     if existente is not None and existente.estado_envio != "falhou":
-        return Resultado("repetida", _sincronizar(existente))
+        if not _pendente_abandonada(existente):
+            return Resultado("repetida", _sincronizar(existente))
+        retomada = True
     if autor == "agente" and conversa.estado == "pessoa":
         return Resultado("conversa_com_pessoa", detalhe="uma pessoa da equipe assumiu esta conversa")
     if bloqueio_por_descadastro(conversa):
@@ -76,6 +87,15 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
                     texto=texto, assunto=assunto[:300], estado_envio="pendente",
                     chave_idempotencia=chave, ocorrida_em=timezone.now(),
                 )
+            elif retomada:
+                # Quem ganhar a disputa pela linha abandonada é o único a reenviar.
+                reservada = MensagemDaConversa.objects.filter(
+                    pk=existente.pk, estado_envio="pendente", mensagem_whatsapp__isnull=True,
+                    ocorrida_em__lt=timezone.now() - PENDENTE_ABANDONADA,
+                ).update(ocorrida_em=timezone.now())
+                if not reservada:
+                    return Resultado("repetida", _sincronizar(existente))
+                existente.refresh_from_db()
             else:
                 existente.estado_envio, existente.erro = "pendente", ""
                 existente.save(update_fields=["estado_envio", "erro"])
