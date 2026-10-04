@@ -78,7 +78,13 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
 from apps.core.crm_conversas import crm_conversa, crm_conversas
-from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
+from apps.core.crm_agentes import (
+    crm_agentes,
+    crm_agentes_ativar,
+    crm_agentes_nova,
+    crm_agentes_retomar,
+    crm_agentes_voltar,
+)
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.menu import (
@@ -362,8 +368,10 @@ urlpatterns = [
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
     path("robos/conhecimento/comercial", conhecimento_comercial_tela, name="conhecimento_comercial"),
-    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`).
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`): a
+    # única página da equipe comercial de agentes (`apps/comercial`).
     path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/trabalhos/<int:trabalho_id>/retomar/", crm_agentes_retomar, name="crm_agentes_retomar"),
     path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
     path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
     path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),
