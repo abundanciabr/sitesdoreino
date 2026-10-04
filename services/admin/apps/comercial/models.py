@@ -80,6 +80,9 @@ class TrabalhoComercial(models.Model):
         ATENDER_MENSAGEM = "atender_mensagem", "Atender mensagem"
         ACOMPANHAR_PAGAMENTO = "acompanhar_pagamento", "Acompanhar pagamento"
         ANALISAR_RESULTADOS = "analisar_resultados", "Analisar resultados"
+        REANALISAR_PERFIL = "reanalisar_perfil", "Atualizar o perfil"
+        RECUPERAR_COMPRA = "recuperar_compra", "Recuperar compra"
+        REGISTRAR_ESTORNO = "registrar_estorno", "Registrar estorno"
 
     class Estado(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"

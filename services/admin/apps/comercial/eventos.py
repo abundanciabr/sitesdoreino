@@ -5,7 +5,12 @@
   espera 30 minutos, e o quiz concluído nesse meio cancela o que era parcial);
 * `mensagem.recebida` → `atender_mensagem`;
 * `pagamento.aprovado` → fecha os acompanhamentos daquela oportunidade ou
-  daquele pedido, sem chamar o modelo.
+  daquele pedido, sem chamar o modelo;
+* `pagamento.recusado` e `pix.expirado` → `recuperar_compra` (o atendimento
+  vê se a pessoa já pagou e, se não, manda UMA mensagem com as condições
+  liberadas); espera 10 minutos para a pessoa reabrir o link sozinha;
+* `pagamento.reversao_confirmada` → `registrar_estorno` (nota na oportunidade
+  e aviso para a equipe; o agente não conversa sobre estorno).
 
 Reentrega do mesmo `event_id` não cria nada de novo (`EventoComercial` e a
 chave de idempotência do trabalho). Nada aqui chama outra célula: o trabalho
@@ -27,6 +32,8 @@ from .models import EventoComercial, TrabalhoComercial
 log = logging.getLogger(__name__)
 
 ESPERA_DA_CAPTURA_PARCIAL = timedelta(minutes=30)
+# Dá tempo de a pessoa reabrir o link e pagar sozinha antes de o agente falar.
+ESPERA_DA_RECUPERACAO = timedelta(minutes=10)
 
 E = TrabalhoComercial.Estado
 T = TrabalhoComercial.Tipo
@@ -260,11 +267,135 @@ def ao_pagamento_aprovado(envelope: dict):
     return coordenador._fechar_por_pagamento(evento, email=email, site_id=site_id)
 
 
+def _blocos(data: dict):
+    yield data
+    for chave in ("metadata", "contexto", "context"):
+        bloco = data.get(chave)
+        if isinstance(bloco, dict):
+            yield bloco
+
+
+def _referencia(data: dict, campo: str, limite: int = 120) -> str:
+    """`oportunidade_ref` e `oferta_ref` que o checkout ecoa no aviso do pagamento
+    (no topo ou em `metadata`/`contexto`)."""
+    for bloco in _blocos(data):
+        valor = _texto(bloco.get(campo), limite)
+        if valor:
+            return valor
+    return ""
+
+
+def _sandbox(data: dict) -> bool:
+    return any(
+        bloco.get("sandbox") is True or _texto(bloco.get("ambiente")).lower() == "sandbox"
+        for bloco in _blocos(data)
+    )
+
+
+def _pedido_do_evento(data: dict) -> str:
+    return _texto(data.get("order_id") or data.get("pedido_id"), 120)
+
+
+def _oportunidade_do_pedido(pedido: str, site_id: str) -> str:
+    """O link preparado pelo agente guardou o pedido no trabalho."""
+    ligado = TrabalhoComercial.objects.filter(pedido_id=pedido, site_id=site_id).exclude(
+        oportunidade_id="").first()
+    return ligado.oportunidade_id if ligado is not None else ""
+
+
+def _da_falha_de_pagamento(nome: str, envelope: dict):
+    """Cartão recusado ou Pix vencido: abre `recuperar_compra`. Uma por (site,
+    pedido, tentativa); a reentrega do mesmo evento não cria outra."""
+    data = envelope.get("data") or {}
+    site_id = _site(data)
+    pedido = _pedido_do_evento(data)
+    if not site_id or not pedido:
+        return None
+    oportunidade = _referencia(data, "oportunidade_ref", 80)
+    if not _registrar(envelope, nome, site_id=site_id, oportunidade_ref=oportunidade, pedido_id=pedido):
+        return None
+    if not coordenador.ligado():
+        return None
+    contato = _contato(data)
+    tentativa = _texto(data.get("payment_id") or envelope.get("event_id"), 120)
+    quem = _chave_do_lead(site_id, contato)
+    trabalho, _ = coordenador.criar(
+        T.RECUPERAR_COMPRA,
+        f"recuperar:{site_id}:{pedido}:{tentativa}",
+        origem=nome,
+        evento_id=_texto(envelope.get("event_id"), 120),
+        site_id=site_id,
+        oportunidade_id=oportunidade or _oportunidade_do_pedido(pedido, site_id),
+        pedido_id=pedido,
+        chave_da_conversa=quem or f"pedido:{site_id}:{pedido}",
+        teste=de_teste(contato, data) or _sandbox(data),
+        nao_antes_de=timezone.now() + ESPERA_DA_RECUPERACAO,
+        entrada={
+            "contato": contato,
+            "motivo_da_falha": nome,  # pagamento.recusado (cartão) ou pix.expirado
+            "metodo": _texto(data.get("method"), 20),
+            "codigo_do_provedor": _texto(data.get("reason_code"), 120),
+            "pedido_recusado": pedido,
+            "tentativa": tentativa,
+            "oferta_ref": _referencia(data, "oferta_ref"),
+            "host": _host(data) or servicos.host_do_site(site_id),
+        },
+    )
+    return trabalho
+
+
+def ao_pagamento_recusado(envelope: dict):
+    return _da_falha_de_pagamento("pagamento.recusado", envelope)
+
+
+def ao_pix_expirado(envelope: dict):
+    return _da_falha_de_pagamento("pix.expirado", envelope)
+
+
+def ao_reversao_confirmada(envelope: dict):
+    """Estorno ou contestação confirmada pelo provedor: não cria venda, não
+    reabre oferta e o agente não conversa sobre isso. Abre `registrar_estorno`,
+    que anota na oportunidade e avisa a equipe."""
+    data = envelope.get("data") or {}
+    site_id = _site(data)
+    pedido = _pedido_do_evento(data)
+    if not site_id or not pedido:
+        return None
+    oportunidade = _referencia(data, "oportunidade_ref", 80)
+    if not _registrar(envelope, "pagamento.reversao_confirmada", site_id=site_id,
+                      oportunidade_ref=oportunidade, pedido_id=pedido):
+        return None
+    if not coordenador.ligado():
+        return None
+    referencia = _texto(data.get("provider_reference_id"), 120) or _texto(envelope.get("event_id"), 120)
+    trabalho, _ = coordenador.criar(
+        T.REGISTRAR_ESTORNO,
+        f"estorno:{site_id}:{pedido}:{referencia}",
+        origem="pagamento.reversao_confirmada",
+        evento_id=_texto(envelope.get("event_id"), 120),
+        site_id=site_id,
+        oportunidade_id=oportunidade or _oportunidade_do_pedido(pedido, site_id),
+        pedido_id=pedido,
+        chave_da_conversa=f"pedido:{site_id}:{pedido}",
+        teste=_sandbox(data),
+        entrada={
+            "motivo": "contestacao" if _texto(data.get("motivo")) == "contestacao" else "estorno",
+            "provedor": _texto(data.get("provider"), 40),
+            "oferta_ref": _referencia(data, "oferta_ref"),
+            "host": _host(data) or servicos.host_do_site(site_id),
+        },
+    )
+    return trabalho
+
+
 STREAMS = {
     "eventos.quiz.completado": ao_quiz_completado,
     "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
     "eventos.mensagem.recebida": ao_mensagem_recebida,
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
+    "eventos.pagamento.recusado": ao_pagamento_recusado,
+    "eventos.pix.expirado": ao_pix_expirado,
+    "eventos.pagamento.reversao_confirmada": ao_reversao_confirmada,
 }
 
 
