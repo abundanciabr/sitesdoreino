@@ -76,9 +76,30 @@ codigo_servico() {
 
 # Recria somente a aplicação vigente, ou os serviços correspondentes à origem
 # depois de uma recuperação. O helper Python sempre prova as rotas públicas.
+#
+# Recriar contêiner à mão enquanto o publicador troca a aplicação derruba o site:
+# em 04/10/2026 um provisionamento coincidiu com uma publicação e deu conflito
+# de nome de contêiner (~2 min fora do ar). Por isso este passo pega a MESMA
+# trava do publicador (infra/publicar.py, LOTES / ".lote.lock") e espera a
+# publicação acabar antes de mexer. Sem `flock` na máquina (só a VPS importa),
+# segue sem trava, como o publicador faz sem `fcntl`.
 recarregar_servicos() {
   [ "$#" -eq 1 ] || return 2
   local origem="$1"
   case "$origem" in *.sh) ;; *) origem="$origem.sh" ;; esac
-  python3 "$(dirname "${BASH_SOURCE[0]}")/recarregar-aplicacao.py" "$origem"
+  local aqui trava
+  aqui="$(dirname "${BASH_SOURCE[0]}")"
+  trava="${PLATAFORMA_DIR:-/opt/plataforma}/publicacoes/lotes/.lote.lock"
+  if ! command -v flock >/dev/null 2>&1; then
+    python3 "$aqui/recarregar-aplicacao.py" "$origem"
+    return
+  fi
+  mkdir -p "$(dirname "$trava")" || return
+  (
+    if ! flock -n 9; then
+      echo "Há uma publicação em andamento; espero ela terminar antes de recarregar a aplicação..."
+      flock 9
+    fi
+    python3 "$aqui/recarregar-aplicacao.py" "$origem"
+  ) 9>>"$trava"
 }
