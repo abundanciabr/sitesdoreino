@@ -2,6 +2,7 @@
 from ninja import NinjaAPI
 
 from apps.core.api import router as mensageria_router
+from apps.conversas.api import router as conversas_router
 from apps.core.auth import bearerAuth
 from apps.whatsapp.api import router as whatsapp_router
 
@@ -67,3 +68,4 @@ api = NinjaAPI(
 )
 api.add_router("", mensageria_router)
 api.add_router("whatsapp/", whatsapp_router)
+api.add_router("", conversas_router)
