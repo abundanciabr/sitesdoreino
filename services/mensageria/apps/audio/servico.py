@@ -97,11 +97,13 @@ def registrar_do_webhook(config: ConfiguracaoWhatsApp, item: dict) -> AudioReceb
     if audio is None or chave.get("fromMe"):
         return None
     provider_id = chave.get("id")
-    remoto = str(chave.get("remoteJidAlt") or chave.get("remoteJid") or "")
-    if not isinstance(provider_id, str) or not provider_id or remoto.endswith("@g.us"):
+    remoto = str(chave.get("remoteJid") or "")
+    if not isinstance(provider_id, str) or not provider_id or remoto.endswith(("@g.us", "@broadcast", "@newsletter")):
         return None
+    from apps.conversas.entrada import _telefone_do_jid
+
     try:
-        telefone = normalizar_telefone(remoto.split("@", 1)[0].split(":", 1)[0])
+        telefone = normalizar_telefone(_telefone_do_jid(chave, item))
     except ValueError:
         return None
     segundos = audio.get("seconds")
@@ -133,7 +135,30 @@ def registrar_do_webhook(config: ConfiguracaoWhatsApp, item: dict) -> AudioReceb
             )
     except IntegrityError:
         registro = AudioRecebido.objects.get(instancia=config.instancia, provider_id=provider_id)
+    if not registro.mensagem_ref:
+        _ligar_a_conversa(registro)
     return registro
+
+
+def _mensagem_da_conversa(audio: AudioRecebido):
+    from apps.conversas.models import MensagemDaConversa
+
+    if audio.mensagem_ref:
+        return MensagemDaConversa.objects.filter(pk=audio.mensagem_ref).select_related("conversa").first()
+    return MensagemDaConversa.objects.filter(
+        direcao="entrada", id_externo=audio.provider_id,
+        conversa__site_id=audio.site_id, conversa__canal="whatsapp",
+    ).select_related("conversa").first()
+
+
+def _ligar_a_conversa(audio: AudioRecebido) -> None:
+    """O áudio fica ligado à mensagem da conversa em que chegou."""
+    mensagem = _mensagem_da_conversa(audio)
+    if mensagem is None:
+        return
+    audio.conversa_ref, audio.mensagem_ref = str(mensagem.conversa_id), str(mensagem.pk)
+    AudioRecebido.objects.filter(pk=audio.pk).update(
+        conversa_ref=audio.conversa_ref, mensagem_ref=audio.mensagem_ref)
 
 
 def baixar_midia(audio: AudioRecebido) -> bytes:
@@ -188,8 +213,39 @@ def guardar_transcricao(audio: AudioRecebido, *, texto: str, idioma: str = "", s
     audio.situacao = AudioRecebido.Situacao.TRANSCRITO
     audio.erro = ""
     audio.transcrito_em = timezone.now()
-    audio.save()
+    if not audio.mensagem_ref:
+        _ligar_a_conversa(audio)
+    with transaction.atomic():
+        audio.save()
+        _entregar_na_conversa(audio)
     return audio
+
+
+MENSAGEM_TRANSCRITA = "mensagem.transcrita"
+
+
+def _entregar_na_conversa(audio: AudioRecebido) -> None:
+    """A transcrição vai para a mensagem da conversa (o atendente lê ali) e o
+    fato `mensagem.transcrita` avisa quem atende que já dá para responder."""
+    mensagem = _mensagem_da_conversa(audio)
+    if mensagem is None:
+        return
+    from apps.conversas.entrada import _evento
+    from apps.jornadas.eventos import emitir
+    from apps.jornadas.tasks import relay_apos_commit
+
+    mensagem.transcricao = audio.transcricao
+    mensagem.save(update_fields=["transcricao"])
+    dados = _evento(mensagem.conversa, mensagem)
+    dados.update({
+        "audio_id": audio.pk,
+        "transcricao": audio.transcricao,
+        "ambiguidades": audio.ambiguidades,
+        "pedir_esclarecimento": audio.pedir_esclarecimento,
+        "pergunta_de_esclarecimento": audio.pergunta_de_esclarecimento,
+    })
+    emitir(MENSAGEM_TRANSCRITA, dados, envelope_extra={"ator_id": None})
+    transaction.on_commit(relay_apos_commit)
 
 
 def anotar_falha(audio: AudioRecebido, erro: str, definitiva: bool = False) -> AudioRecebido:
@@ -208,6 +264,7 @@ def resumo_para_o_atendente(audio: AudioRecebido) -> dict:
         "audio_id": audio.pk,
         "provider_id": audio.provider_id,
         "conversa_ref": audio.conversa_ref,
+        "mensagem_ref": audio.mensagem_ref,
         "recebido_em": audio.recebido_em.isoformat(),
         "situacao": audio.situacao,
         "segundos": audio.segundos,
@@ -249,7 +306,19 @@ def decidir_formato(site_id: str, telefone: str, canal: str = "whatsapp") -> dic
     aceita = canal_aceita_audio(site_id, canal)
     ultimo_audio = AudioRecebido.objects.filter(site_id=site_id, telefone=telefone).order_by("-recebido_em").first()
     ja_falou = RespostaEmVoz.objects.filter(site_id=site_id, telefone=telefone).exclude(status="falhou").exists()
-    if not aceita:
+    conversa = _conversa(site_id, telefone) if canal == "whatsapp" else None
+    bloqueio = ""
+    if conversa is not None:
+        from apps.conversas.envio import bloqueio_por_descadastro
+
+        if conversa.estado == "pessoa":
+            bloqueio = "conversa_com_pessoa"
+        elif bloqueio_por_descadastro(conversa):
+            bloqueio = "descadastrado"
+    if bloqueio:
+        # Não gasta com voz: o envio normal da conversa explica o bloqueio.
+        formato, motivo = "texto", bloqueio
+    elif not aceita:
         formato, motivo = "texto", "canal_sem_audio"
     elif modo == PreferenciaDeResposta.Modo.TEXTO:
         formato, motivo = "texto", "lead_prefere_texto"
@@ -292,6 +361,18 @@ def enviar_audio(*, site_id: str, telefone: str, texto: str, audio: bytes, mime:
         raise ValueError("o texto falado e obrigatorio")
     numero = normalizar_telefone(telefone)
     config = ConfiguracaoWhatsApp.objects.filter(site_id=site_id, ativo=True).first()
+    existente = RespostaEmVoz.objects.filter(site_id=site_id, chave_idempotencia=chave_idempotencia).first()
+    if existente is not None:
+        return existente
+    conversa = _conversa(site_id, numero)
+    if conversa is not None:
+        from apps.conversas.envio import bloqueio_por_descadastro
+
+        if conversa.estado == "pessoa":
+            raise Bloqueado("conversa_com_pessoa", "uma pessoa da equipe assumiu esta conversa")
+        if bloqueio_por_descadastro(conversa):
+            raise Bloqueado("descadastrado", "o contato pediu para parar no whatsapp")
+        conversa_ref = str(conversa.pk)
     with transaction.atomic():
         resposta, criada = RespostaEmVoz.objects.select_for_update().get_or_create(
             site_id=site_id, chave_idempotencia=chave_idempotencia,
@@ -304,6 +385,50 @@ def enviar_audio(*, site_id: str, telefone: str, texto: str, audio: bytes, mime:
         )
         if not criada:
             return resposta
+        if conversa is not None:
+            from apps.conversas.models import MensagemDaConversa
+
+            saida = MensagemDaConversa.objects.create(
+                conversa=conversa, direcao="saida", autor="agente", texto=resposta.texto,
+                midia_tipo="audio", midia_referencia=f"voz:{resposta.pk}", midia_mime=resposta.mime,
+                estado_envio="pendente", chave_idempotencia=f"voz:{chave_idempotencia}"[:100],
+                ocorrida_em=timezone.now(),
+            )
+            resposta.mensagem_ref = str(saida.pk)
+            resposta.save(update_fields=["mensagem_ref"])
+    try:
+        return _enviar(resposta, config, numero, audio)
+    finally:
+        _sincronizar_conversa(resposta)
+
+
+class Bloqueado(Exception):
+    """A conversa não aceita resposta do agente agora; nada foi enviado."""
+
+    def __init__(self, resultado: str, detalhe: str):
+        super().__init__(detalhe)
+        self.resultado, self.detalhe = resultado, detalhe
+
+
+def _conversa(site_id: str, numero: str):
+    from apps.conversas.models import Conversa
+
+    return Conversa.objects.filter(site_id=site_id, canal="whatsapp", endereco=numero).first()
+
+
+def _sincronizar_conversa(resposta: RespostaEmVoz) -> None:
+    if not resposta.mensagem_ref:
+        return
+    from apps.conversas.models import Conversa, MensagemDaConversa
+
+    MensagemDaConversa.objects.filter(pk=resposta.mensagem_ref).update(
+        estado_envio=resposta.status, id_externo=resposta.provider_id, erro=resposta.erro[:300])
+    if resposta.status != "falhou":
+        Conversa.objects.filter(mensagens__pk=resposta.mensagem_ref).update(ultima_mensagem_em=timezone.now())
+
+
+def _enviar(resposta: RespostaEmVoz, config, numero: str, audio: bytes) -> RespostaEmVoz:
+    site_id = resposta.site_id
     if config is None or config.transporte not in TRANSPORTES_COM_AUDIO:
         resposta.status, resposta.erro = "falhou", "canal sem audio"
         resposta.save(update_fields=["status", "erro", "atualizado_em"])
@@ -352,6 +477,7 @@ def atualizar_estado_de_voz(instancia: str, provider_id: str, estado: str) -> in
         else:
             continue
         resposta.save(update_fields=["status", "erro", "atualizado_em"])
+        _sincronizar_conversa(resposta)
         alteradas += 1
     return alteradas
 

@@ -200,10 +200,16 @@ def responder_em_voz(request, site_id: str, dados: VozEntrada):
             mime=dados.mime, chave_idempotencia=chave, conversa_ref=dados.conversa_ref,
             modelo=dados.modelo, voz=dados.voz, custo_usd=dados.custo_usd,
         )
+    except servico.Bloqueado as bloqueio:
+        return {"id": None, "resultado": bloqueio.resultado, "status": "nao_enviado", "provider_id": "",
+                "erro": bloqueio.detalhe, "texto": dados.texto, "conversa_ref": dados.conversa_ref,
+                "mensagem_ref": ""}
     except ValueError as exc:
         raise HttpError(422, str(exc))
-    return {"id": resposta.pk, "status": resposta.status, "provider_id": resposta.provider_id,
-            "erro": resposta.erro, "texto": resposta.texto, "conversa_ref": resposta.conversa_ref}
+    return {"id": resposta.pk, "resultado": "falhou" if resposta.status == "falhou" else "enviada",
+            "status": resposta.status, "provider_id": resposta.provider_id,
+            "erro": resposta.erro, "texto": resposta.texto, "conversa_ref": resposta.conversa_ref,
+            "mensagem_ref": resposta.mensagem_ref}
 
 
 @router.post("/{site_id}/consumo")

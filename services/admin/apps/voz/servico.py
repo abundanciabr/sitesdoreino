@@ -233,9 +233,10 @@ def responder(*, site_id: str, telefone: str, texto: str, chave_idempotencia: st
     ProcessamentoDeVoz.objects.filter(
         tipo=ProcessamentoDeVoz.Tipo.SINTESE, site_id=site_id, referencia=chave_idempotencia[:160],
     ).update(situacao=ProcessamentoDeVoz.Situacao.ENTREGUE)
-    return {"formato": "audio", "motivo": decisao.get("motivo", ""), "status": enviado.get("status"),
+    return {"formato": "audio", "motivo": decisao.get("motivo", ""),
+            "resultado": enviado.get("resultado", ""), "status": enviado.get("status"),
             "erro": enviado.get("erro", ""), "texto": enviado.get("texto", falado),
-            "custo_usd": str(sintese.custo_usd)}
+            "mensagem_ref": enviado.get("mensagem_ref", ""), "custo_usd": str(sintese.custo_usd)}
 
 
 def consumo_da_conversa(site_id: str, *, telefone: str = "", conversa_ref: str = "") -> dict:

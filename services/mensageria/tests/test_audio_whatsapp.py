@@ -44,13 +44,14 @@ def _webhook(cliente, corpo):
 
 def test_nota_de_voz_recebida_vira_registro_unico_e_ignora_as_proprias(configurado):
     cliente = Client()
-    assert _webhook(cliente, _upsert()).json() == {"audios": [AudioRecebido.objects.get().pk]}
+    assert _webhook(cliente, _upsert()).json() == {"recebidas": 1}
+    assert AudioRecebido.objects.count() == 1
     _webhook(cliente, _upsert())  # o provedor repete o mesmo retorno
     _webhook(cliente, _upsert(provider_id="minha", de_mim=True))
     texto = _webhook(cliente, {"event": "messages.upsert", "instance": "instancia-a", "data": {
         "key": {"id": "txt", "remoteJid": "5511988887777@s.whatsapp.net"},
         "message": {"conversation": "oi"}}})
-    assert texto.json() == {"ignorado": True}
+    assert texto.json() == {"recebidas": 1}
     audio = AudioRecebido.objects.get()
     assert (audio.site_id, audio.telefone, audio.segundos, audio.situacao) == (
         "site-a", "5511988887777", 7, "recebido")
@@ -118,7 +119,8 @@ def test_transcricao_guardada_e_entregue_ao_atendente_so_do_mesmo_lead(configura
     assert entrega[0]["pedir_esclarecimento"] is True
     assert "telefone" not in json.dumps(entrega)
     audio.refresh_from_db()
-    assert audio.entregue_em is not None and audio.conversa_ref == "conv-9"
+    # O áudio já estava ligado à conversa em que chegou; o atendente acha por ela também.
+    assert audio.entregue_em is not None and audio.conversa_ref and audio.mensagem_ref
     assert audio.situacao == "transcrito" and str(audio.custo_usd) == "0.000400"
     pendentes = cliente.get("/api/mensageria/audio/pendentes", **LEITURA).json()["audios"]
     assert {p["site_id"] for p in pendentes} == {"site-a", "site-b"} and len(pendentes) == 2

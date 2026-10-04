@@ -17,7 +17,9 @@ class AudioRecebido(models.Model):
     instancia = models.CharField(max_length=100)
     provider_id = models.CharField(max_length=160)
     telefone = models.CharField(max_length=20)
+    # A conversa e a mensagem (apps.conversas) em que o áudio chegou.
     conversa_ref = models.CharField(max_length=160, blank=True, default="")
+    mensagem_ref = models.CharField(max_length=64, blank=True, default="")
     mime = models.CharField(max_length=80, blank=True, default="")
     segundos = models.PositiveIntegerField(null=True, blank=True)
     tamanho_bytes = models.PositiveIntegerField(default=0)
@@ -76,6 +78,8 @@ class RespostaEmVoz(models.Model):
     conteudo = models.BinaryField(null=True, blank=True)
     modelo = models.CharField(max_length=60, blank=True, default="")
     voz = models.CharField(max_length=40, blank=True, default="")
+    # A mensagem de saída na conversa (apps.conversas), com o mesmo texto.
+    mensagem_ref = models.CharField(max_length=64, blank=True, default="")
     custo_usd = models.DecimalField(max_digits=12, decimal_places=6, default=0)
     instancia = models.CharField(max_length=100, blank=True, default="")
     status = models.CharField(max_length=20, choices=ESTADOS, default="desconhecido")

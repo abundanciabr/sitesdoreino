@@ -163,7 +163,8 @@ def conectar(site_id: str, renovar: bool = False) -> dict:
         return {"estado": "indisponivel", "qr": "", "erro": str(exc)}
 
 
-def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str, referencia: str) -> MensagemWhatsApp:
+def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str, referencia: str,
+                    modelo: dict | None = None) -> MensagemWhatsApp:
     """Reserva a chave antes do POST. Resultado desconhecido nunca é reenviado às cegas."""
     if connection.in_atomic_block:
         raise RuntimeError("envio WhatsApp exige transacao externa concluida")
@@ -190,9 +191,16 @@ def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str,
         mensagem.instancia = config.instancia if config else ""
         mensagem.erro = "aguardando resposta do gateway"
         mensagem.save(update_fields=["tentativas", "status", "instancia", "erro", "atualizado_em"])
-    if not numero or not corpo.strip() or config is None:
+    nome_modelo = str((modelo or {}).get("nome") or "").strip()
+    if not numero or not (corpo.strip() or nome_modelo) or config is None:
         mensagem.status = "falhou"
-        mensagem.erro = "telefone invalido" if not numero else "corpo vazio" if not corpo.strip() else "instancia nao configurada"
+        mensagem.erro = "telefone invalido" if not numero else "corpo vazio" if not (corpo.strip() or nome_modelo) else "instancia nao configurada"
+        mensagem.save(update_fields=["status", "erro", "atualizado_em"])
+        return mensagem
+    if modelo and config.transporte != "WHATSAPP-BUSINESS":
+        # Modelo aprovado só existe na API oficial; nada foi enviado.
+        mensagem.status = "falhou"
+        mensagem.erro = "modelo aprovado indisponivel neste transporte"
         mensagem.save(update_fields=["status", "erro", "atualizado_em"])
         return mensagem
     estado = estado_da_conexao(site_id)
@@ -202,7 +210,14 @@ def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str,
         mensagem.save(update_fields=["status", "erro", "atualizado_em"])
         return mensagem
     try:
-        resposta = _gateway("POST", f"message/sendText/{_instancia(config)}", {"number": numero, "text": corpo})
+        if modelo:
+            resposta = _gateway("POST", f"message/sendTemplate/{_instancia(config)}", {
+                "number": numero, "name": nome_modelo,
+                "language": str(modelo.get("idioma") or "pt_BR"),
+                "components": modelo.get("componentes") if isinstance(modelo.get("componentes"), list) else [],
+            })
+        else:
+            resposta = _gateway("POST", f"message/sendText/{_instancia(config)}", {"number": numero, "text": corpo})
     except GatewayIndisponivel as exc:
         # 401/403 ou config ausente não chegaram ao WhatsApp. Outros HTTPs são incertos.
         seguro = str(exc) in {"gateway nao configurado", "gateway respondeu HTTP 401", "gateway respondeu HTTP 403", "gateway respondeu HTTP 404"}
