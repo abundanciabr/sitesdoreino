@@ -582,6 +582,22 @@ def test_email_sem_smtp_falha_explicito(base, settings):
     assert falha["resultado"] == "falhou" and "nao configurado" in falha["mensagem"]["erro"]
 
 
+def test_email_com_erro_incerto_guarda_o_motivo(base, settings, monkeypatch):
+    settings.EMAIL_HOST, settings.DEFAULT_FROM_EMAIL = "smtp.teste", "equipe@meshcraft.top"
+
+    def quebra(self, fail_silently=False):
+        raise OSError("conexao caiu no meio")
+
+    monkeypatch.setattr("django.core.mail.EmailMessage.send", quebra)
+    cliente = Client()
+    aberta = _api(cliente, "POST", "/conversas", {"site_id": SITE, "canal": "email", "lead_id": LEAD_A,
+                                                  "endereco": "ana@exemplo.com"}).json()
+    saida = _api(cliente, "POST", f"/conversas/{aberta['id']}/mensagens",
+                 {"site_id": SITE, "texto": "oi", "chave_idempotencia": "x2"}).json()
+    assert saida["mensagem"]["estado_envio"] == "desconhecido"
+    assert saida["mensagem"]["erro"] == "resultado incerto (OSError: conexao caiu no meio)"
+
+
 def test_abrir_conversa_proativa_nao_troca_o_lead(base):
     cliente = Client()
     corpo = {"site_id": SITE, "canal": "whatsapp", "lead_id": LEAD_A, "endereco": "(11) 98888-7777"}

@@ -2218,6 +2218,62 @@ class MedicaoClient:
         return desfecho, None if fila is None else fila["total"]
 
 
+class FunilCrmClient(MedicaoClient):
+    """contracts/metricas.openapi.yaml — `countCrmFunnel` (`GET /crm/funil`).
+
+    O funil comercial do CRM com agentes: oportunidades abertas, com resposta
+    do lead, com link enviado, com pedido, ganhas e receita, por versão de
+    estratégia e por atendente. Mesmo par (`METRICAS_API_URL` e
+    `METRICAS_API_TOKEN`) e mesmos desfechos da `MedicaoClient`: sem par ou sem
+    resposta a tela diz "ainda indisponível", nunca zero.
+    """
+
+    CAMPOS_DO_GRUPO = (
+        "abertas", "com_resposta", "com_link_enviado", "com_pedido", "ganhas", "receita_centavos", "perdidas",
+    )
+
+    def _grupo(self, linha: object, chave: str) -> "dict | None":
+        if not isinstance(linha, dict) or chave not in linha:
+            return None
+        if any(type(linha.get(c)) is not int for c in self.CAMPOS_DO_GRUPO):
+            return None
+        grupo = {c: linha[c] for c in self.CAMPOS_DO_GRUPO}
+        grupo[chave] = linha[chave]
+        grupo["amostra_insuficiente"] = bool(linha.get("amostra_insuficiente"))
+        return grupo
+
+    def funil_crm(self, site_id: str, desde: dt.date, ate: dt.date) -> "tuple[str, dict | None]":
+        """`{"oportunidades", "mensagens_recebidas", "amostra_minima",
+        "por_estrategia": [...], "por_atendente": [...]}`, ou o desfecho que
+        explica por que não veio. Forma torta vira `NAO_RESPONDEU`."""
+        desfecho, corpo = self._pedir(
+            "/crm/funil", {"site_id": site_id, "desde": desde.isoformat(), "ate": ate.isoformat()}
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        corpo = corpo if isinstance(corpo, dict) else {}
+        por_estrategia = [self._grupo(l, "estrategia_versao") for l in corpo.get("por_estrategia") or []] \
+            if isinstance(corpo.get("por_estrategia"), list) else None
+        por_atendente = [self._grupo(l, "atendente") for l in corpo.get("por_atendente") or []] \
+            if isinstance(corpo.get("por_atendente"), list) else None
+        if (
+            type(corpo.get("oportunidades")) is not int
+            or type(corpo.get("mensagens_recebidas")) is not int
+            or por_estrategia is None or por_atendente is None
+            or None in por_estrategia or None in por_atendente
+        ):
+            logger.error("medicao: o funil do CRM veio fora do contrato")
+            return self.NAO_RESPONDEU, None
+        minima = corpo.get("amostra_minima")
+        return self.OK, {
+            "oportunidades": corpo["oportunidades"],
+            "mensagens_recebidas": corpo["mensagens_recebidas"],
+            "amostra_minima": minima if type(minima) is int else None,
+            "por_estrategia": por_estrategia,
+            "por_atendente": por_atendente,
+        }
+
+
 class LeadsClient:
     """services/leads/apps/core/api.py — `listLeads` e `getLead`.
 
