@@ -118,6 +118,7 @@ def test_painel_mostra_grupos_ultima_decisao_versao_custo_e_limite():
     from apps.comercial import papeis
     from apps.comercial.models import DecisaoComercial
 
+    AutorizacaoDeGasto.objects.all().delete()  # a migração 0002 já semeia uma autorização
     AutorizacaoDeGasto.objects.create(descricao="Robôs da equipe", destino="equipe", teto_mensal_usd=Decimal("10.00"), fonte="teste")
     estrategia = papeis.estrategia_ativa("atendimento")
     em_curso = _trabalho("executando", 1, oportunidade_id=OPORTUNIDADE, custo_usd=Decimal("0.250000"), motivo="")
@@ -160,6 +161,9 @@ def test_painel_mostra_grupos_ultima_decisao_versao_custo_e_limite():
 @com_comercial
 @respx.mock
 def test_sem_limite_autorizado_a_pagina_diz_isso():
+    from apps.agentes.models import AutorizacaoDeGasto
+
+    AutorizacaoDeGasto.objects.all().delete()  # a migração 0002 já semeia uma autorização
     r = dentro().get(reverse("crm_agentes"))
     assert r.status_code == 200
     assert "Nenhum limite de gasto autorizado" in r.content.decode()
