@@ -58,6 +58,16 @@ ESTADOS_TENTATIVA = {
 }
 ESTADOS_OPERACAO = {"sending", "reconciliation_required", "completed", "failed"}
 ESTADOS_OPERACAO_SAIDA = ESTADOS_OPERACAO | {"not_started"}
+# Referência que o comprador vê no erro do Pix Appmax: sha256 do id da
+# sessão do checkout (dados.js `referenciaDiagnostico`). A intent guarda a
+# sessão em `metadata.checkout_session_id`; a chave de idempotência já não é
+# a sessão (é a compra inteira), e só as intents antigas sem o metadata caem
+# na chave, que nelas era a própria sessão. Expressão avaliada na VPS com `t`
+# sendo a PaymentAttempt.
+REFERENCIA_DA_TENTATIVA = (
+    "hashlib.sha256(str((t.intent.metadata or {}).get('checkout_session_id')"
+    " or t.intent.idempotency_key).encode()).hexdigest()"
+)
 MOTIVOS_APPMAX_PIX = {
     "campo_expiration_date",
     "campo_document_number",
@@ -1364,7 +1374,7 @@ def medir(operacao, servico, referencia=""):
             "    print('APPMAX_SANDBOX_REQUIRED')\n"
             "    raise SystemExit(23)\n"
             f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').prefetch_related('operacoes').order_by('-created_at')[:100])\n"
-            "tentativas = [t for t in tentativas if not referencia or hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+            "tentativas = [t for t in tentativas if not referencia or " + REFERENCIA_DA_TENTATIVA + " == referencia]\n"
             "codigos = ('campo_expiration_date','campo_document_number','campo_customer_id','campo_order_id','campo_payment_data','sem_json','sem_campo_identificavel')\n"
             "def candidato(t):\n"
             "    bruto = t.reason or ''\n"
@@ -1372,7 +1382,7 @@ def medir(operacao, servico, referencia=""):
             "    operacoes = {x: 'not_started' for x in ('customer', 'order', 'payment')}\n"
             "    for operacao in t.operacoes.all():\n"
             "        operacoes[operacao.operation_type] = operacao.state\n"
-            "    return {'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(), 'criada_em': t.created_at.isoformat(), 'tentativa': t.state, 'intent': t.intent.status, 'motivo': motivo, 'qr_presente': bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64), 'operacoes': operacoes}\n"
+            "    return {'referencia': " + REFERENCIA_DA_TENTATIVA + ", 'criada_em': t.created_at.isoformat(), 'tentativa': t.state, 'intent': t.intent.status, 'motivo': motivo, 'qr_presente': bool(t.intent.pix_qr_code and t.intent.pix_qr_code_base64), 'operacoes': operacoes}\n"
             "if referencia:\n"
             "    assert len(tentativas) == 1\n"
             "    resumo = candidato(tentativas[0])\n"
@@ -1404,7 +1414,7 @@ def medir(operacao, servico, referencia=""):
             "from django.utils import timezone\n"
             "from pagamentos.core.models import AppmaxWebhookInbox, InstalacaoAppmax, PaymentAttempt\n"
             f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
-            "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+            "tentativas = [t for t in tentativas if " + REFERENCIA_DA_TENTATIVA + " == referencia]\n"
             "def nao_medido(acao, encontrados=None, instalacoes_observadas=None, inbox_consultada=False):\n"
             "    return {'resultado':'nao_medido','referencia':referencia,'registros_encontrados':encontrados,'inbox_consultada':inbox_consultada,'instalacoes_observadas':instalacoes_observadas,'pix_emv_preservado':False,'pix_qrcode_preservado':False,'pix_expiration_date_preservado':False,'estado_processamento':'nao_medido','recebido_em':None,'processado_em':None,'acao':acao}\n"
             "if len(tentativas) != 1:\n"
@@ -1482,7 +1492,7 @@ def medir(operacao, servico, referencia=""):
                 "    raise SystemExit(0)\n"
                 "grupos = {}\n"
                 "for t in tentativas:\n"
-                "    referencia_t = hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest()\n"
+                "    referencia_t = " + REFERENCIA_DA_TENTATIVA + "\n"
                 "    grupo = grupos.get(referencia_t)\n"
                 "    if grupo is None:\n"
                 "        grupos[referencia_t] = {'referencia': referencia_t, 'criada_em': t.created_at.isoformat(), 'metodo': t.intent.method, 'tentativa': t.state, 'intent': t.intent.status, 'tentativas': 1}\n"
@@ -1506,7 +1516,7 @@ def medir(operacao, servico, referencia=""):
                 "from django.utils import timezone\n"
                 "from pagamentos.core.models import AppmaxWebhookInbox, OutboxEvent, PaymentAttempt\n"
                 f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
-                "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+                "tentativas = [t for t in tentativas if " + REFERENCIA_DA_TENTATIVA + " == referencia]\n"
                 "def nao_medido(acao):\n"
                 "    print(json.dumps({'resultado': 'nao_medido', 'referencia': referencia, 'acao': acao}, sort_keys=True))\n"
                 "    raise SystemExit(0)\n"
@@ -1555,7 +1565,7 @@ def medir(operacao, servico, referencia=""):
             "from pagamentos.core.models import PaymentAttempt\n"
             "from pagamentos.providers.appmax.client import AppmaxClient\n"
             f"tentativas = list(PaymentAttempt.objects.filter(provider='appmax', platform_site_id='{SITE_MESHCRAFT}', intent__method='pix', created_at__gte=timezone.now()-timedelta(days=7)).select_related('intent').order_by('-created_at')[:100])\n"
-            "tentativas = [t for t in tentativas if hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest() == referencia]\n"
+            "tentativas = [t for t in tentativas if " + REFERENCIA_DA_TENTATIVA + " == referencia]\n"
             "def nao_medido(acao):\n"
             "    return {'resultado': 'nao_medido', 'referencia': referencia, 'acao': acao}\n"
             "if len(tentativas) != 1:\n"
@@ -1729,7 +1739,7 @@ def medir(operacao, servico, referencia=""):
             "    idade_horas = int((agora - t.created_at).total_seconds() // 3600)\n"
             "    consulta = consultar(t) if metodo == 'cartao' else None\n"
             "    saida.append({\n"
-            "        'referencia': hashlib.sha256(str(t.intent.idempotency_key).encode()).hexdigest(),\n"
+            "        'referencia': " + REFERENCIA_DA_TENTATIVA + ",\n"
             "        'metodo': metodo,\n"
             "        'estado_tentativa': t.state,\n"
             "        'estado_intent': t.intent.status,\n"

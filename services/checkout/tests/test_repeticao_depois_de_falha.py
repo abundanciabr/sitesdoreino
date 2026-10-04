@@ -18,6 +18,7 @@ import httpx
 import pytest
 
 from apps.core.api import _chave_da_compra
+from apps.core.clients import PagamentosClient
 from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import Order
 from tests.conftest import PAGAMENTOS, aprovado_v2
@@ -183,32 +184,48 @@ def test_chave_da_compra_muda_com_os_itens_mesmo_com_o_mesmo_total():
 ESTATICOS = Path(__file__).resolve().parents[1] / "static" / "checkout"
 
 
-def _finalizar_na_tela(status: int, corpo: dict, metodo: str = "pix") -> dict:
-    """Roda api.js + dados.js servidos no Node; o POST do pedido responde
-    `status` com `corpo` e o comprador escolheu `metodo`. Devolve para onde a
-    tela foi, o erro mostrado e o link oferecido para o pedido que já existe."""
+def _finalizar_na_tela(
+    status: int, corpo: dict, metodo: str = "pix", antes=(), email: str = "cliente@teste.com"
+) -> dict:
+    """Roda api.js + dados.js servidos no Node. `antes` são os cliques anteriores
+    na mesma tela, cada um (status, corpo, email, metodo), e status 0 é a
+    resposta perdida na rede; o último clique tem o POST do pedido respondendo
+    `status` com `corpo`, com o comprador em `email` e `metodo`. Devolve para
+    onde a tela foi no último clique, o erro mostrado e o link oferecido para o
+    pedido que já existe."""
     node = shutil.which("node")
     assert node, "Node ausente: instale o runtime do Node e rode novamente."
     programa = r"""
 const vm = require('node:vm');
-const [js, status, corpo, metodo] = process.argv.slice(1);
+const [js, passosJson] = process.argv.slice(1);
+const passos = JSON.parse(passosJson);
+let atual = null;
 const contexto = {
   document: {getElementById: () => ({textContent: 'false'})},
   window: {API_BASE: '/api/checkout', location: ''},
-  fetch: async () => ({
-    ok: false, status: Number(status), json: async () => JSON.parse(corpo),
-  }),
+  fetch: async () => {
+    if (atual.status === 0) throw new TypeError('Failed to fetch');
+    return {
+      ok: atual.status >= 200 && atual.status < 300, status: atual.status,
+      json: async () => atual.corpo,
+    };
+  },
 };
 vm.runInNewContext(js + '\nthis.ilha = dadosIsland();', contexto);
 const ilha = contexto.ilha;
 ilha.session = {id: 'sessao-1'};
-ilha.method = metodo;
 ilha.customer = {
   name: 'Cliente Teste', email: 'cliente@teste.com',
   phone: '(11) 99999-9999', cpf: '123.456.789-09',
 };
 (async () => {
-  await ilha.finalizar();
+  for (const passo of passos) {
+    atual = passo;
+    ilha.method = passo.metodo;
+    ilha.customer.email = passo.email;
+    contexto.window.location = '';
+    await ilha.finalizar();
+  }
   process.stdout.write(JSON.stringify({
     destino: String(contexto.window.location), erro: ilha.erro,
     aberto: ilha.pedidoAberto,
@@ -218,8 +235,11 @@ ilha.customer = {
     js = "\n".join(
         (ESTATICOS / nome).read_text(encoding="utf-8") for nome in ("api.js", "dados.js")
     )
+    passos = [
+        {"status": s, "corpo": c, "email": e, "metodo": m} for s, c, e, m in antes
+    ] + [{"status": status, "corpo": corpo, "email": email, "metodo": metodo}]
     resultado = subprocess.run(
-        [node, "-e", programa, js, str(status), json.dumps(corpo), metodo],
+        [node, "-e", programa, js, json.dumps(passos)],
         capture_output=True,
         text=True,
         encoding="utf-8",
@@ -240,7 +260,9 @@ def test_pedido_que_ja_existe_leva_ao_pagamento_em_vez_de_mandar_conferir_os_dad
     repetida = api.post(url, {"customer": COMPRADOR, "method": "pix"})
     assert repetida.status_code == 409, repetida.content
 
-    tela = _finalizar_na_tela(409, repetida.json())
+    tela = _finalizar_na_tela(
+        409, repetida.json(), antes=[(0, {}, COMPRADOR["email"], "pix")]
+    )
 
     assert tela == {
         "destino": f"../pedido/{primeira.json()['order_id']}/pix/",
@@ -260,7 +282,9 @@ def test_pedido_que_ja_existe_em_outra_forma_de_pagamento_avisa_e_oferece_o_link
     repetida = api.post(url, {"customer": COMPRADOR, "method": "card"})
     assert repetida.status_code == 409, repetida.content
 
-    tela = _finalizar_na_tela(409, repetida.json(), metodo="card")
+    tela = _finalizar_na_tela(
+        409, repetida.json(), metodo="card", antes=[(0, {}, COMPRADOR["email"], "pix")]
+    )
 
     assert tela["destino"] == ""
     assert tela["erro"].startswith("Seu pedido anterior, por Pix, continua aberto.")
@@ -273,3 +297,107 @@ def test_falha_de_verdade_continua_mostrando_erro_na_tela():
     assert tela["destino"] == ""
     assert tela["aberto"] == ""
     assert tela["erro"].startswith("Não foi possível concluir o pedido.")
+
+
+def test_pedido_que_ja_existe_com_outro_email_avisa_em_vez_de_levar_ao_pedido_antigo(
+    api, rede, sessao_a
+):
+    # O comprador chegou ao Pix, voltou (a página volta do cache com a mesma
+    # sessão), corrigiu o e-mail e clicou de novo. O 409 traz o pedido antigo,
+    # com o e-mail velho: a tela não leva para ele calada.
+    url = f"/api/checkout/sessoes/{sessao_a['id']}/pedido"
+    primeira = api.post(url, {"customer": COMPRADOR, "method": "pix"})
+    assert primeira.status_code == 201, primeira.content
+    corrigido = {**COMPRADOR, "email": "certo@teste.com"}
+    repetida = api.post(url, {"customer": corrigido, "method": "pix"})
+    assert repetida.status_code == 409, repetida.content
+
+    tela = _finalizar_na_tela(
+        409,
+        repetida.json(),
+        email="certo@teste.com",
+        antes=[(201, primeira.json(), COMPRADOR["email"], "pix")],
+    )
+
+    assert tela["destino"] == ""
+    assert tela["erro"].startswith("Seu pedido anterior, por Pix, continua aberto.")
+    assert tela["aberto"] == f"../pedido/{primeira.json()['order_id']}/pix/"
+
+
+def test_voltar_e_clicar_de_novo_com_os_mesmos_dados_segue_para_o_pedido(
+    api, rede, sessao_a
+):
+    url = f"/api/checkout/sessoes/{sessao_a['id']}/pedido"
+    primeira = api.post(url, {"customer": COMPRADOR, "method": "pix"})
+    repetida = api.post(url, {"customer": COMPRADOR, "method": "pix"})
+    assert repetida.status_code == 409, repetida.content
+
+    tela = _finalizar_na_tela(
+        409, repetida.json(), antes=[(201, primeira.json(), COMPRADOR["email"], "pix")]
+    )
+
+    assert tela["destino"] == f"../pedido/{primeira.json()['order_id']}/pix/"
+    assert tela["erro"] == ""
+
+
+def test_dois_cliques_ao_mesmo_tempo_o_segundo_recebe_409_com_o_pedido_e_nao_500(
+    api, rede, sessao_a, monkeypatch
+):
+    # Os dois cliques da mesma compra recebem a mesma intent (mesmo order_id);
+    # enquanto este fala com pagamentos, o outro grava o pedido.
+    pagamentos = _pagamentos_com_provedor(rede, set())
+    criar_intent = PagamentosClient.criar_intent
+
+    def o_outro_clique_grava_antes(self, *args, **kwargs):
+        intent = criar_intent(self, *args, **kwargs)
+        Order.objects.create(
+            id=intent["order_id"],
+            session_id=sessao_a["id"],
+            site_id=intent["site_id"],
+            items=[],
+            total_cents=intent["amount_cents"],
+            customer={"email": COMPRADOR["email"]},
+            method=intent["method"],
+            intent_id=intent["id"],
+        )
+        return intent
+
+    monkeypatch.setattr(PagamentosClient, "criar_intent", o_outro_clique_grava_antes)
+    url = f"/api/checkout/sessoes/{sessao_a['id']}/pedido"
+
+    resposta = api.post(url, {"customer": COMPRADOR, "method": "pix"})
+
+    assert resposta.status_code == 409, resposta.content
+    (chave,) = pagamentos["guardadas"]
+    assert resposta.json()["order_id"] == pagamentos["guardadas"][chave]["order_id"]
+    assert Order.objects.filter(session_id=sessao_a["id"]).count() == 1
+
+
+@pytest.mark.parametrize(
+    "diferenca", [{"method": "card"}, {"amount_cents": 1}], ids=["forma", "valor"]
+)
+def test_intent_de_outra_compra_devolvida_por_pagamentos_da_502_sem_pedido(
+    api, rede, sessao_a, diferenca
+):
+    def responder(request: httpx.Request) -> httpx.Response:
+        enviada = json.loads(request.content)
+        intent = {
+            "id": "intent-outra",
+            "site_id": enviada["site_id"],
+            "order_id": enviada["order_id"],
+            "method": enviada["method"],
+            "status": "pending",
+            "amount_cents": enviada["amount_cents"],
+            "created_at": "2026-10-03T12:00:00+00:00",
+            "pix": {"qr_code": "x", "qr_code_base64": "eA==", "expires_at": None},
+            **diferenca,
+        }
+        return httpx.Response(200, json=intent)
+
+    rede.post(f"{PAGAMENTOS}/intents").mock(side_effect=responder)
+    url = f"/api/checkout/sessoes/{sessao_a['id']}/pedido"
+
+    resposta = api.post(url, {"customer": COMPRADOR, "method": "pix"})
+
+    assert resposta.status_code == 502, resposta.content
+    assert not Order.objects.filter(session_id=sessao_a["id"]).exists()

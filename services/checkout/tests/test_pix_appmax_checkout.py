@@ -1,10 +1,12 @@
 """O checkout entrega ao Pix Appmax só dados coletados e itens do catálogo."""
 
 import json
+import uuid
 
 import httpx
 import pytest
 
+from apps.core.api import _chave_da_compra
 from apps.pedidos.models import Order
 from tests.conftest import HOST_A, PAGAMENTOS, SITE_A, SLUG, _responder_intent
 
@@ -98,7 +100,11 @@ def test_502_do_pix_orienta_nova_tentativa_e_repete_a_mesma_chave(
     assert nova.status_code == 201, nova.content
     assert nova.json()["payment"]["pix"]["qr_code"]
     chaves = {chamada.request.headers["X-Idempotency-Key"] for chamada in rota.calls}
-    assert len(chaves) == 1  # a mesma compra repete a mesma chave
+    pedido = Order.objects.get(session_id=sessao_a["id"])
+    # a mesma compra (desta sessão, destes itens, deste comprador) repete a mesma chave
+    assert chaves == {
+        _chave_da_compra(uuid.UUID(sessao_a["id"]), "pix", pedido.items, pedido.customer)
+    }
 
 
 def test_site_habilitado_mostra_opcao_de_cartao_e_exige_dados_do_pix(

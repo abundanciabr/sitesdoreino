@@ -16,7 +16,7 @@ import httpx
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError
@@ -549,18 +549,28 @@ def place_order(request, session_id: str):
         raise HttpError(502, _PAGAMENTO_NAO_INICIADO)
 
     with transaction.atomic():
-        pedido = OrderModel.objects.create(
-            id=order_id,
-            session=sessao,
-            site_id=site["id"],
-            items=itens,
-            total_cents=total_cents,
-            customer=comprador,
-            method=method,
-            intent_id=str(intent["id"]),
-            pix=intent.get("pix") or {},
-            contexto=dict(sessao.contexto or {}),
-        )
+        try:
+            with transaction.atomic():
+                pedido = OrderModel.objects.create(
+                    id=order_id,
+                    session=sessao,
+                    site_id=site["id"],
+                    items=itens,
+                    total_cents=total_cents,
+                    customer=comprador,
+                    method=method,
+                    intent_id=str(intent["id"]),
+                    pix=intent.get("pix") or {},
+                    contexto=dict(sessao.contexto or {}),
+                )
+        except IntegrityError:
+            # Dois cliques da mesma compra ao mesmo tempo: os dois receberam a
+            # mesma intent e o mesmo order_id, e o outro criou o pedido antes.
+            # Responde como o ramo do pedido que já existe, não com 500.
+            existente = OrderModel.objects.filter(session=sessao).first()
+            if existente is None:
+                raise
+            return JsonResponse(_pedido_criado(existente), status=409)
         emitir(  # mesma transação da criação do pedido
             "pedido.criado",
             {

@@ -21,6 +21,7 @@ function dadosIsland() {
     enviando: false,
     erro: "",
     pedidoAberto: "",
+    enviosQuePodemTerCriado: [],
     session: null,
     offer: { product_name: "", price_cents: 0, bumps: [] },
     bumpIds: [],
@@ -98,29 +99,44 @@ function dadosIsland() {
         return;
       }
       this.enviando = true;
+      const corpo = {
+        customer: { ...this.customer, phone: telefone, cpf: this.usarCpfAnterior ? "" : this.customer.cpf.replace(/\D/g, "") },
+        usar_cpf_anterior: this.usarCpfAnterior,
+        bump_ids: this.bumpIds,
+        method: this.method,
+        ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
+      };
+      // O que define a compra (o IP fica de fora: pode chegar depois do 1º clique).
+      const envio = JSON.stringify([corpo.customer, corpo.usar_cpf_anterior, [...corpo.bump_ids].sort(), corpo.method]);
       try {
-        const pedido = await api.post(`/sessoes/${this.session.id}/pedido`, {
-          customer: { ...this.customer, phone: telefone, cpf: this.usarCpfAnterior ? "" : this.customer.cpf.replace(/\D/g, "") },
-          usar_cpf_anterior: this.usarCpfAnterior,
-          bump_ids: this.bumpIds,
-          method: this.method,
-          ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
-        }).catch((e) => {
-          // 409: esta sessão já tem pedido (a resposta do primeiro clique se
-          // perdeu na rede). O servidor devolve esse pedido; segue para ele.
-          if (e.status === 409 && e.corpo?.order_id && e.corpo?.payment) return e.corpo;
-          throw e;
-        });
-        const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
-        if (pedido.payment.method !== this.method) {
-          // Só o 409 chega aqui com outra forma de pagamento: o pedido que já
-          // existe foi aberto com a outra. Não leva para lá calado; avisa e
-          // oferece o link.
-          this.pedidoAberto = `../pedido/${pedido.order_id}/${destino}/`;
-          this.erro = `Seu pedido anterior, por ${pedido.payment.method === "pix" ? "Pix" : "cartão"}, continua aberto. Continue por ele ou recarregue a página para começar outra compra.`;
-          this.enviando = false;
-          return;
+        let pedido;
+        try {
+          pedido = await api.post(`/sessoes/${this.session.id}/pedido`, corpo);
+          this.enviosQuePodemTerCriado = [envio];
+        } catch (e) {
+          if (!(e.status === 409 && e.corpo?.order_id && e.corpo?.payment)) {
+            // Sem resposta ou erro fora de 4xx/502: o pedido pode ter nascido
+            // deste envio (a resposta se perdeu).
+            const semPedido = e.status === 502 || (e.status >= 400 && e.status < 500);
+            if (!semPedido && !this.enviosQuePodemTerCriado.includes(envio)) this.enviosQuePodemTerCriado.push(envio);
+            throw e;
+          }
+          // 409: esta sessão já tem pedido. Só segue calado para ele se ele só
+          // pode ter nascido deste mesmo envio (a resposta do clique anterior se
+          // perdeu). Com outra forma de pagamento, outro e-mail, outro bump ou
+          // outro comprador, o pedido que existe não é o que está na tela: avisa
+          // e oferece o link, sem levar para lá calado.
+          pedido = e.corpo;
+          const mesmoEnvio = this.enviosQuePodemTerCriado.length === 1 && this.enviosQuePodemTerCriado[0] === envio;
+          if (!mesmoEnvio) {
+            const destinoAberto = pedido.payment.method === "pix" ? "pix" : "cartao";
+            this.pedidoAberto = `../pedido/${pedido.order_id}/${destinoAberto}/`;
+            this.erro = `Seu pedido anterior, por ${pedido.payment.method === "pix" ? "Pix" : "cartão"}, continua aberto. Continue por ele ou recarregue a página para começar outra compra.`;
+            this.enviando = false;
+            return;
+          }
         }
+        const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
         // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
         // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
