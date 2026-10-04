@@ -15,12 +15,15 @@ import hashlib
 import importlib.util
 import io
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
+from django.utils import timezone
 
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.providers.appmax.client import AppmaxClient
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -39,8 +42,16 @@ def operacoes(monkeypatch: pytest.MonkeyPatch, settings: Any):
 
     def rodar_no_conteiner(_servico: str, _identificador: str, codigo: str) -> str:
         saida = io.StringIO()
-        with contextlib.redirect_stdout(saida):
-            exec(codigo, {})  # noqa: S102 — o mesmo código que vai ao shell do contêiner
+        try:
+            with contextlib.redirect_stdout(saida):
+                exec(codigo, {})  # noqa: S102 — o mesmo código que vai ao shell do contêiner
+        except SystemExit as saida_do_shell:
+            # No contêiner, `exit(0)` encerra o comando sem erro; outro código é falha.
+            if saida_do_shell.code not in (0, None):
+                raise modulo.Falha("comando") from None
+        except Exception:
+            # Exceção no shell do contêiner = saída diferente de zero = Falha do `comando`.
+            raise modulo.Falha("comando") from None
         return saida.getvalue()
 
     monkeypatch.setattr(modulo, "comando", lambda *_a, **_k: "a" * 64)
@@ -48,7 +59,15 @@ def operacoes(monkeypatch: pytest.MonkeyPatch, settings: Any):
     return modulo
 
 
-def _tentativa(chave: str, metadata: dict, site_id: str) -> PaymentAttempt:
+def _tentativa(
+    chave: str,
+    metadata: dict,
+    site_id: str,
+    *,
+    motivo: str = "appmax_diagnostico_campo_document_number",
+    pedido: str = "",
+    cliente: str = "",
+) -> PaymentAttempt:
     intent = Intent.objects.create(
         idempotency_key=chave,
         site_id=site_id,
@@ -68,7 +87,9 @@ def _tentativa(chave: str, metadata: dict, site_id: str) -> PaymentAttempt:
         amount_cents=1005,
         effective_amount_cents=1005,
         state="failed",
-        reason="appmax_diagnostico_campo_document_number",
+        reason=motivo,
+        external_order_id=pedido,
+        customer_id=cliente,
     )
 
 
@@ -111,3 +132,94 @@ def test_intent_antiga_sem_metadata_continua_achada_pela_chave(operacoes) -> Non
     resumo = operacoes.medir("appmax-pix", "pagamentos", _referencia_da_tela(sessao))
 
     assert resumo["tentativa"] == "failed"
+
+
+def _sessao_com_duas_tentativas(
+    operacoes, antiga: dict, recente: dict
+) -> tuple[str, PaymentAttempt, PaymentAttempt]:
+    """O comprador corrige CPF/e-mail/telefone depois da falha: a mesma sessão
+    ganha outra intent (chave uuid5 diferente), com a mesma referência na tela.
+    """
+    sessao = uuid.uuid4()
+    metadata = {"checkout_session_id": str(sessao)}
+    a = _tentativa(
+        str(uuid.uuid5(sessao, '{"method": "pix", "cpf": "antigo"}')),
+        metadata,
+        operacoes.SITE_MESHCRAFT,
+        **antiga,
+    )
+    b = _tentativa(
+        str(uuid.uuid5(sessao, '{"method": "pix", "cpf": "corrigido"}')),
+        metadata,
+        operacoes.SITE_MESHCRAFT,
+        **recente,
+    )
+    agora = timezone.now()
+    PaymentAttempt.objects.filter(pk=a.pk).update(created_at=agora - timedelta(minutes=5))
+    PaymentAttempt.objects.filter(pk=b.pk).update(created_at=agora)
+    return _referencia_da_tela(str(sessao)), a, b
+
+
+def test_duas_intents_da_mesma_sessao_medem_a_tentativa_mais_recente(operacoes) -> None:
+    referencia, _antiga, _recente = _sessao_com_duas_tentativas(
+        operacoes,
+        {"motivo": "appmax_diagnostico_campo_expiration_date"},
+        {"motivo": "appmax_diagnostico_campo_document_number"},
+    )
+
+    resumo = operacoes.medir("appmax-pix", "pagamentos", referencia)
+
+    assert resumo["motivo"] == "campo_document_number"
+    descoberta = operacoes.medir("appmax-pix", "pagamentos")
+    # A descoberta lista uma candidata por referência: a mais recente.
+    mesma_sessao = [c for c in descoberta["candidatas"] if c["referencia"] == referencia]
+    assert [c["motivo"] for c in mesma_sessao] == ["campo_document_number"]
+
+
+def test_referencia_sem_nenhuma_tentativa_continua_dando_erro(operacoes) -> None:
+    with pytest.raises(operacoes.Falha):
+        operacoes.medir(
+            "appmax-pix", "pagamentos", _referencia_da_tela(str(uuid.uuid4()))
+        )
+
+
+def test_aviso_com_duas_intents_da_mesma_sessao_acha_a_candidata(operacoes) -> None:
+    referencia, _antiga, _recente = _sessao_com_duas_tentativas(operacoes, {}, {})
+
+    resumo = operacoes.medir("appmax-pix-aviso", "pagamentos", referencia)
+
+    # Sem instalação cadastrada o aviso não se mede, mas a candidata foi achada.
+    assert resumo["acao"] == "instalacao_ausente"
+
+
+def test_latencia_com_duas_intents_da_mesma_sessao_usa_a_mais_recente(operacoes) -> None:
+    referencia, _antiga, _recente = _sessao_com_duas_tentativas(
+        operacoes, {"pedido": "5501"}, {"pedido": ""}
+    )
+
+    resumo = operacoes.medir("appmax-inbox-latencia", "pagamentos", referencia)
+
+    # A mais recente ainda não tem pedido; a antiga tem, e não pode ser a medida.
+    assert resumo["acao"] == "pedido_ausente"
+
+
+def test_pedido_com_duas_intents_da_mesma_sessao_consulta_a_mais_recente(
+    operacoes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    consultados: list[int] = []
+
+    def consultar_pedido(_cliente, pedido_id: int) -> dict:
+        consultados.append(pedido_id)
+        return {}
+
+    monkeypatch.setattr(AppmaxClient, "consultar_pedido", consultar_pedido)
+    referencia, _antiga, _recente = _sessao_com_duas_tentativas(
+        operacoes,
+        {"pedido": "5501", "cliente": "9001"},
+        {"pedido": "5502", "cliente": "9001"},
+    )
+
+    resumo = operacoes.medir("appmax-pix-pedido", "pagamentos", referencia)
+
+    assert consultados == [5502]
+    assert resumo["acao"] == "identidade_nao_comprovada"
