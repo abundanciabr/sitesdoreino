@@ -238,7 +238,9 @@ def test_trabalho_de_teste_pede_o_contato_de_teste_e_o_de_verdade_nunca(de_teste
 def test_atendimento_de_contato_de_teste_vira_trabalho_de_teste(email, esperado):
     respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "nome": "Ana", "email": email})
     _resto_404()
-    _trabalho(TrabalhoComercial.Tipo.ATENDER_MENSAGEM, entrada={"texto": "oi", "host": "meshcraft.top"})
+    # Como a mensagem recebida chega: o id do contato, sem oportunidade e sem e-mail.
+    _trabalho(TrabalhoComercial.Tipo.ATENDER_MENSAGEM, oportunidade_id="",
+              entrada={"texto": "oi", "host": "meshcraft.top"})
     trabalho = coordenador.pegar_um("t1")
 
     coordenador._achar_a_ficha(trabalho)

@@ -371,6 +371,7 @@ def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
                     # Só a oferta que o CRM de fato diz; sem ela, nada é inventado
                     # e a ferramenta de condições responde que não há oferta ligada.
                     trabalho.entrada = {**entrada, "oferta_ref": oferta}
+    _marcar_se_de_teste(trabalho)
     guardar(trabalho)
     novo = timezone.now() - trabalho.criado_em < ESPERA_DA_FICHA
     if not trabalho.contato_id and contato.get("email") and novo and trabalho.tipo != T.ATENDER_MENSAGEM \
