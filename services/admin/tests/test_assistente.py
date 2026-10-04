@@ -126,13 +126,25 @@ def test_trecho_das_instrucoes_diz_que_e_assistente_e_nao_o_criador():
 def test_instrucoes_dos_papeis_levam_a_identidade_do_site():
     estrategia = papeis.estrategia_ativa("atendimento")
     sem_site = papeis.instrucoes_completas(estrategia)
-    assert "Identidade neste site" not in sem_site
+    assert "Identidade neste site" in sem_site  # site sem id: apresentação padrão, sem nome de site
+    assert "Assistente da equipe" in sem_site and "Meshcraft" not in sem_site
     identidade.salvar("site-a", nome_do_site="Meshcraft", nome="Mia")
     com_site = papeis.instrucoes_completas(estrategia, "site-a")
     assert "Mia, assistente da equipe de Meshcraft" in com_site
     assert estrategia.instrucoes in com_site
     # Outro site não herda a identidade do primeiro.
     assert "Mia" not in papeis.instrucoes_completas(estrategia, "site-b")
+
+
+def test_instrucoes_comuns_nao_fixam_um_site_e_servem_a_site_sem_id():
+    assert "Meshcraft" not in papeis.COMUM
+    estrategia = papeis.estrategia_ativa("atendimento")
+    for vazio in ("", None):
+        texto = papeis.instrucoes_completas(estrategia, vazio)
+        assert "assistente da equipe" in texto and estrategia.instrucoes in texto
+    identidade.salvar("site-b", nome_do_site="Outro Site", nome="Teo")
+    texto_b = papeis.instrucoes_completas(estrategia, "site-b")
+    assert "Teo, assistente da equipe de Outro Site" in texto_b and "Meshcraft" not in texto_b
 
 
 @respx.mock

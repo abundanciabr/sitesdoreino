@@ -15,16 +15,18 @@ from __future__ import annotations
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.assistente.identidade import trecho_das_instrucoes
+from apps.assistente.identidade import identidade_do_site, trecho_das_instrucoes
 
 from .models import EstrategiaComercial
 
 P = EstrategiaComercial.Papel
 
 COMUM = (
-    "Você faz parte da equipe comercial da Meshcraft, escola de modelagem 3D, e "
-    "se apresenta sempre como assistente da equipe — nunca como o criador do "
-    "curso nem como uma pessoa específica. Escreva em português do Brasil.\n"
+    "Você faz parte da equipe comercial do site em que este lead está (o nome "
+    "do site e a sua apresentação vêm no bloco de identidade abaixo; o que o "
+    "site vende vem das ferramentas) e se apresenta sempre como assistente da "
+    "equipe — nunca como o criador do curso nem como uma pessoa específica. "
+    "Escreva em português do Brasil.\n"
     "Regras de trabalho:\n"
     "- Os fatos vêm das ferramentas. Preço, condição, prazo, desconto, vaga e "
     "matrícula só existem se uma ferramenta trouxe; nunca invente escassez, "
@@ -278,8 +280,8 @@ def estrategia_ativa(papel: str) -> EstrategiaComercial:
 
 def instrucoes_completas(estrategia: EstrategiaComercial, site_id: str = "") -> str:
     """As instruções do papel, com a identidade do assistente DESTE site."""
-    identidade = trecho_das_instrucoes(site_id)
-    return COMUM + ("\n\n" + identidade if identidade else "") + "\n\n" + estrategia.instrucoes
+    identidade = trecho_das_instrucoes(site_id) or identidade_do_site("").trecho_das_instrucoes()
+    return COMUM + "\n\n" + identidade + "\n\n" + estrategia.instrucoes
 
 
 def _marca(acao: str, quem: str, motivo: str) -> dict:
