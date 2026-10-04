@@ -208,8 +208,9 @@ def escolher_para(trabalho: TrabalhoComercial) -> EstrategiaComercial:
     ar. Trabalho de teste (lead de teste) nunca entra na divisão: ficaria
     fora dos totais."""
     ativa = papeis.estrategia_ativa(trabalho.papel)
-    if trabalho.teste or trabalho.papel not in PAPEIS_OTIMIZAVEIS:
-        return ativa
+    if trabalho.teste or trabalho.papel not in PAPEIS_OTIMIZAVEIS or trabalho.tipo not in TIPOS_DO_PAPEL.get(
+            trabalho.papel, ()):
+        return ativa  # só o que o otimizador mede entra na divisão (recuperação e estorno ficam na versão do ar)
     experimento = _teste_em_andamento(trabalho.papel)
     if experimento is None or experimento.base_id != ativa.pk:
         return ativa
