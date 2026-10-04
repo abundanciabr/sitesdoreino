@@ -1301,3 +1301,50 @@ def test_envios_de_pedido_mostra_so_a_recuperacao_automatica_do_pedido_e_do_site
     assert "ana@exemplo.com" not in resposta.content.decode()
     assert _api(Client(), "GET", "/envios-de-pedido?site_id=&pedido_id=ped-1", token=LEITURA).status_code == 422
     assert _api(Client(), "GET", f"/envios-de-pedido?site_id={SITE}&pedido_id=ped-1", token="").status_code in (401, 403)
+
+
+def test_email_sai_com_reply_to_marcado_e_a_resposta_cai_na_mesma_conversa(base, settings):
+    settings.EMAIL_HOST, settings.DEFAULT_FROM_EMAIL = "smtp.teste", "equipe@meshcraft.top"
+    settings.EMAIL_RESPOSTA_PARA = "Respostas@r.meshcraft.top"
+    cliente = Client()
+    _email(cliente, {"from": "ana@exemplo.com", "subject": "Dúvida", "text": "Tem certificado?",
+                     "message_id": "<q1@x>", "site_id": SITE})
+    conversa = Conversa.objects.get()
+    _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
+         {"site_id": SITE, "texto": "Tem sim!", "chave_idempotencia": "rt1"})
+    reply_to = mail.outbox[-1].extra_headers["Reply-To"]
+    assert reply_to == f"respostas+{conversa.id.hex}@r.meshcraft.top"
+    # Formato do inbound do Brevo: o provedor reescreve o Message-ID, só o endereço marcado identifica a conversa.
+    resposta = _email(cliente, {
+        "From": {"Name": "Ana", "Address": "ana@exemplo.com"}, "To": [{"Address": reply_to}],
+        "Subject": "Re: Dúvida", "RawTextBody": "Obrigada!", "MessageId": "<brevo-1@mailin>",
+        "InReplyTo": "<id-reescrito-pelo-brevo@mailin>",
+    })
+    assert resposta.json() == {"recebidas": 1, "ignoradas": 0}
+    assert Conversa.objects.count() == 1
+    assert conversa.mensagens.filter(direcao="entrada", texto="Obrigada!").exists()
+
+
+def test_email_sem_variavel_de_resposta_nao_leva_reply_to(base, settings):
+    settings.EMAIL_HOST, settings.DEFAULT_FROM_EMAIL = "smtp.teste", "equipe@meshcraft.top"
+    settings.EMAIL_RESPOSTA_PARA = ""
+    cliente = Client()
+    aberta = _api(cliente, "POST", "/conversas", {"site_id": SITE, "canal": "email", "lead_id": LEAD_A,
+                                                  "endereco": "ana@exemplo.com"}).json()
+    _api(cliente, "POST", f"/conversas/{aberta['id']}/mensagens",
+         {"site_id": SITE, "texto": "oi", "chave_idempotencia": "rt2"})
+    assert "Reply-To" not in mail.outbox[-1].extra_headers
+
+
+def test_resposta_acha_a_conversa_pelas_referencias(base, settings):
+    settings.EMAIL_HOST, settings.DEFAULT_FROM_EMAIL = "smtp.teste", "equipe@meshcraft.top"
+    cliente = Client()
+    _email(cliente, {"from": "ana@exemplo.com", "subject": "Dúvida", "text": "Oi", "message_id": "<q1@x>",
+                     "site_id": SITE})
+    conversa = Conversa.objects.get()
+    _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
+         {"site_id": SITE, "texto": "Olá!", "chave_idempotencia": "rf1"})
+    enviado = conversa.mensagens.get(direcao="saida").id_externo
+    resposta = _email(cliente, {"from": "ana@exemplo.com", "subject": "Re: Dúvida", "text": "Valeu",
+                                "message_id": "<r2@x>", "headers": {"References": f"<q1@x> {enviado}"}})
+    assert resposta.json()["recebidas"] == 1 and conversa.mensagens.filter(texto="Valeu").exists()

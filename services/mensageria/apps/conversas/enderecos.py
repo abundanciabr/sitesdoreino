@@ -37,6 +37,27 @@ def email(valor: str) -> str:
     return endereco if re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", endereco) else ""
 
 
+_ETIQUETA_DA_CONVERSA = re.compile(r"\+([0-9a-f]{32})$")
+
+
+def resposta_para(base: str, conversa_id) -> str:
+    """Reply-To da conversa: `caixa+<id>@dominio`, ou vazio quando a caixa não é um e-mail."""
+    caixa = email(base)
+    if not caixa:
+        return ""
+    usuario, _, dominio = caixa.partition("@")
+    return f"{usuario}+{getattr(conversa_id, 'hex', str(conversa_id).replace('-', ''))}@{dominio}"
+
+
+def conversa_da_etiqueta(destino: str) -> str:
+    """Id (com hífens) da conversa marcada no endereço de resposta, ou vazio."""
+    achada = _ETIQUETA_DA_CONVERSA.search(email(destino).partition("@")[0])
+    if not achada:
+        return ""
+    h = achada.group(1)
+    return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:]}"
+
+
 def endereco_do_canal(canal: str, valor: str) -> str:
     return telefone(valor) if canal == "whatsapp" else email(valor)
 

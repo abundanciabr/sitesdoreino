@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from . import enderecos, leads
 from .entrada import Recebida, receber
-from .models import MensagemDaConversa
+from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,15 @@ def _site(dados: dict, site_url: str, remetente: str) -> str | None:
     explicito = (site_url or dados["site_id"]).strip()
     if explicito:
         return explicito[:100]
-    if dados["in_reply_to"]:
+    marcada = enderecos.conversa_da_etiqueta(dados["to"])  # caixa+<conversa>@dominio do Reply-To
+    if marcada:
+        conversa = Conversa.objects.filter(pk=marcada, canal="email").first()
+        if conversa is not None:
+            return conversa.site_id
+    referencias = [dados["in_reply_to"].strip()] + _texto(dados["cabecalhos"].get("references")).split()
+    for referencia in filter(None, referencias):
         anterior = MensagemDaConversa.objects.filter(
-            direcao="saida", id_externo=dados["in_reply_to"].strip(), conversa__canal="email",
+            direcao="saida", id_externo=referencia, conversa__canal="email",
         ).select_related("conversa").first()
         if anterior is not None:
             return anterior.conversa.site_id
