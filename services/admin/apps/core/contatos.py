@@ -67,6 +67,7 @@ ROTULOS_DOS_EVENTOS = {
     "pix.expirado": "Pix venceu sem pagar",
     "quiz.completado": "Respondeu o quiz",
     "quiz.captura_parcial": "Começou o quiz e deixou o contato",
+    "mensagem.recebida": "Mandou mensagem",
     "lead.upsert": "Deixou o contato",
     "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
 }

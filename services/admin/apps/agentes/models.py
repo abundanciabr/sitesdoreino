@@ -23,6 +23,8 @@ from __future__ import annotations
 from django.db import models
 from django.db.models import Q
 
+from .modelos_comerciais import MaterialComercial, TrechoComercial  # noqa: F401
+
 
 class RoboPessoal(models.Model):
     """O robô de UMA pessoa da equipe. Nasce no primeiro acesso dela."""

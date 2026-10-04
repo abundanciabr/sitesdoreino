@@ -13,15 +13,17 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timezone as datetime_timezone
+from datetime import datetime, timedelta, timezone as datetime_timezone
 
 import redis
+from django.db import transaction
 from django.utils import timezone
 from huey import crontab
 
 from config.huey import huey
 
-from .models import OutboxEvent, TelemetryEvent
+from .models import CapturaParcial, OutboxEvent, Submission, TelemetryEvent
+from .respostas import emitir_captura_parcial, travar_sessao
 
 logger = logging.getLogger(__name__)
 
@@ -199,3 +201,69 @@ def relay_outbox_periodico() -> int:
     pendente. É o que garante entrega mesmo que o web caia entre o commit e o
     publish."""
     return relay_outbox()
+
+
+#: Quanto tempo a captura fica parada antes de virar aviso de abandono. O
+#: contato é o último passo: quem vai concluir conclui em segundos. Quem
+#: digita o e-mail e depois o telefone sai num aviso só, com os dois.
+SILENCIO_DA_CAPTURA = timedelta(minutes=10)
+LOTE_CAPTURAS = 200
+
+
+def publicar_capturas_paradas(agora=None) -> int:
+    """Publica `quiz.captura_parcial` das capturas paradas sem conclusão.
+
+    Cada uma passa pela fila da sessão (`travar_sessao`) antes da linha, a
+    mesma ordem da captura e da conclusão. Se a sessão concluiu, a captura só
+    é ligada à submissão e nenhum aviso sai.
+    """
+    limite = (agora or timezone.now()) - SILENCIO_DA_CAPTURA
+    candidatas = list(
+        CapturaParcial.objects.filter(
+            submissao__isnull=True,
+            publicada_em__isnull=True,
+            atualizada_em__lte=limite,
+        )
+        .order_by("atualizada_em")
+        .values_list("id", "quiz_id", "session_id")[:LOTE_CAPTURAS]
+    )
+    publicadas = 0
+    for captura_id, quiz_id, session_id in candidatas:
+        with transaction.atomic():
+            travar_sessao(quiz_id, session_id)
+            captura = (
+                CapturaParcial.objects.select_for_update(of=("self",))
+                .select_related("quiz", "version")
+                .filter(
+                    id=captura_id,
+                    submissao__isnull=True,
+                    publicada_em__isnull=True,
+                    atualizada_em__lte=limite,
+                )
+                .first()
+            )
+            if captura is None:
+                continue
+            submissao = Submission.objects.filter(
+                quiz_id=quiz_id, session_id=session_id
+            ).first()
+            if submissao is not None:
+                captura.submissao = submissao
+                captura.save(update_fields=["submissao", "atualizada_em"])
+                continue
+            captura.publicacoes += 1
+            captura.publicada_em = timezone.now()
+            emitir_captura_parcial(captura)
+            # update_fields sem atualizada_em: publicar não é a pessoa mexer.
+            CapturaParcial.objects.filter(id=captura.id).update(
+                publicacoes=captura.publicacoes, publicada_em=captura.publicada_em
+            )
+            publicadas += 1
+    if publicadas:
+        relay_apos_commit()
+    return publicadas
+
+
+@huey.periodic_task(crontab(minute="*"))
+def publicar_capturas_paradas_periodico() -> int:
+    return publicar_capturas_paradas()

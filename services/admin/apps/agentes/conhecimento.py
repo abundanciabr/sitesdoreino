@@ -517,12 +517,14 @@ def consultar(termos: list[str], *, com_privados: bool, profundidade: int = 2,
 
 def numeros() -> dict:
     return {
-        "documentos": FonteDoConhecimento.objects.count(),
+        "documentos": FonteDoConhecimento.objects.filter(chave__startswith="documento:").count(),
+        "comerciais": FonteDoConhecimento.objects.filter(chave__startswith="comercial:").count(),
         "documentos_no_site": _documentos().count(),
         "a_ler": len(documentos_a_ler()),
         "coisas": EntidadeDoConhecimento.objects.count(),
         "ligacoes": LigacaoDoConhecimento.objects.count(),
-        "ultima": FonteDoConhecimento.objects.order_by("-lida_em").values_list("lida_em", flat=True).first(),
+        "ultima": FonteDoConhecimento.objects.filter(chave__startswith="documento:")
+        .order_by("-lida_em").values_list("lida_em", flat=True).first(),
         "leitura_aberta": Execucao.objects.filter(
             tipo=Execucao.Tipo.CONHECIMENTO, situacao__in=Execucao.ABERTAS
         ).first(),

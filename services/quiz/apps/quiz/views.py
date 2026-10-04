@@ -19,13 +19,13 @@ from redis.exceptions import RedisError
 
 from .models import (
     CapturaParcial,
-    OutboxEvent,
     Quiz,
     QuizVersion,
     Submission,
     TelemetryEvent,
 )
-from .respostas import emitir_quiz_completado, lead_do_contato, respostas_legiveis
+from . import consentimento
+from .respostas import emitir_quiz_completado, travar_sessao
 from .comprador import gravar_cookie
 from .direcionadas import (
     destino_com_parametros,
@@ -259,6 +259,8 @@ def _render_formulario(
             "entrada": entrada,
             "experiencia": experiencia,
             "calculadora_url": reverse("quiz-calcular", args=[quiz.slug]),
+            "texto_consentimento_whatsapp": consentimento.TEXTO_WHATSAPP,
+            "aceita_whatsapp_marcada": consentimento.marcou(request.POST),
             "canonical": request.build_absolute_uri(endereco_canonico),
         },
         status=503 if experiencia and experiencia["fmt"] == "ai" else status,
@@ -386,6 +388,9 @@ def formulario(request, slug):
             },
         )
         if criada:
+            consentimento.registrar(
+                quiz, submissao.session_id, request.POST, submissao.lead_phone
+            )
             # [RECEITA:R3 v1] mesma transação do resultado
             emitir_quiz_completado(quiz, submissao)
             transaction.on_commit(relay_apos_commit)
@@ -712,15 +717,45 @@ def _telefone_da_captura(valor: str) -> str:
     return valor if 8 <= len(digitos_do_telefone(valor)) <= 15 else ""
 
 
+def _respostas_da_captura(request, versao, entrada) -> dict:
+    """{pergunta_id: opcao_id} do que a pessoa já respondeu, só opções válidas.
+
+    O formulário manda os campos `pergunta_<id>`; a conversa com IA guarda as
+    respostas no estado assinado (`estado`), que vem junto do formulário final.
+    """
+    from .conversa import _ler_estado  # conversa importa este módulo
+
+    estado = _ler_estado(request.POST.get("estado"), entrada) if request.POST.get(
+        "estado"
+    ) else None
+    do_estado = (estado or {}).get("r") or {}
+    respostas = {}
+    for question in versao.questions.prefetch_related("options"):
+        valor = str(
+            request.POST.get(f"pergunta_{question.id}")
+            or do_estado.get(str(question.id))
+            or ""
+        )
+        if not valor.isdecimal():
+            continue
+        if any(option.id == int(valor) for option in question.options.all()):
+            respostas[str(question.id)] = int(valor)
+    return respostas
+
+
 @require_POST
 def captura(request, slug):
-    """Contato informado antes de concluir: grava e avisa o CRM uma vez.
+    """Contato informado antes de concluir: grava e completa uma captura.
 
     A página chama esta rota quando a pessoa preenche e-mail ou telefone (e ao
     sair da página sem concluir). Corpo = os mesmos campos do formulário,
     com o token CSRF. A sessão vem do cookie assinado; sem ela não há o que
-    registrar. Uma captura por (quiz, sessão): reenviar só completa a linha e
-    nunca publica outro `quiz.captura_parcial`.
+    registrar. Uma captura por (quiz, sessão): reenviar só completa a linha.
+
+    O aviso `quiz.captura_parcial` não sai daqui: sai de
+    `tasks.publicar_capturas_paradas` quando a pessoa para sem concluir, com o
+    contato mais completo. Se ela voltar e mudar o contato depois do aviso, a
+    captura volta para a fila e sai um aviso novo com o mesmo `captura_id`.
     """
     quiz = _quiz_do_site(request, slug)
     quizzes = _ler_quizzes(request)
@@ -735,25 +770,21 @@ def captura(request, slug):
     if versao is None:
         return JsonResponse({"estado": "sem_sessao"}, status=404)
     session_id = entrada["session_id"]
-    if Submission.objects.filter(quiz=quiz, session_id=session_id).exists():
-        return JsonResponse({"estado": "concluida"})
 
     email = _email_da_captura(request.POST.get("email", "").strip())
     telefone = _telefone_da_captura(request.POST.get("telefone", "").strip())
     nome = request.POST.get("nome", "").strip()[: LIMITES_DO_CONTATO["nome"]]
-    if not email and not telefone:
-        return JsonResponse({"estado": "sem_contato"}, status=422)
-
-    respostas = {}
-    for question in versao.questions.prefetch_related("options"):
-        valor = request.POST.get(f"pergunta_{question.id}", "")
-        if not valor.isdecimal():
-            continue
-        if any(option.id == int(valor) for option in question.options.all()):
-            respostas[str(question.id)] = int(valor)
+    respostas = _respostas_da_captura(request, versao, entrada)
 
     with transaction.atomic():
-        registro, criada = CapturaParcial.objects.select_for_update().get_or_create(
+        # Na fila da sessão: se o "Ver resultado" chegou junto, um espera o
+        # outro e a captura enxerga a submissão (ou a submissão enxerga a captura).
+        travar_sessao(quiz.id, session_id)
+        if Submission.objects.filter(quiz=quiz, session_id=session_id).exists():
+            return _resposta_da_captura("concluida", 200)
+        if not email and not telefone:
+            return _resposta_da_captura("sem_contato", 422)
+        registro, criada = CapturaParcial.objects.get_or_create(
             quiz=quiz,
             session_id=session_id,
             defaults={
@@ -769,32 +800,32 @@ def captura(request, slug):
         )
         if not criada:
             # Completa, nunca apaga: um campo vazio agora não desfaz o anterior.
-            if email:
-                registro.lead_email = email
-            if nome:
-                registro.lead_name = nome
-            if telefone:
-                registro.lead_phone = telefone
+            contato_mudou = False
+            for campo, valor in (
+                ("lead_email", email),
+                ("lead_name", nome),
+                ("lead_phone", telefone),
+            ):
+                if valor and getattr(registro, campo) != valor:
+                    setattr(registro, campo, valor)
+                    contato_mudou = True
             registro.answers = {**(registro.answers or {}), **respostas}
+            if contato_mudou and registro.publicada_em is not None:
+                registro.publicada_em = None  # volta para a fila do aviso
             registro.save()
-        else:
-            payload = {
-                "captura_id": str(registro.id),
-                "site_id": registro.site_id,
-                "sessao": str(registro.session_id),
-                "quiz_slug": quiz.slug,
-                "version_key": versao.key,
-                "lead": lead_do_contato(email, nome, telefone),
-                "respostas": respostas_legiveis(versao, respostas),
-                "utm": registro.utm,
-            }
-            if registro.context:
-                payload["context"] = registro.context
-            OutboxEvent.objects.create(event="quiz.captura_parcial", payload=payload)
+        aceite, aceite_mudou = consentimento.registrar(
+            quiz, session_id, request.POST, registro.lead_phone
+        )
+        if not criada and aceite_mudou and registro.publicada_em is not None:
+            # O aviso da captura já saiu com a escolha antiga: avisa a mudança.
+            consentimento.emitir_mudanca(quiz, registro, aceite)
             transaction.on_commit(relay_apos_commit)
-    resposta = JsonResponse(
-        {"estado": "registrada" if criada else "atualizada"},
-        status=201 if criada else 200,
+    return _resposta_da_captura(
+        "registrada" if criada else "atualizada", 201 if criada else 200
     )
+
+
+def _resposta_da_captura(estado: str, status: int) -> JsonResponse:
+    resposta = JsonResponse({"estado": estado}, status=status)
     resposta["Cache-Control"] = "no-store"
     return resposta

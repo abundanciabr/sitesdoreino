@@ -176,9 +176,15 @@ class Submission(models.Model):
 class CapturaParcial(models.Model):
     """Contato informado antes de concluir o quiz.
 
-    Uma por (quiz, sessão): repetir o envio atualiza a mesma linha e nunca
-    publica outro `quiz.captura_parcial`. Quando a mesma sessão conclui, a
-    submissão fica ligada aqui e o `quiz.completado` leva o id desta captura.
+    Uma por (quiz, sessão): repetir o envio atualiza a mesma linha. Quando a
+    mesma sessão conclui, a submissão fica ligada aqui e o `quiz.completado`
+    leva o id desta captura.
+
+    O `quiz.captura_parcial` só sai quando a pessoa para sem concluir
+    (`tasks.publicar_capturas_paradas`), já com o contato mais completo que ela
+    deixou. Quem conclui logo depois de digitar o contato não gera abandono.
+    Se ela voltar e acrescentar contato depois do aviso, sai outro com o mesmo
+    `captura_id` e `publicacao` seguinte; repetir o mesmo contato não publica.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -203,12 +209,19 @@ class CapturaParcial(models.Model):
         blank=True,
         related_name="captura_parcial",
     )
+    publicada_em = models.DateTimeField(null=True, blank=True)
+    publicacoes = models.PositiveIntegerField(default=0)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["site_id", "lead_email"], name="captura_site_email"),
+            models.Index(
+                fields=["atualizada_em"],
+                name="captura_a_publicar",
+                condition=models.Q(submissao__isnull=True, publicada_em__isnull=True),
+            ),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -335,6 +348,31 @@ class PropostaDeVersao(models.Model):
     class Meta:
         ordering = ["-criada_em", "-id"]
         indexes = [models.Index(fields=["quiz", "estado"], name="proposta_quiz_estado")]
+
+
+class ConsentimentoDoContato(models.Model):
+    """Permissão de contato pelo WhatsApp dada no formulário do quiz.
+
+    Uma linha por (quiz, sessão); a última escolha da pessoa naquela sessão
+    vale. O texto lido e a versão dele ficam junto. Uso em `consentimento.py`.
+    """
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.PROTECT, related_name="consentimentos")
+    session_id = models.UUIDField()
+    site_id = models.CharField(max_length=64)
+    telefone = models.CharField(max_length=32, blank=True, default="")
+    aceita_whatsapp = models.BooleanField(default=False)
+    texto_whatsapp = models.TextField(blank=True, default="")
+    versao_texto = models.CharField(max_length=32, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quiz", "session_id"], name="consentimento_quiz_sessao_unico"
+            )
+        ]
 
 
 from .integracoes.models import IntegracaoEnvio  # noqa: E402,F401  registra o modelo no app

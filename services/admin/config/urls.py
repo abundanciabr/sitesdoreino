@@ -77,6 +77,8 @@ from apps.core.parametros_da_fila import (
 )
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
+from apps.core.crm_conversas import crm_conversa, crm_conversas
+from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -138,6 +140,7 @@ from apps.agentes.views import (
     robos_admin,
     mapa_de_conhecimento,
 )
+from apps.agentes.views_comerciais import conhecimento_comercial_tela
 from apps.core.equipe_acesso import (
     conectar_meu_celular,
     entrar_na_equipe,
@@ -230,14 +233,20 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
+from apps.comercial.views import agentes_comerciais
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
+    # decisões e estratégias dos quatro papéis. Só do administrador.
+    path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
+    path("crm/conversas/", crm_conversas, name="crm_conversas"),
+    path("crm/conversas/<uuid:conversa_id>/", crm_conversa, name="crm_conversa"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
@@ -346,6 +355,12 @@ urlpatterns = [
     path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
+    path("robos/conhecimento/comercial", conhecimento_comercial_tela, name="conhecimento_comercial"),
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`).
+    path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
+    path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
+    path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),

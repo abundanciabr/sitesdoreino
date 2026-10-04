@@ -49,7 +49,13 @@ def webhook_whatsapp(request):
     dados = payload.get("data")
     itens = dados if isinstance(dados, list) else [dados]
     if evento == "MESSAGES_UPSERT":
-        return JsonResponse({"recebidas": _receber_evolution(config, itens)})
+        recebidas = _receber_evolution(config, itens)
+        # Nota de voz do lead: depois da conversa, guarda o áudio para o admin
+        # transcrever, ligado à mensagem da conversa.
+        from apps.audio.webhook import receber_audios
+
+        receber_audios(payload)
+        return JsonResponse({"recebidas": recebidas})
     alteradas = 0
     for item in itens:
         if not isinstance(item, dict):
@@ -82,9 +88,11 @@ def aplicar_estado(config: ConfiguracaoWhatsApp, identificador: str, estado: str
             site_id=config.site_id, instancia=config.instancia, provider_id=identificador,
         ).first()
         if msg is None:
-            # A resposta HTTP ainda pode estar a caminho. O retorno ficou
-            # persistido para ser aplicado quando o provider_id for gravado.
-            return 0
+            # Resposta em voz (apps.audio) ou resposta HTTP ainda a caminho: o
+            # retorno ficou persistido para quando o provider_id for gravado.
+            from apps.audio.servico import atualizar_estado_de_voz
+
+            return atualizar_estado_de_voz(config.instancia, identificador, estado)
         if estado == "falhou":
             if msg.status in ("entregue", "lido"):
                 return 0

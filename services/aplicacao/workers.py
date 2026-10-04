@@ -22,6 +22,7 @@ CONSUMIDORES = {
     "alunos": "eventos",
     "checkout": "pedidos",
     "gamificacao": "eventos",
+    "admin": "comercial",
     "leads": "core",
     "mensageria": "eventos",
     "metricas": "fatos",

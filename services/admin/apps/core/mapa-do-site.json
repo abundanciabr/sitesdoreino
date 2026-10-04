@@ -2902,6 +2902,47 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/agentes/",
+      "endereco": "/admin/crm/agentes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Agentes do CRM",
+      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação e com falha; a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; as estratégias de cada papel com histórico.",
+      "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<int:estrategia_id>/ativar/",
+      "endereco": "/admin/crm/agentes/estrategias/<int:estrategia_id>/ativar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ativar versão da estratégia",
+      "descricao": "Põe no ar a versão escolhida de um papel; a que estava no ar fica guardada para voltar."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<slug:papel>/voltar/",
+      "endereco": "/admin/crm/agentes/estrategias/<slug:papel>/voltar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Voltar à versão anterior",
+      "descricao": "Recoloca no ar a versão que estava antes da atual, com o motivo no histórico."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<slug:papel>/nova/",
+      "endereco": "/admin/crm/agentes/estrategias/<slug:papel>/nova/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Nova versão da estratégia",
+      "descricao": "Guarda uma nova versão das instruções de um papel e, se marcado, já a põe no ar."
+    },
+    {
+      "celula": "admin",
       "rota": "contatos/",
       "endereco": "/admin/contatos/",
       "alcance": "publico",
