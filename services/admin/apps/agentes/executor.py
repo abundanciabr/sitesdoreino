@@ -235,6 +235,9 @@ def reacordar() -> int:
     if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     _manter_o_mapa_em_dia()
+    from .conhecimento_comercial import manter_em_dia  # o catálogo mudou, o índice comercial muda junto
+
+    manter_em_dia()
     return n
 
 
