@@ -112,3 +112,31 @@ def test_pagina_dos_agentes_mostra_os_tempos_das_ultimas_24h():
     html = resposta.content.decode()
     assert "2 min" in html and "5 min" in html
     assert "ainda sem dados" not in html
+
+
+def test_vinte_atendimentos_de_conversa_ocupada_nao_escondem_o_resto():
+    agora = timezone.now()
+    for n in range(20):
+        _trabalho(T.ATENDER_MENSAGEM, **_conversa(n))
+        ocupado = _trabalho(T.ATENDER_MENSAGEM, **_conversa(n))
+        TrabalhoComercial.objects.filter(pk=ocupado.pk).update(
+            estado=E.ENVIO_INCERTO, nao_antes_de=agora + timedelta(hours=1))
+    # Os 20 atendimentos esperam as conversas, que estao com envio incerto.
+    analise = _trabalho(T.ANALISAR_LEAD, chave_da_conversa="lead:s:livre")
+    pegou = coordenador.pegar_um("t")
+    assert pegou is not None and pegou.pk == analise.pk
+
+
+@respx.mock
+def test_espera_na_fila_nao_conta_pagamento_nem_resultados():
+    respx.get(f"{IDENTIDADE}/sessao/completa").respond(200, json={
+        "autenticado": True, "id": "id-1", "nome_exibido": "Dono", "papel": None, "email": DONO})
+    agora = timezone.now()
+    pagamento = _trabalho(T.ACOMPANHAR_PAGAMENTO, chave_da_conversa="lead:s:pg")
+    TrabalhoComercial.objects.filter(pk=pagamento.pk).update(
+        criado_em=agora - timedelta(hours=23), iniciado_em=agora - timedelta(minutes=1))
+    analise = _trabalho(T.ANALISAR_LEAD, chave_da_conversa="lead:s:an")
+    TrabalhoComercial.objects.filter(pk=analise.pk).update(
+        criado_em=agora - timedelta(minutes=10), iniciado_em=agora - timedelta(minutes=7))
+    html = _entrar().get(reverse("crm_agentes")).content.decode()
+    assert "3 min" in html and "22 h" not in html and "23 h" not in html

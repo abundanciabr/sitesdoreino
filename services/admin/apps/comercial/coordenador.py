@@ -33,7 +33,7 @@ import re
 from datetime import datetime, timedelta
 
 from django.db import DatabaseError, IntegrityError, transaction
-from django.db.models import Case, IntegerField, Q, Value, When
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, Value, When
 from django.utils import timezone
 
 from apps.agentes import modelo
@@ -151,6 +151,13 @@ def _prioridade():
 def pegar_um(trabalhador: str) -> TrabalhoComercial | None:
     agora = timezone.now()
     pronto = Q(nao_antes_de__isnull=True) | Q(nao_antes_de__lte=agora)
+    # Conversa já ocupada por outro trabalho não entra na janela de 20: senão
+    # atendimentos travados ficariam na frente para sempre e escondiam o resto.
+    conversa_ocupada = Exists(
+        TrabalhoComercial.objects.filter(
+            chave_da_conversa=OuterRef("chave_da_conversa"), estado__in=TrabalhoComercial.TRAVAM_A_CONVERSA
+        ).exclude(pk=OuterRef("pk"))
+    )
     with transaction.atomic():
         candidatos = list(
             TrabalhoComercial.objects.select_for_update(skip_locked=True)
@@ -160,6 +167,7 @@ def pegar_um(trabalhador: str) -> TrabalhoComercial | None:
                 | (Q(estado=E.ENVIO_INCERTO) & pronto)
             )
             .annotate(ordem_da_fila=_prioridade())
+            .exclude(Q(estado=E.NA_FILA) & ~Q(chave_da_conversa="") & conversa_ocupada)
             .order_by("ordem_da_fila", "criado_em", "id")[:20]
         )
         for trabalho in candidatos:
