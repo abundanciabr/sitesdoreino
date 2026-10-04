@@ -156,3 +156,43 @@ def test_post_usa_site_do_host_e_id_da_tentativa():
         resposta = pagamentos_devolver(pedido)
     assert resposta.status_code == 302
     devolver.assert_called_once_with("site-um", tentativa)
+
+
+def test_pagina_mostra_o_que_as_empresas_responderam():
+    compra = {
+        "pedido": "pedido-1", "valor_centavos": 990, "empresa": "appmax",
+        "estado": "rejected", "metodo": "card", "data": "2026-10-03",
+        "segunda_empresa": False, "estorno": "", "pode_devolver": False,
+        "tentativa_id": "123", "presa": False,
+    }
+    observacao = [
+        {"empresa": "appmax", "origem": "aviso_order_refused_by_risk",
+         "status": "cancelado", "detalhe": "", "total": 3, "ultima": ""},
+        {"empresa": "mercadopago", "origem": "criacao", "status": "rejected",
+         "detalhe": "rejected_by_regulations", "total": 1, "ultima": ""},
+        {"empresa": "mercadopago", "origem": "aviso", "status": "rejected",
+         "detalhe": "x", "total": "2"},
+    ]
+    with patch("apps.core.pagamentos.site_de", return_value="site-um"), patch(
+        "apps.core.pagamentos.PagamentosClient.compras_pagina",
+        return_value={"compras": [compra], "pagina": 1, "total": 1,
+                      "paginas": 1, "mais": False, "observacao": observacao},
+    ):
+        resposta = pagamentos(_pedido("get"))
+    html = resposta.content.decode()
+    assert "O que as empresas responderam" in html
+    assert "GET depois do aviso de risco" in html
+    assert "cancelado" in html and "rejected_by_regulations" in html
+    assert "Ao criar o Pix" in html
+    # Linha sem total inteiro não aparece.
+    assert "Aviso do Mercado Pago" not in html
+
+
+def test_pagina_sem_observacao_nao_mostra_a_tabela():
+    with patch("apps.core.pagamentos.site_de", return_value="site-um"), patch(
+        "apps.core.pagamentos.PagamentosClient.compras_pagina",
+        return_value={"compras": [], "pagina": 1, "total": 0,
+                      "paginas": 1, "mais": False},
+    ):
+        resposta = pagamentos(_pedido("get"))
+    assert "O que as empresas responderam" not in resposta.content.decode()

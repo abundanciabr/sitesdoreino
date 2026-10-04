@@ -16,6 +16,7 @@ from django.utils import timezone
 from pagamentos.core import gateway, ledger
 from pagamentos.core.ambiente_mp import mp_em_teste
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.core.observacoes import observar_mp
 from pagamentos.core.tentativas import (
     ResultadoDoProvedor,
     TentativaBloqueada,
@@ -217,7 +218,17 @@ def completar_intent_pix(intent: Intent) -> Intent:
                 **_dados_do_comprador_para_mp(intent),
             )
         except gateway.RecusaAntifraude as exc:
+            observar_mp(
+                tentativa, origem="criacao", status="rejected",
+                detalhe=exc.status_detail, referencia=exc.payment_id,
+            )
             return ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
+        except gateway.PixNaoPagavel as exc:
+            observar_mp(
+                tentativa, origem="criacao", status=exc.status,
+                detalhe=exc.status_detail, referencia=exc.payment_id,
+            )
+            raise
         return ResultadoDoProvedor(None, resposta.payment_id, motivo="pending")
 
     def registrar(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -> None:
@@ -286,7 +297,17 @@ def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
             **_dados_do_comprador_para_mp(intent),
             envio_ambiguo_anterior=True,
         )
+    except gateway.PixNaoPagavel as exc:
+        observar_mp(
+            tentativa, origem="criacao", status=exc.status,
+            detalhe=exc.status_detail, referencia=exc.payment_id,
+        )
+        raise
     except gateway.RecusaAntifraude as exc:
+        observar_mp(
+            tentativa, origem="criacao", status="rejected",
+            detalhe=exc.status_detail, referencia=exc.payment_id,
+        )
         resultado = ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
         fechar_reconciliacao(tentativa, resultado=resultado)
         if _na_lista(intent):
@@ -455,7 +476,9 @@ def aplicar_status_mp(tentativa: PaymentAttempt, status: str, motivo: str) -> st
     )
 
 
-def reconciliar_intent_pix(intent: Intent) -> Intent:
+def reconciliar_intent_pix(intent: Intent, *, origem: str = "consulta") -> Intent:
+    """Consulta o MP e aplica o status. `origem` só diz quem perguntou
+    (get_intent, supervisao, consulta), para a observação do AC11."""
     tentativa = (
         PaymentAttempt.objects.filter(intent=intent, provider="mercadopago")
         .order_by("-created_at")
@@ -469,6 +492,10 @@ def reconciliar_intent_pix(intent: Intent) -> Intent:
         payment_id=tentativa.provider_reference_id
     )
     conferir_consulta_mp(tentativa, consulta)
+    observar_mp(
+        tentativa, origem=origem, status=consulta.status,
+        detalhe=consulta.reason_code, referencia=consulta.payment_id,
+    )
     if (
         _sandbox()
         and tentativa.state == "pending"

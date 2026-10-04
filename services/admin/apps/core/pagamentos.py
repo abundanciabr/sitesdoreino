@@ -97,6 +97,35 @@ def _exibir(compra):
         compra["desvio_exibicao"] = "Sim"
 
 
+_ORIGENS = {
+    "criacao": "Ao criar o Pix",
+    "aviso": "Aviso do Mercado Pago",
+    "get_intent": "Página consultou",
+    "supervisao": "Conferência automática",
+    "consulta": "Consulta",
+    "aviso_order_refused_by_risk": "GET depois do aviso de risco",
+}
+
+
+def _observacao(dados):
+    linhas = dados.get("observacao") if dados else None
+    if not isinstance(linhas, list):
+        return []
+    limpas = []
+    for linha in linhas:
+        if not isinstance(linha, dict) or type(linha.get("total")) is not int:
+            continue
+        origem = str(linha.get("origem") or "")
+        limpas.append({
+            "empresa": str(linha.get("empresa") or ""),
+            "origem": _ORIGENS.get(origem, origem),
+            "status": str(linha.get("status") or ""),
+            "detalhe": str(linha.get("detalhe") or ""),
+            "total": linha["total"],
+        })
+    return limpas
+
+
 @require_GET
 def pagamentos(request):
     site_id = site_de(request)
@@ -116,6 +145,7 @@ def pagamentos(request):
         "pagina_anterior": dados["pagina"] - 1 if dados and dados["pagina"] > 1 else None,
         "pagina_seguinte": dados["pagina"] + 1 if dados and dados["mais"] else None,
         "total": dados["total"] if dados else None,
+        "observacao": _observacao(dados),
     })
 
 

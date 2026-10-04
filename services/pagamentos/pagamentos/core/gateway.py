@@ -54,6 +54,22 @@ class RecusaAntifraude(FalhaNoProvedor):
         self.reason_code = status_detail
 
 
+class PixNaoPagavel(FalhaNoProvedor):
+    """O MP criou o pagamento, mas recusado, cancelado ou vencido.
+
+    Mesmo tratamento de `FalhaNoProvedor` para quem chama; carrega o id e o
+    `status_detail` para que a criação os guarde como observação (AC11).
+    """
+
+    def __init__(
+        self, message: str, *, payment_id: str, status: str, status_detail: str
+    ) -> None:
+        super().__init__(message)
+        self.payment_id = payment_id
+        self.status = status
+        self.status_detail = status_detail
+
+
 def recusa_antifraude_mp(status: str, status_detail: str) -> bool:
     return status == "rejected" and status_detail.endswith(("high_risk", "blacklist"))
 
@@ -324,12 +340,16 @@ def _traduzir_resposta_pix(resposta: dict[str, Any]) -> ResultadoPix:
     if status == "rejected":
         if recusa_antifraude_mp(status, status_detail):
             raise RecusaAntifraude(payment_id=payment_id, status_detail=status_detail)
-        raise FalhaNoProvedor(
+        raise PixNaoPagavel(
             f"Pix recusado pelo Mercado Pago (payment_id={payment_id}, "
-            f"status_detail={status_detail})"
+            f"status_detail={status_detail})",
+            payment_id=payment_id, status=status, status_detail=status_detail,
         )
     if status in ("cancelled", "expired"):
-        raise FalhaNoProvedor(f"Pix indisponivel no Mercado Pago: {status}")
+        raise PixNaoPagavel(
+            f"Pix indisponivel no Mercado Pago: {status}",
+            payment_id=payment_id, status=status, status_detail=status_detail,
+        )
     interacao = resposta.get("point_of_interaction") or {}
     dados = interacao.get("transaction_data") or {}
     qr_code = str(dados.get("qr_code") or "")
