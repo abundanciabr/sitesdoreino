@@ -178,6 +178,41 @@ def test_historico_da_captura_nao_diz_que_respondeu_e_a_conclusao_atualiza_o_pas
     assert oferta.historico.filter(descricao__startswith="Concluiu o quiz crivo").count() == 1
 
 
+def test_mesma_conclusao_com_dois_event_ids_aparece_uma_vez_na_linha_do_tempo():
+    completo("maria@gmail.com", captura_id="")
+    completo("maria@gmail.com", captura_id="")
+    lead = Lead.objects.get()
+    assert lead.timeline.filter(event="quiz.completado").count() == 1
+    assert QuizDoLead.objects.count() == 1 and Oportunidade.objects.count() == 1
+
+
+def test_mesma_submissao_reenviada_sem_sessao_nao_duplica():
+    data = {
+        "site_id": "a", "quiz_slug": "crivo", "result_key": "iniciante", "score": 7,
+        "version_key": "v2", "lead": {"email": "maria@gmail.com"},
+        "submissao_id": str(uuid.uuid4()), "respostas": RESPOSTAS,
+    }
+    ao_quiz_completado(str(uuid.uuid4()), data)
+    ao_quiz_completado(str(uuid.uuid4()), data)
+    assert TimelineEvent.objects.filter(event="quiz.completado").count() == 1
+
+
+def test_sessoes_diferentes_do_mesmo_quiz_seguem_como_conclusoes_diferentes():
+    completo("maria@gmail.com", sessao="s-1", captura_id="")
+    completo("maria@gmail.com", sessao="s-2", captura_id="")
+    assert TimelineEvent.objects.filter(event="quiz.completado").count() == 2
+
+
+def test_oferta_reconstruida_de_quem_so_deixou_o_contato_nao_diz_que_respondeu():
+    from apps.core.oferta import abrir_oferta_do_quiz
+
+    lead = Lead.objects.create(site_id="a", email="ana@gmail.com", source="quiz:crivo")
+    oferta = abrir_oferta_do_quiz(lead, {"quiz_slug": "crivo"}, "captura:1", origem="captura")
+    historico = oferta.historico.get()
+    assert historico.descricao == "Começou o quiz crivo e deixou o contato; oferta aberta."
+    assert "não chegou ao resultado" in oferta.passo_descricao
+
+
 def test_passo_mudado_pela_equipe_nao_e_trocado_na_conclusao():
     captura(email="maria@gmail.com")
     oferta = Oportunidade.objects.get()
