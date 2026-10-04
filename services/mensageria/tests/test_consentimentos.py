@@ -92,6 +92,16 @@ def test_conclusao_desmarcada_vale_mesmo_se_a_captura_chega_depois():
     assert servico.situacao(SITE, TELEFONE).permite is False
 
 
+def test_recusa_atrasada_no_consumidor_nao_vence_aceite_posterior_da_sessao():
+    agora = timezone.now()
+    hora = lambda minutos: (agora - timedelta(minutes=minutos)).isoformat()  # noqa: E731
+    handlers.ao_quiz_captura_parcial(_evento(sessao="s5", registrado_em=hora(20)), str(uuid.uuid4()))
+    # Desmarcou (T-10) e remarcou (T-5); o consumidor só processa agora.
+    handlers.ao_quiz_consentimento(_evento(aceito=False, sessao="s5", registrado_em=hora(10)), str(uuid.uuid4()))
+    handlers.ao_quiz_consentimento(_evento(sessao="s5", registrado_em=hora(5)), str(uuid.uuid4()))
+    assert servico.situacao(SITE, TELEFONE).permite is True
+
+
 def test_descadastro_depois_do_aceite_retira_e_novo_aceite_devolve():
     handlers.ao_quiz_completado(_evento(sessao="s1"), str(uuid.uuid4()))
     Descadastro.objects.create(site_id=SITE, canal="whatsapp", endereco="5511988887777",

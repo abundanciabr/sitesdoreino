@@ -91,6 +91,19 @@ def pessoa_da_conversa(conversa: Conversa) -> str:
     return pessoa or ""
 
 
+def _religar(conversa: Conversa) -> None:
+    try:
+        ligacao = leads.procurar(site_id=conversa.site_id, canal=conversa.canal, endereco=conversa.endereco)
+    except Exception:  # noqa: BLE001 - a próxima passada tenta de novo
+        logger.exception("conversas: falha ao religar conversa pendente")
+        return
+    if ligacao.ligacao == "pendente":
+        return
+    conversa.ligacao = ligacao.ligacao
+    conversa.lead_id = ligacao.lead_id if ligacao.ligacao == "ligada" else ""
+    conversa.save(update_fields=["ligacao", "lead_id", "atualizada_em"])
+
+
 def aplicar_preferencia(descadastro: Descadastro) -> bool:
     """Tenta gravar a preferência das jornadas. Volta True quando resolvido."""
     if descadastro.preferencia_registrada:
@@ -99,8 +112,11 @@ def aplicar_preferencia(descadastro: Descadastro) -> bool:
     email = ""
     if descadastro.canal == "email":
         email = descadastro.endereco
-    elif conversa is not None and conversa.ligacao == "ligada":
-        email = leads.email_do_lead(conversa.lead_id)
+    elif conversa is not None:
+        if conversa.ligacao == "pendente":
+            _religar(conversa)  # leads estava fora do ar quando o contato pediu para parar
+        if conversa.ligacao == "ligada":
+            email = leads.email_do_lead(conversa.lead_id)
     motivo = ""
     pessoa = None
     if not email:

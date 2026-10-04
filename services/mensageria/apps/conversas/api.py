@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
@@ -183,6 +183,23 @@ def ver_conversa(request, conversa_id: str, site_id: str):
     return conversa_json(_conversa(conversa_id, site_id))
 
 
+def _antes_de(conversa: Conversa, valor: str) -> Q:
+    """`antes_de` é o id de uma mensagem (preciso) ou uma data ISO (só mensagens estritamente antes)."""
+    try:
+        ancora = conversa.mensagens.filter(pk=uuid.UUID(valor.strip())).first()
+    except ValueError:
+        ancora = None
+        try:
+            return Q(ocorrida_em__lt=datetime.fromisoformat(valor))
+        except ValueError:
+            raise HttpError(422, "antes_de deve ser id de mensagem ou data ISO")
+    if ancora is None:
+        raise HttpError(422, "antes_de: mensagem inexistente nesta conversa")
+    return (Q(ocorrida_em__lt=ancora.ocorrida_em)
+            | Q(ocorrida_em=ancora.ocorrida_em, criada_em__lt=ancora.criada_em)
+            | Q(ocorrida_em=ancora.ocorrida_em, criada_em=ancora.criada_em, id__lt=ancora.id))
+
+
 @router.get("/conversas/{conversa_id}/mensagens")
 def listar_mensagens(request, conversa_id: str, site_id: str, limite: int = 50, antes_de: str = ""):
     conversa = _conversa(conversa_id, site_id)
@@ -190,14 +207,13 @@ def listar_mensagens(request, conversa_id: str, site_id: str, limite: int = 50, 
         raise HttpError(422, "limite vai de 1 a 200")
     consulta = conversa.mensagens.select_related("mensagem_whatsapp")
     if antes_de:
-        try:
-            consulta = consulta.filter(ocorrida_em__lt=datetime.fromisoformat(antes_de))
-        except ValueError:
-            raise HttpError(422, "antes_de deve ser data ISO")
-    recentes = list(consulta.order_by("-ocorrida_em", "-criada_em")[:limite])
+        consulta = consulta.filter(_antes_de(conversa, antes_de))
+    recentes = list(consulta.order_by("-ocorrida_em", "-criada_em", "-id")[:limite])
     recentes.reverse()
     return {"conversa": conversa_json(conversa),
-            "mensagens": [mensagem_json(envio._sincronizar(m)) for m in recentes]}
+            "mensagens": [mensagem_json(envio._sincronizar(m)) for m in recentes],
+            # Cursor da página anterior: id da mais antiga devolvida (desempata mensagens do mesmo instante).
+            "proxima_antes_de": str(recentes[0].id) if recentes else None}
 
 
 class ModeloEntrada(Schema):

@@ -24,6 +24,7 @@ ANTIGA_APOS = JANELA_WHATSAPP
 MENSAGEM_RECEBIDA = "mensagem.recebida"
 # Plausível: depois de 2009 (o WhatsApp nem existia antes) e, no máximo, 5 minutos à frente.
 _PRIMEIRO_SEGUNDO_PLAUSIVEL = 1_230_768_000
+REENTREGA_SEM_ID = timedelta(minutes=10)
 
 
 @dataclass
@@ -70,6 +71,17 @@ def _ligar(conversa: Conversa | None, recebida: Recebida) -> leads.Ligacao | Non
         return leads.Ligacao("pendente")
 
 
+def _repetida_sem_id(conversa: Conversa, recebida: Recebida) -> bool:
+    """E-mail sem Message-ID reentregue: mesmo conteúdo na mesma conversa em poucos minutos."""
+    if recebida.id_externo or recebida.canal != "email":
+        return False
+    return conversa.mensagens.filter(
+        direcao="entrada", texto=recebida.texto or "", assunto=(recebida.assunto or "")[:300],
+        em_resposta_a=(recebida.em_resposta_a or "")[:300],
+        ocorrida_em__gte=timezone.now() - REENTREGA_SEM_ID,
+    ).exists()
+
+
 def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
     lead = conversa.lead_id if conversa.ligacao == "ligada" else None
     midia = ({"tipo": mensagem.midia_tipo, "referencia": mensagem.midia_referencia,
@@ -95,8 +107,9 @@ def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
 def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
     """Grava a mensagem e publica `mensagem.recebida`. Volta (mensagem, nova)."""
     recebida.endereco = enderecos.endereco_do_canal(recebida.canal, recebida.endereco)
-    if not recebida.endereco:
-        return None, False
+    recebida.site_id = (recebida.site_id or "").strip()
+    if not recebida.endereco or not recebida.site_id:
+        return None, False  # sem site não há conversa: dado de um site nunca cai em outro
     existente = Conversa.objects.filter(
         site_id=recebida.site_id, canal=recebida.canal, endereco=recebida.endereco,
     ).first()
@@ -104,6 +117,8 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
         direcao="entrada", id_externo=recebida.id_externo,
     ).exists():
         return existente.mensagens.get(direcao="entrada", id_externo=recebida.id_externo), False
+    if existente is not None and _repetida_sem_id(existente, recebida):
+        return None, False
     ligacao = _ligar(existente, recebida)
     agora = timezone.now()
     momento = recebida.ocorrida_em or agora

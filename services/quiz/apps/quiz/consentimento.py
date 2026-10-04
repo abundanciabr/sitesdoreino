@@ -8,7 +8,7 @@ em `lead.phone`):
         "aceito": true,
         "texto": "<o texto que a pessoa leu>",
         "versao_texto": "whatsapp-v1",
-        "registrado_em": "2026-10-03T21:00:00-03:00"   # null quando não marcou
+        "registrado_em": "2026-10-03T21:00:00-03:00"   # hora da escolha; null sem registro
     }}
 
 - `quiz.completado` e `quiz.captura_parcial` levam o bloco sempre.
@@ -84,9 +84,9 @@ def bloco(registro) -> dict:
             "aceito": registro.aceita_whatsapp,
             "texto": registro.texto_whatsapp,
             "versao_texto": registro.versao_texto,
-            "registrado_em": (
-                registro.atualizado_em.isoformat() if registro.aceita_whatsapp else None
-            ),
+            # Também na recusa: a mensageria ordena as escolhas pela hora em que
+            # a pessoa as fez, não pela hora em que o consumidor as processou.
+            "registrado_em": registro.atualizado_em.isoformat(),
         }
     }
 

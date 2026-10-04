@@ -12,8 +12,10 @@
 # O site vem do Host; oferta de outro site é 404 e a marca de um site nunca
 # vale para o outro.
 import json
+import time
 from datetime import datetime, timezone
 
+from django.db import transaction
 from django.http import JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
@@ -26,6 +28,9 @@ from apps.pedidos.models import Session as SessionModel
 router = Router()
 
 LIMITE_DE_OFERTAS = 30
+# A tela do admin desiste em 8 s: passado este tempo, as ofertas que faltam vêm
+# marcadas como "demorou" e a tela mostra as outras, em vez de cair inteira.
+ORCAMENTO_DA_LISTA_SEGUNDOS = 5.0
 
 
 def _cupons_existentes() -> list[dict]:
@@ -175,12 +180,21 @@ def list_agent_conditions(request, oferta: str = ""):
     for slug in [*marcadas, *vistas]:
         if slug not in slugs:
             slugs.append(slug)
-    return JsonResponse(
-        {
-            "site_id": site["id"],
-            "ofertas": [_linha_da_oferta(site, slug) for slug in slugs[:LIMITE_DE_OFERTAS]],
-        }
-    )
+    inicio = time.monotonic()
+    linhas = []
+    for slug in slugs[:LIMITE_DE_OFERTAS]:
+        if linhas and time.monotonic() - inicio > ORCAMENTO_DA_LISTA_SEGUNDOS:
+            linhas.append(
+                {
+                    "oferta_ref": slug,
+                    "disponivel": False,
+                    "motivo": "demorou demais para consultar; recarregue a tela",
+                    "itens": [],
+                }
+            )
+        else:
+            linhas.append(_linha_da_oferta(site, slug))
+    return JsonResponse({"site_id": site["id"], "ofertas": linhas})
 
 
 @router.put(
@@ -214,13 +228,22 @@ def put_offer_agent_conditions(request, slug: str):
             + "; existem: "
             + ", ".join(sorted(existentes)),
         )
-    atuais = _liberadas(site["id"], slug)
-    CondicaoDoAgente.objects.filter(site_id=site["id"], oferta_slug=slug).exclude(
-        condicao_id__in=pedidas
-    ).delete()
-    for condicao_id in pedidas:
-        if condicao_id not in atuais:
-            CondicaoDoAgente.objects.create(
-                site_id=site["id"], oferta_slug=slug, condicao_id=condicao_id, liberada_por=autor
-            )
+    # Só se desmarca o que existe agora e não veio no corpo. Marca de condição
+    # que sumiu por um instante (cotação de parcelas fora do ar) fica guardada:
+    # volta a valer quando o provedor volta, sem ninguém ter desmarcado.
+    with transaction.atomic():
+        CondicaoDoAgente.objects.filter(site_id=site["id"], oferta_slug=slug).filter(
+            condicao_id__in=existentes
+        ).exclude(condicao_id__in=pedidas).delete()
+        # ignore_conflicts: dois PUTs ao mesmo tempo (duplo clique, duas abas)
+        # gravam a mesma marca uma vez só, sem estourar a restrição única.
+        CondicaoDoAgente.objects.bulk_create(
+            [
+                CondicaoDoAgente(
+                    site_id=site["id"], oferta_slug=slug, condicao_id=cid, liberada_por=autor
+                )
+                for cid in pedidas
+            ],
+            ignore_conflicts=True,
+        )
     return JsonResponse(condicoes_para_o_agente(site, oferta))

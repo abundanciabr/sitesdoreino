@@ -68,10 +68,15 @@ def _normalizar(item: dict) -> dict:
     }
 
 
-def _site(dados: dict, site_url: str, remetente: str) -> str:
-    """Site da URL, do corpo, da conversa respondida ou do único lead com o e-mail."""
-    if site_url or dados["site_id"]:
-        return (site_url or dados["site_id"])[:100]
+def _site(dados: dict, site_url: str, remetente: str) -> str | None:
+    """Site da URL, do corpo, da conversa respondida ou do único lead com o e-mail.
+
+    "" quando nenhum site é dono do remetente; None quando a célula leads não
+    respondeu (o provedor deve tentar de novo).
+    """
+    explicito = (site_url or dados["site_id"]).strip()
+    if explicito:
+        return explicito[:100]
     if dados["in_reply_to"]:
         anterior = MensagemDaConversa.objects.filter(
             direcao="saida", id_externo=dados["in_reply_to"].strip(), conversa__canal="email",
@@ -79,6 +84,8 @@ def _site(dados: dict, site_url: str, remetente: str) -> str:
         if anterior is not None:
             return anterior.conversa.site_id
     ligacao = leads.procurar(site_id="", canal="email", endereco=remetente)
+    if ligacao.ligacao == "pendente":
+        return None
     return ligacao.site_id if ligacao.ligacao in ("ligada", "ambigua") else ""
 
 
@@ -94,7 +101,7 @@ def email_recebido(request, site_id: str = ""):
     if not isinstance(payload, dict):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     itens = payload.get("items") if isinstance(payload.get("items"), list) else [payload]
-    recebidas = ignoradas = 0
+    recebidas = ignoradas = sem_site = 0
     for item in itens:
         if not isinstance(item, dict):
             ignoradas += 1
@@ -108,10 +115,13 @@ def email_recebido(request, site_id: str = ""):
             ignoradas += 1  # devolução do servidor, "não responda" ou resposta automática: não é conversa
             continue
         site = _site(dados, site_id.strip(), remetente)
+        if site is None:
+            return JsonResponse({"erro": "consulta de contatos indisponivel; tente de novo"}, status=503)
         if not site:
+            # Remetente desconhecido, sem site na URL: nenhum site é dono desta carta.
             logger.warning("conversas: e-mail de %s sem site identificavel; ignorado",
                            enderecos.mascarar("email", remetente))
-            ignoradas += 1
+            sem_site += 1
             continue
         _, nova = receber(Recebida(
             site_id=site, canal="email", endereco=remetente, texto=dados["text"],
@@ -119,4 +129,8 @@ def email_recebido(request, site_id: str = ""):
             em_resposta_a=dados["in_reply_to"].strip(), caixa=enderecos.email(dados["to"]),
         ))
         recebidas += int(nova)
-    return JsonResponse({"recebidas": recebidas, "ignoradas": ignoradas})
+    # Lote todo ignorado também é 200: o remetente do webhook não deve reenviar o que nunca vai valer.
+    resposta = {"recebidas": recebidas, "ignoradas": ignoradas}
+    if sem_site:
+        resposta["sem_site"] = sem_site
+    return JsonResponse(resposta)
