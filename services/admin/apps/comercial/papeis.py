@@ -230,6 +230,9 @@ SAIDAS = {
             "resumo": {"type": "string"},
             "objecao_principal": _texto_ou_nulo(),
             "proximo_passo": {"type": "string"},
+            # O lead trouxe algo novo (objeção, prazo, dúvida, interesse em outro produto)?
+            # Só "sim" põe na fila a atualização do perfil; o resto da conversa não repete a análise.
+            "informacao_nova": {"type": "string", "enum": ["sim", "nao"]},
         },
     ),
     P.RESULTADOS: _esquema(
@@ -246,6 +249,19 @@ SAIDAS = {
         },
     ),
 }
+
+
+# A saída do analista quando ele relê a conversa (trabalho "atualizar o perfil").
+SAIDA_DA_REANALISE = _esquema(
+    "decisao_da_reanalise",
+    {
+        "mudou": {"type": "string", "enum": ["sim", "nao"]},
+        "resumo": {"type": "string"},
+        "o_que_mudou": {"type": "string"},
+        "objecao_principal": _texto_ou_nulo(),
+        "proximo_passo": _texto_ou_nulo(),
+    },
+)
 
 
 def estrategia_ativa(papel: str) -> EstrategiaComercial:

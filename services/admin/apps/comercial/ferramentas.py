@@ -620,6 +620,32 @@ def _afirmacao(item, *, hipotese: bool = False) -> tuple[dict | None, bool]:
     }, False
 
 
+def _assinatura_do_perfil(perfil: dict) -> dict:
+    """O que o perfil afirma (sem o resumo, as datas e quem analisou): serve para dizer se mudou."""
+    def afirmacao(item):
+        return (str(item.get("texto") or "").strip().casefold(), bool(item.get("hipotese")))             if isinstance(item, dict) else None
+
+    def lista(valor):
+        return sorted(x for x in (afirmacao(i) for i in valor or []) if x)
+
+    def textos(valor):
+        return sorted(str(x).strip().casefold() for x in valor or [] if str(x).strip())
+
+    prioridade = perfil.get("prioridade")
+    oferta = perfil.get("oferta_indicada")
+    return {
+        "unicos": {c: afirmacao(perfil.get(c)) for c in ("objetivo_declarado", "experiencia", "disponibilidade")},
+        "listas": {c: lista(perfil.get(c)) for c in ("duvidas", "objecoes", "hipoteses")},
+        "textos": {c: textos(perfil.get(c)) for c in ("informacoes_ausentes", "perguntas_uteis")},
+        "prioridade": (prioridade.get("nivel") if isinstance(prioridade, dict) else prioridade) or "",
+        "oferta": (oferta.get("oferta_ref") if isinstance(oferta, dict) else oferta) or "",
+    }
+
+
+def perfil_igual(vigente: dict, novo: dict) -> bool:
+    return _assinatura_do_perfil(vigente) == _assinatura_do_perfil(novo)
+
+
 def salvar_perfil(ctx: Contexto, args: dict) -> dict:
     t = ctx.trabalho
     descartadas = []
@@ -670,6 +696,15 @@ def salvar_perfil(ctx: Contexto, args: dict) -> dict:
     if not t.contato_id:
         saida.update(_indisponivel("salvar_perfil", "O lead ainda não tem ficha; o perfil ficou no trabalho."))
         return saida
+    if t.tipo == T.REANALISAR_PERFIL:
+        vigente = (t.entrada or {}).get("perfil_vigente")
+        if isinstance(vigente, dict) and perfil_igual(vigente, perfil):
+            saida["sem_mudanca"] = True
+            saida["aviso"] = "Nada mudou em relação ao perfil vigente: nenhuma versão nova foi gravada."
+            return saida
+        base = (t.entrada or {}).get("versao_do_perfil")
+        if isinstance(base, int) and not isinstance(base, bool):
+            perfil["versao_base"] = base  # se outra análise gravou no meio, a ficha recusa em vez de pisar
     resposta = servicos.pedir("salvar_perfil", t.contato_id, corpo=perfil, site_id=t.site_id)
     if resposta.ok:
         saida["salvo_na_ficha"] = True
