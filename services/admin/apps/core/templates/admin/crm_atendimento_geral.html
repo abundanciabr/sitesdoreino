@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Atendimento geral{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <p><a href="{% url 'crm' %}">← CRM</a></p>
+  <h1>Atendimento geral</h1>
+  <p class="subtitulo">Quando alguém escreve no WhatsApp ou por e-mail sem ter feito o quiz{% if site.nome %} de {{ site.nome }}{% endif %}, o assistente responde com uma orientação fixa: faça o quiz e a conversa continua. Aqui você escolhe o endereço do quiz que ela cita e o que dizer a quem precisa de outro assunto.</p>
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+  {% if not indisponivel %}
+  <form method="post" class="cartao">{% csrf_token %}
+    <p><label for="endereco-quiz"><b>Endereço do quiz</b></label><br>
+    <input id="endereco-quiz" name="endereco_quiz" type="url" maxlength="{{ limite }}" value="{{ endereco_quiz }}" placeholder="https://..." size="60"><br>
+    <small>Endereço completo, começando com https://. Se ficar em branco, a mensagem diz só “no nosso site”, sem o link.</small></p>
+    <p><label for="atendimento-geral"><b>Para falar com a equipe sobre outro assunto</b></label><br>
+    <textarea id="atendimento-geral" name="atendimento_geral" rows="3" cols="60" maxlength="{{ limite }}">{{ atendimento_geral }}</textarea><br>
+    <small>Escreva o caminho em poucas palavras, por exemplo: escreva para contato@seusite.com. A mensagem fica assim: “Para falar com a equipe sobre outro assunto: <i>seu texto</i>.” Até {{ limite }} letras. Se ficar em branco, a mensagem diz que a equipe responde assim que puder.</small></p>
+    <p><button class="botao" type="submit">Salvar</button></p>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}

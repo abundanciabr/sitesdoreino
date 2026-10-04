@@ -93,6 +93,7 @@ from apps.core.crm_agentes import (
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.crm_resultados import crm_resultados
+from apps.core.atendimento_geral import atendimento_geral
 from apps.core.crm_modelos import crm_modelos
 from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
 from apps.core.menu import (
@@ -262,6 +263,8 @@ urlpatterns = [
     # Nome, apresentação, assinatura, tom e voz do assistente de cada site.
     path("crm/assistente/", assistente_do_site, name="assistente_do_site"),
     path("crm/modelos/", crm_modelos, name="crm_modelos"),
+    # O que o assistente diz a quem escreve sem ter feito o quiz (o texto mora na mensageria).
+    path("crm/atendimento-geral/", atendimento_geral, name="crm_atendimento_geral"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("crm/ofertas-dos-quizzes/", ofertas_dos_quizzes, name="crm_ofertas_dos_quizzes"),
