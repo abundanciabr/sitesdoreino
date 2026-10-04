@@ -165,6 +165,12 @@ def _linha_quizzes(fontes):
         )
     ligados = [q for q in publicados if not q.get("precisa_de_atencao")]
     if len(ligados) == len(publicados):
+        sem_conferir = _ofertas_nao_conferidas(publicados)
+        if sem_conferir:
+            return _nao_conferi(
+                "quizzes", titulo,
+                "O catálogo não respondeu sobre a oferta: " + ", ".join(sem_conferir) + ".", link, texto,
+            )
         return _item(
             "quizzes", titulo, PRONTO,
             f"{len(ligados)} de {len(publicados)} quiz{'zes' if len(publicados) != 1 else ''} publicado{'s' if len(publicados) != 1 else ''}"
@@ -191,6 +197,17 @@ def _ofertas_ligadas(publicados):
     return apelidos
 
 
+def _ofertas_nao_conferidas(publicados):
+    """Ofertas ligadas a um botão que o catálogo não deixou conferir agora."""
+    apelidos = []
+    for quiz in publicados:
+        for faixa in quiz.get("faixas", []):
+            oferta = faixa.get("oferta") or {}
+            if oferta.get("tipo") == "nao_conferida" and oferta.get("apelido") not in apelidos:
+                apelidos.append(oferta["apelido"])
+    return apelidos
+
+
 def _linha_condicoes(fontes):
     titulo = "Ao menos uma condição liberada em cada oferta ligada"
     link, texto = reverse("crm_condicoes"), "Liberar condições"
@@ -198,6 +215,12 @@ def _linha_condicoes(fontes):
     if publicados is None:
         return _nao_conferi("condicoes", titulo, "Não consegui saber quais ofertas estão ligadas aos quizzes.", link, texto)
     ofertas = _ofertas_ligadas(publicados)
+    sem_conferir = _ofertas_nao_conferidas(publicados)
+    if not ofertas and sem_conferir:
+        return _nao_conferi(
+            "condicoes", titulo,
+            "O catálogo não respondeu sobre a oferta: " + ", ".join(sem_conferir) + ".", link, texto,
+        )
     if not ofertas:
         return _item(
             "condicoes", titulo, FALTA, "Ainda não há oferta ligada a um quiz publicado.",
@@ -225,6 +248,11 @@ def _linha_condicoes(fontes):
     if duvida:
         return _nao_conferi(
             "condicoes", titulo, "O checkout não conseguiu conferir: " + ", ".join(duvida) + ".", link, texto
+        )
+    if sem_conferir:
+        return _nao_conferi(
+            "condicoes", titulo,
+            "O catálogo não respondeu sobre a oferta: " + ", ".join(sem_conferir) + ".", link, texto,
         )
     return _item(
         "condicoes", titulo, PRONTO,

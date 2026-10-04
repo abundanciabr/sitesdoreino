@@ -219,6 +219,9 @@ def ao_mensagem_recebida(envelope: dict):
         return None  # uma pessoa da equipe está atendendo
     if comparacao.grupo_do_contato_id(site_id, contato_id) == comparacao.GRUPO_COMPARACAO:
         return None  # grupo de comparação: a mensagem fica na caixa para a equipe responder
+    escopo = interruptor.escopo()
+    if escopo and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
+        return None  # a equipe atua só em alguns quizzes e este contato não veio deles
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
     trabalho, _ = coordenador.criar(
         T.ATENDER_MENSAGEM,

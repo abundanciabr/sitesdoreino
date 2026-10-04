@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('comercial', '0005_tipos_de_recuperacao_e_estorno'),
+        ('comercial', '0003_tabela_do_experimento'),
     ]
 
     operations = [
