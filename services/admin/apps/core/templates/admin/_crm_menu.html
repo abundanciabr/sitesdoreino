@@ -1,0 +1,1 @@
+<nav class="abas" aria-label="Áreas do CRM">{% for area in areas %}{% if area.endereco %}<a href="{{ area.endereco }}" class="aba{% if area.ativa %} ativa{% endif %}"{% if area.ativa %} aria-current="page"{% endif %}>{{ area.nome }}</a>{% else %}<span class="aba futura">{{ area.nome }}</span>{% endif %}{% endfor %}</nav>
