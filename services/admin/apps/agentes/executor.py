@@ -295,17 +295,70 @@ def _comercial(funcao: str, *args):
 
 
 _acordar = threading.Event()
+_acordar_comercial = threading.Event()
 
 
 def acordar() -> None:
     """Entrou trabalho na fila: o laço deste processo vai buscar agora, sem
     esperar a próxima volta. Outros processos acham pela volta normal."""
     _acordar.set()
+    _acordar_comercial.set()
+
+
+MAX_TRABALHADORES_COMERCIAIS = 4
+PADRAO_TRABALHADORES_COMERCIAIS = 2
+
+
+def trabalhadores_comerciais() -> int:
+    """`COMERCIAL_TRABALHADORES`: quantas threads da equipe comercial por processo
+    (padrão 2, teto 4). Valor estranho volta ao padrão."""
+    bruto = os.environ.get("COMERCIAL_TRABALHADORES", "").strip()
+    try:
+        n = int(bruto) if bruto else PADRAO_TRABALHADORES_COMERCIAIS
+    except ValueError:
+        n = PADRAO_TRABALHADORES_COMERCIAIS
+    return max(1, min(MAX_TRABALHADORES_COMERCIAIS, n))
+
+
+def rodar_comercial_para_sempre(parar: threading.Event, indice: int = 1) -> None:
+    """O laço de UM trabalhador da equipe comercial. Só pega trabalho comercial:
+    a manutenção, os avisos, o áudio e os robôs pessoais ficam no laço principal."""
+    trabalhador = f"{nome_do_trabalhador()}:comercial-{indice}"[:120]
+    log.info("Trabalhador comercial ligado: %s", trabalhador)
+    while not parar.is_set():
+        _acordar_comercial.clear()
+        close_old_connections()
+        trabalhou = False
+        try:
+            trabalhou = _comercial("rodar_um", trabalhador) is not None
+        except Exception:  # noqa: BLE001 - o laço não pode morrer
+            log.exception("Trabalhador comercial: volta falhou")
+        if not trabalhou:
+            _acordar_comercial.wait(INTERVALO_SEM_TRABALHO)
+    close_old_connections()
+
+
+def _ligar_trabalhadores_comerciais(parar: threading.Event) -> list[threading.Thread]:
+    threads = []
+    for indice in range(1, trabalhadores_comerciais() + 1):
+        thread = threading.Thread(
+            target=rodar_comercial_para_sempre,
+            args=(parar, indice),
+            name=f"comercial-admin-{indice}",
+            daemon=True,
+        )
+        thread.start()
+        threads.append(thread)
+    return threads
 
 
 def rodar_para_sempre(parar: threading.Event) -> None:
-    """O laço da thread. Cada volta usa uma conexão de banco saudável."""
+    """O laço da thread. Cada volta usa uma conexão de banco saudável.
+
+    Este laço cuida dos robôs pessoais e da manutenção; a equipe comercial
+    roda em threads próprias (`COMERCIAL_TRABALHADORES`), ligadas aqui."""
     trabalhador = nome_do_trabalhador()
+    _ligar_trabalhadores_comerciais(parar)
     ultimo_reacordar = timezone.now() - INTERVALO_DE_REACORDAR
     ultimo_audio = timezone.now() - INTERVALO_DO_AUDIO
     log.info("Executor dos robôs ligado: %s", trabalhador)
@@ -331,9 +384,6 @@ def rodar_para_sempre(parar: threading.Event) -> None:
                 ultimo_audio = timezone.now()
                 _transcrever_audios()
             trabalhou = rodar_uma(trabalhador) is not None
-            if not trabalhou:
-                # A equipe comercial (`apps/comercial`) usa o mesmo laço.
-                trabalhou = _comercial("rodar_um", trabalhador) is not None
         except Exception:  # noqa: BLE001 - o laço não pode morrer
             log.exception("Executor dos robôs: volta falhou")
         if not trabalhou:
@@ -365,5 +415,6 @@ def ligar_em_segundo_plano() -> bool:
 def desligar() -> None:
     _parar.set()
     _acordar.set()
+    _acordar_comercial.set()
     if _thread is not None:
         _thread.join(timeout=5)
