@@ -73,6 +73,8 @@ def lead_do_contato(email: str, nome: str, telefone: str) -> dict:
         lead["name"] = nome
     if telefone:
         lead["phone"] = telefone
+        # Só os dígitos, para o leads casar o mesmo número escrito de outro jeito.
+        lead["phone_digitos"] = "".join(c for c in telefone if c.isdigit())
     return lead
 
 

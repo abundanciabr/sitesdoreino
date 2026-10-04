@@ -66,8 +66,8 @@ def test_a_mesma_chave_cai_sempre_na_mesma_versao_e_a_fatia_e_a_pedida():
 def test_comparar_so_conclui_com_amostra_nas_duas_versoes():
     pouca = otimizador.comparar({"abordagens": 10, "vendas": 5}, {"abordagens": 10, "vendas": 0})
     assert pouca["veredito"] == "inconclusivo"
-    assert otimizador.comparar({"abordagens": 40, "vendas": 12}, {"abordagens": 40, "vendas": 1})["veredito"] == "pior"
-    assert otimizador.comparar({"abordagens": 40, "vendas": 1}, {"abordagens": 40, "vendas": 12})["veredito"] == "melhor"
+    assert otimizador.comparar({"abordagens": 40, "vendas": 14}, {"abordagens": 40, "vendas": 0})["veredito"] == "pior"
+    assert otimizador.comparar({"abordagens": 40, "vendas": 0}, {"abordagens": 40, "vendas": 14})["veredito"] == "melhor"
     assert otimizador.comparar({"abordagens": 40, "vendas": 10}, {"abordagens": 40, "vendas": 11})["veredito"] == "igual"
     # Uma versão com amostra e a outra sem: nada a concluir.
     assert otimizador.comparar({"abordagens": 80, "vendas": 30}, {"abordagens": 3, "vendas": 0})["veredito"] == "inconclusivo"
@@ -378,8 +378,8 @@ def test_a_proposta_nao_muda_catalogo_condicoes_canais_nem_pagamento():
 def test_candidata_pior_com_amostra_volta_tudo_para_a_anterior_e_registra_o_motivo():
     base = papeis.estrategia_ativa("abordagem")
     proposta, experimento = _v2(percentual=50)
-    _envios(1, 40, 12, "b")
-    _envios(2, 40, 1, "c")
+    _envios(1, 40, 14, "b")
+    _envios(2, 40, 0, "c")
     resultado = otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
     assert resultado["desfecho"] == "voltou"
     experimento.refresh_from_db()
@@ -388,7 +388,7 @@ def test_candidata_pior_com_amostra_volta_tudo_para_a_anterior_e_registra_o_moti
     assert "piorou com amostra suficiente" in experimento.conclusao and "voltou para a v1" in experimento.conclusao
     assert experimento.comparativo["veredito"] == "pior" and experimento.comparativo["z"] < -1.96
     assert proposta.situacao == "arquivada" and not proposta.ativa
-    assert proposta.historico[-1]["acao"] == "saiu do teste" and "v2 vendeu 1" in proposta.historico[-1]["motivo"]
+    assert proposta.historico[-1]["acao"] == "saiu do teste" and "v2 vendeu 0" in proposta.historico[-1]["motivo"]
     assert papeis.estrategia_ativa("abordagem").pk == base.pk
     # Todo o tráfego volta para a base; a memória das decisões já feitas fica.
     assert all(otimizador.escolher_para(_trabalho(T.ABORDAR, oportunidade_id=f"o-{i}",
@@ -424,8 +424,8 @@ def test_o_comparativo_conta_so_o_periodo_do_teste():
 def test_candidata_melhor_com_amostra_vira_a_do_ar_e_a_anterior_fica_para_voltar():
     base = papeis.estrategia_ativa("abordagem")
     proposta, experimento = _v2(percentual=50)
-    _envios(1, 40, 12, "b")
-    _envios(2, 40, 26, "c")
+    _envios(1, 40, 8, "b")
+    _envios(2, 40, 28, "c")
     resultado = otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
     assert resultado["desfecho"] == "promovida"
     experimento.refresh_from_db()
@@ -435,7 +435,7 @@ def test_candidata_melhor_com_amostra_vira_a_do_ar_e_a_anterior_fica_para_voltar
     base.refresh_from_db()
     assert base.situacao == "arquivada"
     # Depois de promovida, se piorar contra a base no período do teste, volta sozinha.
-    _envios(2, 200, 0, "d")
+    _envios(2, 600, 0, "d")
     volta = otimizador.volta_se_piorou("abordagem")
     assert volta and volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == base.pk
@@ -474,8 +474,8 @@ def test_a_analise_da_hora_volta_a_versao_que_piorou_sem_chamar_o_modelo():
     _guardar_chave()
     base = papeis.estrategia_ativa("abordagem")
     proposta, experimento = _v2(percentual=50)
-    _envios(1, 40, 12, "b")
-    _envios(2, 40, 1, "c")
+    _envios(1, 40, 14, "b")
+    _envios(2, 40, 0, "c")
     trabalho = _analise()
     openai = respx.post(RESPOSTAS)
     coordenador.rodar_um("t1")
@@ -534,3 +534,76 @@ def test_pagina_mostra_o_teste_e_a_pessoa_pode_encerra_lo():
     assert "Encerrado sem conclusão" in html and "Encerrar o teste" not in html
     # Encerrar de novo não faz nada.
     assert otimizador.encerrar(experimento, "dono") is False
+
+
+# ---------------------------------------------------------------- olhar toda hora sem errar à toa
+
+
+def test_olhando_toda_hora_duas_versoes_iguais_quase_nunca_dao_veredito_falso():
+    """Duas versões com a mesma taxa de venda (10%), 21 dias conferidos de hora
+    em hora: com o corte fixo de 1,96 mais de um teste em cada cinco saía com
+    `pior` ou `melhor` sem motivo."""
+    import random
+
+    sorteio = random.Random(20261004)
+    falsos = 0
+    testes = 300
+    for _ in range(testes):
+        base = {"abordagens": 0, "vendas": 0}
+        candidata = {"abordagens": 0, "vendas": 0}
+        for _hora in range(21 * 24):
+            for _ in range(sorteio.randint(0, 3)):
+                alvo = candidata if sorteio.random() < 0.2 else base
+                alvo["abordagens"] += 1
+                alvo["vendas"] += int(sorteio.random() < 0.10)
+            if otimizador.comparar(base, candidata)["veredito"] in ("pior", "melhor"):
+                falsos += 1
+                break
+    assert falsos / testes < 0.10
+
+
+def test_cinco_vendas_contra_zero_em_30_nao_bastam_e_uma_diferenca_enorme_basta():
+    assert otimizador.comparar({"abordagens": 30, "vendas": 0},
+                               {"abordagens": 30, "vendas": 5})["veredito"] == "igual"
+    assert otimizador.comparar({"abordagens": 200, "vendas": 60},
+                               {"abordagens": 200, "vendas": 10})["veredito"] == "pior"
+    assert otimizador.comparar({"abordagens": 200, "vendas": 10},
+                               {"abordagens": 200, "vendas": 60})["veredito"] == "melhor"
+
+
+# ---------------------------------------------------------------- a volta da pessoa fica
+
+
+def test_a_analise_da_hora_nao_desfaz_a_volta_que_a_pessoa_fez():
+    papeis.estrategia_ativa("abordagem")
+    v2 = papeis.propor_versao("abordagem", "Instruções novas.", criada_por="x", motivo="m", origem="otimizador")
+    papeis.ativar(v2, "dono", "entrou a v2")
+    _envios(1, 40, 4, "a")
+    _envios(2, 40, 28, "b")
+    voltou = papeis.voltar_a_anterior("abordagem", "dono", "prefiro a v1")
+    assert voltou.versao == 1
+    assert otimizador.volta_se_piorou("abordagem") is None
+    assert papeis.estrategia_ativa("abordagem").versao == 1
+
+
+@pytest.mark.parametrize("campos", [
+    {"acao": "encerrar_teste", "teste": "abc"},
+    {"acao": "ativar", "estrategia": "abc"},
+    {"acao": "retomar", "trabalho": "abc"},
+    {"acao": "encerrar_teste"},
+    {"acao": "voltar", "papel": "xyz"},
+    {"acao": "voltar"},
+])
+@respx.mock
+def test_post_malformado_na_pagina_dos_agentes_nao_da_erro_500(campos):
+    from django.test import Client
+    from django.urls import reverse
+
+    from tests.test_comercial import DONO, IDENTIDADE
+
+    respx.get(f"{IDENTIDADE}/sessao/completa").respond(200, json={
+        "autenticado": True, "id": "id-1", "nome_exibido": "Dono", "papel": None, "email": DONO})
+    cliente = Client()
+    cliente.defaults["HTTP_COOKIE"] = "meshcraft_sessao=qualquer-coisa-assinada"
+    resposta = cliente.post(reverse("agentes_comerciais"), campos)
+    assert resposta.status_code in (302, 404)

@@ -27,7 +27,7 @@ from django.utils import timezone
 
 from apps.agentes import modelo, segredo
 from apps.agentes.models import Conexao
-from apps.comercial import coordenador, eventos, ferramentas, otimizador, papeis, resultados
+from apps.comercial import coordenador, eventos, ferramentas, otimizador, papeis, resultados, servicos
 from apps.comercial.models import (
     DecisaoComercial,
     EstrategiaComercial,
@@ -61,6 +61,7 @@ def ambiente(monkeypatch, settings):
     monkeypatch.delenv("COMERCIAL_AGENTES", raising=False)
     settings.ADMIN_EMAILS = DONO
     settings.URL_DE_ENTRADA = "/entrar/google"
+    servicos._CACHE_DO_HOST.clear()
 
 
 def _guardar_chave() -> Conexao:
@@ -108,7 +109,7 @@ def _trabalho(tipo: str, **campos) -> TrabalhoComercial:
         "contato_id": "lead-1",
         "oportunidade_id": "opp-1",
         "chave_da_conversa": f"lead:site-1:{EMAIL}",
-        "entrada": {"contato": _contato(), "quiz": "crivo", "oferta_ref": "curso-3d"},
+        "entrada": {"contato": _contato(), "quiz": "crivo", "oferta_ref": "curso-3d", "host": "meshcraft.top"},
     }
     base.update(campos)
     trabalho, _ = coordenador.criar(tipo, f"teste:{tipo}:{uuid.uuid4().hex}", **base)
@@ -224,7 +225,7 @@ def test_analista_le_salva_perfil_com_evidencia_e_poe_a_abordagem_na_fila():
     respx.get(f"{LEADS}/leads").respond(200, json={"itens": [
         {"id": "lead-1", "site_id": "site-1", "email": EMAIL, "nome": "Ana Souza"}]})
     respx.get(f"{LEADS}/crm").respond(200, json={"itens": [
-        {"id": "opp-1", "lead_id": "lead-1", "fonte": {"tipo": "quiz", "referencia_id": "quiz:crivo"}}]})
+        {"id": "opp-1", "lead_id": "lead-1", "fonte": {"tipo": "quiz", "referencia_id": "oferta:crivo"}}]})
     perfil = respx.put(f"{LEADS}/leads/lead-1/perfil").respond(200, json={"versao": 1})
     _resto_404()
     afirmacao = {"texto": "Tem 3 horas por semana", "tipo": "fato", "fonte": "quiz", "fonte_id": "q1",
@@ -460,7 +461,8 @@ def test_capacidade_que_ainda_nao_existe_volta_indisponivel_sem_quebrar():
     _resto_404()
     respx.post(RESPOSTAS).mock(side_effect=[
         _chamada("consultar_condicoes_compra", {"oferta_ref": None}, "c1"),
-        _chamada("consultar_conhecimento_comercial", {"termos": ["duração"], "produto": None}, "c2"),
+        # As respostas do quiz só vêm de outra célula (aqui, 404): a capacidade ainda não existe.
+        _chamada("consultar_respostas_quiz", {}, "c2"),
         _final({"acao": "sem_acao", "mensagem_principal": None, "razao": "sem dados", "fonte": "-",
                 "proximo_passo": "p", "alternativas": []}),
     ])
@@ -471,6 +473,184 @@ def test_capacidade_que_ainda_nao_existe_volta_indisponivel_sem_quebrar():
         decisao = trabalho.decisoes.get(call_id=call_id)
         assert decisao.resultado == R.INDISPONIVEL
         assert decisao.saida["capacidade_indisponivel"] is True
+
+
+# ---------------------------------------------------------------- oferta, canal e domínio
+
+
+@respx.mock
+def test_a_oportunidade_vem_pela_referencia_oferta_do_quiz_e_a_oferta_do_crm_entra_no_trabalho():
+    trabalho = _trabalho(T.ABORDAR, contato_id="", oportunidade_id="",
+                         entrada={"contato": _contato(), "quiz": "crivo", "host": "meshcraft.top"})
+    respx.get(f"{LEADS}/leads").respond(200, json={"itens": [
+        {"id": "lead-1", "site_id": "site-1", "email": EMAIL, "nome": "Ana Souza"}]})
+    respx.get(f"{LEADS}/crm").respond(200, json={"itens": [
+        {"id": "opp-outra", "lead_id": "lead-1", "fonte": {"tipo": "quiz", "referencia_id": "oferta:outro-quiz"}},
+        {"id": "opp-1", "lead_id": "lead-1", "fonte": {"tipo": "quiz", "referencia_id": "oferta:crivo"},
+         "ofertas": [{"oferta_ref": "curso-3d"}]}]})
+    pego = coordenador.pegar_um("t1")
+    coordenador._achar_a_ficha(pego)
+    trabalho.refresh_from_db()
+    assert (trabalho.contato_id, trabalho.oportunidade_id) == ("lead-1", "opp-1")
+    assert trabalho.entrada["oferta_ref"] == "curso-3d"
+
+
+@respx.mock
+def test_sem_oferta_ligada_a_ferramenta_de_condicoes_diz_isso_sem_inventar():
+    trabalho = _trabalho(T.ABORDAR, entrada={"contato": _contato(), "quiz": "crivo", "host": "meshcraft.top"})
+    checkout = respx.route(url__startswith=CHECKOUT).respond(200, json={})
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel="abordagem")
+    saida = json.loads(ferramentas.executar(ctx, "c1", "consultar_condicoes_compra",
+                                            json.dumps({"oferta_ref": None})))
+    assert "não tem oferta ligada" in saida["erro"] and "Não invente" in saida["erro"]
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.RECUSADO
+    assert not checkout.called  # nenhuma oferta foi inventada para perguntar ao checkout
+
+
+def _enviar_pela_ferramenta(trabalho, papel="abordagem", call_id="c1"):
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel=papel)
+    return json.loads(ferramentas.executar(ctx, call_id, "enviar_mensagem", json.dumps(
+        {"texto": "Oi Ana", "canal": None, "assunto": None, "razao": "r", "fonte": None})))
+
+
+@pytest.mark.parametrize("resultado", [
+    "sem_consentimento", "fora_do_horario", "limite_diario", "limite_do_dia", "pulada"])
+@respx.mock
+def test_canal_que_nao_enviou_nao_marca_contato_nem_mexe_no_acompanhamento(resultado):
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": resultado, "detalhe": "x", "mensagem": None, "conversa": {"canal": "whatsapp"}})
+    acompanhamento = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.RECUSADO
+    assert saida["resultado"] == resultado and saida["erro"]
+    assert not acompanhamento.called
+
+
+@respx.mock
+def test_fora_do_horario_com_hora_marcada_o_trabalho_espera_e_repete_com_a_mesma_chave():
+    _guardar_chave()
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    abre = timezone.now() + timedelta(hours=9)
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").mock(side_effect=[
+        httpx.Response(200, json={"resultado": "fora_do_horario", "reagendar_para": abre.isoformat(),
+                                  "mensagem": None, "conversa": {}}),
+        httpx.Response(200, json={"resultado": "enviada", "mensagem": {"id": "m"}, "conversa": {}}),
+    ])
+    acompanhamento = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("enviar_mensagem", {"texto": "Oi", "canal": None, "assunto": None, "razao": "r",
+                                     "fonte": None}, "c1"),
+        _final({"acao": "mensagem_enviada", "mensagem_principal": "Oi", "razao": "r", "fonte": "f",
+                "proximo_passo": "p", "alternativas": []}),
+    ])
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.NA_FILA and "horário" in trabalho.motivo
+    assert abs((trabalho.nao_antes_de - abre).total_seconds()) < 60
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.PENDENTE
+    assert not acompanhamento.called  # ainda não saiu: ninguém foi contatado
+    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(nao_antes_de=None)
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert len({_corpo(c)["chave_idempotencia"] for c in envio.calls}) == 1
+    assert acompanhamento.call_count == 1
+
+
+@pytest.mark.parametrize("resultado", ["enviada", "repetida"])
+@respx.mock
+def test_envio_feito_grava_o_acompanhamento_com_a_chave_do_envio(resultado):
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": resultado, "mensagem": {"id": "m"}, "conversa": {"canal": "whatsapp"}})
+    acompanhamento = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert saida["resultado"] == resultado
+    corpo = _corpo(acompanhamento.calls.last)
+    assert corpo["chave_idempotencia"] == _corpo(envio.calls.last)["chave_idempotencia"]
+    assert corpo["aguardando_resposta"] is True and corpo["ultimo_contato_em"]
+
+
+@respx.mock
+def test_so_a_abordagem_por_conta_propria_e_proativa():
+    abordagem = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    resposta = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-2", chave_da_conversa="conversa:conv-2")
+    rotas = {
+        conversa: respx.post(f"{MENSAGERIA}/conversas/{conversa}/mensagens").respond(200, json={
+            "resultado": "enviada", "mensagem": {"id": "m"}, "conversa": {}})
+        for conversa in ("conv-1", "conv-2")
+    }
+    respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    _enviar_pela_ferramenta(abordagem)
+    _enviar_pela_ferramenta(resposta, papel="atendimento")
+    assert _corpo(rotas["conv-1"].calls.last)["proativa"] is True
+    assert _corpo(rotas["conv-2"].calls.last)["proativa"] is False
+
+
+@respx.mock
+def test_sem_dominio_do_site_o_checkout_nao_e_chamado_nem_vale_o_site_padrao(monkeypatch):
+    trabalho = _trabalho(T.ABORDAR, entrada={"contato": _contato(), "quiz": "crivo", "oferta_ref": "curso-3d"})
+    checkout = respx.route(url__startswith=CHECKOUT).respond(200, json={"condicoes": []})
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel="abordagem")
+    saida = json.loads(ferramentas.executar(ctx, "c1", "consultar_condicoes_compra",
+                                            json.dumps({"oferta_ref": None})))
+    assert saida["capacidade_indisponivel"] is True
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.INDISPONIVEL
+    assert not checkout.called
+    # O catálogo conhecido responde que meshcraft.top é de OUTRO site: não vale.
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api/catalogo")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-do-catalogo")
+    monkeypatch.delenv("CONHECIMENTO_COMERCIAL_HOSTS", raising=False)
+    respx.get("http://catalogo:8000/api/catalogo/sites/by-host/meshcraft.top").respond(
+        200, json={"id": "site-de-outro", "host": "meshcraft.top"})
+    servicos._CACHE_DO_HOST.clear()
+    assert servicos.host_do_site("site-1") == ""
+
+
+@respx.mock
+def test_o_dominio_vem_do_site_do_trabalho_pelo_indice_ou_pelo_catalogo(monkeypatch):
+    from apps.agentes.models import MaterialComercial
+
+    entrada = {"contato": _contato(), "quiz": "crivo", "oferta_ref": "curso-3d"}
+    trabalho = _trabalho(T.ABORDAR, entrada=entrada)
+    condicoes = respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
+        "site_id": "site-1", "oferta": {}, "condicoes": [{"id": "pix"}]})
+    respx.route(url__startswith=CHECKOUT).respond(404)
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel="abordagem")
+    # Pelo índice comercial desta célula.
+    MaterialComercial.objects.create(documento_nome="d", site_id="site-1", site_host="loja.test")
+    ferramentas.executar(ctx, "c1", "consultar_condicoes_compra", json.dumps({"oferta_ref": None}))
+    assert condicoes.calls.last.request.headers["host"] == "loja.test"
+    # Pelo catálogo: o domínio só vale se o id do site conferir.
+    MaterialComercial.objects.all().delete()
+    servicos._CACHE_DO_HOST.clear()
+    monkeypatch.setenv("CATALOGO_API_URL", "http://catalogo:8000/api/catalogo")
+    monkeypatch.setenv("TOKEN_CATALOGO", "token-do-catalogo")
+    monkeypatch.setenv("CONHECIMENTO_COMERCIAL_HOSTS", "a.test,b.test")
+    respx.get("http://catalogo:8000/api/catalogo/sites/by-host/a.test").respond(
+        200, json={"id": "site-de-outro", "host": "a.test"})
+    respx.get("http://catalogo:8000/api/catalogo/sites/by-host/b.test").respond(
+        200, json={"id": "site-1", "host": "b.test"})
+    assert servicos.host_do_site("site-1") == "b.test"
+    assert servicos.host_do_trabalho(trabalho) == "b.test"
+
+
+def test_o_dominio_entra_no_trabalho_quando_o_evento_nasce(monkeypatch):
+    from apps.agentes.models import MaterialComercial
+
+    MaterialComercial.objects.create(documento_nome="d", site_id="site-1", site_host="loja.test")
+    eventos.tratar("eventos.quiz.completado", _quiz_completado())
+    assert TrabalhoComercial.objects.get(tipo=T.ANALISAR_LEAD).entrada["host"] == "loja.test"
+    eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        submissao_id="sub-2", lead={"email": "outra@meshcraft.test", "name": "Bia"},
+        context={"host": "da-pagina.test"}))
+    assert TrabalhoComercial.objects.get(entrada__submissao_id="sub-2").entrada["host"] == "da-pagina.test"
+    data = {"conversa_id": "conv-7", "mensagem_id": "m-7", "canal": "whatsapp", "site_id": "site-1",
+            "lead": "lead-1", "lead_ligacao": "ligada", "texto": "Oi", "estado_conversa": "agente"}
+    eventos.tratar("eventos.mensagem.recebida", _envelope("mensagem.recebida", data))
+    assert TrabalhoComercial.objects.get(tipo=T.ATENDER_MENSAGEM).entrada["host"] == "loja.test"
 
 
 # ---------------------------------------------------------------- trava por conversa
@@ -543,7 +723,8 @@ def test_conversa_assumida_por_pessoa_nao_recebe_resposta_do_agente():
 def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento():
     _guardar_chave()
     trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", chave_da_conversa="conversa:conv-1",
-                         entrada={"contato": _contato(), "oferta_ref": "curso-3d", "texto": "quero comprar"})
+                         entrada={"contato": _contato(), "oferta_ref": "curso-3d", "texto": "quero comprar",
+                                  "host": "meshcraft.top"})
     respx.get(f"{MENSAGERIA}/conversas/conv-1").respond(200, json={"estado": "agente"})
     respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
         "site_id": "site-1", "oferta": {"oferta_ref": "curso-3d", "preco": "R$ 497,00"},
@@ -707,10 +888,10 @@ def test_otimizador_com_amostra_propoe_versao_que_so_entra_no_ar_pela_pagina():
 
 def test_otimizador_volta_sozinho_quando_a_versao_nova_vende_menos_com_amostra():
     v1 = papeis.estrategia_ativa("abordagem")
-    _abordagens(40, vendas=12, versao=1)
+    _abordagens(40, vendas=14, versao=1)
     v2 = papeis.propor_versao("abordagem", "v2", criada_por="admin", motivo="m", origem="pessoa")
     papeis.ativar(v2, "admin")
-    _abordagens(40, vendas=1, versao=2)
+    _abordagens(40, vendas=0, versao=2)
     volta = otimizador.volta_se_piorou("abordagem")
     assert volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == v1.pk
@@ -748,6 +929,22 @@ def test_pagina_dos_agentes_mostra_fila_e_ativa_proposta():
     cliente.post(reverse("crm_agentes_retomar", args=[trabalho.pk]))
     trabalho.refresh_from_db()
     assert trabalho.estado == E.NA_FILA
+
+
+@respx.mock
+def test_pagina_da_equipe_filtra_por_botao_e_numero_que_nao_e_numero_da_404():
+    respx.get(f"{IDENTIDADE}/sessao/completa").respond(200, json={
+        "autenticado": True, "id": "id-1", "nome_exibido": "Dono", "papel": None, "email": DONO})
+    cliente = Client()
+    cliente.defaults["HTTP_COOKIE"] = "meshcraft_sessao=qualquer-coisa-assinada"
+    resposta = cliente.get(reverse("agentes_comerciais"))
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    # O CSP bloqueia atributo de evento: o filtro tem de ser um botão de enviar.
+    assert "onchange" not in html and 'type="submit">Filtrar</button>' in html
+    for acao, campo in (("ativar", "estrategia"), ("retomar", "trabalho"), ("encerrar_teste", "teste")):
+        for valor in ("abc", "", "1.5", "-3"):
+            assert cliente.post(reverse("agentes_comerciais"), {"acao": acao, campo: valor}).status_code == 404
 
 
 # ---------------------------------------------------------------- consumidor

@@ -5,7 +5,7 @@ barra o crachá de equipe fora de `/equipe`)."""
 
 from __future__ import annotations
 
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -30,23 +30,39 @@ def _quem(request) -> str:
     return str(admin.get("email") or admin.get("nome") or "admin") if isinstance(admin, dict) else "admin"
 
 
+def _numero(valor) -> int | None:
+    """O número do formulário, ou None se veio vazio ou torto."""
+    try:
+        return int(str(valor or "").strip())
+    except ValueError:
+        return None
+
+
+def _achar(modelo, valor):
+    numero = _numero(valor)
+    if numero is None or numero < 0 or numero > 2**62:
+        raise Http404("Registro não encontrado.")
+    return get_object_or_404(modelo, pk=numero)
+
+
 def _post(request):
     acao = request.POST.get("acao") or ""
     quem = _quem(request)
     if acao == "ativar":
-        estrategia = get_object_or_404(EstrategiaComercial, pk=request.POST.get("estrategia"))
+        estrategia = _achar(EstrategiaComercial, request.POST.get("estrategia"))
         papeis.ativar(estrategia, quem, (request.POST.get("motivo") or "")[:1000])
         resultado = "ativada"
     elif acao == "voltar":
-        voltou = papeis.voltar_a_anterior(request.POST.get("papel") or "", quem,
-                                          (request.POST.get("motivo") or "")[:1000])
+        papel = request.POST.get("papel") or ""
+        voltou = papel in dict(EstrategiaComercial.Papel.choices) and papeis.voltar_a_anterior(
+            papel, quem, (request.POST.get("motivo") or "")[:1000])
         resultado = "voltou" if voltou else "sem_anterior"
     elif acao == "encerrar_teste":
-        teste = get_object_or_404(ExperimentoEstrategia, pk=request.POST.get("teste"))
+        teste = _achar(ExperimentoEstrategia, request.POST.get("teste"))
         resultado = "teste_encerrado" if otimizador.encerrar(
             teste, quem, (request.POST.get("motivo") or "")[:500]) else "teste_nao_encerrado"
     elif acao == "retomar":
-        trabalho = get_object_or_404(TrabalhoComercial, pk=request.POST.get("trabalho"))
+        trabalho = _achar(TrabalhoComercial, request.POST.get("trabalho"))
         resultado = "retomado" if coordenador.retomar(trabalho, quem) else "nao_retomado"
     else:
         resultado = ""

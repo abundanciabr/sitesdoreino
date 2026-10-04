@@ -138,6 +138,7 @@
       <details><summary>Ver as instruções da v{{ e.ativa.versao }}</summary><pre>{{ e.ativa.instrucoes }}</pre></details>
       {% if e.anterior %}
       <form method="post" action="{% url 'crm_agentes_voltar' e.papel %}" class="crmag-linha">{% csrf_token %}
+        <input type="hidden" name="versao_no_ar" value="{{ e.ativa.versao }}">
         <label>Motivo para voltar à v{{ e.anterior.versao }}<input type="text" name="motivo" maxlength="1000" placeholder="Ex.: a nova versão piorou as respostas"></label>
         <button class="botao">Voltar à v{{ e.anterior.versao }}</button>
       </form>

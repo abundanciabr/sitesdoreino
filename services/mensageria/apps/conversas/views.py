@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 
 from django.conf import settings
@@ -13,9 +14,13 @@ from . import enderecos, leads
 from .entrada import Recebida, receber
 from .models import MensagemDaConversa
 
+logger = logging.getLogger(__name__)
+
 
 def _token_valido(request) -> bool:
-    esperado = getattr(settings, "EMAIL_ENTRADA_TOKEN", "") or getattr(settings, "EMAIL_WEBHOOK_TOKEN", "")
+    # Rota pública: só o token próprio. Sem ele configurado, ninguém entra
+    # (o token do webhook de eventos de e-mail não vale aqui).
+    esperado = getattr(settings, "EMAIL_ENTRADA_TOKEN", "")
     recebido = request.headers.get("X-Webhook-Token", "")
     autorizacao = request.headers.get("Authorization", "")
     if not recebido and autorizacao.startswith("Bearer "):
@@ -35,6 +40,20 @@ def _endereco(valor) -> str:
     return _texto(valor)
 
 
+def _cabecalhos(item: dict) -> dict:
+    """Cabeçalhos do e-mail com chave em minúsculas e hífen.
+
+    Vêm num objeto `headers`/`Headers` (como o inbound do Brevo) ou soltos no item.
+    """
+    todos: dict = {}
+    for origem in (item.get("headers"), item.get("Headers"), item):
+        if isinstance(origem, dict):
+            for chave, valor in origem.items():
+                if isinstance(chave, str):
+                    todos.setdefault(chave.strip().lower().replace("_", "-"), valor)
+    return todos
+
+
 def _normalizar(item: dict) -> dict:
     """Aceita o formato simples e o inbound do Brevo (chaves com maiúscula)."""
     return {
@@ -44,7 +63,8 @@ def _normalizar(item: dict) -> dict:
         "text": _texto(item.get("text") or item.get("RawTextBody") or item.get("ExtractedMarkdownMessage")),
         "message_id": _texto(item.get("message_id") or item.get("message-id") or item.get("MessageId")),
         "in_reply_to": _texto(item.get("in_reply_to") or item.get("in-reply-to") or item.get("InReplyTo")),
-        "site_id": _texto(item.get("site_id")),
+        "site_id": _texto(item.get("site_id")).strip(),
+        "cabecalhos": _cabecalhos(item),
     }
 
 
@@ -91,11 +111,16 @@ def email_recebido(request, site_id: str = ""):
         if not remetente or not (dados["text"].strip() or dados["subject"].strip()):
             ignoradas += 1
             continue
+        if enderecos.remetente_automatico(remetente) or enderecos.resposta_automatica(dados["cabecalhos"]):
+            ignoradas += 1  # devolução do servidor, "não responda" ou resposta automática: não é conversa
+            continue
         site = _site(dados, site_id.strip(), remetente)
         if site is None:
             return JsonResponse({"erro": "consulta de contatos indisponivel; tente de novo"}, status=503)
         if not site:
             # Remetente desconhecido, sem site na URL: nenhum site é dono desta carta.
+            logger.warning("conversas: e-mail de %s sem site identificavel; ignorado",
+                           enderecos.mascarar("email", remetente))
             sem_site += 1
             continue
         _, nova = receber(Recebida(
@@ -104,8 +129,7 @@ def email_recebido(request, site_id: str = ""):
             em_resposta_a=dados["in_reply_to"].strip(), caixa=enderecos.email(dados["to"]),
         ))
         recebidas += int(nova)
-    if recebidas == 0 and ignoradas == len(itens):
-        return JsonResponse({"erro": "sem remetente ou conteudo", "ignoradas": ignoradas}, status=400)
+    # Lote todo ignorado também é 200: o remetente do webhook não deve reenviar o que nunca vai valer.
     resposta = {"recebidas": recebidas, "ignoradas": ignoradas}
     if sem_site:
         resposta["sem_site"] = sem_site
