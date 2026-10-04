@@ -539,11 +539,10 @@ def projeto(request, projeto_id):
     if request.method == "POST":
         try:
             if request.POST.get("acao") == "feedback":
-                conferencia.pedir(
-                    item.portfolio,
-                    projeto=item,
-                    duvida_aluno=request.POST.get("duvida_aluno", ""),
-                )
+                from apps.portfolio import colegas
+                pedido = colegas.pedir(item.portfolio, projeto=item,
+                    pergunta=request.POST.get("duvida_aluno", ""))
+                return redirect("feedback_colegas", pedido_id=pedido.pk)
             else:
                 projetos.editar_do_aluno(
                     **dono(request),
@@ -732,6 +731,7 @@ def apresentacao_publica(request):
             "oferta": oferta,
             "prospeccao": prospeccao,
             "conteudo": conteudo,
+            "base_endereco_publico": request.build_absolute_uri(vitrine.endereco("")),
             "endereco_publico": request.build_absolute_uri(vitrine.endereco(portfolio.apelido)) if portfolio and portfolio.vitrine_publicada else "",
             "trabalhos": textos_comerciais.preparar_trabalhos(trabalhos, conteudo),
             "selecionados": (

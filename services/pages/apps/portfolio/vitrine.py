@@ -216,6 +216,7 @@ def snapshot_rascunho(portfolio: Portfolio) -> dict:
         estado_do_link=EstadoDoLink.QUEBRADO).order_by("ordem", "pk"))
     conteudo = conteudo_de(portfolio, ids=[peca.pk for peca in pecas])
     pagina = conteudo["pagina"]
+    pagina.pop("apelido_rascunho", None)
     selecao_explicita = "materiais_ids" in (portfolio.apresentacao_comercial or {}).get("pagina", {})
     ordem = {str(valor): pos for pos, valor in enumerate(pagina.get("ordem_trabalhos", []))}
     pecas.sort(key=lambda p: (ordem.get(str(p.pk), len(ordem) + p.ordem), p.ordem))

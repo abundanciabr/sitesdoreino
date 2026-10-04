@@ -97,6 +97,7 @@ def normalizar_conteudo(valor, ids=None):
         vistas.add(peca_id)
         pagina["legendas"].append({"peca_id": peca_id, "titulo": texto(item.get("titulo"), 200), "texto": texto(item.get("texto"), 3000)})
     origem_pagina = valor.get("pagina") or {}
+    pagina["apelido_rascunho"] = texto(origem_pagina.get("apelido_rascunho"), 48)
     for campo in ("ordem_trabalhos", "materiais_ids"):
         recebidos = origem_pagina.get(campo) or []
         if not isinstance(recebidos, list):
@@ -122,6 +123,8 @@ def conteudo_de(portfolio, dados=None, ids=None):
             except (ValueError, TypeError):
                 raise ValueError("Não foi possível ler a apresentação. Seus textos foram mantidos.") from None
         valor = normalizar_conteudo(valor, ids)
+        if "apelido" in dados:
+            valor["pagina"]["apelido_rascunho"] = texto(dados.get("apelido"), 48)
         for secao, campos in (("pagina", PAGINA), ("kit", KIT)):
             for k in campos:
                 if secao + "_" + k in dados:

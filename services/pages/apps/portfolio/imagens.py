@@ -305,11 +305,12 @@ def servir_imagem(request, imagem_id):
             ):
                 return _recusa()
             email = sessao["email"].strip().lower()
-            dono = (
-                sessao["id"] == portfolio.aluno_id
-                and AlunosClient().categoria_de(email) == "aluno"
-            )
-            if not dono and not e_da_equipe(email):
+            from .colegas import compartilha_imagem
+            compartilhada = compartilha_imagem(portfolio, imagem.pk)
+            categoria = AlunosClient().categoria_de(email) if sessao["id"] == portfolio.aluno_id or compartilhada else None
+            dono = sessao["id"] == portfolio.aluno_id and categoria == "aluno"
+            colega = categoria == "aluno" and compartilhada
+            if not dono and not colega and not e_da_equipe(email):
                 return _recusa()
         except (
             IdentidadeIndisponivel,

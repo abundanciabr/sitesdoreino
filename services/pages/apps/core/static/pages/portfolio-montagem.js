@@ -13,6 +13,7 @@
     const data = structuredClone(initial);
     data.pagina ||= {};
     for (const input of form.querySelectorAll('[name^="pagina_"]')) data.pagina[input.name.slice(7)] = input.value;
+    data.pagina.apelido_rascunho = form.elements.apelido.value;
     data.pagina.trabalho_destaque = highlight;
     data.pagina.ordem_trabalhos = rows().map(row => row.dataset.id);
     data.pagina.materiais_ids = [...form.querySelectorAll('[name="materiais_ids"]:checked')].map(input => input.value);
@@ -99,6 +100,49 @@
       const close = document.createElement('button'); close.textContent = 'Fechar texto'; close.type = 'button'; close.style.cssText = 'position:fixed;top:15%;right:20%;z-index:31';
       close.onclick = () => { area.remove(); close.remove(); }; document.body.append(area,close); area.select();
       message('Selecione e copie o texto', 'Seu navegador pediu cópia manual.');
+    }
+  });
+  const aiButton = document.getElementById('portfolio-gerar-ia');
+  const aiStatus = document.getElementById('portfolio-ia-status');
+  aiButton?.addEventListener('click', async () => {
+    sync();
+    const texts = [...form.querySelectorAll('[name^="pagina_"], [name^="legenda_"]')];
+    const values = new Map(texts.map(input => [input.name, input.value]));
+    const body = new FormData(form);
+    body.set('campo', 'completo');
+    aiButton.disabled = true;
+    aiStatus.textContent = 'O robô está escrevendo com base nos seus trabalhos…';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 150000);
+    try {
+      const response = await fetch(form.dataset.aiUrl, {method:'POST', body, credentials:'same-origin', signal:controller.signal});
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.conteudo?.pagina) throw new Error(result.erro || 'Não foi possível gerar agora. Tente novamente.');
+      const generated = result.conteudo.pagina;
+      const fields = ['titulo','subtitulo','apresentacao','oferta','continuidade','diferenciais','condicoes','duvidas','cta'];
+      let kept = 0;
+      for (const field of fields) {
+        if (typeof generated[field] !== 'string') continue;
+        const input = form.elements['pagina_' + field];
+        if (input && input.value !== values.get(input.name)) { kept++; continue; }
+        initial.pagina[field] = generated[field];
+        if (input) input.value = generated[field];
+      }
+      for (const legend of generated.legendas || []) {
+        for (const field of ['titulo', 'texto']) {
+          const input = form.elements['legenda_' + field + '_' + legend.peca_id];
+          if (!input || typeof legend[field] !== 'string') continue;
+          if (input.value !== values.get(input.name)) { kept++; continue; }
+          input.value = legend[field];
+        }
+      }
+      changed();
+      aiStatus.textContent = kept ? 'Textos gerados. Mantive os campos que você editou durante a geração.' : 'Textos gerados no rascunho. Revise e ajuste antes de publicar.';
+    } catch (error) {
+      aiStatus.textContent = error.name === 'AbortError' ? 'A geração demorou demais. Seus textos foram mantidos; tente novamente.' : error.name === 'TypeError' ? 'Não foi possível conectar ao robô. Seus textos foram mantidos; tente novamente.' : error.message;
+    } finally {
+      clearTimeout(timeout);
+      aiButton.disabled = false;
     }
   });
   window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });

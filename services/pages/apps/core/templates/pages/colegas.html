@@ -1,0 +1,8 @@
+{% extends 'pages/moldura.html' %}
+{% block titulo %}Feedback dos colegas{% endblock %}
+{% block conteudo %}{% include 'pages/_jornada_estilo.html' %}
+<nav class="j-topo"><a href="{% url 'pecas' %}">Meus trabalhos</a><a href="{% url 'apresentacao_publica' %}">Minha apresentação</a></nav>
+<header class="j-hero"><h1>Feedback dos colegas</h1><p>Troque ideias sobre os trabalhos compartilhados nesta comunidade.</p></header>
+<section class="j-section"><h2>Meus pedidos</h2><div class="j-grid">{% for pedido in meus_pedidos %}<article class="j-card"><h3><a href="{% url 'feedback_colegas' pedido_id=pedido.pk %}">{{ pedido.titulo }}</a></h3><p>{{ pedido.pergunta|truncatechars:180 }}</p><small>{{ pedido.respostas.count }} comentário{{ pedido.respostas.count|pluralize:'s' }} · {% if pedido.encerrado %}Encerrado{% else %}Aberto aos colegas{% endif %}</small></article>{% empty %}<p>Você pode pedir feedback em <a href="{% url 'pecas' %}">Meus trabalhos</a>.</p>{% endfor %}</div></section>
+<section class="j-section"><h2>Comentar trabalhos dos colegas</h2><div class="j-grid">{% for pedido in pedidos %}<article class="j-card"><h3><a href="{% url 'feedback_colegas' pedido_id=pedido.pk %}">{{ pedido.titulo }}</a></h3><p>{{ pedido.pergunta|truncatechars:180 }}</p><small>{{ pedido.criado_em|date:'d/m/Y' }} · {{ pedido.respostas.count }} comentário{{ pedido.respostas.count|pluralize:'s' }}</small></article>{% empty %}<p>Ainda não há pedidos de colegas para comentar.</p>{% endfor %}</div></section>
+{% endblock %}

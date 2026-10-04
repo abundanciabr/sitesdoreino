@@ -26,7 +26,8 @@ def contexto(dono, textos):
     trabalhos = trabalhos[:24]
     dados = {
         "textos_em_edicao": {k: str(textos.get(k, ""))[:3000] for k in ("apresentacao_publica", "servico_publico")},
-        "trabalhos": [{"id": str(i.pk), "link": comercial.url_publica(i.link), "legenda": i.legenda,
+        "trabalhos": [{"id": str(i.pk), "link": comercial.url_publica(i.link), "legenda": i.titulo or i.legenda,
+            "descricao": i.descricao, "triangulos_informados": i.triangulos, "textura_informada": i.textura,
             "uso_pretendido": i.uso_pretendido, "contribuicao": i.contribuicao, "tipo": i.tipo,
             "provas": comercial.provas_de(textos.get("provas_" + str(i.pk), i.provas_comerciais))} for i in trabalhos],
         "projetos_planejados": list(
@@ -54,8 +55,19 @@ def contexto(dono, textos):
     dados["imagens"] = []
     uploads = {str(i.peca_id): i for i in ImagemDoPortfolio.objects.filter(peca__portfolio=portfolio)} if portfolio else {}
     fontes = [(str(i.pk), uploads.get(str(i.pk)), comercial.url_publica(i.link)) for i in trabalhos[:4]]
+    if "materiais_selecao" in textos:
+        from .vitrine import materiais_de
+        from .imagens import imagem_do_portfolio
+        escolhidos = set(textos.getlist("materiais_ids"))
+        fontes = []
+        for trabalho in trabalhos:
+            materiais = [m for m in materiais_de(trabalho) if m["id"] in escolhidos]
+            materiais.sort(key=lambda m: not m["principal"])
+            for material in materiais:
+                imagem = None if material["id"].startswith("externo:") else imagem_do_portfolio(material["id"], portfolio)
+                fontes.append((str(trabalho.pk), imagem, comercial.url_publica(material["url"])))
     proprias_por_link = {i.link: i for i in Peca.objects.do_aluno(**dono)}
-    for trabalho in dados["trabalhos"]:
+    for trabalho in dados["trabalhos"] if "materiais_selecao" not in textos else []:
         for prova in trabalho["provas"]:
             if prova["tipo"] == "video":
                 continue

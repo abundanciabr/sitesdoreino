@@ -405,6 +405,7 @@ def desenhar_estante(
             # `test_o_endereco_que_o_aluno_copia_nao_leva_o_prefixo_da_area_dele`.
             "vitrine_publicada": bool(portfolio and portfolio.vitrine_publicada),
             "apelido": portfolio.apelido if portfolio else "",
+            "base_endereco_publico": request.build_absolute_uri(vitrine.endereco("")),
             "endereco_da_vitrine": (
                 request.build_absolute_uri(vitrine.endereco(portfolio.apelido))
                 if portfolio and portfolio.apelido
@@ -716,31 +717,21 @@ def responder_peca(request):
 
 @require_POST
 def pedir_conferencia(request):
-    """O aluno manda o portfólio para a escola olhar.
-
-    **A recusa é desenhada na estante, e não redirecionada**, pelo mesmo motivo
-    da recusa do link: a explicação precisa aparecer ao lado do botão que a
-    provocou. Ela vem com 422, que é *entendi o pedido e não posso atendê-lo*.
-    """
+    """Compartilha a seleção atual para receber comentários dos colegas."""
     site_id = site_atual()
     if site_id is None:
         return sem_escola(request)
 
     try:
-        conferencia.pedir(
-            meu_portfolio(request, site_id),
-            duvida_aluno=request.POST.get("duvida_aluno", ""),
-        )
+        from apps.portfolio import colegas
+        portfolio, _ = Portfolio.objects.get_or_create(site_id=site_id, aluno_id=request.aluno["id"])
+        pedido = colegas.pedir(portfolio, pergunta=request.POST.get("duvida_aluno", ""))
     except (conferencia.ConferenciaRecusada, ValueError) as recusa:
         return desenhar_estante(
             request, site_id, recusa_da_conferencia=str(recusa), status=422
         )
 
-    # POST-redirect-GET: sem ele, um F5 depois de pedir repetiria o gesto. Aqui
-    # repetir já seria recusado pela própria regra (o pedido está na fila), e o
-    # padrão fica porque o dia em que um gesto NÃO for idempotente é tarde
-    # demais para lembrar dele.
-    return redirect("pecas")
+    return redirect("feedback_colegas", pedido_id=pedido.pk)
 
 
 def desenhar_fila(request, site_id, *, recusa="", feito="", status=200):

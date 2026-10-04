@@ -2,14 +2,14 @@
 {% block titulo %}Meus trabalhos{% endblock %}
 {% block faixa %}Meus trabalhos{% endblock %}
 {% block conteudo %}{% include "pages/_jornada_estilo.html" %}
-<nav class="j-topo" aria-label="Meu portfólio"><a href="{% url 'prancheta' %}">Meus projetos</a><a href="{% url 'apresentacao_publica' %}">Minha página pública</a></nav>
+<nav class="j-topo" aria-label="Meu portfólio"><a href="{% url 'prancheta' %}">Meus projetos</a><a href="{% url 'apresentacao_publica' %}">Minha página pública</a><a href="{% url 'colegas' %}">Feedback dos colegas</a></nav>
 <section class="j-hero">
   <p class="j-kicker">Criar, aprender e escolher o que mostrar</p>
   <h1>Meus trabalhos</h1>
   <p class="j-lead">Cada modelo, conjunto ou cena pode mostrar uma habilidade sua. Ligue o trabalho a um projeto, conte onde ele poderia ser usado no Roblox e peça ajuda sobre o que quer melhorar.</p>
   <p>Você decide a ordem, o destaque e quais trabalhos entram na página pública. Uma ideia própria ou uma obra que você já fez também pode fazer parte do portfólio.</p>
 </section>
-<p class="j-note">Imagens enviadas ficam privadas enquanto você não as selecionar e publicar a página. Uma imagem por link depende da disponibilidade do outro site. Se sua página já está publicada, mudar a seleção altera o que aparece nela.</p>
+<p class="j-note">Imagens enviadas ficam privadas enquanto você não as selecionar e publicar a página. Uma imagem por link depende da disponibilidade do outro site. As mudanças ficam no rascunho até você publicar. Ao pedir feedback, os materiais selecionados também ficam visíveis aos colegas.</p>
 {% if not pode_guardar %}
 <p class="aviso">A escola ainda não terminou de ligar esta página. Volte daqui a pouco para adicionar seus trabalhos.</p>
 {% else %}
@@ -81,18 +81,12 @@
 </section>
 {% if pode_guardar %}
 <section class="conferencia">
-  <h2>Feedback da escola</h2>
-  <p>Você pode pedir um olhar sobre o portfólio e dizer o que está tentando melhorar. Para uma dúvida sobre um projeto específico, abra o projeto e envie o pedido por lá.</p>
+  <h2>Feedback dos colegas</h2>
+  <p>Compartilhe os trabalhos e materiais selecionados e conte o que gostaria de melhorar. Colegas desta comunidade poderão comentar. Checklist e anotações pessoais continuam privados.</p>
   {% if recusa_da_conferencia %}<p class="recusa" role="alert">{{ recusa_da_conferencia }}</p>{% endif %}
-  {% if pedido.estado == "em_analise" %}
-    <p class="aviso">Seu pedido está com a escola desde {{ pedido.criado_em|date:"d/m/Y" }}. A resposta é prevista até {{ pedido.prazo_ate|date:"d/m/Y" }}.</p>
-  {% else %}
-    {% if pedido.estado == "devolvido" %}<p>Feedback recebido em {{ pedido.respondido_em|date:"d/m/Y" }}. Veja os pontos da escola e escolha sua próxima tentativa.</p>{% elif pedido.estado == "aceito" %}<p>A escola concluiu a avaliação. Você pode continuar criando e pedir outro olhar quando precisar.</p>{% endif %}
-    <form method="post" action="{% url 'pedir_conferencia' %}" class="j-form">{% csrf_token %}<label for="duvida-portfolio">O que gostaria que a escola observasse?</label><textarea id="duvida-portfolio" name="duvida_aluno" maxlength="3000" rows="3" placeholder="Quero saber se a cena comunica a função dos objetos…"></textarea><button type="submit">Pedir feedback do portfólio</button></form>
-  {% endif %}
-  {% if pedido.feedback_pontos_fortes or pedido.feedback_melhorar or pedido.feedback_proximo_passo %}
-  <dl class="j-definition"><dt>O que já funciona</dt><dd>{{ pedido.feedback_pontos_fortes }}</dd><dt>O que pode melhorar</dt><dd>{{ pedido.feedback_melhorar }}</dd><dt>Uma próxima tentativa</dt><dd>{{ pedido.feedback_proximo_passo }}</dd></dl>
-  {% endif %}
+  <form method="post" action="{% url 'pedir_conferencia' %}" class="j-form">{% csrf_token %}<label for="duvida-portfolio">O que gostaria que seus colegas observassem?</label><textarea id="duvida-portfolio" name="duvida_aluno" maxlength="3000" rows="3" placeholder="Quero saber se a cena comunica a função dos objetos…"></textarea><button type="submit">Pedir feedback aos colegas</button></form>
+  <p><a href="{% url 'colegas' %}">Ver meus pedidos e comentar trabalhos dos colegas</a></p>
+  {% if pedido %}<details><summary>Histórico anterior da escola</summary>{% if pedido.duvida_aluno %}<p>{{ pedido.duvida_aluno }}</p>{% endif %}<dl class="j-definition"><dt>O que já funciona</dt><dd>{{ pedido.feedback_pontos_fortes }}</dd><dt>O que pode melhorar</dt><dd>{{ pedido.feedback_melhorar }}</dd><dt>Uma próxima tentativa</dt><dd>{{ pedido.feedback_proximo_passo }}</dd></dl></details>{% endif %}
 </section>
 <section class="conferencia">
   <h2>Minha página pública</h2>
@@ -101,13 +95,13 @@
   {% if vitrine_publicada %}
     <p class="selo">Sua página pública está no ar: <a href="{{ endereco_da_vitrine }}" target="_blank" rel="noopener">{{ endereco_da_vitrine }}</a></p>
     <form method="post" action="{% url 'despublicar_vitrine' %}">{% csrf_token %}<button type="submit">Tirar a página do ar</button></form>
-    <details class="responder"><summary>Trocar o endereço da página</summary><p>O endereço anterior deixará de funcionar.</p><form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}<label for="apelido-novo">Novo final do endereço</label><input id="apelido-novo" type="text" name="apelido" value="{{ apelido }}" maxlength="48" required><button type="submit">Trocar endereço</button></form></details>
+    <details class="responder"><summary>Trocar o endereço da página</summary><p>O endereço anterior deixará de funcionar.</p><form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}<label for="apelido-novo">Novo final do endereço</label><input id="apelido-novo" type="text" name="apelido" value="{{ apelido }}" maxlength="48" required><p data-address-preview data-address-base="{{ base_endereco_publico }}" aria-live="polite" style="overflow-wrap:anywhere">Seu endereço será: <span data-address-text></span></p><button type="submit">Trocar endereço</button></form></details>
   {% else %}
     <p>Ninguém vê sua página antes de você publicar. Escolha um endereço que queira compartilhar.</p>
-    <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}<label for="apelido">Final do endereço</label><input id="apelido" type="text" name="apelido" value="{{ apelido }}" maxlength="48" placeholder="ana-3d" required><button type="submit">Publicar minha página</button></form>
+    <form method="post" action="{% url 'publicar_vitrine' %}">{% csrf_token %}<label for="apelido">Final do endereço</label><input id="apelido" type="text" name="apelido" value="{{ apelido }}" maxlength="48" placeholder="ana-3d" required><p data-address-preview data-address-base="{{ base_endereco_publico }}" aria-live="polite" style="overflow-wrap:anywhere">Seu endereço será: <span data-address-text></span></p><button type="submit">Publicar minha página</button></form>
   {% endif %}
 </section>
 <section class="conferencia"><h2>Portfólio em PDF</h2><p>Baixe uma cópia para compartilhar ou imprimir. Ela apresenta as obras escolhidas para a página pública na sua ordem.</p>{% if recusa_do_dossie %}<p class="recusa" role="alert">{{ recusa_do_dossie }}</p>{% endif %}<p><a href="{% url 'dossie' %}">Baixar portfólio em PDF</a></p></section>
 {% endif %}
 <p class="miudo"><a href="{% url 'prancheta' %}">Voltar aos meus projetos</a></p>
-{% endblock %}
+<script src="{% url 'script_endereco' %}" defer></script>{% endblock %}

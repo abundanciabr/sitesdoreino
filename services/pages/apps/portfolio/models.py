@@ -506,6 +506,33 @@ class MaterialDaPeca(models.Model):
         ordering = ["ordem", "criado_em"]
 
 
+class PedidoAosColegas(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="pedidos_aos_colegas")
+    projeto = models.ForeignKey(ProjetoAutoral, on_delete=models.SET_NULL, null=True, blank=True)
+    titulo = models.CharField(max_length=200)
+    pergunta = models.TextField(blank=True, default="")
+    materiais = models.JSONField(default=dict)
+    encerrado = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+
+class RespostaDoColega(models.Model):
+    pedido = models.ForeignKey(PedidoAosColegas, on_delete=models.CASCADE, related_name="respostas")
+    autor_id = models.CharField(max_length=64)
+    nome = models.CharField(max_length=200, blank=True, default="")
+    pontos_fortes = models.TextField(blank=True, default="")
+    melhorar = models.TextField(blank=True, default="")
+    proxima_tentativa = models.TextField(blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criado_em"]
+
+
 class ItemDeConferencia(models.Model):
     """A marcação do aluno num item da lista de conferência, no banco, por aluno.
 

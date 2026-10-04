@@ -19,6 +19,12 @@ def script_montagem(request):
 
 
 @require_GET
+def script_endereco(request):
+    caminho = Path(__file__).parent / "static/pages/portfolio-endereco.js"
+    return HttpResponse(caminho.read_text(encoding="utf-8"), content_type="application/javascript")
+
+
+@require_GET
 def previa(request):
     portfolio = Portfolio.objects.do_aluno(**dono(request)).first()
     publico = vitrine.snapshot_rascunho(portfolio) if portfolio else {"conteudo": {"pagina": {}}, "obras": []}
