@@ -88,17 +88,39 @@ def test_erro_no_formulario_preserva_a_caixa_marcada(client, quiz):  # noqa: F81
     assert "checked" in trecho
 
 
+def publicar_paradas():
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.quiz.tasks import SILENCIO_DA_CAPTURA, publicar_capturas_paradas
+
+    return publicar_capturas_paradas(timezone.now() + SILENCIO_DA_CAPTURA + timedelta(minutes=1))
+
+
 def test_captura_parcial_leva_o_aceite(client, quiz):  # noqa: F811
     abrir(client, quiz)
     resposta = capturar(client, quiz, telefone="11 98888-7777", aceita_whatsapp="1")
     assert resposta.status_code == 201
+    assert publicar_paradas() == 1
     dados = evento("quiz.captura_parcial").get().payload
     assert dados["consentimento"]["whatsapp"]["aceito"] is True
 
 
-def test_mudar_a_escolha_depois_da_captura_publica_quiz_consentimento(client, quiz):  # noqa: F811
+def test_mudar_a_escolha_antes_do_aviso_vai_no_proprio_aviso(client, quiz):  # noqa: F811
     abrir(client, quiz)
     capturar(client, quiz, telefone="11 98888-7777")
+    capturar(client, quiz, telefone="11 98888-7777", aceita_whatsapp="1")
+    assert not evento("quiz.consentimento").exists()
+    publicar_paradas()
+    dados = evento("quiz.captura_parcial").get().payload
+    assert dados["consentimento"]["whatsapp"]["aceito"] is True
+
+
+def test_mudar_a_escolha_depois_do_aviso_publica_quiz_consentimento(client, quiz):  # noqa: F811
+    abrir(client, quiz)
+    capturar(client, quiz, telefone="11 98888-7777")
+    publicar_paradas()
     assert evento("quiz.captura_parcial").get().payload["consentimento"]["whatsapp"]["aceito"] is False
     # Repetir sem mudar nada não publica.
     capturar(client, quiz, telefone="11 98888-7777")
