@@ -22,7 +22,9 @@ def _authorized(request):
         scheme.lower() == "bearer"
         and bool(token)
         and bool(settings.TOKEN_EDITOR_ADMIN)
-        and secrets.compare_digest(token, settings.TOKEN_EDITOR_ADMIN)
+        and secrets.compare_digest(
+            token.encode("utf-8"), settings.TOKEN_EDITOR_ADMIN.encode("utf-8")
+        )
     )
 
 

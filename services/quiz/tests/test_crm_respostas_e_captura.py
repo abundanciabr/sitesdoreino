@@ -502,3 +502,34 @@ def test_captura_nao_responde_em_host_de_outro_site(client, quiz, site_b):  # no
     resposta = capturar(client, quiz, host=HOST_B, email="ana@exemplo.com")
     assert resposta.status_code == 404
     assert not CapturaParcial.objects.exists()
+
+
+
+# ---------------------------------------------------------------------------
+# Revisão: capturas antigas e token com acento
+# ---------------------------------------------------------------------------
+def test_captura_criada_antes_da_migracao_nao_e_publicada_de_novo(client, quiz):
+    """A captura antiga já saiu na hora; a migração 0012 a marca como publicada."""
+    import importlib
+
+    from django.apps import apps as apps_do_django
+
+    abrir(client, quiz)
+    capturar(client, quiz, email="ana@exemplo.com")
+    CapturaParcial.objects.update(
+        publicada_em=None, publicacoes=0, atualizada_em=timezone.now() - timedelta(days=2)
+    )
+    migracao = importlib.import_module("apps.quiz.migrations.0012_captura_publicacao")
+    migracao.marcar_ja_publicadas(apps_do_django, None)
+    captura = CapturaParcial.objects.get()
+    assert captura.publicada_em is not None and captura.publicacoes == 1
+    assert publicar_capturas_paradas(depois_do_silencio()) == 0
+    assert avisos() == []
+
+
+@override_settings(TOKEN_EDITOR_ADMIN=TOKEN)
+def test_token_com_acento_e_recusado_com_401_e_o_certo_com_acento_funciona(client, quiz):
+    rota = f"/interno/crm/submissoes?site_id={SITE_A_ID}&email=ana@exemplo.com"
+    assert client.get(rota, HTTP_AUTHORIZATION="Bearer tokén").status_code == 401
+    with override_settings(TOKEN_EDITOR_ADMIN="tokén-ç"):
+        assert client.get(rota, HTTP_AUTHORIZATION="Bearer tokén-ç").status_code == 200
