@@ -11,6 +11,7 @@ import uuid
 import httpx
 import pytest
 import respx
+from django.core.cache import cache
 
 from apps.core.middleware import limpar_cache_de_sites
 
@@ -78,8 +79,10 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("PAGAMENTOS_API_URL", PAGAMENTOS)
     monkeypatch.setenv("TOKEN_PAGAMENTOS", "token-pagamentos-de-teste")
     limpar_cache_de_sites()  # o cache do CONV-SITE não pode vazar entre testes
+    cache.clear()  # nem a cotação de parcelas guardada por 120 s
     yield
     limpar_cache_de_sites()
+    cache.clear()
 
 
 @pytest.fixture

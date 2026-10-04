@@ -7,15 +7,17 @@
 {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 {% if conversa %}
 <h1>{% if nome %}{{ nome }}{% elif conversa.ambigua %}Contato ambíguo{% else %}Conversa{% endif %}</h1>
-<p class="subtitulo">{{ conversa.canal_nome }} {{ conversa.endereco_mascarado }} · {{ conversa.estado_nome }}{% if conversa.estado == "pessoa" and conversa.assumida_por %} ({{ conversa.assumida_por }}){% endif %}</p>
+<p class="subtitulo">{{ conversa.canal_nome }} {{ conversa.endereco_mascarado }} · {{ conversa.estado_nome }}{% if quem_atende %} ({{ quem_atende }}){% endif %}</p>
 <div class="conv-grade"><section class="cartao" aria-label="Mensagens">
+{% if anteriores %}<p><a href="{{ anteriores }}">← Mensagens anteriores</a></p>{% endif %}
+{% if antes_de %}<p class="explica">Você está vendo mensagens mais antigas. <a href="{% url 'crm_conversa' conversa.id %}">Voltar às mais recentes →</a></p>{% endif %}
 {% for m in mensagens %}<div class="conv-msg {{ m.direcao }}"><small>{{ m.autor_nome }} · {{ m.momento|date:"d/m/Y H:i" }}{% if m.direcao == "saida" and m.envio_nome %} · {{ m.envio_nome }}{% endif %}{% if m.descadastro %} · Pediu para parar{% endif %}</small>
 {% if m.assunto %}<small>Assunto: {{ m.assunto }}</small>{% endif %}
 {% if m.texto %}<p>{{ m.texto }}</p>{% endif %}
 {% if m.midia_nome %}<small>{{ m.midia_nome }}{% if m.midia.mime %} ({{ m.midia.mime }}){% endif %}{% if not m.transcricao %} · sem transcrição ainda{% endif %}</small>{% endif %}
 {% if m.transcricao %}<p class="transcricao">Transcrição: {{ m.transcricao }}</p>{% endif %}
 {% if m.erro %}<small>{{ m.erro }}</small>{% endif %}</div>
-{% empty %}<p>Ainda não há mensagens nesta conversa.</p>{% endfor %}
+{% empty %}<p>{% if antes_de %}Não há mensagens mais antigas.{% else %}Ainda não há mensagens nesta conversa.{% endif %}</p>{% endfor %}
 </section><div>
 <section class="cartao"><h2>O contato</h2>
 {% if conversa.ambigua %}<p class="explica">Este endereço corresponde a mais de um contato. Por isso nenhuma ficha é mostrada aqui. Peça na conversa a informação que identifica a pessoa.</p>

@@ -8,8 +8,9 @@ import re
 
 CHAVES_UTM = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content")
 # v versão, fmt formato, seg segmento, src/med/cpg/ctv origem/mídia/campanha/
-# criativo, qa tentativa opaca do quiz, qz slug do quiz.
-CHAVES_QUIZ = ("v", "fmt", "seg", "src", "med", "cpg", "ctv", "qa", "qz")
+# criativo, qa tentativa opaca do quiz, qz slug do quiz, op oportunidade do CRM
+# e est estratégia do atendimento (os dois últimos vêm do link de compra).
+CHAVES_QUIZ = ("v", "fmt", "seg", "src", "med", "cpg", "ctv", "qa", "qz", "op", "est")
 _VALOR = re.compile(r"[\w .:+/-]{1,100}")
 
 

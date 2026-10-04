@@ -30,7 +30,15 @@ function dadosIsland() {
     method: "pix",
     appmaxIp: "",
 
+    // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/, e o
+    // destino em <prefixo>/checkout/pedido/... — um caminho absoluto hardcoded
+    // perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
+    irParaPedido(orderId, metodo) {
+      window.location = `../pedido/${orderId}/${metodo === "pix" ? "pix" : "cartao"}/`;
+    },
+
     async init() {
+      let seguindoParaOPedido = false;
       if (this.appmaxPix && window.AppmaxScripts?.init) {
         try {
           window.AppmaxScripts.init({
@@ -51,6 +59,14 @@ function dadosIsland() {
           email_para_cpf: anteriores.email || "",
           ...(link ? { link } : {}),
         });
+        // O link de compra serve um pedido por vez: se ele já virou pedido e o
+        // pedido segue valendo, a pessoa vai para a página dele, em vez de ver
+        // o formulário e esbarrar num erro ao enviar.
+        if (this.session.pedido_existente) {
+          seguindoParaOPedido = true;
+          this.irParaPedido(this.session.pedido_existente.order_id, this.session.pedido_existente.method);
+          return;
+        }
         const metodoDoLink = this.session.condicao?.metodo;
         if (metodoDoLink === "pix" || (metodoDoLink === "card" && this.appmaxCard)) this.method = metodoDoLink;
         this.offer = this.session.offer;
@@ -62,7 +78,7 @@ function dadosIsland() {
       } catch (e) {
         this.erro = "Não foi possível carregar esta oferta.";
       } finally {
-        this.carregando = false;
+        if (!seguindoParaOPedido) this.carregando = false;
       }
     },
 
@@ -111,13 +127,15 @@ function dadosIsland() {
           ...(this.method === "pix" && typeof window.MP_DEVICE_SESSION_ID === "string" && window.MP_DEVICE_SESSION_ID
             ? { mp_device_id: window.MP_DEVICE_SESSION_ID } : {}),
         });
-        const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
-        // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
-        // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
-        // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
-        window.location = `../pedido/${pedido.order_id}/${destino}/`;
+        this.irParaPedido(pedido.order_id, pedido.payment.method);
       } catch (e) {
+        // 409: esta sessão já tem pedido (outra aba, ou o envio repetido). O
+        // corpo traz o pedido que existe, e é para ele que a pessoa vai.
+        if (e.status === 409 && e.corpo && e.corpo.order_id && e.corpo.payment) {
+          this.irParaPedido(e.corpo.order_id, e.corpo.payment.method);
+          return;
+        }
         this.erro = "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
         if (this.appmaxPix && this.method === "pix") {
           this.erro = "Não foi possível concluir o pedido. Não reenvie esta compra.";
