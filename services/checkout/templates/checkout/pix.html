@@ -8,6 +8,7 @@
   <title>Pagamento via Pix</title>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js" integrity="sha256-IyUZOUxsj9um82Kx2doWEG21E82/iZAR8A2qtAUd8xw=" crossorigin="anonymous" defer></script>
   <style>
+    [x-cloak] { display: none !important; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { max-width: 28rem; margin: 0 auto; padding: 1rem; }
@@ -15,10 +16,13 @@
     .qr { width: 100%; max-width: 16rem; margin: 1rem auto; display: block; }
     .copia { display: flex; gap: .5rem; align-items: center; justify-content: center; margin-top: .75rem; }
     .copia code { flex: 1; overflow-wrap: anywhere; font-size: .75rem; text-align: left; }
-    .copia button { padding: .5rem .75rem; border-radius: .5rem; border: 1px solid #ccc; background: #fff; }
+    .copia button { min-height: 2.75rem; padding: .5rem 1rem; border-radius: .5rem; border: 1px solid #ccc; background: #fff; font: inherit; }
+    .prazo { margin-top: .75rem; font-size: .9rem; }
+    .aviso { margin: .5rem 0 0; font-size: .9rem; }
     .status { margin-top: 1rem; font-weight: 600; }
     .codigo-antigo { margin-top: 1rem; color: #666; overflow-wrap: anywhere; }
     .codigo-antigo code { display: block; text-decoration: line-through; font-size: .75rem; }
+    .acao { display: block; margin-top: 1rem; padding: .85rem 1rem; border-radius: .5rem; background: #1a1a1a; color: #fff; font-weight: 700; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -30,17 +34,20 @@
   <div class="wrap" x-data="pixIsland()">
     <div class="card">
       <h1>Pague com Pix</h1>
-      <p x-show="pixTrocado">Não conseguimos concluir este pagamento. Pague com este novo código.</p>
-      <img :src="`data:image/png;base64,${qr.qr_code_base64}`" alt="QR Code Pix" class="qr" x-show="qr.qr_code_base64">
-      <p class="copia" x-show="qr.qr_code">
+      <p x-cloak x-show="pixTrocado && pagavel()">Não conseguimos concluir este pagamento. Pague com este novo código.</p>
+      <img x-cloak :src="`data:image/png;base64,${qr.qr_code_base64}`" alt="QR Code Pix" class="qr" x-show="pagavel() && qr.qr_code_base64">
+      <p class="copia" x-cloak x-show="pagavel() && qr.qr_code">
         <code x-text="qr.qr_code"></code>
         <button type="button" @click="copiar">Copiar</button>
       </p>
-      <p class="codigo-antigo" x-show="codigoAntigo">
+      <p class="aviso" role="status" aria-live="polite" x-text="pagavel() ? aviso : ''"></p>
+      <p class="prazo" x-cloak x-show="pagavel() && prazo()" x-text="prazo()"></p>
+      <p class="codigo-antigo" x-cloak x-show="pagavel() && codigoAntigo">
         Este código não vale mais.
         <code x-text="codigoAntigo"></code>
       </p>
-      <p class="status" x-text="statusLabel()"></p>
+      <p class="status" role="status" aria-live="polite" x-text="statusLabel()"></p>
+      <a class="acao" href="{{ offer_url }}" x-cloak x-show="status === 'expirado' || status === 'recusado'">Fazer um novo pedido</a>
     </div>
   </div>
   <script>
