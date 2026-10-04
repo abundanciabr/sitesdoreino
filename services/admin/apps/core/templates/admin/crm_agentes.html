@@ -13,6 +13,7 @@
 .crmag-etiqueta{display:inline-block;font-size:12px;border:1px solid var(--linha);border-radius:999px;padding:2px 9px;color:var(--texto-2)}.crmag-etiqueta.falha{color:var(--vermelho);border-color:var(--vermelho)}.crmag-etiqueta.incerto{color:var(--amarelo);border-color:var(--amarelo)}
 .crmag-decisao{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:8px 16px;margin-top:10px;font-size:14px}.crmag-decisao dt{color:var(--texto-3);font-size:12px}.crmag-decisao dd{margin:0;overflow-wrap:anywhere}
 .crmag-contexto{margin:8px 0 0;padding:0;list-style:none;font-size:13px;color:var(--texto-2)}.crmag-contexto li{overflow-wrap:anywhere}
+.crmag-prontidao{list-style:none;margin:0;padding:0;display:grid;gap:8px}.crmag-pront{border:1px solid var(--linha);border-left-width:4px;border-radius:10px;background:var(--painel);padding:10px 14px}.crmag-pront.pronto{border-left-color:var(--verde,#2e7d32)}.crmag-pront.falta{border-left-color:var(--vermelho)}.crmag-pront.nao_conferi{border-left-color:var(--amarelo)}.crmag-pront-topo{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:baseline}.crmag-pront p{margin:4px 0 0}.crmag-etiqueta.falta{color:var(--vermelho);border-color:var(--vermelho)}.crmag-etiqueta.nao_conferi{color:var(--amarelo);border-color:var(--amarelo)}
 .crmag-papel{border:1px solid var(--linha);border-radius:12px;background:var(--painel);padding:16px 18px;margin-bottom:16px}
 .crmag-papel pre{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--fundo);border:1px solid var(--linha);border-radius:8px;padding:12px;font-size:13px;max-height:320px;overflow:auto}
 .crmag-versao{border-top:1px solid var(--linha);padding:12px 0}.crmag-versao:first-child{border-top:0}
@@ -30,7 +31,52 @@
   {% if not disponivel %}
   <p class="aviso" role="status">{% if falha_de_leitura %}Não foi possível ler os registros dos agentes agora. Tente novamente em alguns instantes.{% else %}A equipe comercial de agentes ainda não está disponível. Quando ela entrar no ar, os trabalhos, as decisões, o gasto e as estratégias aparecem aqui.{% endif %}</p>
   {% else %}
-  {% if not ligado %}<p class="aviso" role="status"><b>Desligado neste ambiente (COMERCIAL_AGENTES=desligado).</b> Os agentes comerciais estão desligados neste ambiente: nenhum trabalho novo é executado. O que já aconteceu continua visível abaixo.</p>{% endif %}
+  <section id="interruptor" aria-label="Equipe comercial">
+    <h2>Equipe comercial: {% if interruptor.ligado %}ligada{% else %}desligada{% endif %}</h2>
+    {% if interruptor.origem == "tela" %}
+    <p class="crmag-explica">{% if interruptor.ligado %}Ligada{% else %}Desligada{% endif %} por {{ interruptor.por|default:"alguém da equipe" }}{% if interruptor.em %} em {{ interruptor.em|date:"d/m/Y H:i" }}{% endif %}. O que a tela guarda vale por cima do que está no servidor.</p>
+    {% elif interruptor.ligado %}
+    <p class="crmag-explica">Ligada porque nada foi decidido nesta tela e o servidor não pede para desligar. Para parar a equipe sem mexer no servidor, use o botão abaixo.</p>
+    {% else %}
+    <p class="crmag-explica"><b>Desligado neste ambiente (COMERCIAL_AGENTES=desligado).</b> Os agentes comerciais estão desligados neste ambiente: nenhum trabalho novo é executado. O que já aconteceu continua visível abaixo. Ligar por aqui passa a valer por cima do servidor.</p>
+    {% endif %}
+    {% if interruptor.ligado %}
+    <form method="post" action="{% url 'crm_agentes_interruptor' %}">{% csrf_token %}<input type="hidden" name="acao" value="desligar"><button class="botao">Desligar a equipe comercial</button></form>
+    {% else %}
+    <form method="post" action="{% url 'crm_agentes_interruptor' %}">{% csrf_token %}<input type="hidden" name="acao" value="ligar">
+      <label class="marcar"><input type="checkbox" name="confirmo" value="sim" required> Entendo que, ao ligar, a equipe comercial passa a usar o modelo de IA (o gasto autorizado, até o limite do mês) e a falar com leads reais por WhatsApp e e-mail.</label>
+      <button class="botao">Ligar a equipe comercial</button>
+    </form>
+    {% endif %}
+
+    <h3>Em quais quizzes a equipe atua</h3>
+    <p class="crmag-explica">{% if interruptor.escopo %}Hoje: só {% for slug in interruptor.escopo %}{{ slug }}{% if not forloop.last %}, {% endif %}{% endfor %}.{% if interruptor.escopo_por %} Escolhido por {{ interruptor.escopo_por }}{% if interruptor.escopo_em %} em {{ interruptor.escopo_em|date:"d/m/Y H:i" }}{% endif %}.{% endif %}{% else %}Hoje: todos os quizzes. Para começar por um só, marque-o abaixo.{% endif %} Os eventos dos outros quizzes não criam trabalho.</p>
+    <form method="post" action="{% url 'crm_agentes_escopo' %}">{% csrf_token %}
+      {% if quizzes_do_escopo.consultado %}
+      {% for q in quizzes_do_escopo.lista %}<label class="marcar"><input type="checkbox" name="quiz" value="{{ q.slug }}"{% if q.marcado %} checked{% endif %}> {{ q.titulo }} <small>({{ q.slug }})</small></label>
+      {% empty %}<p class="crmag-explica">Nenhum quiz publicado agora.</p>{% endfor %}
+      {% else %}<p class="crmag-explica">Não consegui consultar os quizzes agora; a lista abaixo é só o que já estava escolhido.</p>{% endif %}
+      {% for slug in quizzes_do_escopo.fora %}<label class="marcar"><input type="checkbox" name="quiz" value="{{ slug }}" checked> {{ slug }} <small>(escolhido antes; não está entre os publicados)</small></label>
+      {% endfor %}
+      <button class="botao">Salvar os quizzes da equipe</button>
+      <small>Nenhum marcado quer dizer todos.</small>
+    </form>
+  </section>
+
+  <section id="pronto" aria-label="Pronto para vender?">
+    <h2>Pronto para vender?</h2>
+    <p class="crmag-explica">{% if prontidao.tudo_pronto %}<b>Sim.</b> Os {{ prontidao.total }} itens abaixo estão prontos.{% else %}<b>Ainda não.</b> {{ prontidao.prontos }} de {{ prontidao.total }} prontos{% if prontidao.faltam %}, {{ prontidao.faltam }} faltando{% endif %}{% if prontidao.duvida %}, {{ prontidao.duvida }} que não consegui conferir{% endif %}. Enquanto faltar algo, o lead que chegar ao agente pode terminar em “passou para uma pessoa”.{% endif %}</p>
+    <ul class="crmag-prontidao">
+      {% for item in prontidao.itens %}
+      <li class="crmag-pront {{ item.estado }}" id="pronto-{{ item.chave }}">
+        <div class="crmag-pront-topo"><b>{{ item.titulo }}</b> <span class="crmag-etiqueta {{ item.estado }}">{{ item.rotulo }}</span></div>
+        <p class="crmag-info">{{ item.detalhe }}</p>
+        {% if item.fazer %}<p class="crmag-nota-pequena"><b>O que fazer:</b> {{ item.fazer }}</p>{% endif %}
+        {% if item.link %}<p class="crmag-nota-pequena"><a href="{{ item.link }}">{{ item.link_texto }} →</a></p>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
 
   <section aria-label="Gasto do mês">
     <div class="crmag-numeros">

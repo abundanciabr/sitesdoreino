@@ -2951,7 +2951,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "Agentes do CRM",
-      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação, com falha e concluídos (inclusive os encerrados porque o pagamento foi aprovado); a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; o botão Analisar agora, que pede a análise de resultados do dia; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
+      "descricao": "O bloco Pronto para vender? (o que falta para um lead real receber o link de compra, linha a linha, com o que fazer e a tela certa), o interruptor da equipe comercial e a escolha dos quizzes em que ela atua; trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação, com falha e concluídos (inclusive os encerrados porque o pagamento foi aprovado); a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; o botão Analisar agora, que pede a análise de resultados do dia; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
       "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
     },
     {
@@ -2963,6 +2963,26 @@
       "gesto": true,
       "titulo": "Analisar resultados agora",
       "descricao": "Pede ao agente de resultados a análise do dia: ela entra na fila e aparece em Trabalhos. Com os agentes desligados nada é criado; pedir de novo no mesmo dia devolve a análise já pedida."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/interruptor/",
+      "endereco": "/admin/crm/agentes/interruptor/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ligar ou desligar a equipe comercial",
+      "descricao": "Liga ou desliga a equipe comercial de agentes sem mexer no servidor. Ligar exige marcar a confirmação (a equipe passa a usar o modelo, dentro do gasto autorizado, e a falar com leads reais) e fica na auditoria; o que a tela grava vale por cima do ambiente."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/escopo/",
+      "endereco": "/admin/crm/agentes/escopo/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Escolher os quizzes da equipe comercial",
+      "descricao": "Guarda em quais quizzes a equipe comercial atua (nenhum marcado: todos), para começar por um só. Eventos dos outros quizzes não criam trabalho."
     },
     {
       "celula": "admin",

@@ -71,6 +71,14 @@ class CondicoesClient:
             return self.NAO_RESPONDEU, None
         return estado, dados
 
+    def ambiente(self):
+        """`/interno/ambiente`: os pedidos nascem em teste ou em produção?
+        Só o rótulo (`cartao`, `pix`, `modo`); o checkout nunca devolve chave."""
+        estado, dados = self._pedir("GET", "/interno/ambiente")
+        if estado == self.OK and dados.get("modo") not in ("teste", "producao"):
+            return self.NAO_RESPONDEU, None
+        return estado, dados
+
     def marcar(self, oferta: str, liberadas: list[str], autor: str):
         return self._pedir(
             "PUT",
