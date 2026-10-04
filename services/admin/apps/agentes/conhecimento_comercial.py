@@ -46,12 +46,14 @@ import logging
 import os
 import re
 import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from datetime import timezone as fuso
 from urllib.parse import quote
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -111,7 +113,14 @@ _PRECO = re.compile(
     r"\d\s*(reais|real|d[óo]lares?|euros?|conto)\b|\b(reais|d[óo]lares|euros)\b|"
     r"\d+\s*vezes\s+(de|sem)\b|\b\d{1,3}(\.\d{3})*,\d{2}\b|"
     r"\binvestimento|\bmensalidade|\banuidade|\bvalor(es)?\b|\bcust(a|am|o|ar)\b|"
-    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit",
+    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit|"
+    # preço escrito só com número: "por 497", "só 97", "de 997 por 497", "entrada de 97".
+    # Número de duas casas ou mais depois dessas palavras, a menos que seja medida do curso.
+    r"\b(por|s[óo]|apenas|somente|entrada|de|a partir de|hoje)\s+(apenas\s+|somente\s+)?\d{2,}([.,]\d+)*\b"
+    r"(?!\s*(%|h\b|hs\b|min\w*|horas?|aulas?|m[óo]dulos?|dias?|semanas?|mes(es)?|anos?|alunos?|"
+    r"exerc[íi]cios?|projetos?|v[íi]deos?|li[çc][õo]es|encontros?|p[áa]ginas?|lives?|modelos?|"
+    r"texturas?|arquivos?|materiais|itens?|etapas?|desafios?|temas?|t[óo]picos?|pessoas?|vagas?|"
+    r"partes?|cap[íi]tulos?|mentorias?|corre[çc][õo]es|pacotes?|brushes|pinc[ée]is))",
     re.IGNORECASE,
 )
 _MARCA_DE_PRECO = "(preço e condições: consultar ao vivo)"
@@ -190,6 +199,9 @@ class Leitura:
     fontes: list[Fonte] = field(default_factory=list)
     lidos: set[str] = field(default_factory=set)
     faltou: list[str] = field(default_factory=list)
+    # Fontes que continuam valendo mesmo sem terem sido lidas agora (o catálogo
+    # de produtos não respondeu): não saem do índice. O resto do tipo sai normal.
+    mantidas: set[str] = field(default_factory=set)
 
 
 def chave(site_id: str, tipo: str, ref: str) -> str:
@@ -221,6 +233,13 @@ def sem_preco(texto: str) -> str:
             boas.append(_MARCA_DE_PRECO)
         linhas.append(" ".join(f for f in boas if f.strip()))
     return "\n".join(linhas).strip()
+
+
+def nome_sem_preco(nome: str, reserva: str) -> str:
+    """Um nome (de curso, de complemento) sem a parte de preço. Se o nome todo
+    era preço, vale a reserva (o apelido ou o id)."""
+    limpo = sem_preco(nome).replace(_MARCA_DE_PRECO, "").strip(" -:;,")
+    return limpo or reserva
 
 
 def _so_marca(texto: str) -> bool:
@@ -299,7 +318,7 @@ def _ler_cursos(leitura: Leitura, produtos: dict[str, str] | None) -> None:
 
 def _fonte_do_curso(leitura: Leitura, curso: dict, aulas: list, produtos: dict) -> Fonte:
     slug = str(curso.get("slug") or "")
-    nome = str(curso.get("nome") or slug)
+    nome = nome_sem_preco(str(curso.get("nome") or slug), slug)
     produto_id = str(curso.get("produto_id") or "")
     produto_nome = produtos.get(produto_id, "")
     publicadas = [a for a in aulas if isinstance(a, dict) and a.get("estado") == "publicada"]
@@ -410,7 +429,7 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -
         if not isinstance(secao, dict):
             continue
         slots = secao.get("slots") or {}
-        headline = headline or str(slots.get("headline") or "")
+        headline = headline or nome_sem_preco(str(slots.get("headline") or ""), "")
         textos = [
             sem_preco(str(v)) for s, v in slots.items()
             if s not in SLOTS_FORA and isinstance(v, str) and v.strip()
@@ -425,7 +444,8 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -
     bumps = [b for b in oferta.get("bumps") or [] if isinstance(b, dict) and b.get("name")]
     if bumps:
         partes.append(("Complementos oferecidos junto", "\n".join(
-            f"{b['name']}" + (f": {sem_preco(str(b.get('headline') or ''))}" if b.get("headline") else "")
+            nome_sem_preco(str(b["name"]), "Complemento")
+            + (f": {chamada}" if (chamada := sem_preco(str(b.get("headline") or ""))) else "")
             for b in bumps
         )))
     no_da_oferta = no_do_site(f"Oferta {slug}", leitura)  # o apelido só é único dentro do site
@@ -471,7 +491,6 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             nome__in=[m.documento_nome for m in marcas], arquivado=False
         ).exclude(corpo="")
     }
-    completo = True
     for marca in marcas:
         documento = documentos.get(marca.documento_nome)
         if documento is None:
@@ -480,8 +499,10 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             continue
         tipo = "depoimento" if marca.tipo == MaterialComercial.Tipo.DEPOIMENTO else "documento"
         if produtos is None and (marca.produto or "").strip():
-            # Sem os nomes dos produtos, a marca perderia o produto: fica como está.
-            completo = False
+            # Sem os nomes dos produtos, a marca perderia o produto: esta fonte
+            # fica como está. As outras (e as revogadas) seguem o curso normal.
+            leitura.mantidas.add(chave(leitura.site_id, tipo, documento.nome))
+            leitura.faltou.append(f"documento {documento.nome} (sem os nomes dos produtos)")
             continue
         produto_ref, produto_nome = _produto_da_marca(marca.produto, produtos or {})
         rotulo = f"Depoimento: {documento.titulo}" if tipo == "depoimento" else documento.titulo
@@ -502,10 +523,7 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             vigente_desde=documento.atualizado_em,
             partes=partes,
         ))
-    if completo:
-        leitura.lidos.update({"documento", "depoimento"})
-    else:
-        leitura.faltou.append("documentos marcados com produto (sem os nomes dos produtos)")
+    leitura.lidos.update({"documento", "depoimento"})
 
 
 def ler(site: dict) -> Leitura:
@@ -575,10 +593,56 @@ def _gravar(leitura: Leitura, fonte: Fonte, chave_da_fonte: str, impressao: str,
         ])
 
 
+ESPERA_DA_TRAVA = 120  # segundos esperando a outra atualização do mesmo site
+
+
+def numero_da_trava(site_id: str) -> int:
+    return int.from_bytes(hashlib.sha1(f"{PREFIXO}{site_id}".encode("utf-8")).digest()[:8], "big", signed=True)
+
+
+@contextmanager
+def _um_de_cada_vez(site_id: str):
+    """Uma atualização por site de cada vez, entre processos e entre a tela e a
+    volta automática (trava do Postgres). Quem chega depois lê DEPOIS de quem
+    estava gravando: uma leitura velha não regrava o que outra acabou de tirar.
+    Devolve False se a outra não terminou a tempo."""
+    if connection.vendor != "postgresql":
+        yield True
+        return
+    numero = numero_da_trava(site_id)
+    prazo = time.monotonic() + ESPERA_DA_TRAVA
+    with connection.cursor() as cursor:
+        pegou = False
+        while True:
+            cursor.execute("SELECT pg_try_advisory_lock(%s)", [numero])
+            pegou = bool(cursor.fetchone()[0])
+            if pegou or time.monotonic() >= prazo:
+                break
+            time.sleep(0.2)
+        try:
+            yield pegou
+        finally:
+            if pegou:
+                cursor.execute("SELECT pg_advisory_unlock(%s)", [numero])
+
+
 def atualizar(site: dict) -> dict:
     """Põe o índice comercial do site em dia com o que ele tem agora. Só a
     fonte nova ou mudada é regravada; a que sumiu sai, mas só se o tipo dela
-    foi lido inteiro agora."""
+    foi lido inteiro agora. A leitura e a gravação são uma volta só, uma de
+    cada vez por site."""
+    site_id = str(site.get("id") or "")
+    with _um_de_cada_vez(site_id) as pegou:
+        if not pegou:
+            return {
+                "site": {"id": site_id, "host": str(site.get("host") or "").lower()},
+                "novas": 0, "mudadas": 0, "iguais": 0, "sairam": 0,
+                "faltou": ["outra atualização deste site ainda está rodando"],
+            }
+        return _atualizar(site)
+
+
+def _atualizar(site: dict) -> dict:
     leitura = ler(site)
     agora = timezone.now()
     prefixo = f"{PREFIXO}{leitura.site_id}:"
@@ -603,7 +667,7 @@ def atualizar(site: dict) -> dict:
             mudadas += 1
     sairam = [
         c for c in existentes
-        if c not in vistas and _tipo_da_chave(c) in leitura.lidos
+        if c not in vistas and c not in leitura.mantidas and _tipo_da_chave(c) in leitura.lidos
     ]
     FonteDoConhecimento.objects.filter(chave__in=sairam).delete()
     return {
