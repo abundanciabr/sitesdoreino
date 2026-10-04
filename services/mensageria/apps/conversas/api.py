@@ -170,6 +170,9 @@ def abrir_conversa(request, dados: AbrirEntrada):
         site_id=site_id, canal=dados.canal, endereco=endereco,
         defaults={"lead_id": dados.lead_id.strip()[:64], "ligacao": "ligada"},
     )
+    if conversa.ambigua:
+        # Mais de um contato usa este endereco: quem escolhe e a equipe, nao o primeiro que pedir.
+        raise HttpError(409, "este endereco pertence a mais de um contato; a equipe precisa escolher")
     if conversa.ligacao != "ligada":
         conversa.lead_id, conversa.ligacao = dados.lead_id.strip()[:64], "ligada"
         conversa.save(update_fields=["lead_id", "ligacao", "atualizada_em"])

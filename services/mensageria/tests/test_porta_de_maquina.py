@@ -839,6 +839,10 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp/{SITE}/reconcile": {
         "origem": "manual", "referencia": "prova-sem-envio", "provider_id": "mensagem-sintetica",
     },
+    "/avisos-equipe": {
+        "site_id": SITE, "chave": "prova", "destinatario": "equipe@exemplo.com",
+        "assunto": "Prova", "corpo": "Prova",
+    },
     f"/audio/{SITE}/1/transcricao": {"texto": "prova sintética"},
     f"/audio/{SITE}/1/falha": {"erro": "prova sintética"},
     f"/audio/{SITE}/transcricoes": {"telefone": "11999999999"},

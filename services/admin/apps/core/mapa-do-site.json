@@ -2903,6 +2903,17 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/resultados/",
+      "endereco": "/admin/crm/resultados/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Resultados do CRM",
+      "descricao": "Quem fez um quiz no período e o que aconteceu depois: conversão por quiz, oferta e campanha, compras, receita líquida, custos da operação, margem de contribuição e resposta por canal, com filtro por versão de estratégia dos agentes.",
+      "observacao": "Só administradores. Período, estratégia e site vêm da própria tela; valor mal escrito é ignorado e a página volta ao período padrão."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/modelos/",
       "endereco": "/admin/crm/modelos/",
       "alcance": "publico",
@@ -2940,8 +2951,18 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "Agentes do CRM",
-      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação e com falha; a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
+      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação, com falha e concluídos (inclusive os encerrados porque o pagamento foi aprovado); a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; o botão Analisar agora, que pede a análise de resultados do dia; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
       "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/analisar/",
+      "endereco": "/admin/crm/agentes/analisar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Analisar resultados agora",
+      "descricao": "Pede ao agente de resultados a análise do dia: ela entra na fila e aparece em Trabalhos. Com os agentes desligados nada é criado; pedir de novo no mesmo dia devolve a análise já pedida."
     },
     {
       "celula": "admin",

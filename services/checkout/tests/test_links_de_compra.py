@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
+from apps.core.api import _chave_da_compra
 from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import CondicaoDoAgente, LinkDeCompra, Order, OutboxEvent, Session
 from conftest import (
@@ -666,6 +667,7 @@ def test_reabrir_o_link_com_pix_expirado_abre_novo_pedido_do_mesmo_link(api, red
     link = _link(api, estrategia="retomada-quiz").json()
     sessao1 = _abrir_pelo_link(api, link["link_id"])
     pedido1 = _fechar(api, sessao1["id"])
+    primeiro_pedido = Order.objects.get(pk=pedido1["order_id"])
     assert pedido1["order_id"] == link["pedido_id"]
     assert aplicar(
         pix_expirado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
@@ -689,9 +691,18 @@ def test_reabrir_o_link_com_pix_expirado_abre_novo_pedido_do_mesmo_link(api, red
     segundo = Order.objects.get(pk=pedido2["order_id"])
     assert segundo.oportunidade_ref == "op-123"
     assert segundo.contexto == {"op": "op-123", "est": "retomada-quiz"}
-    # Cada tentativa é uma cobrança nova, com a chave da sessão dela.
-    chaves = {c.request.headers["X-Idempotency-Key"] for c in _intents(rede)}
-    assert chaves == {sessao1["id"], sessao2["id"]}
+    # Cada tentativa é uma cobrança nova, com a chave da compra dela: as duas
+    # chaves são diferentes entre si e a de cada uma é estável para a mesma
+    # compra (mesma sessão, forma de pagamento, itens e comprador).
+    chaves = [c.request.headers["X-Idempotency-Key"] for c in _intents(rede)]
+    assert len(chaves) == 2 and chaves[0] != chaves[1]
+    for chave, sessao, pedido in (
+        (chaves[0], sessao1, primeiro_pedido),
+        (chaves[1], sessao2, segundo),
+    ):
+        assert chave == _chave_da_compra(
+            uuid.UUID(sessao["id"]), pedido.method, pedido.items, pedido.customer
+        )
     # Agora o pedido novo é o que a página mostra.
     assert (
         _abrir_pelo_link(api, link["link_id"])["pedido_existente"]["order_id"]

@@ -409,7 +409,7 @@ def test_referencia_inexistente_nao_fecha_a_unica_oferta_aberta():
     assert CompraDaOportunidade.objects.get().oportunidade_id is None
 
 
-def test_aprovacao_antes_do_pedido_corrigida_pela_referencia_reabre_a_oferta_errada():
+def test_aprovacao_antes_do_pedido_espera_a_referencia_e_fecha_so_a_oferta_certa():
     from django.utils import timezone
 
     crivo = quiz("crivo")
@@ -420,9 +420,10 @@ def test_aprovacao_antes_do_pedido_corrigida_pela_referencia_reabre_a_oferta_err
     cura.etapa = "perdida"
     cura.save()
 
-    aprovado("ped-1")  # chega antes do pedido, sem referência
+    aprovado("ped-1")  # chega antes do pedido, sem referência nem produto: não casa sozinha
     crivo.refresh_from_db()
-    assert crivo.etapa == "ganha"
+    assert crivo.etapa != "ganha" and not crivo.encerrada
+    assert CompraDaOportunidade.objects.get().oportunidade_id is None
 
     pedido("ped-1", oportunidade_ref=str(cura.id))
     _recarregar(crivo, cura)
@@ -534,6 +535,16 @@ def test_unica_oferta_aberta_ainda_vale_quando_o_produto_e_novo():
     aprovado("ped-1")
     crivo.refresh_from_db()
     assert crivo.etapa == "ganha"
+
+
+def test_pedido_sem_produto_nao_toma_a_unica_oferta_aberta_de_outro_produto():
+    crivo = quiz("crivo", context={"oferta_ref": "prod-crivo"})
+    # Aprovação sem o pedido por perto: não se sabe qual produto foi comprado.
+    aprovado("ped-sem-produto")
+    crivo.refresh_from_db()
+    assert not crivo.encerrada and crivo.etapa == "nova"
+    compra = CompraDaOportunidade.objects.get()
+    assert compra.aprovado_em is not None and compra.oportunidade_id is None
 
 
 # ---------------------------------------------------------------------------

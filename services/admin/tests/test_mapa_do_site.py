@@ -641,3 +641,10 @@ def test_a_busca_nao_deixa_galho_sem_a_mae_na_arvore_aninhada():
     assert any(
         f["endereco"] == "/admin/escola/alunos/recusados" for f in alunos["filhas"]
     )
+
+
+def test_mapa_lista_o_painel_de_resultados_e_o_botao_analisar_agora():
+    rotas = {e["rota"]: e for e in _arquivo()["enderecos"]}
+    assert rotas["crm/resultados/"]["gesto"] is False and rotas["crm/resultados/"]["endereco"] == "/admin/crm/resultados/"
+    assert rotas["crm/agentes/analisar/"]["gesto"] is True
+    assert "Analisar agora" in rotas["crm/agentes/"]["descricao"] and "concluídos" in rotas["crm/agentes/"]["descricao"]
