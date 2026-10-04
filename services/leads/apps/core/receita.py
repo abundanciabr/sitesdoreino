@@ -167,12 +167,19 @@ def acompanhamento_da_oportunidade(request, opportunity_id: str):
 def _instante(valor: str, campo: str, fim=False):
     if not valor:
         return None
-    momento = parse_datetime(valor)
-    if momento is None:
+    erro = HttpError(422, f"{campo} precisa ser uma data (AAAA-MM-DD) ou data e hora")
+    try:
+        # Data simples vem antes: parse_datetime a aceitaria como meia-noite, e
+        # o `ate` de um dia tem de valer até o fim desse dia.
         dia = parse_date(valor)
-        if dia is None:
-            raise HttpError(422, f"{campo} precisa ser uma data (AAAA-MM-DD) ou data e hora")
-        momento = datetime.combine(dia, time.max if fim else time.min)
+        if dia is not None:
+            momento = datetime.combine(dia, time.max if fim else time.min)
+        else:
+            momento = parse_datetime(valor)
+    except ValueError:
+        raise erro from None
+    if momento is None:
+        raise erro
     if timezone.is_naive(momento):
         momento = timezone.make_aware(momento)
     return momento

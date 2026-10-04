@@ -6,7 +6,13 @@ Quem é a oportunidade de um pedido, nesta ordem:
 2. a oportunidade já ligada a esse pedido;
 3. a oferta ou o produto do pedido, comparados com as compras já ligadas às
    ofertas abertas da pessoa;
-4. a única oferta aberta da pessoa, quando ela não é de outro produto.
+4. a única oferta aberta da pessoa, quando ela não é de outro produto e o
+   pedido não aponta, por `oportunidade_ref`, para uma oportunidade que não
+   existe.
+
+"A pessoa" é sempre a dona do pedido (`compra.lead`), nunca quem mandou o
+evento: o e-mail do pagamento pode ser outro, e a compra de uma pessoa não
+fecha a oferta de outra.
 
 Fora disso, a compra fica sem oportunidade. Nunca se fecha todas as ofertas
 da pessoa por causa de um pagamento.
@@ -250,8 +256,10 @@ def resolver_oportunidade(compra, lead, momento=None):
     """A oportunidade desta compra, ou None quando não dá para saber qual é.
 
     `momento` é quando o fato aconteceu; sem referência explícita, uma oferta
-    de quiz respondido depois da compra não é a desta compra.
+    de quiz respondido depois da compra não é a desta compra. `lead` fica na
+    assinatura por compatibilidade: vale sempre a dona da compra.
     """
+    lead = compra.lead
     achada = _por_referencia(compra, lead)
     if achada is not None:
         return achada
@@ -273,16 +281,55 @@ def resolver_oportunidade(compra, lead, momento=None):
         casadas = [o for o in abertas if conhecidas[o.pk] & da_compra]
         if casadas:
             return casadas[0]
-    if len(abertas) == 1:
+    if len(abertas) == 1 and not compra.oportunidade_ref:
         unica = abertas[0]
         if not conhecidas[unica.pk] or not da_compra:
             return unica
     return None
 
 
+def _desfazer_fechamento_errado(compra, anterior) -> None:
+    """A compra passou para outra oportunidade: a que ela fechou antes reabre.
+
+    Só desfaz o que esta mesma compra causou (mesma evidência) e só se nenhuma
+    outra compra aprovada da pessoa sustenta esse fechamento. A recuperação do
+    pedido continua sendo da compra, então não reabre.
+    """
+    if anterior.fonte_tipo == FONTE_RECUPERACAO or not anterior.encerrada:
+        return
+    if anterior.desfecho_motivo not in ("Pagamento aprovado", "Pagamento revertido"):
+        return
+    if anterior.desfecho_evidencia != _texto(compra.aprovacao_evidencia or compra.pedido_id):
+        return
+    outras = CompraDaOportunidade.objects.filter(oportunidade=anterior).exclude(
+        pk=compra.pk
+    )
+    if outras.filter(aprovado_em__isnull=False).exists():
+        return
+    anterior.etapa = "negociacao" if outras.exists() else "nova"
+    anterior.desfecho_resultado = ""
+    anterior.desfecho_motivo = ""
+    anterior.desfecho_evidencia = ""
+    anterior.desfecho_encerrada_em = None
+    anterior.save(update_fields=[
+        "etapa", "desfecho_resultado", "desfecho_motivo", "desfecho_evidencia",
+        "desfecho_encerrada_em", "atualizada_em",
+    ])
+    _registrar(
+        anterior, "etapa_alterada",
+        f"Reaberta: o pedido {compra.pedido_id} é de outra oportunidade.",
+        compra.pedido_id,
+    )
+
+
 def _vincular(compra, oportunidade) -> bool:
     if oportunidade is None or compra.oportunidade_id == oportunidade.pk:
         return False
+    if compra.oportunidade_id is not None:
+        anterior = Oportunidade.objects.select_for_update().get(
+            pk=compra.oportunidade_id
+        )
+        _desfazer_fechamento_errado(compra, anterior)
     compra.oportunidade = oportunidade
     compra.save(update_fields=["oportunidade", "atualizada_em"])
     return True
@@ -544,7 +591,7 @@ def registrar_falha(lead, evento, data, event_id, evento_timeline=None):
         if nova:
             _levar_para_recuperacao(oportunidade, compra, evento, event_id)
         return oportunidade
-    recuperacao = _abrir_recuperacao(lead, compra, evento, event_id)
+    recuperacao = _abrir_recuperacao(compra.lead, compra, evento, event_id)
     if compra.oportunidade_id is None:
         _vincular(compra, recuperacao)
     return recuperacao
