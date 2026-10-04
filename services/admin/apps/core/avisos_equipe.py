@@ -481,40 +481,77 @@ def varrer_conversas(site_id: str, agora=None) -> None:
             )
 
 
-def _trabalhos_comerciais_parados(limite) -> list[tuple[str, str, str, str]]:
-    """`(fato, responsavel, texto, link)` dos trabalhos comerciais parados.
+def _modelo_do_trabalho_comercial():
+    """`comercial.TrabalhoComercial`, do coordenador. Sem ele, nada a varrer."""
+    for app in ("comercial", "agentes"):
+        try:
+            return django_apps.get_model(app, "TrabalhoComercial")
+        except LookupError:
+            continue
+    return None
 
-    O modelo do trabalho comercial é do coordenador; enquanto ele não existe,
-    esta parte simplesmente não acha nada."""
-    try:
-        Modelo = django_apps.get_model("agentes", "TrabalhoComercial")
-    except LookupError:
-        return []
-    parados = []
+
+def _link_do_trabalho(trabalho) -> str:
+    conversa = str(getattr(trabalho, "conversa_id", "") or "")
+    if conversa:
+        caminho = link_da_conversa({"id": conversa, "site_id": getattr(trabalho, "site_id", "")})
+        if caminho != "/admin/crm/":
+            return caminho
+    oportunidade = str(getattr(trabalho, "oportunidade_id", "") or "")
+    return link_da_oportunidade(oportunidade) if oportunidade else "/admin/crm/"
+
+
+def varrer_trabalhos_comerciais(limite) -> None:
+    """Trabalho comercial esperando o provedor ou o modelo além da tolerância
+    vira `trabalho_parado`; trabalho com envio sem confirmação vira
+    `envio_incerto`. Um aviso por trabalho e por estado."""
+    Modelo = _modelo_do_trabalho_comercial()
+    if Modelo is None:
+        return
     campos = {f.name for f in Modelo._meta.get_fields()}
+    campo_estado = "estado" if "estado" in campos else "situacao" if "situacao" in campos else None
     campo_tempo = next((c for c in ("atualizado_em", "atualizada_em", "criado_em", "criada_em") if c in campos), None)
-    if "situacao" not in campos or campo_tempo is None:
-        return []
-    esperando = ("aguardando_dependencia", "aguardando_provedor", "falha_provedor", "parado")
-    consulta = Modelo.objects.filter(situacao__in=esperando, **{campo_tempo + "__lte": limite})
+    if campo_estado is None or campo_tempo is None:
+        return
+    tipos = {
+        "aguardando_dependencia": Tipo.TRABALHO_PARADO,
+        "envio_incerto": Tipo.ENVIO_INCERTO,
+    }
+    consulta = Modelo.objects.filter(
+        **{campo_estado + "__in": list(tipos), campo_tempo + "__lte": limite}
+    )
+    if "teste" in campos:
+        consulta = consulta.filter(teste=False)
     for trabalho in consulta.order_by("-pk")[:100]:
-        oportunidade = str(getattr(trabalho, "oportunidade_id", "") or getattr(trabalho, "oportunidade_ref", "") or "")
+        estado = getattr(trabalho, campo_estado)
         motivo = str(getattr(trabalho, "motivo", "") or "")
-        parados.append((
-            f"trabalho_comercial:{trabalho.pk}:{trabalho.situacao}",
-            str(getattr(trabalho, "responsavel", "") or ""),
-            "Um trabalho comercial está parado esperando o provedor ou o modelo"
-            + (f": {motivo[:200]}" if motivo else "."),
-            link_da_oportunidade(oportunidade) if oportunidade else "/admin/crm/",
-        ))
-    return parados
+        if tipos[estado] == Tipo.ENVIO_INCERTO:
+            titulo = "Mensagem do agente sem confirmação de envio"
+            texto = (
+                f"O agente mandou uma mensagem há mais de {MINUTOS_DE_TOLERANCIA} minutos e o provedor "
+                "não confirmou se ela saiu. Ela não será reenviada sozinha: confira a conversa."
+            )
+        else:
+            titulo = "Trabalho comercial parado"
+            texto = (
+                f"Um trabalho comercial espera o provedor ou o modelo há mais de {MINUTOS_DE_TOLERANCIA} minutos"
+                + (f": {motivo[:200]}" if motivo else ".")
+                + " Ele volta sozinho quando o serviço responder."
+            )
+        avisar(
+            tipos[estado],
+            site_id=str(getattr(trabalho, "site_id", "") or ""),
+            fato=f"trabalho_comercial:{trabalho.pk}:{estado}:{getattr(trabalho, 'tentativas', 0)}",
+            titulo=titulo,
+            texto=texto,
+            link=_link_do_trabalho(trabalho),
+        )
 
 
 def varrer_trabalhos_parados(agora=None) -> None:
     agora = agora or timezone.now()
     limite = agora - timedelta(minutes=MINUTOS_DE_TOLERANCIA)
-    for fato, responsavel, texto, link in _trabalhos_comerciais_parados(limite):
-        avisar(Tipo.TRABALHO_PARADO, fato=fato, responsavel=responsavel, titulo="Trabalho comercial parado", texto=texto, link=link)
+    varrer_trabalhos_comerciais(limite)
 
     # Os trabalhos que o executor dos robôs já roda (leitura e conferência do
     # quiz, panorama) param do mesmo jeito quando a conexão com o modelo cai.
