@@ -205,6 +205,9 @@ def ao_mensagem_recebida(envelope: dict):
     contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
+    escopo = interruptor.escopo()
+    if escopo and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
+        return None  # a equipe atua só em alguns quizzes e este contato não veio deles
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
     trabalho, _ = coordenador.criar(
         T.ATENDER_MENSAGEM,

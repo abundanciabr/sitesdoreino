@@ -258,6 +258,31 @@ def test_oferta_que_o_checkout_nunca_viu_tambem_falta(fontes_ligadas):
     assert "Nenhuma condição liberada em: curso-a" in _linha(_pagina(), "condicoes")
 
 
+def _catalogo_fora_do_ar():
+    respx.get(f"{CATALOGO}/sites/site-teste/ofertas/curso-a").mock(return_value=httpx.Response(500))
+
+
+@respx.mock
+def test_catalogo_fora_do_ar_nao_vira_pronto_nem_falta_falsa(fontes_ligadas):
+    _site()
+    _catalogo_fora_do_ar()
+    _quizzes(QUIZ_PRONTO)
+    _condicoes(2)
+    html = _pagina()
+    quizzes, condicoes = _linha(html, "quizzes"), _linha(html, "condicoes")
+    assert "Não consegui conferir" in quizzes and "curso-a" in quizzes and "Pronto</span>" not in quizzes
+    assert "Não consegui conferir" in condicoes and "Pronto</span>" not in condicoes
+    assert "Falta</span>" not in condicoes
+
+
+@respx.mock
+def test_catalogo_fora_do_ar_nao_esconde_quiz_que_certamente_falta(fontes_ligadas):
+    _site()
+    _catalogo_fora_do_ar()
+    _quizzes(QUIZ_PRONTO, QUIZ_SEM_OFERTA)
+    assert "Falta</span>" in _linha(_pagina(), "quizzes")
+
+
 @respx.mock
 def test_checkout_em_teste_diz_que_nao_entra_dinheiro_real(fontes_ligadas):
     _ambiente_do_checkout("teste", cartao="producao", pix="teste")
@@ -473,6 +498,27 @@ def test_escopo_vale_tambem_para_a_captura_parcial():
     envelope["event"] = "quiz.captura_parcial"
     assert eventos.ao_quiz_captura_parcial(envelope) is None
     assert not TrabalhoComercial.objects.exists()
+
+
+def _mensagem(contato_id, conversa="conv-1"):
+    data = {"conversa_id": conversa, "mensagem_id": f"m-{conversa}", "canal": "whatsapp", "site": "site-1",
+            "site_id": "site-1", "lead": contato_id, "lead_ligacao": "ligada", "texto": "Oi, quanto custa?",
+            "midia": None, "estado_conversa": "agente"}
+    return {"event": "mensagem.recebida", "version": 1, "event_id": str(uuid.uuid4()),
+            "occurred_at": timezone.now().isoformat(), "data": data}
+
+
+def test_escopo_vale_tambem_para_a_mensagem_de_contato_de_outro_quiz():
+    de_dentro = eventos.ao_quiz_completado(_quiz_completado("crivo"))
+    de_fora = eventos.ao_quiz_completado(_quiz_completado("outro", email="bia@exemplo.org"))
+    TrabalhoComercial.objects.filter(pk=de_dentro.pk).update(contato_id="lead-dentro")
+    TrabalhoComercial.objects.filter(pk=de_fora.pk).update(contato_id="lead-fora")
+    # Sem escopo, os dois contatos são atendidos.
+    assert eventos.ao_mensagem_recebida(_mensagem("lead-fora", "c0")) is not None
+    interruptor.definir_escopo(["crivo"], "dono")
+    assert eventos.ao_mensagem_recebida(_mensagem("lead-fora", "c1")) is None
+    assert eventos.ao_mensagem_recebida(_mensagem("lead-desconhecido", "c2")) is None
+    assert eventos.ao_mensagem_recebida(_mensagem("lead-dentro", "c3")) is not None
 
 
 def test_escopo_vazio_volta_a_valer_para_todos():
