@@ -444,7 +444,11 @@ def relay_outbox() -> int:
         )
         if not pendentes:
             return 0
-        cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+        # Prazo curto: este trecho segura linhas da outbox (select_for_update);
+        # um Redis que não responde não pode prender a transação para sempre.
+        cliente = redis.from_url(  # type: ignore[no-untyped-call]
+            settings.REDIS_STREAMS_URL, socket_connect_timeout=5, socket_timeout=5
+        )
         for evento in pendentes:
             envelope = {
                 "event": evento.event,
