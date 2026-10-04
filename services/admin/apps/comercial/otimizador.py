@@ -209,7 +209,7 @@ def escolher_para(trabalho: TrabalhoComercial) -> EstrategiaComercial:
     fora dos totais."""
     ativa = papeis.estrategia_ativa(trabalho.papel)
     if trabalho.teste or trabalho.papel not in PAPEIS_OTIMIZAVEIS or trabalho.tipo not in TIPOS_DO_PAPEL.get(
-            trabalho.papel, ()):
+            trabalho.papel, ()) or _dict(trabalho.entrada).get("grupo") == "comparacao":
         return ativa  # só o que o otimizador mede entra na divisão (recuperação e estorno ficam na versão do ar)
     experimento = _teste_em_andamento(trabalho.papel)
     if experimento is None or experimento.base_id != ativa.pk:
@@ -301,6 +301,8 @@ def numeros(papel: str = P.ABORDAGEM, desde: datetime | None = None, *, ate: dat
     tipos = TIPOS_DO_PAPEL.get(papel, (T.ABORDAR,))
     atribuidos = (
         TrabalhoComercial.objects.filter(tipo__in=tipos, teste=False)
+        # O grupo de comparação não tem agente; se algum trabalho dele existir, não entra nas contas de versões.
+        .exclude(entrada__has_key="grupo", entrada__grupo="comparacao")
         .annotate(
             versao_usada=Max("decisoes__versao_estrategia"),
             decidiu_em=Min("decisoes__criada_em"),

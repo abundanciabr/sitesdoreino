@@ -225,3 +225,6 @@ class EventoComercial(models.Model):
 from .experimentos import ExperimentoEstrategia  # noqa: E402,F401
 # O interruptor da equipe e o escopo por quiz (uma linha por instalação).
 from .interruptor import ConfiguracaoComercial  # noqa: E402,F401
+
+# O grupo de comparação (leads que ficam sem o agente) mora em comparacao.py (ver o módulo).
+from .comparacao import ConfiguracaoDaComparacao, MarcaDeComparacao  # noqa: E402,F401

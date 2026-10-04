@@ -77,6 +77,10 @@ RECADOS = {
     "confirmar": "Para ligar, marque a confirmação: a equipe passa a usar o modelo e a falar com leads reais.",
     "escopo_salvo": "Pronto: a equipe atua só nos quizzes escolhidos. Eventos dos outros quizzes não criam trabalho.",
     "escopo_todos": "Pronto: a equipe atua em todos os quizzes.",
+    "comparacao_mudou": "Grupo de comparação atualizado. Vale só para os leads que chegarem daqui para a frente: quem já foi marcado continua no mesmo grupo.",
+    "comparacao_igual": "O percentual já era esse; nada mudou.",
+    "comparacao_sem_confirmacao": "Nada foi mudado: marque a confirmação para alterar o grupo de comparação.",
+    "comparacao_invalida": "Nada foi mudado: informe um número inteiro de 0 a 50.",
 }
 
 # Estados em que o botão "Retomar" aparece (`coordenador.retomar`).
@@ -352,6 +356,18 @@ def _min_amostra() -> int:
     return resultados.MIN_AMOSTRA
 
 
+def _comparacao_na_tela() -> dict:
+    from apps.comercial import comparacao
+
+    marcas = comparacao.MarcaDeComparacao.objects.filter(teste=False)
+    return {
+        "percentual": comparacao.percentual(),
+        "maximo": comparacao.PERCENTUAL_MAXIMO,
+        "sem_agente": marcas.filter(grupo=comparacao.GRUPO_COMPARACAO).count(),
+        "com_agente": marcas.filter(grupo=comparacao.GRUPO_AGENTE).count(),
+    }
+
+
 @require_GET
 def crm_agentes(request):
     mostrar_testes = request.GET.get("testes") == "mostrar"
@@ -379,6 +395,7 @@ def crm_agentes(request):
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
             estrategias=_estrategias(),
+            comparacao=_comparacao_na_tela(),
             detalhe=_detalhe(request.GET.get("trabalho", "")),
             ligado=_ligado(),
             min_amostra=_min_amostra(),
@@ -561,3 +578,29 @@ def crm_agentes_escopo(request):
         "CRM agentes: equipe atua só em " + ", ".join(slugs) if slugs else "CRM agentes: equipe atua em todos os quizzes",
     )
     return _volta("escopo_salvo" if slugs else "escopo_todos", "interruptor")
+
+
+@require_POST
+def crm_agentes_comparacao(request):
+    """Muda o percentual de leads novos que ficam sem o agente (o grupo de comparação).
+
+    Pede confirmação, só vale para leads que chegarem depois (quem já foi marcado não
+    muda de grupo) e deixa rastro na auditoria. O padrão é 0: nada muda até a pessoa escolher."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "comparacao")
+    from apps.comercial import comparacao
+
+    bruto = (request.POST.get("percentual") or "").strip()
+    if not (bruto.isascii() and bruto.isdigit() and len(bruto) <= 3) or int(bruto) > comparacao.PERCENTUAL_MAXIMO:
+        return _volta("comparacao_invalida", "comparacao")
+    if request.POST.get("confirmo") != "1":
+        return _volta("comparacao_sem_confirmacao", "comparacao")
+    antes, depois = comparacao.definir_percentual(int(bruto), _quem(request))
+    if antes == depois:
+        return _volta("comparacao_igual", "comparacao")
+    _auditar(
+        request,
+        "grupo-de-comparacao",
+        f"CRM agentes: grupo de comparação de {antes}% para {depois}% dos leads novos sem o agente",
+    )
+    return _volta("comparacao_mudou", "comparacao")
