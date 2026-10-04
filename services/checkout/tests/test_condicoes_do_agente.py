@@ -258,3 +258,44 @@ def test_lista_nao_cai_quando_o_catalogo_nao_responde(api, rede, monkeypatch):
     corpo = api.get(LISTA).json()
     assert corpo["ofertas"][0]["disponivel"] is False
     assert corpo["ofertas"][0]["motivo"] == "o catálogo não respondeu"
+
+
+# --- marca guardada quando a cotação cai; dois PUTs ao mesmo tempo -----------
+
+
+@pytest.mark.django_db
+def test_cotacao_fora_do_ar_nao_apaga_a_marca_das_parcelas(api, cartao_no_site_a, rede, marcar):
+    marcar(["pix", "card_3x"])
+    rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(return_value=httpx.Response(503))
+    # A tela só lista "pix" e "card"; o mantenedor salva sem mexer em card_3x.
+    assert marcar(["pix", "card"]).status_code == 200
+    rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(side_effect=_cotacao)
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix", "card_3x"]
+    # Desmarcar o que existe agora continua funcionando.
+    marcar(["pix"])
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix"]
+
+
+@pytest.mark.django_db
+def test_dois_puts_iguais_ao_mesmo_tempo_nao_dao_erro(api, rede, marcar, monkeypatch):
+    from apps.core import condicoes_agente
+
+    # Simula a segunda requisição: já leu o conjunto vazio quando a primeira grava.
+    CondicaoDoAgente.objects.create(site_id=SITE_A["id"], oferta_slug=SLUG, condicao_id="pix")
+    monkeypatch.setattr(condicoes_agente, "_liberadas", lambda *a: set())
+    resp = marcar(["pix"])
+    assert resp.status_code == 200, resp.content
+    assert CondicaoDoAgente.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_lista_devagar_mostra_o_que_deu_e_avisa_do_resto(api, rede, monkeypatch):
+    from apps.core import condicoes_agente
+
+    for slug in ("a", "b", "c"):
+        Session.objects.create(site_id=SITE_A["id"], offer_slug=slug, offer={})
+    monkeypatch.setattr(condicoes_agente, "ORCAMENTO_DA_LISTA_SEGUNDOS", -1)
+    corpo = api.get(LISTA + f"?oferta={SLUG}").json()
+    assert corpo["ofertas"][0]["oferta_ref"] == SLUG and corpo["ofertas"][0]["disponivel"] is True
+    resto = corpo["ofertas"][1:]
+    assert resto and all(o["disponivel"] is False and "demorou" in o["motivo"] for o in resto)
