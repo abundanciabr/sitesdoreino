@@ -270,6 +270,8 @@ def whatsapp(monkeypatch):
     monkeypatch.setattr(despacho, "_telefone_da_pessoa",
                         lambda **k: pytest.fail("lead usa o telefone do CRM"))
     monkeypatch.setattr(service, "consultar_mensagem", lambda **k: None)
+    # A permissão do WhatsApp tem testes próprios (test_consentimentos*.py): aqui o aceite já existe.
+    monkeypatch.setattr("apps.consentimentos.servico.permite_whatsapp_proativo", lambda *a, **k: True)
     enviadas = []
 
     def enviar(**kwargs):
