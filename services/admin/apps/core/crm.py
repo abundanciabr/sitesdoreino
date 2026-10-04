@@ -40,7 +40,7 @@ def preparar(item):
     item["aberta"] = item.get("situacao") == "aberta"
     item["historico"] = [dict(r, data=instante(r.get("registrado_em"))) for r in item.get("historico", [])]
     item["ultimo_contato"] = instante(item.get("ultimo_contato_em"))
-    item["aguardando"] = item.get("aguardando_resposta") is True
+    item["aguardando"] = item["aberta"] and item.get("aguardando_resposta") is True
     item["objecao"] = item.get("objecao_principal") if isinstance(item.get("objecao_principal"), str) else ""
     item["atendimento"] = atendimento(item.get("atendido_por"))
     return item
@@ -80,6 +80,8 @@ def crm(request):
         contexto["erro"] = erro_da_fonte(estado)
         return render(request, "admin/crm.html", contexto, status=503)
     itens = [preparar(i) for i in dados["itens"]]
+    if filtros["aguardando_resposta"] == "sim":
+        itens = [i for i in itens if i["aguardando"]]
     contexto.update(dados)
     contexto["colunas"] = [{"chave": chave, "nome": nome, "itens": [i for i in itens if i.get("etapa") == chave]} for chave, nome in ETAPAS if any(i.get("etapa") == chave for i in itens) or chave in ABERTAS]
     contexto["hoje"] = sorted([i for i in itens if i["aberta"] and i["prazo"] and i["prazo"].date() <= timezone.localdate()], key=lambda i: i["prazo"])[:8]

@@ -75,6 +75,21 @@ def test_cartao_de_pessoa_sem_objecao_nem_espera():
 
 
 @respx.mock
+def test_oportunidade_encerrada_nao_mostra_aguardando_resposta():
+    respx.get(BASE + "/crm").mock(return_value=quadro([item(etapa="ganha", situacao="ganha", aguardando_resposta=True)]))
+    html = dentro().get(reverse("crm")).content.decode()
+    assert "Aguardando resposta</span>" not in html
+
+
+@respx.mock
+def test_filtro_aguardando_sim_nao_traz_encerradas_com_o_campo_sobrando():
+    respx.get(BASE + "/crm").mock(return_value=quadro([
+        item(), item(id="b1", etapa="ganha", situacao="ganha", contato={"id": LEAD, "nome": "Zeca Encerrado", "email": "z@example.com"})]))
+    html = dentro().get(reverse("crm"), {"aguardando_resposta": "sim"}).content.decode()
+    assert "Ana" in html and "Zeca Encerrado" not in html
+
+
+@respx.mock
 def test_cartao_sem_atendente_cai_no_responsavel_antigo():
     respx.get(BASE + "/crm").mock(return_value=quadro([item(atendido_por=None)]))
     html = dentro().get(reverse("crm")).content.decode()
