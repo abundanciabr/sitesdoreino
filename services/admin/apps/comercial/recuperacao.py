@@ -71,7 +71,9 @@ def _pago_na_oportunidade(trabalho: TrabalhoComercial) -> bool:
         return False
     itens = [p for p in lista.dados.get("pedidos") or [] if isinstance(p, dict)]
     itens += [p for p in lista.dados.get("links") or [] if isinstance(p, dict)]
-    return any(p.get("confirmado") and not p.get("reembolsado") for p in itens)
+    # Pedido de sandbox não paga a recuperação de uma compra real (e o contrário vale para o teste).
+    return any(p.get("confirmado") and not p.get("reembolsado") and bool(p.get("em_teste")) == bool(trabalho.teste)
+               for p in itens)
 
 
 def _ja_pago(trabalho: TrabalhoComercial) -> bool:
@@ -127,7 +129,7 @@ def _conversas_do_lead(trabalho: TrabalhoComercial) -> list[dict]:
         return []
     return [c for c in resposta.dados.get("itens") or [] if isinstance(c, dict)
             and str(c.get("lead_id") or "") == str(trabalho.contato_id)
-            and str(c.get("site_id") or trabalho.site_id) == str(trabalho.site_id)]
+            and str(c.get("site_id") or "") == str(trabalho.site_id)]
 
 
 def _ja_recuperou(trabalho: TrabalhoComercial) -> bool:
@@ -136,17 +138,34 @@ def _ja_recuperou(trabalho: TrabalhoComercial) -> bool:
     if trabalho.contato_id:
         quem |= Q(contato_id=trabalho.contato_id, site_id=trabalho.site_id)
     if trabalho.oportunidade_id:
-        quem |= Q(oportunidade_id=trabalho.oportunidade_id)
+        quem |= Q(oportunidade_id=trabalho.oportunidade_id, site_id=trabalho.site_id)
     return TrabalhoComercial.objects.filter(
         quem, tipo=T.RECUPERAR_COMPRA, criado_em__gte=timezone.now() - JANELA_DA_JORNADA,
         decisoes__ferramenta="enviar_mensagem", decisoes__resultado=R.FEITO,
     ).exclude(pk=trabalho.pk).exists()
 
 
+def _envio_automatico_recente(trabalho: TrabalhoComercial) -> bool:
+    """A mensageria manda e-mail e WhatsApp de recuperação na hora da recusa ou do Pix vencido; esses
+    envios não entram na conversa, então a conferência pergunta a ela pelo pedido. Sem resposta
+    (célula fora ou sem a rota), não bloqueia: a ferramenta do agente ainda confere o teto."""
+    pedido = (trabalho.entrada or {}).get("pedido_recusado") or trabalho.pedido_id
+    if not pedido:
+        return False
+    resposta = servicos.pedir("envios_do_pedido", params={
+        "site_id": trabalho.site_id, "pedido_id": pedido, "horas": 24}, site_id=trabalho.site_id)
+    if not resposta.ok:
+        return False
+    return any(isinstance(e, dict) and e.get("status") != "falhou" for e in resposta.dados.get("envios") or [])
+
+
 def _motivo_para_nao_enviar(trabalho: TrabalhoComercial) -> str:
     """O que, olhando só os fatos (sem o modelo), manda NÃO falar com o lead agora."""
     if _ja_recuperou(trabalho):
         return "O agente já mandou a mensagem de recuperação a este lead nas últimas 24 horas."
+    if _envio_automatico_recente(trabalho):
+        return ("A mensageria já mandou a mensagem automática de recuperação deste pedido nas últimas 24 "
+                "horas: o agente não repete.")
     conversas = _conversas_do_lead(trabalho)
     if any(c.get("estado") == "pessoa" for c in conversas):
         return "Uma pessoa da equipe está atendendo este lead: o agente não envia a recuperação."
@@ -351,6 +370,20 @@ def _registrar_estorno(trabalho: TrabalhoComercial) -> None:
         texto=f"{resumo} Confira a oportunidade e decida o contato com o cliente.",
         fato=f"estorno:{trabalho.site_id}:{pedido}",
     )
+    # Cada ferramenta grava recusada ou indisponível sem levantar erro: o desfecho diz o que de fato ficou.
+    anotou = trabalho.decisoes.filter(ferramenta="registrar_nota_proximo_passo", resultado=R.FEITO).exists()
+    passou = trabalho.decisoes.filter(ferramenta="passar_para_responsavel", resultado=R.FEITO).exists()
     trabalho.resultado = {**(trabalho.resultado or {}), "decisao": {"acao": "passou_para_pessoa", "resumo": resumo},
-                          "mensagem_enviada": False, "motivo": entrada.get("motivo") or "estorno"}
-    coordenador.terminar(trabalho, E.CONCLUIDO, resumo=f"{palavra} registrado; a equipe foi avisada.")
+                          "mensagem_enviada": False, "motivo": entrada.get("motivo") or "estorno",
+                          "nota_registrada": anotou, "passou_para_pessoa": passou,
+                          "aviso_aberto": not trabalho.teste}
+    if anotou and passou:
+        fim = f"{palavra} registrado na oportunidade; a equipe foi avisada."
+    elif trabalho.teste:
+        fim = f"{palavra} de teste: nada foi aberto para a equipe."
+    else:
+        faltou = " e ".join(x for x, ok in (("a nota na oportunidade", anotou), ("a passagem para a equipe", passou))
+                            if not ok)
+        fim = (f"{palavra} confirmado, mas faltou registrar {faltou} (a oportunidade não foi achada ou a célula "
+               "não respondeu); o aviso no painel da equipe foi aberto.")
+    coordenador.terminar(trabalho, E.CONCLUIDO, resumo=fim)

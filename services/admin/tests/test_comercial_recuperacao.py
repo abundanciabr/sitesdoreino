@@ -489,3 +489,131 @@ def test_reversao_sem_oportunidade_conhecida_ainda_avisa_a_equipe():
     assert trabalho.decisoes.get(call_id="estorno-nota").resultado == R.INDISPONIVEL
     assert AvisoDaEquipe.objects.get().link == "/admin/crm/"
 
+
+
+# ---------------------------------------------------------------- achados da conferência adversarial
+
+
+def _recuperacao():
+    from apps.comercial import recuperacao
+
+    return recuperacao
+
+
+@respx.mock
+def test_envio_automatico_da_mensageria_na_propria_recusa_impede_a_segunda_mensagem():
+    _guardar_chave()
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    _pronto_para_rodar(trabalho)
+    _ficha_do_lead()
+    _checkout_sem_pagamento()
+    _conversa()
+    envios = respx.get(f"{MENSAGERIA}/envios-de-pedido").respond(200, json={"envios": [
+        {"tipo": "recuperacao_recusado", "canal": "email", "status": "enviado",
+         "criado_em": timezone.now().isoformat()}]})
+    openai = respx.post(RESPOSTAS)
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens")
+    _resto_404()
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.ENCERRADO and "automática" in trabalho.motivo
+    assert envios.calls[0].request.url.params["pedido_id"] == "ped-9"
+    assert envios.calls[0].request.url.params["site_id"] == "site-1"
+    assert not openai.called and not envio.called
+
+
+@respx.mock
+def test_envio_automatico_que_falhou_nao_conta_e_a_recuperacao_segue():
+    _guardar_chave()
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    _pronto_para_rodar(trabalho)
+    _ficha_do_lead()
+    _checkout_sem_pagamento()
+    _conversa()
+    respx.get(f"{MENSAGERIA}/envios-de-pedido").respond(200, json={"envios": [
+        {"tipo": "recuperacao_recusado", "canal": "email", "status": "falhou", "criado_em": None}]})
+    _condicoes([])
+    openai = respx.post(RESPOSTAS)
+    _resto_404()
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    # Passou da conferência dos envios e parou na seguinte: sem condição liberada, vai para uma pessoa.
+    assert trabalho.estado == E.CONCLUIDO and trabalho.resultado["passou_para_pessoa"] is True
+    assert not openai.called
+
+
+def test_recuperacao_de_outro_site_com_a_mesma_oportunidade_nao_bloqueia():
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    outro = TrabalhoComercial.objects.create(
+        tipo=T.RECUPERAR_COMPRA, papel="atendimento", chave_idempotencia="recuperar:site-2:p:1",
+        site_id="site-2", oportunidade_id="opp-1", estado=E.CONCLUIDO)
+    DecisaoComercial.objects.create(trabalho=outro, call_id="c9", ferramenta="enviar_mensagem",
+                                    resultado=R.FEITO, papel="atendimento")
+    assert not _recuperacao()._ja_recuperou(trabalho)
+    mesmo_site = TrabalhoComercial.objects.create(
+        tipo=T.RECUPERAR_COMPRA, papel="atendimento", chave_idempotencia="recuperar:site-1:p:1",
+        site_id="site-1", oportunidade_id="opp-1", estado=E.CONCLUIDO)
+    DecisaoComercial.objects.create(trabalho=mesmo_site, call_id="c9", ferramenta="enviar_mensagem",
+                                    resultado=R.FEITO, papel="atendimento")
+    assert _recuperacao()._ja_recuperou(trabalho)
+
+
+@respx.mock
+def test_conversa_sem_site_ou_de_outro_site_nao_conta_como_do_lead():
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    trabalho.contato_id = "lead-1"
+    respx.get(f"{MENSAGERIA}/conversas").respond(200, json={"itens": [
+        {"id": "a", "lead_id": "lead-1", "estado": "pessoa"},
+        {"id": "b", "site_id": "site-2", "lead_id": "lead-1", "estado": "pessoa"},
+        {"id": "c", "site_id": "site-1", "lead_id": "lead-1", "estado": "agente"}]})
+    assert [c["id"] for c in _recuperacao()._conversas_do_lead(trabalho)] == ["c"]
+
+
+@respx.mock
+def test_pedido_de_sandbox_pago_na_oportunidade_nao_encerra_a_recuperacao_de_compra_real():
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    respx.get(f"{CHECKOUT}/interno/pedidos").respond(200, json={"pedidos": [
+        {"pedido_id": "ped-t", "status": "pago", "confirmado": True, "reembolsado": False, "em_teste": True}]})
+    _resto_404()
+    assert _recuperacao()._pago_na_oportunidade(trabalho) is False
+
+
+@respx.mock
+def test_pedido_real_pago_na_oportunidade_encerra_a_recuperacao():
+    trabalho = eventos.tratar("eventos.pagamento.recusado", _falha())
+    respx.get(f"{CHECKOUT}/interno/pedidos").respond(200, json={"pedidos": [
+        {"pedido_id": "ped-r", "status": "pago", "confirmado": True, "reembolsado": False, "em_teste": False}]})
+    _resto_404()
+    assert _recuperacao()._pago_na_oportunidade(trabalho) is True
+
+
+@respx.mock
+def test_reversao_sem_nota_nem_passagem_conta_a_verdade_no_resultado_e_ainda_avisa():
+    _guardar_chave()
+    trabalho = eventos.tratar("eventos.pagamento.reversao_confirmada", _reversao(oportunidade_ref=""))
+    respx.get(f"{LEADS}/crm").respond(200, json={"itens": []})
+    _resto_404()
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert trabalho.resultado["nota_registrada"] is False and trabalho.resultado["passou_para_pessoa"] is False
+    assert trabalho.resultado["aviso_aberto"] is True
+    assert "faltou registrar" in trabalho.resumo
+    assert AvisoDaEquipe.objects.count() == 1
+
+
+@respx.mock
+def test_reversao_completa_diz_que_a_equipe_foi_avisada():
+    _guardar_chave()
+    trabalho = eventos.tratar("eventos.pagamento.reversao_confirmada", _reversao())
+    respx.get(f"{LEADS}/crm/opp-1").respond(200, json={
+        "id": "opp-1", "lead_id": "lead-1", "contato": {"id": "lead-1", "nome": "Ana Souza", "email": EMAIL},
+        "registro_de_teste": False})
+    respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    _conversa()
+    respx.post(f"{MENSAGERIA}/conversas/conv-1/assumir").respond(200, json={})
+    _resto_404()
+    coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.resultado["nota_registrada"] is True and trabalho.resultado["passou_para_pessoa"] is True
+    assert "equipe foi avisada" in trabalho.resumo
