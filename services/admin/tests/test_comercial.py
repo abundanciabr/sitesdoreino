@@ -634,6 +634,16 @@ def _enviar_pela_ferramenta(trabalho, papel="abordagem", call_id="c1"):
         {"texto": "Oi Ana", "canal": None, "assunto": None, "razao": "r", "fonte": None})))
 
 
+@respx.mock
+def test_contato_de_teste_nao_recebe_nada_pelo_canal():
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1", teste=True)
+    envio = _rotas_de_envio()
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.RECUSADO
+    assert saida["resultado"] == "registro_de_teste" and "nada é enviado" in saida["erro"]
+    assert envio.call_count == 0
+
+
 @pytest.mark.parametrize("resultado", [
     "sem_consentimento", "fora_do_horario", "limite_diario", "limite_do_dia", "pulada"])
 @respx.mock
