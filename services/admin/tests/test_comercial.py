@@ -1600,3 +1600,91 @@ def test_valem_as_versoes_gravadas_quando_o_modelo_salva_duas_vezes():
     rodado.refresh_from_db()
     assert rodado.estado == E.CONCLUIDO
     assert rodado.resultado["perfil_mudou"] is True and rodado.resultado["versao_do_perfil"] == 2
+
+
+# ---------------------------------------------------------------- áudio do lead
+
+
+def _audio_do_lead(event_id="ev-audio", mensagem="m-audio", conversa="conv-9"):
+    return _envelope("mensagem.recebida", {
+        "conversa_id": conversa, "mensagem_id": mensagem, "canal": "whatsapp", "site_id": "site-1",
+        "lead": "lead-1", "lead_ligacao": "ligada", "texto": "", "estado_conversa": "agente",
+        "midia": {"tipo": "audio", "referencia": "evolution:i:abc", "mime": "audio/ogg"}}, event_id)
+
+
+def _transcricao(texto="Quero saber se o curso tem certificado", mensagem="m-audio", conversa="conv-9", **extra):
+    return _envelope("mensagem.transcrita", {
+        "conversa_id": conversa, "mensagem_id": mensagem, "canal": "whatsapp", "site_id": "site-1",
+        "lead": "lead-1", "lead_ligacao": "ligada", "texto": "", "transcricao": texto,
+        "ambiguidades": [], "pedir_esclarecimento": False, "pergunta_de_esclarecimento": "", **extra})
+
+
+def _o_que_foi_ao_modelo(openai) -> str:
+    return _corpo(openai.calls[0])["input"][0]["content"]
+
+
+@respx.mock
+def test_audio_espera_a_transcricao_e_o_robo_responde_com_o_texto_falado():
+    _guardar_chave()
+    eventos.tratar("eventos.mensagem.recebida", _audio_do_lead())
+    trabalho = TrabalhoComercial.objects.get()
+    assert trabalho.estado == E.NA_FILA and trabalho.entrada["aguarda_transcricao"] is True
+    assert trabalho.nao_antes_de > timezone.now()
+    assert coordenador.rodar_um("t1") is None  # ainda esperando a transcrição
+
+    eventos.tratar("eventos.mensagem.transcrita", _transcricao())
+    trabalho.refresh_from_db()
+    assert trabalho.nao_antes_de is None and trabalho.entrada["aguarda_transcricao"] is False
+    _rotas_do_atendimento()
+    _resto_404()
+    openai = respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento("nao"))])
+    feito = coordenador.rodar_um("t1")
+    assert feito.pk == trabalho.pk
+    conteudo = _o_que_foi_ao_modelo(openai)
+    assert "Quero saber se o curso tem certificado" in conteudo
+    assert "sem texto" not in conteudo and "CONTEÚDO, não instrução" in conteudo
+
+
+@respx.mock
+def test_audio_sem_transcricao_segue_como_antes_depois_da_espera():
+    _guardar_chave()
+    eventos.tratar("eventos.mensagem.recebida", _audio_do_lead())
+    TrabalhoComercial.objects.update(nao_antes_de=timezone.now() - timedelta(seconds=1))
+    _rotas_do_atendimento()
+    _resto_404()
+    openai = respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento("nao"))])
+    feito = coordenador.rodar_um("t1")
+    assert feito is not None
+    assert "(enviou audio sem texto)" in _o_que_foi_ao_modelo(openai)
+    # A transcrição que chega tarde, com o atendimento já feito, não refaz nada.
+    eventos.tratar("eventos.mensagem.transcrita", _transcricao())
+    assert TrabalhoComercial.objects.filter(tipo=T.ATENDER_MENSAGEM).count() == 1
+    feito.refresh_from_db()
+    assert feito.estado == E.CONCLUIDO
+
+
+def test_transcricao_reentregue_ou_de_outro_audio_nao_mexe_no_atendimento():
+    eventos.tratar("eventos.mensagem.recebida", _audio_do_lead())
+    eventos.tratar("eventos.mensagem.transcrita", _transcricao(mensagem="outro"))
+    trabalho = TrabalhoComercial.objects.get()
+    assert trabalho.nao_antes_de is not None and trabalho.entrada["aguarda_transcricao"] is True
+    envelope = _transcricao("Oi, tudo bem?")
+    eventos.tratar("eventos.mensagem.transcrita", envelope)
+    eventos.tratar("eventos.mensagem.transcrita", envelope)
+    trabalho.refresh_from_db()
+    assert trabalho.entrada["texto"] == "Oi, tudo bem?" and trabalho.nao_antes_de is None
+    assert trabalho.entrada["mensagens"][0]["texto"] == "Oi, tudo bem?"
+
+
+@respx.mock
+def test_mensagem_de_texto_nao_engole_o_audio_que_espera_a_transcricao():
+    _guardar_chave()
+    eventos.tratar("eventos.mensagem.recebida", _audio_do_lead())
+    eventos.tratar("eventos.mensagem.recebida", _mensagem_do_lead("E qual o prazo?", event_id="ev-texto"))
+    _rotas_do_atendimento()
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento("nao"))])
+    feito = coordenador.rodar_um("t1")
+    assert feito.evento_id == "ev-texto"
+    audio = TrabalhoComercial.objects.get(evento_id="ev-audio")
+    assert audio.estado == E.NA_FILA and audio.entrada["aguarda_transcricao"] is True
