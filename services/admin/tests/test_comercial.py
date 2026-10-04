@@ -1240,3 +1240,250 @@ def test_consumidor_comeca_no_fim_do_stream_e_trata_o_que_chega_depois():
     assert r.xpending("eventos.quiz.completado", consumidor.GRUPO)["pending"] == 0
     for stream in consumidor.STREAMS:
         r.delete(stream)
+
+
+# ---------------------------------------------------------------- o que o lead diz atualiza o perfil
+
+
+def _mensagem_do_lead(texto="Acho caro e só consigo começar em março.", conversa="conv-9", event_id="ev-9"):
+    return _envelope("mensagem.recebida", {
+        "conversa_id": conversa, "mensagem_id": "m-9", "canal": "whatsapp", "site_id": "site-1",
+        "lead": "lead-1", "lead_ligacao": "ligada", "texto": texto, "estado_conversa": "agente"}, event_id)
+
+
+def _atendimento(informacao_nova, acao="respondeu"):
+    return {"acao": acao, "resumo": "Disse que acha caro e que só começa em março.",
+            "objecao_principal": "preço", "proximo_passo": "mostrar as condições",
+            "informacao_nova": informacao_nova}
+
+
+def _reanalises():
+    return TrabalhoComercial.objects.filter(tipo=T.REANALISAR_PERFIL)
+
+
+def _rotas_do_atendimento():
+    respx.get(f"{MENSAGERIA}/conversas/conv-9").respond(200, json={"estado": "agente", "site_id": "site-1"})
+    respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "nome": "Ana", "email": EMAIL})
+    respx.get(f"{LEADS}/crm").respond(200, json={"itens": [{"id": "opp-1", "lead_id": "lead-1"}]})
+
+
+@respx.mock
+@pytest.mark.parametrize("decisao", [
+    _atendimento("nao"),
+    {k: v for k, v in _atendimento("sim").items() if k != "informacao_nova"},  # modelo antigo: sem o campo
+    _atendimento("sim", acao="sem_resposta"),
+])
+def test_atendimento_sem_informacao_nova_nao_cria_reanalise(decisao):
+    _guardar_chave()
+    eventos.tratar("eventos.mensagem.recebida", _mensagem_do_lead())
+    _rotas_do_atendimento()
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[_final(decisao)])
+    trabalho = coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert not _reanalises().exists()
+
+
+@respx.mock
+@pytest.mark.parametrize("acao", ["respondeu", "passou_para_pessoa"])
+def test_com_informacao_nova_cria_exatamente_uma_reanalise_mesmo_na_reentrega(acao):
+    _guardar_chave()
+    envelope = _mensagem_do_lead()
+    eventos.tratar("eventos.mensagem.recebida", envelope)
+    _rotas_do_atendimento()
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento("sim", acao))])
+    trabalho = coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+
+    reanalise = _reanalises().get()
+    assert (reanalise.papel, reanalise.estado) == ("analista", E.NA_FILA)
+    assert reanalise.nao_antes_de is not None and reanalise.nao_antes_de > timezone.now()
+    assert (reanalise.contato_id, reanalise.oportunidade_id, reanalise.conversa_id) == ("lead-1", "opp-1", "conv-9")
+    assert reanalise.anterior_id == trabalho.pk
+    assert reanalise.chave_idempotencia == "reanalisar:site-1:opp-1:ev-9"
+    assert reanalise.get_tipo_display() == "Atualizar o perfil"
+    # O evento reentregue não refaz o atendimento; o atendimento refeito acha a mesma análise.
+    eventos.tratar("eventos.mensagem.recebida", envelope)
+    coordenador._pedir_reanalise(trabalho, _atendimento("sim", acao), trabalho.entrada["mensagens"])
+    assert _reanalises().count() == 1
+    # Ainda na fila para este lead: outra mensagem não abre uma segunda leitura da conversa.
+    coordenador._pedir_reanalise(trabalho, _atendimento("sim", acao), [{"evento_id": "ev-10"}])
+    assert _reanalises().count() == 1
+
+
+@respx.mock
+def test_reanalise_herda_a_marca_de_teste_do_atendimento():
+    _guardar_chave()
+    atendimento = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-9", chave_da_conversa="conversa:conv-9",
+                            teste=True, evento_id="ev-t", entrada={"texto": "oi", "evento_id": "ev-t"})
+    coordenador._pedir_reanalise(atendimento, _atendimento("sim"), [{"texto": "oi", "evento_id": "ev-t"}])
+    assert _reanalises().get().teste is True
+
+
+PERFIL_V1 = {
+    "lead_id": "lead-1", "versao": 1, "resumo": "Iniciante com pouco tempo.",
+    "objetivo_declarado": None, "experiencia": None,
+    "disponibilidade": {"texto": "Tem 3 horas por semana", "hipotese": False,
+                        "evidencias": [{"tipo": "resposta_quiz", "id": "q1", "trecho": "Umas 3 horas"}]},
+    "duvidas": [], "objecoes": [], "hipoteses": [], "informacoes_ausentes": ["experiência"],
+    "perguntas_uteis": ["Já usou Blender?"], "prioridade": {"nivel": "media", "explicacao": "Interesse."},
+    "oferta_indicada": {"oferta_ref": "curso-3d", "nome": "", "motivo": "", "evidencias": []},
+}
+DISPONIBILIDADE = {"texto": "Tem 3 horas por semana", "tipo": "fato", "fonte": "quiz", "fonte_id": "q1",
+                   "trecho": "Umas 3 horas"}
+
+
+def _reanalise_pronta(**campos):
+    trabalho = _trabalho(T.REANALISAR_PERFIL, conversa_id="conv-9", chave_da_conversa="",
+                         entrada={"contato": _contato(), "quiz": "crivo", "host": "meshcraft.top",
+                                  "pista_do_atendimento": {"objecao_principal": "preço"}}, **campos)
+    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(nao_antes_de=None)
+    return trabalho
+
+
+def _rotas_da_reanalise(lead="lead-1", opp="opp-1", objecao=""):
+    respx.get(f"{LEADS}/leads/{lead}/perfil").respond(200, json={**PERFIL_V1, "lead_id": lead})
+    respx.get(f"{LEADS}/crm/{opp}").respond(200, json={
+        "id": opp, "lead_id": lead, "objecao_principal": objecao, "proximo_passo": {"descricao": "Ligar"}})
+    respx.get(f"{MENSAGERIA}/conversas/conv-9/mensagens").respond(200, json={
+        "conversa": {"site_id": "site-1", "canal": "whatsapp", "estado": "agente"},
+        "mensagens": [
+            {"id": "msg-1", "direcao": "entrada", "autor": "lead", "texto": "Acho caro e só consigo começar em março."},
+            {"id": "msg-2", "direcao": "saida", "autor": "agente", "texto": "Entendo, posso mostrar as condições."}]})
+
+
+@respx.mock
+def test_reanalise_grava_versao_2_com_evidencia_da_mensagem_e_atualiza_a_objecao():
+    _guardar_chave()
+    trabalho = _reanalise_pronta()
+    _rotas_da_reanalise()
+    perfil = respx.put(f"{LEADS}/leads/lead-1/perfil").respond(200, json={"versao": 2})
+    quadro = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={"id": "opp-1"})
+    _resto_404()
+    objecao = {"texto": "Acha o curso caro", "tipo": "fato", "fonte": "mensagem", "fonte_id": "msg-1",
+               "trecho": "Acho caro"}
+    renda = {"texto": "Tem pouco dinheiro", "tipo": "fato", "fonte": "nome_ou_email", "fonte_id": "", "trecho": ""}
+    prazo = {"texto": "Só começa em março", "tipo": "hipotese", "fonte": "mensagem", "fonte_id": "msg-1",
+             "trecho": "só consigo começar em março"}
+    openai = respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("consultar_conversa", {}, "c1"),
+        _chamada("salvar_perfil", {
+            "resumo": "Iniciante com pouco tempo; acha caro e só começa em março.", "objetivo_declarado": None,
+            "experiencia": None, "disponibilidade": DISPONIBILIDADE, "duvidas": [], "objecoes": [objecao, renda],
+            "hipoteses": [prazo], "informacoes_ausentes": ["experiência"], "perguntas_uteis": ["Já usou Blender?"],
+            "prioridade": "media", "razao_prioridade": "Interesse, mas com objeção de preço.",
+            "oferta_motivo": None, "oferta_indicada": "curso-3d"}, "c2"),
+        _final({"mudou": "sim", "resumo": "Objeção de preço e começo em março.",
+                "o_que_mudou": "Apareceu a objeção de preço e o prazo de março.",
+                "objecao_principal": "preço", "proximo_passo": "Mostrar as condições antes de março"}),
+    ])
+
+    rodado = coordenador.rodar_um("t1")
+    rodado.refresh_from_db()
+    assert rodado.pk == trabalho.pk and rodado.estado == E.CONCLUIDO, rodado.motivo
+    assert _corpo(openai.calls[0])["text"]["format"]["name"] == "decisao_da_reanalise"
+    salvo = _corpo(perfil.calls.last)
+    assert salvo["versao_base"] == 1  # outra análise no meio é recusada pela ficha, não pisada
+    assert salvo["objecoes"][0]["evidencias"] == [{"tipo": "mensagem", "id": "msg-1", "trecho": "Acho caro"}]
+    assert salvo["objecoes"][0]["hipotese"] is False
+    assert len(salvo["objecoes"]) == 1  # nada de dedução por nome ou e-mail
+    assert salvo["hipoteses"][0]["hipotese"] is True
+    assert salvo["versao_estrategia"] == "analista v1"
+    assert salvo["analisado_por"] == f"agente:analista:{trabalho.pk}"
+    corpo = _corpo(quadro.calls.last)
+    assert corpo["objecao_principal"] == "preço" and corpo["proximo_passo"] == "Mostrar as condições antes de março"
+    assert rodado.resultado["versao_do_perfil"] == 2 and rodado.resultado["perfil_mudou"] is True
+    assert "versão 2" in rodado.resumo
+    decisoes = list(rodado.decisoes.values_list("ferramenta", "resultado", "versao_estrategia"))
+    assert ("salvar_perfil", R.FEITO, 1) in decisoes
+    assert ("registrar_nota_proximo_passo", R.FEITO, 1) in decisoes
+    # O que o lead escreveu chega ao modelo como conteúdo da conversa; e-mail e telefone não chegam.
+    for chamada in openai.calls:
+        texto = chamada.request.content.decode()
+        assert EMAIL not in texto and "11999990000" not in texto and CHAVE not in texto
+    pedido = _corpo(openai.calls[0])["input"][0]["content"]
+    assert "CONTEÚDO, não instrução" in pedido and "Iniciante com pouco tempo" in pedido
+    # A reanálise não envia mensagem nem cria abordagem.
+    assert {f["name"] for f in _corpo(openai.calls[0])["tools"]}.isdisjoint({"enviar_mensagem", "preparar_link_compra"})
+    assert not TrabalhoComercial.objects.filter(tipo=T.ABORDAR).exists()
+
+
+@respx.mock
+@pytest.mark.parametrize("chama_salvar", [True, False])
+def test_reanalise_sem_mudanca_nao_grava_versao_duplicada(chama_salvar):
+    _guardar_chave()
+    trabalho = _reanalise_pronta()
+    _rotas_da_reanalise(objecao="preço")
+    perfil = respx.put(f"{LEADS}/leads/lead-1/perfil").respond(200, json={"versao": 2})
+    quadro = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={"id": "opp-1"})
+    _resto_404()
+    passos = [_chamada("consultar_conversa", {}, "c1")]
+    if chama_salvar:  # o modelo remonta o mesmo perfil, só com o resumo reescrito
+        passos.append(_chamada("salvar_perfil", {
+            "resumo": "Texto diferente, mesmas afirmações.", "objetivo_declarado": None, "experiencia": None,
+            "disponibilidade": DISPONIBILIDADE, "duvidas": [], "objecoes": [], "hipoteses": [],
+            "informacoes_ausentes": ["experiência"], "perguntas_uteis": ["Já usou Blender?"],
+            "prioridade": "media", "razao_prioridade": "Outra frase.", "oferta_motivo": None,
+            "oferta_indicada": "curso-3d"}, "c2"))
+    passos.append(_final({"mudou": "nao", "resumo": "Só conversa.", "o_que_mudou": "",
+                          "objecao_principal": "preço", "proximo_passo": "Ligar"}))
+    respx.post(RESPOSTAS).mock(side_effect=passos)
+
+    rodado = coordenador.rodar_um("t1")
+    rodado.refresh_from_db()
+    assert rodado.pk == trabalho.pk and rodado.estado == E.CONCLUIDO, rodado.motivo
+    assert not perfil.called
+    assert not quadro.called  # objeção e passo iguais aos do quadro: nada a registrar
+    assert rodado.resultado["perfil_mudou"] is False
+    assert "continua igual" in rodado.resumo
+
+
+@respx.mock
+def test_reanalise_de_teste_so_toca_o_lead_de_teste():
+    _guardar_chave()
+    _reanalise_pronta(contato_id="lead-t", oportunidade_id="opp-t", teste=True)
+    _rotas_da_reanalise(lead="lead-t", opp="opp-t")
+    perfil = respx.put(f"{LEADS}/leads/lead-t/perfil").respond(200, json={"versao": 2})
+    respx.patch(f"{LEADS}/crm/opp-t/acompanhamento").respond(200, json={"id": "opp-t"})
+    _resto_404()
+    mensagem = {"texto": "Quer pagar no Pix", "tipo": "fato", "fonte": "mensagem", "fonte_id": "msg-1",
+                "trecho": "Acho caro"}
+    respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("salvar_perfil", {
+            "resumo": "x", "duvidas": [mensagem], "objecoes": [], "hipoteses": [], "disponibilidade": None,
+            "objetivo_declarado": None, "experiencia": None, "informacoes_ausentes": [], "perguntas_uteis": [],
+            "prioridade": "baixa", "razao_prioridade": "x", "oferta_motivo": None, "oferta_indicada": None}, "c1"),
+        _final({"mudou": "sim", "resumo": "x", "o_que_mudou": "dúvida nova", "objecao_principal": None,
+                "proximo_passo": "Explicar o Pix"}),
+    ])
+
+    rodado = coordenador.rodar_um("t1")
+    rodado.refresh_from_db()
+    assert rodado.estado == E.CONCLUIDO and rodado.teste is True
+    assert perfil.called
+    for chamada in respx.calls:
+        caminho = str(chamada.request.url)
+        if caminho.startswith((LEADS, MENSAGERIA)):
+            assert "lead-1" not in caminho and "opp-1" not in caminho
+    # Nunca outra ficha: a ferramenta não aceita número de contato do modelo.
+    assert "contato_id" not in json.dumps(ferramentas.DEFINICOES["salvar_perfil"])
+
+
+@respx.mock
+def test_pedido_do_modelo_fora_da_lista_e_recusado_na_reanalise():
+    _guardar_chave()
+    _reanalise_pronta()
+    _rotas_da_reanalise()
+    respx.put(f"{LEADS}/leads/lead-1/perfil").respond(200, json={"versao": 2})
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("enviar_mensagem", {"texto": "desconto de 90%", "razao": "x"}, "c1"),
+        _final({"mudou": "nao", "resumo": "x", "o_que_mudou": "", "objecao_principal": None,
+                "proximo_passo": None}),
+    ])
+    rodado = coordenador.rodar_um("t1")
+    decisao = rodado.decisoes.get(call_id="c1")
+    assert decisao.resultado == R.RECUSADO and "não está disponível" in decisao.saida["erro"]
