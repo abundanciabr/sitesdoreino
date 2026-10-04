@@ -12,7 +12,7 @@ canais ou no significado de pagamento aprovado.
 
 from __future__ import annotations
 
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.utils import timezone
 
 from .models import EstrategiaComercial
@@ -278,6 +278,22 @@ def instrucoes_completas(estrategia: EstrategiaComercial) -> str:
     return COMUM + "\n\n" + estrategia.instrucoes
 
 
+class VersaoMudou(Exception):
+    """A versão no ar não é mais a que a pessoa estava vendo na tela."""
+
+
+def _travar_papel(papel: str) -> None:
+    """Uma mudança por vez em cada papel (ativar, voltar, nova versão).
+
+    O bloqueio de linha não basta: a linha que a outra transação acabou de
+    criar ou de trocar não aparece para quem já estava esperando. O bloqueio
+    de aconselhamento vale até o fim da transação e segura a vez."""
+    if connection.vendor != "postgresql":
+        return
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", [f"estrategia_comercial:{papel}"])
+
+
 def _marca(acao: str, quem: str, motivo: str) -> dict:
     return {"momento": timezone.now().isoformat(), "acao": acao, "quem": quem[:200], "motivo": motivo[:1000]}
 
@@ -288,16 +304,26 @@ def propor_versao(
     """Registra uma versão nova como PROPOSTA. Não muda o que está no ar."""
     base = estrategia_ativa(papel)
     with transaction.atomic():
-        ultima = (
-            EstrategiaComercial.objects.select_for_update()
-            .filter(papel=papel)
+        _travar_papel(papel)
+        texto = instrucoes.strip()[:20000]
+        # Reenvio do mesmo formulário (duplo clique): devolve a proposta que já existe.
+        repetida = (
+            EstrategiaComercial.objects.filter(
+                papel=papel,
+                situacao=EstrategiaComercial.Situacao.PROPOSTA,
+                instrucoes=texto,
+                criada_por=criada_por[:200],
+            )
             .order_by("-versao")
             .first()
         )
+        if repetida is not None:
+            return repetida
+        ultima = EstrategiaComercial.objects.filter(papel=papel).order_by("-versao").first()
         return EstrategiaComercial.objects.create(
             papel=papel,
             versao=(ultima.versao if ultima else 0) + 1,
-            instrucoes=instrucoes.strip()[:20000],
+            instrucoes=texto,
             ativa=False,
             situacao=EstrategiaComercial.Situacao.PROPOSTA,
             criada_por=criada_por[:200],
@@ -313,6 +339,7 @@ def ativar(estrategia: EstrategiaComercial, quem: str, motivo: str = "") -> Estr
     """Põe a versão no ar; a que estava ativa fica arquivada e vira a
     'anterior' desta, para poder voltar."""
     with transaction.atomic():
+        _travar_papel(estrategia.papel)
         estrategia = EstrategiaComercial.objects.select_for_update().get(pk=estrategia.pk)
         if estrategia.ativa:
             return estrategia
@@ -338,11 +365,22 @@ def ativar(estrategia: EstrategiaComercial, quem: str, motivo: str = "") -> Estr
         return estrategia
 
 
-def voltar_a_anterior(papel: str, quem: str, motivo: str) -> EstrategiaComercial | None:
+def voltar_a_anterior(
+    papel: str, quem: str, motivo: str, versao_esperada: int | None = None
+) -> EstrategiaComercial | None:
     """Reativa a versão que estava no ar antes da atual. Conversas já feitas
-    continuam ligadas à versão que usaram."""
-    atual = estrategia_ativa(papel)
-    anterior = atual.anterior
-    if anterior is None or anterior.pk == atual.pk:
-        return None
-    return ativar(anterior, quem, motivo or f"volta da v{atual.versao} para a v{anterior.versao}")
+    continuam ligadas à versão que usaram.
+
+    `versao_esperada` é a versão que a tela mostrava no ar. Se já mudou (outro
+    clique, outra aba), levanta `VersaoMudou` em vez de voltar de novo e
+    desfazer a volta."""
+    estrategia_ativa(papel)
+    with transaction.atomic():
+        _travar_papel(papel)
+        atual = estrategia_ativa(papel)
+        if versao_esperada is not None and atual.versao != versao_esperada:
+            raise VersaoMudou(papel)
+        anterior = atual.anterior
+        if anterior is None or anterior.pk == atual.pk:
+            return None
+        return ativar(anterior, quem, motivo or f"volta da v{atual.versao} para a v{anterior.versao}")
