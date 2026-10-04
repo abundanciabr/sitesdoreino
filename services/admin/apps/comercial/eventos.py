@@ -21,7 +21,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from . import coordenador, servicos
+from . import coordenador, otimizador, servicos
 from .models import EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -55,14 +55,25 @@ def _contato(data: dict) -> dict:
 
 def de_teste(contato: dict, data: dict) -> bool:
     email = contato.get("email") or ""
-    utm = data.get("utm") if isinstance(data.get("utm"), dict) else {}
     return bool(
         email.endswith(("@example.com", "@exemplo.test"))
         or _TESTE.search(contato.get("nome") or "")
-        or "sandbox" in str(utm.get("utm_source") or "").lower()
+        # O quiz marca a visita de teste em `utm` (`source`, `campaign`, com ou sem
+        # o prefixo `utm_`) e em `context` (`src`, `cpg`).
+        or otimizador.marcado_como_teste(data.get("utm"), data.get("context"))
         or data.get("sandbox") is True
         or data.get("teste") is True
     )
+
+
+# O que do `context` do quiz fica no trabalho: só as marcas de origem (a campanha
+# do relatório e a marca de teste), nunca a página ou o endereço do visitante.
+_CAMPOS_DO_CONTEXTO = ("src", "med", "cpg", "seg", "fmt", "ctv")
+
+
+def _origem_do_contexto(data: dict) -> dict:
+    contexto = data.get("context") if isinstance(data.get("context"), dict) else {}
+    return {campo: _texto(contexto.get(campo), 120) for campo in _CAMPOS_DO_CONTEXTO if contexto.get(campo)}
 
 
 def _host(data: dict) -> str:
@@ -115,6 +126,7 @@ def _do_quiz(nome: str, envelope: dict, *, parcial: bool) -> TrabalhoComercial |
         "resultado": _texto(data.get("result_key") or data.get("resultado"), 120),
         "respostas": data.get("respostas") if isinstance(data.get("respostas"), list) else [],
         "utm": data.get("utm") if isinstance(data.get("utm"), dict) else {},
+        "context": _origem_do_contexto(data),
         "campanha": data.get("campanha") or data.get("origem"),
         "submissao_id": _texto(data.get("submissao_id"), 80),
         "captura_id": _texto(data.get("captura_id") or data.get("captura_parcial_id"), 80),

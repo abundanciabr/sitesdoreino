@@ -6,7 +6,10 @@ cria o da hora). A ideia, em quatro passos:
 1. **Medir.** Junta os resultados por versão da estratégia e, dentro dela, por
    quiz, campanha e oferta. Só vendas que o PROVEDOR confirmou
    (`pagamento.aprovado`), só oportunidades reais (teste fica de fora) e só
-   venda depois da mensagem.
+   venda depois da mensagem. O denominador é o lead que ficou com a versão
+   (a decisão dele guarda a versão usada), tenha a mensagem saído ou não:
+   contar só quem recebeu premiaria a versão que faz mais leads ficarem sem
+   mensagem.
 2. **Propor.** Com amostra suficiente numa versão (`MIN_AMOSTRA`) e sem outro
    teste rodando naquele papel, o modelo forte lê os números e pode propor uma
    versão nova das INSTRUÇÕES. Com pouca amostra o relatório é inconclusivo e
@@ -20,7 +23,11 @@ cria o da hora). A ideia, em quatro passos:
    candidata pior com amostra nas duas => o teste acaba e todo o tráfego volta
    para a versão anterior, com o motivo registrado; melhor com amostra => vira
    a versão do ar (a anterior fica guardada para voltar); sem diferença, o teste
-   acaba depois de `DURACAO_MAXIMA`.
+   acaba depois de `DURACAO_MAXIMA`. Depois de promovida (ou posta por uma
+   pessoa), a versão é conferida contra a anterior só com mensagens já
+   maduras (`MATURACAO`), para não julgar vendas que ainda vão acontecer; e só
+   na primeira vez em que está no ar: se a volta automática já a tirou e
+   alguém a recolocou, a escolha é da pessoa.
 
 O que a estratégia NÃO muda: só o texto das instruções é versionado. O
 catálogo, as condições de compra, as permissões de cada canal e o fato de que
@@ -45,7 +52,8 @@ from decimal import Decimal
 from typing import Protocol
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Sum
+from django.db.models import Max, Min, Q, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from . import papeis
@@ -62,6 +70,10 @@ AMOSTRA_DE_REFERENCIA = 15  # informação (n_a*n_b/(n_a+n_b)) de duas amostras 
 PERCENTUAL_PADRAO = 20
 PERCENTUAL_MAXIMO = 50
 DURACAO_MAXIMA = timedelta(days=21)
+# Quanto tempo a venda leva para aparecer depois da mensagem. A conferência
+# depois da promoção só olha mensagens mais velhas que isto e só conta a venda
+# feita até isto depois dela, nas duas versões.
+MATURACAO = timedelta(days=7)
 MAX_VALORES_NO_PEDIDO = 8  # por quiz, campanha ou oferta que vai ao modelo
 
 E = TrabalhoComercial.Estado
@@ -217,12 +229,40 @@ def _texto(valor, limite: int = 120) -> str:
     return str(valor or "").strip()[:limite]
 
 
+def _dict(valor) -> dict:
+    return valor if isinstance(valor, dict) else {}
+
+
+def marcado_como_teste(utm, contexto) -> bool:
+    """Tráfego de teste pelas marcas do que o quiz manda: `utm` (chaves com ou
+    sem o prefixo `utm_`) e `context` (`src`, `cpg`). É a mesma régua do próprio
+    quiz (`campanhas.eh_teste`), mais o `sandbox` que o provedor usa."""
+    utm, contexto = _dict(utm), _dict(contexto)
+
+    def minusculo(valor) -> str:
+        return str(valor or "").strip().lower()
+
+    fonte = (minusculo(utm.get("source")), minusculo(utm.get("utm_source")), minusculo(contexto.get("src")))
+    campanha = (minusculo(utm.get("campaign")), minusculo(utm.get("utm_campaign")), minusculo(contexto.get("cpg")))
+    return (
+        any(f == "teste" or "sandbox" in f for f in fonte)
+        or any(c.startswith("teste") for c in campanha)
+    )
+
+
 def _dimensoes(trabalho: TrabalhoComercial) -> dict:
-    entrada = trabalho.entrada or {}
-    utm = entrada.get("utm") if isinstance(entrada.get("utm"), dict) else {}
+    """O quiz manda `utm` sem o prefixo (`source`, `campaign`) e o `context`
+    com `src`/`cpg`; as duas formas valem, e a campanha dita pelo próprio
+    trabalho (`campanha`) vale mais que as marcas da visita."""
+    entrada = _dict(trabalho.entrada)
+    utm, contexto = _dict(entrada.get("utm")), _dict(entrada.get("context"))
+    campanha = (
+        _texto(entrada.get("campanha")) or _texto(utm.get("campaign")) or _texto(utm.get("utm_campaign"))
+        or _texto(contexto.get("cpg"))
+    )
     return {
         "quiz": _texto(entrada.get("quiz")) or "(sem quiz)",
-        "campanha": _texto(entrada.get("campanha")) or _texto(utm.get("utm_campaign")) or "(sem campanha)",
+        "campanha": campanha or "(sem campanha)",
         "oferta": _texto(entrada.get("oferta_ref")) or "(sem oferta)",
     }
 
@@ -235,24 +275,45 @@ def _fechar(linha: dict) -> dict:
     return {**linha, "custo_usd": str(linha["custo_usd"])}
 
 
-def numeros(papel: str = P.ABORDAGEM, desde: datetime | None = None) -> dict:
+# Trabalho que já decidiu tudo o que ia decidir. Um que ainda corre só conta
+# quando já mandou a mensagem (como antes): sem isso a fila do momento
+# entraria no denominador como "lead sem venda".
+TERMINADOS = (E.CONCLUIDO, E.ENCERRADO, E.FALHOU)
+_ENVIO_NOVO = Q(
+    decisoes__ferramenta="enviar_mensagem",
+    decisoes__resultado=DecisaoComercial.Resultado.FEITO,
+    decisoes__saida__ja_feito__isnull=True,  # a repetição ("ja_feito") não conta como mensagem nova
+)
+
+
+def numeros(papel: str = P.ABORDAGEM, desde: datetime | None = None, *, ate: datetime | None = None,
+            janela_de_venda: timedelta | None = None) -> dict:
     """Abordagens (ou atendimentos), respostas, vendas e custo por versão da
-    estratégia do papel, e o mesmo por quiz, campanha e oferta. `desde`
-    limita às mensagens enviadas a partir daquele momento."""
+    estratégia do papel, e o mesmo por quiz, campanha e oferta.
+
+    Conta por LEAD ATRIBUÍDO à versão: todo trabalho do papel cuja decisão
+    guardou a versão usada, tenha a mensagem saído ou não. O momento de
+    referência é o do primeiro envio (ou, sem envio, o da primeira decisão).
+    `desde` e `ate` limitam por esse momento. `janela_de_venda` só conta a
+    venda feita até esse tempo depois dele (para comparar versões com a mesma
+    maturação)."""
     tipos = TIPOS_DO_PAPEL.get(papel, (T.ABORDAR,))
-    envios = (
-        DecisaoComercial.objects.filter(
-            ferramenta="enviar_mensagem",
-            resultado=DecisaoComercial.Resultado.FEITO,
-            trabalho__tipo__in=tipos,
-            trabalho__teste=False,
+    atribuidos = (
+        TrabalhoComercial.objects.filter(tipo__in=tipos, teste=False)
+        .annotate(
+            versao_usada=Max("decisoes__versao_estrategia"),
+            decidiu_em=Min("decisoes__criada_em"),
+            enviou_em=Min("decisoes__criada_em", filter=_ENVIO_NOVO),
         )
-        .filter(saida__ja_feito__isnull=True)  # a repetição ("ja_feito") não conta como mensagem nova
-        .select_related("trabalho")
-        .order_by("criada_em", "id")
+        .filter(versao_usada__isnull=False)
+        .filter(Q(estado__in=TERMINADOS) | Q(enviou_em__isnull=False))
+        .annotate(referencia=Coalesce("enviou_em", "decidiu_em"))
+        .order_by("referencia", "id")
     )
     if desde is not None:
-        envios = envios.filter(criada_em__gte=desde)
+        atribuidos = atribuidos.filter(referencia__gte=desde)
+    if ate is not None:
+        atribuidos = atribuidos.filter(referencia__lt=ate)
     vendas_por_oportunidade: dict[str, list] = {}
     vendas_por_pedido: dict[str, list] = {}
     for oportunidade, pedido, quando in EventoComercial.objects.filter(nome="pagamento.aprovado").values_list(
@@ -272,22 +333,28 @@ def numeros(papel: str = P.ABORDAGEM, desde: datetime | None = None) -> dict:
     por_versao: dict[int, dict] = {}
     por_dimensao: dict[str, dict[str, dict[int, dict]]] = {nome: {} for nome, _ in DIMENSOES}
     vistas: set[tuple[int, str]] = set()
-    for envio in envios:
-        trabalho = envio.trabalho
-        chave = trabalho.oportunidade_id or trabalho.chave_da_conversa
-        versao = envio.versao_estrategia or 0
+    for trabalho in atribuidos:
+        entrada = _dict(trabalho.entrada)
+        if marcado_como_teste(entrada.get("utm"), entrada.get("context")):
+            continue  # lead de teste que chegou sem a marca no trabalho: nunca entra nos números
+        chave = trabalho.oportunidade_id or trabalho.chave_da_conversa or f"trabalho:{trabalho.pk}"
+        versao = trabalho.versao_usada or 0
         if (versao, chave) in vistas:
             continue
         vistas.add((versao, chave))
-        vendeu = any(q >= envio.criada_em for q in vendas_por_oportunidade.get(trabalho.oportunidade_id, ())) or any(
-            q >= envio.criada_em for q in vendas_por_pedido.get(trabalho.pedido_id, ()))
+        quando = trabalho.referencia
+        vendeu = any(
+            quando <= q and (janela_de_venda is None or q <= quando + janela_de_venda)
+            for q in (*vendas_por_oportunidade.get(trabalho.oportunidade_id, ()),
+                      *vendas_por_pedido.get(trabalho.pedido_id, ())))
         chave_resposta = ("contato", trabalho.contato_id) if trabalho.contato_id else (
             "conversa", trabalho.conversa_id or "-")
-        respondeu = papel == P.ABORDAGEM and respondeu_em.get(chave_resposta, envio.criada_em) > envio.criada_em
+        respondeu = papel == P.ABORDAGEM and respondeu_em.get(chave_resposta, quando) > quando
         alvos = [por_versao.setdefault(versao, _linha_vazia(versao))]
+        dimensoes = _dimensoes(trabalho)
         for nome, dimensao in DIMENSOES:
-            valor = _dimensoes(trabalho)[dimensao]
-            alvos.append(por_dimensao[nome].setdefault(valor, {}).setdefault(versao, _linha_vazia(versao)))
+            alvos.append(por_dimensao[nome].setdefault(dimensoes[dimensao], {}).setdefault(
+                versao, _linha_vazia(versao)))
         for linha in alvos:
             linha["abordagens"] += 1
             linha["respostas"] += int(respondeu)
@@ -357,10 +424,16 @@ def _fechar_teste(experimento: ExperimentoEstrategia, estado: str, texto: str, q
 
 
 def encerrar(experimento: ExperimentoEstrategia, quem: str, motivo: str = "") -> bool:
-    """A pessoa encerra o teste: a candidata sai e a versão do ar segue sozinha."""
-    if experimento.estado != X.EM_TESTE:
-        return False
-    _fechar_teste(experimento, X.ENCERRADA, f"Encerrado por {quem[:100]}. {motivo}".strip(), quem)
+    """A pessoa encerra o teste: a candidata sai e a versão do ar segue sozinha.
+    Lê o teste de novo sob a trava do papel: se a conferência da hora já
+    concluiu, não desfaz a conclusão."""
+    with transaction.atomic():
+        papeis._travar_papel(experimento.papel)
+        atual = ExperimentoEstrategia.objects.select_for_update().filter(pk=experimento.pk).first()
+        if atual is None or atual.estado != X.EM_TESTE:
+            return False
+        _fechar_teste(atual, X.ENCERRADA, f"Encerrado por {quem[:100]}. {motivo}".strip(), quem)
+    experimento.refresh_from_db()
     return True
 
 
@@ -371,50 +444,81 @@ def _frase(comparacao: dict, base: EstrategiaComercial, candidata: EstrategiaCom
 
 
 def avaliar(experimento: ExperimentoEstrategia, agora: datetime | None = None) -> dict:
-    """Confere um teste em andamento e, se der para concluir, conclui."""
+    """Confere um teste em andamento e, se der para concluir, conclui.
+
+    Mede fora da trava (leitura longa não segura ninguém) e conclui dentro de
+    uma transação com a vez do papel: relê o teste e a versão do ar e só então
+    grava a conclusão e, se for o caso, põe a candidata no ar. Se a pessoa
+    encerrou o teste ou mudou a versão enquanto se media, nada é atropelado."""
     agora = agora or timezone.now()
     base, candidata = experimento.base, experimento.candidata
     saida = {"papel": experimento.papel, "base": base.versao, "candidata": candidata.versao}
-    if papeis.estrategia_ativa(experimento.papel).pk != base.pk:
-        _fechar_teste(experimento, X.ENCERRADA,
-                      f"A versão no ar mudou durante o teste (a v{base.versao} já não é a do ar); a comparação "
-                      "deixou de valer.")
-        return {**saida, "desfecho": "encerrado", "motivo": experimento.conclusao}
     dados = numeros(experimento.papel, desde=experimento.iniciado_em)
     comparacao = comparar(_linha_da_versao(dados, base.versao), _linha_da_versao(dados, candidata.versao))
-    experimento.comparativo = {
-        **comparacao, "avaliado_em": agora.isoformat(),
-        **{nome: dados[nome] for nome, _ in DIMENSOES},
-    }
     veredito = comparacao["veredito"]
-    saida["comparacao"] = {k: comparacao[k] for k in ("veredito", "z", "base", "candidata")}
-    if veredito == "pior":
-        texto = (_frase(comparacao, base, candidata) + f"; piorou com amostra suficiente. Todo o tráfego voltou "
-                 f"para a v{base.versao}.")
-        _fechar_teste(experimento, X.REVERTIDA, texto)
-        return {**saida, "desfecho": "voltou", "motivo": texto}
-    if veredito == "melhor":
-        texto = _frase(comparacao, base, candidata) + f"; melhorou com amostra suficiente. A v{candidata.versao} passou a ser a do ar."
-        experimento.estado = X.PROMOVIDA
-        experimento.conclusao = texto[:4000]
-        experimento.encerrado_em = agora
-        experimento.save(update_fields=["estado", "conclusao", "encerrado_em", "comparativo"])
-        papeis.ativar(candidata, "otimizador", texto)
-        return {**saida, "desfecho": "promovida", "motivo": texto}
-    if agora - experimento.iniciado_em >= DURACAO_MAXIMA:
-        texto = (f"Sem diferença que se possa afirmar em {DURACAO_MAXIMA.days} dias ("
-                 + (_frase(comparacao, base, candidata) if comparacao["z"] is not None else "sem amostra para comparar")
-                 + f"). Fica a v{base.versao}.")
-        _fechar_teste(experimento, X.ENCERRADA, texto)
-        return {**saida, "desfecho": "encerrado", "motivo": texto}
-    experimento.save(update_fields=["comparativo"])
-    return {**saida, "desfecho": "continua"}
+    with transaction.atomic():
+        papeis._travar_papel(experimento.papel)
+        estado_agora = (ExperimentoEstrategia.objects.select_for_update().filter(pk=experimento.pk)
+                        .values_list("estado", flat=True).first())
+        if estado_agora != X.EM_TESTE:
+            if estado_agora is not None:
+                experimento.refresh_from_db()
+            return {**saida, "desfecho": "encerrado",
+                    "motivo": "O teste já tinha sido encerrado; a conclusão que existe fica como está."}
+        if papeis.estrategia_ativa(experimento.papel).pk != base.pk:
+            _fechar_teste(experimento, X.ENCERRADA,
+                          f"A versão no ar mudou durante o teste (a v{base.versao} já não é a do ar); a comparação "
+                          "deixou de valer.")
+            return {**saida, "desfecho": "encerrado", "motivo": experimento.conclusao}
+        experimento.comparativo = {
+            **comparacao, "avaliado_em": agora.isoformat(),
+            **{nome: dados[nome] for nome, _ in DIMENSOES},
+        }
+        saida["comparacao"] = {k: comparacao[k] for k in ("veredito", "z", "base", "candidata")}
+        if veredito == "pior":
+            texto = (_frase(comparacao, base, candidata) + f"; piorou com amostra suficiente. Todo o tráfego voltou "
+                     f"para a v{base.versao}.")
+            _fechar_teste(experimento, X.REVERTIDA, texto)
+            return {**saida, "desfecho": "voltou", "motivo": texto}
+        if veredito == "melhor":
+            texto = (_frase(comparacao, base, candidata)
+                     + f"; melhorou com amostra suficiente. A v{candidata.versao} passou a ser a do ar.")
+            experimento.estado = X.PROMOVIDA
+            experimento.conclusao = texto[:4000]
+            experimento.encerrado_em = agora
+            experimento.save(update_fields=["estado", "conclusao", "encerrado_em", "comparativo"])
+            papeis.ativar(candidata, "otimizador", texto)
+            return {**saida, "desfecho": "promovida", "motivo": texto}
+        if agora - experimento.iniciado_em >= DURACAO_MAXIMA:
+            texto = (f"Sem diferença que se possa afirmar em {DURACAO_MAXIMA.days} dias ("
+                     + (_frase(comparacao, base, candidata) if comparacao["z"] is not None
+                        else "sem amostra para comparar")
+                     + f"). Fica a v{base.versao}.")
+            _fechar_teste(experimento, X.ENCERRADA, texto)
+            return {**saida, "desfecho": "encerrado", "motivo": texto}
+        experimento.save(update_fields=["comparativo"])
+        return {**saida, "desfecho": "continua"}
+
+
+def _ja_saiu_do_ar(estrategia: EstrategiaComercial) -> bool:
+    """A versão já esteve no ar, saiu e foi recolocada. A volta automática só
+    confere a PRIMEIRA vez que a versão está no ar: quem a recolocou depois
+    (a pessoa, desfazendo a volta do otimizador ou escolhendo de novo) decidiu,
+    e o otimizador não briga com a decisão."""
+    historico = estrategia.historico or []
+    ativacoes = [i for i, marca in enumerate(historico) if marca.get("acao") == "ativada"]
+    return bool(ativacoes) and any(marca.get("acao") == "saiu do ar" for marca in historico[:ativacoes[-1]])
 
 
 def volta_se_piorou(papel: str) -> dict | None:
     """A versão do ar (posta por pessoa ou promovida por um teste) contra a
     anterior: se vendeu claramente menos com amostra nas duas, a anterior
-    volta. Quando veio de um teste, compara só o período do teste."""
+    volta. Quando veio de um teste, compara a partir do início do teste.
+
+    A comparação só usa mensagens já maduras (mais velhas que `MATURACAO`) e só
+    conta a venda feita até `MATURACAO` depois da mensagem, nas duas versões:
+    a recém-promovida não é julgada pelas vendas que ainda vão acontecer, em
+    contraste com uma anterior que já teve todo o tempo."""
     ativa = papeis.estrategia_ativa(papel)
     anterior = ativa.anterior
     if anterior is None or anterior.pk == ativa.pk:
@@ -423,13 +527,25 @@ def volta_se_piorou(papel: str) -> dict | None:
         # A do ar é uma versão MAIS VELHA que a "anterior": alguém voltou
         # (a pessoa, ou o próprio otimizador). A escolha dessa volta fica.
         return None
+    if _ja_saiu_do_ar(ativa):
+        return None
     promovido = ExperimentoEstrategia.objects.filter(papel=papel, candidata=ativa, estado=X.PROMOVIDA).first()
-    dados = numeros(papel, desde=promovido.iniciado_em if promovido else None)
+    dados = numeros(papel, desde=promovido.iniciado_em if promovido else None,
+                    ate=timezone.now() - MATURACAO, janela_de_venda=MATURACAO)
     comparacao = comparar(_linha_da_versao(dados, anterior.versao), _linha_da_versao(dados, ativa.versao))
     if comparacao["veredito"] != "pior":
         return None
-    motivo = (_frase(comparacao, anterior, ativa) + f"; vendeu menos com amostra suficiente. A v{anterior.versao} voltou.")
-    papeis.voltar_a_anterior(papel, "otimizador", motivo)
+    dias = MATURACAO.days
+    motivo = (_frase(comparacao, anterior, ativa) + f"; vendeu menos com amostra suficiente (só mensagens com mais "
+              f"de {dias} dias, venda até {dias} dias depois). A v{anterior.versao} voltou.")
+    try:
+        # A versão que se mediu tem de ser a que ainda está no ar: se a pessoa
+        # mexeu no meio, ela decidiu e o otimizador sai de cena nesta rodada.
+        voltou = papeis.voltar_a_anterior(papel, "otimizador", motivo, versao_esperada=ativa.versao)
+    except papeis.VersaoMudou:
+        return None
+    if voltou is None:
+        return None
     return {"papel": papel, "voltou_de": ativa.versao, "voltou_para": anterior.versao,
             "z": comparacao["z"], "motivo": motivo}
 
@@ -447,11 +563,23 @@ def _resumido(dados: dict) -> dict:
     return saida
 
 
-def _sem_custo(por_papel) -> dict:
-    """O custo total muda a cada trabalho (a própria análise custa): não conta
-    como novidade."""
-    return {papel: {k: v for k, v in (dados or {}).items() if k != "custo_total_usd"}
-            for papel, dados in (por_papel or {}).items()}
+def _total_de_envios(dados: dict) -> int:
+    return sum(linha["abordagens"] for linha in dados["versoes"])
+
+
+def _total_no_ultimo_pedido(atual: TrabalhoComercial) -> dict[str, int]:
+    """Por papel, quantos leads havia medidos na última vez que o modelo forte
+    foi chamado para ele. É a régua do que é "novo": o retrato inteiro dos
+    números muda com qualquer lead que chega e chamaria o modelo toda hora."""
+    achados: dict[str, int] = {}
+    anteriores = (
+        TrabalhoComercial.objects.filter(tipo=T.ANALISAR_RESULTADOS, estado=E.CONCLUIDO, resultado__has_key="amostra")
+        .exclude(pk=atual.pk).order_by("-terminado_em", "-id").values_list("resultado", flat=True)[:50]
+    )
+    for resultado in anteriores:
+        for papel, total in ((resultado or {}).get("amostra") or {}).items():
+            achados.setdefault(papel, int(total))
+    return achados
 
 
 def analisar(trabalho: TrabalhoComercial) -> None:
@@ -480,8 +608,17 @@ def analisar(trabalho: TrabalhoComercial) -> None:
             [d["motivo"] for d in mudancas] + [v["motivo"] for v in voltas])[:4000])
         return
     em_teste = set(ExperimentoEstrategia.objects.filter(estado=X.EM_TESTE).values_list("papel", flat=True))
-    livres = [papel for papel in PAPEIS_OTIMIZAVEIS if papel not in em_teste
-              and _linha_da_versao(por_papel[papel], papeis.estrategia_ativa(papel).versao)["abordagens"] >= MIN_AMOSTRA]
+    # Proposta que ainda espera a pessoa (ou o teste): outra proposta empilharia
+    # versões e gastaria o modelo forte sem ninguém ter olhado a anterior.
+    pendentes = set(EstrategiaComercial.objects.filter(
+        situacao=EstrategiaComercial.Situacao.PROPOSTA).values_list("papel", flat=True))
+    com_amostra = [papel for papel in PAPEIS_OTIMIZAVEIS if papel not in em_teste and papel not in pendentes
+                   and _linha_da_versao(por_papel[papel], papeis.estrategia_ativa(papel).versao)["abordagens"]
+                   >= MIN_AMOSTRA]
+    totais = {papel: _total_de_envios(dados) for papel, dados in por_papel.items()}
+    do_ultimo_pedido = _total_no_ultimo_pedido(trabalho)
+    livres = [papel for papel in com_amostra
+              if papel not in do_ultimo_pedido or totais[papel] - do_ultimo_pedido[papel] >= MIN_AMOSTRA]
     maior = max(_maior_amostra(dados) for dados in por_papel.values())
     if not livres:
         if em_teste:
@@ -492,20 +629,21 @@ def analisar(trabalho: TrabalhoComercial) -> None:
             terminar(trabalho, E.CONCLUIDO, resumo=(
                 f"Inconclusivo: a maior amostra tem {maior} abordagem(ns); são precisas {MIN_AMOSTRA}. "
                 "O modelo não foi chamado."))
+        elif com_amostra:
+            trabalho.resultado["conclusao"] = "sem_novidade"
+            terminar(trabalho, E.CONCLUIDO, resumo=(
+                f"Sem novidade: faltam {MIN_AMOSTRA} leads novos desde o último pedido ao modelo; "
+                "o modelo não foi chamado."))
+        elif pendentes:
+            trabalho.resultado["conclusao"] = "proposta_pendente"
+            terminar(trabalho, E.CONCLUIDO, resumo=(
+                "Há proposta de estratégia esperando a pessoa; o modelo não foi chamado."))
         else:
             trabalho.resultado["conclusao"] = "manter"
             terminar(trabalho, E.CONCLUIDO, resumo=(
                 "Nenhuma versão do ar tem amostra própria suficiente; o modelo não foi chamado."))
         return
-    ultima = (
-        TrabalhoComercial.objects.filter(tipo=T.ANALISAR_RESULTADOS, estado=E.CONCLUIDO)
-        .exclude(pk=trabalho.pk).order_by("-terminado_em").first()
-    )
-    if ultima is not None and _sem_custo((ultima.resultado or {}).get("papeis")) \
-            == _sem_custo(json.loads(json.dumps(por_papel))):
-        trabalho.resultado["conclusao"] = "sem_novidade"
-        terminar(trabalho, E.CONCLUIDO, resumo="Sem novidade desde a última análise; o modelo não foi chamado.")
-        return
+    trabalho.resultado["amostra"] = {papel: totais[papel] for papel in livres}
     ativas = {papel: papeis.estrategia_ativa(papel) for papel in (P.ANALISTA, *PAPEIS_OTIMIZAVEIS)}
     pedido = (
         "Números consolidados por versão da estratégia (só vendas confirmadas pelo provedor, só depois da "
