@@ -68,8 +68,9 @@ def test_pagina_fala_portugues_com_recusa_troca_e_devolucao():
     assert "Confirmar: devolver" not in html
 
 
-def test_motivos_novos_em_portugues_e_cancelado_sem_afirmar_banco():
-    from apps.core.pagamentos import _motivo
+def test_motivo_e_data_viram_texto_sem_codigo_cru():
+    from apps.core.pagamentos import _data, _motivo
+    assert _data(None) == "" and _data(123) == ""
     assert _motivo("cancelado") == "Appmax cancelou o pedido"
     assert _motivo("cc_rejected_insufficient_amount") == "Saldo ou limite insuficiente"
     assert _motivo("cc_rejected_bad_filled_card_number") == "Número do cartão errado"

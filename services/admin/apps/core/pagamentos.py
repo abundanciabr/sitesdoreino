@@ -46,7 +46,6 @@ MOTIVOS = {
     "expired": "Pix venceu sem pagamento",
     "mp_envio_recusado": "Mercado Pago recusou o envio",
     "mp_sem_resposta": "Mercado Pago não respondeu",
-    "segunda_opcao_nao_enviada": "Página fechada antes da segunda opção",
 }
 
 
@@ -58,9 +57,11 @@ def _pagina(valor):
 
 
 def _data(valor):
+    if not isinstance(valor, str):
+        return ""
     try:
         return datetime.fromisoformat(valor).astimezone(BRASILIA).strftime("%d/%m/%Y %H:%M")
-    except (TypeError, ValueError):
+    except ValueError:
         return valor
 
 

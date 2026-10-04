@@ -51,6 +51,10 @@ def _linha(intent: Intent, reversoes: dict[tuple[str, str], str] | None = None) 
     estorno = (cobradora.estorno_estado or "") if cobradora else ""
     if not estorno and reversao is not None:
         estorno = "contestacao" if reversao == "contestacao" else "confirmado"
+    # A primeira empresa é a da tentativa criada primeiro (menor pk). Pela data
+    # não serve: a cobrança duplicada do Mercado Pago é gravada com a data da
+    # principal menos 1 µs e passaria à frente da Appmax.
+    primeira = min(tentativas, key=lambda t: t.pk) if tentativas else None
     presa = any(
         (t.state == "reconciliation_required" or t.reason == "mp_sem_resposta" or
          (t.provider == "appmax" and t.state == "pending" and t.reason == "autorizado"))
@@ -66,7 +70,7 @@ def _linha(intent: Intent, reversoes: dict[tuple[str, str], str] | None = None) 
             if cobradora and cobradora.effective_amount_cents else intent.amount_cents
         ),
         "empresa": ultima.provider if ultima else "",
-        "primeira_empresa": tentativas[0].provider if tentativas else "",
+        "primeira_empresa": primeira.provider if primeira else "",
         "estado": intent.status, "segunda_empresa": len({t.provider for t in tentativas}) > 1,
         "motivo": recusa.reason if recusa else "",
         "estorno": estorno,

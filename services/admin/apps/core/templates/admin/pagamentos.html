@@ -7,7 +7,7 @@
   {% if resultado == "solicitado" %}<p class="aviso">Devolução pedida à empresa. A linha muda para "Devolvida" quando a empresa confirmar.</p>{% endif %}
   {% if resultado == "aguardando" %}<p class="aviso">Devolução pedida, mas a empresa não respondeu com certeza. Não precisa clicar de novo: o sistema consulta a empresa sozinho.</p>{% endif %}
   {% if resultado == "devolvida" %}<p class="aviso">Esta compra já está devolvida.</p>{% endif %}
-  {% if resultado == "conferir" %}<p class="aviso">Esta compra não pode ser devolvida pelo painel (já devolvida, contestada ou não aprovada). Nenhum pedido foi enviado à empresa. Contestação do comprador se resolve direto na empresa.</p>{% endif %}
+  {% if resultado == "conferir" %}<p class="aviso">Esta compra não pode ser devolvida pelo painel agora (por exemplo, já devolvida, contestada ou não aprovada). Nenhum pedido foi enviado à empresa. Contestação do comprador se resolve direto na empresa.</p>{% endif %}
   {% if resultado == "incerto" %}<p class="aviso">Não foi possível confirmar o resultado. Confira a linha da compra antes de tentar de novo; um segundo clique nunca pede a devolução duas vezes.</p>{% endif %}
   {% if indisponivel %}
     <p class="aviso">Não foi possível consultar os pagamentos agora.</p>
