@@ -3,6 +3,8 @@
 {% block corpo %}
 <div class="envolucro">
   <a class="volta" href="{% url 'contatos' %}">&larr; Contatos</a>
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
   {% if tela.veredito == "sem-configuracao" %}
   <h1>Ficha indisponível</h1>
   <p class="aviso borda-amarela espaco-20">A administração ainda não está ligada à área que guarda os contatos. Não foi possível consultar esta ficha.</p>
@@ -36,6 +38,139 @@
   </div>
 
   {% if tela.id %}<p class="espaco-20"><a class="botao" href="{% url 'crm' %}?lead_id={{ tela.id|urlencode }}">Ver oportunidades no CRM</a></p>{% endif %}
+
+  {% comment %} Quem atende, próximo passo e interesse: o que a equipe olha primeiro. {% endcomment %}
+  <div class="cartoes espaco-20">
+    <section class="cartao" id="quem-atende">
+      <h2 class="titulo-de-bloco">Quem atende</h2>
+      <p><span class="selo{% if tela.atendimento.tipo == 'pessoa' %} selo-equipe{% elif tela.atendimento.tipo == 'agente' %} selo-verde{% endif %}">{{ tela.atendimento.texto }}</span></p>
+      {% with atual=tela.conversa.conversas.0 %}
+      {% if atual and atual.estado != "encerrada" %}
+      <form method="post" action="{% url 'contato_atendimento' tela.id %}">{% csrf_token %}
+        <input type="hidden" name="conversa_id" value="{{ atual.id }}">
+        {% if atual.estado == "pessoa" %}
+        <input type="hidden" name="gesto" value="devolver">
+        <button class="botao">Devolver ao assistente</button>
+        {% else %}
+        <input type="hidden" name="gesto" value="assumir">
+        <button class="botao">Assumir a conversa</button>
+        {% endif %}
+      </form>
+      {% elif tela.conversa.estado == "ok" %}<p class="nota">Sem conversa aberta para assumir.</p>
+      {% else %}<p class="nota">Assumir ou devolver: ainda indisponível.</p>{% endif %}
+      {% endwith %}
+    </section>
+    <section class="cartao" id="proximo-passo">
+      <h2 class="titulo-de-bloco">Próximo passo</h2>
+      {% if tela.crm_estado != "ok" %}<p class="nota">Ainda indisponível: o CRM não respondeu.</p>
+      {% elif tela.proxima %}
+        <p>{{ tela.proxima.proximo_passo|default:"Sem próximo passo escrito." }}</p>
+        <p class="nota">Prazo: {% if tela.proxima.prazo %}{{ tela.proxima.prazo|date:"d/m/Y H:i" }}{% if tela.proxima.atrasada %} <span class="selo selo-vermelho">atrasado</span>{% endif %}{% else %}sem prazo{% endif %}</p>
+        {% if tela.proxima.aguardando_resposta %}<p class="nota">Aguardando resposta do contato.</p>{% endif %}
+        {% if tela.proxima.objecao %}<p class="nota">Objeção principal: {{ tela.proxima.objecao }}</p>{% endif %}
+        <p><a href="{% url 'crm_oportunidade' tela.proxima.id %}">Abrir a oportunidade</a></p>
+      {% else %}<p class="nota">Nenhuma oportunidade aberta.</p>{% endif %}
+    </section>
+    <section class="cartao" id="interesse">
+      <h2 class="titulo-de-bloco">Produto ou oferta de interesse</h2>
+      {% if tela.interesse %}
+        {% for item in tela.interesse %}<p><b>{{ item.nome }}</b> <span class="nota">· {{ item.origem }}</span></p>{% endfor %}
+      {% else %}<p class="nota">Nenhum interesse identificado ainda.</p>{% endif %}
+    </section>
+  </div>
+
+  <h2 class="titulo-de-bloco espaco-34" id="perfil">Perfil</h2>
+  {% if tela.perfil.estado == "indisponivel" %}<p class="aviso">Perfil: ainda indisponível.</p>
+  {% elif tela.perfil.estado == "sem_analise" %}<p class="aviso">Este contato ainda não foi analisado.</p>
+  {% else %}
+  <section class="cartao">
+    {% if tela.perfil.resumo %}<p>{{ tela.perfil.resumo }}</p>{% endif %}
+    {% if tela.perfil.prioridade %}<p>Prioridade: <b>{{ tela.perfil.prioridade }}</b>{% if tela.perfil.prioridade_explicacao %} · {{ tela.perfil.prioridade_explicacao }}{% endif %}</p>{% endif %}
+    {% for afirmacao in tela.perfil.afirmacoes %}
+    <div class="espaco-20">
+      <p><b>{{ afirmacao.rotulo }}:</b> {{ afirmacao.texto }}{% if afirmacao.hipotese %} <span class="selo selo-parcial">hipótese</span>{% endif %}</p>
+      {% if afirmacao.evidencias %}<ul>{% for evidencia in afirmacao.evidencias %}<li class="nota">{{ evidencia.tipo }}: “{{ evidencia.trecho }}”</li>{% endfor %}</ul>
+      {% else %}<p class="nota">Sem resposta ou mensagem que sustente: é hipótese a confirmar.</p>{% endif %}
+    </div>
+    {% endfor %}
+    {% if tela.perfil.oferta_indicada %}
+    <p class="espaco-20"><b>Oferta indicada:</b> {{ tela.perfil.oferta_indicada.nome }}{% if tela.perfil.oferta_indicada.motivo %} · {{ tela.perfil.oferta_indicada.motivo }}{% endif %}</p>
+    {% if tela.perfil.oferta_indicada.evidencias %}<ul>{% for evidencia in tela.perfil.oferta_indicada.evidencias %}<li class="nota">{{ evidencia.tipo }}: “{{ evidencia.trecho }}”</li>{% endfor %}</ul>{% endif %}
+    {% endif %}
+    {% if tela.perfil.informacoes_ausentes %}<p class="espaco-20"><b>Falta saber:</b> {{ tela.perfil.informacoes_ausentes|join:"; " }}</p>{% endif %}
+    {% if tela.perfil.perguntas_uteis %}<p><b>Perguntas úteis:</b> {{ tela.perfil.perguntas_uteis|join:"; " }}</p>{% endif %}
+    <p class="nota">{% if tela.perfil.analisado_em %}Analisado em {{ tela.perfil.analisado_em|date:"d/m/Y H:i" }}{% endif %}{% if tela.perfil.versao %} · versão {{ tela.perfil.versao }}{% endif %}{% if tela.perfil.fatos_novos %} · {{ tela.perfil.fatos_novos }} atividade{{ tela.perfil.fatos_novos|pluralize:"s" }} nova{{ tela.perfil.fatos_novos|pluralize:"s" }} desde a análise{% endif %}</p>
+  </section>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-34" id="quiz">Quiz e respostas</h2>
+  {% if tela.quizzes is None %}<p class="aviso">Respostas do quiz: ainda indisponível.</p>
+  {% elif tela.quizzes %}
+    {% for quiz in tela.quizzes %}
+    <details class="cartao"{% if forloop.first %} open{% endif %}>
+      <summary><b>{{ quiz.quiz }}</b> · {{ quiz.situacao }}{% if quiz.quando %} · {{ quiz.quando|date:"d/m/Y H:i" }}{% endif %}{% if quiz.resultado %} · resultado: {{ quiz.resultado }}{% endif %}</summary>
+      {% if quiz.respostas %}<dl>{% for item in quiz.respostas %}<dt>{{ item.pergunta }}</dt><dd>{{ item.resposta }}</dd>{% endfor %}</dl>
+      {% else %}<p class="nota">Sem respostas registradas.</p>{% endif %}
+    </details>
+    {% endfor %}
+  {% else %}<p class="aviso">Nenhum quiz registrado para este contato.</p>{% endif %}
+
+  <h2 class="titulo-de-bloco espaco-34" id="conversa">Conversa</h2>
+  {% if tela.conversa.estado == "ok" %}
+    {% if tela.conversa.conversas %}
+      {% with atual=tela.conversa.conversas.0 %}
+      <p class="nota">{{ atual.canal }} · {{ atual.quem_atende }}{% if atual.assumida_por %} ({{ atual.assumida_por }}){% endif %}{% if atual.canal == "WhatsApp" %} · {% if atual.janela_aberta %}janela de 24h aberta{% else %}fora da janela de 24h{% endif %}{% endif %}{% if atual.descadastrado %} · pediu para não receber mensagens{% endif %}{% if atual.ambigua %} · contato ambíguo, confira antes de responder{% endif %}</p>
+      {% endwith %}
+      {% if tela.conversa.mensagens_indisponiveis %}<p class="aviso">As mensagens não puderam ser lidas agora.</p>
+      {% elif tela.conversa.mensagens %}
+      <div class="cartoes">
+        {% for mensagem in tela.conversa.mensagens %}
+        <article class="cartao{% if mensagem.entrada %} borda-amarela{% endif %}">
+          <p class="nota"><b>{{ mensagem.quem }}</b>{% if mensagem.quando %} · {{ mensagem.quando|date:"d/m/Y H:i" }}{% endif %}{% if mensagem.falhou %} · <span class="selo selo-vermelho">não saiu</span>{% endif %}</p>
+          <p>{{ mensagem.texto|linebreaksbr }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}<p class="nota">Conversa sem mensagens.</p>{% endif %}
+      {% if tela.conversa.conversas|length > 1 %}<p class="nota">Este contato tem {{ tela.conversa.conversas|length }} conversas; aqui aparece a mais recente.</p>{% endif %}
+    {% else %}<p class="aviso">Nenhuma conversa com este contato ainda.</p>{% endif %}
+  {% elif tela.conversa.estado == "sem-configuracao" %}<p class="aviso">Conversas: ainda indisponível. A administração ainda não está ligada às conversas.</p>
+  {% elif tela.conversa.estado == "indisponivel" %}<p class="aviso">Conversas: ainda indisponível.</p>
+  {% else %}<p class="aviso borda-vermelha">As conversas não responderam agora. Recarregue em alguns minutos.</p>{% endif %}
+  {% if tela.id %}<p><a class="botao" href="{% url 'crm' %}conversas/?lead_id={{ tela.id|urlencode }}">Abrir a caixa de conversas</a></p>{% endif %}
+
+  <h2 class="titulo-de-bloco espaco-34" id="links">Links de compra enviados</h2>
+  {% if tela.links.estado == "ok" %}
+    {% if tela.links.links %}
+    <div class="cartoes">
+      {% for link in tela.links.links %}
+      <article class="cartao">
+        <p><b>{{ link.oferta|default:"Oferta" }}</b>{% if link.valor %} · {{ link.valor }}{% endif %}</p>
+        <p>{{ link.situacao }}</p>
+        <p class="nota">{% if link.criado_em %}Criado em {{ link.criado_em|date:"d/m/Y H:i" }}{% endif %}{% if link.pago_em %} · pago em {{ link.pago_em|date:"d/m/Y H:i" }}{% endif %}</p>
+        {% if link.url %}<p><a href="{{ link.url }}" rel="noopener noreferrer" target="_blank">Abrir o link</a></p>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+    {% if tela.links.parcial %}<p class="nota">Alguns links não puderam ser lidos agora.</p>{% endif %}
+    {% else %}<p class="aviso">Nenhum link de compra enviado para este contato.</p>{% endif %}
+  {% elif tela.links.estado == "nao-respondeu" %}<p class="aviso borda-vermelha">Os links de compra não puderam ser lidos agora.</p>
+  {% else %}<p class="aviso">Links de compra: ainda indisponível.</p>{% endif %}
+
+  <h2 class="titulo-de-bloco espaco-34" id="pagamentos">Pagamentos</h2>
+  {% if tela.pagamentos is None %}<p class="aviso">Pagamentos confirmados: ainda indisponível.</p>
+  {% elif tela.pagamentos %}
+    <div class="cartoes">
+      {% for compra in tela.pagamentos %}
+      <article class="cartao">
+        <p><b>{{ compra.oferta|default:"Compra" }}</b>{% if compra.valor %} · {{ compra.valor }}{% endif %}</p>
+        <p><span class="selo{% if compra.confirmada %} selo-verde{% endif %}">{{ compra.situacao }}</span></p>
+        {% if compra.aprovado_em %}<p class="nota">Aprovado em {{ compra.aprovado_em|date:"d/m/Y H:i" }} · {{ compra.aprovado }}</p>{% endif %}
+        {% if compra.estornos %}<p class="nota">Estornos: {{ compra.estornos }}</p>{% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  {% else %}<p class="aviso">Nenhum pagamento registrado para este contato.</p>{% endif %}
 
   <h2 class="titulo-de-bloco espaco-34">Linha do tempo</h2>
   {% if tela.eventos %}

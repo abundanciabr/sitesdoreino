@@ -58,6 +58,13 @@ def _dentro(email: str = DONO) -> Client:
             },
         )
     )
+    # A ficha completa também pergunta pelas oportunidades do contato
+    # (`tests/test_ficha_completa.py` cobre essa parte); aqui, nenhuma.
+    respx.get(f"{LEADS}/crm").mock(
+        return_value=httpx.Response(
+            200, json={"itens": [], "resumo": {}, "total": 0, "pagina": 1, "tem_mais": False}
+        )
+    )
     c = Client()
     c.defaults["HTTP_COOKIE"] = COOKIE
     return c
