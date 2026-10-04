@@ -124,9 +124,27 @@ def _intent_desta_compra(intent: dict, method: str, total_cents: int) -> bool:
     return intent.get("method") == method and intent.get("amount_cents") == total_cents
 
 
-def _chave_da_compra(sessao_id: uuid.UUID, method: str, itens: list) -> str:
-    produtos = ",".join(f"{item['product_id']}:{item['price_cents']}" for item in itens)
-    return str(uuid.uuid5(sessao_id, f"{method}|{produtos}"))
+def _chave_da_compra(
+    sessao_id: uuid.UUID, method: str, itens: list, comprador: dict
+) -> str:
+    """Chave de idempotência da COMPRA inteira: sessão, forma de pagamento,
+    produtos com preços e comprador. Repetir a mesma compra (refresh, retry
+    depois do 502) devolve a mesma intent, sem cobrança em dobro [INV-P4]; mudar
+    a forma de pagamento, os itens ou os dados do comprador é outra compra e
+    nunca reaproveita (nem tenta completar) a intent da tentativa anterior."""
+    compra = {
+        "method": method,
+        "itens": [[str(item["product_id"]), item["price_cents"]] for item in itens],
+        "comprador": [
+            comprador["email"].lower(),
+            comprador["name"],
+            comprador["phone"],
+            comprador["cpf"],
+        ],
+    }
+    return str(
+        uuid.uuid5(sessao_id, json.dumps(compra, ensure_ascii=False, sort_keys=True))
+    )
 
 
 def _pedido_criado(pedido: OrderModel) -> dict:
@@ -511,20 +529,16 @@ def place_order(request, session_id: str):
         "metadata": metadata,
     }
     try:
-        # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
+        # Mesma compra ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança
+        # [INV-P4]. A chave sai da compra (forma de pagamento, itens e dados do
+        # comprador), não só da sessão: depois de um 502 o comprador pode trocar
+        # a forma de pagamento ou corrigir o e-mail, e isso não pode cair na
+        # intent da tentativa anterior (que, sendo um Pix incompleto, o
+        # pagamentos tentaria completar no provedor, ainda fora do ar).
         intent = PagamentosClient().criar_intent(
-            idempotency_key=str(sessao.id), payload=cobranca
+            idempotency_key=_chave_da_compra(sessao.id, method, itens, comprador),
+            payload=cobranca,
         )
-        if not _intent_desta_compra(intent, method, total_cents):
-            # A chave da sessão já guardava a intent de OUTRA compra: a primeira
-            # tentativa falhou (502) e o comprador trocou a forma de pagamento
-            # ou os itens antes de repetir. Aquela intent nunca chegou à tela;
-            # esta compra ganha uma chave própria, derivada da sessão e do que
-            # está sendo comprado, e repeti-la continua idempotente.
-            intent = PagamentosClient().criar_intent(
-                idempotency_key=_chave_da_compra(sessao.id, method, itens),
-                payload=cobranca,
-            )
         # Na repetição depois de uma falha, pagamentos devolve a intent que já
         # existia, com o order_id da PRIMEIRA tentativa. É esse id que todo aviso
         # de pagamento carrega; o pedido nasce com ele para o aviso o encontrar.

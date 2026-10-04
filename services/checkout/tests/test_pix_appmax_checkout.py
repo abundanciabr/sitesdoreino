@@ -98,7 +98,7 @@ def test_502_do_pix_orienta_nova_tentativa_e_repete_a_mesma_chave(
     assert nova.status_code == 201, nova.content
     assert nova.json()["payment"]["pix"]["qr_code"]
     chaves = {chamada.request.headers["X-Idempotency-Key"] for chamada in rota.calls}
-    assert chaves == {sessao_a["id"]}
+    assert len(chaves) == 1  # a mesma compra repete a mesma chave
 
 
 def test_site_habilitado_mostra_opcao_de_cartao_e_exige_dados_do_pix(

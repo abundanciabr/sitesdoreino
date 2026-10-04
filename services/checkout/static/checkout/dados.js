@@ -20,6 +20,7 @@ function dadosIsland() {
     carregando: true,
     enviando: false,
     erro: "",
+    pedidoAberto: "",
     session: null,
     offer: { product_name: "", price_cents: 0, bumps: [] },
     bumpIds: [],
@@ -90,6 +91,7 @@ function dadosIsland() {
 
     async finalizar() {
       this.erro = "";
+      this.pedidoAberto = "";
       const telefone = this.customer.phone.replace(/\D/g, "");
       if (this.customer.name.trim().split(/\s+/).length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customer.email.trim()) || ![10, 11].includes(telefone.length) || (!this.usarCpfAnterior && !cpfValido(this.customer.cpf))) {
         this.erro = "Informe nome completo, e-mail, telefone com DDD e CPF válido.";
@@ -110,6 +112,15 @@ function dadosIsland() {
           throw e;
         });
         const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
+        if (pedido.payment.method !== this.method) {
+          // Só o 409 chega aqui com outra forma de pagamento: o pedido que já
+          // existe foi aberto com a outra. Não leva para lá calado; avisa e
+          // oferece o link.
+          this.pedidoAberto = `../pedido/${pedido.order_id}/${destino}/`;
+          this.erro = `Seu pedido anterior, por ${pedido.payment.method === "pix" ? "Pix" : "cartão"}, continua aberto. Continue por ele ou recarregue a página para começar outra compra.`;
+          this.enviando = false;
+          return;
+        }
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
         // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
         // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
