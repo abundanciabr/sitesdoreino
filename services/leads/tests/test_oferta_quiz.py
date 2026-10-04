@@ -57,7 +57,9 @@ def test_quiz_abre_oferta_pedido_negocia_e_pagamento_vira_venda():
 def test_backfill_abre_oferta_para_quem_ja_respondeu_e_respeita_compra(capsys):
     pagou = Lead.objects.create(site_id="a", email="pagou@gmail.com", source="quiz:crivo")
     TimelineEvent.objects.create(lead=pagou, event="quiz.completado", payload={"quiz_slug": "crivo"})
-    TimelineEvent.objects.create(lead=pagou, event="pagamento.aprovado", payload={})
+    TimelineEvent.objects.create(lead=pagou, event="pagamento.aprovado", payload={
+        "site_id": "a", "order_id": "ped-antigo", "amount_cents": 990,
+    })
     Lead.objects.create(site_id="a", email="parado@gmail.com", source="quiz:cura")
     Lead.objects.create(site_id="a", email="aluno@gmail.com", source="escola")
 

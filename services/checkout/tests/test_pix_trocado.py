@@ -4,7 +4,7 @@ import pytest
 
 from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import FatoAplicado, Order
-from conftest import HOST_A, PAGAMENTOS
+from conftest import HOST_A, PAGAMENTOS, SLUG
 
 pytestmark = pytest.mark.django_db
 
@@ -118,3 +118,14 @@ def test_place_order_envia_pagina_url_https_do_site(api, rede, sessao_a):
     requisicao = rede.post(f"{PAGAMENTOS}/intents").calls.last.request
     metadata = json.loads(requisicao.content)["metadata"]
     assert metadata["pagina_url"] == f"https://{HOST_A}/checkout/pedido/{pedido.id}/pix/"
+
+
+def test_place_order_envia_link_da_oferta_para_o_email_de_pix_expirado(
+    api, rede, sessao_a
+):
+    _pedido(api, sessao_a)
+    requisicao = rede.post(f"{PAGAMENTOS}/intents").calls.last.request
+    metadata = json.loads(requisicao.content)["metadata"]
+    assert metadata["recovery_url"] == (
+        f"https://{HOST_A}/checkout/{SLUG}/"
+    )

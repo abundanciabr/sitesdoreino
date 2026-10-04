@@ -255,9 +255,13 @@ function cartaoIsland() {
       return this.status === "aguardando_pagamento" || this.status === "recusado";
     },
 
+    reais(centavos) {
+      const valor = (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `R$ ${valor}`;
+    },
+
     parcelaLabel(opcao) {
-      const valor = (opcao.installment_cents / 100).toFixed(2).replace(".", ",");
-      return `${opcao.installments}x de R$ ${valor}`;
+      return `${opcao.installments}x de ${this.reais(opcao.installment_cents)}`;
     },
 
     botaoLabel() {

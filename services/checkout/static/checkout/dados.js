@@ -67,6 +67,11 @@ function dadosIsland() {
       else this.bumpIds.splice(i, 1);
     },
 
+    reais(centavos) {
+      const valor = (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `R$ ${valor}`;
+    },
+
     totalCents() {
       const principal = this.offer.price_cents || 0;
       const bumps = (this.offer.bumps || [])
