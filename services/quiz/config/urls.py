@@ -4,18 +4,22 @@ from apps.core.views import healthz
 from apps.quiz import views as quiz_views
 from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
+from apps.quiz import ofertas as ofertas_dos_quizzes
 from apps.quiz import portfolio
 from apps.quiz import painel_campanhas
 from apps.quiz.conferencia import conferencia as conferencia_de_links
 from apps.quiz import conversa as quiz_conversa
 from apps.quiz import evolucao
 from apps.quiz import comprador
+from apps.quiz import crm as quiz_crm
 from apps.quiz.previa import previa as previa_editor
 
 urlpatterns = [
     path("interno/comprador", comprador.comprador),
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
+    path("interno/editor/quizzes/ofertas", ofertas_dos_quizzes.ofertas_do_site),
+    path("interno/editor/quizzes/<slug:slug>/ofertas", ofertas_dos_quizzes.ofertas_do_quiz),
     path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
     path("interno/editor/quizzes/<slug:slug>/campanhas", painel_campanhas.relatorio),
@@ -30,6 +34,9 @@ urlpatterns = [
         "interno/editor/quizzes/<slug:slug>/propostas/<int:proposta_id>",
         evolucao.proposta,
     ),
+    path("interno/crm/submissoes", quiz_crm.submissoes_do_contato),
+    path("interno/crm/submissoes/<uuid:submissao_id>", quiz_crm.submissao),
+    path("interno/crm/capturas/<uuid:captura_id>", quiz_crm.captura),
     path("interno/portfolio/catalogo", portfolio.catalogo),
     path("interno/portfolio/exploracoes", portfolio.exploracoes),
     path("interno/portfolio/exploracoes/atual", portfolio.exploracao_atual),
@@ -66,6 +73,7 @@ urlpatterns = [
     path("<slug:slug>/demonstracao", quiz_views.demonstracao, name="quiz-demonstracao"),
     path("<slug:slug>/calcular", quiz_views.calcular, name="quiz-calcular"),
     path("<slug:slug>/conversa", quiz_conversa.conversa, name="quiz-conversa"),
+    path("<slug:slug>/captura", quiz_views.captura, name="quiz-captura"),
 ]
 
 handler404 = "site_errors.handlers.page_not_found_shared"

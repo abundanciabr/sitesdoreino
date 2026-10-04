@@ -71,6 +71,12 @@ class Order(models.Model):
     pix = models.JSONField(default=dict, blank=True)
     # Cópia de Session.contexto no fechamento do pedido.
     contexto = models.JSONField(default=dict, blank=True)
+    # Referências opacas para o CRM casar a venda: a oportunidade (vinda do
+    # link de compra do atendimento) e a oferta (a slug do catálogo).
+    oportunidade_ref = models.CharField(max_length=100, blank=True, default="")
+    oferta_ref = models.CharField(max_length=200, blank=True, default="")
+    # Quando o aviso do provedor confirmou o pagamento (pagamento.aprovado).
+    pago_em = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = OrderQuerySet.as_manager()
@@ -79,6 +85,11 @@ class Order(models.Model):
         constraints = [
             models.CheckConstraint(
                 check=models.Q(total_cents__gte=1), name="order_total_cents_min_1"
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["site_id", "oportunidade_ref"], name="pedidos_ord_site_op_idx"
             )
         ]
 
@@ -99,6 +110,66 @@ class Order(models.Model):
                         f"{', '.join(divergentes)}"
                     )
         return super().save(*args, **kwargs)
+
+
+class LinkDeCompra(models.Model):
+    """Link de compra preparado pelo atendimento para uma oportunidade.
+
+    Abre o checkout pelo caminho normal: uma `Session` da oferta, com o id do
+    pedido já reservado. O pedido nasce quando a pessoa confirma os dados na
+    página (o CPF é dela e só ela digita). A mesma chave de idempotência no
+    mesmo site devolve sempre este link, nunca um segundo.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=64)
+    chave_idempotencia = models.CharField(max_length=200)
+    session = models.OneToOneField(
+        Session, on_delete=models.PROTECT, related_name="link_de_compra"
+    )
+    pedido_id = models.UUIDField(unique=True, default=uuid.uuid4)
+    oferta_ref = models.CharField(max_length=200)
+    oportunidade_ref = models.CharField(max_length=100)
+    contato = models.JSONField(default=dict, blank=True)
+    condicao = models.JSONField(default=dict)
+    resposta = models.JSONField(default=dict)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "chave_idempotencia"],
+                name="link_compra_chave_unica_por_site",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["site_id", "oportunidade_ref"], name="pedidos_lin_site_op_idx"
+            )
+        ]
+
+
+class CondicaoDoAgente(models.Model):
+    """Uma condição de compra que o mantenedor deixou o agente oferecer.
+
+    Existir a linha é estar liberada. A condição em si (Pix, parcela do cartão,
+    cupom) continua sendo a que o checkout calcula agora; aqui só se guarda a
+    escolha. Nada aqui cria preço, desconto ou prazo.
+    """
+
+    site_id = models.CharField(max_length=64)
+    oferta_slug = models.CharField(max_length=200)
+    condicao_id = models.CharField(max_length=80)
+    liberada_por = models.CharField(max_length=200, blank=True, default="")
+    liberada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "oferta_slug", "condicao_id"],
+                name="condicao_agente_unica_por_oferta",
+            )
+        ]
 
 
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]

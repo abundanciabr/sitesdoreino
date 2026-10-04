@@ -565,7 +565,7 @@ def _caminhos_de_escrita() -> list[str]:
 
     schema = api.get_openapi_schema(path_prefix="")
     caminhos = [
-        rota.replace("{slug}", SLUG).replace("{site_id}", SITE)
+        rota.replace("{slug}", SLUG).replace("{site_id}", SITE).replace("{audio_id}", "1")
         for rota, operacoes in schema["paths"].items()
         if "post" in operacoes
     ]
@@ -839,12 +839,28 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp/{SITE}/reconcile": {
         "origem": "manual", "referencia": "prova-sem-envio", "provider_id": "mensagem-sintetica",
     },
+    f"/audio/{SITE}/1/transcricao": {"texto": "prova sintética"},
+    f"/audio/{SITE}/1/falha": {"erro": "prova sintética"},
+    f"/audio/{SITE}/transcricoes": {"telefone": "11999999999"},
+    f"/audio/{SITE}/formato": {"telefone": "11999999999"},
+    f"/audio/{SITE}/preferencia": {"telefone": "11999999999", "modo": "texto"},
+    f"/audio/{SITE}/responder-em-voz": {
+        "telefone": "11999999999", "texto": "Prova sintética", "audio_base64": "T2dnUw==",
+        "chave_idempotencia": "prova-sem-envio",
+    },
+    f"/audio/{SITE}/consumo": {"telefone": "11999999999"},
+    "/whatsapp-modelos/sincronizar": {},
+    "/whatsapp-modelos/modelos/mapeamento": {"modelo_id": 1, "mapeamento": {}},
+    f"/whatsapp-modelos/{SITE}/enviar": {
+        "chave_idempotencia": "prova-sem-envio", "destinatario": "11999999999", "modelo": "sintetico",
+    },
     "/conversas": {"site_id": SITE, "canal": "whatsapp", "lead_id": "lead-sintetico", "endereco": "11999999999"},
     "/conversas/{conversa_id}/mensagens": {"site_id": SITE, "texto": "Prova", "chave_idempotencia": "prova"},
     "/conversas/{conversa_id}/assumir": {"site_id": SITE, "pessoa_id": "equipe-sintetica"},
     "/conversas/{conversa_id}/devolver": {"site_id": SITE},
     "/conversas/{conversa_id}/encerrar": {"site_id": SITE},
     "/conversas/{conversa_id}/mensagens/{mensagem_id}/transcricao": {"site_id": SITE, "transcricao": "prova"},
+    "/consentimentos/whatsapp": {"site_id": SITE, "telefone": "11999999999", "aceito": True},
 }
 
 

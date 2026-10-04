@@ -5,8 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pagamento com cartão</title>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js" integrity="sha256-IyUZOUxsj9um82Kx2doWEG21E82/iZAR8A2qtAUd8xw=" crossorigin="anonymous" defer></script>
   <style>
+    [x-cloak] { display: none !important; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { max-width: 28rem; margin: 0 auto; padding: 1rem; }
@@ -30,12 +31,13 @@
   {{ api_base|json_script:"api-base" }}
   {{ appmax_external_id|json_script:"appmax-external-id" }}
   {{ mp_public_key|json_script:"mp-public-key" }}
+  {{ parcelas_sugeridas|json_script:"parcelas-sugeridas" }}
   <div class="wrap" x-data="cartaoIsland()">
     <div class="card">
       <h1>Pague com cartão</h1>
-      <p class="total" x-text="`Total: R$ ${(totalCents / 100).toFixed(2)}`"></p>
+      <p class="total" x-text="`Total: ${reais(totalCents)}`"></p>
       <form data-appmax-customer hidden></form>
-      <form data-appmax-checkout x-show="podeTentar()" onsubmit="event.preventDefault()">
+      <form data-appmax-checkout x-cloak x-show="podeTentar()" onsubmit="event.preventDefault()">
         <label>
           Número do cartão
           <input name="card-number" appmax-form-element="number" inputmode="numeric" autocomplete="cc-number" required>
@@ -75,10 +77,10 @@
         </div>
         <button class="acao" type="submit" :disabled="enviando || !appmaxPronto || !installments" x-text="botaoLabel()"></button>
       </form>
-      <p class="status" x-text="statusLabel()"></p>
-      <p class="erro" x-show="erro" x-text="erro"></p>
-      <a class="link" href="{{ offer_url }}" x-show="!emAnalise && status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
-      <button class="acao" type="button" x-show="status === 'erro'" @click="poll()">Tentar consultar novamente</button>
+      <p class="status" role="status" aria-live="polite" x-text="statusLabel()"></p>
+      <p class="erro" role="alert" x-cloak x-show="erro" x-text="erro"></p>
+      <a class="link" href="{{ offer_url }}" x-cloak x-show="!emAnalise && status !== 'pago' && status !== 'reembolsado' && status !== 'carregando'">Voltar à escolha do pagamento</a>
+      <button class="acao" type="button" x-cloak x-show="status === 'erro'" @click="poll()">Tentar consultar novamente</button>
     </div>
   </div>
   <script>

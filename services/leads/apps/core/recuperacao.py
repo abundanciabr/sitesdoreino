@@ -1,15 +1,12 @@
 """Sincroniza tentativas de pagamento com a oportunidade da mesma compra."""
 
 import os
-from datetime import timedelta
 
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from .models import (
-    Oportunidade, RegistroHistoricoOportunidade, ReversaoDePagamento, TimelineEvent,
-)
+from .models import RegistroHistoricoOportunidade, ReversaoDePagamento, TimelineEvent
 
 
 EVENTOS_DE_FALHA = {"pagamento.recusado", "pix.expirado"}
@@ -61,7 +58,15 @@ def _ganhar(oportunidade, evidencia, descricao="Compra recuperada: pagamento apr
     return True
 
 
-def _aplicar_reversao(reversao, oportunidade=None):
+def _aplicar_reversao(reversao):
+    """Estorno ou contestação confirmados zeram a receita líquida da compra.
+
+    Sem aprovação ainda, a reversão fica guardada e é aplicada quando ela
+    chegar (fora de ordem). A oportunidade afetada é a da compra e a
+    recuperação do mesmo pedido, nunca as outras ofertas da pessoa.
+    """
+    from .compras import compra_do_evento, reverter_compra
+
     aprovado = _aprovado_no_site(reversao.site_id, reversao.order_id)
     if aprovado is None:
         return
@@ -78,28 +83,20 @@ def _aplicar_reversao(reversao, oportunidade=None):
             )
         reversao.registrada_na_timeline = True
         reversao.save(update_fields=["registrada_na_timeline"])
-    if oportunidade is None:
-        oportunidade = Oportunidade.objects.select_for_update().filter(
-            lead__site_id=reversao.site_id, fonte_tipo=FONTE,
-            fonte_referencia_id=f"{PREFIXO}{reversao.order_id}",
-        ).first()
-    if oportunidade is None or (
-        oportunidade.etapa == "desqualificada" and oportunidade.encerrada
-        and oportunidade.desfecho_motivo == "Pagamento revertido"
-    ):
-        return
-    oportunidade.etapa = "desqualificada"
-    oportunidade.desfecho_resultado = "desqualificada"
-    oportunidade.desfecho_motivo = "Pagamento revertido"
-    oportunidade.desfecho_evidencia = str(reversao.event_id)
-    oportunidade.desfecho_encerrada_em = timezone.now()
-    oportunidade.save(update_fields=[
-        "etapa", "desfecho_resultado", "desfecho_motivo",
-        "desfecho_evidencia", "desfecho_encerrada_em", "atualizada_em",
-    ])
-    RegistroHistoricoOportunidade.objects.create(
-        oportunidade=oportunidade, autor_id="sistema", tipo="encerramento",
-        descricao="Pagamento revertido; compra retirada das recuperadas.",
+    compra = compra_do_evento(aprovado.lead, {"order_id": reversao.order_id})
+    if compra.aprovado_em is None:
+        compra.aprovado_em = aprovado.occurred_at
+        valor = (aprovado.payload or {}).get("amount_cents")
+        compra.valor_aprovado_centavos = (
+            int(valor) if isinstance(valor, int) else compra.valor_pedido_centavos
+        )
+        compra.aprovacao_evidencia = str(aprovado.event_id or aprovado.id)
+        compra.save(update_fields=[
+            "aprovado_em", "valor_aprovado_centavos", "aprovacao_evidencia",
+            "atualizada_em",
+        ])
+    reverter_compra(
+        compra, motivo=(reversao.payload or {}).get("motivo", ""),
         evidencia=str(reversao.event_id),
     )
 
@@ -119,51 +116,19 @@ def sincronizar_reversao(event_id, data):
 
 
 @transaction.atomic
-def sincronizar_pagamento(lead, evento, data, event_id, evento_timeline=None):
-    """Uma compra gera uma oportunidade; pagamento confirmado sempre vence falha.
+def sincronizar_pagamento(lead, evento, data, event_id, evento_timeline=None, chave=""):
+    """Leva o fato de pagamento à compra do pedido e à oportunidade dela.
 
-    Chamado após gravar a timeline e também pelo backfill. A transação do
-    consumer engloba ambas as gravações. O bloqueio do lead serializa eventos
-    concorrentes da mesma pessoa, e a unicidade da fonte protege reentregas.
+    Aprovação fecha só a oportunidade da compra; recusa e Pix vencido abrem
+    ou atualizam a recuperação da mesma compra. Ver `compras.py`.
     """
-    referencia = _referencia(data)
-    if not referencia or evento not in EVENTOS_DE_FALHA | {"pagamento.aprovado"}:
+    from .compras import registrar_aprovacao, registrar_falha
+
+    if not data.get("order_id"):
         return None
-    type(lead).objects.select_for_update().get(pk=lead.pk)
-    consulta = Oportunidade.objects.select_for_update().filter(
-        lead__site_id=lead.site_id, fonte_tipo=FONTE,
-        fonte_referencia_id=referencia,
-    )
-    oportunidade = consulta.first()
-    aprovado = _aprovado_no_site(lead.site_id, data["order_id"])
-    if (
-        oportunidade is None and evento in EVENTOS_DE_FALHA and aprovado
-        and evento_timeline is not None
-        and aprovado.occurred_at <= evento_timeline.occurred_at
-    ):
-        return None
-    if oportunidade is None and evento in EVENTOS_DE_FALHA:
-        descricao = (
-            "Recuperar pagamento recusado" if evento == "pagamento.recusado"
-            else "Recuperar Pix vencido"
-        )
-        oportunidade = Oportunidade.objects.create(
-            lead=lead, etapa="nova", titular_id=_responsavel(lead.site_id),
-            fonte_tipo=FONTE, fonte_referencia_id=referencia,
-            passo_descricao=descricao,
-            passo_executar_ate=timezone.now() + timedelta(days=1),
-            passo_evidencia_esperada="Contato com o cliente e nova tentativa de pagamento",
-        )
-        RegistroHistoricoOportunidade.objects.create(
-            oportunidade=oportunidade, autor_id="sistema", tipo="etapa_alterada",
-            descricao=f"{descricao}; pedido {data['order_id']}.",
-            evidencia=str(event_id),
-        )
-    reversao = ReversaoDePagamento.objects.filter(
-        site_id=lead.site_id, order_id=data["order_id"]
-    ).first()
-    if oportunidade is not None and aprovado and reversao is None:
-        _ganhar(oportunidade, str(aprovado.event_id or aprovado.id))
-    if reversao is not None:
-        _aplicar_reversao(reversao, oportunidade)
-    return oportunidade
+    if evento == "pagamento.aprovado":
+        compra = registrar_aprovacao(lead, data, event_id, evento_timeline, chave)
+        return compra.oportunidade if compra is not None else None
+    if evento in EVENTOS_DE_FALHA:
+        return registrar_falha(lead, evento, data, event_id, evento_timeline)
+    return None

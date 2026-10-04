@@ -146,6 +146,18 @@ def test_robo_recusado_em_gesto_sem_volta(caminho, dados):
     assert not Administrador.objects.exists()
 
 
+def test_robo_nao_devolve_dinheiro_de_compra(monkeypatch):
+    chamadas = []
+    monkeypatch.setattr("apps.core.pagamentos.site_de", lambda request: "site-um")
+    monkeypatch.setattr(
+        "apps.core.pagamentos.PagamentosClient.devolver",
+        lambda self, *args: chamadas.append(args) or (200, {"estorno": "solicitado"}),
+    )
+    resposta = robo(emitir()).post("/pagamentos/devolver", {"tentativa_id": "7"})
+    assert resposta.status_code == 403
+    assert chamadas == []
+
+
 def test_admin_continua_fechado_a_anonimo():
     emitir()
     sem_nada = Client().get("/documentos/")

@@ -86,7 +86,10 @@ function cartaoIsland() {
       try {
         const cotacao = await api.get(`/pedidos/${this.orderId}/parcelas`);
         this.parcelas = cotacao.options;
-        this.installments = this.parcelas[0]?.installments || "";
+        let sugerida = null;
+        try { sugerida = JSON.parse(document.getElementById("parcelas-sugeridas")?.textContent || "null"); } catch (_) {}
+        const marcada = this.parcelas.find((opcao) => opcao.installments === sugerida);
+        this.installments = (marcada || this.parcelas[0])?.installments || "";
       } catch (e) {
         this.erro = "Não foi possível consultar as parcelas. Tente novamente.";
       } finally {
@@ -255,9 +258,13 @@ function cartaoIsland() {
       return this.status === "aguardando_pagamento" || this.status === "recusado";
     },
 
+    reais(centavos) {
+      const valor = (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `R$ ${valor}`;
+    },
+
     parcelaLabel(opcao) {
-      const valor = (opcao.installment_cents / 100).toFixed(2).replace(".", ",");
-      return `${opcao.installments}x de R$ ${valor}`;
+      return `${opcao.installments}x de ${this.reais(opcao.installment_cents)}`;
     },
 
     botaoLabel() {

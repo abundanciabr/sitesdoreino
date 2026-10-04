@@ -511,6 +511,10 @@ def test_fora_da_janela_devolve_fora_da_janela_salvo_modelo(base, monkeypatch):
     fora = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
                 {"site_id": SITE, "texto": "Oi de novo", "chave_idempotencia": "f1"}).json()
     assert fora["resultado"] == "fora_da_janela" and fora["mensagem"] is None and not posts
+    # Fora da janela, só com o aceite do contato (test_consentimentos.py).
+    from apps.consentimentos.servico import registrar as registrar_aceite
+
+    registrar_aceite(site_id=SITE, telefone="5511988887777", aceito=True, origem="quiz.completado")
     # Transporte atual (Baileys) não tem modelo aprovado: falha explícita, nada sai.
     modelo = {"site_id": SITE, "chave_idempotencia": "m1", "modelo": {"nome": "retomada", "idioma": "pt_BR"}}
     sem_modelo = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens", modelo).json()

@@ -2882,6 +2882,38 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/condicoes/",
+      "endereco": "/admin/crm/condicoes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Condições que o agente pode oferecer",
+      "descricao": "Por oferta, o mantenedor marca quais condições que o checkout já tem (Pix, parcelas do cartão, cupons) o agente do CRM pode propor ao cliente.",
+      "observacao": "Só administradores. Nenhuma condição nova é criada aqui; sem marca, o agente só informa o preço vigente."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/condicoes/salvar/",
+      "endereco": "/admin/crm/condicoes/salvar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar condições do agente",
+      "descricao": "Grava no checkout as condições marcadas para uma oferta, com o nome de quem marcou."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/modelos/",
+      "endereco": "/admin/crm/modelos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Modelos do WhatsApp",
+      "descricao": "Modelos de mensagem aprovados pela Meta para o primeiro contato no WhatsApp oficial, o dado do lead em cada lugar do modelo e os últimos envios por modelo.",
+      "observacao": "Só administradores. Os modelos e os envios moram na mensageria; sem as credenciais da Cloud API a tela diz que o canal oficial ainda não está ligado."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/<uuid:opportunity_id>/",
       "endereco": "/admin/crm/<uuid:opportunity_id>/",
       "alcance": "publico",
@@ -2899,6 +2931,78 @@
       "gesto": true,
       "titulo": "Registrar acompanhamento",
       "descricao": "Salva etapa, responsável e prazo, registra nota ou encerra o acompanhamento, com histórico do autor."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/",
+      "endereco": "/admin/crm/agentes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Agentes do CRM",
+      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação e com falha; a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
+      "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/trabalhos/<int:trabalho_id>/retomar/",
+      "endereco": "/admin/crm/agentes/trabalhos/<int:trabalho_id>/retomar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Retomar trabalho do agente",
+      "descricao": "Devolve à fila um trabalho comercial que falhou ou esperava; envio sem confirmação volta com a mesma chave, sem mensagem repetida."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<int:estrategia_id>/ativar/",
+      "endereco": "/admin/crm/agentes/estrategias/<int:estrategia_id>/ativar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ativar versão da estratégia",
+      "descricao": "Põe no ar a versão escolhida de um papel; a que estava no ar fica guardada para voltar."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<slug:papel>/voltar/",
+      "endereco": "/admin/crm/agentes/estrategias/<slug:papel>/voltar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Voltar à versão anterior",
+      "descricao": "Recoloca no ar a versão que estava antes da atual, com o motivo no histórico."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/estrategias/<slug:papel>/nova/",
+      "endereco": "/admin/crm/agentes/estrategias/<slug:papel>/nova/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Nova versão da estratégia",
+      "descricao": "Guarda uma nova versão das instruções de um papel e, se marcado, já a põe no ar."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/ofertas-dos-quizzes/",
+      "endereco": "/admin/crm/ofertas-dos-quizzes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Ofertas dos quizzes",
+      "descricao": "Para cada quiz do site, a oferta que cada resultado apresenta, com os quizzes e resultados sem oferta em destaque.",
+      "observacao": "Só administradores. A ligação mora na célula do quiz; nome e preço da oferta vêm do catálogo."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/ofertas-dos-quizzes/<slug:slug>/salvar/",
+      "endereco": "/admin/crm/ofertas-dos-quizzes/<slug:slug>/salvar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar ofertas de um quiz",
+      "descricao": "Troca a oferta e o texto do botão de cada resultado de um quiz, ou o endereço de compra das duas ofertas de uma campanha."
     },
     {
       "celula": "admin",

@@ -43,11 +43,16 @@ function dadosIsland() {
       try {
         let anteriores = {};
         try { anteriores = JSON.parse(localStorage.getItem("checkout-comprador") || "{}"); } catch (_) {}
-        const leadId = new URLSearchParams(window.location.search).get("lead") || "";
+        const consulta = new URLSearchParams(window.location.search);
+        const leadId = consulta.get("lead") || "";
+        const link = consulta.get("link") || "";
         this.session = await api.post("/sessoes", {
           offer_slug: this.offerSlug, utm: this.atribuicao, lead_id: leadId,
           email_para_cpf: anteriores.email || "",
+          ...(link ? { link } : {}),
         });
+        const metodoDoLink = this.session.condicao?.metodo;
+        if (metodoDoLink === "pix" || (metodoDoLink === "card" && this.appmaxCard)) this.method = metodoDoLink;
         this.offer = this.session.offer;
         for (const campo of ["name", "email", "phone"]) {
           if (!this.customer[campo]) this.customer[campo] = this.session.prefill?.[campo] || anteriores[campo] || "";
@@ -65,6 +70,11 @@ function dadosIsland() {
       const i = this.bumpIds.indexOf(id);
       if (i === -1) this.bumpIds.push(id);
       else this.bumpIds.splice(i, 1);
+    },
+
+    reais(centavos) {
+      const valor = (centavos / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return `R$ ${valor}`;
     },
 
     totalCents() {

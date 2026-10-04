@@ -59,6 +59,11 @@ INSTALLED_APPS = [
     # identidade de cada robô, as conversas, as execuções no servidor e as
     # entregas. Dados próprios; as tarefas continuam em `apps.core`.
     "apps.agentes",
+    "apps.comercial",
+    # Áudio do atendimento: transcrição do que o lead fala e resposta em voz,
+    # com a chave e o teto de gasto dos robôs.
+    "apps.voz",
+    "apps.assistente",
 ]
 
 MIDDLEWARE = [

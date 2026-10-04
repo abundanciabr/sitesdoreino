@@ -37,7 +37,7 @@ FALA_AO_VIVO = timedelta(hours=24)
 
 @dataclass
 class Resultado:
-    # enviada | repetida | fora_da_janela | descadastrado | conversa_com_pessoa | falhou
+    # enviada | repetida | fora_da_janela | sem_consentimento | descadastrado | conversa_com_pessoa | falhou
     # | fora_do_horario | limite_diario (as duas últimas só para autor "agente")
     resultado: str
     mensagem: MensagemDaConversa | None = None
@@ -154,6 +154,12 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
     if conversa.canal == "whatsapp" and not janela_aberta(conversa) and not modelo:
         return Resultado("fora_da_janela",
                          detalhe="fora das 24h desde a ultima mensagem do contato; use modelo aprovado")
+    if conversa.canal == "whatsapp" and not janela_aberta(conversa):
+        from apps.consentimentos.servico import situacao
+
+        permissao = situacao(conversa.site_id, conversa.endereco)
+        if not permissao.permite:
+            return Resultado("sem_consentimento", detalhe=f"o contato {permissao.frase()}")
     agora = _agora()
     if autor == "agente":
         if not regua.dentro_da_janela(agora):

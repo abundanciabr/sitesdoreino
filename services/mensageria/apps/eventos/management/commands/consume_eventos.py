@@ -18,6 +18,11 @@ from apps.eventos.handlers import (
     ao_pix_expirado,
     ao_pix_codigo_trocado,
 )
+from apps.consentimentos.handlers import (
+    ao_quiz_captura_parcial,
+    ao_quiz_completado,
+    ao_quiz_consentimento,
+)
 from apps.eventos.models import EventoProcessado, FatoDeProvedorVisto
 
 log = logging.getLogger(__name__)
@@ -45,6 +50,11 @@ STREAMS = {
     # portfólio); a aula comum não convida ninguém, e é `ao_aula_concluida` que
     # separa as duas. Mesmo consumidor, mesmo grupo: nada muda no compose.
     "eventos.aula.concluida": ao_aula_concluida,
+    # Desde 03/10/2026: o aceite de contato pelo WhatsApp dado no quiz
+    # (`apps.consentimentos`). Mesmo consumidor, mesmo grupo.
+    "eventos.quiz.completado": ao_quiz_completado,
+    "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
+    "eventos.quiz.consentimento": ao_quiz_consentimento,
 }
 
 # Convenção do LOTE — as 4 células consumidoras usam OS MESMOS nomes e valores

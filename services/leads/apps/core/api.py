@@ -5,8 +5,10 @@
 # ninja.Schema tipado — isso criaria refs nomeadas que o contrato não tem. O corpo
 # é lido e validado à mão a partir de request.body.
 import json
+import os
 import uuid
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models import OuterRef, Q, Subquery
 from django.http import JsonResponse
@@ -15,6 +17,8 @@ from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
 from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
+from .perfil import resumo_do_perfil
+from .quiz_do_lead import quizzes_do_lead
 
 router = Router()
 
@@ -182,6 +186,21 @@ POR_PAGINA_MAXIMO = 100
 LIMITE_DA_LINHA_DO_TEMPO = 200
 
 
+def _token_do_painel(request) -> bool:
+    token = os.environ.get("TOKENS_ACEITOS_ADMIN", "")
+    return bool(token) and request.auth == token
+
+
+def _site_da_conta_comercial(request):
+    """Site da conta comercial que chama (presa a um site), ou None se não é uma."""
+    if _token_do_painel(request):
+        return None
+    conta = getattr(settings, "COMERCIAIS_DO_CRM", {}).get(request.auth)
+    if not conta:
+        return None
+    return conta.get("site_id") or ""
+
+
 def _data(valor) -> str | None:
     return valor.isoformat() if valor else None
 
@@ -280,6 +299,9 @@ def listar_leads(
         )
     if site_id:
         consulta = consulta.filter(site_id=site_id)
+    site_da_conta = _site_da_conta_comercial(request)
+    if site_da_conta is not None:
+        consulta = consulta.filter(site_id=site_da_conta)
     if tag:
         consulta = consulta.filter(tags__contains=[tag])
 
@@ -334,6 +356,16 @@ _FICHA_LEAD_OPENAPI = {
                             "consentimento": {"type": "object"},
                             "criado_em": {"type": "string"},
                             "atualizado_em": {"type": "string"},
+                            "quizzes": {
+                                "type": "array",
+                                "description": "Quizzes com perguntas e respostas legíveis",
+                                "items": {"type": "object"},
+                            },
+                            "perfil": {
+                                "type": "object",
+                                "nullable": True,
+                                "description": "Perfil vigente do contato, se já analisado",
+                            },
                             "linha_do_tempo_total": {"type": "integer"},
                             "linha_do_tempo": {
                                 "type": "array",
@@ -375,9 +407,14 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
     except ValueError:
         raise HttpError(404, "Lead inexistente")
     base = contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    site_da_conta = _site_da_conta_comercial(request)
+    if site_da_conta is not None:
+        base = base.filter(site_id=site_da_conta)
     lead = base.filter(id=chave).first()
     if lead is None:
         raise HttpError(404, "Lead inexistente")
+    # Respostas e perfil são do painel (mesmo token de /respostas e /perfil).
+    do_painel = _token_do_painel(request)
 
     eventos = lead.timeline.order_by("-occurred_at", "-id")
     return JsonResponse(
@@ -393,6 +430,8 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
             "consentimento": lead.consent,
             "criado_em": _data(lead.created_at),
             "atualizado_em": _data(lead.updated_at),
+            "quizzes": quizzes_do_lead(lead) if do_painel else [],
+            "perfil": resumo_do_perfil(lead) if do_painel else None,
             "linha_do_tempo_total": eventos.count(),
             "linha_do_tempo": [
                 {

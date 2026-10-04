@@ -25,6 +25,8 @@
   button:disabled { opacity: .6; }
   .aguarde { margin: .75rem 0 0; text-align: center; color: #444; }
   .erro { color: #b00020; }
+  label.consentimento { display: flex; gap: .6rem; align-items: flex-start; font-size: .9rem; }
+  label.consentimento input { margin: .15rem 0 0; flex: none; }
   .avancar { display: none; }
   html.com-passos .avancar { display: block; }
   html.com-passos .enviar { display: none; }
@@ -42,7 +44,7 @@
   {% endif %}
   {% if experiencia %}{% include 'quiz/_experiencia.html' %}{% else %}<h1>{{ quiz.title }}</h1>{% endif %}
   {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
-  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-sessao="{{ entrada.session_id }}" data-telemetria="{% url 'quiz-telemetria' %}" data-etapa-inicial="{{ etapa_inicial }}">
+  <form class="crivo" method="post" data-quiz="{{ quiz.slug }}" data-versao="{{ versao.key }}" data-sessao="{{ entrada.session_id }}" data-telemetria="{% url 'quiz-telemetria' %}" data-captura="{% url 'quiz-captura' quiz.slug %}" data-etapa-inicial="{{ etapa_inicial }}">
     {% csrf_token %}
     {% if quiz.directed %}<input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">{% endif %}
     {% for question in questions %}
@@ -69,6 +71,10 @@
       <label>
         Telefone
         <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
+      </label>
+      <label class="consentimento">
+        <input type="checkbox" name="aceita_whatsapp" value="1"{% if aceita_whatsapp_marcada %} checked{% endif %}>
+        {{ texto_consentimento_whatsapp }}
       </label>
     </fieldset>
     <button type="button" class="avancar">Continuar</button>
@@ -176,5 +182,6 @@
   });
 })();
 </script>
+{% include 'quiz/_captura.html' %}
 </body>
 </html>

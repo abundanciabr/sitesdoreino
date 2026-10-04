@@ -108,3 +108,27 @@ def test_pagina_de_pedido_de_outro_site_e_404(client, api, rede, sessao_a):
     order_id = _abrir_pedido(api, sessao_a, "pix")
     resp = client.get(f"/pedido/{order_id}/pix/", HTTP_HOST=HOST_B)
     assert resp.status_code == 404
+
+
+_SCRIPT_DE_CDN = re.compile(r'<script[^>]*src="https://cdn\.jsdelivr\.net/[^"]*"[^>]*>')
+
+
+@pytest.mark.parametrize("method", ["pix", "card"])
+def test_script_de_cdn_tem_versao_fixa_e_integridade(client, api, rede, sessao_a, method):
+    # Número e CVV são campos do próprio DOM da página do cartão. Um script de
+    # CDN com versão aberta ("3.x.x") e sem integrity passaria a rodar código
+    # novo ao lado deles sem nenhuma publicação nossa.
+    order_id = _abrir_pedido(api, sessao_a, method)
+    caminho = "pix" if method == "pix" else "cartao"
+    paginas = [
+        client.get(f"/{SLUG}/", HTTP_HOST=HOST_A),
+        client.get(f"/pedido/{order_id}/{caminho}/", HTTP_HOST=HOST_A),
+    ]
+    for resposta in paginas:
+        assert resposta.status_code == 200
+        tags = _SCRIPT_DE_CDN.findall(resposta.content.decode())
+        assert tags
+        for tag in tags:
+            assert ".x" not in tag
+            assert 'integrity="sha256-' in tag or 'integrity="sha384-' in tag
+            assert 'crossorigin="anonymous"' in tag

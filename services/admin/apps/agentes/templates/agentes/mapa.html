@@ -6,6 +6,8 @@
   <h1>Mapa de conhecimento</h1>
   <p class="subtitulo">O que o robô acha quando procura um assunto: as coisas que casaram, as ligações em volta (até dois passos) e de onde veio cada uma. {{ mapa.coisas }} coisas e {{ mapa.ligacoes }} ligações vindas de {{ mapa.documentos }} documento{{ mapa.documentos|pluralize }}, mais o painel da equipe, lido na hora.</p>
 
+  <p><a class="botao-pequeno" href="{% url 'conhecimento_comercial' %}">Conhecimento comercial deste site</a></p>
+
   <form class="forma" method="get" action="{% url 'mapa_de_conhecimento' %}">
     <label class="largo"><span class="rotulo">Assunto, pessoa, tarefa ou documento</span><input type="search" name="q" maxlength="80" value="{{ termo }}" autofocus></label>
     <button class="botao" type="submit">Procurar</button>

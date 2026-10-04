@@ -54,7 +54,13 @@ def webhook_whatsapp(request):
     dados = payload.get("data")
     itens = dados if isinstance(dados, list) else [dados]
     if evento == "MESSAGES_UPSERT":
-        return JsonResponse({"recebidas": _receber_evolution(config, itens, str(payload.get("type") or ""))})
+        recebidas = _receber_evolution(config, itens, str(payload.get("type") or ""))
+        # Nota de voz do lead: depois da conversa, guarda o áudio para o admin
+        # transcrever, ligado à mensagem da conversa.
+        from apps.audio.webhook import receber_audios
+
+        receber_audios(payload)
+        return JsonResponse({"recebidas": recebidas})
     alteradas = 0
     for item in itens:
         if not isinstance(item, dict):
@@ -87,9 +93,11 @@ def aplicar_estado(config: ConfiguracaoWhatsApp, identificador: str, estado: str
             site_id=config.site_id, instancia=config.instancia, provider_id=identificador,
         ).first()
         if msg is None:
-            # A resposta HTTP ainda pode estar a caminho. O retorno ficou
-            # persistido para ser aplicado quando o provider_id for gravado.
-            return 0
+            # Resposta em voz (apps.audio) ou resposta HTTP ainda a caminho: o
+            # retorno ficou persistido para quando o provider_id for gravado.
+            from apps.audio.servico import atualizar_estado_de_voz
+
+            return atualizar_estado_de_voz(config.instancia, identificador, estado)
         if estado == "falhou":
             if msg.status in ("entregue", "lido"):
                 return 0
@@ -171,12 +179,24 @@ def webhook_whatsapp_cloud(request):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     from apps.conversas.entrada import de_cloud, receber
 
+    from apps.whatsapp_modelos.modelos import aplicar_status, atualizar_estado_de_modelo
+
     recebidas = atualizadas = ignoradas = 0
     for entrada in payload.get("entry") or []:
         for mudanca in (entrada.get("changes") or []) if isinstance(entrada, dict) else []:
-            if not isinstance(mudanca, dict) or mudanca.get("field") != "messages":
+            if not isinstance(mudanca, dict):
+                continue
+            if mudanca.get("field") == "message_template_status_update":
+                # Aprovação, pausa ou rejeição de um modelo de mensagem.
+                atualizadas += int(atualizar_estado_de_modelo(mudanca.get("value")))
+                continue
+            if mudanca.get("field") != "messages":
                 continue
             valor = mudanca.get("value") if isinstance(mudanca.get("value"), dict) else {}
+            # Envios de modelo aprovado (primeiro contato) vão direto pela Cloud
+            # API, sem instância da Evolution: o estado vale pelo wamid.
+            for item in valor.get("statuses") or []:
+                atualizadas += int(aplicar_status(item))
             metadados = valor.get("metadata") if isinstance(valor.get("metadata"), dict) else {}
             numero_id = str(metadados.get("phone_number_id") or "")
             config = ConfiguracaoWhatsApp.objects.filter(instancia=numero_id).first() if numero_id else None

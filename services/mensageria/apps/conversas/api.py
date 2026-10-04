@@ -218,8 +218,8 @@ class EnviarEntrada(Schema):
 
 @router.post("/conversas/{conversa_id}/mensagens")
 def enviar_mensagem(request, conversa_id: str, dados: EnviarEntrada):
-    """`resultado`: enviada, repetida, falhou, fora_da_janela, descadastrado, conversa_com_pessoa,
-    fora_do_horario ou limite_diario (estas duas só para o agente, com `reagendar_para`)."""
+    """`resultado`: enviada, repetida, falhou, fora_da_janela, sem_consentimento, descadastrado,
+    conversa_com_pessoa, fora_do_horario ou limite_diario (estas duas só para o agente, com `reagendar_para`)."""
     _escrita(request)
     conversa = _conversa(conversa_id, dados.site_id)
     chave = dados.chave_idempotencia.strip()
