@@ -39,7 +39,8 @@
   <div class="wrap" x-data="dadosIsland()">
     {% if appmax_pix_enabled %}<form data-appmax-customer hidden></form>{% endif %}
     <p x-show="carregando">Carregando a oferta…</p>
-    <div class="card" x-cloak x-show="!carregando">
+    <p class="card" role="status" x-cloak x-show="linkUsado" x-text="linkUsado"></p>
+    <div class="card" x-cloak x-show="!carregando && !linkUsado">
       <h1 x-text="offer.product_name"></h1>
       <template x-if="offer.bumps && offer.bumps.length">
         <div>
@@ -55,7 +56,7 @@
       <p class="total" x-text="`Total: ${reais(totalCents())}`"></p>
     </div>
 
-    <form class="card" @submit.prevent="finalizar" x-cloak x-show="!carregando">
+    <form class="card" @submit.prevent="finalizar" x-cloak x-show="!carregando && !linkUsado">
       <label for="name">Nome completo</label>
       <input id="name" type="text" autocomplete="name" x-model="customer.name" required>
       <label for="email">E-mail</label>

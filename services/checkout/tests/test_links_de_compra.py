@@ -658,7 +658,9 @@ def test_reabrir_o_link_depois_de_pago_mostra_o_pedido_pago(api, rede):
     )
     de_novo = _abrir_pelo_link(api, link["link_id"])
     assert de_novo["pedido_existente"]["status"] == "pago"
-    assert de_novo["pedido_existente"]["order_id"] == pedido["order_id"]
+    # Pago: a página só avisa; o número do pedido não sai para quem tem o link.
+    assert "order_id" not in de_novo["pedido_existente"]
+    assert pedido["order_id"] not in json.dumps(de_novo)
     assert Order.objects.count() == 1
 
 
@@ -957,7 +959,7 @@ def test_link_ja_pago_mostra_o_pedido_pago_e_nao_abre_compra_nova_com_a_oportuni
         aprovado_v2(Order.objects.get(pk=primeira["order_id"]), provider_reference_id="mp-1")
     )
     reaberta = _abrir_pelo_link(api, link["link_id"])
-    assert reaberta["pedido_existente"]["order_id"] == primeira["order_id"]
+    assert "order_id" not in reaberta["pedido_existente"]
     assert reaberta["pedido_existente"]["status"] == "pago"
     assert Session.objects.count() == 1 and Order.objects.count() == 1
 
@@ -1140,7 +1142,7 @@ def test_link_de_pedido_pago_abre_o_pedido_mesmo_sem_a_oferta_no_catalogo(api, r
 
     de_novo = _abrir_pelo_link(api, link["link_id"])
 
-    assert de_novo["pedido_existente"]["order_id"] == pedido["order_id"]
+    assert "order_id" not in de_novo["pedido_existente"]
     assert de_novo["pedido_existente"]["status"] == "pago"
     assert Session.objects.count() == 1 and Order.objects.count() == 1
 
@@ -1245,3 +1247,154 @@ def test_dois_envios_ao_mesmo_tempo_da_mesma_sessao_dao_409_e_nao_500(api, rede,
     assert resp.status_code == 409, resp.content
     assert resp.json()["order_id"] == concorrente["resposta"].json()["order_id"]
     assert Order.objects.count() == 1
+
+
+# --------------------------------------------------------------------------
+# Lote 3 da revisão: aprovação tardia, Pix vencido, catálogo fora do ar
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_aprovacao_tardia_do_cartao_recusado_encerra_o_segundo_pedido_aberto(api, rede):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(recusado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="r1"))
+    # A pessoa reabre o link e fecha um 2º pedido, que fica aguardando.
+    pedido2 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert Order.objects.get(pk=pedido2["order_id"]).status == "aguardando_pagamento"
+
+    # O provedor aprova tarde o 1º: ele fica pago e só ele segue valendo.
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido1["order_id"]), provider_reference_id="mp-tarde")
+    )
+
+    primeiro = Order.objects.get(pk=pedido1["order_id"])
+    segundo = Order.objects.get(pk=pedido2["order_id"])
+    assert primeiro.status == "pago" and primeiro.encerrado_motivo == ""
+    assert segundo.status == "expirado"
+    assert segundo.encerrado_motivo == f"pago_em_outro_pedido:{pedido1['order_id']}"
+    # O 2º já não aparece como pedido a pagar.
+    assert api.get(f"/api/checkout/pedidos/{pedido2['order_id']}").json()["status"] == "expirado"
+
+
+@pytest.mark.django_db
+def test_pedido_encerrado_por_outro_pago_ainda_recebe_a_aprovacao_real(api, rede):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(recusado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="r1"))
+    pedido2 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido1["order_id"]), provider_reference_id="mp-1")
+    )
+    assert Order.objects.get(pk=pedido2["order_id"]).status == "expirado"
+
+    # O Pix do 2º foi pago de verdade antes de o aviso chegar: o dinheiro entrou,
+    # então o pedido aparece como pago em vez de sumir.
+    assert aplicar(
+        aprovado_v2(
+            Order.objects.get(pk=pedido2["order_id"]),
+            provider_reference_id="mp-2",
+            payment_id="pag-2",
+        )
+    )
+    assert Order.objects.get(pk=pedido2["order_id"]).status == "pago"
+
+
+@pytest.mark.django_db
+def test_pagamento_encerra_so_pedido_do_mesmo_cliente_e_da_mesma_oferta(api, rede):
+    sessoes = [
+        api.post("/api/checkout/sessoes", {"offer_slug": SLUG}).json()["id"] for _ in range(3)
+    ]
+    meu = _fechar(api, sessoes[0])
+    outro = api.post(
+        f"/api/checkout/sessoes/{sessoes[1]}/pedido",
+        {"customer": {**CLIENTE, "email": "outra-pessoa@exemplo.com"}, "method": "pix"},
+    ).json()
+    mesmo_cliente = _fechar(api, sessoes[2])
+    assert aplicar(aprovado_v2(Order.objects.get(pk=meu["order_id"]), provider_reference_id="mp-1"))
+    assert Order.objects.get(pk=outro["order_id"]).status == "aguardando_pagamento"
+    assert Order.objects.get(pk=mesmo_cliente["order_id"]).status == "expirado"
+
+
+def _vencer_o_pix(order_id):
+    Order.objects.filter(pk=order_id).update(
+        pix={"qr_code": "x", "qr_code_base64": "eA==", "expires_at": "2020-01-01T00:00:00+00:00"}
+    )
+
+
+@pytest.mark.django_db
+def test_pix_com_prazo_vencido_e_status_ainda_aguardando_deixa_reabrir_o_link(api, rede):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    _vencer_o_pix(pedido1["order_id"])
+    assert Order.objects.get(pk=pedido1["order_id"]).status == "aguardando_pagamento"
+
+    sessao2 = _abrir_pelo_link(api, link["link_id"])
+
+    assert "pedido_existente" not in sessao2
+    assert Session.objects.count() == 2
+    pedido2 = _fechar(api, sessao2["id"])
+    assert pedido2["order_id"] != pedido1["order_id"]
+
+
+@pytest.mark.django_db
+def test_pix_dentro_do_prazo_continua_levando_ao_pedido(api, rede):
+    link = _link(api).json()
+    pedido = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    de_novo = _abrir_pelo_link(api, link["link_id"])
+    assert de_novo["pedido_existente"] == {
+        "order_id": pedido["order_id"],
+        "method": "pix",
+        "status": "aguardando_pagamento",
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "resposta",
+    [
+        {"return_value": httpx.Response(500)},
+        {"return_value": httpx.Response(503)},
+        {"side_effect": httpx.ConnectError("catálogo fora do ar")},
+    ],
+    ids=["500", "503", "sem-conexao"],
+)
+def test_catalogo_com_erro_ao_abrir_sessao_e_tente_de_novo_nao_404(api, rede, resposta):
+    _catalogo_responde(rede, resposta)
+    resp = api.post("/api/checkout/sessoes", {"offer_slug": SLUG})
+    assert resp.status_code == 503, resp.content
+    assert "tente de novo" in resp.json()["detail"]
+    assert Session.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_catalogo_com_erro_ao_fechar_o_pedido_e_tente_de_novo(api, rede, sessao_a):
+    _catalogo_responde(rede, {"return_value": httpx.Response(502)})
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido", {"customer": CLIENTE, "method": "pix"}
+    )
+    assert resp.status_code == 503, resp.content
+    assert Order.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_oferta_que_nao_existe_continua_404_e_catalogo_com_erro_nas_condicoes_e_503(api, rede):
+    assert api.post("/api/checkout/sessoes", {"offer_slug": "nao-existe"}).status_code == 404
+    _catalogo_responde(rede, {"return_value": httpx.Response(500)})
+    assert api.get(CONDICOES).status_code == 503
+
+
+@pytest.mark.django_db
+def test_eventos_da_compra_levam_oferta_oportunidade_e_contexto(api, client, rede):
+    client.cookies["meshcraft_visitante"] = "11111111-1111-4111-8111-111111111111"
+    link = _link(api, estrategia="retomada-quiz").json()
+    _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+
+    iniciado = OutboxEvent.objects.get(event="checkout.iniciado").payload
+    assert iniciado["oportunidade_ref"] == "op-123"
+    assert iniciado["oferta_ref"] == SLUG
+    assert iniciado["produto"] == SLUG  # o campo de antes segue no lugar
+    criado = OutboxEvent.objects.get(event="pedido.criado").payload
+    assert criado["offer_slug"] == SLUG
+    assert criado["contexto"] == {"op": "op-123", "est": "retomada-quiz"}
+    assert criado["oportunidade_ref"] == "op-123" and criado["oferta_ref"] == SLUG

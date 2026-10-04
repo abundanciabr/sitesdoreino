@@ -90,7 +90,6 @@ def test_agrupamento_de_pagos_nao_duplica_reenvio(api, rede):
     p1 = _pago(api)
     p2 = _pago(api)
     p3 = _pago(api, cpg="junho-roblox")
-    pendente = _pago(api)  # aguardando: fora da conta
     outro_quiz = _pago(api, qz="outro-quiz")  # pago, mas de outro quiz
     for p in (p1, p2, p3, outro_quiz):
         assert aplicar(aprovado_v1(p, mp_payment_id=f"mp-{p.id}")) is True
@@ -98,6 +97,9 @@ def test_agrupamento_de_pagos_nao_duplica_reenvio(api, rede):
     assert aplicar(aprovado_v1(p1, mp_payment_id=f"mp-{p1.id}")) is False
     assert aplicar(aprovado_v1(p1, mp_payment_id=f"mp-{p1.id}")) is False
     assert FatoAplicado.objects.count() == 4
+    # Aguardando, fora da conta (aberto depois: um pedido já aberto do mesmo
+    # cliente e oferta seria encerrado quando outro é pago).
+    pendente = _pago(api)
     pendente.refresh_from_db()
     assert pendente.status == "aguardando_pagamento"
 

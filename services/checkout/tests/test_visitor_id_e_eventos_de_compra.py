@@ -89,6 +89,9 @@ def test_cookie_valido_emite_checkout_iniciado_com_payload_minimo(client, api, r
         "visitor_id": VISITOR_ID,
         "checkout_session_id": sessao["id"],
         "produto": SLUG,
+        # Sem link do atendimento não há oportunidade; a oferta sai sempre.
+        "oportunidade_ref": "",
+        "oferta_ref": SLUG,
     }
 
 

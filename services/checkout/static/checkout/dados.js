@@ -20,6 +20,7 @@ function dadosIsland() {
     carregando: true,
     enviando: false,
     erro: "",
+    linkUsado: "",
     pedidoAberto: "",
     enviosQuePodemTerCriado: [],
     session: null,
@@ -65,6 +66,12 @@ function dadosIsland() {
         // pedido segue valendo, a pessoa vai para a página dele, em vez de ver
         // o formulário e esbarrar num erro ao enviar.
         if (this.session.pedido_existente) {
+          // O número do pedido só vem enquanto falta pagar. Pedido já pago ou
+          // devolvido chega sem ele, e a página só avisa que o link foi usado.
+          if (!this.session.pedido_existente.order_id) {
+            this.linkUsado = "Este link já foi usado e o pagamento dele já está registrado.";
+            return;
+          }
           seguindoParaOPedido = true;
           this.irParaPedido(this.session.pedido_existente.order_id, this.session.pedido_existente.method);
           return;

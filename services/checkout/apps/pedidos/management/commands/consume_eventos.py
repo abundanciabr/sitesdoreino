@@ -275,6 +275,10 @@ def aplicar(envelope: dict) -> bool:
             estados_elegiveis = Q(status=OrderModel.AGUARDANDO)
             if aviso.status == "pago":
                 estados_elegiveis |= Q(status="recusado", method__in=("card", "pix"))
+                # Pedido que o checkout encerrou por outro ter sido pago ainda
+                # pode receber a aprovação REAL do provedor: o dinheiro entrou,
+                # então o pedido aparece como pago, nunca some.
+                estados_elegiveis |= Q(status="expirado") & ~Q(encerrado_motivo="")
             if aviso.status == "reembolsado":
                 estados_elegiveis = Q(status="pago")
             mudancas = {"status": aviso.status}
@@ -291,10 +295,34 @@ def aplicar(envelope: dict) -> bool:
                 .update(**mudancas)
             )
             if aviso.status == "pago" and atualizados:
+                _encerrar_outros_pedidos_abertos(aviso)
                 _emitir_pedido_pago(aviso)
     except IntegrityError:
         return False
     return True
+
+
+def _encerrar_outros_pedidos_abertos(aviso) -> None:
+    """Pagou um pedido: o mesmo cliente não fica com outro pedido aberto para
+    o mesmo produto. É o caso do cartão recusado que o provedor aprova tarde,
+    depois de a pessoa já ter aberto um segundo pedido: sem isto os dois
+    ficavam pagáveis e dava para pagar duas vezes. Só um pedido segue valendo;
+    o outro é encerrado com o motivo gravado."""
+    pago = OrderModel.objects.get(pk=aviso.order_id)
+    email = str((pago.customer or {}).get("email") or "").strip()
+    if not email or not pago.oferta_ref:
+        return
+    (
+        OrderModel.objects.filter(
+            site_id=pago.site_id,
+            oferta_ref=pago.oferta_ref,
+            em_teste=pago.em_teste,
+            customer__email__iexact=email,
+            status__in=(OrderModel.AGUARDANDO, "recusado"),
+        )
+        .exclude(pk=pago.pk)
+        .update(status="expirado", encerrado_motivo=f"pago_em_outro_pedido:{pago.pk}")
+    )
 
 
 def _processar(r, stream: str, msg_id, campos) -> None:
