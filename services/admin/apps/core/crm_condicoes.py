@@ -1,7 +1,7 @@
 """/admin/crm/condicoes/ — o mantenedor marca quais condições de compra o agente
 do CRM pode oferecer.
 
-As condições (Pix, parcelas do cartão, cupons) são as que o checkout já tem; esta
+As condições (Pix e parcelas do cartão) são as que o checkout já tem; esta
 tela só deixa escolher entre elas. Nada aqui cria desconto, parcela ou prazo, e o
 modelo também não: o agente recebe do checkout só o que foi marcado aqui, mais o
 preço vigente da oferta. Cada site tem as suas marcas (o checkout acha o site
@@ -19,6 +19,12 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 from .clients import http
 from .conteudos import host_da_requisicao
+
+
+# O checkout espera até 5 s pela oferta no catálogo e até 15 s pela cotação das
+# parcelas: quem pergunta a ele espera mais que isso, para a tela não desistir
+# antes de ele responder (a lista já avisa "demorou" nas ofertas que faltam).
+ESPERA_DO_CHECKOUT = 25.0
 
 
 class CondicoesClient:
@@ -45,7 +51,7 @@ class CondicoesClient:
                 params={k: v for k, v in (params or {}).items() if v},
                 json=corpo,
                 headers={"Authorization": f"Bearer {token}", "Host": self.host},
-                timeout=8.0,
+                timeout=ESPERA_DO_CHECKOUT,
             )
         except httpx.HTTPError:
             return self.NAO_RESPONDEU, None
@@ -95,8 +101,6 @@ def _aviso_da_fonte(estado):
 
 def _legenda(item):
     """Texto simples de uma condição, só com o que o checkout informou."""
-    if item.get("tipo") == "cupom":
-        return f"Cupom {item.get('codigo')}"
     if item.get("metodo") == "pix":
         minutos = item.get("vencimento_minutos")
         return "Pix à vista" + (f", vence em {minutos} minutos" if minutos else "")
@@ -158,9 +162,9 @@ def crm_condicoes_salvar(request):
         quem_email=request.admin.get("email", ""),
         quem_id=autor[:64],
         acao=Registro.EDITAR,
-        alvo=oferta[:64],  # o campo `alvo` da auditoria tem 64 caracteres; a oferta pode ter mais
+        alvo=oferta[:64],  # o campo `alvo` da auditoria tem 64 caracteres; o nome inteiro vai no detalhe
         desfecho=Registro.OK if estado == CondicoesClient.OK else Registro.RECUSADO_PELA_CELULA if estado in (CondicoesClient.RECUSADO, CondicoesClient.NAO_EXISTE) else Registro.NAO_RESPONDEU,
-        detalhe="CRM: condições do agente (" + ", ".join(liberadas)[:200] + ")",
+        detalhe=f"CRM: condições do agente da oferta {oferta} (" + ", ".join(liberadas)[:200] + ")",
     )
     if estado == CondicoesClient.OK:
         return HttpResponseRedirect(reverse("crm_condicoes") + "?salvo=1")

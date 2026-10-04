@@ -85,6 +85,10 @@ ROTAS = {
 # chamada não sai e responde `indisponivel`: nunca vale o de outro site.
 
 TIMEOUT = 8.0
+# Estas duas rotas fazem o checkout cotar as parcelas no provedor (até 15 s,
+# mais até 5 s pela oferta no catálogo): quem pergunta espera mais que ele.
+# As outras rotas seguem no TIMEOUT geral.
+TIMEOUT_POR_ROTA = {"condicoes": 25.0, "link_de_compra": 25.0}
 
 _CACHE_DO_HOST: dict[str, tuple[str, float]] = {}
 VALIDADE_DO_HOST = 3600.0  # o domínio de um site quase nunca muda
@@ -209,7 +213,7 @@ def pedir(rota: str, *partes, params: dict | None = None, corpo: dict | None = N
             params={k: v for k, v in (params or {}).items() if v not in (None, "")},
             json=corpo if escrita else None,
             headers=cabecalhos,
-            timeout=TIMEOUT,
+            timeout=TIMEOUT_POR_ROTA.get(rota, TIMEOUT),
         )
     except httpx.ConnectError:
         # Não conectou: o pedido não saiu.

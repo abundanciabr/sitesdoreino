@@ -157,7 +157,7 @@ DEFINICOES = {
     "consultar_condicoes_compra": _ferramenta(
         "consultar_condicoes_compra",
         "As condições de compra efetivamente disponíveis para a oferta: valor, "
-        "parcelas, cupom, vencimento. Só estas podem ser oferecidas.",
+        "parcelas, vencimento. Só estas podem ser oferecidas.",
         {"oferta_ref": _texto_ou_nulo("Nulo para a oferta da oportunidade.")},
     ),
     "preparar_link_compra": _ferramenta(
