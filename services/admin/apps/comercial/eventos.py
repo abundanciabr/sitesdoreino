@@ -187,6 +187,9 @@ def ao_mensagem_recebida(envelope: dict):
         return None  # o que a equipe mandou não pede resposta
     if not _registrar(envelope, "mensagem.recebida", site_id=site_id):
         return None
+    if data.get("lead_ligacao") in ("desconhecida", "ambigua") and data.get("canal") == "whatsapp":
+        # A mensageria orienta quem não é do quiz; aqui só se garante o endereço do site no texto.
+        servicos.garantir_endereco_do_quiz_na_orientacao(site_id)
     if not coordenador.ligado():
         return None
     lead = data.get("lead")

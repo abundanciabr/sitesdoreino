@@ -11,7 +11,7 @@
 <div class="conv-grade"><section class="cartao" aria-label="Mensagens">
 {% if anteriores %}<p><a href="{{ anteriores }}">← Mensagens anteriores</a></p>{% endif %}
 {% if antes_de %}<p class="explica">Você está vendo mensagens mais antigas. <a href="{% url 'crm_conversa' conversa.id %}">Voltar às mais recentes →</a></p>{% endif %}
-{% for m in mensagens %}<div class="conv-msg {{ m.direcao }}"><small>{{ m.autor_nome }} · {{ m.momento|date:"d/m/Y H:i" }}{% if m.direcao == "saida" and m.envio_nome %} · {{ m.envio_nome }}{% endif %}{% if m.descadastro %} · Pediu para parar{% endif %}</small>
+{% for m in mensagens %}<div class="conv-msg {{ m.direcao }}"><small>{{ m.autor_nome }}{% if m.orientacao %} (orientação automática){% endif %} · {{ m.momento|date:"d/m/Y H:i" }}{% if m.direcao == "saida" and m.envio_nome %} · {{ m.envio_nome }}{% endif %}{% if m.descadastro %} · Pediu para parar{% endif %}</small>
 {% if m.assunto %}<small>Assunto: {{ m.assunto }}</small>{% endif %}
 {% if m.texto %}<p>{{ m.texto }}</p>{% endif %}
 {% if m.midia_nome %}<small>{{ m.midia_nome }}{% if m.midia.mime %} ({{ m.midia.mime }}){% endif %}{% if not m.transcricao %} · sem transcrição ainda{% endif %}</small>{% endif %}
@@ -20,7 +20,10 @@
 {% empty %}<p>{% if antes_de %}Não há mensagens mais antigas.{% else %}Ainda não há mensagens nesta conversa.{% endif %}</p>{% endfor %}
 </section><div>
 <section class="cartao"><h2>O contato</h2>
-{% if conversa.ambigua %}<p class="explica">Este endereço corresponde a mais de um contato. Por isso nenhuma ficha é mostrada aqui. Peça na conversa a informação que identifica a pessoa.</p>
+{% if conversa.etiqueta_nome %}<p><b>{{ conversa.etiqueta_nome }}</b></p>{% endif %}
+{% if conversa.etiqueta == "equipe_confirma" %}<p class="explica">A pessoa informou um e-mail, mas ele não bate sozinho com um único contato. Confirme com ela antes de ligar a conversa a uma ficha. Nenhum dado de contato foi mostrado a quem escreveu.</p>
+{% elif conversa.ambigua %}<p class="explica">Este endereço corresponde a mais de um contato. Por isso nenhuma ficha é mostrada aqui. O assistente já pediu o e-mail usado no quiz{% if conversa.orientacao_em %} ({{ conversa.orientacao_em|date:"d/m/Y H:i" }}){% endif %}; se o e-mail e o telefone baterem com um único contato, a conversa é ligada sozinha.</p>
+{% elif conversa.etiqueta == "sem_origem_quiz" %}<p class="explica">Quem escreveu não tem origem no quiz. Ela não foi levada para a lista comercial. {% if conversa.orientacao_em %}O assistente já enviou a orientação ({{ conversa.orientacao_em|date:"d/m/Y H:i" }}): o atendimento é para quem fez o quiz, com o endereço do quiz e o caminho de atendimento geral.{% else %}Nenhuma orientação foi enviada ainda.{% endif %} A mensagem fica aqui para a equipe.</p>
 {% elif conversa.ficha %}<p><a href="{{ conversa.ficha }}">Abrir a ficha do contato →</a></p>{% if oportunidade %}<p><a href="{{ oportunidade }}">Abrir a oportunidade no CRM →</a></p>{% endif %}
 {% else %}<p class="explica">Este contato ainda não está ligado a uma ficha do quiz.</p>{% endif %}
 {% if conversa.descadastrado %}<p class="explica">Esta pessoa pediu para não receber mais mensagens neste canal. Só dá para responder quando ela escrever de novo.</p>{% endif %}

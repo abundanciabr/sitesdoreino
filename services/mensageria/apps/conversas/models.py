@@ -41,6 +41,12 @@ class Conversa(models.Model):
     janela_aberta_ate = models.DateTimeField(null=True, blank=True)
     ultima_entrada_em = models.DateTimeField(null=True, blank=True)
     ultima_mensagem_em = models.DateTimeField(null=True, blank=True)
+    # Orientação fixa enviada a quem não é lead (ou é de telefone ambíguo): no
+    # máximo uma a cada 24h; `equipe_confirma` = a pessoa informou o e-mail e a
+    # ligação ao lead ficou para a equipe confirmar (nunca ligada no escuro).
+    orientacao_enviada_em = models.DateTimeField(null=True, blank=True)
+    orientacao_tipo = models.CharField(max_length=20, blank=True, default="")
+    equipe_confirma = models.BooleanField(default=False)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -56,6 +62,15 @@ class Conversa(models.Model):
     @property
     def ambigua(self) -> bool:
         return self.ligacao == "ambigua"
+
+    @property
+    def etiqueta(self) -> str:
+        """O que a equipe vê na caixa: por que esta conversa não tem oportunidade."""
+        if self.ligacao == "desconhecida":
+            return "sem_origem_quiz"
+        if self.ligacao == "ambigua":
+            return "equipe_confirma" if self.equipe_confirma else "telefone_ambiguo"
+        return ""
 
 
 class MensagemDaConversa(models.Model):
@@ -116,3 +131,12 @@ class Descadastro(models.Model):
         constraints = [
             models.UniqueConstraint(fields=["site_id", "canal", "endereco"], name="uniq_descadastro_site_canal_endereco"),
         ]
+
+
+class OrientacaoDoSite(models.Model):
+    """Endereços que a orientação fixa cita, por site. Sem registro, o texto vai sem o link."""
+
+    site_id = models.CharField(max_length=100, unique=True)
+    endereco_quiz = models.CharField(max_length=300, blank=True, default="")
+    atendimento_geral = models.CharField(max_length=300, blank=True, default="")
+    atualizada_em = models.DateTimeField(auto_now=True)

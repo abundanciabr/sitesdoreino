@@ -18,7 +18,7 @@ from apps.core.auth import tokens_de_publicacao
 
 from . import descadastro as descadastros
 from . import enderecos, envio
-from .models import CANAIS, ESTADOS, LIGACOES, Conversa, Descadastro, MensagemDaConversa
+from .models import CANAIS, ESTADOS, LIGACOES, Conversa, Descadastro, MensagemDaConversa, OrientacaoDoSite
 
 router = Router()
 POR_PAGINA_MAXIMO = 100
@@ -85,6 +85,11 @@ def conversa_json(conversa: Conversa, descadastrados: set | None = None) -> dict
         "janela_aberta_ate": _data(conversa.janela_aberta_ate),
         "janela_aberta": envio.janela_aberta(conversa, agora),
         "descadastrado": parou,
+        # Por que não há oportunidade ligada (sem_origem_quiz, telefone_ambiguo, equipe_confirma) e
+        # a orientação fixa que já saiu. Nunca carrega dado de lead.
+        "etiqueta": conversa.etiqueta or None,
+        "orientacao": ({"tipo": conversa.orientacao_tipo, "enviada_em": _data(conversa.orientacao_enviada_em)}
+                       if conversa.orientacao_enviada_em else None),
         "ultima_entrada_em": _data(conversa.ultima_entrada_em),
         "ultima_mensagem_em": _data(conversa.ultima_mensagem_em),
         "criada_em": _data(conversa.criada_em),
@@ -325,3 +330,36 @@ def transcrever(request, conversa_id: str, mensagem_id: str, dados: TranscricaoE
     mensagem.transcricao = dados.transcricao
     mensagem.save(update_fields=["transcricao"])
     return mensagem_json(mensagem)
+
+
+class OrientacaoEntrada(Schema):
+    endereco_quiz: str = ""
+    atendimento_geral: str = ""
+
+
+def _orientacao_json(site_id: str, config: OrientacaoDoSite | None) -> dict:
+    return {"site_id": site_id,
+            "endereco_quiz": config.endereco_quiz if config else "",
+            "atendimento_geral": config.atendimento_geral if config else ""}
+
+
+@router.get("/orientacoes/{site_id}")
+def ver_orientacao(request, site_id: str):
+    """Endereços que a orientação fixa cita neste site (vazio = o texto vai sem o link)."""
+    site_id = _site(site_id)
+    return _orientacao_json(site_id, OrientacaoDoSite.objects.filter(site_id=site_id).first())
+
+
+@router.put("/orientacoes/{site_id}")
+def definir_orientacao(request, site_id: str, dados: OrientacaoEntrada):
+    """Define o endereço do quiz e o caminho de atendimento geral do site."""
+    _escrita(request)
+    site_id = _site(site_id)
+    quiz, geral = dados.endereco_quiz.strip(), dados.atendimento_geral.strip()
+    if quiz and not quiz.lower().startswith(("https://", "http://")):
+        raise HttpError(422, "endereco_quiz deve ser um endereco completo (https://...)")
+    if len(quiz) > 300 or len(geral) > 300:
+        raise HttpError(422, "endereco_quiz e atendimento_geral aceitam ate 300 caracteres")
+    config, _ = OrientacaoDoSite.objects.update_or_create(
+        site_id=site_id, defaults={"endereco_quiz": quiz, "atendimento_geral": geral})
+    return _orientacao_json(site_id, config)
