@@ -48,9 +48,31 @@
   </section>
   {% endif %}
 
+  <section id="otimizador">
+    <h2 class="titulo-de-secao">Resultados por versão e testes</h2>
+    <p class="nota">Vendas só contam quando o provedor confirma e depois da mensagem; leads de teste ficam de fora. Uma versão nova atende só uma fatia das oportunidades e cada oportunidade fica sempre na mesma versão. Se a nova vender claramente menos (com pelo menos {{ min_amostra }} oportunidades em cada versão), a anterior volta sozinha, com o motivo registrado.</p>
+    {% for o in otimizador %}
+    <article class="trabalho-do-robo">
+      <b>{{ o.rotulo }}</b> &middot; no ar: v{{ o.no_ar }}
+      {% if o.teste %}
+      <p>Em teste: v{{ o.teste.candidata.versao }} atende {{ o.teste.percentual }}% das oportunidades, contra a v{{ o.teste.base.versao }}, desde {{ o.teste.iniciado_em|date:"d/m H:i" }}.
+        {% if o.teste.comparativo.veredito %}Última conferência: {{ o.teste.comparativo.veredito }}{% if o.teste.comparativo.z != None %} (z={{ o.teste.comparativo.z }}){% endif %}.{% endif %}</p>
+      <form method="post" action="{% url 'agentes_comerciais' %}">{% csrf_token %}<input type="hidden" name="acao" value="encerrar_teste"><input type="hidden" name="teste" value="{{ o.teste.id }}"><button class="botao-pequeno" type="submit">Encerrar o teste</button></form>
+      {% elif o.ultimo_teste %}
+      <p class="nota">Último teste (v{{ o.ultimo_teste.candidata.versao }} contra v{{ o.ultimo_teste.base.versao }}): {{ o.ultimo_teste.get_estado_display }}{% if o.ultimo_teste.conclusao %} — {{ o.ultimo_teste.conclusao }}{% endif %}</p>
+      {% endif %}
+      <ul class="passos-do-robo">
+        {% for v in o.versoes %}
+        <li>v{{ v.versao }} &middot; {{ v.abordagens }} oportunidade(s){% if o.papel == "abordagem" %} &middot; {{ v.respostas }} resposta(s){% endif %} &middot; {{ v.vendas }} venda(s) &middot; US$ {{ v.custo_usd }}</li>
+        {% empty %}<li>Ainda sem mensagens enviadas por este papel.</li>{% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </section>
+
   <section id="estrategias">
     <h2 class="titulo-de-secao">Estratégias</h2>
-    <p class="nota">O otimizador só propõe com pelo menos {{ min_amostra }} abordagens numa versão; com menos, o resultado é inconclusivo. Proposta não entra no ar sozinha.</p>
+    <p class="nota">O otimizador só propõe com pelo menos {{ min_amostra }} abordagens numa versão; com menos, o resultado é inconclusivo. A proposta do otimizador começa numa fatia pequena (teste, acima); só vira a versão do ar se vender melhor ou se a pessoa puser no ar.</p>
     {% for p in papeis %}
     <article class="trabalho-do-robo">
       <b>{{ p.rotulo }}</b> &middot; no ar: v{{ p.ativa.versao }}{% if p.ativa.anterior_id %}

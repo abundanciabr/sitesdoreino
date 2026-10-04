@@ -27,7 +27,7 @@ from django.utils import timezone
 
 from apps.agentes import modelo, segredo
 from apps.agentes.models import Conexao
-from apps.comercial import coordenador, eventos, ferramentas, papeis, resultados
+from apps.comercial import coordenador, eventos, ferramentas, otimizador, papeis, resultados
 from apps.comercial.models import (
     DecisaoComercial,
     EstrategiaComercial,
@@ -545,8 +545,9 @@ def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento()
     trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", chave_da_conversa="conversa:conv-1",
                          entrada={"contato": _contato(), "oferta_ref": "curso-3d", "texto": "quero comprar"})
     respx.get(f"{MENSAGERIA}/conversas/conv-1").respond(200, json={"estado": "agente"})
-    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes").respond(200, json={
+    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
         "site_id": "site-1", "oferta": {"oferta_ref": "curso-3d", "preco": "R$ 497,00"},
+        "preco_vigente": {"cents": 49700, "texto": "R$ 497,00", "moeda": "BRL"},
         "condicoes": [{"id": "pix", "metodo": "pix", "total_cents": 49700}]})
     link = respx.post(f"{CHECKOUT}/interno/links-de-compra").respond(201, json={
         "url": "https://meshcraft.top/checkout/curso-3d/?link=1", "pedido_id": "ped-1", "valor": "R$ 497,00",
@@ -566,6 +567,7 @@ def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento()
     trabalho.refresh_from_db()
     assert trabalho.estado == E.CONCLUIDO, trabalho.motivo
     assert trabalho.decisoes.get(call_id="c2").resultado == R.RECUSADO  # condição inventada
+    assert trabalho.decisoes.get(call_id="c1").saida["preco_vigente"]["cents"] == 49700
     assert trabalho.decisoes.get(call_id="c3").resultado == R.RECUSADO  # oferta de outra oportunidade
     assert trabalho.decisoes.get(call_id="c5").saida["ja_feito"] is True
     assert link.call_count == 1
@@ -709,8 +711,7 @@ def test_otimizador_volta_sozinho_quando_a_versao_nova_vende_menos_com_amostra()
     v2 = papeis.propor_versao("abordagem", "v2", criada_por="admin", motivo="m", origem="pessoa")
     papeis.ativar(v2, "admin")
     _abordagens(40, vendas=1, versao=2)
-    dados = resultados.numeros()
-    volta = resultados._volta_se_piorou(dados)
+    volta = otimizador.volta_se_piorou("abordagem")
     assert volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == v1.pk
 
@@ -732,17 +733,19 @@ def test_pagina_dos_agentes_mostra_fila_e_ativa_proposta():
     trabalho = _trabalho(T.ABORDAR)
     proposta = papeis.propor_versao("abordagem", "Versão nova", criada_por="agente:resultados",
                                     motivo="amostra", origem="otimizador")
-    resposta = cliente.get(reverse("agentes_comerciais") + f"?trabalho={trabalho.pk}")
+    # A página dos agentes é a do painel do CRM (`apps/core/crm_agentes.py`).
+    resposta = cliente.get(reverse("crm_agentes") + f"?trabalho={trabalho.pk}")
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert "Agentes comerciais" in html and "Pôr no ar" in html
-    resposta = cliente.post(reverse("agentes_comerciais"), {"acao": "ativar", "estrategia": proposta.pk})
+    assert "Agentes do CRM" in html and f"Pôr no ar a v{proposta.versao}" in html
+    assert f"Trabalho #{trabalho.pk}" in html
+    resposta = cliente.post(reverse("crm_agentes_ativar", args=[proposta.pk]))
     assert resposta.status_code == 302
     assert papeis.estrategia_ativa("abordagem").pk == proposta.pk
-    cliente.post(reverse("agentes_comerciais"), {"acao": "voltar", "papel": "abordagem"})
+    cliente.post(reverse("crm_agentes_voltar", args=["abordagem"]))
     assert papeis.estrategia_ativa("abordagem").versao == 1
     TrabalhoComercial.objects.filter(pk=trabalho.pk).update(estado=E.FALHOU)
-    cliente.post(reverse("agentes_comerciais"), {"acao": "retomar", "trabalho": trabalho.pk})
+    cliente.post(reverse("crm_agentes_retomar", args=[trabalho.pk]))
     trabalho.refresh_from_db()
     assert trabalho.estado == E.NA_FILA
 

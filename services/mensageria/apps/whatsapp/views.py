@@ -174,12 +174,24 @@ def webhook_whatsapp_cloud(request):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     from apps.conversas.entrada import de_cloud, receber
 
+    from apps.whatsapp_modelos.modelos import aplicar_status, atualizar_estado_de_modelo
+
     recebidas = atualizadas = ignoradas = 0
     for entrada in payload.get("entry") or []:
         for mudanca in (entrada.get("changes") or []) if isinstance(entrada, dict) else []:
-            if not isinstance(mudanca, dict) or mudanca.get("field") != "messages":
+            if not isinstance(mudanca, dict):
+                continue
+            if mudanca.get("field") == "message_template_status_update":
+                # Aprovação, pausa ou rejeição de um modelo de mensagem.
+                atualizadas += int(atualizar_estado_de_modelo(mudanca.get("value")))
+                continue
+            if mudanca.get("field") != "messages":
                 continue
             valor = mudanca.get("value") if isinstance(mudanca.get("value"), dict) else {}
+            # Envios de modelo aprovado (primeiro contato) vão direto pela Cloud
+            # API, sem instância da Evolution: o estado vale pelo wamid.
+            for item in valor.get("statuses") or []:
+                atualizadas += int(aplicar_status(item))
             metadados = valor.get("metadata") if isinstance(valor.get("metadata"), dict) else {}
             numero_id = str(metadados.get("phone_number_id") or "")
             config = ConfiguracaoWhatsApp.objects.filter(instancia=numero_id).first() if numero_id else None
