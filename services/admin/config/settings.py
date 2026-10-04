@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     # entregas. Dados próprios; as tarefas continuam em `apps.core`.
     "apps.agentes",
     "apps.comercial",
+    "apps.assistente",
 ]
 
 MIDDLEWARE = [

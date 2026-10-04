@@ -401,7 +401,7 @@ def conversar(trabalho: TrabalhoComercial, pedido: str, *, forte: bool = False) 
         batimento(trabalho)
         resposta = modelo.responder(
             modelo=trabalho.modelo,
-            instrucoes=papeis.instrucoes_completas(estrategia),
+            instrucoes=papeis.instrucoes_completas(estrategia, trabalho.site_id),
             itens=itens,
             ferramentas=definicoes or None,
             max_saida=MAX_SAIDA,
