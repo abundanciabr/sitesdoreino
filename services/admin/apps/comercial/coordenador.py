@@ -40,7 +40,7 @@ from django.utils import timezone
 from apps.agentes import modelo
 from apps.agentes.models import Conexao
 
-from . import ferramentas, otimizador, papeis, servicos
+from . import comparacao, ferramentas, otimizador, papeis, servicos
 from .models import DecisaoComercial, EstrategiaComercial, EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -278,6 +278,11 @@ def _executar(trabalho: TrabalhoComercial) -> None:
                      "O pagamento já foi aprovado pelo provedor: nada a fazer, o modelo não foi chamado.")
             return
     _achar_a_ficha(trabalho)
+    if _do_grupo_de_comparacao(trabalho):
+        terminar(trabalho, E.ENCERRADO,
+                 "Este lead está no grupo de comparação (sem agente, de propósito, para medir o efeito dele). "
+                 "Nada foi enviado e o modelo não foi chamado: a conversa fica na caixa para a equipe.")
+        return
     if trabalho.tipo == T.ANALISAR_LEAD:
         _analisar(trabalho)
     elif trabalho.tipo == T.ABORDAR:
@@ -328,6 +333,26 @@ def _marcar_se_de_teste(trabalho: TrabalhoComercial) -> None:
     if eventos.de_teste(contato, {"utm": ficha.get("utm") if isinstance(ficha.get("utm"), dict) else {}}):
         trabalho.teste = True
         guardar(trabalho)
+
+
+def _do_grupo_de_comparacao(trabalho: TrabalhoComercial) -> bool:
+    """O lead da mensagem recebida só é conhecido pelo id do contato; é aqui, com a ficha,
+    que a marca do grupo de comparação passa a conhecer esse id. Lead do grupo de
+    comparação não é atendido pelo agente (a conversa segue na caixa, com a equipe)."""
+    if not trabalho.contato_id or not trabalho.site_id:
+        return False
+    grupo = comparacao.grupo_do_contato_id(trabalho.site_id, trabalho.contato_id)
+    if grupo is None:
+        contato = (trabalho.entrada or {}).get("contato") or {}
+        email, telefone = contato.get("email") or "", contato.get("telefone") or ""
+        if not (email or telefone):
+            resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "quiz"})
+            if resposta.ok:
+                email = str(resposta.dados.get("email") or "")
+                telefone = str(resposta.dados.get("telefone") or resposta.dados.get("phone") or "")
+        grupo = comparacao.ligar_contato(
+            trabalho.site_id, comparacao.quem_e(email, telefone), trabalho.contato_id)
+    return grupo == comparacao.GRUPO_COMPARACAO
 
 
 def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:

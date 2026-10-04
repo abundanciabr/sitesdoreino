@@ -220,3 +220,6 @@ class EventoComercial(models.Model):
 
 # O teste entre duas versões de estratégia mora em experimentos.py (ver o módulo).
 from .experimentos import ExperimentoEstrategia  # noqa: E402,F401
+
+# O grupo de comparação (leads que ficam sem o agente) mora em comparacao.py (ver o módulo).
+from .comparacao import ConfiguracaoDaComparacao, MarcaDeComparacao  # noqa: E402,F401

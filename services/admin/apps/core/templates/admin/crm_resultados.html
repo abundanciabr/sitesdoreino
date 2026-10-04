@@ -84,6 +84,39 @@
     </tbody></table></div>
     {% endif %}
   </section>
+  <section aria-labelledby="t-comparacao" id="comparacao"><h2 id="t-comparacao" class="titulo-de-bloco">Com agente x sem agente (grupo de comparação)</h2>
+    <p class="nota">Para saber o que o agente de fato muda, uma parte dos leads novos fica de fora do trabalho dele e recebe só o que já existia (as jornadas fixas e a caixa de conversas). Aqui se compara quem teve o agente com quem não teve, no mesmo site, quiz, campanha e período. Vender depois de conversar com o agente não prova ganho: quem conversa já estava mais perto de comprar. A receita é líquida de reversões e não é lucro. Testes ficam fora.</p>
+    {% if comparacao_agente.percentual == 0 and not comparacao_agente.marcados %}
+    <p class="recado">O grupo de comparação está em 0%: todos os leads recebem o agente e nada foi separado. Para começar a medir, escolha o percentual em <a href="{% url 'agentes_comerciais' %}#comparacao">Agentes comerciais</a>.</p>
+    {% elif not comparacao_agente.marcados %}
+    <p class="aviso">O grupo de comparação está em {{ comparacao_agente.percentual }}%, mas nenhum lead deste período foi marcado ainda. Só entram na conta os leads que chegam depois de o percentual ser escolhido.</p>
+    {% else %}
+    {% for bloco in comparacao_agente.blocos %}
+    {% if comparacao_agente.varios_sites %}<h3>Site {{ bloco.site_id|default:"—" }}</h3>{% endif %}
+    {% if bloco.geral.conclusivo %}
+    <p class="recado">Os dois grupos têm amostra suficiente. Mesmo assim, a diferença mostra o que aconteceu neste período, não uma garantia para o próximo.</p>
+    {% else %}
+    <p class="aviso inconclusivo">Amostra insuficiente — ainda não dá para concluir.{% if not bloco.geral.ha_os_dois %} Falta gente em um dos grupos.{% endif %} A conta só vale com pelo menos {{ amostra_pessoas }} pessoas e {{ amostra_vendas }} compras em cada grupo.</p>
+    {% endif %}
+    <div class="tabela"><table><thead><tr><th>Grupo</th><th class="num">Pessoas</th><th class="num">Responderam</th><th class="num">Compras aprovadas</th><th class="num">Conversão</th><th class="num">Receita líquida</th><th class="num">Líquido por pessoa</th><th>Amostra</th></tr></thead><tbody>
+      {% with c=bloco.geral.com s=bloco.geral.sem %}
+      <tr><td>Com agente</td><td class="num">{{ c.pessoas }}</td><td class="num">{% if c.responderam is None %}<span class="indisponivel">ainda indisponível</span>{% else %}{{ c.responderam }}{% endif %}</td><td class="num">{{ c.compras }}</td><td class="num">{{ c.conversao_texto }}</td><td class="num">{{ c.liquido_texto }}</td><td class="num">{{ c.liquido_por_pessoa_texto }}</td><td>{% if c.suficiente %}suficiente{% else %}<span class="inconclusivo">insuficiente</span>{% endif %}</td></tr>
+      <tr><td>Sem agente (comparação)</td><td class="num">{{ s.pessoas }}</td><td class="num">{% if s.responderam is None %}<span class="indisponivel">ainda indisponível</span>{% else %}{{ s.responderam }}{% endif %}</td><td class="num">{{ s.compras }}</td><td class="num">{{ s.conversao_texto }}</td><td class="num">{{ s.liquido_texto }}</td><td class="num">{{ s.liquido_por_pessoa_texto }}</td><td>{% if s.suficiente %}suficiente{% else %}<span class="inconclusivo">insuficiente</span>{% endif %}</td></tr>
+      {% endwith %}
+      <tr><th>Diferença (com agente menos sem agente)</th><th class="num">—</th><th class="num">—</th><th class="num">—</th><th class="num">{% if bloco.geral.diferenca %}{{ bloco.geral.diferenca.conversao_texto }}{% else %}—{% endif %}</th><th class="num">—</th><th class="num">{% if bloco.geral.diferenca %}{{ bloco.geral.diferenca.liquido_por_pessoa_texto }}{% else %}—{% endif %}</th><th>{% if bloco.geral.conclusivo %}conclusivo{% else %}<span class="inconclusivo">não dá para concluir</span>{% endif %}</th></tr>
+    </tbody></table></div>
+    <h3>Por quiz e campanha</h3>
+    <div class="tabela"><table><thead><tr><th>Quiz</th><th>Campanha</th><th class="num">Pessoas (com / sem)</th><th class="num">Conversão com agente</th><th class="num">Conversão sem agente</th><th class="num">Diferença</th><th>Leitura</th></tr></thead><tbody>
+    {% for l in bloco.linhas %}<tr><td>{{ l.quiz }}</td><td>{{ l.campanha }}</td><td class="num">{{ l.com.pessoas }} / {{ l.sem.pessoas }}</td><td class="num">{{ l.com.conversao_texto }}</td><td class="num">{{ l.sem.conversao_texto }}</td><td class="num">{% if l.diferenca %}{{ l.diferenca.conversao_texto }}{% else %}—{% endif %}</td><td>{% if l.conclusivo %}amostra suficiente{% else %}<span class="inconclusivo">amostra insuficiente, ainda não dá para concluir</span>{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <h3>Por oferta</h3>
+    <div class="tabela"><table><thead><tr><th>Oferta</th><th class="num">Compras (com / sem)</th><th class="num">Conversão com agente</th><th class="num">Conversão sem agente</th><th class="num">Diferença</th><th>Leitura</th></tr></thead><tbody>
+    {% for l in bloco.ofertas %}<tr><td>{{ l.oferta }}</td><td class="num">{{ l.com.compras }} / {{ l.sem.compras }}</td><td class="num">{{ l.com.conversao_texto }}</td><td class="num">{{ l.sem.conversao_texto }}</td><td class="num">{% if l.diferenca %}{{ l.diferenca.conversao_texto }}{% else %}—{% endif %}</td><td>{% if l.conclusivo %}amostra suficiente{% else %}<span class="inconclusivo">amostra insuficiente, ainda não dá para concluir</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="6" class="indisponivel">Nenhuma compra nestes grupos.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endfor %}
+    <p class="nota">Estão na conta os {{ comparacao_agente.marcados }} lead{{ comparacao_agente.marcados|pluralize:"s" }} marcados (percentual em vigor: {{ comparacao_agente.percentual }}%). Lead de antes de o recurso ser ligado não entra: não se sabe como foi tratado.</p>
+    {% endif %}
+  </section>
   <p class="nota">Conversão: pessoas que compraram o produto do quiz divididas pelas que fizeram o quiz no período. Recuperação: compras pagas depois de uma tentativa que falhou. Conversão assistida: compras com mensagem ou link de um agente antes do pagamento; não prova que a venda só aconteceu por causa do agente. Pagamento conta só quando o provedor confirma.</p>
   {% endif %}
 </main>

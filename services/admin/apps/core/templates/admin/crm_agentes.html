@@ -121,6 +121,19 @@
   </section>
   {% endif %}
 
+  {% if disponivel %}
+  <section id="comparacao" aria-label="Grupo de comparação">
+    <h2>Grupo de comparação</h2>
+    <p class="crmag-explica">Para saber o que os agentes de fato mudam, uma fatia fixa dos leads novos pode ficar sem eles: recebe só o que já existia (as jornadas fixas de mensagens e a caixa de conversas, onde a equipe responde). Cada lead cai sempre no mesmo grupo, e mudar o percentual não move quem já foi marcado. Em 0%, que é o padrão, nada muda. O resultado aparece em <a href="{% url 'crm_resultados' %}#comparacao">Resultados</a>, com aviso quando a amostra ainda é pequena.</p>
+    <p class="crmag-nota">Agora: <b>{{ comparacao.percentual }}%</b> dos leads novos ficam sem o agente. Já marcados: {{ comparacao.com_agente }} com agente e {{ comparacao.sem_agente }} sem.</p>
+    <form method="post" action="{% url 'crm_agentes_comparacao' %}" class="crmag-linha">{% csrf_token %}
+      <label>Percentual de leads novos sem o agente (0 a {{ comparacao.maximo }})<input type="number" name="percentual" min="0" max="{{ comparacao.maximo }}" step="1" value="{{ comparacao.percentual }}" inputmode="numeric" required></label>
+      <label class="marcar"><input type="checkbox" name="confirmo" value="1"> Confirmo: essa parte dos leads novos não será atendida pelos agentes. A mudança fica na auditoria.</label>
+      <button class="botao">Mudar o percentual</button>
+    </form>
+  </section>
+  {% endif %}
+
   <section id="estrategias" aria-label="Estratégias">
     <h2>Estratégias por papel</h2>
     <p class="crmag-explica">Cada papel usa uma versão de instruções por vez. Mudar a estratégia não muda o catálogo, os preços nem o que conta como pagamento aprovado. As conversas já feitas continuam ligadas à versão que usaram. O agente de resultados só propõe uma versão nova com pelo menos {{ min_amostra }} abordagens na versão atual; proposta não entra no ar sozinha.</p>

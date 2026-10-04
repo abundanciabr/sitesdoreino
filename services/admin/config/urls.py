@@ -82,6 +82,7 @@ from apps.core.crm_conversas import crm_conversa, crm_conversas
 from apps.core.crm_agentes import (
     crm_agentes,
     crm_agentes_analisar,
+    crm_agentes_comparacao,
     crm_agentes_ativar,
     crm_agentes_nova,
     crm_agentes_retomar,
@@ -385,6 +386,7 @@ urlpatterns = [
     # única página da equipe comercial de agentes (`apps/comercial`).
     path("crm/agentes/", crm_agentes, name="crm_agentes"),
     path("crm/agentes/analisar/", crm_agentes_analisar, name="crm_agentes_analisar"),
+    path("crm/agentes/comparacao/", crm_agentes_comparacao, name="crm_agentes_comparacao"),
     path("crm/agentes/trabalhos/<int:trabalho_id>/retomar/", crm_agentes_retomar, name="crm_agentes_retomar"),
     path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
     path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),

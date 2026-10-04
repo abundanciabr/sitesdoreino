@@ -15,6 +15,8 @@ painel cruza com o trabalho dos agentes, que mora na admin, sem receber nome,
 e-mail ou telefone de ninguém.
 """
 
+import hashlib
+import re
 from collections import defaultdict
 
 from django.db.models import Q
@@ -52,6 +54,15 @@ def _oferta(compra) -> str:
         return compra.oferta_ref
     produtos = compra.produtos or []
     return str(produtos[0]) if produtos else "desconhecida"
+
+
+def chaves_de_contato(lead) -> list[str]:
+    """Identificadores opacos do contato para o painel cruzar com o grupo de comparação dele
+    (`services/admin/apps/comercial/comparacao.py::chave_do_contato`, a mesma conta): um hash do
+    site com o e-mail em minúsculas e outro com os dígitos do telefone. Sem e-mail nem telefone
+    legível na resposta: só o hash."""
+    quem = [(lead.email or "").strip().lower(), re.sub(r"\D", "", lead.phone or "")]
+    return [hashlib.sha256(f"chave-de-contato:{lead.site_id}:{q}".encode()).hexdigest() for q in quem if q]
 
 
 def _grupo_vazio():
@@ -168,7 +179,8 @@ def resultados_comerciais(request, site_id: str = "", desde: str = "", ate: str 
         "por_oferta": [{"oferta": k, **_fechar(v)} for k, v in sorted(por_oferta.items())],
         "oportunidades": [
             {"id": str(o.pk), "lead_id": str(o.lead_id), "quiz": _quiz(o),
-             "campanha": campanha_do_lead(o.lead), "criada_em": _iso(o.criada_em)}
+             "campanha": campanha_do_lead(o.lead), "criada_em": _iso(o.criada_em),
+             "site_id": o.lead.site_id, "chaves_de_contato": chaves_de_contato(o.lead)}
             for o in reais[:LIMITE_DE_ITENS]
         ],
         "oportunidades_truncadas": len(reais) > LIMITE_DE_ITENS,

@@ -38,6 +38,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_GET
 
+from apps.comercial import comparacao
+
 from .clients import LeadsClient, http
 
 logger = logging.getLogger("admin.crm_resultados")
@@ -338,6 +340,124 @@ def fatos_dos_agentes(oportunidades: list, compras: list) -> "dict | None":
 
 
 # ---------------------------------------------------------------------------
+# Com agente x sem agente (grupo de comparação)
+# ---------------------------------------------------------------------------
+NOMES_DOS_GRUPOS = {comparacao.GRUPO_AGENTE: "Com agente", comparacao.GRUPO_COMPARACAO: "Sem agente (comparação)"}
+
+
+def _respostas_por_grupo(oportunidades_por_grupo: dict, sites: set) -> "dict | None":
+    """Quantas pessoas de cada grupo escreveram para a equipe depois de entrar no CRM, lendo as
+    conversas ligadas a leads na mensageria. `None` quando ela não responde: aparece como
+    "ainda indisponível", nunca como zero."""
+    if not sites:
+        return None
+    cliente = ConversasClient()
+    entradas = {}
+    for site in sorted(sites):
+        conversas = cliente.conversas(site)
+        if conversas is None:
+            return None
+        for c in conversas:
+            if c.get("lead_id"):
+                entradas.setdefault((site, str(c["lead_id"])), []).append(_instante(c.get("ultima_entrada_em")))
+    resposta = {}
+    for grupo, oportunidades in oportunidades_por_grupo.items():
+        pessoas = set()
+        for o in oportunidades:
+            criada = _instante(o.get("criada_em"))
+            for quando in entradas.get((o.get("site_id") or "", str(o.get("lead_id"))), []):
+                if quando and (criada is None or quando > criada):
+                    pessoas.add(o.get("lead_id"))
+        resposta[grupo] = len(pessoas)
+    return resposta
+
+
+def _lado(oportunidades: list, compras: list, responderam) -> dict:
+    pessoas = len(oportunidades)
+    compradores = len({c.get("lead_id") for c in compras})
+    soma = _somar_compras(compras)
+    return {
+        "pessoas": pessoas, "responderam": responderam, "compras": soma["compras_aprovadas"],
+        "compradores": compradores, "liquido_centavos": soma["liquido_centavos"],
+        "conversao": _taxa(compradores, pessoas),
+        "liquido_por_pessoa": round(soma["liquido_centavos"] / pessoas) if pessoas else None,
+        "suficiente": _suficiente(pessoas, soma["compras_aprovadas"]),
+    }
+
+
+def _comparar(oportunidades_por_grupo: dict, compras_por_grupo: dict, responderam: "dict | None") -> dict:
+    """Os dois lados e a diferença (com agente menos sem agente)."""
+    lados = {g: _lado(oportunidades_por_grupo.get(g, []), compras_por_grupo.get(g, []),
+                      None if responderam is None else responderam.get(g, 0))
+             for g in (comparacao.GRUPO_AGENTE, comparacao.GRUPO_COMPARACAO)}
+    com, sem = lados[comparacao.GRUPO_AGENTE], lados[comparacao.GRUPO_COMPARACAO]
+    ha_os_dois = bool(com["pessoas"] and sem["pessoas"])
+    conclusivo = ha_os_dois and com["suficiente"] and sem["suficiente"]
+    diferenca = None
+    if ha_os_dois:
+        diferenca = {
+            "conversao_pontos": round((com["conversao"] - sem["conversao"]) * 100, 1),
+            "liquido_por_pessoa_centavos": com["liquido_por_pessoa"] - sem["liquido_por_pessoa"],
+        }
+    return {"com": com, "sem": sem, "diferenca": diferenca, "ha_os_dois": ha_os_dois, "conclusivo": conclusivo}
+
+
+def comparacao_com_e_sem_agente(dados: dict, filtros: dict) -> dict:
+    """A seção "Com agente x sem agente": no mesmo site, quiz, campanha, oferta e período, o que
+    aconteceu com quem ficou fora do trabalho dos agentes (grupo de comparação) e com quem não.
+
+    Só entram leads marcados (`comparacao.decidir`); lead sem marca é de antes do recurso e o
+    tratamento dele não é conhecido. Testes e sandbox já saem dos totais na `leads`.
+    """
+    base = {"percentual": comparacao.percentual(), "grupos": NOMES_DOS_GRUPOS, "blocos": [], "marcados": 0,
+            "varios_sites": False}
+    oportunidades = [o for o in dados["oportunidades"] if isinstance(o, dict) and o.get("id")]
+    grupos = comparacao.grupos_por_chave(
+        [c for o in oportunidades for c in (o.get("chaves_de_contato") or [])], filtros.get("site_id") or "")
+    marcadas = []
+    for o in oportunidades:
+        achados = {grupos[c] for c in (o.get("chaves_de_contato") or []) if c in grupos}
+        # Uma pessoa com duas chaves de grupos diferentes é ambígua: fica fora da conta.
+        if len(achados) == 1:
+            marcadas.append((o, achados.pop()))
+    base["marcados"] = len(marcadas)
+    if not marcadas:
+        return base
+    grupo_da_oportunidade = {o["id"]: g for o, g in marcadas}
+    site_da_oportunidade = {o["id"]: o.get("site_id") or "" for o, _ in marcadas}
+    compras = [c for c in dados["compras"] if isinstance(c, dict) and c.get("oportunidade_id") in grupo_da_oportunidade]
+
+    sites = sorted(set(site_da_oportunidade.values()))
+    for site in sites:
+        do_site = [(o, g) for o, g in marcadas if (o.get("site_id") or "") == site]
+        compras_do_site = [c for c in compras if site_da_oportunidade[c["oportunidade_id"]] == site]
+        por_grupo = {g: [o for o, gg in do_site if gg == g] for g in NOMES_DOS_GRUPOS}
+        responderam = _respostas_por_grupo(por_grupo, {site}) if site else None
+
+        def compras_de(grupo, fonte=compras_do_site):
+            return [c for c in fonte if grupo_da_oportunidade[c["oportunidade_id"]] == grupo]
+
+        geral = _comparar(por_grupo, {g: compras_de(g) for g in NOMES_DOS_GRUPOS}, responderam)
+        # Mesmo quiz e mesma campanha: só se compara o que é parecido.
+        celulas = sorted({(o.get("quiz") or "—", o.get("campanha") or "—") for o, _ in do_site})
+        linhas = []
+        for quiz, campanha in celulas:
+            ops = {g: [o for o in por_grupo[g] if (o.get("quiz") or "—", o.get("campanha") or "—") == (quiz, campanha)]
+                   for g in NOMES_DOS_GRUPOS}
+            cps = {g: [c for c in compras_de(g) if (c.get("quiz") or "—", c.get("campanha") or "—") == (quiz, campanha)]
+                   for g in NOMES_DOS_GRUPOS}
+            linhas.append({"quiz": quiz, "campanha": campanha, **_comparar(ops, cps, None)})
+        # Oferta é atributo da compra: o denominador é o grupo inteiro.
+        ofertas = []
+        for oferta in sorted({c.get("oferta") or "—" for c in compras_do_site}):
+            cps = {g: [c for c in compras_de(g) if (c.get("oferta") or "—") == oferta] for g in NOMES_DOS_GRUPOS}
+            ofertas.append({"oferta": oferta, **_comparar(por_grupo, cps, None)})
+        base["blocos"].append({"site_id": site, "geral": geral, "linhas": linhas, "ofertas": ofertas})
+    base["varios_sites"] = len(sites) > 1
+    return base
+
+
+# ---------------------------------------------------------------------------
 # Montagem da tela
 # ---------------------------------------------------------------------------
 def _periodo(request):
@@ -528,6 +648,7 @@ def montar(request) -> "tuple[dict, int]":
     contexto["custo_por_venda"] = int((custo_centavos / vendas).to_integral_value()) if componentes and vendas else None
     contexto["margem_centavos"] = liquido - contexto["custo_centavos"] if componentes else None
     contexto["amostra_geral_suficiente"] = _suficiente(int(totais.get("elegiveis") or 0), vendas)
+    contexto["comparacao_agente"] = comparacao_com_e_sem_agente(dados, filtros)
     _formatar(contexto)
     return contexto, 200
 
@@ -552,6 +673,21 @@ def _formatar(contexto: dict) -> None:
         linha["papel_nome"] = NOMES_DOS_PAPEIS.get(linha["papel"], linha["papel"])
     for linha in contexto["comparacoes"]:
         linha["papel_nome"] = NOMES_DOS_PAPEIS.get(linha["papel"], linha["papel"])
+    for bloco in contexto["comparacao_agente"]["blocos"]:
+        for comp in (bloco["geral"], *bloco["linhas"], *bloco["ofertas"]):
+            _formatar_comparacao(comp)
+
+
+def _formatar_comparacao(comp: dict) -> None:
+    for lado in (comp["com"], comp["sem"]):
+        lado["conversao_texto"] = porcento(lado["conversao"])
+        lado["liquido_texto"] = reais(lado["liquido_centavos"])
+        lado["liquido_por_pessoa_texto"] = reais(lado["liquido_por_pessoa"]) if lado["pessoas"] else "—"
+    dif = comp["diferenca"]
+    if dif:
+        pontos = f"{dif['conversao_pontos']:+.1f}".replace(".", ",")
+        dif["conversao_texto"] = f"{pontos} p.p."
+        dif["liquido_por_pessoa_texto"] = reais(dif["liquido_por_pessoa_centavos"])
 
 
 @require_GET

@@ -21,7 +21,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from . import coordenador, otimizador, servicos
+from . import comparacao, coordenador, otimizador, servicos
 from .models import EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -119,6 +119,14 @@ def _do_quiz(nome: str, envelope: dict, *, parcial: bool) -> TrabalhoComercial |
         return None
     quiz = _texto(data.get("quiz_slug") or data.get("quiz"), 120)
     sessao = _texto(data.get("sessao") or data.get("session_id"), 120)
+    teste = de_teste(contato, data)
+    # O grupo de comparação fica sem o agente: o lead não vira trabalho nenhum e segue só
+    # com o que já existia (jornadas fixas e caixa de conversas). Com o percentual em 0,
+    # que é o padrão, todo lead cai em `agente` e nada muda.
+    grupo = comparacao.decidir(
+        site_id, comparacao.quem_e(contato.get("email"), contato.get("telefone")), sessao=sessao, teste=teste)
+    if grupo == comparacao.GRUPO_COMPARACAO:
+        return None
     entrada = {
         "contato": contato,
         "quiz": quiz,
@@ -133,13 +141,14 @@ def _do_quiz(nome: str, envelope: dict, *, parcial: bool) -> TrabalhoComercial |
         "sessao": sessao,
         "host": _host(data) or servicos.host_do_site(site_id),
         "parcial": parcial,
+        "grupo": grupo,
     }
     comum = {
         "origem": nome,
         "evento_id": _texto(envelope.get("event_id"), 120),
         "site_id": site_id,
         "chave_da_conversa": chave_do_lead,
-        "teste": de_teste(contato, data),
+        "teste": teste,
     }
     if parcial:
         if TrabalhoComercial.objects.filter(
@@ -196,6 +205,8 @@ def ao_mensagem_recebida(envelope: dict):
     contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
+    if comparacao.grupo_do_contato_id(site_id, contato_id) == comparacao.GRUPO_COMPARACAO:
+        return None  # grupo de comparação: a mensagem fica na caixa para a equipe responder
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
     trabalho, _ = coordenador.criar(
         T.ATENDER_MENSAGEM,
