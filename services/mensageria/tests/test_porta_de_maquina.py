@@ -839,6 +839,11 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp/{SITE}/reconcile": {
         "origem": "manual", "referencia": "prova-sem-envio", "provider_id": "mensagem-sintetica",
     },
+    "/whatsapp-modelos/sincronizar": {},
+    "/whatsapp-modelos/modelos/mapeamento": {"modelo_id": 1, "mapeamento": {}},
+    f"/whatsapp-modelos/{SITE}/enviar": {
+        "chave_idempotencia": "prova-sem-envio", "destinatario": "11999999999", "modelo": "sintetico",
+    },
 }
 
 

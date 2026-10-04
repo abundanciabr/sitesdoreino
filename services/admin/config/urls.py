@@ -78,6 +78,7 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
+from apps.core.crm_modelos import crm_modelos
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -233,6 +234,7 @@ from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    path("crm/modelos/", crm_modelos, name="crm_modelos"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),

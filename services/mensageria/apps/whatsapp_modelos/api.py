@@ -23,6 +23,7 @@ class EnvioEntrada(Schema):
 
 
 class MapeamentoEntrada(Schema):
+    modelo_id: int
     mapeamento: dict
 
 
@@ -52,11 +53,11 @@ def sincronizar(request):
     return {"canal_oficial": "ligado", "erro": "", **resultado}
 
 
-@router.post("/modelos/{modelo_id}/mapeamento")
-def mapear(request, modelo_id: int, dados: MapeamentoEntrada):
+@router.post("/modelos/mapeamento")
+def mapear(request, dados: MapeamentoEntrada):
     _escrita(request)
     try:
-        modelo = definir_mapeamento(modelo_id, dados.mapeamento)
+        modelo = definir_mapeamento(dados.modelo_id, dados.mapeamento)
     except ModeloWhatsApp.DoesNotExist:
         raise HttpError(404, "modelo nao encontrado")
     except ValueError as exc:

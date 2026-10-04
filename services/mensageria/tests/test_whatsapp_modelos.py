@@ -233,12 +233,12 @@ def test_api_painel_sincroniza_mapeia_e_envia(meta, tokens):
     assert painel["canal_oficial"] == "ligado"
     assert {m["nome"] for m in painel["modelos"]} >= {"primeiro_contato", "em_analise"}
     modelo = next(m for m in painel["modelos"] if m["nome"] == "primeiro_contato")
-    mapeado = cliente.post(base + f"modelos/{modelo['id']}/mapeamento",
-                           json.dumps({"mapeamento": {"body:3": "link"}}),
+    mapeado = cliente.post(base + "modelos/mapeamento",
+                           json.dumps({"modelo_id": modelo["id"], "mapeamento": {"body:3": "link"}}),
                            content_type="application/json", **escrita)
     assert mapeado.status_code == 200 and mapeado.json()["mapeamento"]["body:3"] == "link"
-    assert cliente.post(base + f"modelos/{modelo['id']}/mapeamento",
-                        json.dumps({"mapeamento": {"body:3": "renda"}}),
+    assert cliente.post(base + "modelos/mapeamento",
+                        json.dumps({"modelo_id": modelo["id"], "mapeamento": {"body:3": "renda"}}),
                         content_type="application/json", **escrita).status_code == 422
     envio = cliente.post(base + "site-a/enviar", json.dumps({
         "chave_idempotencia": "abordagem:op-9", "destinatario": "5511988887777",

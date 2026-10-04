@@ -249,6 +249,22 @@ def montar_componentes(modelo: ModeloWhatsApp, variaveis: dict) -> list[dict]:
     return componentes
 
 
+def preparar_modelo(nome: str, variaveis: dict | None = None, idioma: str = "") -> dict:
+    """Modelo aprovado já preenchido, no formato `modelo` do envio da conversa.
+
+    Devolve {"nome", "idioma", "componentes"}; ValueError quando não há modelo
+    aprovado com esse nome ou falta dado do lead.
+    """
+    escolhido = escolher_modelo(nome, idioma)
+    if escolhido is None:
+        raise ValueError("modelo nao aprovado ou nao sincronizado")
+    if not escolhido.suportado:
+        raise ValueError(escolhido.motivo or "modelo ainda nao suportado")
+    limpas = {k: _texto(v) for k, v in (variaveis or {}).items() if k in VARIAVEIS_DO_LEAD and v}
+    return {"nome": escolhido.nome, "idioma": escolhido.idioma,
+            "componentes": montar_componentes(escolhido, limpas)}
+
+
 def _descadastrado(site_id: str, numero: str) -> bool:
     """Respeita o descadastro guardado pela mensageria, quando ele existir."""
     try:
