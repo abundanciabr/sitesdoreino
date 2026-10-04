@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
@@ -46,7 +47,7 @@ log = logging.getLogger(__name__)
 
 POSSE = timedelta(minutes=5)
 MAX_QUEDAS = 4
-MAX_RODADAS = 8
+MAX_RODADAS = 12  # a última rodada vai sem ferramentas: o agente tem de decidir (ver `conversar`)
 MAX_SAIDA = 3000
 ESPERA_ENVIO_INCERTO = timedelta(seconds=60)
 ESPERA_DA_FICHA = timedelta(minutes=15)
@@ -183,6 +184,7 @@ def guardar(trabalho: TrabalhoComercial) -> None:
         contato_id=trabalho.contato_id,
         oportunidade_id=trabalho.oportunidade_id,
         entrada=trabalho.entrada,
+        teste=trabalho.teste,
         atualizado_em=timezone.now(),
     ):
         raise PerdeuAPosse()
@@ -310,10 +312,29 @@ def _oferta_da_oportunidade(oportunidade: dict) -> str:
     return ""
 
 
+def _marcar_se_de_teste(trabalho: TrabalhoComercial) -> None:
+    """A mensagem recebida traz só o id do contato, então o trabalho nasce sem saber se é de teste.
+    Quando a ficha mostra um contato de teste (e-mail @example.com, nome com "Sandbox"), o trabalho
+    passa a ser de teste: fica fora dos resultados e dos totais, como o resto dos dados de teste."""
+    if trabalho.teste or not trabalho.contato_id or (trabalho.entrada or {}).get("contato", {}).get("email"):
+        return
+    resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "quiz"})
+    if not resposta.ok:
+        return
+    from . import eventos
+
+    ficha = resposta.dados or {}
+    contato = {"nome": str(ficha.get("nome") or ""), "email": str(ficha.get("email") or "").lower()}
+    if eventos.de_teste(contato, {"utm": ficha.get("utm") if isinstance(ficha.get("utm"), dict) else {}}):
+        trabalho.teste = True
+        guardar(trabalho)
+
+
 def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
     """O evento traz o contato pelo e-mail; a ficha e a oportunidade moram em
     leads. Acha os números uma vez e guarda no trabalho."""
     if trabalho.contato_id and trabalho.oportunidade_id:
+        _marcar_se_de_teste(trabalho)
         return
     entrada = trabalho.entrada or {}
     contato = entrada.get("contato") or {}
@@ -419,7 +440,9 @@ def conversar(trabalho: TrabalhoComercial, pedido: str, *, forte: bool = False) 
             modelo=trabalho.modelo,
             instrucoes=papeis.instrucoes_completas(estrategia, trabalho.site_id),
             itens=itens,
-            ferramentas=definicoes or None,
+            # Na última rodada sem ferramenta: o agente fecha com a decisão em vez de
+            # gastar a rodada numa consulta a mais e ficar "sem decisão".
+            ferramentas=None if retomada.get("rodadas", 0) >= MAX_RODADAS - 1 else (definicoes or None),
             max_saida=MAX_SAIDA,
             origem="comercial",
             formato=papeis.SAIDAS[papel],
@@ -520,12 +543,18 @@ def _analisar(trabalho: TrabalhoComercial) -> None:
             teste=trabalho.teste,
             entrada={**entrada, "perfil": (trabalho.resultado or {}).get("perfil"),
                      "decisao_do_analista": final,
-                     "oferta_ref": entrada.get("oferta_ref") or trabalho.resultado.get("oferta_indicada")},
+                     # Só vale como oferta o que tem cara de oferta (slug): frase do modelo não vira consulta ao catálogo.
+                     "oferta_ref": entrada.get("oferta_ref") or _so_slug(trabalho.resultado.get("oferta_indicada"))},
             nao_antes_de=datetime.fromisoformat(depois) if depois else None,
         )
     resumo = f"Perfil: prioridade {final.get('prioridade') or '—'}. " + (
         "Abordagem na fila." if seguinte else f"Sem abordagem: {final.get('motivo') or 'decisão do analista'}.")
     terminar(trabalho, E.CONCLUIDO, resumo=resumo)
+
+
+def _so_slug(valor) -> str:
+    texto = str(valor or "").strip()
+    return texto if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,99}", texto) else ""
 
 
 def _perfil_para_o_pedido(trabalho: TrabalhoComercial) -> str:
