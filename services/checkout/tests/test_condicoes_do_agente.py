@@ -4,10 +4,13 @@ Nada é inventado; o que não existe mais some; um site não enxerga o outro.
 """
 
 import json
+import threading
 
 import httpx
 import pytest
 from django.core.cache import cache
+from django.db import connections
+from django.test import Client
 
 from apps.pedidos.models import CondicaoDoAgente, Session
 from conftest import HOST_A, HOST_B, OFERTA_A, PAGAMENTOS, SITE_A, SITE_B, SLUG
@@ -294,6 +297,80 @@ def test_dois_puts_iguais_ao_mesmo_tempo_nao_dao_erro(api, rede, marcar, monkeyp
     resp = marcar(["pix"])
     assert resp.status_code == 200, resp.content
     assert CondicaoDoAgente.objects.count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_dois_puts_diferentes_ao_mesmo_tempo_ficam_com_a_marcacao_de_um_so(
+    cartao_no_site_a, token_valido, monkeypatch
+):
+    """O PUT apaga o que não veio e grava o que veio. Sem trava entre os dois
+    passos, dois operadores ao mesmo tempo deixavam a UNIÃO das duas marcações,
+    e o agente passava a oferecer o que nenhum deles deixou marcado."""
+    original = CondicaoDoAgente.objects.bulk_create
+    a_ja_apagou = threading.Event()
+    b_terminou = threading.Event()
+
+    def gravar_depois_de_o_outro_terminar(objs, **kwargs):
+        if threading.current_thread().name == "put-a":
+            # A já apagou e ainda não gravou: B tenta salvar neste intervalo.
+            a_ja_apagou.set()
+            b_terminou.wait(timeout=1.5)
+        return original(objs, **kwargs)
+
+    monkeypatch.setattr(CondicaoDoAgente.objects, "bulk_create", gravar_depois_de_o_outro_terminar)
+    respostas = {}
+
+    def salvar(nome, ids):
+        try:
+            respostas[nome] = Client().put(
+                AGENTE,
+                data=json.dumps({"liberadas": ids, "autor": nome}),
+                content_type="application/json",
+                HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+                HTTP_HOST=HOST_A,
+            )
+        finally:
+            if nome == "put-b":
+                b_terminou.set()
+            connections.close_all()
+
+    a = threading.Thread(target=salvar, args=("put-a", ["pix"]), name="put-a")
+    b = threading.Thread(target=salvar, args=("put-b", ["card_1x"]), name="put-b")
+    a.start()
+    assert a_ja_apagou.wait(timeout=10)
+    b.start()
+    a.join(timeout=30)
+    b.join(timeout=30)
+
+    assert respostas["put-a"].status_code == 200 and respostas["put-b"].status_code == 200
+    marcadas = sorted(CondicaoDoAgente.objects.values_list("condicao_id", flat=True))
+    assert marcadas in (["pix"], ["card_1x"]), marcadas
+
+
+@pytest.mark.django_db
+def test_oferta_da_consulta_com_barras_nao_sai_do_caminho_da_oferta(api, rede):
+    """`?oferta=../../site-bbb/ofertas/x` não pode fazer o checkout consultar
+    o catálogo de OUTRO site com o token dele."""
+    resp = api.get(LISTA + f"?oferta=../../{SITE_B['id']}/ofertas/{SLUG}")
+    assert resp.status_code == 200, resp.content
+    assert all(f"/sites/{SITE_B['id']}/" not in str(c.request.url) for c in rede.calls)
+    linha = resp.json()["ofertas"][0]
+    assert linha["disponivel"] is False
+    assert "oferta" not in linha
+
+
+@pytest.mark.parametrize("slug", ["../x", "a/b", "a?b=1", "a#b", "..", "%2e%2e", "a b"])
+def test_slug_vai_codificada_no_caminho_do_catalogo(rede, slug):
+    from urllib.parse import quote
+
+    from apps.core.clients import CatalogoClient
+
+    assert CatalogoClient().obter_oferta(SITE_A["id"], slug) is None
+    for chamada in rede.calls:
+        if "/ofertas/" in chamada.request.url.raw_path.decode():
+            caminho = chamada.request.url.raw_path.decode()
+            assert caminho == f"/api/catalogo/sites/{SITE_A['id']}/ofertas/{quote(slug, safe='')}"
+    assert all("site-bbb" not in str(c.request.url) for c in rede.calls)
 
 
 @pytest.mark.django_db
