@@ -78,6 +78,7 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
+from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -235,6 +236,8 @@ urlpatterns = [
     path("crm/", crm, name="crm"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
+    path("crm/ofertas-dos-quizzes/", ofertas_dos_quizzes, name="crm_ofertas_dos_quizzes"),
+    path("crm/ofertas-dos-quizzes/<slug:slug>/salvar/", ofertas_dos_quizzes_salvar, name="crm_ofertas_dos_quizzes_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
