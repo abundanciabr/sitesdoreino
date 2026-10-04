@@ -623,7 +623,12 @@ def _afirmacao(item, *, hipotese: bool = False) -> tuple[dict | None, bool]:
 def _assinatura_do_perfil(perfil: dict) -> dict:
     """O que o perfil afirma (sem o resumo, as datas e quem analisou): serve para dizer se mudou."""
     def afirmacao(item):
-        return (str(item.get("texto") or "").strip().casefold(), bool(item.get("hipotese")))             if isinstance(item, dict) else None
+        if not isinstance(item, dict):
+            return None
+        provas = [p for p in item.get("evidencias") or [] if isinstance(p, dict)]
+        # A prova mais recente entra na conta: o lead repetir ou corrigir algo com mensagem nova é mudança.
+        ultima = (str(provas[-1].get("tipo") or ""), str(provas[-1].get("id") or "")) if provas else ("", "")
+        return (str(item.get("texto") or "").strip().casefold(), bool(item.get("hipotese")), ultima)
 
     def lista(valor):
         return sorted(x for x in (afirmacao(i) for i in valor or []) if x)
@@ -640,6 +645,31 @@ def _assinatura_do_perfil(perfil: dict) -> dict:
         "prioridade": (prioridade.get("nivel") if isinstance(prioridade, dict) else prioridade) or "",
         "oferta": (oferta.get("oferta_ref") if isinstance(oferta, dict) else oferta) or "",
     }
+
+
+def _juntar_provas(nova, antiga) -> None:
+    """Afirmação que continua valendo (mesmo texto) guarda as provas antigas e leva a mais nova no fim.
+    Texto mudado é afirmação nova: só a prova dela. A versão antiga do perfil segue guardada na ficha."""
+    if not isinstance(nova, dict) or not isinstance(antiga, dict):
+        return
+    if str(nova.get("texto") or "").strip().casefold() != str(antiga.get("texto") or "").strip().casefold():
+        return
+    juntas = []
+    for prova in [*(antiga.get("evidencias") or []), *(nova.get("evidencias") or [])]:
+        if isinstance(prova, dict) and prova.get("id") and not any(
+                (p.get("tipo"), p.get("id")) == (prova.get("tipo"), prova.get("id")) for p in juntas):
+            juntas.append(prova)
+    nova["evidencias"] = juntas[-30:]  # o limite que a ficha aceita por afirmação
+
+
+def _guardar_historico_de_provas(perfil: dict, vigente: dict) -> None:
+    for campo in ("objetivo_declarado", "experiencia", "disponibilidade"):
+        _juntar_provas(perfil.get(campo), vigente.get(campo))
+    for campo in ("duvidas", "objecoes", "hipoteses"):
+        antigas = {str(a.get("texto") or "").strip().casefold(): a
+                   for a in vigente.get(campo) or [] if isinstance(a, dict)}
+        for nova in perfil.get(campo) or []:
+            _juntar_provas(nova, antigas.get(str((nova or {}).get("texto") or "").strip().casefold()))
 
 
 def perfil_igual(vigente: dict, novo: dict) -> bool:
@@ -698,6 +728,8 @@ def salvar_perfil(ctx: Contexto, args: dict) -> dict:
         return saida
     if t.tipo == T.REANALISAR_PERFIL:
         vigente = (t.entrada or {}).get("perfil_vigente")
+        if isinstance(vigente, dict):
+            _guardar_historico_de_provas(perfil, vigente)
         if isinstance(vigente, dict) and perfil_igual(vigente, perfil):
             saida["sem_mudanca"] = True
             saida["aviso"] = "Nada mudou em relação ao perfil vigente: nenhuma versão nova foi gravada."
@@ -770,6 +802,7 @@ def passar_para_responsavel(ctx: Contexto, args: dict) -> dict:
     motivo = str(args.get("motivo") or "")[:500]
     resumo = str(args.get("resumo") or "")[:2000]
     feito = []
+    assumida = None
     conversa_id = t.conversa_id
     if not conversa_id:
         try:
@@ -782,6 +815,7 @@ def passar_para_responsavel(ctx: Contexto, args: dict) -> dict:
                                   site_id=t.site_id)
         if resposta.ok:
             feito.append("conversa")
+            assumida = resposta.dados if isinstance(resposta.dados, dict) else {}
         elif resposta.estado == "recusado":
             raise Recusa(resposta.detalhe)
     if t.oportunidade_id:
@@ -798,7 +832,37 @@ def passar_para_responsavel(ctx: Contexto, args: dict) -> dict:
             feito.append("historico")
     if not feito:
         raise Indisponivel("Ainda não dá para passar a conversa pelo site.")
+    _avisar_a_equipe_agora(t, conversa_id, assumida)
     return {"passado": True, "registrado_em": feito}
+
+
+def _avisar_a_equipe_agora(t: TrabalhoComercial, conversa_id: str, assumida: dict | None) -> None:
+    """Avisa a equipe na hora, sem esperar a varredura de 5 minutos. Com a conversa assumida, o fato é o mesmo
+    da varredura (conversa + momento em que foi passada), então ela não repete o aviso. Registro de teste
+    não avisa ninguém; o aviso nunca derruba o trabalho. A recuperação de compra e o estorno abrem o aviso
+    deles (com o caso descrito), então aqui não abrem um segundo."""
+    if t.teste or t.tipo in (T.RECUPERAR_COMPRA, T.REGISTRAR_ESTORNO):
+        return
+    try:
+        from apps.core import avisos_equipe
+
+        momento = str((assumida or {}).get("assumida_em") or "")
+        fato = f"conversa:{(assumida or {}).get('id') or conversa_id}:{momento}" if momento else f"passagem:{t.pk}"
+        link = (avisos_equipe.link_da_conversa({**assumida, "site_id": (assumida or {}).get("site_id") or t.site_id})
+                if assumida else avisos_equipe.link_da_oportunidade(t.oportunidade_id) if t.oportunidade_id
+                else "/admin/crm/")
+        with transaction.atomic():
+            avisos_equipe.avisar(
+                avisos_equipe.Tipo.PESSOA_PEDIDA,
+                site_id=t.site_id,
+                fato=fato,
+                titulo="Uma conversa foi passada para a equipe",
+                texto=("O agente passou o atendimento para uma pessoa da equipe. "
+                       "O agente não responde enquanto ela estiver com vocês."),
+                link=link,
+            )
+    except Exception:  # noqa: BLE001 - o aviso não derruba o trabalho
+        log.exception("comercial: o aviso da passagem do trabalho %s não foi aberto", t.pk)
 
 
 # ---------------------------------------------------------------- escritas com chave

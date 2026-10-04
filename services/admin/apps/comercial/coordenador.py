@@ -325,6 +325,10 @@ def _executar(trabalho: TrabalhoComercial) -> None:
                  "Este lead não vai para o agente: está no grupo de comparação (sem agente, de propósito, para medir "
                  "o efeito dele) ou a ficha não pôde ser lida para saber. Nada foi enviado e o modelo não foi chamado: a conversa fica na caixa para a equipe.")
         return
+    if trabalho.tipo in (T.ABORDAR, T.ACOMPANHAR_PAGAMENTO) and _lead_pediu_para_parar(trabalho):
+        terminar(trabalho, E.ENCERRADO,
+                 "O lead pediu para parar de receber mensagens: nada foi enviado e o modelo não foi chamado.")
+        return
     if trabalho.tipo == T.ANALISAR_LEAD:
         _analisar(trabalho)
     elif trabalho.tipo == T.ABORDAR:
@@ -337,6 +341,21 @@ def _executar(trabalho: TrabalhoComercial) -> None:
         _reanalisar(trabalho)
     else:  # pragma: no cover - tipo novo sem executor
         terminar(trabalho, E.FALHOU, "Este tipo de trabalho ainda não tem executor.")
+
+
+def _lead_pediu_para_parar(trabalho: TrabalhoComercial) -> bool:
+    """Todas as conversas do lead pediram para parar? Então o canal barraria qualquer envio:
+    o modelo nem é chamado. Sem resposta da mensageria, não bloqueia (o canal ainda confere no envio)."""
+    if not trabalho.contato_id:
+        return False
+    resposta = servicos.pedir("conversas", params={"site_id": trabalho.site_id, "lead_id": trabalho.contato_id},
+                              site_id=trabalho.site_id)
+    if not resposta.ok:
+        return False
+    conversas = [c for c in resposta.dados.get("itens") or [] if isinstance(c, dict)
+                 and str(c.get("lead_id") or "") == str(trabalho.contato_id)
+                 and str(c.get("site_id") or trabalho.site_id) == str(trabalho.site_id)]
+    return bool(conversas) and all(c.get("descadastrado") for c in conversas)
 
 
 def _pago_no_checkout(trabalho: TrabalhoComercial) -> bool:
@@ -401,9 +420,22 @@ def _do_grupo_de_comparacao(trabalho: TrabalhoComercial) -> bool:
                 raise Esperar("Esperando a ficha do lead para saber se ele está no grupo de comparação.",
                               timedelta(seconds=60))
             return True
-        grupo = comparacao.ligar_contato(
-            trabalho.site_id, comparacao.quem_e(email, telefone), trabalho.contato_id)
+        grupo = sortear_se_ainda_sem_marca(
+            trabalho.site_id, comparacao.quem_e(email, telefone), trabalho.contato_id, teste=trabalho.teste)
     return grupo == comparacao.GRUPO_COMPARACAO
+
+
+def sortear_se_ainda_sem_marca(site_id: str, quem: str, contato_id: str, *, teste: bool = False) -> str | None:
+    """O grupo do lead, ligado ao contato. Lead que ainda não tem marca é sorteado AGORA, antes de qualquer
+    trabalho falar com ele: sem isto, quem deveria ficar sem o agente era atendido na primeira mensagem.
+    Lead que o agente já atendeu antes do recurso continua fora da comparação (o tratamento dele é conhecido)."""
+    grupo = comparacao.ligar_contato(site_id, quem, contato_id)
+    if grupo is not None or not quem or not site_id or not contato_id:
+        return grupo
+    if TrabalhoComercial.objects.filter(site_id=site_id, contato_id=contato_id, estado=E.CONCLUIDO).exists():
+        return None
+    comparacao.decidir(site_id, quem, teste=teste)
+    return comparacao.ligar_contato(site_id, quem, contato_id)
 
 
 def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
@@ -804,7 +836,8 @@ def _afirmacao_para_o_modelo(item) -> dict | None:
     """Uma afirmação do perfil vigente, na forma que a ferramenta salvar_perfil recebe."""
     if not isinstance(item, dict) or not item.get("texto"):
         return None
-    prova = next((e for e in item.get("evidencias") or [] if isinstance(e, dict)), None)
+    # A prova mais recente (a última guardada) é a que sustenta a afirmação hoje; as antigas ficam na ficha.
+    prova = next((e for e in reversed(item.get("evidencias") or []) if isinstance(e, dict)), None)
     tipo = (prova or {}).get("tipo")
     fonte = "mensagem" if tipo == "mensagem" else "quiz" if tipo else "nenhuma"
     return {"texto": item["texto"], "tipo": "hipotese" if item.get("hipotese") else "fato", "fonte": fonte,

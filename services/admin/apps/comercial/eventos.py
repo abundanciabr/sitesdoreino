@@ -26,6 +26,7 @@ import re
 from datetime import timedelta
 
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from . import comparacao, coordenador, interruptor, otimizador, servicos
@@ -199,6 +200,32 @@ def ao_quiz_captura_parcial(envelope: dict):
     return _do_quiz("quiz.captura_parcial", envelope, parcial=True)
 
 
+PARAR_CANCELA = (T.ABORDAR, T.ATENDER_MENSAGEM, T.ACOMPANHAR_PAGAMENTO, T.RECUPERAR_COMPRA)
+
+
+def _cancelar_o_que_espera_na_fila(site_id: str, conversa_id: str, data: dict) -> int:
+    """O lead pediu PARAR: o que está na fila para falar com ele não roda (e não gasta modelo).
+
+    Só os trabalhos que acabam em mensagem para o lead e ainda não começaram. A análise e a atualização do
+    perfil não falam com ele, então seguem. O que já está rodando para na conferência do coordenador e no
+    próprio canal, que barra o envio. Roda antes de criar o trabalho desta mensagem."""
+    lead = data.get("lead")
+    contato_id = _texto(lead.get("id") if isinstance(lead, dict) else lead, 80)
+    alvo = Q(chave_da_conversa=f"conversa:{conversa_id}")
+    if contato_id:
+        alvo |= Q(contato_id=contato_id)
+    if isinstance(lead, dict):
+        chave_do_lead = _chave_do_lead(site_id, _contato(data))
+        if chave_do_lead:
+            alvo |= Q(chave_da_conversa=chave_do_lead)
+    agora = timezone.now()
+    return TrabalhoComercial.objects.filter(
+        alvo, site_id=site_id, tipo__in=PARAR_CANCELA,
+        estado__in=[E.NA_FILA, E.AGUARDANDO_DEPENDENCIA, E.AGUARDANDO_AUTORIZACAO],
+    ).update(estado=E.CANCELADO, motivo="O lead pediu para parar: o trabalho saiu da fila sem chamar o modelo.",
+             terminado_em=agora, atualizado_em=agora)
+
+
 def ao_mensagem_recebida(envelope: dict):
     data = envelope.get("data") or {}
     site_id = _site(data)
@@ -209,6 +236,8 @@ def ao_mensagem_recebida(envelope: dict):
         return None  # o que a equipe mandou não pede resposta
     if not _registrar(envelope, "mensagem.recebida", site_id=site_id):
         return None
+    if data.get("descadastro"):
+        _cancelar_o_que_espera_na_fila(site_id, conversa_id, data)
     if data.get("lead_ligacao") in ("desconhecida", "ambigua") and data.get("canal") == "whatsapp":
         # A mensageria orienta quem não é do quiz; aqui só se garante o endereço do site no texto.
         servicos.garantir_endereco_do_quiz_na_orientacao(site_id)
@@ -221,7 +250,13 @@ def ao_mensagem_recebida(envelope: dict):
     contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
-    if comparacao.grupo_do_contato_id(site_id, contato_id) == comparacao.GRUPO_COMPARACAO:
+    grupo = comparacao.grupo_do_contato_id(site_id, contato_id)
+    if grupo is None and isinstance(lead, dict):
+        # Lead ainda sem marca e o evento já diz quem ele é: sorteia antes de criar o trabalho.
+        grupo = coordenador.sortear_se_ainda_sem_marca(
+            site_id, comparacao.quem_e(contato["email"], contato["telefone"]), contato_id,
+            teste=de_teste(contato, data))
+    if grupo == comparacao.GRUPO_COMPARACAO:
         return None  # grupo de comparação: a mensagem fica na caixa para a equipe responder
     escopo = interruptor.escopo()
     if escopo and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
