@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import redis
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, InterfaceError, OperationalError, transaction
 
 from apps.eventos.handlers import (
     ao_aula_concluida,
@@ -198,6 +198,28 @@ def _processar_e_ack(r, stream, handler, msg_id, campos) -> None:
     r.xack(stream, GRUPO, msg_id)
 
 
+def _processar_isolada(r, stream, handler, msg_id, campos) -> None:
+    """Uma mensagem que estoura não leva as vizinhas do mesmo lote junto.
+
+    Sem este isolamento, a exceção da primeira mensagem do lote saía do laço e
+    as seguintes, já entregues ou já reivindicadas (com a contagem somada),
+    ficavam sem rodar até chegarem juntas à fila morta, como aconteceu nas
+    células irmãs em 03/10/2026. A que falhou continua na PEL, sem ACK, e
+    segue a reentrega normal. Queda do banco continua derrubando o worker,
+    como antes: aí o problema não é a mensagem.
+    """
+    try:
+        _processar_e_ack(r, stream, handler, msg_id, campos)
+    except (OperationalError, InterfaceError):
+        raise
+    except Exception:  # noqa: BLE001 - isola a falha de UMA mensagem
+        log.exception(
+            "evento do stream %s (msg_id=%s) falhou; segue na PEL para reentrega",
+            stream,
+            msg_id,
+        )
+
+
 def _entregas_ja_feitas(r, stream, msg_id) -> int:
     """Quantas entregas esta mensagem JÁ recebeu ANTES da reivindicação atual.
 
@@ -253,9 +275,9 @@ def _reivindicar_presas(r, stream, handler) -> None:
     MESMO caminho das novas. Quem já esgotou MAX_ENTREGAS vai para a fila
     morta em vez de rodar de novo.
 
-    Se o reprocesso estourar de novo, a exceção propaga igual à do caminho
-    novo (processo cai, supervisor reinicia) — a mensagem segue na PEL com o
-    delivery_count somado pelo claim, e converge para a fila morta.
+    Se o reprocesso estourar de novo, só aquela mensagem fica para trás (ver
+    _processar_isolada): ela segue na PEL com o delivery_count somado pelo
+    claim, e converge para a fila morta.
     """
     cursor = "0-0"
     while True:
@@ -275,7 +297,7 @@ def _reivindicar_presas(r, stream, handler) -> None:
             if entregas >= MAX_ENTREGAS:
                 _mover_para_fila_morta(r, stream, msg_id, campos, entregas)
                 continue
-            _processar_e_ack(r, stream, handler, msg_id, campos)
+            _processar_isolada(r, stream, handler, msg_id, campos)
         if cursor in (b"0-0", "0-0"):
             break  # o XAUTOCLAIM sempre avança o cursor; 0-0 = varredura completa
 
@@ -301,4 +323,4 @@ class Command(BaseCommand):
             for stream_bruto, msgs in resp or []:
                 handler = STREAMS[stream_bruto.decode()]
                 for msg_id, campos in msgs:
-                    _processar_e_ack(r, stream_bruto, handler, msg_id, campos)
+                    _processar_isolada(r, stream_bruto, handler, msg_id, campos)
