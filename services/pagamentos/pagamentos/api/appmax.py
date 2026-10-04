@@ -74,7 +74,10 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
             "app_id nao autorizado nesta instalacao", 403, "app_id_desconhecido"
         )
 
-    appmax_site_id = str(corpo.get("site_id") or "").strip()[:64]
+    # O `site_id` do corpo não é lido: esta chamada não tem assinatura, e a
+    # loja amarrada aqui é a que os avisos de cobrança conferem. Quem a
+    # escolhesse por esta rota faria todos os avisos verdadeiros receberem 403.
+    # A loja é preenchida pelo primeiro aviso, que exige o app_uuid.
     segredo_chegou = bool(corpo.get("client_secret"))
     # A partir daqui o corpo não carrega mais segredo nenhum. Não é zelo
     # decorativo: um traceback exibe as variáveis locais do frame, e com
@@ -93,7 +96,6 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
             defaults={
                 "alias": configurada["alias"],
                 "platform_site_ids": list(configurada["sites"]),
-                "appmax_site_id": appmax_site_id,
                 "client_secret_recebido": segredo_chegou,
             },
         )
@@ -105,14 +107,12 @@ def instalacao_appmax(request: HttpRequest) -> JsonResponse:
                 instalacao.external_id = uuid.uuid4()
             instalacao.alias = configurada["alias"]
             instalacao.platform_site_ids = list(configurada["sites"])
-            instalacao.appmax_site_id = appmax_site_id or instalacao.appmax_site_id
             instalacao.client_secret_recebido = (
                 instalacao.client_secret_recebido or segredo_chegou
             )
             campos = [
                 "alias",
                 "platform_site_ids",
-                "appmax_site_id",
                 "client_secret_recebido",
                 "updated_at",
             ]
