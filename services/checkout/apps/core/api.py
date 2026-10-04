@@ -11,6 +11,7 @@ import json
 import logging
 import uuid
 import re
+from datetime import datetime, timezone as fuso
 
 import httpx
 
@@ -20,6 +21,7 @@ from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import JsonResponse
+from django.utils import timezone
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError
 
@@ -42,6 +44,36 @@ router = Router()
 # outro. Qualquer outro estado (aguardando, pago, reembolsado) é o pedido que
 # a página deve mostrar, nunca um segundo.
 _STATUS_QUE_LIBERAM_NOVO_PEDIDO = ("expirado", "recusado")
+
+_CATALOGO_FORA = "o catálogo não respondeu agora; tente de novo em instantes"
+
+
+def _pix_vencido(pedido) -> bool:
+    """Pix aguardando cujo prazo já passou, mesmo que o aviso `pix.expirado`
+    ainda não tenha chegado e o status continue "aguardando_pagamento"."""
+    if pedido.method != "pix" or pedido.status != OrderModel.AGUARDANDO:
+        return False
+    prazo = (pedido.pix or {}).get("expires_at")
+    try:
+        fim = datetime.fromisoformat(str(prazo).replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if fim.tzinfo is None:
+        fim = fim.replace(tzinfo=fuso.utc)
+    return fim <= timezone.now()
+
+
+def _libera_novo_pedido(pedido) -> bool:
+    return pedido.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO or _pix_vencido(pedido)
+
+
+def _oferta_do_catalogo(site_id: str, slug: str):
+    """A oferta, ou None quando o catálogo diz que ela não existe. Catálogo
+    que não responde (rede ou 5xx) é "tente de novo" (503), nunca "não existe"."""
+    try:
+        return CatalogoClient().obter_oferta(site_id, slug)
+    except httpx.HTTPError:
+        raise HttpError(503, _CATALOGO_FORA) from None
 
 # Frases do 502 que o comprador lê quando pagamentos não responde, responde 5xx
 # ou devolve corpo inválido: o pedido segue como estava e a nova tentativa leva
@@ -271,8 +303,8 @@ def create_session(request):
     # chegar a ele mesmo com a oferta despublicada ou o catálogo fora do ar.
     # Só quem vai ver o formulário ou abrir sessão nova exige a oferta.
     try:
-        oferta = CatalogoClient().obter_oferta(site["id"], offer_slug)
-    except httpx.HTTPError:
+        oferta = _oferta_do_catalogo(site["id"], offer_slug)
+    except HttpError:
         if not pedido_vigente:
             raise
         oferta = None
@@ -337,10 +369,14 @@ def create_session(request):
                 # outro (que daria 409 ou cobraria duas vezes).
                 sessao = ultima
                 pedido_existente = {
-                    "order_id": str(valendo.id),
                     "method": valendo.method,
                     "status": valendo.status,
                 }
+                # O número do pedido só sai enquanto a pessoa ainda precisa
+                # dele para pagar. Pedido já pago ou devolvido não entrega o
+                # número a quem só tem o link (que pode ter sido repassado).
+                if valendo.status == OrderModel.AGUARDANDO:
+                    pedido_existente["order_id"] = str(valendo.id)
         if sessao is None:
             sessao = SessionModel.objects.create(
                 site_id=site["id"],
@@ -361,6 +397,10 @@ def create_session(request):
                     "visitor_id": sessao.visitor_id,
                     "checkout_session_id": str(sessao.id),
                     "produto": sessao.offer_slug,
+                    # As mesmas referências do pedido.criado, para ligar a
+                    # abertura do checkout à oportunidade e à oferta.
+                    "oportunidade_ref": link.oportunidade_ref if link is not None else "",
+                    "oferta_ref": sessao.offer_slug,
                 },
             )
             transaction.on_commit(relay_apos_commit)
@@ -425,7 +465,7 @@ def _decisao_do_link(link):
     anterior = pedidos.get(ultima.pk)
     if pago is None and anterior is None:
         return "continuar", ultima, None
-    if pago is None and anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
+    if pago is None and _libera_novo_pedido(anterior):
         return "nova", ultima, None
     return "existente", ultima, pago or anterior
 
@@ -441,7 +481,7 @@ def _pedido_vigente_de_outra_sessao(link, sessao):
         )
         .exclude(session=sessao)
         .order_by("created_at")
-        if pedido.status not in _STATUS_QUE_LIBERAM_NOVO_PEDIDO
+        if not _libera_novo_pedido(pedido)
     ]
     pago = next((p for p in vigentes if p.status in ("pago", "reembolsado")), None)
     return pago or (vigentes[-1] if vigentes else None)
@@ -696,7 +736,7 @@ def _fechar_pedido(
     ele já travado."""
     # preços relidos do catálogo AGORA, no fechamento — o payload só
     # informa quais bumps foram marcados.
-    oferta = CatalogoClient().obter_oferta(site["id"], sessao.offer_slug)
+    oferta = _oferta_do_catalogo(site["id"], sessao.offer_slug)
     if oferta is None:
         raise HttpError(404, "oferta inexistente ou despublicada neste site")
     itens = _itens_do_catalogo(oferta, bump_ids)
@@ -848,6 +888,8 @@ def _fechar_pedido(
                 },
                 **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
                 **({"utm": sessao.utm} if sessao.utm else {}),
+                "offer_slug": sessao.offer_slug,
+                "contexto": dict(sessao.contexto or {}),
                 **referencias,
                 **sinal_de_teste,
             },

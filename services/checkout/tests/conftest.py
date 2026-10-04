@@ -7,6 +7,7 @@ operações não existe em lugar nenhum acessível ao CI.
 
 import json
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -24,6 +25,13 @@ HOST_DESCONHECIDO = "nao-cadastrado.exemplo.com"
 
 SITE_A = {"id": "site-aaa", "host": HOST_A, "name": "Site A", "active": True}
 SITE_B = {"id": "site-bbb", "host": HOST_B, "name": "Site B", "active": True}
+
+# O Pix da resposta sempre vale por mais dois dias, qualquer que seja o dia em
+# que o teste rode: um prazo fixo vira "vencido" sozinho e muda o que o link faz.
+# Só a data muda (hora fixa), para o valor ser o mesmo em qualquer importação.
+PIX_EXPIRA_EM = (datetime.now(timezone.utc) + timedelta(days=2)).strftime(
+    "%Y-%m-%dT23:59:59+00:00"
+)
 
 SLUG = "curso-esqueleto"
 BUMP_A = {
@@ -65,7 +73,7 @@ def _responder_intent(request: httpx.Request) -> httpx.Response:
             "pix": {
                 "qr_code": "00020126-copia-e-cola-de-teste",
                 "qr_code_base64": "iVBORw0KGgo=",
-                "expires_at": "2026-08-18T23:59:59+00:00",
+                "expires_at": PIX_EXPIRA_EM,
             },
             "created_at": "2026-08-18T12:00:00+00:00",
         },

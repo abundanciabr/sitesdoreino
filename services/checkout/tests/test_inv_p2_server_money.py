@@ -7,7 +7,7 @@ import pytest
 
 from apps.core import api as api_do_checkout
 from apps.pedidos.models import Order
-from tests.conftest import BUMP_A, HOST_A, OFERTA_A, PAGAMENTOS, SLUG
+from tests.conftest import BUMP_A, HOST_A, OFERTA_A, PAGAMENTOS, PIX_EXPIRA_EM, SLUG
 
 pytestmark = pytest.mark.django_db
 
@@ -37,7 +37,7 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     assert resp.json()["payment"]["pix"] == {
         "qr_code": "00020126-copia-e-cola-de-teste",
         "qr_code_base64": "iVBORw0KGgo=",
-        "expires_at": "2026-08-18T23:59:59+00:00",
+        "expires_at": PIX_EXPIRA_EM,
     }
 
     esperado = OFERTA_A["price_cents"] + BUMP_A["price_cents"]  # 990 + 300

@@ -58,6 +58,11 @@ class CatalogoClient:
             headers=self._headers(),
             timeout=5.0,
         )
+        if r.status_code == 404:
+            return None  # só o 404 diz "esta oferta não existe"
+        # Catálogo com erro (5xx, token recusado...) NÃO é oferta inexistente:
+        # sobe como HTTPStatusError e quem chama responde "tente de novo".
+        r.raise_for_status()
         return r.json() if r.status_code == 200 else None
 
 

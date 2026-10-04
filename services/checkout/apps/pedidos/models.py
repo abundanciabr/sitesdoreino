@@ -91,6 +91,10 @@ class Order(models.Model):
     em_teste = models.BooleanField(default=False)
     # Quando o aviso do provedor confirmou o pagamento (pagamento.aprovado).
     pago_em = models.DateTimeField(null=True, blank=True)
+    # Por que o checkout encerrou este pedido sem aviso do provedor. Hoje só um:
+    # "pago_em_outro_pedido:<id>" (o mesmo cliente pagou o mesmo produto em
+    # outro pedido, e este deixou de poder ser pago).
+    encerrado_motivo = models.CharField(max_length=80, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = OrderQuerySet.as_manager()

@@ -182,7 +182,11 @@ def condicoes_da_oferta(site: dict, oferta: dict) -> dict:
 
 
 def _oferta_ou_404(site: dict, slug: str) -> dict:
-    oferta = CatalogoClient().obter_oferta(site["id"], slug)
+    try:
+        oferta = CatalogoClient().obter_oferta(site["id"], slug)
+    except httpx.HTTPError:
+        # catálogo fora do ar não é oferta inexistente
+        raise HttpError(503, "o catálogo não respondeu agora; tente de novo em instantes") from None
     if oferta is None:
         raise HttpError(404, "oferta inexistente ou despublicada neste site")
     return oferta

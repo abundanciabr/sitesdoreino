@@ -49,7 +49,7 @@ const ilha = contexto.ilha;
   }
   process.stdout.write(JSON.stringify({
     destino: typeof contexto.window.location === 'string' ? contexto.window.location : null,
-    carregando: ilha.carregando, erro: ilha.erro, metodo: ilha.method,
+    carregando: ilha.carregando, erro: ilha.erro, linkUsado: ilha.linkUsado, metodo: ilha.method,
     offer: ilha.offer.product_name, chamadas,
   }));
 })();
@@ -127,6 +127,20 @@ def test_link_com_pedido_aguardando_leva_a_pagina_do_pedido_sem_mostrar_o_formul
         assert saida["carregando"] is True  # o formulário não pisca antes de sair
         assert saida["erro"] == ""
         assert saida["chamadas"][0][1]["link"] == "abc"
+
+
+def test_link_com_pedido_pago_avisa_sem_numero_do_pedido_e_sem_formulario():
+    saida = _pagina(
+        consulta="?link=abc",
+        resposta={
+            "id": "s1",
+            "offer": OFERTA,
+            "pedido_existente": {"method": "pix", "status": "pago"},
+        },
+    )
+    assert saida["destino"] is None  # nada de redirecionar sem número de pedido
+    assert saida["carregando"] is False
+    assert saida["linkUsado"].startswith("Este link já foi usado")
 
 
 def test_link_sem_pedido_existente_mostra_o_formulario_como_sempre():
