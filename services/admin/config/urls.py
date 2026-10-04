@@ -230,9 +230,13 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
+from apps.comercial.views import agentes_comerciais
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
+    # decisões e estratégias dos quatro papéis. Só do administrador.
+    path("crm/agentes/", agentes_comerciais, name="agentes_comerciais"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
