@@ -17,6 +17,7 @@ posse ainda é dele; se não for, ele larga sem gravar por cima.
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 import socket
@@ -341,9 +342,12 @@ def rodar_comercial_para_sempre(parar: threading.Event, indice: int = 1) -> None
 def _ligar_trabalhadores_comerciais(parar: threading.Event) -> list[threading.Thread]:
     threads = []
     for indice in range(1, trabalhadores_comerciais() + 1):
+        # Uma thread nova não herda o contexto do serviço (na aplicação unificada ele
+        # diz em qual banco o admin lê e grava): cada trabalhador leva a sua cópia.
+        contexto = contextvars.copy_context()
         thread = threading.Thread(
-            target=rodar_comercial_para_sempre,
-            args=(parar, indice),
+            target=contexto.run,
+            args=(rodar_comercial_para_sempre, parar, indice),
             name=f"comercial-admin-{indice}",
             daemon=True,
         )

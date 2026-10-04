@@ -140,3 +140,22 @@ def test_espera_na_fila_nao_conta_pagamento_nem_resultados():
         criado_em=agora - timedelta(minutes=10), iniciado_em=agora - timedelta(minutes=7))
     html = _entrar().get(reverse("crm_agentes")).content.decode()
     assert "3 min" in html and "22 h" not in html and "23 h" not in html
+
+
+def test_threads_comerciais_herdam_o_contexto_do_servico(monkeypatch):
+    import contextvars
+
+    marca = contextvars.ContextVar("marca_do_servico", default="nenhuma")
+    visto = []
+    monkeypatch.setenv("COMERCIAL_TRABALHADORES", "2")
+    monkeypatch.setattr(executor, "rodar_comercial_para_sempre",
+                        lambda parar_, indice=1: visto.append(marca.get()))
+    token = marca.set("admin")
+    try:
+        threads = executor._ligar_trabalhadores_comerciais(threading.Event())
+        for t in threads:
+            t.join(timeout=5)
+    finally:
+        marca.reset(token)
+    assert visto == ["admin", "admin"]
+
