@@ -198,8 +198,12 @@ def crm_conversas(request):
     params = {"canal": canal, "pagina": pagina, "por_pagina": 100 if filtro == "aguardando" else 50}
     if filtro in ("agente", "pessoa", "encerrada"):
         params["estado"] = filtro
-    elif filtro == "ambigua":
+    if filtro == "ambigua":
         params["ligacao"] = "ambigua"
+    else:
+        # Sem isso a mensageria só devolve conversas ligadas a um lead e quem
+        # escreve de um número ambíguo ou desconhecido nunca apareceria na lista.
+        params["ligacao"] = "todas"
     cliente = ConversasClient()
     estado, dados = cliente.listar(site_id, **params)
     if estado == INDISPONIVEL:

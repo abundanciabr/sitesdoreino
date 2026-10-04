@@ -79,6 +79,7 @@ def test_lista_mostra_canal_estado_ultimo_recado_e_pede_o_site_do_host():
     assert reverse("crm_conversa", args=[CONVERSA]) in html
     params = rota.calls.last.request.url.params
     assert params["site_id"] == "site-do-host" and params["estado"] == "pessoa" and params["canal"] == "whatsapp"
+    assert params["ligacao"] == "todas"
 
 
 @respx.mock
