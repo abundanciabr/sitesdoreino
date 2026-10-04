@@ -67,6 +67,7 @@ def _tentativa(
     motivo: str = "appmax_diagnostico_campo_document_number",
     pedido: str = "",
     cliente: str = "",
+    estado: str = "failed",
 ) -> PaymentAttempt:
     intent = Intent.objects.create(
         idempotency_key=chave,
@@ -86,7 +87,7 @@ def _tentativa(
         request_hash="a" * 64,
         amount_cents=1005,
         effective_amount_cents=1005,
-        state="failed",
+        state=estado,
         reason=motivo,
         external_order_id=pedido,
         customer_id=cliente,
@@ -223,3 +224,27 @@ def test_pedido_com_duas_intents_da_mesma_sessao_consulta_a_mais_recente(
 
     assert consultados == [5502]
     assert resumo["acao"] == "identidade_nao_comprovada"
+
+
+def test_pendentes_com_duas_tentativas_abertas_da_mesma_sessao_lista_a_mais_recente(
+    operacoes,
+) -> None:
+    # Cada intent da sessão tem a mesma referência (a da tela); duas abertas ao
+    # mesmo tempo não podem fazer o validador do host ver referência repetida.
+    referencia, _antiga, _recente = _sessao_com_duas_tentativas(
+        operacoes,
+        {"estado": "reconciliation_required"},
+        {"estado": "pending"},
+    )
+    _tentativa(
+        str(uuid.uuid4()),
+        {"checkout_session_id": str(uuid.uuid4())},
+        operacoes.SITE_MESHCRAFT,
+        estado="pending",
+    )
+
+    resultado = operacoes.medir("appmax-pendentes", "pagamentos")
+
+    assert len(resultado["tentativas"]) == 2
+    mesma_sessao = [t for t in resultado["tentativas"] if t["referencia"] == referencia]
+    assert [t["estado_tentativa"] for t in mesma_sessao] == ["pending"]
