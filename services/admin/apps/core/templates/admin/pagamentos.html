@@ -24,11 +24,15 @@
           <td>{{ compra.empresa|default:"—" }}</td><td>{{ compra.estado }}{% if compra.presa %} · conferir{% endif %}</td>
           <td>{% if compra.segunda_empresa %}Sim{% else %}Não{% endif %}</td><td>{{ compra.estorno|default:"—" }}</td>
           <td>{% if compra.pode_devolver %}
-            <form method="post" action="{% url 'pagamentos_devolver' %}" onsubmit="return confirm('Devolver R$ {{ compra.valor_exibicao }} pela {{ compra.empresa }}?');">
-              {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
-              <input type="hidden" name="pagina" value="{{ pagina }}">
-              <button type="submit">Devolver</button>
-            </form>
+            {# Sem script: o CSP desta área (script-src 'self') bloqueia onsubmit embutido. #}
+            <details>
+              <summary>Devolver</summary>
+              <form method="post" action="{% url 'pagamentos_devolver' %}">
+                {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
+                <input type="hidden" name="pagina" value="{{ pagina }}">
+                <button type="submit">Confirmar: devolver R$ {{ compra.valor_exibicao }} pela {{ compra.empresa }}</button>
+              </form>
+            </details>
           {% endif %}</td>
         </tr>
       {% endfor %}

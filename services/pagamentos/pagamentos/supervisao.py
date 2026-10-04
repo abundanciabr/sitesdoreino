@@ -42,6 +42,11 @@ from pagamentos.core.tentativas import fechar_segundas_opcoes_vencidas
 
 _INTERVALO = timedelta(minutes=5)
 _LIMITE_FALHAS = 3
+# Estorno ou contestação feitos direto no painel do provedor, quando o aviso
+# não chega: cada cobrança aprovada é consultada a cada 6 h por 180 dias.
+_INTERVALO_REVERSAO = timedelta(hours=6)
+_JANELA_REVERSAO = timedelta(days=180)
+_LIMITE_REVERSOES = 10
 
 _STATUS_POS_APROVACAO = {
     "estornado": "appmax_estornado",
@@ -203,23 +208,24 @@ def _emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> None:
     emitir_reversao_confirmada(tentativa, codigo)
 
 
-def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
-    """GET do provedor confirma o estorno; POST jamais é repetido aqui."""
+def _situacao_conferida(tentativa: PaymentAttempt) -> str | None:
+    """Só GET no provedor. Devolve a situação da cobrança quando a identidade
+    confere (Appmax: "" aprovada ou um código de _STATUS_POS_APROVACAO; MP: o
+    status do pagamento) e None quando não confere ou a consulta falhou."""
     if (tentativa.platform_site_id != tentativa.intent.site_id or
             not tentativa.provider_reference_id):
-        return False
+        return None
     try:
         if tentativa.provider == "appmax":
             referencia = tentativa.provider_reference_id
             if (not referencia.isdecimal() or int(referencia) <= 0 or
                     tentativa.external_order_id != referencia):
-                return False
+                return None
             sessao = gateway.nova_sessao_appmax()
             sessao.preparar()
             pedido = sessao.consultar_pedido(order_id=int(referencia))
-            codigo = _validar_pedido_appmax(referencia, tentativa, pedido)
-            confirmado = codigo == "appmax_estornado"
-        elif tentativa.provider == "mercadopago":
+            return _validar_pedido_appmax(referencia, tentativa, pedido)
+        if tentativa.provider == "mercadopago":
             consulta = gateway.consultar_status_do_pagamento(
                 payment_id=tentativa.provider_reference_id
             )
@@ -235,20 +241,19 @@ def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
                 try:
                     operacao_principal = UUID(tentativa.external_order_id)
                 except ValueError:
-                    return False
+                    return None
                 if not PaymentAttempt.objects.filter(
                     intent=tentativa.intent, provider="mercadopago", state="approved",
                     operation_id=operacao_principal,
                 ).exclude(pk=tentativa.pk).exists():
-                    return False
+                    return None
             referencia_esperada = (
                 str(operacao_principal)
                 if replica_da_principal
                 else str(tentativa.operation_id) if operacao_nova else tentativa.intent.order_id
             )
-            confirmado = (
+            confere = (
                 consulta.payment_id == tentativa.provider_reference_id
-                and consulta.status == "refunded"
                 and consulta.external_reference == referencia_esperada
                 and consulta.currency_id == tentativa.intent.currency
                 and consulta.transaction_amount == principal
@@ -256,13 +261,17 @@ def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
                 and (tentativa.intent.method != "card" or
                      consulta.installments == tentativa.installments)
             )
-            codigo = "refunded"
-        else:
-            return False
+            return consulta.status if confere else None
+        return None
     except (gateway.FalhaNoProvedor, _IdentidadePosAprovacaoInvalida,
             _StatusPosAprovacaoDesconhecido, ValueError, TypeError):
-        return False
-    if not confirmado:
+        return None
+
+
+def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
+    """GET do provedor confirma o estorno; POST jamais é repetido aqui."""
+    codigo = "appmax_estornado" if tentativa.provider == "appmax" else "refunded"
+    if _situacao_conferida(tentativa) != codigo:
         return False
     with transaction.atomic():
         travada = PaymentAttempt.objects.select_for_update().get(pk=tentativa.pk)
@@ -276,6 +285,33 @@ def _consultar_estorno(tentativa: PaymentAttempt) -> bool:
             attempt=travada, operation_type="refund"
         ).update(state="completed", updated_at=timezone.now())
     return True
+
+
+def _conferir_reversoes_sem_aviso(*, agora: object) -> int:
+    """Percebe estorno e contestação feitos fora do nosso botão sem depender do aviso."""
+    tentativas = list(
+        PaymentAttempt.objects.filter(
+            state="approved", estorno_estado__isnull=True,
+            created_at__gte=agora - _JANELA_REVERSAO,
+            updated_at__lte=agora - _INTERVALO_REVERSAO,
+        )
+        .exclude(provider_reference_id="")
+        .order_by("updated_at", "id")
+        .values_list("id", flat=True)[:_LIMITE_REVERSOES]
+    )
+    emitidas = 0
+    for tentativa_id in tentativas:
+        tentativa = PaymentAttempt.objects.select_related("intent").get(pk=tentativa_id)
+        situacao = _situacao_conferida(tentativa)
+        if situacao in _MOTIVO_REVERSAO or (
+            tentativa.provider == "mercadopago" and situacao in {"refunded", "charged_back"}
+        ):
+            emitidas += emitir_reversao_confirmada(tentativa, situacao)
+        # Vai para o fim da fila; a próxima consulta desta cobrança é em 6 h.
+        PaymentAttempt.objects.filter(pk=tentativa_id, state="approved").update(
+            updated_at=timezone.now()
+        )
+    return emitidas
 
 
 def _processar_aviso_pos_aprovacao(
@@ -549,6 +585,7 @@ def processar_rodada(*, limite: int = 50) -> dict[str, int]:
         _consultar_estorno(PaymentAttempt.objects.select_related("intent").get(pk=tentativa_id))
         for tentativa_id in estornos
     )
+    reversoes = _conferir_reversoes_sem_aviso(agora=agora)
     publicados = relay_outbox()
     return {
         "inbox_processada": processados,
@@ -556,6 +593,7 @@ def processar_rodada(*, limite: int = 50) -> dict[str, int]:
         "riscos_finais": riscos_finais,
         "trocas_pix_recuperadas": trocas_pix,
         "estornos_confirmados": estornos_confirmados,
+        "reversoes_sem_aviso": reversoes,
         "outbox_publicada": publicados,
         **medir_pendencias(),
     }
