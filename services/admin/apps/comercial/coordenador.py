@@ -289,8 +289,8 @@ def _executar(trabalho: TrabalhoComercial) -> None:
     _achar_a_ficha(trabalho)
     if _do_grupo_de_comparacao(trabalho):
         terminar(trabalho, E.ENCERRADO,
-                 "Este lead está no grupo de comparação (sem agente, de propósito, para medir o efeito dele). "
-                 "Nada foi enviado e o modelo não foi chamado: a conversa fica na caixa para a equipe.")
+                 "Este lead não vai para o agente: está no grupo de comparação (sem agente, de propósito, para medir "
+                 "o efeito dele) ou a ficha não pôde ser lida para saber. Nada foi enviado e o modelo não foi chamado: a conversa fica na caixa para a equipe.")
         return
     if trabalho.tipo == T.ANALISAR_LEAD:
         _analisar(trabalho)
@@ -361,6 +361,13 @@ def _do_grupo_de_comparacao(trabalho: TrabalhoComercial) -> bool:
             if resposta.ok:
                 email = str(resposta.dados.get("email") or "")
                 telefone = str(resposta.dados.get("telefone") or resposta.dados.get("phone") or "")
+        if not (email or telefone) and comparacao.ha_comparacao_em_curso():
+            # Sem a ficha não se sabe de que grupo o lead é: nunca segue para o agente no escuro.
+            # Espera a leads voltar; passado o prazo, a equipe fica com a conversa.
+            if timezone.now() - trabalho.criado_em < ESPERA_DA_FICHA:
+                raise Esperar("Esperando a ficha do lead para saber se ele está no grupo de comparação.",
+                              timedelta(seconds=60))
+            return True
         grupo = comparacao.ligar_contato(
             trabalho.site_id, comparacao.quem_e(email, telefone), trabalho.contato_id)
     return grupo == comparacao.GRUPO_COMPARACAO

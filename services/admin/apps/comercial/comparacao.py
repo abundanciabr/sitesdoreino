@@ -178,12 +178,19 @@ def ligar_contato(site_id: str, quem: str, contato_id: str) -> str | None:
     return marca.grupo
 
 
+def ha_comparacao_em_curso() -> bool:
+    """Há leads que precisam ficar sem o agente (percentual ligado ou lead já marcado)."""
+    return percentual() > 0 or MarcaDeComparacao.objects.filter(grupo=GRUPO_COMPARACAO).exists()
+
+
 def grupos_por_chave(chaves, site_id: str = "") -> dict[str, str]:
     """Para a tela de resultados: {chave: grupo} das marcas que existem."""
     chaves = [c for c in set(chaves) if c]
     if not chaves:
         return {}
-    marcas = MarcaDeComparacao.objects.filter(chave__in=chaves, teste=False)
+    # Marca feita com o percentual em 0 nunca teve par na comparação: o lead entrou no agente sem que
+    # ninguém ficasse de fora ao mesmo tempo. Contar esses leads distorceria o período dos dois lados.
+    marcas = MarcaDeComparacao.objects.filter(chave__in=chaves, teste=False, percentual__gt=0)
     if site_id:
         marcas = marcas.filter(site_id=site_id)
     return {m.chave: m.grupo for m in marcas.order_by("id")}
