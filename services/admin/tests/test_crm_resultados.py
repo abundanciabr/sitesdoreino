@@ -422,3 +422,33 @@ def test_duracao_em_portugues_simples():
     d = crm_resultados.atendimento.duracao
     assert d(None) == "ainda indisponível"
     assert (d(0), d(45), d(125), d(4200)) == ("0 s", "45 s", "2 min 05 s", "1 h 10 min")
+
+
+@pytest.mark.skipif(not apps.is_installed("apps.comercial"), reason="agentes comerciais ainda não estão nesta célula")
+@respx.mock
+@pytest.mark.parametrize("parametros", [
+    {"ate": "9999-12-31"},
+    {"desde": "0001-01-01", "ate": "9999-12-31"},
+    {"desde": "0001-01-01"},
+])
+def test_data_no_limite_do_calendario_nao_derruba_qualidade_e_desempenho(metricas, parametros):
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=_corpo_do_funil()))
+    r = dentro().get(reverse("crm_resultados"), dict(parametros, site_id="site-a"))
+    assert r.status_code == 200
+    assert r.context["qualidade"]["disponivel"] and r.context["desempenho"]["disponivel"]
+
+
+@respx.mock
+def test_periodo_acima_do_teto_da_medicao_pede_periodo_menor_sem_perguntar(monkeypatch, metricas):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    rota = respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(422))
+    r = dentro().get(reverse("crm_resultados"), {"site_id": "site-a", "desde": "2024-01-01", "ate": "2026-10-03"})
+    assert r.status_code == 200 and r.context["funil"]["disponivel"] is False
+    assert "Escolha um período mais curto" in r.content.decode() and "Tente de novo" not in r.content.decode()
+    assert not rota.called
+    # 366 dias ainda cabem
+    respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=_corpo_do_funil()))
+    ok = dentro().get(reverse("crm_resultados"), {"site_id": "site-a", "desde": "2025-10-04", "ate": "2026-10-04"})
+    assert ok.context["funil"]["disponivel"] is True
