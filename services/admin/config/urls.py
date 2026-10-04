@@ -88,6 +88,7 @@ from apps.core.crm_agentes import (
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.crm_resultados import crm_resultados
+from apps.core.crm_modelos import crm_modelos
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -254,6 +255,7 @@ urlpatterns = [
     path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),
     # Nome, apresentação, assinatura, tom e voz do assistente de cada site.
     path("crm/assistente/", assistente_do_site, name="assistente_do_site"),
+    path("crm/modelos/", crm_modelos, name="crm_modelos"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),

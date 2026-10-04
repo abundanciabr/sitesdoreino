@@ -2903,6 +2903,17 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/modelos/",
+      "endereco": "/admin/crm/modelos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Modelos do WhatsApp",
+      "descricao": "Modelos de mensagem aprovados pela Meta para o primeiro contato no WhatsApp oficial, o dado do lead em cada lugar do modelo e os últimos envios por modelo.",
+      "observacao": "Só administradores. Os modelos e os envios moram na mensageria; sem as credenciais da Cloud API a tela diz que o canal oficial ainda não está ligado."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/<uuid:opportunity_id>/",
       "endereco": "/admin/crm/<uuid:opportunity_id>/",
       "alcance": "publico",
