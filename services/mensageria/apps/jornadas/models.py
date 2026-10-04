@@ -453,6 +453,14 @@ class Inscricao(models.Model):
     # episódio ao acontecimento, e o que torna a inscrição auditável de fora.
     origem_event_id = models.UUIDField(null=True, blank=True)
 
+    # A oportunidade do CRM (célula `leads`) que esta jornada acompanha. Vazio
+    # nas jornadas de aluno. Com ela, cada passo confere compra, conversa e
+    # descadastro antes de sair (`crm.py`) e cada envio vira último contato.
+    oportunidade_id = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    lead_id = models.CharField(max_length=64, blank=True, default="")
+    # O que a última conferência com o CRM disse, quando o passo não saiu.
+    ultima_conferencia = models.CharField(max_length=200, blank=True, default="")
+
     criada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -524,6 +532,8 @@ class Entrega(models.Model):
     motivo = models.CharField(max_length=200, blank=True, default="")
     whatsapp_intencao = models.BooleanField(default=False)
     whatsapp_verificado_em = models.DateTimeField(null=True, blank=True)
+    # Quando o último contato desta entrega chegou ao CRM (só com oportunidade).
+    crm_registrado_em = models.DateTimeField(null=True, blank=True)
 
     # O `event_id` da carta publicada (`notificacao.devida.v1`), quando houve
     # carta. Nulo enquanto nada saiu — e nulo para sempre no que foi barrado.

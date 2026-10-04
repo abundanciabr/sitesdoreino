@@ -11,7 +11,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from . import condicoes, eventos, regua, tasks
+from . import condicoes, crm, eventos, regua, tasks
 from .motor import CanalNaoSuportado
 from .models import Entrega, EstadoDoAluno, Inscricao, Passo
 
@@ -173,6 +173,15 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
     )
     if existente is not None and existente.status != "falhou":
         _atualizar(entrega, existente.status, getattr(existente, "erro", ""))
+        if entrega.inscricao.oportunidade_id:
+            try:
+                crm.registrar_na_conversa(
+                    entrega, telefone=existente.destinatario, corpo=existente.corpo,
+                    mensagem_whatsapp=existente,
+                )
+            except Exception:  # noqa: BLE001 - histórico; o envio já aconteceu
+                logger.exception("jornada: mensagem enviada não entrou na conversa")
+            crm.registrar_contato(entrega)
         return
     if entrega.inscricao.estado in {"cancelada", "saiu"}:
         entrega.resultado, entrega.motivo = "pulada", "jornada encerrada antes do envio"
@@ -209,10 +218,33 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
             )
             entrega.save(update_fields=["resultado", "motivo"])
         return
-    telefone, idioma, motivo = _telefone_da_pessoa(
-        pessoa_id=entrega.inscricao.destinatario_id,
-        site_id=entrega.inscricao.site_id,
-    )
+    # A oportunidade pode ter mudado entre a varredura e este envio (compra
+    # aprovada, pessoa da equipe assumiu, lead respondeu): confere de novo.
+    conferencia = crm.conferir(entrega.inscricao, entrega.passo, timezone.now())
+    if conferencia.decisao == crm.INDISPONIVEL:
+        entrega.motivo = conferencia.motivo[:200]
+        entrega.save(update_fields=["motivo"])
+        return  # fica pendente; a retomada periódica tenta de novo
+    if conferencia.decisao in (crm.ENCERRA, crm.NAO_SAI):
+        entrega.resultado, entrega.motivo = "pulada", f"CRM: {conferencia.motivo}"[:200]
+        entrega.save(update_fields=["resultado", "motivo"])
+        if conferencia.decisao == crm.ENCERRA:
+            crm.encerrar_oportunidade(entrega.inscricao, conferencia.motivo)
+        return
+    if "whatsapp" in conferencia.canais_barrados:
+        entrega.resultado = "barrada_por_preferencia"
+        entrega.motivo = conferencia.canais_barrados["whatsapp"][:200]
+        entrega.save(update_fields=["resultado", "motivo"])
+        return
+    if entrega.inscricao.oportunidade_id:
+        # Lead do quiz: o telefone é o que ele deixou no quiz, pelo CRM.
+        telefone, idioma = conferencia.telefone or None, None
+        motivo = "" if telefone else "lead sem telefone no CRM"
+    else:
+        telefone, idioma, motivo = _telefone_da_pessoa(
+            pessoa_id=entrega.inscricao.destinatario_id,
+            site_id=entrega.inscricao.site_id,
+        )
     if not telefone:
         _atualizar(entrega, "falhou", motivo)
         return
@@ -228,6 +260,14 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
         referencia=referencia,
     )
     _atualizar(entrega, mensagem.status, getattr(mensagem, "erro", ""))
+    if entrega.inscricao.oportunidade_id:
+        try:
+            crm.registrar_na_conversa(
+                entrega, telefone=telefone, corpo=corpo, mensagem_whatsapp=mensagem
+            )
+        except Exception:  # noqa: BLE001 - o envio já aconteceu; não reenviar
+            logger.exception("jornada: mensagem enviada não entrou na conversa")
+        crm.registrar_contato(entrega)
 
 
 def processar_pendentes(lote: int = 200) -> int:
