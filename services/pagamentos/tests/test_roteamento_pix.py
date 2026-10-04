@@ -539,6 +539,27 @@ def test_26_pix_simulado_vence_sem_chamar_a_appmax(settings):
     assert len(_eventos("pix.expirado")) == 1
 
 
+def test_26b_pix_simulado_na_margem_nao_conta_como_preso(settings):
+    from pagamentos.supervisao import _reconciliar_tentativa, medir_pendencias
+
+    with patch(
+        "pagamentos.core.gateway.nova_sessao_appmax",
+        side_effect=AssertionError("API Appmax sandbox"),
+    ):
+        intent, _ = _novo(settings, nome="RISCO SANDBOX")
+        tentativa = _tentativa(intent, "appmax")
+        assert tentativa.provider_reference_id.startswith("sim-")
+        PaymentAttempt.objects.filter(pk=tentativa.pk).update(
+            updated_at=timezone.now() - timedelta(hours=6)
+        )
+        assert medir_pendencias()["tentativas_presas"] == 1
+        assert _reconciliar_tentativa(tentativa.pk) is False
+    intent.refresh_from_db()
+    assert intent.status == "pending"
+    assert _tentativa(intent, "appmax").state == "pending"
+    assert medir_pendencias()["tentativas_presas"] == 0
+
+
 @pytest.mark.parametrize("status", ["approved", "refunded"])
 @pytest.mark.parametrize(
     "campo,valor",
