@@ -65,6 +65,8 @@ ROTAS = {
     "mensagens": ("mensageria", "GET", "/conversas/{}/mensagens"),
     "abrir_conversa": ("mensageria", "POST", "/conversas"),
     "enviar_na_conversa": ("mensageria", "POST", "/conversas/{}/mensagens"),
+    # O modelo aprovado do WhatsApp para o primeiro contato (fora da janela de 24 horas); só escolhe e preenche.
+    "modelo_primeiro_contato": ("mensageria", "POST", "/whatsapp-modelos/{}/primeiro-contato"),
     "assumir": ("mensageria", "POST", "/conversas/{}/assumir"),
     "devolver": ("mensageria", "POST", "/conversas/{}/devolver"),
     # checkout (CHECKOUT_API_URL); o site vem do cabeçalho Host

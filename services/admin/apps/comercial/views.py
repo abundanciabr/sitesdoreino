@@ -18,6 +18,7 @@ RESULTADOS = {
     "ativada": "A versão entrou no ar. As conversas já feitas continuam com a versão que usaram.",
     "voltou": "A versão anterior voltou ao ar.",
     "sem_anterior": "Não há versão anterior para voltar.",
+    "mudou": "A versão no ar mudou enquanto você olhava esta tela. Recarregue a página e confira antes de voltar.",
     "teste_encerrado": "O teste acabou: a versão que estava no ar segue sozinha.",
     "teste_nao_encerrado": "Este teste já tinha acabado.",
     "retomado": "O trabalho voltou para a fila.",
@@ -31,11 +32,10 @@ def _quem(request) -> str:
 
 
 def _numero(valor) -> int | None:
-    """O número do formulário, ou None se veio vazio ou torto."""
-    try:
-        return int(str(valor or "").strip())
-    except ValueError:
-        return None
+    """O número do formulário ou da consulta: só dígitos ASCII, até 12. Vazio ou
+    torto (sinal, ponto, dígito de outro alfabeto como "²", texto enorme) é None."""
+    texto = str(valor or "").strip()
+    return int(texto) if texto.isascii() and texto.isdigit() and len(texto) <= 12 else None
 
 
 def _achar(modelo, valor):
@@ -54,9 +54,19 @@ def _post(request):
         resultado = "ativada"
     elif acao == "voltar":
         papel = request.POST.get("papel") or ""
-        voltou = papel in dict(EstrategiaComercial.Papel.choices) and papeis.voltar_a_anterior(
-            papel, quem, (request.POST.get("motivo") or "")[:1000])
-        resultado = "voltou" if voltou else "sem_anterior"
+        voltou = None
+        resultado = "sem_anterior"
+        if papel in dict(EstrategiaComercial.Papel.choices):
+            try:
+                # A versão que a tela mostrava no ar: se mudou (outra aba, clique repetido),
+                # não anda mais um degrau e desfaz a volta que outra pessoa acabou de fazer.
+                voltou = papeis.voltar_a_anterior(
+                    papel, quem, (request.POST.get("motivo") or "")[:1000],
+                    versao_esperada=_numero(request.POST.get("versao_no_ar")))
+            except papeis.VersaoMudou:
+                resultado = "mudou"
+        if voltou:
+            resultado = "voltou"
     elif acao == "encerrar_teste":
         teste = _achar(ExperimentoEstrategia, request.POST.get("teste"))
         resultado = "teste_encerrado" if otimizador.encerrar(
@@ -89,8 +99,12 @@ def agentes_comerciais(request):
     if request.method == "POST":
         return _post(request)
     detalhe = None
-    if request.GET.get("trabalho", "").isdigit():
-        detalhe = TrabalhoComercial.objects.filter(pk=int(request.GET["trabalho"])).first()
+    pedido = request.GET.get("trabalho", "").strip()
+    if pedido:
+        numero = _numero(pedido)
+        if numero is None:
+            raise Http404("Trabalho não encontrado.")
+        detalhe = TrabalhoComercial.objects.filter(pk=numero).first()
     estado = request.GET.get("estado") or ""
     trabalhos = TrabalhoComercial.objects.all()
     if estado in dict(TrabalhoComercial.Estado.choices):

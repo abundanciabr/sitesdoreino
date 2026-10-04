@@ -4,7 +4,7 @@
 <main class="envolucro">
   <p><a href="{% url 'crm' %}">← CRM</a></p>
   <h1>Modelos do WhatsApp</h1>
-  <p class="subtitulo">No WhatsApp oficial, o primeiro contato com quem respondeu um quiz só sai por um modelo de mensagem aprovado pela Meta. Depois que a pessoa responde, a conversa segue livre por 24 horas.</p>
+  <p class="subtitulo">No WhatsApp oficial, o primeiro contato com quem respondeu um quiz só sai por um modelo de mensagem aprovado pela Meta. Depois que a pessoa responde, a conversa segue livre por 24 horas. O agente de abordagem usa, no primeiro contato, só um modelo aprovado cujo nome começa com <code>primeiro_contato</code> e que tenha todos os dados do lead ligados abaixo.</p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 
