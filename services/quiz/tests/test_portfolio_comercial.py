@@ -45,6 +45,15 @@ def test_plano_comercial_usa_escolhas_do_aluno(
     )
     assert criado.status_code == 201
     eid = criado.json()["id"]
+    avancar_curso = post(
+        client,
+        f"{BASE}/exploracoes/{eid}/respostas",
+        {"site_id": site_a.id, "aluno_id": experiencia, "etapa": "curso",
+         "respostas": {"experiencia": experiencia}},
+    )
+    assert avancar_curso.status_code == 200
+    assert avancar_curso.json()["etapa"] == "curso"
+    assert avancar_curso.json()["respostas"]["experiencia"] == experiencia
     salvo = post(
         client,
         f"{BASE}/exploracoes/{eid}/respostas",

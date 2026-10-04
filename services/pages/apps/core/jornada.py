@@ -18,12 +18,13 @@ ETAPAS = {
     "interesses": "O que desperta sua vontade de criar?",
     "contexto": "Onde você imagina seu trabalho?",
     "ponto_partida": "De onde você está começando?",
+    "curso": "Como está seu avanço no curso?",
     "projeto": "Escolha uma ideia para desenvolver",
     "apresentacao": "O que você quer mostrar a um cliente?",
     "escolha_final": "Seu projeto, do seu jeito",
 }
 CAMINHOS = {
-    "descobrir": list(ETAPAS),
+    "descobrir": [etapa for etapa in ETAPAS if etapa != "curso"],
     "ideia": [
         "interesses",
         "projeto",
@@ -67,30 +68,33 @@ TAMANHOS = [
 ]
 CAMINHO_COMERCIAL = [
     "ponto_partida",
+    "curso",
     "contexto",
+    "interesses",
     "projeto",
     "apresentacao",
     "escolha_final",
 ]
 TITULOS_COMERCIAIS = {
-    "ponto_partida": "Qual é seu ponto de partida?",
+    "ponto_partida": "Sua experiência em modelagem 3D",
+    "curso": "Seu avanço no curso",
     "contexto": "Como você pretende ganhar dinheiro com 3D?",
     "interesses": "Que trabalhos vão mostrar o que você oferece?",
-    "projeto": "Escolha sua primeira peça",
+    "projeto": "Com o que seu portfólio vai começar?",
     "apresentacao": "Um passo de cada vez",
-    "escolha_final": "Seu próximo passo",
+    "escolha_final": "Seu portfólio para buscar oportunidades",
 }
 EXPERIENCIAS_COMERCIAIS = [
-    ("iniciante", "Estou começando"),
+    ("iniciante", "Iniciante: estou começando ou fiz poucos modelos"),
     (
         "intermediario",
-        "Já consigo criar modelos",
+        "Intermediário: já criei vários modelos e consigo concluir trabalhos; talvez já tenha feito encomendas",
     ),
     (
         "avancado",
-        "Tenho bastante experiência",
+        "Avançado: tenho bastante experiência e trabalhos concluídos, inclusive para clientes ou projetos profissionais",
     ),
-    ("nao_sei", "Ainda não sei dizer"),
+    ("nao_sei", "Não sei dizer: quero escolher meu caminho pelo que já tenho criado"),
 ]
 ANDAMENTOS = [
     ("nao_comecou", "Ainda não comecei"),
@@ -112,17 +116,17 @@ TRABALHOS = [
 CAMINHOS_RENDA = [
     (
         "experiencias",
-        "Criar modelos para jogos do Roblox",
+        "Modelagem por encomenda para criadores de experiências Roblox, como objetos, armas, animais ou cenários",
     ),
     (
         "ugc_clientes",
-        "Criar acessórios para clientes",
+        "Produção de acessórios ou itens UGC para clientes, como cabelos, roupas 3D e chapéus",
     ),
     (
         "marketplace",
-        "Vender meus próprios itens no Roblox",
+        "Preparação de itens próprios para vender no Marketplace do Roblox",
     ),
-    ("explorar", "Ainda quero descobrir"),
+    ("explorar", "Ainda não sei: quero conhecer essas possibilidades"),
 ]
 PUBLICOS = [
     ("criadores", "Criadores de experiências Roblox"),
@@ -162,8 +166,10 @@ LISTAS_COMERCIAIS = (
 CAMPOS_COMERCIAIS = {
     "ponto_partida": (
         "experiencia",
-        "andamento_curso",
         "experiencia_comercial",
+    ),
+    "curso": (
+        "andamento_curso",
         "tem_trabalhos",
     ),
     "contexto": ("caminho_comercial", "publico", "servico_proprio"),
@@ -176,21 +182,12 @@ CAMPOS_COMERCIAIS = {
     ),
     "projeto": (
         "primeira_peca",
-        "modelos_prontos",
-        "trabalhos_selecionados",
         "acrescentar",
         "proximas_pecas",
         "projeto_chave",
         "ideia_propria",
     ),
-    "apresentacao": (
-        "apresentacao_itens",
-        "divulgacao",
-        "objetivo_apresentacao",
-        "primeira_acao",
-        *tuple("oferta_" + campo for campo in textos_comerciais.OFERTA),
-        "oferta_exibir_preco",
-    ),
+    "apresentacao": (),
     "escolha_final": (),
 }
 
@@ -371,8 +368,7 @@ def quiz_etapa(request, exploracao_id, etapa):
         tentativa = exploracao_de(request, exploracao_id)
         caminho = caminho_de(tentativa)
         if etapa not in caminho:
-            destino = "projeto" if comercial(tentativa) and etapa == "interesses" else caminho[0]
-            return redirect("quiz_etapa", exploracao_id=exploracao_id, etapa=destino)
+            return redirect("quiz_etapa", exploracao_id=exploracao_id, etapa=caminho[0])
         posicao = caminho.index(etapa)
         seguinte = caminho[min(posicao + 1, len(caminho) - 1)]
         recusa = ""
@@ -380,19 +376,10 @@ def quiz_etapa(request, exploracao_id, etapa):
             respostas = {}
             campos_etapa = CAMPOS_COMERCIAIS if comercial(tentativa) else CAMPOS_ETAPA
             for chave in campos_etapa[etapa]:
-                if (
-                    comercial(tentativa)
-                    and chave in LISTAS_COMERCIAIS
-                    and chave not in request.POST
-                    and chave not in request.POST.getlist("campos_lista")
-                ):
-                    continue
                 if chave in LISTAS_COMERCIAIS:
                     respostas[chave] = request.POST.getlist(chave)
                 elif chave in request.POST:
                     respostas[chave] = request.POST[chave]
-            if comercial(tentativa) and etapa == "projeto" and "primeira_peca" in respostas:
-                respostas["acrescentar"] = "nao" if respostas["primeira_peca"] == "nenhuma" else "sim"
             if etapa == "escolha_final":
                 respostas["proposta_editada"] = edicoes_da_proposta(request, tentativa)
             try:

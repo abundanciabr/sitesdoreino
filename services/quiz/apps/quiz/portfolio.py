@@ -19,6 +19,7 @@ ETAPAS = {
     "interesses",
     "contexto",
     "ponto_partida",
+    "curso",
     "projeto",
     "apresentacao",
     "escolha_final",
