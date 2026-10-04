@@ -235,7 +235,18 @@ def reacordar() -> int:
     if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     _manter_o_mapa_em_dia()
+    _avisar_a_equipe()
     return n
+
+
+def _avisar_a_equipe() -> None:
+    """Pergunta às células o que pede alguém da equipe e avisa uma vez."""
+    from apps.core import avisos_equipe
+
+    try:
+        avisos_equipe.varrer()
+    except Exception:  # noqa: BLE001 - os avisos não podem derrubar o laço
+        log.exception("Avisos da equipe: varredura falhou")
 
 
 def _manter_o_mapa_em_dia() -> None:

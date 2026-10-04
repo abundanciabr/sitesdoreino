@@ -1,0 +1,37 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Avisos da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <div class="equipe-topo">
+    <div>
+      <h1>Painel da equipe</h1>
+      <p class="subtitulo">Quando o atendimento precisa de alguém da equipe, o aviso aparece aqui e chega por e-mail. Cada fato avisa uma vez só.</p>
+    </div>
+  </div>
+
+  {% include "admin/_abas_da_equipe.html" %}
+
+  <p class="subtitulo">
+    {% if mostrar == "novos" %}
+      {{ nao_vistos }} aviso{{ nao_vistos|pluralize }} novo{{ nao_vistos|pluralize }}. <a href="?mostrar=todos">Ver todos</a>
+    {% else %}
+      Todos os avisos. <a href="?mostrar=novos">Ver só os novos</a>
+    {% endif %}
+  </p>
+
+  {% for aviso in avisos %}
+  <section class="cartao aviso-da-equipe{% if not aviso.visto_em %} novo{% endif %}">
+    <p><small>{{ aviso.get_tipo_display }} · {{ aviso.criado_em|date:"d/m/Y H:i" }}{% if aviso.responsavel %} · Para {{ aviso.responsavel.nome }}{% else %} · Para a equipe{% endif %}</small></p>
+    <h2>{{ aviso.titulo }}</h2>
+    {% if aviso.texto %}<p>{{ aviso.texto }}</p>{% endif %}
+    <p><small>E-mail: {{ aviso.get_email_situacao_display }}{% if aviso.visto_em %} · Visto por {{ aviso.visto_por|default:"alguém da equipe" }} em {{ aviso.visto_em|date:"d/m H:i" }}{% endif %}</small></p>
+    <form method="post" action="{% url 'aviso_visto' aviso.id %}">{% csrf_token %}
+      {% if aviso.link %}<button class="botao" name="abrir" value="1">Abrir</button>{% endif %}
+      {% if not aviso.visto_em %}<button class="volta" name="abrir" value="0">Marcar como visto</button>{% endif %}
+    </form>
+  </section>
+  {% empty %}
+  <p class="crm-vazio">{% if mostrar == "novos" %}Nenhum aviso novo.{% else %}Nenhum aviso ainda.{% endif %}</p>
+  {% endfor %}
+</div>
+{% endblock %}

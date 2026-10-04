@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as mensageria_router
 from apps.core.auth import bearerAuth
+from apps.eventos.avisos_equipe import router as avisos_equipe_router
 from apps.whatsapp.api import router as whatsapp_router
 
 # O ENDEREÇO, e a escolha entre os dois formatos que a casa usa.
@@ -67,3 +68,5 @@ api = NinjaAPI(
 )
 api.add_router("", mensageria_router)
 api.add_router("whatsapp/", whatsapp_router)
+# Avisos do painel para a equipe, por e-mail (crm-agentes/avisos-equipe).
+api.add_router("", avisos_equipe_router)
