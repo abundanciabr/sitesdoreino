@@ -88,6 +88,7 @@ from ninja.errors import HttpError
 from .models import Evento as EventoModel
 from .models import EventoMorto as EventoMortoModel
 from .models import Marco as MarcoModel
+from .crm import funil as funil_do_crm
 from .models import dia_em_sao_paulo
 
 router = Router()
@@ -776,3 +777,61 @@ def funil(
         "variantes": variantes,
         "visitantes_com_bracos_trocados": trocados,
     }
+
+
+# ---------------------------------------------------------------------------
+# 8. O funil comercial do CRM com agentes (etapa 6, medição)
+# ---------------------------------------------------------------------------
+
+
+class GrupoDoFunilCrm(Schema):
+    abertas: int
+    com_resposta: int
+    com_link_enviado: int
+    com_pedido: int
+    ganhas: int
+    receita_centavos: int
+    perdidas: int
+    amostra_insuficiente: bool
+
+
+class EstrategiaDoFunilCrm(GrupoDoFunilCrm):
+    estrategia_versao: int | None
+
+
+class AtendenteDoFunilCrm(GrupoDoFunilCrm):
+    atendente: str
+
+
+class FunilCrm(Schema):
+    site_id: str
+    desde: dt.date
+    ate: dt.date
+    amostra_minima: int
+    oportunidades: int
+    mensagens_recebidas: int
+    por_estrategia: list[EstrategiaDoFunilCrm]
+    por_atendente: list[AtendenteDoFunilCrm]
+
+
+@router.get("/crm/funil", response=FunilCrm, operation_id="countCrmFunnel")
+def funil_crm(request, site_id: str, desde: dt.date, ate: dt.date):
+    """O funil comercial por estratégia e por atendente, na janela pedida.
+
+    Cada oportunidade conta UMA vez em cada agrupamento, no grupo do último
+    valor conhecido de `estrategia_versao` e de `atendente`. A receita soma
+    cada `payment_id` uma vez e desconta os estornos que trazem valor.
+    `amostra_insuficiente` é verdadeiro quando o grupo tem menos de
+    `amostra_minima` oportunidades abertas: o número existe, mas não compara
+    estratégias (`apps/fatos/crm.py`).
+    """
+    if ate < desde:
+        raise HttpError(422, "`ate` é anterior a `desde`: o intervalo está invertido")
+    dias = (ate - desde).days + 1
+    if dias > JANELA_MAXIMA_EM_DIAS:
+        raise HttpError(
+            422,
+            f"o intervalo pedido tem {dias} dias e o teto é "
+            f"{JANELA_MAXIMA_EM_DIAS}: peça em pedaços",
+        )
+    return funil_do_crm(site_id, desde, ate)
