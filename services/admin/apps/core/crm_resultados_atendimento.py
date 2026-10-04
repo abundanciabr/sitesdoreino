@@ -32,6 +32,8 @@ logger = logging.getLogger("admin.crm_resultados")
 
 LIMITE_DE_TRABALHOS = 20000
 INDISPONIVEL = "ainda indisponível"
+#: O teto da medição (`JANELA_MAXIMA_EM_DIAS` da célula metricas): acima dele ela recusa.
+JANELA_MAXIMA_DO_FUNIL_EM_DIAS = 366
 
 #: O que o canal responde quando recusa um envio, na linguagem da tela.
 RECUSAS = (
@@ -57,7 +59,10 @@ MOTIVOS_DA_PASSAGEM = (
 def _inicio_e_fim(desde: dt.date, ate: dt.date):
     zona = timezone.get_current_timezone()
     inicio = timezone.make_aware(dt.datetime.combine(desde, dt.time.min), zona)
-    fim = timezone.make_aware(dt.datetime.combine(ate + dt.timedelta(days=1), dt.time.min), zona)
+    try:
+        fim = timezone.make_aware(dt.datetime.combine(ate + dt.timedelta(days=1), dt.time.min), zona)
+    except OverflowError:  # `ate` no último dia que o calendário aceita
+        fim = dt.datetime.max.replace(tzinfo=dt.timezone.utc)
     return inicio, fim
 
 
@@ -142,6 +147,14 @@ def funil(request, desde, ate, site_filtro: str) -> dict:
     site_id = site_do_funil(request, site_filtro, modelos[0] if modelos else None)
     if not site_id:
         return {"disponivel": False, "aviso": "O funil ainda está indisponível: não deu para saber de qual site perguntar."}
+    if (ate - desde).days + 1 > JANELA_MAXIMA_DO_FUNIL_EM_DIAS:
+        return {
+            "disponivel": False,
+            "aviso": (
+                f"O funil mostra no máximo {JANELA_MAXIMA_DO_FUNIL_EM_DIAS} dias de cada vez. "
+                "Escolha um período mais curto."
+            ),
+        }
     estado, dados = FunilCrmClient().funil_crm(site_id, desde, ate)
     if estado != FunilCrmClient.OK:
         return {
