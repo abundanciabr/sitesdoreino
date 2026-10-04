@@ -20,7 +20,7 @@ def _token_valido(request) -> bool:
     autorizacao = request.headers.get("Authorization", "")
     if not recebido and autorizacao.startswith("Bearer "):
         recebido = autorizacao[len("Bearer "):]
-    return bool(esperado) and secrets.compare_digest(recebido, esperado)
+    return bool(esperado) and secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8"))
 
 
 def _texto(valor) -> str:
@@ -48,10 +48,15 @@ def _normalizar(item: dict) -> dict:
     }
 
 
-def _site(dados: dict, site_url: str, remetente: str) -> str:
-    """Site da URL, do corpo, da conversa respondida ou do único lead com o e-mail."""
-    if site_url or dados["site_id"]:
-        return (site_url or dados["site_id"])[:100]
+def _site(dados: dict, site_url: str, remetente: str) -> str | None:
+    """Site da URL, do corpo, da conversa respondida ou do único lead com o e-mail.
+
+    "" quando nenhum site é dono do remetente; None quando a célula leads não
+    respondeu (o provedor deve tentar de novo).
+    """
+    explicito = (site_url or dados["site_id"]).strip()
+    if explicito:
+        return explicito[:100]
     if dados["in_reply_to"]:
         anterior = MensagemDaConversa.objects.filter(
             direcao="saida", id_externo=dados["in_reply_to"].strip(), conversa__canal="email",
@@ -59,6 +64,8 @@ def _site(dados: dict, site_url: str, remetente: str) -> str:
         if anterior is not None:
             return anterior.conversa.site_id
     ligacao = leads.procurar(site_id="", canal="email", endereco=remetente)
+    if ligacao.ligacao == "pendente":
+        return None
     return ligacao.site_id if ligacao.ligacao in ("ligada", "ambigua") else ""
 
 
@@ -74,7 +81,7 @@ def email_recebido(request, site_id: str = ""):
     if not isinstance(payload, dict):
         return JsonResponse({"erro": "objeto esperado"}, status=400)
     itens = payload.get("items") if isinstance(payload.get("items"), list) else [payload]
-    recebidas = ignoradas = 0
+    recebidas = ignoradas = sem_site = 0
     for item in itens:
         if not isinstance(item, dict):
             ignoradas += 1
@@ -85,6 +92,12 @@ def email_recebido(request, site_id: str = ""):
             ignoradas += 1
             continue
         site = _site(dados, site_id.strip(), remetente)
+        if site is None:
+            return JsonResponse({"erro": "consulta de contatos indisponivel; tente de novo"}, status=503)
+        if not site:
+            # Remetente desconhecido, sem site na URL: nenhum site é dono desta carta.
+            sem_site += 1
+            continue
         _, nova = receber(Recebida(
             site_id=site, canal="email", endereco=remetente, texto=dados["text"],
             assunto=dados["subject"], id_externo=dados["message_id"].strip(),
@@ -93,4 +106,7 @@ def email_recebido(request, site_id: str = ""):
         recebidas += int(nova)
     if recebidas == 0 and ignoradas == len(itens):
         return JsonResponse({"erro": "sem remetente ou conteudo", "ignoradas": ignoradas}, status=400)
-    return JsonResponse({"recebidas": recebidas, "ignoradas": ignoradas})
+    resposta = {"recebidas": recebidas, "ignoradas": ignoradas}
+    if sem_site:
+        resposta["sem_site"] = sem_site
+    return JsonResponse(resposta)

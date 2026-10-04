@@ -135,7 +135,8 @@ def test_salvar_manda_a_ligacao_pela_api_do_quiz_com_apelido_virando_checkout():
         faixas=[_faixa("baixo", "Baixo"), _faixa("alto", "Alto")])))
     put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=_quiz()))
     resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
-        "destino_0": "", "rotulo_0": "", "destino_1": "curso-a", "rotulo_1": ""})
+        "chave_0": "baixo", "destino_0": "", "rotulo_0": "",
+        "chave_1": "alto", "destino_1": "curso-a", "rotulo_1": ""})
     assert resposta.status_code == 302
     assert resposta["Location"] == reverse("crm_ofertas_dos_quizzes") + "?salvo=crivo"
     assert json.loads(put.calls.last.request.content) == {"faixas": [
@@ -155,7 +156,7 @@ def test_salvar_recusa_oferta_que_o_catalogo_diz_que_nao_existe_e_nao_grava():
     respx.get(f"{CATALOGO}/sites/site-teste/ofertas/fantasma").mock(return_value=httpx.Response(404))
     put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=_quiz()))
     resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
-        "destino_0": "fantasma", "rotulo_0": "Ir"})
+        "chave_0": "alto", "destino_0": "fantasma", "rotulo_0": "Ir"})
     assert resposta.status_code == 422
     html = resposta.content.decode()
     assert "não existe neste site" in html and 'value="fantasma"' in html
@@ -168,7 +169,7 @@ def test_salvar_texto_de_botao_sem_oferta_pede_a_oferta():
     respx.get(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=_quiz(faixas=[_faixa("alto", "Alto")])))
     put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=_quiz()))
     resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
-        "destino_0": "", "rotulo_0": "Ir"})
+        "chave_0": "alto", "destino_0": "", "rotulo_0": "Ir"})
     assert resposta.status_code == 422 and "falta a oferta" in resposta.content.decode()
     assert not put.called
 
@@ -180,7 +181,7 @@ def test_recusa_da_celula_do_quiz_volta_em_portugues_com_o_que_foi_digitado():
     respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(
         422, json={"detail": "Destino do botão deve ser caminho local ou URL HTTP(S)."}))
     resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
-        "destino_0": "javascript:x", "rotulo_0": "Ir"})
+        "chave_0": "alto", "destino_0": "javascript:x", "rotulo_0": "Ir"})
     html = resposta.content.decode()
     assert resposta.status_code == 422
     assert "Destino do botão deve ser caminho local" in html and 'value="javascript:x"' in html
@@ -194,7 +195,7 @@ def test_quiz_que_nao_responde_ao_salvar_nao_diz_que_salvou():
     _oferta("x-y", "X", 1000)
     respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(503))
     resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
-        "destino_0": "/checkout/x-y/", "rotulo_0": "Ir"})
+        "chave_0": "alto", "destino_0": "/checkout/x-y/", "rotulo_0": "Ir"})
     assert resposta.status_code == 503
     assert "Não consegui confirmar que a alteração foi salva" in resposta.content.decode()
 
@@ -235,3 +236,56 @@ def test_crm_aponta_para_a_tela():
     respx.get("http://leads:8000/api/leads/crm").mock(return_value=httpx.Response(503))
     html = _cliente().get(reverse("crm")).content.decode()
     assert reverse("crm_ofertas_dos_quizzes") in html
+
+
+@respx.mock
+def test_formulario_velho_grava_na_faixa_certa_e_nao_esvazia_a_nova():
+    # A tela abriu com [baixo, alto]; depois o quiz ganhou "novo" no meio.
+    atual = _quiz(faixas=[_faixa("baixo", "Baixo", "/checkout/x/", "Ir"), _faixa("novo", "Novo"),
+                          _faixa("alto", "Alto", "/checkout/y/", "Ir")])
+    respx.get(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    _oferta("curso-a", "Curso A", 19700)
+    _oferta("x", "X", 1000)
+    put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
+        "chave_0": "baixo", "destino_0": "/checkout/x/", "rotulo_0": "Ir",
+        "chave_1": "alto", "destino_1": "curso-a", "rotulo_1": "Ir"})
+    assert resposta.status_code == 302
+    assert json.loads(put.calls.last.request.content) == {"faixas": [
+        {"key": "baixo", "destino": "/checkout/x/", "rotulo": "Ir"},
+        {"key": "alto", "destino": "/checkout/curso-a/", "rotulo": "Ir"},
+    ]}
+
+
+@respx.mock
+def test_formulario_sem_nenhuma_faixa_conhecida_nao_grava_nada():
+    atual = _quiz(faixas=[_faixa("novo", "Novo", "/checkout/x/", "Ir")])
+    respx.get(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    _lista(atual)
+    _oferta("x", "X", 1000)
+    put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
+        "chave_0": "velho", "destino_0": "", "rotulo_0": ""})
+    assert resposta.status_code == 422 and "mudou desde que a tela abriu" in resposta.content.decode()
+    assert not put.called
+
+
+@respx.mock
+def test_externo_com_caminho_de_checkout_nao_vira_oferta_da_casa():
+    _lista(_quiz(faixas=[_faixa("a", "A", "https://outro-site.com/checkout/curso-a/", "Ir"),
+                         _faixa("b", "B", "http://testserver/checkout/curso-a/", "Ir")]))
+    _oferta("curso-a", "Curso A", 19700)
+    html = _cliente().get(reverse("crm_ofertas_dos_quizzes")).content.decode()
+    assert html.count("Endereço fora da plataforma") == 1
+    assert html.count("Curso A") == 1
+
+
+@respx.mock
+def test_salvar_endereco_externo_com_apelido_inexistente_nao_e_barrado():
+    atual = _quiz(faixas=[_faixa("a", "A")])
+    respx.get(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    respx.get(f"{CATALOGO}/sites/site-teste/ofertas/fantasma").mock(return_value=httpx.Response(404))
+    put = respx.put(QUIZ + "/crivo/ofertas").mock(return_value=httpx.Response(200, json=atual))
+    resposta = _cliente().post(reverse("crm_ofertas_dos_quizzes_salvar", args=["crivo"]), {
+        "chave_0": "a", "destino_0": "https://outro-site.com/checkout/fantasma/", "rotulo_0": "Ir"})
+    assert resposta.status_code == 302 and put.called

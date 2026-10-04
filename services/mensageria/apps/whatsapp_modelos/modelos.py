@@ -15,6 +15,8 @@ chave pode tentar de novo.
 """
 from __future__ import annotations
 
+import hashlib
+import logging
 import re
 
 from django.db import connection, transaction
@@ -24,6 +26,8 @@ from apps.whatsapp.service import mascarar_telefone, normalizar_telefone
 
 from . import cloud
 from .models import EnvioDeModelo, ModeloWhatsApp, RetornoDeModelo
+
+logger = logging.getLogger(__name__)
 
 # Os dados do lead que um modelo pode receber. A chave é o que a abordagem e as
 # jornadas entregam em `variaveis`; o texto é o que a tela mostra.
@@ -44,7 +48,7 @@ _APELIDOS = {
 _PADRAO_POSICIONAL = {"1": "nome", "2": "quiz", "3": "oferta"}
 
 ESTADOS_DA_META = {
-    "APPROVED": "aprovado", "PENDING": "pendente", "IN_APPEAL": "pendente",
+    "APPROVED": "aprovado", "REINSTATED": "aprovado", "PENDING": "pendente", "IN_APPEAL": "pendente",
     "REJECTED": "rejeitado", "PAUSED": "pausado", "FLAGGED": "pausado",
     "DISABLED": "desativado", "DELETED": "desativado", "ARCHIVED": "desativado",
     "PENDING_DELETION": "desativado", "LIMIT_EXCEEDED": "desativado",
@@ -265,6 +269,77 @@ def preparar_modelo(nome: str, variaveis: dict | None = None, idioma: str = "") 
             "componentes": montar_componentes(escolhido, limpas)}
 
 
+def _numero_do_site(site_id: str) -> str:
+    """Número da Cloud API deste site; sem ligação própria vale o número da conta."""
+    from apps.whatsapp.models import ConfiguracaoWhatsApp
+
+    config = ConfiguracaoWhatsApp.objects.filter(
+        site_id=site_id, transporte="WHATSAPP-BUSINESS", ativo=True).first()
+    return (config.instancia if config else "") or cloud.credenciais()["numero_id"]
+
+
+def _texto_enviado(modelo: ModeloWhatsApp, componentes: list[dict]) -> str:
+    """O corpo do modelo já com os dados do lead, para a caixa de conversas."""
+    corpo = next((c for c in componentes if c.get("type") == "body"), {})
+    itens = corpo.get("parameters", [])
+    parametros = [p.get("text", "") for p in itens]
+    nomeados = {p["parameter_name"]: p.get("text", "") for p in itens if p.get("parameter_name")}
+    posicoes = sorted((v["parametro"] for v in modelo.variaveis if v["componente"] == "body"),
+                      key=lambda x: int(x) if x.isdigit() else 0)
+    por_posicao = dict(zip(posicoes, parametros))
+
+    def trocar(achado):
+        chave = achado.group(1)
+        return nomeados.get(chave) or por_posicao.get(chave) or achado.group(0)
+
+    return _PARAM.sub(trocar, modelo.corpo or "")[:4000]
+
+
+def _registrar_na_conversa(envio: EnvioDeModelo, texto: str) -> None:
+    """Põe o primeiro contato na caixa de conversas, como mensagem de saída.
+
+    Falha aqui não desfaz o envio: a mensagem já saiu e o `EnvioDeModelo` guarda o estado.
+    """
+    from apps.conversas import enderecos
+    from apps.conversas.models import Conversa, MensagemDaConversa
+
+    endereco = enderecos.endereco_do_canal("whatsapp", envio.destinatario)
+    if not endereco:
+        return
+    chave = envio.chave_idempotencia
+    chave = chave if len(chave) <= 90 else "modelo:" + hashlib.sha1(chave.encode()).hexdigest()
+    try:
+        with transaction.atomic():
+            conversa, _ = Conversa.objects.select_for_update().get_or_create(
+                site_id=envio.site_id, canal="whatsapp", endereco=endereco)
+            mensagem, criada = MensagemDaConversa.objects.get_or_create(
+                conversa=conversa, chave_idempotencia=chave,
+                defaults={"direcao": "saida", "autor": "agente" if envio.origem == "abordagem" else "sistema",
+                          "autor_id": envio.origem[:100], "texto": texto,
+                          "estado_envio": envio.estado if envio.estado != "reservado" else "pendente",
+                          "id_externo": envio.provider_id, "erro": envio.erro[:300],
+                          "ocorrida_em": timezone.now()})
+            if not criada:
+                mensagem.estado_envio = envio.estado if envio.estado != "reservado" else "pendente"
+                mensagem.id_externo, mensagem.erro = envio.provider_id, envio.erro[:300]
+                mensagem.save(update_fields=["estado_envio", "id_externo", "erro"])
+            if conversa.ultima_mensagem_em is None or conversa.ultima_mensagem_em < mensagem.ocorrida_em:
+                conversa.ultima_mensagem_em = mensagem.ocorrida_em
+                conversa.save(update_fields=["ultima_mensagem_em", "atualizada_em"])
+    except Exception:  # noqa: BLE001 - a caixa de conversas é melhoria; o envio não se perde
+        logger.exception("whatsapp_modelos: falha ao registrar o primeiro contato na conversa")
+
+
+def _espelhar_estado(envio: EnvioDeModelo) -> None:
+    """A mensagem de saída da conversa acompanha o estado do envio."""
+    from apps.conversas.models import MensagemDaConversa
+
+    if not envio.provider_id:
+        return
+    MensagemDaConversa.objects.filter(direcao="saida", id_externo=envio.provider_id).update(
+        estado_envio=envio.estado, erro=envio.erro[:300])
+
+
 def _descadastrado(site_id: str, numero: str) -> bool:
     """Quem pediu PARAR/SAIR no WhatsApp deste site não recebe primeiro contato."""
     from apps.conversas.models import Descadastro
@@ -344,7 +419,7 @@ def enviar_modelo(*, site_id: str, chave_idempotencia: str, destinatario: str, m
              "type": "template", "template": template}
     provider_id = ""
     try:
-        resposta = cloud.pedir("POST", f"{cloud.credenciais()['numero_id']}/messages", dados=corpo)
+        resposta = cloud.pedir("POST", f"{_numero_do_site(site_id)}/messages", dados=corpo)
     except cloud.CloudNaoConfigurado as exc:
         return _falhar(envio, str(exc))
     except cloud.CloudRecusou as exc:
@@ -365,6 +440,7 @@ def enviar_modelo(*, site_id: str, chave_idempotencia: str, destinatario: str, m
             if retorno:
                 _aplicar(atual, retorno.estado, retorno.erro_codigo)
         atual.save(update_fields=["estado", "erro", "erro_codigo", "retomavel", "provider_id", "atualizado_em"])
+    _registrar_na_conversa(atual, _texto_enviado(escolhido, componentes))
     return atual
 
 
@@ -402,13 +478,14 @@ def aplicar_status(status: dict) -> bool:
             if estado == "falhou" and retorno.estado not in ("entregue", "lido"):
                 retorno.estado, retorno.erro_codigo = estado, codigo[:20]
                 retorno.save(update_fields=["estado", "erro_codigo", "atualizado_em"])
-            elif estado != "falhou" and ORDEM.get(estado, 0) > ORDEM.get(retorno.estado, 0):
+            elif estado != "falhou" and retorno.estado != "falhou" and ORDEM.get(estado, 0) > ORDEM.get(retorno.estado, 0):
                 retorno.estado = estado
                 retorno.save(update_fields=["estado", "atualizado_em"])
         envio = EnvioDeModelo.objects.select_for_update().filter(provider_id=provider_id[:200]).first()
         if envio is None or not _aplicar(envio, estado, codigo):
             return False
         envio.save(update_fields=["estado", "erro", "erro_codigo", "retomavel", "atualizado_em"])
+        _espelhar_estado(envio)
     return True
 
 

@@ -309,3 +309,96 @@ def test_cliente_http_separa_recusa_de_incerteza(ligado, monkeypatch):
     monkeypatch.setattr(cloud.request, "urlopen", falha)
     with pytest.raises(cloud.CloudSemResposta):
         cloud.pedir("POST", "num-1/messages", dados={})
+
+
+def test_resposta_ao_modelo_chega_ao_site_pelo_numero_configurado(meta, tokens):
+    from django.utils import timezone
+
+    from apps.conversas.models import Conversa
+
+    chamadas, _ = meta
+    sincronizar_modelos()
+    cliente = Client()
+    escrita = {"HTTP_AUTHORIZATION": "Bearer " + ESCRITA}
+    ligar = cliente.post("/api/mensageria/whatsapp/site-a/config",
+                         json.dumps({"instancia": "num-site-a", "transporte": "WHATSAPP-BUSINESS"}),
+                         content_type="application/json", **escrita)
+    assert ligar.status_code == 200 and ligar.json()["transporte"] == "WHATSAPP-BUSINESS"
+    outro = cliente.post("/api/mensageria/whatsapp/site-b/config",
+                         json.dumps({"instancia": "num-site-a", "transporte": "WHATSAPP-BUSINESS"}),
+                         content_type="application/json", **escrita)
+    assert outro.status_code == 409
+    enviar_modelo(site_id="site-a", chave_idempotencia="ligado", destinatario="5511988887777",
+                  modelo="primeiro_contato", variaveis=LEAD)
+    assert [c[1] for c in chamadas if c[0] == "POST"] == ["num-site-a/messages"]
+    corpo = {"entry": [{"changes": [{"field": "messages", "value": {
+        "metadata": {"phone_number_id": "num-site-a"},
+        "messages": [{"from": "5511988887777", "id": "wamid.resp", "type": "text",
+                      "timestamp": str(int(timezone.now().timestamp())), "text": {"body": "sim, quero"}}]}}]}]}
+    bruto, assinatura = _assinado(corpo)
+    resposta = cliente.post("/webhooks/whatsapp/cloud", bruto, content_type="application/json",
+                            HTTP_X_HUB_SIGNATURE_256=assinatura)
+    assert resposta.json()["recebidas"] == 1
+    conversa = Conversa.objects.get(site_id="site-a", canal="whatsapp")
+    assert [m.direcao for m in conversa.mensagens.order_by("criada_em")] == ["saida", "entrada"]
+
+
+def test_primeiro_contato_aparece_na_conversa_com_texto_e_estado(meta):
+    from apps.conversas.models import Conversa
+
+    sincronizar_modelos()
+    envio = enviar_modelo(site_id="site-a", chave_idempotencia="conv", destinatario="5511988887777",
+                          modelo="primeiro_contato", variaveis=LEAD, origem="abordagem")
+    conversa = Conversa.objects.get(site_id="site-a", canal="whatsapp", endereco="5511988887777")
+    mensagem = conversa.mensagens.get()
+    assert mensagem.direcao == "saida" and mensagem.autor == "agente"
+    assert mensagem.texto == "Oi Ana, vi seu resultado no Quiz da Vocação. Quer saber do Curso Base?"
+    assert mensagem.estado_envio == "aceito" and mensagem.id_externo == envio.provider_id
+    assert conversa.ultima_mensagem_em is not None
+    assert conversa.janela_aberta_ate is None  # modelo não abre janela; só a fala do contato abre
+    aplicar_status({"id": envio.provider_id, "status": "delivered"})
+    mensagem.refresh_from_db()
+    assert mensagem.estado_envio == "entregue"
+    # a mesma chave não duplica a mensagem na conversa
+    enviar_modelo(site_id="site-a", chave_idempotencia="conv", destinatario="5511988887777",
+                  modelo="primeiro_contato", variaveis=LEAD)
+    assert conversa.mensagens.count() == 1
+
+
+def test_modelo_reativado_pela_meta_volta_a_ser_escolhido(meta):
+    from apps.whatsapp_modelos.modelos import atualizar_estado_de_modelo, escolher_modelo
+
+    sincronizar_modelos()
+    atualizar_estado_de_modelo({"event": "FLAGGED", "message_template_id": "111"})
+    assert escolher_modelo("primeiro_contato") is None
+    atualizar_estado_de_modelo({"event": "REINSTATED", "message_template_id": "111"})
+    assert escolher_modelo("primeiro_contato") is not None
+
+
+def test_falha_que_chega_antes_da_resposta_do_envio_nao_vira_enviado(meta):
+    _, respostas = meta
+    sincronizar_modelos()
+    aplicar_status({"id": "wamid.f", "status": "failed", "errors": [{"code": 131049}]})
+    aplicar_status({"id": "wamid.f", "status": "sent"})
+    respostas["POST"] = [{"messages": [{"id": "wamid.f"}]}]
+    envio = enviar_modelo(site_id="site-a", chave_idempotencia="f", destinatario="5511988887777",
+                          modelo="primeiro_contato", variaveis=LEAD)
+    assert envio.estado == "falhou" and envio.erro_codigo == "131049"
+
+
+def test_corpo_cortado_no_meio_e_resposta_incerta(ligado, monkeypatch):
+    import http.client
+
+    class Cortada:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self, *a):
+            raise http.client.IncompleteRead(b"{")
+
+    monkeypatch.setattr(cloud.request, "urlopen", lambda *a, **k: Cortada())
+    with pytest.raises(cloud.CloudSemResposta):
+        cloud.pedir("POST", "num-1/messages", dados={})
