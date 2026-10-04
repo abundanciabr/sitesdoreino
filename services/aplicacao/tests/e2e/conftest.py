@@ -169,6 +169,10 @@ def _semear() -> dict:
                                       description="Resultado do ciclo", min_score=0, max_score=100)
     with serving("mensageria"):
         ConfiguracaoWhatsApp.objects.create(site_id=site_id, instancia="instancia-do-ciclo", ativo=True)
+    from modules.checkout.apps.pedidos.models import CondicaoDoAgente
+
+    with serving("checkout"):  # o mantenedor libera o Pix da oferta ao agente
+        CondicaoDoAgente.objects.create(site_id=site_id, oferta_slug=oferta.slug, condicao_id="pix")
     return {"site_id": site_id, "oferta": oferta.slug, "preco_cents": oferta.price_cents}
 
 

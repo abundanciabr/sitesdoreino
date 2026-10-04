@@ -155,6 +155,24 @@ def test_07_envio_com_a_mesma_chave_sai_uma_vez(mundo, elenco):
     assert len(mundo.amb.gateway.para(ana.whatsapp)) == 2
 
 
+def test_07b_de_madrugada_o_robo_nao_fala(mundo, elenco):
+    """O robô só fala entre 08h e 20h de São Paulo; o ciclo roda a qualquer hora."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    ana = elenco["ana"]
+    _precisa(ana.conversa_id, "conversa da Ana")
+    antes = len(mundo.amb.gateway.enviados)
+    mundo.amb.provedores.hora_do_envio = datetime.now(ZoneInfo("America/Sao_Paulo")).replace(hour=23, minute=0)
+    try:
+        resposta = mundo.enviar(ana, "Oi de madrugada!", f"madrugada-{mundo.cena.sufixo}")
+    finally:
+        mundo.amb.provedores.hora_do_envio = None
+    assert resposta["resultado"] == "fora_do_horario", resposta
+    assert resposta["reagendar_para"], resposta
+    assert len(mundo.amb.gateway.enviados) == antes
+
+
 def test_08_sem_conversa_aberta_nao_ha_envio_fora_da_janela(mundo, elenco):
     bruno = elenco["bruno"]
     _precisa(bruno.lead_id, "contato do Bruno")
@@ -171,6 +189,7 @@ def test_08_sem_conversa_aberta_nao_ha_envio_fora_da_janela(mundo, elenco):
 def test_09_link_de_compra_e_idempotente_e_aponta_para_a_oportunidade(mundo, elenco, estado):
     ana = elenco["ana"]
     _precisa(ana.oportunidades.get(mundo.cena.quiz_a), "oportunidade da Ana")
+    assert "pix" in mundo.condicoes_liberadas()
     chave = f"link-ana-{mundo.cena.sufixo}"
     link = mundo.link_de_compra(ana, mundo.cena.quiz_a, chave)
     assert link["status"] == "aguardando_dados"

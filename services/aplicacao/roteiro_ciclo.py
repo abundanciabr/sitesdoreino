@@ -445,6 +445,9 @@ def executar_ciclo(cena: Cena, amb: Ambiente, *, pessoa: Pessoa | None = None) -
 
     def compra():
         _pix_so_pelo_mercado_pago(cena)
+        if "pix" not in ciclo.condicoes_liberadas():
+            raise Indisponivel(f"o mantenedor ainda não liberou o Pix da oferta {cena.oferta} para o agente; "
+                               "o roteiro não libera condição por conta própria")
         link = ciclo.link_de_compra(pessoa, cena.quiz_a, chave + "-link")
         if ciclo.link_de_compra(pessoa, cena.quiz_a, chave + "-link")["link_id"] != link["link_id"]:
             raise FalhaDoCiclo("o mesmo pedido de link criou dois links")

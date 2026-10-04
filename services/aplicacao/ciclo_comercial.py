@@ -186,9 +186,13 @@ class ProvedoresFalsos:
         self.mp = mp or MercadoPagoFalso()
         self.openai: list[str] = []
         self.barradas: list[str] = []
+        #: Hora que o envio do robô enxerga. Vazio: a de hoje ao meio-dia em São
+        #: Paulo se a real estiver fora das 08h-20h do robô; senão, a real.
+        self.hora_do_envio = None
         self._ativo = False
         self._sync = None
         self._async = None
+        self._agora_original = None
 
     def _decidir(self, request: httpx.Request) -> httpx.Response | None:
         from internal import SERVICOS
@@ -221,13 +225,38 @@ class ProvedoresFalsos:
 
         httpx.HTTPTransport.handle_request = sincrono
         httpx.AsyncHTTPTransport.handle_async_request = assincrono
+        self._fixar_hora_do_envio()
         self._ativo = True
         return self
+
+    def _fixar_hora_do_envio(self) -> None:
+        """O robô só fala entre 08h e 20h; o ciclo roda a qualquer hora.
+
+        Só a hora que a régua do envio enxerga muda; a regra continua a de produção
+        (``hora_do_envio`` a exercita fora da janela).
+        """
+        from django.utils import timezone
+
+        envio = import_module("modules.mensageria.apps.conversas.envio")
+        self._agora_original = envio._agora
+        original, falsos = envio._agora, self
+
+        def agora():
+            if falsos.hora_do_envio is not None:
+                return falsos.hora_do_envio
+            real = original()
+            local = timezone.localtime(real)
+            if 8 <= local.hour < 20:
+                return real
+            return local.replace(hour=12, minute=0, second=0, microsecond=0)
+
+        envio._agora = agora
 
     def remover(self) -> None:
         if self._ativo:
             httpx.HTTPTransport.handle_request = self._sync
             httpx.AsyncHTTPTransport.handle_async_request = self._async
+            import_module("modules.mensageria.apps.conversas.envio")._agora = self._agora_original
             self._ativo = False
 
 
@@ -654,6 +683,13 @@ class Ciclo:
                              params={"site_id": self.cena.site_id}), o_que="mensagens")
 
     # -- compra -------------------------------------------------------------
+
+    def condicoes_liberadas(self) -> list[str]:
+        """Ids das condições que o mantenedor liberou ao agente para a oferta (o link só vale com elas)."""
+        corpo = _json(interno(self.amb.rotas.checkout, "GET",
+                              f"/interno/ofertas/{self.cena.oferta}/condicoes-agente",
+                              host=self.cena.host), o_que="condições liberadas")
+        return [c["id"] for c in corpo.get("condicoes", [])]
 
     def link_de_compra(self, pessoa: Pessoa, slug_do_quiz: str, chave: str) -> dict:
         oportunidade = pessoa.oportunidades[slug_do_quiz]
