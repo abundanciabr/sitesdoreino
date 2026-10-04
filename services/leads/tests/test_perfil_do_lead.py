@@ -23,6 +23,12 @@ def lead():
     ao_quiz_completado(str(uuid.uuid4()), {
         "site_id": "a", "quiz_slug": "crivo", "result_key": "iniciante",
         "lead": {"email": "maria@gmail.com", "name": "Maria"},
+        "respostas": [
+            {"pergunta_id": "q1", "pergunta": "Quanto tempo você tem por semana?",
+             "respostas": [{"id": "o2", "texto": "Menos de 2 horas"}], "valor_livre": None},
+            {"pergunta_id": "q2", "pergunta": "O que você quer alcançar?",
+             "respostas": [], "valor_livre": "Trabalhar com isso"},
+        ],
     })
     return Lead.objects.get()
 
@@ -152,3 +158,46 @@ def test_perfil_so_pelo_painel_e_por_lead(client, lead, autorizado, settings):
     assert client.get(f"/api/leads/leads/{outro.pk}/perfil", **autorizado).status_code == 404
     assert client.put(f"/api/leads/leads/{uuid.uuid4()}/perfil", data="{}",
                       content_type="application/json", **autorizado).status_code == 404
+
+
+def test_evidencia_de_outro_lead_nao_vira_fato(client, lead, autorizado):
+    from apps.core.models import QuizDoLead
+
+    ao_quiz_completado(str(uuid.uuid4()), {
+        "site_id": "a", "quiz_slug": "crivo", "result_key": "avancado",
+        "lead": {"email": "joao@gmail.com", "name": "João"},
+        "respostas": [{"pergunta_id": "q2", "pergunta": "O que você quer alcançar?",
+                       "respostas": [], "valor_livre": "resposta do João"}],
+    })
+    do_joao = QuizDoLead.objects.get(lead__email="joao@gmail.com")
+    resposta = put(client, lead, {"objetivo_declarado": {"texto": "Abrir negócio", "evidencias": [
+        {"tipo": "quiz", "id": str(do_joao.id), "trecho": "resposta do João"}]}}, autorizado)
+    assert resposta.status_code == 200
+    perfil = resposta.json()
+    assert perfil["objetivo_declarado"] == {"texto": "Abrir negócio", "evidencias": [],
+                                            "hipotese": True}
+    assert perfil["evidencias_recusadas"][0]["motivo"] == "não é deste contato"
+    assert "resposta do João" not in str(client.get(f"/api/leads/leads/{lead.pk}/perfil",
+                                                    **autorizado).json())
+
+
+def test_trecho_que_nao_esta_nas_respostas_do_contato_nao_vale(client, lead, autorizado):
+    perfil = put(client, lead, {"objetivo_declarado": {"texto": "x", "evidencias": [
+        {"tipo": "resposta", "id": "q2", "trecho": "resposta do João"}]}}, autorizado).json()
+    assert perfil["objetivo_declarado"]["hipotese"] is True
+    assert perfil["evidencias_recusadas"][0]["motivo"] == "trecho não está no registro"
+
+
+def test_evidencia_do_proprio_contato_vale_pelo_id_do_quiz_e_da_linha_do_tempo(
+        client, lead, autorizado):
+    quiz = lead.quizzes.get()
+    evento = lead.timeline.get(event="quiz.completado")
+    perfil = put(client, lead, {
+        "disponibilidade": {"texto": "Pouco tempo", "evidencias": [
+            {"tipo": "quiz", "id": f"{quiz.id}:q1", "trecho": "“menos de 2 horas”"}]},
+        "experiencia": {"texto": "Começando", "evidencias": [
+            {"tipo": "evento", "id": str(evento.event_id), "trecho": "iniciante"}]},
+    }, autorizado).json()
+    assert perfil["disponibilidade"]["hipotese"] is False
+    assert perfil["experiencia"]["hipotese"] is False
+    assert perfil["evidencias_recusadas"] == []

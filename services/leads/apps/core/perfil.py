@@ -7,6 +7,7 @@ fica no histórico.
 """
 
 import json
+import re
 
 from django.db import IntegrityError, transaction
 from django.db.models import Max
@@ -62,7 +63,80 @@ def _evidencias(bruto, campo) -> list:
     return saida
 
 
-def _afirmacao(bruto, campo, *, hipotese=False):
+def _normalizado(texto) -> str:
+    texto = re.sub(r"[\"'“”‘’«»]", " ", str(texto or "")).casefold()
+    return " ".join(texto.split())
+
+
+class ProvasDoContato:
+    """O que deste contato pode ser citado como prova.
+
+    Evidência de quiz, linha do tempo ou oportunidade precisa apontar para um
+    registro DESTE contato, e o trecho precisa estar nele. Evidência de outra
+    célula (mensagem, catálogo...) não é conferida aqui. A que não confere é
+    deixada de fora e devolvida em `evidencias_recusadas`; sem nenhuma
+    evidência, a afirmação vira hipótese.
+    """
+
+    DO_QUIZ = {"quiz", "resposta", "respostas"}
+    DA_LINHA_DO_TEMPO = {"timeline", "evento", "linha_do_tempo"}
+    DA_OPORTUNIDADE = {"oportunidade", "historico", "nota"}
+
+    def __init__(self, lead):
+        self.recusadas = []
+        self.ids = {"quiz": set(), "linha": set(), "oportunidade": set()}
+        textos = {"quiz": [], "linha": [], "oportunidade": []}
+        for quiz in lead.quizzes.all():
+            self.ids["quiz"] |= {str(quiz.id), quiz.submissao_id, quiz.sessao, quiz.captura_id}
+            if quiz.resultado:
+                self.ids["quiz"].add("resultado")
+                textos["quiz"].append(quiz.resultado)
+            for item in quiz.respostas or []:
+                self.ids["quiz"].add(item.get("pergunta_id") or "")
+                textos["quiz"].append(item.get("pergunta") or "")
+                textos["quiz"] += [r.get("texto") or "" for r in item.get("respostas") or []]
+                textos["quiz"].append(item.get("valor_livre") or "")
+        for evento in lead.timeline.order_by("-occurred_at", "-id")[:500]:
+            self.ids["linha"] |= {str(evento.id), str(evento.event_id or "")}
+            textos["linha"].append(json.dumps(evento.payload, ensure_ascii=False))
+        for oportunidade in lead.oportunidades.all():
+            self.ids["oportunidade"].add(str(oportunidade.id))
+            textos["oportunidade"] += [oportunidade.passo_descricao, oportunidade.objecao_principal]
+            for registro in oportunidade.historico.all():
+                self.ids["oportunidade"].add(str(registro.id))
+                textos["oportunidade"] += [registro.descricao, registro.evidencia]
+        for chave in self.ids:
+            self.ids[chave].discard("")
+        self.textos = {chave: _normalizado(" \n ".join(v)) for chave, v in textos.items()}
+
+    def _fonte(self, tipo):
+        tipo = tipo.casefold()
+        if tipo in self.DO_QUIZ:
+            return "quiz"
+        if tipo in self.DA_LINHA_DO_TEMPO:
+            return "linha"
+        if tipo in self.DA_OPORTUNIDADE:
+            return "oportunidade"
+        return None
+
+    def confere(self, evidencia, campo) -> bool:
+        fonte = self._fonte(evidencia["tipo"])
+        if fonte is None:
+            return True
+        partes = [p for p in re.split(r"[:#/]", evidencia["id"]) if p]
+        id_ok = evidencia["id"] in self.ids[fonte] or any(p in self.ids[fonte] for p in partes)
+        pedacos = [_normalizado(p) for p in re.split(r"\.\.\.|…", evidencia["trecho"])]
+        trecho_ok = all(p in self.textos[fonte] for p in pedacos if p)
+        if id_ok and trecho_ok:
+            return True
+        self.recusadas.append({
+            "campo": campo, **evidencia,
+            "motivo": "não é deste contato" if not id_ok else "trecho não está no registro",
+        })
+        return False
+
+
+def _afirmacao(bruto, campo, *, hipotese=False, provas=None):
     """{texto, evidencias, hipotese}. Sem evidência, é hipótese."""
     if bruto is None or bruto == "":
         return None
@@ -72,6 +146,8 @@ def _afirmacao(bruto, campo, *, hipotese=False):
         raise HttpError(422, f"{campo} precisa ser {{texto, evidencias}}")
     texto = _texto(bruto.get("texto"), f"{campo}.texto", obrigatorio=True)
     evidencias = _evidencias(bruto.get("evidencias"), campo)
+    if provas is not None:
+        evidencias = [e for e in evidencias if provas.confere(e, campo)]
     return {
         "texto": texto,
         "evidencias": evidencias,
@@ -79,12 +155,13 @@ def _afirmacao(bruto, campo, *, hipotese=False):
     }
 
 
-def _lista(bruto, campo, *, hipotese=False) -> list:
+def _lista(bruto, campo, *, hipotese=False, provas=None) -> list:
     if bruto is None:
         return []
     if not isinstance(bruto, list):
         raise HttpError(422, f"{campo} precisa ser uma lista")
-    itens = [_afirmacao(item, campo, hipotese=hipotese) for item in bruto[:LIMITE_DE_ITENS]]
+    itens = [_afirmacao(item, campo, hipotese=hipotese, provas=provas)
+             for item in bruto[:LIMITE_DE_ITENS]]
     return [item for item in itens if item]
 
 
@@ -109,18 +186,21 @@ def _prioridade(bruto) -> tuple[str, str]:
     return nivel, _texto(bruto.get("explicacao"), "prioridade.explicacao")
 
 
-def _oferta(bruto):
+def _oferta(bruto, provas=None):
     if bruto is None or bruto == "":
         return None
     if isinstance(bruto, str):
         bruto = {"oferta_ref": bruto}
     if not isinstance(bruto, dict):
         raise HttpError(422, "oferta_indicada precisa ser {oferta_ref, nome, motivo}")
+    evidencias = _evidencias(bruto.get("evidencias"), "oferta_indicada")
+    if provas is not None:
+        evidencias = [e for e in evidencias if provas.confere(e, "oferta_indicada")]
     oferta = {
         "oferta_ref": _texto(bruto.get("oferta_ref"), "oferta_indicada.oferta_ref", 200),
         "nome": _texto(bruto.get("nome"), "oferta_indicada.nome", 300),
         "motivo": _texto(bruto.get("motivo"), "oferta_indicada.motivo"),
-        "evidencias": _evidencias(bruto.get("evidencias"), "oferta_indicada"),
+        "evidencias": evidencias,
     }
     if not (oferta["oferta_ref"] or oferta["nome"]):
         raise HttpError(422, "oferta_indicada precisa de oferta_ref ou nome")
@@ -214,10 +294,13 @@ def gravar_perfil(request, lead_id: str):
     _admin(request)
     lead = lead_ou_404(lead_id)
     corpo = _corpo(request)
-    conteudo = {campo: _afirmacao(corpo.get(campo), campo) for campo in CAMPOS_UNICOS}
-    conteudo["duvidas"] = _lista(corpo.get("duvidas"), "duvidas")
-    conteudo["objecoes"] = _lista(corpo.get("objecoes"), "objecoes")
-    conteudo["hipoteses"] = _lista(corpo.get("hipoteses"), "hipoteses", hipotese=True)
+    provas = ProvasDoContato(lead)
+    conteudo = {campo: _afirmacao(corpo.get(campo), campo, provas=provas)
+                for campo in CAMPOS_UNICOS}
+    conteudo["duvidas"] = _lista(corpo.get("duvidas"), "duvidas", provas=provas)
+    conteudo["objecoes"] = _lista(corpo.get("objecoes"), "objecoes", provas=provas)
+    conteudo["hipoteses"] = _lista(corpo.get("hipoteses"), "hipoteses", hipotese=True,
+                                   provas=provas)
     for campo in CAMPOS_TEXTOS:
         conteudo[campo] = _textos(corpo.get(campo), campo)
     nivel, explicacao = _prioridade(corpo.get("prioridade"))
@@ -226,7 +309,7 @@ def gravar_perfil(request, lead_id: str):
         "conteudo": conteudo,
         "prioridade": nivel,
         "prioridade_explicacao": explicacao,
-        "oferta_indicada": _oferta(corpo.get("oferta_indicada")),
+        "oferta_indicada": _oferta(corpo.get("oferta_indicada"), provas),
         "analisado_em": _analisado_em(corpo.get("analisado_em")),
         "analisado_por": _texto(corpo.get("analisado_por"), "analisado_por", 200),
         "versao_estrategia": _texto(corpo.get("versao_estrategia"), "versao_estrategia", 100),
@@ -245,6 +328,7 @@ def gravar_perfil(request, lead_id: str):
         raise HttpError(409, "outra análise gravou ao mesmo tempo; leia de novo")
     visto = como_perfil(perfil)
     visto["versoes"] = perfil.versao
+    visto["evidencias_recusadas"] = provas.recusadas
     return JsonResponse(visto)
 
 
