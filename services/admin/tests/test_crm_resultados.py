@@ -199,3 +199,58 @@ def test_fatos_dos_agentes_com_o_registro_real():
     assert fatos_["custo_modelos_usd"] == Decimal("0.30")
     assert len(fatos_["assistidas"]) == 1 and fatos_["assistidas"][0]["versao"] == ("abordagem", 3)
     assert fatos_["envios"]["whatsapp"]["enviadas"] == 1
+
+
+# --- ajustes de 04/10/2026 (segunda rodada) ----------------------------------------------------
+
+
+@respx.mock
+def test_pagina_de_resultados_tem_o_menu_das_areas_do_crm(monkeypatch):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    html = dentro().get(reverse("crm_resultados")).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html
+    assert f'href="{reverse("crm")}"' in html and f'href="{reverse("crm_resultados")}" class="aba ativa"' in html
+
+
+@pytest.mark.parametrize("parametros", [
+    {"desde": "2026-02-31"},
+    {"ate": "2026-13-45", "desde": "2026-09-01"},
+    {"desde": "0000-00-00"},
+    {"dolar": "inf"},
+    {"dolar": "-inf"},
+    {"dolar": "nan"},
+    {"dolar": "1e99999999"},
+    {"tarifa_whatsapp": "Infinity", "tarifa_email": "1e999999"},
+    {"estrategia": "abordagem:²"},
+    {"estrategia": "abordagem:١٢"},
+    {"estrategia": "abordagem:" + "9" * 5000},
+    {"dolar": "²"},
+])
+@respx.mock
+def test_valor_mal_escrito_na_url_nao_derruba_a_pagina_de_resultados(monkeypatch, parametros):
+    monkeypatch.setattr(crm_resultados, "fatos_dos_agentes", lambda o, c: _agentes_falsos())
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    r = dentro().get(reverse("crm_resultados"), parametros)
+    assert r.status_code == 200
+    # Cotação e tarifa inválidas valem como "não informadas": o custo fica indisponível, não vira número falso.
+    if any(k in parametros for k in ("dolar", "tarifa_whatsapp")):
+        assert r.context["custo_centavos"] is None
+
+
+def test_decimal_so_aceita_numero_finito_e_razoavel():
+    assert crm_resultados._decimal("5,40") == Decimal("5.40")
+    assert crm_resultados._decimal("0") == Decimal("0")
+    for ruim in ("inf", "-inf", "nan", "sNaN", "1e99999999", "1000001", "-1", "abc", ""):
+        assert crm_resultados._decimal(ruim) is None
+
+
+def test_data_impossivel_cai_no_periodo_padrao():
+    from datetime import date
+
+    padrao = date(2026, 10, 1)
+    assert crm_resultados._data("2026-02-31", padrao) == padrao
+    assert crm_resultados._data("", padrao) == padrao
+    assert crm_resultados._data("2026-02-28", padrao) == date(2026, 2, 28)
+    assert crm_resultados._inteiro("12") == 12
+    assert crm_resultados._inteiro("²") is None and crm_resultados._inteiro("9" * 10) is None

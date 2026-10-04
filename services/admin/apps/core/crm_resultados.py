@@ -156,12 +156,33 @@ def _instante(texto):
     return momento
 
 
+VALOR_MAXIMO = Decimal("1000000")  # cotação e tarifas: acima disso é erro de digitação
+
+
 def _decimal(texto) -> "Decimal | None":
+    """Número não negativo, finito e razoável; qualquer outra coisa ("inf",
+    "nan", "1e99999999", texto) vale como não informado."""
     try:
         valor = Decimal(str(texto).replace(",", ".").strip())
     except (InvalidOperation, ValueError):
         return None
-    return valor if valor >= 0 else None
+    if not valor.is_finite() or valor < 0 or valor > VALOR_MAXIMO:
+        return None
+    return valor
+
+
+def _inteiro(texto) -> "int | None":
+    """Inteiro escrito só com dígitos ASCII, até 9: "²", "١" e texto enorme não valem."""
+    texto = texto if isinstance(texto, str) else ""
+    return int(texto) if texto.isascii() and texto.isdigit() and len(texto) <= 9 else None
+
+
+def _data(texto, padrao):
+    """Data AAAA-MM-DD da tela; vazia, mal escrita ou impossível (2026-02-31) cai no padrão."""
+    try:
+        return parse_date(texto or "") or padrao
+    except ValueError:
+        return padrao
 
 
 def _taxa(numerador, denominador):
@@ -321,8 +342,8 @@ def fatos_dos_agentes(oportunidades: list, compras: list) -> "dict | None":
 # ---------------------------------------------------------------------------
 def _periodo(request):
     hoje = timezone.localdate()
-    desde = parse_date(request.GET.get("desde", "") or "") or hoje - timedelta(days=30)
-    ate = parse_date(request.GET.get("ate", "") or "") or hoje
+    desde = _data(request.GET.get("desde", ""), hoje - timedelta(days=30))
+    ate = _data(request.GET.get("ate", ""), hoje)
     if ate < desde:
         desde, ate = ate, desde
     return desde, ate
@@ -433,7 +454,7 @@ def montar(request) -> "tuple[dict, int]":
     estrategia = filtros["estrategia"]
     if agentes is not None and ":" in estrategia:
         papel, _, numero = estrategia.partition(":")
-        chave = (papel, int(numero) if numero.isdigit() else None)
+        chave = (papel, _inteiro(numero))
         tocadas = agentes["versoes"].get(chave, {}).get("oportunidades", set())
         oportunidades = [o for o in oportunidades if o["id"] in tocadas]
         compras = [c for c in agentes["assistidas"] if c["versao"] == chave]

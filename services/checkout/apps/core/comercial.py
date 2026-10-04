@@ -438,11 +438,16 @@ def get_order_payment_state(request, pedido_id: str):
     link = LinkDeCompra.objects.filter(pedido_id=chave, site_id=site["id"]).first()
     if link is not None:
         # O id do link responde pelo link inteiro: se a 1ª tentativa venceu e a
-        # pessoa fez outra, vale a que o provedor confirmou, senão a última.
+        # pessoa fez outra, vale a que o provedor confirmou (paga ou depois
+        # devolvida: o reembolso não some atrás de uma tentativa mais nova),
+        # senão a última.
         tentativas = link.tentativas()
         if not tentativas:
             return JsonResponse(_estado_do_link(link))
-        atual = next((p for p in reversed(tentativas) if p.status == "pago"), tentativas[-1])
+        atual = next(
+            (p for p in reversed(tentativas) if p.status in ("pago", "reembolsado")),
+            tentativas[-1],
+        )
         estado = _estado_do_pedido(atual, link)
         estado["pedido_id"] = str(chave)
         estado["pedido_atual_id"] = str(atual.id)

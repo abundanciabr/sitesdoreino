@@ -180,6 +180,8 @@ def test_conversa_de_outro_site_e_404():
 
 @respx.mock
 def test_assumir_e_devolver_levam_quem_e_o_site():
+    leitura_da_conversa(None, mensagem())
+    respx.patch(LEADS + f"/crm/{OPORTUNIDADE}/acompanhamento").respond(200, json={"id": OPORTUNIDADE})
     assumir = respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/assumir").respond(200, json=conversa(estado="pessoa"))
     devolver = respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/devolver").respond(200, json=conversa())
     c = dentro()
@@ -397,15 +399,15 @@ def enviar_resposta(texto="Voltando ao assunto"):
     return dentro().post(reverse("crm_conversa", args=[CONVERSA]), {"gesto": "responder", "texto": texto, "referencia": str(uuid.uuid4())})
 
 
-@pytest.mark.parametrize("estado_envio", ["enviado", "entregue", "lido"])
+@pytest.mark.parametrize("estado_envio", ["aceito", "enviado", "entregue", "lido"])
 @respx.mock
-def test_responder_so_diz_enviada_quando_o_envio_esta_confirmado(estado_envio):
+def test_responder_diz_enviada_quando_a_mensagem_saiu(estado_envio):
     responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio=estado_envio))
     r = enviar_resposta()
     assert r.status_code == 302 and r["Location"].endswith("?feito=3")
 
 
-@pytest.mark.parametrize("estado_envio", ["desconhecido", "reservado", "aceito", "pendente"])
+@pytest.mark.parametrize("estado_envio", ["desconhecido", "reservado", "pendente"])
 @respx.mock
 def test_responder_sem_entrega_confirmada_avisa_e_guarda_o_texto(estado_envio):
     responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio=estado_envio))
@@ -581,3 +583,132 @@ def test_filtro_aguardando_para_no_primeiro_tropeco_da_conferencia():
     confere = respx.get(url__regex=r"^" + MENSAGERIA + r"/conversas/[^/]+/mensagens").respond(502)
     r = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"})
     assert r.status_code == 200 and confere.call_count == 1
+
+
+# --- ajustes de 04/10/2026 (segunda rodada) ----------------------------------------------------
+
+
+@pytest.mark.parametrize("estado_envio,saiu", [
+    ("aceito", True), ("enviado", True), ("entregue", True), ("lido", True),
+    ("desconhecido", False), ("pendente", False), ("reservado", False), (None, False),
+])
+@respx.mock
+def test_resposta_repetida_so_diz_que_ja_foi_enviada_se_a_mensagem_saiu(estado_envio, saiu):
+    responder_com("repetida", mensagem=mensagem(direcao="saida", estado_envio=estado_envio) if estado_envio else None)
+    r = enviar_resposta("Texto da segunda tentativa")
+    html = r.content.decode()
+    assert r.status_code == 200
+    if saiu:
+        assert "Esta resposta já tinha sido enviada. Não enviamos de novo." in html
+    else:
+        assert "Esta resposta já tinha sido enviada" not in html
+        assert "Enviada, mas a entrega não foi confirmada; veja o histórico antes de reenviar" in html
+        assert "Texto da segunda tentativa</textarea>" in html
+
+
+def acompanhamentos():
+    return respx.patch(LEADS + f"/crm/{OPORTUNIDADE}/acompanhamento").respond(200, json={"id": OPORTUNIDADE})
+
+
+@respx.mock
+def test_responder_tira_o_aguardando_resposta_do_cartao_da_oportunidade():
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="aceito"))
+    acompanhamento = acompanhamentos()
+    referencia = str(uuid.uuid4())
+    r = dentro().post(reverse("crm_conversa", args=[CONVERSA]), {"gesto": "responder", "texto": "Oi, Ana!", "referencia": referencia})
+    assert r.status_code == 302 and r["Location"].endswith("?feito=3")
+    corpo = json.loads(acompanhamento.calls.last.request.content)
+    assert corpo["aguardando_resposta"] is False
+    assert corpo["atendido_por"] == {"tipo": "pessoa", "nome": "Dono"}
+    assert corpo["autor_id"] == "dono-test" and corpo["chave_idempotencia"] == "painel:responder:" + referencia
+    assert corpo["ultimo_contato_em"].startswith("20")
+    assert acompanhamento.call_count == 1
+
+
+@respx.mock
+def test_responder_usa_o_nome_do_membro_da_equipe():
+    from apps.core.models import MembroDaEquipe
+
+    MembroDaEquipe.objects.create(nome="Arameu", email="dono@exemplo.com")
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="enviado"))
+    acompanhamento = acompanhamentos()
+    enviar_resposta()
+    assert json.loads(acompanhamento.calls.last.request.content)["atendido_por"] == {"tipo": "pessoa", "nome": "Arameu"}
+
+
+@respx.mock
+def test_assumir_marca_a_pessoa_e_devolver_marca_o_agente_no_cartao():
+    leitura_da_conversa(None, mensagem())
+    acompanhamento = acompanhamentos()
+    respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/assumir").respond(200, json=conversa(estado="pessoa"))
+    respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/devolver").respond(200, json=conversa())
+    c = dentro()
+    referencia = str(uuid.uuid4())
+    r = c.post(reverse("crm_conversa", args=[CONVERSA]), {"gesto": "assumir", "referencia": referencia})
+    assert r.status_code == 302 and r["Location"].endswith("?feito=1")
+    corpo = json.loads(acompanhamento.calls.last.request.content)
+    assert corpo == {"atendido_por": {"tipo": "pessoa", "nome": "Dono"}, "autor_id": "dono-test",
+                     "chave_idempotencia": "painel:assumir:" + referencia}
+    r = c.post(reverse("crm_conversa", args=[CONVERSA]), {"gesto": "devolver"})
+    assert r.status_code == 302 and r["Location"].endswith("?feito=2")
+    corpo = json.loads(acompanhamento.calls.last.request.content)
+    assert corpo["atendido_por"] == {"tipo": "agente", "nome": "Assistente da equipe"}
+    assert corpo["chave_idempotencia"].startswith("painel:devolver:") and "aguardando_resposta" not in corpo
+
+
+@pytest.mark.parametrize("falha", ["fora", "recusa", "erro"])
+@respx.mock
+def test_se_o_crm_nao_registrar_a_resposta_ela_continua_enviada(falha, caplog):
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="enviado"))
+    rota = respx.patch(LEADS + f"/crm/{OPORTUNIDADE}/acompanhamento")
+    if falha == "fora":
+        rota.mock(side_effect=httpx.ConnectError("fora"))
+    elif falha == "recusa":
+        rota.respond(422, json={"detail": "recusado"})
+    else:
+        rota.respond(500)
+    with caplog.at_level("WARNING"):
+        r = enviar_resposta()
+    assert r.status_code == 302 and r["Location"].endswith("?feito=3")
+    assert rota.called and "o CRM não registrou o acompanhamento" in caplog.text
+
+
+@respx.mock
+def test_se_o_crm_nao_responde_a_busca_da_oportunidade_a_resposta_continua_enviada(caplog):
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="enviado"))
+    respx.get(LEADS + "/crm").mock(side_effect=httpx.ConnectError("fora"))
+    with caplog.at_level("WARNING"):
+        r = enviar_resposta()
+    assert r.status_code == 302 and r["Location"].endswith("?feito=3")
+    assert "o CRM não registrou o acompanhamento" in caplog.text
+
+
+@respx.mock
+def test_envio_sem_confirmacao_so_marca_quem_atende_e_nao_tira_a_espera():
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="desconhecido"))
+    acompanhamento = acompanhamentos()
+    r = enviar_resposta()
+    assert r.status_code == 200
+    corpo = json.loads(acompanhamento.calls.last.request.content)
+    assert corpo["atendido_por"] == {"tipo": "pessoa", "nome": "Dono"}
+    assert "aguardando_resposta" not in corpo and "ultimo_contato_em" not in corpo
+
+
+@respx.mock
+def test_resposta_recusada_nao_mexe_no_cartao():
+    responder_com("fora_da_janela", detalhe="x")
+    acompanhamento = acompanhamentos()
+    r = enviar_resposta()
+    assert r.status_code == 422 and not acompanhamento.called
+
+
+@respx.mock
+def test_sem_oportunidade_aberta_ou_com_contato_ambiguo_nao_chama_o_acompanhamento():
+    acompanhamento = acompanhamentos()
+    responder_com("enviada", mensagem=mensagem(direcao="saida", estado_envio="enviado"))
+    respx.get(LEADS + "/crm").respond(200, json={"itens": [], "resumo": {}, "total": 0})
+    assert enviar_resposta().status_code == 302 and not acompanhamento.called
+    respx.clear()
+    acompanhamento = acompanhamentos()
+    responder_com("enviada", conv=conversa(estado="pessoa", ambigua=True, lead_id=None), mensagem=mensagem(direcao="saida", estado_envio="enviado"))
+    assert enviar_resposta().status_code == 302 and not acompanhamento.called

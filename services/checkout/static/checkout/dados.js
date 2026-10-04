@@ -20,6 +20,8 @@ function dadosIsland() {
     carregando: true,
     enviando: false,
     erro: "",
+    pedidoAberto: "",
+    enviosQuePodemTerCriado: [],
     session: null,
     offer: { product_name: "", price_cents: 0, bumps: [] },
     bumpIds: [],
@@ -111,31 +113,59 @@ function dadosIsland() {
 
     async finalizar() {
       this.erro = "";
+      this.pedidoAberto = "";
       const telefone = this.customer.phone.replace(/\D/g, "");
       if (this.customer.name.trim().split(/\s+/).length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.customer.email.trim()) || ![10, 11].includes(telefone.length) || (!this.usarCpfAnterior && !cpfValido(this.customer.cpf))) {
         this.erro = "Informe nome completo, e-mail, telefone com DDD e CPF válido.";
         return;
       }
       this.enviando = true;
+      const corpo = {
+        customer: { ...this.customer, phone: telefone, cpf: this.usarCpfAnterior ? "" : this.customer.cpf.replace(/\D/g, "") },
+        usar_cpf_anterior: this.usarCpfAnterior,
+        bump_ids: this.bumpIds,
+        method: this.method,
+        ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
+        ...(this.method === "pix" && typeof window.MP_DEVICE_SESSION_ID === "string" && window.MP_DEVICE_SESSION_ID
+          ? { mp_device_id: window.MP_DEVICE_SESSION_ID } : {}),
+      };
+      // O que define a compra (o IP fica de fora: pode chegar depois do 1º clique).
+      const envio = JSON.stringify([corpo.customer, corpo.usar_cpf_anterior, [...corpo.bump_ids].sort(), corpo.method]);
       try {
-        const pedido = await api.post(`/sessoes/${this.session.id}/pedido`, {
-          customer: { ...this.customer, phone: telefone, cpf: this.usarCpfAnterior ? "" : this.customer.cpf.replace(/\D/g, "") },
-          usar_cpf_anterior: this.usarCpfAnterior,
-          bump_ids: this.bumpIds,
-          method: this.method,
-          ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
-          ...(this.method === "pix" && typeof window.MP_DEVICE_SESSION_ID === "string" && window.MP_DEVICE_SESSION_ID
-            ? { mp_device_id: window.MP_DEVICE_SESSION_ID } : {}),
-        });
+        let pedido;
+        try {
+          pedido = await api.post(`/sessoes/${this.session.id}/pedido`, corpo);
+          this.enviosQuePodemTerCriado = [envio];
+        } catch (e) {
+          if (!(e.status === 409 && e.corpo?.order_id && e.corpo?.payment)) {
+            // Sem resposta ou erro fora de 4xx/502: o pedido pode ter nascido
+            // deste envio (a resposta se perdeu).
+            const semPedido = e.status === 502 || (e.status >= 400 && e.status < 500);
+            if (!semPedido && !this.enviosQuePodemTerCriado.includes(envio)) this.enviosQuePodemTerCriado.push(envio);
+            throw e;
+          }
+          // 409: esta sessão já tem pedido. Segue calado para ele quando nenhum
+          // envio desta página pode tê-lo criado (o pedido é de antes: link
+          // reaberto, outra aba) ou quando só um pode ter criado e é igual ao
+          // atual (a resposta do clique anterior se perdeu). Se algum envio
+          // desta página pode ter criado o pedido com dados diferentes dos
+          // atuais (outra forma de pagamento, outro e-mail, outro bump ou outro
+          // comprador), o pedido que existe não é o que está na tela: avisa e
+          // oferece o link, sem levar para lá calado.
+          pedido = e.corpo;
+          const podemTerCriado = this.enviosQuePodemTerCriado;
+          const segueCalado = podemTerCriado.length === 0 || (podemTerCriado.length === 1 && podemTerCriado[0] === envio);
+          if (!segueCalado) {
+            const destinoAberto = pedido.payment.method === "pix" ? "pix" : "cartao";
+            this.pedidoAberto = `../pedido/${pedido.order_id}/${destinoAberto}/`;
+            this.erro = `Seu pedido anterior, por ${pedido.payment.method === "pix" ? "Pix" : "cartão"}, continua aberto. Continue por ele ou recarregue a página para começar outra compra.`;
+            this.enviando = false;
+            return;
+          }
+        }
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
         this.irParaPedido(pedido.order_id, pedido.payment.method);
       } catch (e) {
-        // 409: esta sessão já tem pedido (outra aba, ou o envio repetido). O
-        // corpo traz o pedido que existe, e é para ele que a pessoa vai.
-        if (e.status === 409 && e.corpo && e.corpo.order_id && e.corpo.payment) {
-          this.irParaPedido(e.corpo.order_id, e.corpo.payment.method);
-          return;
-        }
         this.erro = "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
         if (this.appmaxPix && this.method === "pix") {
           this.erro = "Não foi possível concluir o pedido. Não reenvie esta compra.";
