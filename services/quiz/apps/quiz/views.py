@@ -24,6 +24,7 @@ from .models import (
     Submission,
     TelemetryEvent,
 )
+from . import consentimento
 from .respostas import emitir_quiz_completado, travar_sessao
 from .comprador import gravar_cookie
 from .direcionadas import (
@@ -258,6 +259,8 @@ def _render_formulario(
             "entrada": entrada,
             "experiencia": experiencia,
             "calculadora_url": reverse("quiz-calcular", args=[quiz.slug]),
+            "texto_consentimento_whatsapp": consentimento.TEXTO_WHATSAPP,
+            "aceita_whatsapp_marcada": consentimento.marcou(request.POST),
             "canonical": request.build_absolute_uri(endereco_canonico),
         },
         status=503 if experiencia and experiencia["fmt"] == "ai" else status,
@@ -385,6 +388,9 @@ def formulario(request, slug):
             },
         )
         if criada:
+            consentimento.registrar(
+                quiz, submissao.session_id, request.POST, submissao.lead_phone
+            )
             # [RECEITA:R3 v1] mesma transação do resultado
             emitir_quiz_completado(quiz, submissao)
             transaction.on_commit(relay_apos_commit)
@@ -807,6 +813,13 @@ def captura(request, slug):
             if contato_mudou and registro.publicada_em is not None:
                 registro.publicada_em = None  # volta para a fila do aviso
             registro.save()
+        aceite, aceite_mudou = consentimento.registrar(
+            quiz, session_id, request.POST, registro.lead_phone
+        )
+        if not criada and aceite_mudou and registro.publicada_em is not None:
+            # O aviso da captura já saiu com a escolha antiga: avisa a mudança.
+            consentimento.emitir_mudanca(quiz, registro, aceite)
+            transaction.on_commit(relay_apos_commit)
     return _resposta_da_captura(
         "registrada" if criada else "atualizada", 201 if criada else 200
     )

@@ -286,6 +286,8 @@ def test_captura_parcial_registra_e_publica_uma_vez_por_sessao(client, quiz):
     }
     assert [r["pergunta_id"] for r in evento.payload["respostas"]] == [p1.id, p2.id]
     assert evento.payload["publicacao"] == 1
+    # O aceite do WhatsApp tem teste próprio (test_consentimento_whatsapp.py).
+    assert evento.payload["consentimento"]["whatsapp"]["aceito"] is False
     assert parar_e_publicar() == 0
     assert OutboxEvent.objects.filter(event="quiz.captura_parcial").count() == 1
 

@@ -216,6 +216,19 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
     if not telefone:
         _atualizar(entrega, "falhou", motivo)
         return
+    if entrega.passo.classe not in regua.CLASSES_FORA_DA_REGUA:
+        from apps.consentimentos.servico import permite_whatsapp_proativo
+
+        if not permite_whatsapp_proativo(
+            entrega.inscricao.site_id,
+            telefone,
+            destinatario_id=entrega.inscricao.destinatario_id,
+            classe=entrega.passo.classe,
+        ):
+            entrega.resultado = "barrada_por_preferencia"
+            entrega.motivo = "a pessoa nao autorizou contato pelo WhatsApp"
+            entrega.save(update_fields=["resultado", "motivo"])
+            return
     corpo = _texto(entrega.passo, idioma)
     if not corpo:
         _atualizar(entrega, "falhou", "texto do passo ausente")

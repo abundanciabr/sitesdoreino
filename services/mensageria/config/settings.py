@@ -44,6 +44,8 @@ INSTALLED_APPS = [
     "apps.whatsapp",
     # Caixa de entrada conversacional (WhatsApp e e-mail nos dois sentidos).
     "apps.conversas",
+    # Permissão de contato pelo WhatsApp (aceite do quiz, recusa, descadastro).
+    "apps.consentimentos",
     # O motor das sequências (`PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.1: o
     # mantenedor escolheu em 30/08/2026 que ele mora DENTRO desta célula, e não
     # numa célula nova). App separado, banco compartilhado: ele lê e escreve as

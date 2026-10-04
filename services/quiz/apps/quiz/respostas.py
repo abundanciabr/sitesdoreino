@@ -98,6 +98,8 @@ def emitir_captura_parcial(captura) -> OutboxEvent:
     Mesmo `captura_id` em todas as publicações da mesma captura; `publicacao`
     conta 1, 2... para o consumidor saber que é a mesma pessoa, atualizada.
     """
+    from .consentimento import bloco_da_sessao
+
     versao = captura.version
     payload = {
         "captura_id": str(captura.id),
@@ -111,6 +113,7 @@ def emitir_captura_parcial(captura) -> OutboxEvent:
         "respostas": respostas_legiveis(versao, captura.answers),
         "utm": captura.utm,
         "publicacao": captura.publicacoes,
+        "consentimento": bloco_da_sessao(captura.quiz, captura.session_id),
     }
     if captura.context:
         payload["context"] = captura.context
@@ -126,6 +129,7 @@ def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     `captura_parcial_id` — com ele o consumidor junta as duas coisas na mesma
     pessoa em vez de abrir outra.
     """
+    from .consentimento import bloco_da_sessao
     from .models import CapturaParcial
 
     payload = {
@@ -144,6 +148,7 @@ def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     }
     if submissao.context:
         payload["context"] = submissao.context
+    payload["consentimento"] = bloco_da_sessao(quiz, submissao.session_id)
     if submissao.session_id:
         travar_sessao(quiz.id, submissao.session_id)
         captura = CapturaParcial.objects.filter(
