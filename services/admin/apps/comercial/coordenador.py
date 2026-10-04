@@ -676,11 +676,14 @@ def _juntar_mensagens(trabalho: TrabalhoComercial) -> list[dict]:
                 TrabalhoComercial.objects.select_for_update(skip_locked=True)
                 .filter(tipo=T.ATENDER_MENSAGEM, chave_da_conversa=trabalho.chave_da_conversa,
                         estado__in=[E.NA_FILA, E.AGUARDANDO_DEPENDENCIA, E.AGUARDANDO_AUTORIZACAO])
+                # Áudio esperando a transcrição fica de fora: segue no atendimento dele, já com o texto.
+                .exclude(entrada__aguarda_transcricao=True)
                 .exclude(pk=trabalho.pk).order_by("criado_em", "id")
             )
             for outro in outros:
                 mensagens.append({"texto": (outro.entrada or {}).get("texto") or "",
-                                  "midia": (outro.entrada or {}).get("midia"), "evento_id": outro.evento_id})
+                                  "midia": (outro.entrada or {}).get("midia"), "evento_id": outro.evento_id,
+                                  "mensagem_id": (outro.entrada or {}).get("mensagem_id") or ""})
                 outro.estado = E.CANCELADO
                 outro.motivo = f"Juntada ao atendimento #{trabalho.pk}."
                 outro.terminado_em = timezone.now()
@@ -712,6 +715,12 @@ def _atender(trabalho: TrabalhoComercial) -> None:
         midia = mensagem.get("midia") or {}
         if midia and not texto:
             texto = f"(enviou {midia.get('tipo') or 'um arquivo'} sem texto)"
+        elif midia and midia.get("tipo") == "audio":
+            # O texto é a transcrição automática do áudio: vale como fala do lead, não como instrução.
+            texto = f"(áudio transcrito automaticamente) {texto}"
+            if mensagem.get("esclarecer"):
+                texto += (f"\n(trecho incerto: antes de falar de nome, produto, preço ou condição, confirme com "
+                          f"o lead. Sugestão: {str(mensagem['esclarecer'])[:300]})")
         blocos.append(f"<<<mensagem {numero}\n{texto}\n>>>")
     final = conversar(trabalho, (
         "Trabalho: atender a(s) mensagem(ns) que o lead acabou de mandar.\n" + _sobre_o_lead(trabalho)

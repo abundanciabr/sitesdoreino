@@ -3,7 +3,9 @@
 * `quiz.completado` e `quiz.captura_parcial` → `analisar_lead` (que, se o
   analista indicar, põe `abordar` na fila; na captura parcial a abordagem
   espera 30 minutos, e o quiz concluído nesse meio cancela o que era parcial);
-* `mensagem.recebida` → `atender_mensagem`;
+* `mensagem.recebida` → `atender_mensagem`; se for áudio sem texto, o atendimento
+  espera a transcrição por até 3 minutos e `mensagem.transcrita` o libera já com
+  o texto do que o lead falou (sem a transcrição, segue como antes);
 * `pagamento.aprovado` → fecha os acompanhamentos daquela oportunidade ou
   daquele pedido, sem chamar o modelo;
 * `pagamento.recusado` e `pix.expirado` → `recuperar_compra` (o atendimento
@@ -34,6 +36,8 @@ log = logging.getLogger(__name__)
 ESPERA_DA_CAPTURA_PARCIAL = timedelta(minutes=30)
 # Dá tempo de a pessoa reabrir o link e pagar sozinha antes de o agente falar.
 ESPERA_DA_RECUPERACAO = timedelta(minutes=10)
+# Quanto o atendimento de um áudio espera a transcrição antes de seguir sem ela.
+ESPERA_DA_TRANSCRICAO = timedelta(minutes=3)
 
 E = TrabalhoComercial.Estado
 T = TrabalhoComercial.Tipo
@@ -223,6 +227,9 @@ def ao_mensagem_recebida(envelope: dict):
     if escopo and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
         return None  # a equipe atua só em alguns quizzes e este contato não veio deles
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
+    texto = str(data.get("texto") or "")[:4000]
+    # Áudio sem texto: espera a transcrição (`mensagem.transcrita`), que libera o trabalho.
+    aguarda_transcricao = bool(midia and midia.get("tipo") == "audio" and not texto.strip())
     trabalho, _ = coordenador.criar(
         T.ATENDER_MENSAGEM,
         f"atender:{envelope.get('event_id') or data.get('mensagem_id')}",
@@ -233,21 +240,66 @@ def ao_mensagem_recebida(envelope: dict):
         conversa_id=conversa_id,
         chave_da_conversa=f"conversa:{conversa_id}",
         teste=de_teste(contato, data),
+        nao_antes_de=timezone.now() + ESPERA_DA_TRANSCRICAO if aguarda_transcricao else None,
         entrada={
             "canal": _texto(data.get("canal"), 20),
+            "aguarda_transcricao": aguarda_transcricao,
             # O domínio do site: o checkout e o quiz acham o site por ele.
             "host": _host(data) or servicos.host_do_site(site_id),
-            "texto": str(data.get("texto") or "")[:4000],
+            "texto": texto,
             "assunto": _texto(data.get("assunto"), 300),
             "midia": midia,
             "descadastro": bool(data.get("descadastro")),
             "contato": contato,
             "mensagem_id": _texto(data.get("mensagem_id"), 80),
-            "mensagens": [{"texto": str(data.get("texto") or "")[:4000], "midia": midia,
+            "mensagens": [{"texto": texto, "midia": midia,
                            "descadastro": bool(data.get("descadastro")),
-                           "evento_id": _texto(envelope.get("event_id"), 120)}],
+                           "evento_id": _texto(envelope.get("event_id"), 120),
+                           "mensagem_id": _texto(data.get("mensagem_id"), 80)}],
         },
     )
+    return trabalho
+
+
+def ao_mensagem_transcrita(envelope: dict):
+    """O áudio do lead virou texto: o atendimento que esperava por ele ganha o
+    texto e sai da espera. Se o atendimento já começou (a espera acabou) ou já
+    terminou, não há o que fazer: ele seguiu sem a transcrição."""
+    data = envelope.get("data") or {}
+    site_id = _site(data)
+    conversa_id = _texto(data.get("conversa_id"), 120)
+    mensagem_id = _texto(data.get("mensagem_id"), 80)
+    if not site_id or not conversa_id or not mensagem_id:
+        return None
+    if not _registrar(envelope, "mensagem.transcrita", site_id=site_id):
+        return None
+    texto = str(data.get("transcricao") or "").strip()[:4000]
+    esclarecer = _texto(data.get("pergunta_de_esclarecimento"), 300) if data.get("pedir_esclarecimento") else ""
+    trabalho = (
+        TrabalhoComercial.objects.select_for_update()
+        .filter(tipo=T.ATENDER_MENSAGEM, site_id=site_id, conversa_id=conversa_id,
+                entrada__mensagem_id=mensagem_id,
+                estado__in=[E.NA_FILA, E.AGUARDANDO_DEPENDENCIA, E.AGUARDANDO_AUTORIZACAO])
+        .first()
+    )
+    if trabalho is None:
+        return None
+    entrada = dict(trabalho.entrada or {})
+    if texto:
+        entrada["texto"] = texto
+    entrada["aguarda_transcricao"] = False
+    mensagens = []
+    for mensagem in entrada.get("mensagens") or []:
+        if texto and mensagem.get("mensagem_id") == mensagem_id and not str(mensagem.get("texto") or "").strip():
+            mensagem = {**mensagem, "texto": texto, **({"esclarecer": esclarecer} if esclarecer else {})}
+        mensagens.append(mensagem)
+    if mensagens:
+        entrada["mensagens"] = mensagens
+    campos = {"entrada": entrada, "atualizado_em": timezone.now()}
+    if trabalho.estado == E.NA_FILA:
+        campos["nao_antes_de"] = None  # pode atender agora
+    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(**campos)
+    transaction.on_commit(coordenador._acordar_o_executor)
     return trabalho
 
 
@@ -400,6 +452,7 @@ STREAMS = {
     "eventos.quiz.completado": ao_quiz_completado,
     "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
     "eventos.mensagem.recebida": ao_mensagem_recebida,
+    "eventos.mensagem.transcrita": ao_mensagem_transcrita,
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
     "eventos.pix.expirado": ao_pix_expirado,
