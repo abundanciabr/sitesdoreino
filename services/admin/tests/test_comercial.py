@@ -27,7 +27,7 @@ from django.utils import timezone
 
 from apps.agentes import modelo, segredo
 from apps.agentes.models import Conexao
-from apps.comercial import coordenador, eventos, ferramentas, papeis, resultados
+from apps.comercial import coordenador, eventos, ferramentas, otimizador, papeis, resultados
 from apps.comercial.models import (
     DecisaoComercial,
     EstrategiaComercial,
@@ -697,8 +697,7 @@ def test_otimizador_volta_sozinho_quando_a_versao_nova_vende_menos_com_amostra()
     v2 = papeis.propor_versao("abordagem", "v2", criada_por="admin", motivo="m", origem="pessoa")
     papeis.ativar(v2, "admin")
     _abordagens(40, vendas=1, versao=2)
-    dados = resultados.numeros()
-    volta = resultados._volta_se_piorou(dados)
+    volta = otimizador.volta_se_piorou("abordagem")
     assert volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == v1.pk
 
