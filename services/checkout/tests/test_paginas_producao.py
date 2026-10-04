@@ -54,6 +54,11 @@ def test_pagina_de_dados_define_api_base_do_prefixo_real(client, rede, env_de_pr
     assert "window.API_BASE" in html
     assert 'src="/checkout/static/checkout/api.js"' in html
     assert 'src="/checkout/static/checkout/dados.js"' in html
+    # O Pix (Mercado Pago primeiro) nasce aqui: o aparelho do comprador vem do
+    # security.js, sem travar o carregamento da página.
+    assert (
+        'src="https://www.mercadopago.com/v2/security.js" view="checkout" async' in html
+    )
 
 
 def test_formulario_nao_oferece_cartao_sem_campo_para_pagar(

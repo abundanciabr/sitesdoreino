@@ -69,7 +69,11 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
 # propósito: uma lista de nomes proibidos deixa passar o nome que ninguém
 # previu (um `cupom_cents` acrescentado amanhã), e a promessa do cabeçalho é
 # que nada além da intenção é lido, nem para conferência.
-INTENCAO_DO_COMPRADOR = frozenset({"customer", "method", "bump_ids", "usar_cpf_anterior"})
+# `mp_device_id` não é dinheiro: é o aparelho que o security.js do Mercado Pago
+# identifica no navegador, repassado ao Pix para o antifraude do MP.
+INTENCAO_DO_COMPRADOR = frozenset(
+    {"customer", "method", "bump_ids", "usar_cpf_anterior", "mp_device_id"}
+)
 
 
 class _CorpoEspiao(dict):

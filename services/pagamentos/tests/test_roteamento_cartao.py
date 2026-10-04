@@ -113,6 +113,16 @@ def test_risco_abre_e_mp_aprova_sem_recusa_intermediaria(client: Client, loja: s
     assert rota.calls.last.request.headers["X-meli-session-id"] == "device-sintetico"
     assert enviado["external_reference"] == str(tentativa.operation_id)
     assert enviado["notification_url"].endswith("/api/pagamentos/mp/webhooks")
+    assert enviado["additional_info"]["items"] == [{
+        "id": "produto-1", "title": "Curso digital", "description": "Curso digital",
+        "category_id": "learnings", "quantity": 1, "unit_price": 19.9,
+    }]
+    assert enviado["additional_info"]["payer"] == {
+        "first_name": "Cliente", "last_name": "Teste",
+        "phone": {"area_code": "11", "number": "999999999"},
+    }
+    assert enviado["description"] == "Curso digital"
+    assert enviado["statement_descriptor"] == "MESHCRAFT"
     assert OutboxEvent.objects.get(event="pagamento.aprovado").payload["provider"] == "mercadopago"
     assert TOKEN not in str(list(PaymentAttempt.objects.values()))
     assert TOKEN not in str(list(PaymentOperation.objects.values()))

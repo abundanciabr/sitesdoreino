@@ -54,6 +54,86 @@ def _valor_em_reais(amount_cents: int) -> float:
     return float(Decimal(amount_cents) / Decimal(100))
 
 
+# A medição de qualidade do MP e o antifraude leem estes campos do pagamento
+# (additional_info.items, additional_info.payer, description e, no cartão,
+# statement_descriptor). Sem eles a cobrança chega "anônima" e recusa mais.
+_LIMITE_TEXTO_ITEM = 256
+_LIMITE_FATURA = 13  # statement_descriptor aceita até 13 caracteres
+
+
+def _itens_mp(itens_do_pedido: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Snapshot do pedido (product_id, name, price_cents) no formato do MP.
+
+    Informação complementar: item fora do formato faz a lista inteira ficar de
+    fora, e a cobrança segue como seguia antes."""
+    categoria = str(getattr(settings, "MP_ITEM_CATEGORY_ID", "") or "")
+    itens: list[dict[str, Any]] = []
+    for item in itens_do_pedido or []:
+        if not isinstance(item, dict):
+            return []
+        nome = str(item.get("name") or "").strip()[:_LIMITE_TEXTO_ITEM]
+        produto = str(item.get("product_id") or "").strip()
+        preco = item.get("price_cents")
+        if not nome or not produto or type(preco) is not int or preco < 1:
+            return []
+        convertido: dict[str, Any] = {
+            "id": produto,
+            "title": nome,
+            "description": nome,
+            "quantity": 1,
+            "unit_price": _valor_em_reais(preco),
+        }
+        if categoria:
+            convertido["category_id"] = categoria
+        itens.append(convertido)
+    return itens
+
+
+def _descricao(itens: list[dict[str, Any]]) -> str:
+    return " + ".join(item["title"] for item in itens)[:_LIMITE_TEXTO_ITEM]
+
+
+def _telefone_mp(telefone: str) -> dict[str, str] | None:
+    digitos = "".join(c for c in telefone if c.isdigit())
+    if len(digitos) in (12, 13) and digitos.startswith("55"):
+        digitos = digitos[2:]
+    if len(digitos) not in (10, 11):
+        return None
+    return {"area_code": digitos[:2], "number": digitos[2:]}
+
+
+def _comprador_mp(nome: str, telefone: str) -> dict[str, Any]:
+    partes = nome.split()
+    comprador: dict[str, Any] = {}
+    if partes:
+        comprador["first_name"] = partes[0]
+    if len(partes) > 1:
+        comprador["last_name"] = " ".join(partes[1:])
+    fone = _telefone_mp(telefone)
+    if fone:
+        comprador["phone"] = fone
+    return comprador
+
+
+def _completar_qualidade(
+    body: dict[str, Any], *, amount_cents: int,
+    itens_do_pedido: list[dict[str, Any]] | None,
+    comprador_nome: str, comprador_telefone: str,
+) -> None:
+    itens = _itens_mp(itens_do_pedido)
+    if itens and sum(item["price_cents"] for item in itens_do_pedido or []) != amount_cents:
+        itens = []  # itens que não somam o valor cobrado confundem mais do que ajudam
+    comprador = _comprador_mp(comprador_nome, comprador_telefone)
+    adicional: dict[str, Any] = dict(body.get("additional_info") or {})
+    if itens:
+        adicional["items"] = itens
+        body["description"] = _descricao(itens)
+    if comprador:
+        adicional["payer"] = comprador
+    if adicional:
+        body["additional_info"] = adicional
+
+
 class _TransporteHTTPX(HttpClient):
     """Transporte do SDK sem retries implícitos e com resposta bruta verificável."""
 
@@ -172,6 +252,9 @@ class MercadoPagoClient:
         payer_first_name: str = "",
         payer_last_name: str = "",
         payer_identification: dict[str, str] | None = None,
+        itens_do_pedido: list[dict[str, Any]] | None = None,
+        comprador_nome: str = "", comprador_telefone: str = "",
+        device_id: str = "",
         envio_ambiguo_anterior: bool = False,
     ) -> dict[str, Any]:
         payer: dict[str, Any] = {"email": payer_email}
@@ -187,13 +270,17 @@ class MercadoPagoClient:
             "external_reference": order_id,
             "payer": payer,
         }
+        _completar_qualidade(
+            body, amount_cents=amount_cents, itens_do_pedido=itens_do_pedido,
+            comprador_nome=comprador_nome, comprador_telefone=comprador_telefone,
+        )
         if date_of_expiration:
             body["date_of_expiration"] = date_of_expiration
         if notification_url:
             body["notification_url"] = notification_url
         return self._executar(
             lambda: self._sdk.payment().create(
-                body, self._options(idempotency_key or order_id)
+                body, self._options(idempotency_key or order_id, device_id)
             ),
             escrita=True,
             envio_ambiguo_anterior=envio_ambiguo_anterior,
@@ -206,7 +293,8 @@ class MercadoPagoClient:
         payer_first_name: str = "", payer_last_name: str = "",
         payer_identification: dict[str, str] | None = None,
         issuer_id: str | None = None, device_id: str = "",
-        items: list[dict[str, Any]] | None = None,
+        itens_do_pedido: list[dict[str, Any]] | None = None,
+        comprador_nome: str = "", comprador_telefone: str = "",
         notification_url: str | None = None,
         envio_ambiguo_anterior: bool = False,
     ) -> dict[str, Any]:
@@ -224,8 +312,15 @@ class MercadoPagoClient:
             "payment_method_id": payment_method_id,
             "external_reference": order_id,
             "payer": payer,
-            "additional_info": {"items": items or []},
+            "additional_info": {"items": []},
         }
+        _completar_qualidade(
+            body, amount_cents=amount_cents, itens_do_pedido=itens_do_pedido,
+            comprador_nome=comprador_nome, comprador_telefone=comprador_telefone,
+        )
+        fatura = str(getattr(settings, "MP_STATEMENT_DESCRIPTOR", "") or "").strip()
+        if fatura:
+            body["statement_descriptor"] = fatura[:_LIMITE_FATURA]
         if issuer_id:
             body["issuer_id"] = issuer_id
         if notification_url:

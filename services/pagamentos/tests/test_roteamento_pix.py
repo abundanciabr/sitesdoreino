@@ -186,10 +186,39 @@ def test_04_timeout_replay_usa_mesma_chave_e_tentativa(settings):
         return_value=gateway.ResultadoPix(
             "1004", "CODIGO-MP", "", timezone.now() + timedelta(minutes=30)
         ),
-    ) as mp:
+    ) as reenvio:
         completar_intent_pix(intent)
-    assert mp.call_args.kwargs["idempotency_key"] == str(tentativa.operation_id)
+    assert reenvio.call_args.kwargs["idempotency_key"] == str(tentativa.operation_id)
     assert PaymentAttempt.objects.filter(intent=intent).count() == 1
+    # Mesma chave de idempotência, mesmo corpo: o reenvio descreve o pedido igual.
+    primeiro = {k: v for k, v in mp.call_args.kwargs.items() if k != "envio_ambiguo_anterior"}
+    segundo = {k: v for k, v in reenvio.call_args.kwargs.items() if k != "envio_ambiguo_anterior"}
+    assert primeiro == segundo
+
+
+def test_04b_pix_mp_leva_documento_aparelho_e_itens_do_checkout(settings):
+    _config(settings, lista=False)
+    resultado = gateway.ResultadoPix("1004b", "CODIGO-MP", "", None)
+    with patch(
+        "pagamentos.core.gateway.criar_pagamento_pix", return_value=resultado
+    ) as mp:
+        criar_intent_pix(
+            idempotency_key=str(uuid.uuid4()),
+            site_id=SITE,
+            order_id="pedido-checkout",
+            amount_cents=990,
+            currency="BRL",
+            # forma exata que o checkout manda fora da lista da Appmax
+            customer={"name": "Cliente Teste", "email": "cliente@exemplo.com",
+                      "phone": "11999999999", "cpf": "40827365144"},
+            metadata={**_metadata(), "mp_device_id": "aparelho-sintetico"},
+        )
+    enviado = mp.call_args.kwargs
+    assert enviado["payer_identification"] == {"type": "CPF", "number": "40827365144"}
+    assert enviado["device_id"] == "aparelho-sintetico"
+    assert enviado["itens_do_pedido"] == _metadata()["items"]
+    assert enviado["comprador_nome"] == "Cliente Teste"
+    assert enviado["comprador_telefone"] == "11999999999"
 
 
 def test_05_rejected_com_qr_nunca_e_exposto(settings):

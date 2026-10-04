@@ -50,6 +50,33 @@ def _validar_comprador(intent: Intent) -> None:
             )
 
 
+def _comprador_mp(intent: Intent) -> dict[str, Any]:
+    """O que o MP lê do comprador e do pedido num Pix, igual no envio e no reenvio.
+
+    O checkout grava o documento como `cpf`; só a lista da Appmax o repete como
+    `document_number`. Ler apenas o segundo deixava o Pix dos outros sites sem
+    `payer.identification`."""
+    nome = str(intent.customer.get("name") or "").split()
+    documento = _DIGITOS.sub(
+        "",
+        str(intent.customer.get("document_number") or intent.customer.get("cpf") or ""),
+    )
+    itens = intent.metadata.get("items")
+    return {
+        "payer_first_name": nome[0] if nome else "",
+        "payer_last_name": " ".join(nome[1:]),
+        "payer_identification": (
+            {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
+            if len(documento) in {11, 14}
+            else None
+        ),
+        "itens_do_pedido": itens if isinstance(itens, list) else None,
+        "comprador_nome": " ".join(nome),
+        "comprador_telefone": str(intent.customer.get("phone") or ""),
+        "device_id": str(intent.metadata.get("mp_device_id") or ""),
+    }
+
+
 def criar_intent_pix(
     *,
     idempotency_key: str,
@@ -151,8 +178,6 @@ def completar_intent_pix(intent: Intent) -> Intent:
         if mp.state == "rejected":
             raise gateway.FalhaNoProvedor("Pix recusado pelo Mercado Pago")
     resposta: gateway.ResultadoPix | None = None
-    nome = str(intent.customer.get("name") or "").split()
-    documento = _DIGITOS.sub("", str(intent.customer.get("document_number") or ""))
     vencimento = (
         (datetime.now(UTC) + timedelta(minutes=30))
         .isoformat(timespec="milliseconds")
@@ -189,16 +214,7 @@ def completar_intent_pix(intent: Intent) -> Intent:
                 payer_email=str(intent.customer.get("email") or ""),
                 date_of_expiration=vencimento,
                 notification_url=aviso,
-                payer_first_name=nome[0] if nome else "",
-                payer_last_name=" ".join(nome[1:]),
-                payer_identification=(
-                    {
-                        "type": "CPF" if len(documento) == 11 else "CNPJ",
-                        "number": documento,
-                    }
-                    if len(documento) in {11, 14}
-                    else None
-                ),
+                **_comprador_mp(intent),
             )
         except gateway.RecusaAntifraude as exc:
             return ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
@@ -247,8 +263,6 @@ def completar_intent_pix(intent: Intent) -> Intent:
 
 def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
     """Repete a mesma operação do MP quando a resposta anterior não tinha ID."""
-    nome = str(intent.customer.get("name") or "").split()
-    documento = _DIGITOS.sub("", str(intent.customer.get("document_number") or ""))
     vencimento = (
         intent.pix_expires_at.astimezone(UTC)
         .isoformat(timespec="milliseconds")
@@ -269,13 +283,7 @@ def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
             payer_email=str(intent.customer.get("email") or ""),
             date_of_expiration=vencimento,
             notification_url=aviso,
-            payer_first_name=nome[0] if nome else "",
-            payer_last_name=" ".join(nome[1:]),
-            payer_identification=(
-                {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
-                if len(documento) in {11, 14}
-                else None
-            ),
+            **_comprador_mp(intent),
             envio_ambiguo_anterior=True,
         )
     except gateway.RecusaAntifraude as exc:

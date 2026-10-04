@@ -349,6 +349,11 @@ _PLACE_ORDER_OPENAPI = {
                         },
                         "method": {"type": "string", "enum": ["pix", "card"]},
                         "usar_cpf_anterior": {"type": "boolean"},
+                        "ip": {"type": "string"},
+                        "mp_device_id": {
+                            "type": "string",
+                            "description": "MP_DEVICE_SESSION_ID do security.js do Mercado Pago (só Pix).",
+                        },
                     },
                 }
             }
@@ -460,6 +465,12 @@ def place_order(request, session_id: str):
         metadata["pagina_url"] = (
             f"https://{site['host']}/checkout/pedido/{order_id}/pix/"
         )
+        # Identificador do aparelho gerado pelo security.js do Mercado Pago na
+        # página de dados; vai no cabeçalho X-meli-session-id do Pix. Ausente
+        # ou fora do formato, o Pix segue sem ele, como seguia antes.
+        aparelho = corpo.get("mp_device_id")
+        if isinstance(aparelho, str) and 0 < len(aparelho.strip()) <= 200:
+            metadata["mp_device_id"] = aparelho.strip()
     if method == "card" or pix_appmax:
         metadata["items"] = itens
     comprador_pagamento = dict(comprador)

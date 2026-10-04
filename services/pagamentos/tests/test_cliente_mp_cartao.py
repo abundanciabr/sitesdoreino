@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
+from typing import Any
 
 import httpx
 import pytest
@@ -54,8 +55,9 @@ def test_cartao_envia_corpo_e_cabecalhos_completos(status: str, detail: str) -> 
             payer_email="teste@example.com", payer_first_name="Ana",
             payer_last_name="Silva",
             payer_identification={"type": "CPF", "number": "12345678901"},
-            items=[{"id": "curso", "title": "Curso", "quantity": 1,
-                    "unit_price": 19.9}],
+            itens_do_pedido=[{"product_id": "curso", "name": "Curso",
+                              "price_cents": 1990, "kind": "principal"}],
+            comprador_nome="Ana Maria Silva", comprador_telefone="5511987654321",
             notification_url="https://meshcraft.top/api/pagamentos/webhooks/mp/card",
         )
     assert (resultado.payment_id, resultado.status, resultado.reason_code) == (
@@ -71,8 +73,38 @@ def test_cartao_envia_corpo_e_cabecalhos_completos(status: str, detail: str) -> 
     assert body["payment_method_id"] == "visa"
     assert body["issuer_id"] == "24"
     assert body["payer"]["first_name"] == "Ana"
-    assert body["additional_info"]["items"][0]["id"] == "curso"
+    assert body["additional_info"]["items"] == [{
+        "id": "curso", "title": "Curso", "description": "Curso",
+        "category_id": "learnings", "quantity": 1, "unit_price": 19.9,
+    }]
+    assert body["additional_info"]["payer"] == {
+        "first_name": "Ana", "last_name": "Maria Silva",
+        "phone": {"area_code": "11", "number": "987654321"},
+    }
+    assert body["description"] == "Curso"
+    assert body["statement_descriptor"] == "MESHCRAFT"
     assert "binary_mode" not in body
+
+
+def test_cartao_fatura_respeita_limite_e_itens_fora_do_total_ficam_de_fora(
+    settings: Any,
+) -> None:
+    settings.MP_STATEMENT_DESCRIPTOR = "MESHCRAFT CURSOS ONLINE"
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990,
+            order_id="operacao-1", card_token="token-sintetico", installments=1,
+            payment_method_id="visa", payer_email="teste@example.com",
+            itens_do_pedido=[{"product_id": "curso", "name": "Curso",
+                              "price_cents": 990, "kind": "principal"}],
+        )
+    body = json.loads(rota.calls.last.request.content)
+    assert body["statement_descriptor"] == "MESHCRAFT CUR"
+    assert body["additional_info"] == {"items": []}
+    assert "description" not in body
 
 
 def test_cartao_e_consulta_preservam_apenas_dados_da_conferencia() -> None:
@@ -270,9 +302,37 @@ def test_pix_opcionais_sao_enviados_quando_presentes() -> None:
         )
     body = json.loads(rota.calls.last.request.content)
     assert rota.calls.last.request.headers.get_list("X-Idempotency-Key") == ["pix-1"]
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
     assert body["date_of_expiration"] == "2026-10-03T12:30:00-03:00"
     assert body["payer"]["first_name"] == "Ana"
     assert body["notification_url"].endswith("/mp/pix")
+    assert "additional_info" not in body
+
+
+def test_pix_leva_aparelho_itens_e_comprador_sem_nome_na_fatura() -> None:
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json={
+            "id": 456, "status": "pending",
+            "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}},
+        }))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=2980,
+            order_id="pix-1", payer_email="teste@example.com",
+            itens_do_pedido=[
+                {"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"},
+                {"product_id": "extra", "name": "Extra", "price_cents": 990, "kind": "bump"},
+            ],
+            comprador_nome="Ana Silva", comprador_telefone="1133334444",
+            device_id="aparelho-sintetico",
+        )
+    request = rota.calls.last.request
+    body = json.loads(request.content)
+    assert request.headers["X-meli-session-id"] == "aparelho-sintetico"
+    assert [item["id"] for item in body["additional_info"]["items"]] == ["curso", "extra"]
+    assert body["additional_info"]["items"][1]["unit_price"] == 9.9
+    assert body["additional_info"]["payer"]["phone"] == {"area_code": "11", "number": "33334444"}
+    assert body["description"] == "Curso + Extra"
+    assert "statement_descriptor" not in body
 
 
 def test_sdk_escapa_id_de_pagamento_no_get_e_no_estorno() -> None:

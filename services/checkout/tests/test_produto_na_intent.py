@@ -11,6 +11,9 @@ própria. Fora de escopo desta tarefa: matricular por bump é uma pergunta de
 arquitetura que ninguém fez ainda.
 """
 import json
+import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -110,3 +113,81 @@ def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
         }
     ]
     assert cobranca["metadata"]["product_id"] != OFERTA_A["product"]["id"]
+
+
+@pytest.mark.parametrize(
+    ("method", "enviado", "esperado"),
+    [
+        ("pix", "aparelho-sintetico", "aparelho-sintetico"),
+        ("pix", 123, None),
+        ("pix", "", None),
+        ("card", "aparelho-sintetico", None),
+    ],
+)
+def test_aparelho_do_mercado_pago_segue_so_com_o_pix(
+    api, rede, sessao_a, method, enviado, esperado
+):
+    """O security.js do MP gera o aparelho na página de dados; o Pix (MP
+    primeiro) o leva no cabeçalho X-meli-session-id. Fora do formato, o pedido
+    segue sem ele."""
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao_a['id']}/pedido",
+        {
+            "customer": {"email": "cliente@exemplo.com", "name": "Cliente Teste", "phone": "11999999999", "cpf": "40827365144"},
+            "bump_ids": [],
+            "method": method,
+            "mp_device_id": enviado,
+        },
+    )
+    assert resp.status_code == 201, resp.content
+    cobranca = json.loads(rede.calls.last.request.content)
+    assert cobranca["metadata"].get("mp_device_id") == esperado
+
+
+_DADOS_JS = Path(__file__).resolve().parents[1] / "static" / "checkout" / "dados.js"
+
+
+@pytest.mark.parametrize(
+    ("method", "aparelho", "esperado"),
+    [
+        ("pix", "aparelho-sintetico", "aparelho-sintetico"),
+        ("pix", None, None),
+        ("card", "aparelho-sintetico", None),
+    ],
+)
+def test_pagina_de_dados_manda_o_aparelho_do_mp_no_pix(method, aparelho, esperado):
+    """Executa o dados.js servido no Node e lê o corpo que `finalizar` posta."""
+    node = shutil.which("node")
+    assert node, "Node ausente: instale o runtime do Node e rode novamente."
+    programa = r"""
+const vm = require('node:vm');
+const [js, method, aparelho] = process.argv.slice(1);
+let corpo = null;
+const window = {location: {}};
+if (aparelho !== 'null') window.MP_DEVICE_SESSION_ID = aparelho;
+const contexto = {
+  window,
+  document: {getElementById: () => ({textContent: 'false'})},
+  localStorage: {getItem: () => null, setItem: () => {}},
+  api: {post: async (_url, body) => { corpo = body; return {order_id: 'o', payment: {method}}; }},
+};
+vm.runInNewContext(js + '\nthis.ilha = dadosIsland();', contexto);
+const ilha = contexto.ilha;
+Object.assign(ilha, {
+  session: {id: 'sessao'}, method, usarCpfAnterior: false,
+  customer: {name: 'Cliente Teste', email: 'cliente@exemplo.com', phone: '11999999999', cpf: '40827365144'},
+});
+ilha.finalizar()
+  .then(() => process.stdout.write(JSON.stringify({corpo, erro: ilha.erro})))
+  .catch(erro => {console.error(erro.stack); process.exitCode = 1;});
+"""
+    resultado = subprocess.run(
+        [node, "-e", programa, _DADOS_JS.read_text(encoding="utf-8"), method,
+         json.dumps(aparelho) if aparelho is None else aparelho],
+        capture_output=True, text=True, encoding="utf-8", timeout=20,
+    )
+    assert resultado.returncode == 0, resultado.stderr
+    saida = json.loads(resultado.stdout)
+    assert saida["erro"] == ""
+    assert saida["corpo"]["method"] == method
+    assert saida["corpo"].get("mp_device_id") == esperado
