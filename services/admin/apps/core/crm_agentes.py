@@ -319,7 +319,11 @@ def _tempos_da_fila(TrabalhoComercial) -> dict:
     Trabalhos de teste ficam fora. Sem dados, o texto diz 'ainda sem dados'."""
     desde = timezone.now() - timedelta(hours=24)
     base = TrabalhoComercial.objects.filter(criado_em__gte=desde, teste=False)
-    espera = base.filter(iniciado_em__isnull=False).aggregate(
+    # Pagamento (espera 24h de propósito) e análise de resultados (por último
+    # de propósito) não contam: o número é a espera de quem espera de verdade.
+    espera = base.filter(iniciado_em__isnull=False).exclude(
+        tipo__in=("acompanhar_pagamento", "analisar_resultados")
+    ).aggregate(
         m=Avg(ExpressionWrapper(F("iniciado_em") - F("criado_em"), output_field=DurationField()))
     )["m"]
     resposta = base.filter(tipo="atender_mensagem", estado="concluido", terminado_em__isnull=False).aggregate(
