@@ -7,6 +7,7 @@
 </style>
 <main class="envolucro crm">
   <div class="crm-cabecalho"><div><h1>CRM</h1><p class="subtitulo">Contatos que vieram dos quizzes, sua história e o próximo passo.</p></div><a class="botao" href="{% url 'contatos' %}">Ver contatos →</a></div>
+  <p><a href="{% url 'crm_conversas' %}">Conversas com os contatos →</a></p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
   <div class="crm-abertura"><div class="rotulo">Oportunidades de venda</div><h2>Cada pessoa que responde um quiz vira uma oportunidade de venda.</h2><p>Responder o quiz abre a oferta do produto indicado. Fazer o pedido leva a oferta para Negociação. Pagar fecha como venda feita. Pagamento recusado ou Pix vencido abre uma recuperação.</p></div>
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
