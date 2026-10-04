@@ -6,7 +6,10 @@ from django.db import models
 
 class Lead(models.Model):
     """Uma pessoa, dentro de UM site. A mesma pessoa (mesmo e-mail) em sites
-    diferentes é registrada como leads distintos — upsert é por (site_id, email)."""
+    diferentes é registrada como leads distintos — upsert é por (site_id, email).
+
+    E-mail vazio é de quem deixou só o telefone no quiz: pode haver vários
+    no mesmo site, e o e-mail entra quando a pessoa concluir o quiz."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site_id = models.CharField(max_length=100)
@@ -23,7 +26,9 @@ class Lead(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "email"], name="uniq_lead_site_email"
+                fields=["site_id", "email"],
+                condition=~models.Q(email=""),
+                name="uniq_lead_site_email",
             ),
         ]
 
@@ -317,6 +322,15 @@ class QuizDoLead(models.Model):
     lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="quizzes")
     quiz_slug = models.CharField(max_length=100)
     sessao = models.CharField(max_length=100, blank=True, default="")
+    # Identificador da captura parcial no quiz (`captura_id` na captura,
+    # `captura_parcial_id` no completo): junta as duas pontas mesmo quando o
+    # contato muda entre uma e outra.
+    captura_id = models.CharField(max_length=100, blank=True, default="")
+    # A oportunidade que a captura parcial abriu (vazio se já existia).
+    oportunidade = models.ForeignKey(
+        "Oportunidade", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
     submissao_id = models.CharField(max_length=100, blank=True, default="")
     versao = models.CharField(max_length=100, blank=True, default="")
     situacao = models.CharField(max_length=10, default="parcial")
@@ -331,7 +345,10 @@ class QuizDoLead(models.Model):
     completado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        indexes = [models.Index(fields=["lead", "-atualizado_em"])]
+        indexes = [
+            models.Index(fields=["lead", "-atualizado_em"]),
+            models.Index(fields=["quiz_slug", "sessao"]),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=["lead", "quiz_slug", "sessao"],
@@ -375,3 +392,25 @@ class PerfilDoLead(models.Model):
         if not self._state.adding:
             raise ValueError("versão de perfil não muda: grave uma versão nova")
         return super().save(*args, **kwargs)
+
+
+class AcompanhamentoAplicado(models.Model):
+    """Atualização de acompanhamento já gravada, para a repetição não gravar
+    de novo no histórico (que não se apaga).
+
+    `chave` é a `chave_idempotencia` mandada pelo agente ou, sem ela, a
+    impressão do corpo; a impressão só vale por alguns minutos (ver crm.py).
+    """
+
+    oportunidade = models.ForeignKey(
+        Oportunidade, on_delete=models.CASCADE, related_name="+"
+    )
+    chave = models.CharField(max_length=200)
+    aplicado_em = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["oportunidade", "chave"], name="uniq_acompanhamento_aplicado"
+            ),
+        ]

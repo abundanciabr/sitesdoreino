@@ -1,0 +1,88 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Resultados do CRM{% endblock %}
+{% block corpo %}
+<style>
+.res{max-width:1300px}.res h1{font-size:32px;letter-spacing:-1px;margin-bottom:4px}.res-cabecalho{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:20px}.res .peneira{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;align-items:end;margin:16px 0 24px}.res .peneira button{margin:0}.res-numeros{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:24px}.res-numeros strong{display:block;font-size:26px}.res-numeros span{color:var(--texto-2);font-size:13px}.res-numeros small{display:block;color:var(--texto-3);font-size:12px;margin-top:4px}.res section{margin:28px 0}.res table{width:100%;border-collapse:collapse;font-size:14px}.res th,.res td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);vertical-align:top}.res th{color:var(--texto-2);font-weight:600}.res td.num,.res th.num{text-align:right;white-space:nowrap}.res .tabela{overflow-x:auto}.res .nota{font-size:13px;color:var(--texto-3);max-width:860px}.res .indisponivel{color:var(--texto-3);font-style:italic}.res .inconclusivo{color:#f1bb68}
+@media(max-width:800px){.res-numeros{grid-template-columns:repeat(2,1fr)}.res .peneira{grid-template-columns:1fr 1fr}.res-cabecalho{flex-direction:column;align-items:start}}@media(max-width:480px){.res-numeros,.res .peneira{grid-template-columns:1fr}}
+</style>
+<main class="envolucro res">
+  <div class="res-cabecalho"><div><h1>Resultados comerciais</h1><p class="subtitulo">Quem fez um quiz no período e o que aconteceu depois: compras, receita, custos e abordagens.</p></div><a class="botao" href="{% url 'crm' %}">← Voltar ao CRM</a></div>
+  <form class="peneira" method="get">
+    <label class="campo">De<input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"></label>
+    <label class="campo">Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>
+    <label class="campo">Quiz<select name="quiz"><option value="">Todos</option>{% for v in opcoes.quiz %}<option value="{{ v }}" {% if filtros.quiz == v %}selected{% endif %}>{{ v }}</option>{% endfor %}{% if filtros.quiz and filtros.quiz not in opcoes.quiz %}<option value="{{ filtros.quiz }}" selected>{{ filtros.quiz }}</option>{% endif %}</select></label>
+    <label class="campo">Oferta<select name="oferta"><option value="">Todas</option>{% for v in opcoes.oferta %}<option value="{{ v }}" {% if filtros.oferta == v %}selected{% endif %}>{{ v }}</option>{% endfor %}{% if filtros.oferta and filtros.oferta not in opcoes.oferta %}<option value="{{ filtros.oferta }}" selected>{{ filtros.oferta }}</option>{% endif %}</select></label>
+    <label class="campo">Campanha<select name="campanha"><option value="">Todas</option>{% for v in opcoes.campanha %}<option value="{{ v }}" {% if filtros.campanha == v %}selected{% endif %}>{{ v }}</option>{% endfor %}{% if filtros.campanha and filtros.campanha not in opcoes.campanha %}<option value="{{ filtros.campanha }}" selected>{{ filtros.campanha }}</option>{% endif %}</select></label>
+    <label class="campo">Versão de estratégia<select name="estrategia"><option value="">Todas</option>{% for v in opcoes.estrategia %}<option value="{{ v }}" {% if filtros.estrategia == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+    <label class="campo">Quanto vale um dólar (R$)<input name="dolar" inputmode="decimal" value="{{ parametros_custo.dolar }}" placeholder="ex.: 5,40"></label>
+    <label class="campo">Tarifa por mensagem de WhatsApp (centavos)<input name="tarifa_whatsapp" inputmode="decimal" value="{{ parametros_custo.tarifa_whatsapp }}"></label>
+    <label class="campo">Tarifa por e-mail (centavos)<input name="tarifa_email" inputmode="decimal" value="{{ parametros_custo.tarifa_email }}"></label>
+    {% if filtros.site_id %}<input type="hidden" name="site_id" value="{{ filtros.site_id }}">{% endif %}
+    <button>Ver resultados</button>
+  </form>
+
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
+  {% if not amostra_geral_suficiente %}<p class="aviso">Amostra pequena: com menos de {{ amostra_pessoas }} pessoas ou menos de {{ amostra_vendas }} vendas, os números mostram o que aconteceu, mas não provam que uma abordagem é melhor que outra.</p>{% endif %}
+  {% if filtros.estrategia %}<p class="nota">Mostrando só as pessoas atendidas pela versão {{ filtros.estrategia }} e as vendas em que ela foi a última a falar com a pessoa antes do pagamento.</p>{% endif %}
+  <div class="res-numeros">
+    <div class="cartao"><strong>{{ totais.conversao_texto }}</strong><span>Conversão dos quizzes</span><small>{{ totais.compradores }} de {{ totais.elegiveis }} pessoa{{ totais.elegiveis|pluralize:"s" }} compraram</small></div>
+    <div class="cartao"><strong>{{ totais.liquido_texto }}</strong><span>Receita líquida de reversões</span><small>{{ totais.aprovado_texto }} aprovados − {{ totais.estornos_texto }} em estornos e contestações</small></div>
+    <div class="cartao"><strong>{{ totais.compras_recuperadas }}</strong><span>Recuperação observada</span><small>Compras pagas depois de uma tentativa que falhou</small></div>
+    <div class="cartao"><strong>{% if agentes_disponivel %}{{ assistidas }}{% else %}<span class="indisponivel">ainda indisponível</span>{% endif %}</strong><span>Conversão assistida</span><small>{% if agentes_disponivel %}{{ assistidas_taxa_texto }} das {{ totais.compras_aprovadas }} compras tiveram contato de um agente antes do pagamento ({{ assistidas_liquido_texto }} líquidos){% else %}Os agentes comerciais ainda não estão ligados neste painel.{% endif %}</small></div>
+    <div class="cartao"><strong>{{ custo_centavos_texto }}</strong><span>Custo da operação de vendas</span><small>{% if custo_modelos_usd_texto %}Modelos: {{ custo_modelos_usd_texto }}{% endif %}</small></div>
+    <div class="cartao"><strong>{{ custo_por_venda_texto }}</strong><span>Custo por venda</span><small>{{ totais.compras_aprovadas }} venda{{ totais.compras_aprovadas|pluralize:"s" }} no grupo</small></div>
+    <div class="cartao"><strong>{{ margem_centavos_texto }}</strong><span>Margem de contribuição</span><small>Receita líquida menos os custos medidos. Não é lucro.</small></div>
+    <div class="cartao"><strong>{{ testes_fora.oportunidades|default:0 }}</strong><span>Registros de teste fora dos totais</span><small>{{ testes_fora.compras|default:0 }} compra{{ testes_fora.compras|default:0|pluralize:"s" }} em sandbox</small></div>
+  </div>
+  {% if truncado %}<p class="aviso">Período muito grande: o cruzamento com os agentes usa as primeiras 20.000 oportunidades. Os totais de compra e receita continuam completos.</p>{% endif %}
+
+  <section aria-labelledby="t-margem"><h2 id="t-margem" class="titulo-de-bloco">Como a margem foi calculada</h2>
+    <p class="nota">O valor recebido já tem o desconto aplicado, então o desconto não é subtraído de novo. Entram só os custos que o site mede hoje.</p>
+    <div class="tabela"><table><thead><tr><th>Componente</th><th class="num">Valor</th></tr></thead><tbody>
+      <tr><td>Receita líquida de reversões</td><td class="num">{{ totais.liquido_texto }}</td></tr>
+      {% for nome, valor in componentes %}<tr><td>− {{ nome }}</td><td class="num">{{ valor }}</td></tr>{% endfor %}
+      <tr><th>Margem de contribuição</th><th class="num">{{ margem_centavos_texto }}</th></tr>
+    </tbody></table></div>
+    {% if faltam %}<p class="nota">Ainda fora da conta: {{ faltam|join:"; " }}.</p>{% endif %}
+  </section>
+
+  <section aria-labelledby="t-quiz"><h2 id="t-quiz" class="titulo-de-bloco">Conversão por quiz</h2>
+    <div class="tabela"><table><thead><tr><th>Quiz</th><th class="num">Pessoas</th><th class="num">Compraram</th><th class="num">Conversão</th><th class="num">Recuperadas</th><th class="num">Receita líquida</th></tr></thead><tbody>
+    {% for l in por_quiz %}<tr><td>{{ l.quiz }}</td><td class="num">{{ l.elegiveis }}</td><td class="num">{{ l.compradores }}</td><td class="num">{{ l.conversao_texto }}</td><td class="num">{{ l.compras_recuperadas }}</td><td class="num">{{ l.liquido_texto }}</td></tr>{% empty %}<tr><td colspan="6" class="indisponivel">Ninguém fez quiz neste período.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section aria-labelledby="t-oferta"><h2 id="t-oferta" class="titulo-de-bloco">Por oferta</h2>
+    <div class="tabela"><table><thead><tr><th>Oferta</th><th class="num">Compras</th><th class="num">Revertidas</th><th class="num">Aprovado</th><th class="num">Estornos</th><th class="num">Receita líquida</th></tr></thead><tbody>
+    {% for l in por_oferta %}<tr><td>{{ l.oferta }}</td><td class="num">{{ l.compras_aprovadas }}</td><td class="num">{{ l.compras_revertidas }}</td><td class="num">{{ l.aprovado_texto }}</td><td class="num">{{ l.estornos_texto }}</td><td class="num">{{ l.liquido_texto }}</td></tr>{% empty %}<tr><td colspan="6" class="indisponivel">Nenhuma compra deste grupo.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section aria-labelledby="t-campanha"><h2 id="t-campanha" class="titulo-de-bloco">Por campanha</h2>
+    <div class="tabela"><table><thead><tr><th>Campanha</th><th class="num">Pessoas</th><th class="num">Compraram</th><th class="num">Conversão</th><th class="num">Receita líquida</th></tr></thead><tbody>
+    {% for l in por_campanha %}<tr><td>{{ l.campanha }}</td><td class="num">{{ l.elegiveis }}</td><td class="num">{{ l.compradores }}</td><td class="num">{{ l.conversao_texto }}</td><td class="num">{{ l.liquido_texto }}</td></tr>{% empty %}<tr><td colspan="5" class="indisponivel">Sem dados de campanha.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section aria-labelledby="t-canal"><h2 id="t-canal" class="titulo-de-bloco">Resposta por canal</h2>
+    {% if not resposta.disponivel %}<p class="indisponivel">Ainda indisponível: os agentes comerciais ainda não registram envios neste painel.</p>{% else %}
+    <div class="tabela"><table><thead><tr><th>Canal</th><th class="num">Mensagens enviadas</th><th class="num">Pessoas alcançadas</th><th class="num">Entregues</th><th class="num">Responderam</th><th class="num">Taxa de resposta</th></tr></thead><tbody>
+    {% for l in resposta.canais %}<tr><td>{{ l.nome }}</td><td class="num">{{ l.enviadas }}</td><td class="num">{{ l.alcancadas }}</td><td class="num">{% if l.entregues is None %}<span class="indisponivel">ainda indisponível</span>{% else %}{{ l.entregues }}{% endif %}</td><td class="num">{% if l.responderam is None %}<span class="indisponivel">ainda indisponível</span>{% else %}{{ l.responderam }}{% endif %}</td><td class="num">{{ l.taxa_texto }}</td></tr>{% empty %}<tr><td colspan="6" class="indisponivel">Nenhuma mensagem enviada por agente para este grupo.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if envios_sem_canal %}<p class="nota">{{ envios_sem_canal }} envio{{ envios_sem_canal|pluralize:"s" }} sem canal identificado fic{{ envios_sem_canal|pluralize:"ou,aram" }} fora desta tabela.</p>{% endif %}
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="t-versoes"><h2 id="t-versoes" class="titulo-de-bloco">Comparação de versões de estratégia</h2>
+    <p class="nota">A venda é atribuída à última versão que falou com a pessoa antes do pagamento. Mudanças de preço ao mesmo tempo que mudanças de mensagem atrapalham a comparação.</p>
+    {% if not agentes_disponivel %}<p class="indisponivel">Ainda indisponível: os agentes comerciais ainda não estão ligados neste painel.</p>{% else %}
+    {% for c in comparacoes %}<p class="{% if c.conclusivo %}recado{% else %}aviso inconclusivo{% endif %}">{{ c.papel_nome }}: {% if c.conclusivo %}a versão {{ c.melhor }} converteu mais com amostra suficiente.{% else %}resultado inconclusivo, amostra insuficiente para dizer qual versão é melhor.{% endif %}</p>{% endfor %}
+    <div class="tabela"><table><thead><tr><th>Papel</th><th class="num">Versão</th><th class="num">Pessoas atendidas</th><th class="num">Vendas</th><th class="num">Conversão</th><th class="num">Receita líquida</th><th class="num">Consumo dos modelos</th><th>Amostra</th></tr></thead><tbody>
+    {% for l in versoes %}<tr><td>{{ l.papel_nome }}</td><td class="num">{{ l.versao|default:"—" }}</td><td class="num">{{ l.pessoas }}</td><td class="num">{{ l.vendas }}</td><td class="num">{{ l.conversao_texto }}</td><td class="num">{{ l.liquido_texto }}</td><td class="num">{{ l.custo_texto }}</td><td>{% if l.suficiente %}suficiente{% else %}<span class="inconclusivo">insuficiente</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="8" class="indisponivel">Nenhum agente atendeu pessoas deste grupo.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endif %}
+  </section>
+  <p class="nota">Conversão: pessoas que compraram o produto do quiz divididas pelas que fizeram o quiz no período. Recuperação: compras pagas depois de uma tentativa que falhou. Conversão assistida: compras com mensagem ou link de um agente antes do pagamento; não prova que a venda só aconteceu por causa do agente. Pagamento conta só quando o provedor confirma.</p>
+  {% endif %}
+</main>
+{% endblock %}

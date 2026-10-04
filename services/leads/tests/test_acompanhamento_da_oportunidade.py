@@ -120,3 +120,48 @@ def test_acompanhamento_so_pelo_painel(client, oferta, settings):
     settings.TOKENS_ACEITOS.add("checkout")
     assert patch(client, oferta, {"nota": "x"},
                  {"HTTP_AUTHORIZATION": "Bearer checkout"}).status_code == 403
+
+
+def _notas(oferta):
+    from apps.core.models import RegistroHistoricoOportunidade
+
+    return RegistroHistoricoOportunidade.objects.filter(oportunidade=oferta, tipo="nota")
+
+
+def test_reenvio_do_mesmo_patch_nao_duplica_o_historico(client, oferta, autorizado):
+    corpo = {"autor_id": "agente:x", "nota": "Pediu o link de novo"}
+    antes = _notas(oferta).count()
+    assert patch(client, oferta, corpo, autorizado).json().get("repetido") is None
+    repetido = patch(client, oferta, corpo, autorizado)
+    assert repetido.status_code == 200 and repetido.json()["repetido"] is True
+    assert _notas(oferta).count() == antes + 1
+
+
+def test_chave_de_idempotencia_vale_mesmo_depois_de_tempo(client, oferta, autorizado):
+    from apps.core.models import AcompanhamentoAplicado
+
+    corpo = {"nota": "Mandou áudio", "chave_idempotencia": "turno-42"}
+    patch(client, oferta, corpo, autorizado)
+    AcompanhamentoAplicado.objects.update(aplicado_em="2020-01-01T00:00:00Z")
+    assert patch(client, oferta, corpo, autorizado).json()["repetido"] is True
+    assert _notas(oferta).filter(descricao="Mandou áudio").count() == 1
+    # Chave nova é outra atualização, mesmo com o mesmo texto.
+    patch(client, oferta, {**corpo, "chave_idempotencia": "turno-43"}, autorizado)
+    assert _notas(oferta).filter(descricao="Mandou áudio").count() == 2
+
+
+def test_mesmo_corpo_sem_chave_depois_de_minutos_grava_de_novo(client, oferta, autorizado):
+    from apps.core.models import AcompanhamentoAplicado
+
+    corpo = {"nota": "Ligou, não atendeu"}
+    patch(client, oferta, corpo, autorizado)
+    AcompanhamentoAplicado.objects.update(aplicado_em="2020-01-01T00:00:00Z")
+    assert patch(client, oferta, corpo, autorizado).json().get("repetido") is None
+    assert _notas(oferta).filter(descricao="Ligou, não atendeu").count() == 2
+
+
+def test_patch_recusado_nao_marca_como_aplicado(client, oferta, autorizado):
+    corpo = {"nota": "x", "prazo": "amanhã", "chave_idempotencia": "k1"}
+    assert patch(client, oferta, corpo, autorizado).status_code == 422
+    corpo["prazo"] = "2026-10-05T12:00:00-03:00"
+    assert patch(client, oferta, corpo, autorizado).json().get("repetido") is None

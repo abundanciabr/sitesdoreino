@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Modelos do WhatsApp{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <p><a href="{% url 'crm' %}">← CRM</a></p>
+  <h1>Modelos do WhatsApp</h1>
+  <p class="subtitulo">No WhatsApp oficial, o primeiro contato com quem respondeu um quiz só sai por um modelo de mensagem aprovado pela Meta. Depois que a pessoa responde, a conversa segue livre por 24 horas.</p>
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+
+  {% if canal_oficial == "nao_ligado" %}
+  <div class="cartao">
+    <h2>Canal oficial ainda não ligado</h2>
+    <p>Esta capacidade ainda está indisponível: faltam as credenciais da conta do WhatsApp Business (Cloud API da Meta) no cofre da mensageria. Quando elas forem cadastradas, os modelos aprovados aparecem aqui e o primeiro contato pode sair por eles.</p>
+  </div>
+  {% elif canal_oficial == "ligado" %}
+  <div class="cartao">
+    <h2>Canal oficial ligado</h2>
+    <p>{{ aprovados|length }} modelo{{ aprovados|length|pluralize:"s" }} pronto{{ aprovados|length|pluralize:"s" }} para o primeiro contato.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="sincronizar"><button type="submit">Buscar modelos na Meta agora</button></form>
+  </div>
+  {% endif %}
+
+  {% if modelos %}
+  <h2 class="titulo-de-bloco espaco-28">Modelos da conta</h2>
+  {% for modelo in modelos %}
+  <div class="cartao espaco-28">
+    <h3>{{ modelo.nome }} <small>({{ modelo.idioma }})</small></h3>
+    <p>Estado: <strong>{{ modelo.estado_visivel }}</strong>{% if modelo.categoria_visivel %} · Categoria: {{ modelo.categoria_visivel }}{% endif %}{% if not modelo.presente_no_provedor %} · Não aparece mais na Meta{% endif %}</p>
+    {% if modelo.motivo %}<p class="aviso">{{ modelo.motivo }}</p>{% endif %}
+    {% if modelo.corpo %}<blockquote>{{ modelo.corpo|linebreaksbr }}</blockquote>{% endif %}
+    {% if modelo.lugares %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="mapear"><input type="hidden" name="modelo_id" value="{{ modelo.id }}">
+      <p>O que entra em cada lugar do modelo:</p>
+      {% for lugar in modelo.lugares %}
+      <p><label>{{ lugar.nome }}
+        <select name="lugar:{{ lugar.chave }}">
+          <option value="">Sem dado escolhido</option>
+          {% for chave, nome in variaveis_do_lead.items %}<option value="{{ chave }}" {% if lugar.dado == chave %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+        </select></label></p>
+      {% endfor %}
+      <button type="submit">Salvar</button>
+    </form>
+    {% endif %}
+    {% if modelo.pronto %}<p>Pronto para o primeiro contato.</p>{% elif modelo.estado == "aprovado" and modelo.faltando %}<p class="aviso">Escolha o dado de cada lugar antes de usar este modelo.</p>{% endif %}
+  </div>
+  {% endfor %}
+  {% elif canal_oficial == "ligado" %}
+  <p class="aviso">Nenhum modelo encontrado ainda. Crie e aprove um modelo no gerenciador do WhatsApp da Meta e depois busque os modelos aqui.</p>
+  {% endif %}
+
+  {% if aprovados %}
+  <div class="cartao espaco-28">
+    <h2>Mensagem de teste com um modelo</h2>
+    <p>Use somente um número indicado e autorizado para este teste.</p>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="testar"><input type="hidden" name="chave" value="{{ chave }}">
+      <p><label>Modelo<select name="modelo">{% for modelo in aprovados %}<option value="{{ modelo.nome }}">{{ modelo.nome }} ({{ modelo.idioma }})</option>{% endfor %}</select></label></p>
+      <p><label>Número com DDI e DDD<input name="destinatario" type="tel" autocomplete="off" required maxlength="32" placeholder="55 + DDD + número"></label></p>
+      <p><label>Nome<input name="nome" maxlength="200"></label></p>
+      <p><label>Quiz<input name="quiz" maxlength="200"></label></p>
+      <p><label>Oferta<input name="oferta" maxlength="200"></label></p>
+      <p><label>Final do link de compra<input name="link" maxlength="300"></label></p>
+      <p><label><input type="checkbox" name="autorizado" value="sim" required> Este destinatário autorizou receber esta mensagem de teste.</label></p>
+      <button type="submit">Enviar teste</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if envios %}
+  <h2 class="titulo-de-bloco espaco-28">Últimos envios por modelo neste site</h2>
+  <div class="cartao">
+    <table>
+      <thead><tr><th>Quando</th><th>Modelo</th><th>Origem</th><th>Número</th><th>Estado</th></tr></thead>
+      <tbody>{% for envio in envios %}<tr><td>{{ envio.quando|date:"d/m/Y H:i" }}</td><td>{{ envio.modelo }}</td><td>{{ envio.origem }}</td><td>{{ envio.numero_mascarado }}</td><td>{{ envio.estado_visivel }}{% if envio.erro %} — {{ envio.erro }}{% endif %}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}

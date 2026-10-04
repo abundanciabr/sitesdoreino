@@ -60,6 +60,7 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     assert cobranca["metadata"] == {
         "checkout_session_id": sessao_a["id"],
         "product_id": OFERTA_A["product"]["id"],
+        "oferta_ref": OFERTA_A["slug"],
         "pagina_url": f"https://{HOST_A}/checkout/pedido/{pedido.id}/pix/",
         "recovery_url": f"https://{HOST_A}/checkout/{SLUG}/",
     }

@@ -77,7 +77,19 @@ from apps.core.parametros_da_fila import (
 )
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
+from apps.core.crm_conversas import crm_conversa, crm_conversas
+from apps.core.crm_agentes import (
+    crm_agentes,
+    crm_agentes_ativar,
+    crm_agentes_nova,
+    crm_agentes_retomar,
+    crm_agentes_voltar,
+)
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
+from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
+from apps.core.crm_resultados import crm_resultados
+from apps.core.crm_modelos import crm_modelos
+from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -138,6 +150,7 @@ from apps.agentes.views import (
     robos_admin,
     mapa_de_conhecimento,
 )
+from apps.agentes.views_comerciais import conhecimento_comercial_tela
 from apps.core.equipe_acesso import (
     conectar_meu_celular,
     entrar_na_equipe,
@@ -155,7 +168,7 @@ from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.funil import funil
-from apps.core.contatos import contato, contatos
+from apps.core.contatos import contato, contato_atendimento, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
@@ -231,17 +244,28 @@ from config.api import api
 # contrato com o healthcheck do compose, não por `reverse()`.
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 from apps.comercial.views import agentes_comerciais
+from apps.assistente.views import assistente_do_site
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
+    path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),
+    path("crm/resultados/", crm_resultados, name="crm_resultados"),
     # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
     # decisões e estratégias dos quatro papéis. Só do administrador.
-    path("crm/agentes/", agentes_comerciais, name="agentes_comerciais"),
+    path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),
+    # Nome, apresentação, assinatura, tom e voz do assistente de cada site.
+    path("crm/assistente/", assistente_do_site, name="assistente_do_site"),
+    path("crm/modelos/", crm_modelos, name="crm_modelos"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
+    path("crm/ofertas-dos-quizzes/", ofertas_dos_quizzes, name="crm_ofertas_dos_quizzes"),
+    path("crm/ofertas-dos-quizzes/<slug:slug>/salvar/", ofertas_dos_quizzes_salvar, name="crm_ofertas_dos_quizzes_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
+    path("crm/conversas/", crm_conversas, name="crm_conversas"),
+    path("crm/conversas/<uuid:conversa_id>/", crm_conversa, name="crm_conversa"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
@@ -350,6 +374,14 @@ urlpatterns = [
     path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
+    path("robos/conhecimento/comercial", conhecimento_comercial_tela, name="conhecimento_comercial"),
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`): a
+    # única página da equipe comercial de agentes (`apps/comercial`).
+    path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/trabalhos/<int:trabalho_id>/retomar/", crm_agentes_retomar, name="crm_agentes_retomar"),
+    path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
+    path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
+    path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),
     # O ACESSO POR APARELHO (01/10/2026, `apps/core/equipe_acesso.py`). As duas
     # primeiras abrem sem crachá (`porta.py::ENTRADAS_DA_EQUIPE`).
     path("equipe/magic-link", magic_link, name="magic_link"),
@@ -802,6 +834,11 @@ urlpatterns = [
     # e telefone de cliente são dado de dono, e `equipe/` abre para o crachá.
     path("contatos/", contatos, name="contatos"),
     path("contatos/<uuid:lead_id>/", contato, name="contato"),
+    path(
+        "contatos/<uuid:lead_id>/atendimento/",
+        contato_atendimento,
+        name="contato_atendimento",
+    ),
     # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
     # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
     # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta

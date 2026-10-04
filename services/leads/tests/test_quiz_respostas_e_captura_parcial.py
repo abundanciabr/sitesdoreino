@@ -152,23 +152,24 @@ def test_outro_quiz_abre_outra_oferta():
 def test_captura_parcial_aceita_nomes_alternativos_e_so_telefone_de_contato_conhecido():
     ao_quiz_captura_parcial(str(uuid.uuid4()), {
         "site": "a", "sessao": "x", "quiz": "crivo", "versao": "v1",
-        "lead": {"email": "ana@gmail.com", "name": "Ana", "phone": "+55 11 1"},
+        "lead": {"email": "ana@gmail.com", "name": "Ana", "phone": "+55 (11) 98888-7777"},
         "respostas": RESPOSTAS, "origem": {"utm_source": "ig"}, "campanha": "promo",
     })
     quiz = QuizDoLead.objects.get()
     assert quiz.lead.email == "ana@gmail.com" and quiz.campanha == "promo"
     assert quiz.utm == {"utm_source": "ig"}
-    # Só telefone: vale para quem já é conhecido; desconhecido não vira contato.
+    # Só telefone, escrito de outro jeito: é o mesmo contato.
     ao_quiz_captura_parcial(str(uuid.uuid4()), {
         "site_id": "a", "session_id": "y", "quiz_slug": "cura",
-        "contato": {"telefone": "+55 11 1"}, "respostas": [],
+        "contato": {"telefone": "11988887777"}, "respostas": [],
     })
+    # Número curto demais não identifica ninguém.
     ao_quiz_captura_parcial(str(uuid.uuid4()), {
         "site_id": "a", "session_id": "z", "quiz_slug": "cura",
         "contato": {"telefone": "+55 11 2"}, "respostas": [],
     })
     assert Lead.objects.count() == 1
-    assert QuizDoLead.objects.filter(quiz_slug="cura").count() == 1
+    assert QuizDoLead.objects.filter(quiz_slug="cura").get().lead.email == "ana@gmail.com"
 
 
 def test_captura_parcial_reentregue_nao_roda_duas_vezes():
@@ -196,3 +197,20 @@ def test_consumer_escuta_captura_parcial():
     from apps.core.management.commands.consume_eventos import STREAMS
 
     assert STREAMS["eventos.quiz.captura_parcial"] is ao_quiz_captura_parcial
+
+
+def test_ficha_com_token_comercial_so_do_proprio_site_e_sem_perfil(client, autorizado, settings):
+    completo("maria@gmail.com", site="a")
+    completo("joao@gmail.com", site="b")
+    settings.COMERCIAIS_DO_CRM = {"com-site-b": {"titular_id": "com-b", "site_id": "b"}}
+    settings.TOKENS_ACEITOS.add("com-site-b")
+    comercial = {"HTTP_AUTHORIZATION": "Bearer com-site-b"}
+    maria = Lead.objects.get(email="maria@gmail.com")
+    joao = Lead.objects.get(email="joao@gmail.com")
+    assert client.get(f"/api/leads/leads/{maria.pk}", **comercial).status_code == 404
+    ficha = client.get(f"/api/leads/leads/{joao.pk}", **comercial).json()
+    assert ficha["quizzes"] == [] and ficha["perfil"] is None
+    lista = client.get("/api/leads/leads", **comercial).json()
+    assert [item["email"] for item in lista["itens"]] == ["joao@gmail.com"]
+    # O painel continua vendo tudo, com respostas.
+    assert client.get(f"/api/leads/leads/{maria.pk}", **autorizado).json()["quizzes"]
