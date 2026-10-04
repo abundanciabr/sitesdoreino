@@ -16,7 +16,7 @@ cria o da hora). A ideia, em quatro passos:
    a proposta só como proposta, para a pessoa pôr no ar). A divisão é
    determinística: a mesma oportunidade fica sempre na mesma versão. Cada
    decisão guarda a versão usada (`DecisaoComercial.versao_estrategia`).
-4. **Decidir.** Comparando as duas no mesmo período (teste de duas proporções):
+4. **Decidir.** Comparando as duas no mesmo período (teste de duas proporções com corte que vale para conferência a toda hora, `z_critico`):
    candidata pior com amostra nas duas => o teste acaba e todo o tráfego volta
    para a versão anterior, com o motivo registrado; melhor com amostra => vira
    a versão do ar (a anterior fica guardada para voltar); sem diferença, o teste
@@ -53,7 +53,12 @@ from .experimentos import ExperimentoEstrategia
 from .models import DecisaoComercial, EstrategiaComercial, EventoComercial, TrabalhoComercial
 
 MIN_AMOSTRA = 30
-Z_CRITICO = 1.96
+# O teste roda a cada hora e decide no primeiro veredito claro. Olhar muitas
+# vezes com o corte fixo de 1,96 erra em cerca de um teste em quatro quando as
+# duas versões são iguais; por isso o corte sobe com a amostra de um jeito que
+# vale para olhadas sem fim (`z_critico`). ALFA é o erro aceito no teste todo.
+ALFA = 0.05
+AMOSTRA_DE_REFERENCIA = 15  # informação (n_a*n_b/(n_a+n_b)) de duas amostras mínimas de 30
 PERCENTUAL_PADRAO = 20
 PERCENTUAL_MAXIMO = 50
 DURACAO_MAXIMA = timedelta(days=21)
@@ -106,6 +111,22 @@ def z_de_duas_proporcoes(sucessos_a: int, n_a: int, sucessos_b: int, n_b: int) -
     return (sucessos_a / n_a - sucessos_b / n_b) / erro
 
 
+def z_critico(n_a: int, n_b: int) -> float:
+    """O corte do z para afirmar `pior` ou `melhor` com tamanhos n_a e n_b.
+
+    Vem do teste de misturas (mSPRT) para duas proporções: com
+    I = n_a*n_b/(n_a+n_b) e r = I/AMOSTRA_DE_REFERENCIA, afirma-se quando
+    z² >= (1+r)/r * (2*ln(1/ALFA) + ln(1+r)). Diferente do 1,96 fixo, o erro de
+    todo o teste (e não de uma olhada) fica perto de ALFA mesmo conferindo
+    toda hora. Pouca amostra pede z alto; com mais amostra o corte desce um
+    pouco e depois sobe devagar."""
+    if n_a <= 0 or n_b <= 0:
+        return math.inf
+    informacao = n_a * n_b / (n_a + n_b)
+    r = informacao / AMOSTRA_DE_REFERENCIA
+    return math.sqrt((1 + r) / r * (2 * math.log(1 / ALFA) + math.log(1 + r)))
+
+
 def comparar(base: dict, candidata: dict, *, minimo: int = MIN_AMOSTRA) -> dict:
     """Candidata contra base, em vendas por abordagem. O veredito é
     `inconclusivo` (pouca amostra), `pior`, `melhor` ou `igual`."""
@@ -114,9 +135,9 @@ def comparar(base: dict, candidata: dict, *, minimo: int = MIN_AMOSTRA) -> dict:
     z = z_de_duas_proporcoes(v_c, n_c, v_b, n_b)
     if n_b < minimo or n_c < minimo or z is None:
         veredito = "inconclusivo"
-    elif z < -Z_CRITICO:
+    elif z < -z_critico(n_b, n_c):
         veredito = "pior"
-    elif z > Z_CRITICO:
+    elif z > z_critico(n_b, n_c):
         veredito = "melhor"
     else:
         veredito = "igual"
@@ -397,6 +418,10 @@ def volta_se_piorou(papel: str) -> dict | None:
     ativa = papeis.estrategia_ativa(papel)
     anterior = ativa.anterior
     if anterior is None or anterior.pk == ativa.pk:
+        return None
+    if anterior.versao > ativa.versao:
+        # A do ar é uma versão MAIS VELHA que a "anterior": alguém voltou
+        # (a pessoa, ou o próprio otimizador). A escolha dessa volta fica.
         return None
     promovido = ExperimentoEstrategia.objects.filter(papel=papel, candidata=ativa, estado=X.PROMOVIDA).first()
     dados = numeros(papel, desde=promovido.iniciado_em if promovido else None)
