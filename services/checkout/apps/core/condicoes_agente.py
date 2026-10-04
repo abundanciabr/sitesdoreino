@@ -255,3 +255,29 @@ def put_offer_agent_conditions(request, slug: str):
             ignore_conflicts=True,
         )
     return JsonResponse(condicoes_para_o_agente(site, oferta))
+
+
+@router.get(
+    "/interno/ambiente",
+    operation_id="getCheckoutEnvironment",
+    summary="Os pedidos deste site nascem em teste ou em produção? Só o rótulo, nunca chave nem endereço",
+    include_in_schema=False,
+)
+def get_checkout_environment(request):
+    """Somente leitura, servidor a servidor (o token público das páginas não
+    alcança: a operação não está na lista dele). Responde, para cada forma de
+    pagar, se o pedido que nasce agora cai no sandbox do provedor (dinheiro de
+    mentira, fora dos totais) ou em produção. Usa a MESMA conta que decide o
+    `em_teste` do pedido; devolve só `teste` ou `producao`."""
+    from django.conf import settings
+
+    # Import tardio: api.py é grande e importa este módulo.
+    from apps.core.api import _ambiente_de_teste
+
+    site_id = request.site["id"]
+    pix_appmax = site_id in (settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES)
+    cartao = "teste" if _ambiente_de_teste(site_id, "card", False) else "producao"
+    pix = "teste" if _ambiente_de_teste(site_id, "pix", pix_appmax) else "producao"
+    return JsonResponse(
+        {"cartao": cartao, "pix": pix, "modo": "producao" if cartao == pix == "producao" else "teste"}
+    )

@@ -29,18 +29,17 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from datetime import datetime, timedelta
 
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from apps.agentes import modelo
 from apps.agentes.models import Conexao
 
-from . import ferramentas, otimizador, papeis, servicos
+from . import ferramentas, interruptor, otimizador, papeis, servicos
 from .models import DecisaoComercial, EstrategiaComercial, EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -82,8 +81,14 @@ Esperar = ferramentas.Esperar  # a espera nasce nas ferramentas também; o nome 
 
 
 def ligado() -> bool:
-    """`COMERCIAL_AGENTES=desligado` no ambiente para a equipe comercial."""
-    return os.environ.get("COMERCIAL_AGENTES", "").strip().lower() != "desligado"
+    """A equipe comercial está ligada? Vale o interruptor da tela (guardado no
+    banco, sem reiniciar nada); sem decisão guardada, vale o ambiente
+    (`COMERCIAL_AGENTES=desligado` desliga). Se o banco não responder, fica
+    desligada: melhor parar do que falar com lead sem saber se podia."""
+    try:
+        return interruptor.ligada()
+    except DatabaseError:
+        return False
 
 
 # ---------------------------------------------------------------- criar

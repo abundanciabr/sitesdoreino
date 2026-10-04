@@ -2357,6 +2357,7 @@ class LeadsClient:
         tag: str = "",
         pagina: int = 1,
         por_pagina: int = 50,
+        testes: str = "",
     ) -> "tuple[str, dict | None]":
         """Uma página de contatos vindos dos quizzes, do mais novo ao mais antigo.
 
@@ -2366,7 +2367,7 @@ class LeadsClient:
         deixa o registro de acesso dela dizer o que a tela de fato procurou.
         """
         params: dict = {"pagina": pagina, "por_pagina": por_pagina, "origem": "quiz"}
-        for nome, valor in (("q", q), ("site_id", site_id), ("tag", tag)):
+        for nome, valor in (("q", q), ("site_id", site_id), ("tag", tag), ("testes", testes)):
             if valor:
                 params[nome] = valor
         desfecho, corpo = self._pedir("/leads", params)
@@ -2541,6 +2542,12 @@ class MensageriaClient:
             logger.error("sequencias: resposta de %s com forma inesperada", caminho)
             return None
         return corpo
+
+    def prontidao_comercial(self, site_id: str) -> "dict | None":
+        """`prontidao-comercial`: o que a mensageria tem pronto para a equipe
+        comercial (resposta por e-mail, WhatsApp, modelo do primeiro contato).
+        Só leitura, sem segredo. `None` = não deu."""
+        return self._ler("prontidao-comercial/" + quote(site_id, safe=""), {})
 
     # -- as duas escritas ----------------------------------------------------
     def publicar_texto(

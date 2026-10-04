@@ -223,3 +223,5 @@ class EventoComercial(models.Model):
 
 # O teste entre duas versões de estratégia mora em experimentos.py (ver o módulo).
 from .experimentos import ExperimentoEstrategia  # noqa: E402,F401
+# O interruptor da equipe e o escopo por quiz (uma linha por instalação).
+from .interruptor import ConfiguracaoComercial  # noqa: E402,F401

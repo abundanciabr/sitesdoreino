@@ -118,6 +118,37 @@ def mensagem_json(mensagem: MensagemDaConversa) -> dict:
     }
 
 
+@router.get("/prontidao-comercial/{site_id}")
+def prontidao_comercial(request, site_id: str):
+    """Só leitura, para o painel 'pronto para vender?' do admin: o que a
+    mensageria tem pronto para a equipe comercial falar com lead. Nada de
+    segredo nem de dado de pessoa: só se o token das respostas por e-mail
+    existe (nunca o valor), o estado da conexão do WhatsApp, se o canal oficial
+    está ligado e se há modelo aprovado que sirva ao primeiro contato."""
+    from django.conf import settings
+
+    from apps.whatsapp.service import estado_da_conexao
+    from apps.whatsapp_modelos import cloud
+    from apps.whatsapp_modelos.modelos import modelo_para_primeiro_contato
+
+    site = _site(site_id)
+    try:
+        conexao = str(estado_da_conexao(site).get("estado") or "desconhecido")
+    except Exception:  # o gateway fora do ar vira "indisponivel", nunca 500
+        conexao = "indisponivel"
+    oficial = cloud.configurado()
+    modelo, motivo = modelo_para_primeiro_contato({"nome": "Nome", "quiz": "Quiz", "oferta": "Oferta"})
+    return {
+        "email": {"respostas_recebidas": bool(getattr(settings, "EMAIL_ENTRADA_TOKEN", ""))},
+        "whatsapp": {
+            "conexao": conexao,
+            "canal_oficial": "ligado" if oficial else "nao_ligado",
+            "modelo_primeiro_contato": modelo is not None,
+            "motivo": "" if modelo is not None else str(motivo or "")[:300],
+        },
+    }
+
+
 @router.get("/conversas")
 def listar_conversas(request, site_id: str, lead_id: str = "", estado: str = "", canal: str = "",
                      ligacao: str = "", pagina: int = 1, por_pagina: int = 50):

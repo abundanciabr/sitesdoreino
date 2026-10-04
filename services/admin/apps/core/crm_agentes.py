@@ -16,6 +16,7 @@ aqui.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from decimal import Decimal
 
@@ -29,6 +30,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
+
+from . import crm_prontidao
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +72,11 @@ RECADOS = {
     "analise_pedida": "Análise de resultados pedida. Ela entra na fila e aparece em Trabalhos.",
     "analise_ja_pedida": "A análise de hoje já foi pedida; ela está em Trabalhos. Uma nova só amanhã.",
     "analise_desligada": "Os agentes comerciais estão desligados neste ambiente: a análise não foi pedida.",
+    "ligada": "Equipe comercial ligada. Daqui em diante ela usa o modelo (dentro do gasto autorizado) e fala com leads reais.",
+    "desligada": "Equipe comercial desligada. Nenhum trabalho novo é criado nem executado; o que já aconteceu continua visível.",
+    "confirmar": "Para ligar, marque a confirmação: a equipe passa a usar o modelo e a falar com leads reais.",
+    "escopo_salvo": "Pronto: a equipe atua só nos quizzes escolhidos. Eventos dos outros quizzes não criam trabalho.",
+    "escopo_todos": "Pronto: a equipe atua em todos os quizzes.",
 }
 
 # Estados em que o botão "Retomar" aparece (`coordenador.retomar`).
@@ -307,6 +315,37 @@ def _ligado() -> bool:
     return coordenador.ligado()
 
 
+def _interruptor() -> dict:
+    """O estado de agora da equipe e de onde ele vem (tela ou ambiente)."""
+    from apps.comercial import interruptor
+
+    linha = interruptor.configuracao()
+    decidida = linha is not None and linha.ligada is not None
+    return {
+        "ligado": _ligado(),
+        "origem": interruptor.origem(),
+        "por": linha.ligada_por if decidida else "",
+        "em": linha.ligada_em if decidida else None,
+        "escopo": interruptor.escopo(),
+        "escopo_por": linha.escopo_por if linha is not None else "",
+        "escopo_em": linha.escopo_em if linha is not None else None,
+    }
+
+
+def _quizzes_do_escopo(publicados, escopo) -> dict:
+    """Os quizzes para escolher o escopo: os publicados (se a consulta deu) e,
+    à parte, os já escolhidos que não aparecem entre eles (para não sumirem em
+    silêncio)."""
+    marcados = set(escopo)
+    lista = [dict(q, marcado=q["slug"] in marcados) for q in publicados or []]
+    conhecidos = {q["slug"] for q in lista}
+    return {
+        "consultado": publicados is not None,
+        "lista": lista,
+        "fora": [slug for slug in escopo if slug not in conhecidos],
+    }
+
+
 def _min_amostra() -> int:
     from apps.comercial import resultados
 
@@ -343,7 +382,13 @@ def crm_agentes(request):
             detalhe=_detalhe(request.GET.get("trabalho", "")),
             ligado=_ligado(),
             min_amostra=_min_amostra(),
+            interruptor=_interruptor(),
         )
+        prontidao = crm_prontidao.verificar(
+            request, escopo=contexto["interruptor"]["escopo"], gasto_comercial=gasto_comercial
+        )
+        contexto["prontidao"] = prontidao
+        contexto["quizzes_do_escopo"] = _quizzes_do_escopo(prontidao["quizzes"], contexto["interruptor"]["escopo"])
     except (DatabaseError, ImportError, LookupError):
         logger.exception("Não foi possível ler os registros dos agentes do CRM")
         contexto["disponivel"] = False
@@ -462,3 +507,57 @@ def crm_agentes_retomar(request, trabalho_id: int):
         return _volta("nao_retomado", "trabalhos")
     _auditar(request, f"trabalho_comercial:{trabalho.pk}", f"CRM agentes: retomar ({trabalho.estado})")
     return _volta("retomado", "trabalhos")
+
+
+@require_POST
+def crm_agentes_interruptor(request):
+    """Liga ou desliga a equipe comercial, sem mexer no servidor. Ligar pede a
+    confirmação marcada: a partir dali a equipe usa o modelo (gasto autorizado)
+    e fala com leads reais."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "interruptor")
+    from apps.comercial import interruptor
+
+    acao = request.POST.get("acao")
+    if acao not in ("ligar", "desligar"):
+        return _volta("indisponivel", "interruptor")
+    if acao == "ligar" and request.POST.get("confirmo") != "sim":
+        _auditar(request, "comercial:interruptor", "CRM agentes: ligar recusado (sem confirmação)", ok=False)
+        return _volta("confirmar", "interruptor")
+    try:
+        interruptor.definir_ligada(acao == "ligar", _quem(request))
+    except DatabaseError:
+        logger.exception("Não foi possível gravar o interruptor da equipe comercial")
+        return _volta("indisponivel", "interruptor")
+    _auditar(
+        request,
+        "comercial:interruptor",
+        "CRM agentes: equipe comercial ligada (confirmado: usa o modelo e fala com leads reais)"
+        if acao == "ligar"
+        else "CRM agentes: equipe comercial desligada",
+    )
+    return _volta("ligada" if acao == "ligar" else "desligada", "interruptor")
+
+
+_SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,119}$")
+
+
+@require_POST
+def crm_agentes_escopo(request):
+    """Em quais quizzes a equipe atua. Nenhum marcado: todos."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "interruptor")
+    from apps.comercial import interruptor
+
+    slugs = [s for s in dict.fromkeys(request.POST.getlist("quiz")) if _SLUG.match(s)]
+    try:
+        interruptor.definir_escopo(slugs, _quem(request))
+    except DatabaseError:
+        logger.exception("Não foi possível gravar o escopo da equipe comercial")
+        return _volta("indisponivel", "interruptor")
+    _auditar(
+        request,
+        "comercial:escopo",
+        "CRM agentes: equipe atua só em " + ", ".join(slugs) if slugs else "CRM agentes: equipe atua em todos os quizzes",
+    )
+    return _volta("escopo_salvo" if slugs else "escopo_todos", "interruptor")

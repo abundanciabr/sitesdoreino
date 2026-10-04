@@ -26,7 +26,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from . import coordenador, otimizador, servicos
+from . import coordenador, interruptor, otimizador, servicos
 from .models import EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -125,6 +125,8 @@ def _do_quiz(nome: str, envelope: dict, *, parcial: bool) -> TrabalhoComercial |
     if not coordenador.ligado():
         return None
     quiz = _texto(data.get("quiz_slug") or data.get("quiz"), 120)
+    if not interruptor.quiz_no_escopo(quiz):
+        return None  # a equipe atua só nos quizzes escolhidos na tela
     sessao = _texto(data.get("sessao") or data.get("session_id"), 120)
     entrada = {
         "contato": contato,
