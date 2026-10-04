@@ -25,6 +25,7 @@ from .models import (
     Submission,
     TelemetryEvent,
 )
+from . import consentimento
 from .respostas import emitir_quiz_completado, lead_do_contato, respostas_legiveis
 from .comprador import gravar_cookie
 from .direcionadas import (
@@ -259,6 +260,8 @@ def _render_formulario(
             "entrada": entrada,
             "experiencia": experiencia,
             "calculadora_url": reverse("quiz-calcular", args=[quiz.slug]),
+            "texto_consentimento_whatsapp": consentimento.TEXTO_WHATSAPP,
+            "aceita_whatsapp_marcada": consentimento.marcou(request.POST),
             "canonical": request.build_absolute_uri(endereco_canonico),
         },
         status=503 if experiencia and experiencia["fmt"] == "ai" else status,
@@ -386,6 +389,9 @@ def formulario(request, slug):
             },
         )
         if criada:
+            consentimento.registrar(
+                quiz, submissao.session_id, request.POST, submissao.lead_phone
+            )
             # [RECEITA:R3 v1] mesma transação do resultado
             emitir_quiz_completado(quiz, submissao)
             transaction.on_commit(relay_apos_commit)
@@ -777,7 +783,13 @@ def captura(request, slug):
                 registro.lead_phone = telefone
             registro.answers = {**(registro.answers or {}), **respostas}
             registro.save()
-        else:
+        aceite, aceite_mudou = consentimento.registrar(
+            quiz, session_id, request.POST, registro.lead_phone
+        )
+        if not criada and aceite_mudou:
+            consentimento.emitir_mudanca(quiz, registro, aceite)
+            transaction.on_commit(relay_apos_commit)
+        if criada:
             payload = {
                 "captura_id": str(registro.id),
                 "site_id": registro.site_id,
@@ -787,6 +799,7 @@ def captura(request, slug):
                 "lead": lead_do_contato(email, nome, telefone),
                 "respostas": respostas_legiveis(versao, respostas),
                 "utm": registro.utm,
+                "consentimento": consentimento.bloco(aceite),
             }
             if registro.context:
                 payload["context"] = registro.context

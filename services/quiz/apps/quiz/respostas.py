@@ -83,6 +83,7 @@ def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     `captura_parcial_id` — com ele o consumidor junta as duas coisas na mesma
     pessoa em vez de abrir outra.
     """
+    from .consentimento import bloco_da_sessao
     from .models import CapturaParcial
 
     payload = {
@@ -101,6 +102,7 @@ def emitir_quiz_completado(quiz, submissao) -> OutboxEvent:
     }
     if submissao.context:
         payload["context"] = submissao.context
+    payload["consentimento"] = bloco_da_sessao(quiz, submissao.session_id)
     if submissao.session_id:
         captura = CapturaParcial.objects.filter(
             quiz=quiz, session_id=submissao.session_id

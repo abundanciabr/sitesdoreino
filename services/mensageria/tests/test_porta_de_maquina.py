@@ -845,6 +845,7 @@ CORPOS_DE_ESCRITA = {
     "/conversas/{conversa_id}/devolver": {"site_id": SITE},
     "/conversas/{conversa_id}/encerrar": {"site_id": SITE},
     "/conversas/{conversa_id}/mensagens/{mensagem_id}/transcricao": {"site_id": SITE, "transcricao": "prova"},
+    "/consentimentos/whatsapp": {"site_id": SITE, "telefone": "11999999999", "aceito": True},
 }
 
 

@@ -337,4 +337,29 @@ class PropostaDeVersao(models.Model):
         indexes = [models.Index(fields=["quiz", "estado"], name="proposta_quiz_estado")]
 
 
+class ConsentimentoDoContato(models.Model):
+    """Permissão de contato pelo WhatsApp dada no formulário do quiz.
+
+    Uma linha por (quiz, sessão); a última escolha da pessoa naquela sessão
+    vale. O texto lido e a versão dele ficam junto. Uso em `consentimento.py`.
+    """
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.PROTECT, related_name="consentimentos")
+    session_id = models.UUIDField()
+    site_id = models.CharField(max_length=64)
+    telefone = models.CharField(max_length=32, blank=True, default="")
+    aceita_whatsapp = models.BooleanField(default=False)
+    texto_whatsapp = models.TextField(blank=True, default="")
+    versao_texto = models.CharField(max_length=32, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quiz", "session_id"], name="consentimento_quiz_sessao_unico"
+            )
+        ]
+
+
 from .integracoes.models import IntegracaoEnvio  # noqa: E402,F401  registra o modelo no app

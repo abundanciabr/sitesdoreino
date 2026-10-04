@@ -25,6 +25,8 @@
   button:disabled { opacity: .6; }
   .aguarde { margin: .75rem 0 0; text-align: center; color: #444; }
   .erro { color: #b00020; }
+  label.consentimento { display: flex; gap: .6rem; align-items: flex-start; font-size: .9rem; }
+  label.consentimento input { margin: .15rem 0 0; flex: none; }
   .avancar { display: none; }
   html.com-passos .avancar { display: block; }
   html.com-passos .enviar { display: none; }
@@ -69,6 +71,10 @@
       <label>
         Telefone
         <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true" aria-describedby="erro-formulario"{% endif %}>
+      </label>
+      <label class="consentimento">
+        <input type="checkbox" name="aceita_whatsapp" value="1"{% if aceita_whatsapp_marcada %} checked{% endif %}>
+        {{ texto_consentimento_whatsapp }}
       </label>
     </fieldset>
     <button type="button" class="avancar">Continuar</button>
@@ -198,7 +204,7 @@
       keepalive: true
     }).catch(function () { ultimaCaptura = ""; });
   }
-  ["email", "nome", "telefone"].forEach(function (nome) {
+  ["email", "nome", "telefone", "aceita_whatsapp"].forEach(function (nome) {
     var campo = form.querySelector("input[name=" + nome + "]");
     if (campo) campo.addEventListener("change", function () { capturar(false); });
   });
