@@ -98,6 +98,8 @@ def criar_pagamento_pix(
     payer_email: str, date_of_expiration: str | None = None,
     notification_url: str | None = None, payer_first_name: str = "",
     payer_last_name: str = "", payer_identification: dict[str, str] | None = None,
+    itens_do_pedido: list[dict[str, Any]] | None = None,
+    comprador_nome: str = "", comprador_telefone: str = "", device_id: str = "",
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoPix:
     try:
@@ -111,6 +113,10 @@ def criar_pagamento_pix(
             **({"payer_first_name": payer_first_name} if payer_first_name else {}),
             **({"payer_last_name": payer_last_name} if payer_last_name else {}),
             **({"payer_identification": payer_identification} if payer_identification else {}),
+            **({"itens_do_pedido": itens_do_pedido} if itens_do_pedido else {}),
+            **({"comprador_nome": comprador_nome} if comprador_nome else {}),
+            **({"comprador_telefone": comprador_telefone} if comprador_telefone else {}),
+            **({"device_id": device_id} if device_id else {}),
             **({"envio_ambiguo_anterior": True} if envio_ambiguo_anterior else {}),
         )
     except MercadoPagoError as exc:
@@ -124,7 +130,8 @@ def criar_pagamento_card(
     payer_email: str, issuer_id: str | None = None, device_id: str = "",
     payer_first_name: str = "", payer_last_name: str = "",
     payer_identification: dict[str, str] | None = None,
-    items: list[dict[str, Any]] | None = None,
+    itens_do_pedido: list[dict[str, Any]] | None = None,
+    comprador_nome: str = "", comprador_telefone: str = "",
     notification_url: str | None = None,
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoCard:
@@ -135,7 +142,9 @@ def criar_pagamento_card(
             installments=installments, payment_method_id=payment_method_id,
             payer_email=payer_email, issuer_id=issuer_id, device_id=device_id,
             payer_first_name=payer_first_name, payer_last_name=payer_last_name,
-            payer_identification=payer_identification, items=items,
+            payer_identification=payer_identification,
+            itens_do_pedido=itens_do_pedido, comprador_nome=comprador_nome,
+            comprador_telefone=comprador_telefone,
             notification_url=notification_url,
             envio_ambiguo_anterior=envio_ambiguo_anterior,
         )

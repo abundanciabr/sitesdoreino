@@ -108,6 +108,8 @@ function dadosIsland() {
           bump_ids: this.bumpIds,
           method: this.method,
           ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
+          ...(this.method === "pix" && typeof window.MP_DEVICE_SESSION_ID === "string" && window.MP_DEVICE_SESSION_ID
+            ? { mp_device_id: window.MP_DEVICE_SESSION_ID } : {}),
         });
         const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}

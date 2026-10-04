@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
+from typing import Any
 
 import httpx
 import pytest
@@ -54,8 +55,9 @@ def test_cartao_envia_corpo_e_cabecalhos_completos(status: str, detail: str) -> 
             payer_email="teste@example.com", payer_first_name="Ana",
             payer_last_name="Silva",
             payer_identification={"type": "CPF", "number": "12345678901"},
-            items=[{"id": "curso", "title": "Curso", "quantity": 1,
-                    "unit_price": 19.9}],
+            itens_do_pedido=[{"product_id": "curso", "name": "Curso",
+                              "price_cents": 1990, "kind": "principal"}],
+            comprador_nome="Ana Maria Silva", comprador_telefone="5511987654321",
             notification_url="https://meshcraft.top/api/pagamentos/webhooks/mp/card",
         )
     assert (resultado.payment_id, resultado.status, resultado.reason_code) == (
@@ -71,8 +73,38 @@ def test_cartao_envia_corpo_e_cabecalhos_completos(status: str, detail: str) -> 
     assert body["payment_method_id"] == "visa"
     assert body["issuer_id"] == "24"
     assert body["payer"]["first_name"] == "Ana"
-    assert body["additional_info"]["items"][0]["id"] == "curso"
+    assert body["additional_info"]["items"] == [{
+        "id": "curso", "title": "Curso", "description": "Curso",
+        "category_id": "learnings", "quantity": 1, "unit_price": 19.9,
+    }]
+    assert body["additional_info"]["payer"] == {
+        "first_name": "Ana", "last_name": "Maria Silva",
+        "phone": {"area_code": "11", "number": "987654321"},
+    }
+    assert body["description"] == "Curso"
+    assert body["statement_descriptor"] == "MESHCRAFT"
     assert "binary_mode" not in body
+
+
+def test_cartao_fatura_respeita_limite_e_itens_fora_do_total_ficam_de_fora(
+    settings: Any,
+) -> None:
+    settings.MP_STATEMENT_DESCRIPTOR = "MESHCRAFT CURSOS ONLINE"
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990,
+            order_id="operacao-1", card_token="token-sintetico", installments=1,
+            payment_method_id="visa", payer_email="teste@example.com",
+            itens_do_pedido=[{"product_id": "curso", "name": "Curso",
+                              "price_cents": 990, "kind": "principal"}],
+        )
+    body = json.loads(rota.calls.last.request.content)
+    assert body["statement_descriptor"] == "MESHCRAFT CUR"
+    assert body["additional_info"] == {"items": []}
+    assert "description" not in body
 
 
 def test_cartao_e_consulta_preservam_apenas_dados_da_conferencia() -> None:
@@ -270,9 +302,150 @@ def test_pix_opcionais_sao_enviados_quando_presentes() -> None:
         )
     body = json.loads(rota.calls.last.request.content)
     assert rota.calls.last.request.headers.get_list("X-Idempotency-Key") == ["pix-1"]
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
     assert body["date_of_expiration"] == "2026-10-03T12:30:00-03:00"
     assert body["payer"]["first_name"] == "Ana"
     assert body["notification_url"].endswith("/mp/pix")
+    assert "additional_info" not in body
+
+
+def test_pix_leva_aparelho_itens_e_comprador_sem_nome_na_fatura() -> None:
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json={
+            "id": 456, "status": "pending",
+            "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}},
+        }))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=2980,
+            order_id="pix-1", payer_email="teste@example.com",
+            itens_do_pedido=[
+                {"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"},
+                {"product_id": "extra", "name": "Extra", "price_cents": 990, "kind": "bump"},
+            ],
+            comprador_nome="Ana Silva", comprador_telefone="1133334444",
+            device_id="aparelho-sintetico",
+        )
+    request = rota.calls.last.request
+    body = json.loads(request.content)
+    assert request.headers["X-meli-session-id"] == "aparelho-sintetico"
+    assert [item["id"] for item in body["additional_info"]["items"]] == ["curso", "extra"]
+    assert body["additional_info"]["items"][1]["unit_price"] == 9.9
+    assert body["additional_info"]["payer"]["phone"] == {"area_code": "11", "number": "33334444"}
+    assert body["description"] == "Curso + Extra"
+    assert "statement_descriptor" not in body
+
+
+@pytest.mark.parametrize(
+    "aparelho",
+    ["a\r\nb", " aparelho", "aparelho ", "ação-1", "é😀", "a" * 201],
+)
+def test_aparelho_fora_do_formato_nao_vira_cabecalho_e_a_cobranca_sai(
+    aparelho: str, caplog: Any,
+) -> None:
+    caplog.set_level("WARNING")
+    resposta = {"id": 456, "status": "pending",
+                "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}}}
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json=resposta))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=2980, order_id="pix-1",
+            payer_email="teste@example.com", device_id=aparelho,
+        )
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+            card_token="token-sintetico", installments=1, payment_method_id="visa",
+            payer_email="teste@example.com", device_id=aparelho,
+        )
+    assert "X-meli-session-id" not in rota.calls.last.request.headers
+    # Descarte avisado no log, sem o valor do aparelho.
+    avisos = [r.getMessage() for r in caplog.records if "aparelho_mp_descartado" in r.getMessage()]
+    assert len(avisos) == 2
+    assert all(aparelho not in aviso for aviso in avisos)
+
+
+def test_aparelho_em_ascii_visivel_vira_cabecalho() -> None:
+    """Formato do MP não é contrato: =, / e + passam; só espaço, controle e não
+    ASCII ficam de fora do cabeçalho."""
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+            card_token="token-sintetico", installments=1, payment_method_id="visa",
+            payer_email="teste@example.com", device_id="ab+/cd=",
+        )
+    assert rota.calls.last.request.headers["X-meli-session-id"] == "ab+/cd="
+
+
+def test_itens_que_nao_somam_o_valor_ficam_de_fora_com_aviso(caplog: Any) -> None:
+    caplog.set_level("WARNING")
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json={
+            "id": 456, "status": "pending",
+            "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}},
+        }))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=5000, order_id="pix-1",
+            payer_email="teste@example.com",
+            itens_do_pedido=[
+                {"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"},
+            ],
+        )
+    body = json.loads(rota.calls.last.request.content)
+    assert "description" not in body
+    assert "items" not in body.get("additional_info", {})
+    assert any(
+        "itens_mp_descartados motivo=soma_diferente" in r.getMessage()
+        for r in caplog.records
+    )
+
+
+def test_qualidade_nos_bordos_telefone_item_e_textos_longos(settings: Any) -> None:
+    settings.MP_STATEMENT_DESCRIPTOR = "MESHCRAFT    CURSOS"
+    longo = "x" * 300
+    casos = [
+        # telefone inválido some do comprador, o resto do comprador fica
+        ([{"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"}],
+         "Ana Silva", "123"),
+        # item sem product_id derruba só a lista de itens
+        ([{"name": "Curso", "price_cents": 1990, "kind": "principal"}], "Ana Silva", "11987654321"),
+        # nome do item longo é cortado em 256, e a descrição também
+        ([{"product_id": "curso", "name": longo, "price_cents": 1990, "kind": "principal"}],
+         "Ana Silva", "11987654321"),
+    ]
+    corpos = []
+    for itens, nome, telefone in casos:
+        with respx.mock(assert_all_called=True) as rede:
+            rota = rede.post(URL).mock(return_value=httpx.Response(
+                201, json={"id": 123, "status": "approved"}
+            ))
+            criar_pagamento_card(
+                idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+                card_token="token-sintetico", installments=1, payment_method_id="visa",
+                payer_email="teste@example.com", itens_do_pedido=itens,
+                comprador_nome=nome, comprador_telefone=telefone,
+            )
+        corpos.append(json.loads(rota.calls.last.request.content))
+    telefone_ruim, sem_produto, longo_cortado = corpos
+    assert telefone_ruim["additional_info"]["payer"] == {
+        "first_name": "Ana", "last_name": "Silva",
+    }
+    assert telefone_ruim["additional_info"]["items"][0]["id"] == "curso"
+    assert sem_produto["additional_info"]["items"] == []
+    assert "description" not in sem_produto
+    assert sem_produto["additional_info"]["payer"]["phone"] == {
+        "area_code": "11", "number": "987654321",
+    }
+    assert len(longo_cortado["description"]) == 256
+    assert len(longo_cortado["additional_info"]["items"][0]["title"]) == 256
+    # corte da fatura em 13 não termina em espaço
+    assert all(c["statement_descriptor"] == "MESHCRAFT" for c in corpos)
 
 
 def test_sdk_escapa_id_de_pagamento_no_get_e_no_estorno() -> None:
