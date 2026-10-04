@@ -327,6 +327,9 @@ def _enviar_email(conversa: Conversa, mensagem: MensagemDaConversa) -> MensagemD
     if ultima:
         cabecalhos["In-Reply-To"] = ultima.id_externo
         cabecalhos["References"] = ultima.id_externo
+    responder_para = enderecos.resposta_para(getattr(settings, "EMAIL_RESPOSTA_PARA", ""), conversa.id)
+    if responder_para:
+        cabecalhos["Reply-To"] = responder_para  # o Brevo recebe e a resposta cai nesta conversa
     carta = EmailMessage(subject=assunto or "Mensagem da equipe", body=mensagem.texto,
                          from_email=remetente, to=[conversa.endereco], headers=cabecalhos)
     try:
