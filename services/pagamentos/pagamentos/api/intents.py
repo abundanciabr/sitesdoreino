@@ -364,7 +364,7 @@ def get_intent(request: HttpRequest, intent_id: str) -> dict[str, Any]:
             ).exists():
                 reconciliar_pix_appmax(intent)
             else:
-                reconciliar_intent_pix(intent)
+                reconciliar_intent_pix(intent, origem="get_intent")
         except (FalhaNoProvedor, IntentNaoConfirmavel):
             intent.refresh_from_db()
     return _intent_to_dict(intent)
@@ -594,8 +594,12 @@ def get_card_installments(request: HttpRequest, intent_id: str) -> dict[str, Any
         raise HttpError(
             502, "não foi possível consultar as parcelas; tente novamente"
         ) from None
+    return _resposta_de_parcelas(intent.amount_cents, cotacao)
+
+
+def _resposta_de_parcelas(amount_cents: int, cotacao: dict[str, Any]) -> dict[str, Any]:
     return {
-        "amount_cents": intent.amount_cents,
+        "amount_cents": amount_cents,
         "modality": cotacao["modality"],
         "options": [
             {
@@ -606,3 +610,24 @@ def get_card_installments(request: HttpRequest, intent_id: str) -> dict[str, Any
             for quantidade, total in sorted(cotacao["totals"].items())
         ],
     }
+
+
+@router.get(
+    "/parcelas",
+    operation_id="quoteCardInstallments",
+    summary="Cotação das parcelas do cartão para um valor, antes de existir pedido",
+    include_in_schema=False,
+)
+def quote_card_installments(request: HttpRequest, amount_cents: int) -> dict[str, Any]:
+    """A mesma cotação de `getCardInstallments`, para quem precisa MOSTRAR as
+    condições de uma oferta antes de abrir pedido (o atendimento do CRM). O
+    valor vem do checkout, que o leu do catálogo; nada aqui é cobrado."""
+    if amount_cents < 1:
+        raise HttpError(422, "amount_cents deve ser inteiro positivo")
+    try:
+        cotacao = gateway.AppmaxGateway().consultar_parcelas(total_value=amount_cents)
+    except FalhaNoProvedor:
+        raise HttpError(
+            502, "não foi possível consultar as parcelas; tente novamente"
+        ) from None
+    return _resposta_de_parcelas(amount_cents, cotacao)

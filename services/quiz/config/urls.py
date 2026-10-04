@@ -4,6 +4,7 @@ from apps.core.views import healthz
 from apps.quiz import views as quiz_views
 from apps.quiz.laboratorio import observacao
 from apps.quiz.editor import quizzes, quiz_draft, publish_quiz
+from apps.quiz import ofertas as ofertas_dos_quizzes
 from apps.quiz import portfolio
 from apps.quiz import painel_campanhas
 from apps.quiz.conferencia import conferencia as conferencia_de_links
@@ -17,6 +18,8 @@ urlpatterns = [
     path("interno/comprador", comprador.comprador),
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
+    path("interno/editor/quizzes/ofertas", ofertas_dos_quizzes.ofertas_do_site),
+    path("interno/editor/quizzes/<slug:slug>/ofertas", ofertas_dos_quizzes.ofertas_do_quiz),
     path("interno/editor/quizzes/<slug:slug>/rascunho", quiz_draft),
     path("interno/editor/quizzes/<slug:slug>/publicar", publish_quiz),
     path("interno/editor/quizzes/<slug:slug>/campanhas", painel_campanhas.relatorio),

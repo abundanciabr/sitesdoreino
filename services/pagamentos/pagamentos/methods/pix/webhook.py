@@ -21,6 +21,7 @@ from ninja.errors import HttpError
 from pagamentos.core.gateway import FalhaNoProvedor, consultar_status_do_pagamento
 from pagamentos.core.ledger import transicionar_e_emitir
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.core.observacoes import observar_mp
 from pagamentos.core.webhook_signature import assinatura_valida
 from pagamentos.methods.pix.service import (
     aplicar_status_mp,
@@ -79,6 +80,10 @@ def processar_webhook_pix(request: HttpRequest) -> dict[str, Any]:
             raise HttpError(
                 502, "nao foi possivel confirmar o Pix junto ao provedor"
             ) from exc
+        observar_mp(
+            tentativa, origem="aviso", status=consulta.status,
+            detalhe=consulta.reason_code, referencia=consulta.payment_id,
+        )
         status_alvo, reason_code = consulta.status, consulta.reason_code
         if (
             _sandbox()

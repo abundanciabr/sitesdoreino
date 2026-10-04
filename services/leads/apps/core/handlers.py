@@ -3,7 +3,9 @@ from django.db import IntegrityError, transaction
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
 from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido
-from .quiz_do_lead import ao_quiz_captura_parcial, registrar_quiz_completo  # noqa: F401
+from .quiz_do_lead import (
+    ao_quiz_captura_parcial, lead_do_quiz_completo, registrar_quiz_completo,
+)  # noqa: F401
 from .recuperacao import sincronizar_pagamento, sincronizar_reversao
 
 
@@ -77,20 +79,39 @@ def _upsert_lead(
     return lead
 
 
+def _evento_do_quiz_ja_registrado(lead, data: dict):
+    """O "Respondeu o quiz" já guardado para esta mesma conclusão, ou None.
+
+    A mesma conclusão pode chegar duas vezes com `event_id` diferente (quiz
+    reenviado, clique duplo no resultado): a ficha mostra uma vez só. Conta como
+    a mesma conclusão: a mesma submissão, ou a mesma sessão do mesmo quiz.
+    """
+    submissao = str(data.get("submissao_id") or data.get("submission_id") or "").strip()
+    sessao = str(data.get("sessao") or data.get("session_id") or "").strip()
+    slug = str(data.get("quiz_slug") or "").strip()
+    if not (submissao or sessao):
+        return None
+    for evento in lead.timeline.filter(event="quiz.completado").order_by("id"):
+        anterior = evento.payload if isinstance(evento.payload, dict) else {}
+        if submissao and submissao == str(
+            anterior.get("submissao_id") or anterior.get("submission_id") or ""
+        ).strip():
+            return evento
+        if (sessao and slug and slug == str(anterior.get("quiz_slug") or "").strip()
+                and sessao == str(anterior.get("sessao") or anterior.get("session_id") or "").strip()):
+            return evento
+    return None
+
+
 def ao_quiz_completado(event_id: str, data: dict) -> None:
     with transaction.atomic():
-        pessoa = data["lead"]
-        lead = _upsert_lead(
-            site_id=data["site_id"],
-            email=pessoa["email"],
-            name=pessoa.get("name", ""),
-            phone=pessoa.get("phone", ""),
-            source=f"quiz:{data['quiz_slug']}",
-            utm=data.get("utm"),
-        )
-        evento = TimelineEvent.objects.create(
-            lead=lead, event="quiz.completado", event_id=event_id, payload=data
-        )
+        # O contato da captura da mesma sessão, mesmo que o e-mail tenha mudado.
+        lead = lead_do_quiz_completo(event_id, data)
+        evento = _evento_do_quiz_ja_registrado(lead, data)
+        if evento is None:
+            evento = TimelineEvent.objects.create(
+                lead=lead, event="quiz.completado", event_id=event_id, payload=data
+            )
         abrir_oferta_do_quiz(lead, data, event_id, evento)
         registrar_quiz_completo(lead, event_id, data)
 

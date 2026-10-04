@@ -31,7 +31,9 @@ class Command(BaseCommand):
                 continue
             origem = contato.source or ""
             slug = origem.split(":", 1)[1] if ":" in origem else ""
-            abrir_oferta_do_quiz(contato, {"quiz_slug": slug}, f"captura:{contato.pk}")
+            abrir_oferta_do_quiz(
+                contato, {"quiz_slug": slug}, f"captura:{contato.pk}", origem="captura"
+            )
         # Pedidos e pagamentos movem só a oferta da compra correspondente.
         reconstruir_compras(TimelineEvent.objects.filter(lead__in=contatos))
         depois = sum(c.oportunidades.filter(fonte_tipo=FONTE).count() for c in contatos)

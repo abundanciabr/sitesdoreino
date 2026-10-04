@@ -54,6 +54,22 @@ class RecusaAntifraude(FalhaNoProvedor):
         self.reason_code = status_detail
 
 
+class PixNaoPagavel(FalhaNoProvedor):
+    """O MP criou o pagamento, mas recusado, cancelado ou vencido.
+
+    Mesmo tratamento de `FalhaNoProvedor` para quem chama; carrega o id e o
+    `status_detail` para que a criação os guarde como observação (AC11).
+    """
+
+    def __init__(
+        self, message: str, *, payment_id: str, status: str, status_detail: str
+    ) -> None:
+        super().__init__(message)
+        self.payment_id = payment_id
+        self.status = status
+        self.status_detail = status_detail
+
+
 def recusa_antifraude_mp(status: str, status_detail: str) -> bool:
     return status == "rejected" and status_detail.endswith(("high_risk", "blacklist"))
 
@@ -98,6 +114,8 @@ def criar_pagamento_pix(
     payer_email: str, date_of_expiration: str | None = None,
     notification_url: str | None = None, payer_first_name: str = "",
     payer_last_name: str = "", payer_identification: dict[str, str] | None = None,
+    itens_do_pedido: list[dict[str, Any]] | None = None,
+    comprador_nome: str = "", comprador_telefone: str = "", device_id: str = "",
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoPix:
     try:
@@ -111,6 +129,10 @@ def criar_pagamento_pix(
             **({"payer_first_name": payer_first_name} if payer_first_name else {}),
             **({"payer_last_name": payer_last_name} if payer_last_name else {}),
             **({"payer_identification": payer_identification} if payer_identification else {}),
+            **({"itens_do_pedido": itens_do_pedido} if itens_do_pedido else {}),
+            **({"comprador_nome": comprador_nome} if comprador_nome else {}),
+            **({"comprador_telefone": comprador_telefone} if comprador_telefone else {}),
+            **({"device_id": device_id} if device_id else {}),
             **({"envio_ambiguo_anterior": True} if envio_ambiguo_anterior else {}),
         )
     except MercadoPagoError as exc:
@@ -124,7 +146,8 @@ def criar_pagamento_card(
     payer_email: str, issuer_id: str | None = None, device_id: str = "",
     payer_first_name: str = "", payer_last_name: str = "",
     payer_identification: dict[str, str] | None = None,
-    items: list[dict[str, Any]] | None = None,
+    itens_do_pedido: list[dict[str, Any]] | None = None,
+    comprador_nome: str = "", comprador_telefone: str = "",
     notification_url: str | None = None,
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoCard:
@@ -135,7 +158,9 @@ def criar_pagamento_card(
             installments=installments, payment_method_id=payment_method_id,
             payer_email=payer_email, issuer_id=issuer_id, device_id=device_id,
             payer_first_name=payer_first_name, payer_last_name=payer_last_name,
-            payer_identification=payer_identification, items=items,
+            payer_identification=payer_identification,
+            itens_do_pedido=itens_do_pedido, comprador_nome=comprador_nome,
+            comprador_telefone=comprador_telefone,
             notification_url=notification_url,
             envio_ambiguo_anterior=envio_ambiguo_anterior,
         )
@@ -315,12 +340,16 @@ def _traduzir_resposta_pix(resposta: dict[str, Any]) -> ResultadoPix:
     if status == "rejected":
         if recusa_antifraude_mp(status, status_detail):
             raise RecusaAntifraude(payment_id=payment_id, status_detail=status_detail)
-        raise FalhaNoProvedor(
+        raise PixNaoPagavel(
             f"Pix recusado pelo Mercado Pago (payment_id={payment_id}, "
-            f"status_detail={status_detail})"
+            f"status_detail={status_detail})",
+            payment_id=payment_id, status=status, status_detail=status_detail,
         )
     if status in ("cancelled", "expired"):
-        raise FalhaNoProvedor(f"Pix indisponivel no Mercado Pago: {status}")
+        raise PixNaoPagavel(
+            f"Pix indisponivel no Mercado Pago: {status}",
+            payment_id=payment_id, status=status, status_detail=status_detail,
+        )
     interacao = resposta.get("point_of_interaction") or {}
     dados = interacao.get("transaction_data") or {}
     qr_code = str(dados.get("qr_code") or "")

@@ -11,6 +11,16 @@ DEPOIS = [("core", "0006_perfil_respostas_e_acompanhamento")]
 
 @pytest.mark.django_db(transaction=True)
 def test_quem_respondeu_antes_aparece_com_o_quiz_na_ficha():
+    # O banco de teste volta ao estado mais novo no fim, aconteça o que acontecer:
+    # os testes seguintes dependem de todas as migrações aplicadas.
+    topo = MigrationExecutor(connection).loader.graph.leaf_nodes()
+    try:
+        _migrar_e_conferir()
+    finally:
+        MigrationExecutor(connection).migrate(topo)
+
+
+def _migrar_e_conferir():
     executor = MigrationExecutor(connection)
     executor.migrate(ANTES)
     antigos = executor.loader.project_state(ANTES).apps

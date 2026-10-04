@@ -74,7 +74,9 @@ def configurar(request, site_id: str, dados: ConfigEntrada):
     instancia = dados.instancia.strip()
     if not instancia or len(instancia) > 100 or "/" in instancia:
         raise HttpError(422, "instancia invalida")
-    if dados.transporte != "WHATSAPP-BAILEYS":
+    # WHATSAPP-BUSINESS: a instância é o phone_number_id da Cloud API, que o
+    # webhook oficial usa para achar o site que recebe a resposta do contato.
+    if dados.transporte not in ("WHATSAPP-BAILEYS", "WHATSAPP-BUSINESS"):
         raise HttpError(422, "transporte ainda nao disponivel neste site")
     if ConfiguracaoWhatsApp.objects.filter(instancia=instancia).exclude(site_id=site_id).exists():
         raise HttpError(409, "instancia ja pertence a outro site")

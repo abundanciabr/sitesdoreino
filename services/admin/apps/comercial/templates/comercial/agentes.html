@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Agentes comerciais{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
+  <h1>Agentes comerciais</h1>
+  <p class="subtitulo">O coordenador põe o papel certo em cada lead do quiz: analista, abordagem, atendimento e análise de resultados. Cada ação fica registrada com a versão da estratégia que a guiou. Pagamento só conta quando o provedor confirma.{% if not ligado %} <b>Desligado neste ambiente (COMERCIAL_AGENTES=desligado).</b>{% endif %}</p>
+  {% if resultado %}<p class="aviso">{{ resultado }}</p>{% endif %}
+
+  <section id="fila">
+    <h2 class="titulo-de-secao">Trabalhos</h2>
+    <p class="nota">{% for rotulo, n in por_estado.items %}{% if n %}{{ rotulo }}: {{ n }}{% if not forloop.last %} &middot; {% endif %}{% endif %}{% endfor %}</p>
+    <form class="forma" method="get" action="{% url 'agentes_comerciais' %}">
+      <label><span class="rotulo">Estado</span>
+        <select name="estado">
+          <option value="">todos</option>
+          {% for valor, rotulo in estados %}<option value="{{ valor }}"{% if valor == estado %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="botao-pequeno" type="submit">Filtrar</button>
+    </form>
+    <ul class="passos-do-robo">
+      {% for t in trabalhos %}
+      <li>
+        <a href="?trabalho={{ t.id }}#detalhe">nº {{ t.id }}</a> &middot; {{ t.get_tipo_display }} &middot; <b>{{ t.get_estado_display }}</b>{% if t.teste %} &middot; teste{% endif %}
+        {% if t.resumo %} — {{ t.resumo }}{% elif t.motivo %} — {{ t.motivo }}{% endif %}
+        <div class="meta">site {{ t.site_id|default:"—" }}{% if t.oportunidade_id %} &middot; oportunidade {{ t.oportunidade_id }}{% endif %}{% if t.conversa_id %} &middot; conversa {{ t.conversa_id }}{% endif %} &middot; {{ t.criado_em|date:"d/m H:i" }}{% if t.custo_usd %} &middot; US$ {{ t.custo_usd|floatformat:4 }}{% endif %}</div>
+        {% if t.estado == "falhou" or t.estado == "aguardando_dependencia" or t.estado == "aguardando_autorizacao" or t.estado == "envio_incerto" %}
+        <form method="post" action="{% url 'agentes_comerciais' %}">{% csrf_token %}<input type="hidden" name="acao" value="retomar"><input type="hidden" name="trabalho" value="{{ t.id }}"><button class="botao-pequeno" type="submit">Retomar</button></form>
+        {% endif %}
+      </li>
+      {% empty %}<li>Nenhum trabalho ainda. Eles nascem quando alguém conclui um quiz, deixa o contato no meio dele ou manda mensagem.</li>{% endfor %}
+    </ul>
+  </section>
+
+  {% if detalhe %}
+  <section id="detalhe">
+    <h2 class="titulo-de-secao">Trabalho nº {{ detalhe.id }} &middot; {{ detalhe.get_tipo_display }}</h2>
+    <p>{{ detalhe.get_estado_display }}{% if detalhe.motivo %} — {{ detalhe.motivo }}{% endif %}</p>
+    {% if detalhe.anterior_id %}<p class="nota">Veio do <a href="?trabalho={{ detalhe.anterior_id }}#detalhe">nº {{ detalhe.anterior_id }}</a>.</p>{% endif %}
+    <ul class="passos-do-robo">
+      {% for d in decisoes %}
+      <li><b>{{ d.ferramenta|default:"decisão final" }}</b> &middot; {{ d.get_resultado_display }}{% if d.versao_estrategia %} &middot; {{ d.papel }} v{{ d.versao_estrategia }}{% endif %}{% if d.custo_usd %} &middot; US$ {{ d.custo_usd|floatformat:4 }}{% endif %}
+        <div class="meta">entrada: {{ d.entrada }}</div>
+        <div class="nota">{{ d.saida|truncatechars:600 }}</div>
+      </li>
+      {% empty %}<li>Nenhuma ação ainda.</li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <section id="otimizador">
+    <h2 class="titulo-de-secao">Resultados por versão e testes</h2>
+    <p class="nota">Vendas só contam quando o provedor confirma e depois da mensagem; leads de teste ficam de fora. Uma versão nova atende só uma fatia das oportunidades e cada oportunidade fica sempre na mesma versão. Se a nova vender claramente menos (com pelo menos {{ min_amostra }} oportunidades em cada versão), a anterior volta sozinha, com o motivo registrado.</p>
+    {% for o in otimizador %}
+    <article class="trabalho-do-robo">
+      <b>{{ o.rotulo }}</b> &middot; no ar: v{{ o.no_ar }}
+      {% if o.teste %}
+      <p>Em teste: v{{ o.teste.candidata.versao }} atende {{ o.teste.percentual }}% das oportunidades, contra a v{{ o.teste.base.versao }}, desde {{ o.teste.iniciado_em|date:"d/m H:i" }}.
+        {% if o.teste.comparativo.veredito %}Última conferência: {{ o.teste.comparativo.veredito }}{% if o.teste.comparativo.z != None %} (z={{ o.teste.comparativo.z }}){% endif %}.{% endif %}</p>
+      <form method="post" action="{% url 'agentes_comerciais' %}">{% csrf_token %}<input type="hidden" name="acao" value="encerrar_teste"><input type="hidden" name="teste" value="{{ o.teste.id }}"><button class="botao-pequeno" type="submit">Encerrar o teste</button></form>
+      {% elif o.ultimo_teste %}
+      <p class="nota">Último teste (v{{ o.ultimo_teste.candidata.versao }} contra v{{ o.ultimo_teste.base.versao }}): {{ o.ultimo_teste.get_estado_display }}{% if o.ultimo_teste.conclusao %} — {{ o.ultimo_teste.conclusao }}{% endif %}</p>
+      {% endif %}
+      <ul class="passos-do-robo">
+        {% for v in o.versoes %}
+        <li>v{{ v.versao }} &middot; {{ v.abordagens }} oportunidade(s){% if o.papel == "abordagem" %} &middot; {{ v.respostas }} resposta(s){% endif %} &middot; {{ v.vendas }} venda(s) &middot; US$ {{ v.custo_usd }}</li>
+        {% empty %}<li>Ainda sem mensagens enviadas por este papel.</li>{% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section id="estrategias">
+    <h2 class="titulo-de-secao">Estratégias</h2>
+    <p class="nota">O otimizador só propõe com pelo menos {{ min_amostra }} abordagens numa versão; com menos, o resultado é inconclusivo. A proposta do otimizador começa numa fatia pequena (teste, acima); só vira a versão do ar se vender melhor ou se a pessoa puser no ar.</p>
+    {% for p in papeis %}
+    <article class="trabalho-do-robo">
+      <b>{{ p.rotulo }}</b> &middot; no ar: v{{ p.ativa.versao }}{% if p.ativa.anterior_id %}
+      <form method="post" action="{% url 'agentes_comerciais' %}">{% csrf_token %}<input type="hidden" name="acao" value="voltar"><input type="hidden" name="papel" value="{{ p.valor }}"><button class="botao-pequeno" type="submit">Voltar à versão anterior</button></form>{% endif %}
+      <div class="meta">ferramentas: {{ p.ferramentas|join:", "|default:"nenhuma (só lê os números)" }}</div>
+      <ul class="passos-do-robo">
+        {% for v in p.versoes %}
+        <li>v{{ v.versao }} &middot; {{ v.get_situacao_display }} &middot; {{ v.criada_por }}{% if v.motivo %} — {{ v.motivo|truncatechars:200 }}{% endif %}
+          {% if v.situacao == "proposta" %}<details><summary>Ver instruções</summary><pre class="nota">{{ v.instrucoes }}</pre></details>
+          <form method="post" action="{% url 'agentes_comerciais' %}">{% csrf_token %}<input type="hidden" name="acao" value="ativar"><input type="hidden" name="estrategia" value="{{ v.id }}"><button class="botao-pequeno" type="submit">Pôr no ar</button></form>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </article>
+    {% endfor %}
+  </section>
+</div>
+{% endblock %}

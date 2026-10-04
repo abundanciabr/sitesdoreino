@@ -280,6 +280,36 @@ class PaymentAttempt(models.Model):
         return f"{self.provider}:{self.operation_id}:{self.state}"
 
 
+class ObservacaoDoProvedor(models.Model):
+    """O que a empresa respondeu sobre uma tentativa, e em que ponto do caminho.
+
+    Só observa: nada aqui decide dinheiro nem rota. Existe para que, com as
+    chaves reais, a resposta usada pelo Mercado Pago na recusa do Pix (AC11) e
+    o status do pedido Appmax depois do aviso `order_refused_by_risk` (AC13)
+    possam ser contados direto no banco e no painel, sem garimpar log.
+    Nenhum dado pessoal: só códigos do provedor e a referência da cobrança.
+    """
+
+    tentativa = models.ForeignKey(
+        PaymentAttempt, on_delete=models.PROTECT, related_name="observacoes"
+    )
+    platform_site_id = models.CharField(max_length=255)
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    # criacao, aviso, get_intent, supervisao, consulta,
+    # aviso_order_refused_by_risk
+    origem = models.CharField(max_length=40)
+    status = models.CharField(max_length=50, blank=True, default="")
+    detalhe = models.CharField(max_length=120, blank=True, default="")
+    referencia = models.CharField(max_length=255, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["platform_site_id", "provider", "origem"])]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.origem}:{self.status}:{self.detalhe}"
+
+
 class PaymentOperation(models.Model):
     """Uma linha por POST externo, commitada antes da chamada de escrita."""
 

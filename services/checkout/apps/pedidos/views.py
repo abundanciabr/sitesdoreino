@@ -9,6 +9,7 @@ from django.http import Http404
 from django.shortcuts import render
 
 from apps.pedidos.atribuicao import atribuicao_da_consulta
+from apps.pedidos.models import link_da_sessao
 from apps.pedidos.models import Order as OrderModel
 
 
@@ -62,8 +63,12 @@ def _pedido_do_site(request, order_id: uuid.UUID, method: str) -> OrderModel:
 
 
 def _url_da_oferta(request, pedido: OrderModel) -> str:
-    """Volta para a página de dados da mesma oferta, sob o prefixo real."""
-    return request.META.get("SCRIPT_NAME", "").rstrip("/") + f"/{pedido.session.offer_slug}/"
+    """Volta para a página de dados da mesma oferta, sob o prefixo real. Quem
+    veio de um link do atendimento volta com o link, para a compra seguinte
+    continuar ligada à oportunidade."""
+    url = request.META.get("SCRIPT_NAME", "").rstrip("/") + f"/{pedido.session.offer_slug}/"
+    link = link_da_sessao(pedido.session)
+    return f"{url}?link={link.id}" if link is not None else url
 
 
 def pix(request, order_id: uuid.UUID):
@@ -101,5 +106,14 @@ def cartao(request, order_id: uuid.UUID):
             "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
             "appmax_script_url": script_appmax,
             "mp_public_key": settings.MP_PUBLIC_KEY if pedido.site_id in settings.MP_CARD_FALLBACK_SITES else "",
+            "parcelas_sugeridas": _parcelas_do_link(pedido),
         },
     )
+
+
+def _parcelas_do_link(pedido: OrderModel) -> int | None:
+    """A parcela da condição que o atendimento ofereceu no link, para vir
+    marcada na tela do cartão. A pessoa pode trocar; a cotação é a da página."""
+    link = link_da_sessao(pedido.session)
+    parcelas = (link.condicao or {}).get("parcelas") if link is not None else None
+    return parcelas if type(parcelas) is int else None

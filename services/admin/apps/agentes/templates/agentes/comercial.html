@@ -1,0 +1,66 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Conhecimento comercial{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'mapa_de_conhecimento' %}">&larr; Mapa de conhecimento</a>
+  <h1>Conhecimento comercial</h1>
+  {% if sem_site %}
+  <p class="aviso">O catálogo não devolveu o site deste endereço agora. Abra esta página pelo domínio do site e tente de novo.</p>
+  {% else %}
+  <p class="subtitulo">O que os agentes sabem para conversar com os leads de <b>{{ site.host }}</b>: cursos, módulos, aulas, forma de acesso, a página de venda, materiais e depoimentos marcados. Preço e condições não ficam guardados: são consultados na hora.</p>
+
+  {% if mensagem %}<p class="recado-da-equipe">{{ mensagem }}</p>{% endif %}
+  {% if faltou %}<p class="aviso">Não respondeu agora (o que já estava guardado disso continua): {{ faltou }}</p>{% endif %}
+
+  <section id="indice">
+    <h2 class="titulo-de-secao">O que está guardado</h2>
+    <p>{{ numeros.fontes.curso }} curso{{ numeros.fontes.curso|pluralize }} &middot; {{ numeros.fontes.oferta }} oferta{{ numeros.fontes.oferta|pluralize }} &middot; {{ numeros.fontes.documento }} materia{{ numeros.fontes.documento|pluralize:"l,is" }} &middot; {{ numeros.fontes.depoimento }} depoimento{{ numeros.fontes.depoimento|pluralize }} &middot; {{ numeros.trechos }} trecho{{ numeros.trechos|pluralize }}{% if numeros.conferido_em %} &middot; conferido em {{ numeros.conferido_em|date:"d/m/Y H:i" }}{% endif %}</p>
+    <form method="post" action="{% url 'conhecimento_comercial' %}">{% csrf_token %}<input type="hidden" name="acao" value="atualizar"><button class="botao-pequeno" type="submit">Atualizar agora</button></form>
+    <p class="nota">Também se atualiza sozinho a cada meia hora: o que mudou no catálogo entra, o que saiu sai. Não gasta modelo.</p>
+  </section>
+
+  <section id="marcar">
+    <h2 class="titulo-de-secao">Materiais e depoimentos deste site</h2>
+    {% if marcados %}
+    <ul class="passos-do-robo">
+      {% for d in marcados %}
+      <li><b>{{ d.titulo }}</b> &middot; {{ d.marca.get_tipo_display|lower }}{% if d.marca.produto %} &middot; produto {{ d.marca.produto }}{% endif %}{% if d.marca.oferta %} &middot; oferta {{ d.marca.oferta }}{% endif %}{% if d.marca.tipo == "depoimento" %} &middot; {% if d.marca.utilizavel %}uso autorizado{% else %}<b>sem autorização de uso: fica de fora</b>{% endif %}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Nenhum documento marcado ainda.</p>
+    {% endif %}
+    <form class="forma" method="post" action="{% url 'conhecimento_comercial' %}">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="marcar">
+      <label class="largo"><span class="rotulo">Documento</span><select name="documento" required>{% for d in documentos %}<option value="{{ d.nome }}">{{ d.titulo }}{% if d.marca %} ({{ d.marca.get_tipo_display|lower }}){% endif %}</option>{% endfor %}</select></label>
+      <label><span class="rotulo">É</span><select name="tipo"><option value="material">Material comercial</option><option value="depoimento">Depoimento</option><option value="">Nada comercial (tirar a marca)</option></select></label>
+      <label><span class="rotulo">Produto (nome ou id; vazio = o site todo)</span><input name="produto" maxlength="255"></label>
+      <label><span class="rotulo">Oferta (apelido; opcional)</span><input name="oferta" maxlength="255"></label>
+      <label><input type="checkbox" name="utilizavel" value="1"> Depoimento com autorização de uso</label>
+      <button class="botao" type="submit">Salvar</button>
+    </form>
+  </section>
+
+  <section id="procurar">
+    <h2 class="titulo-de-secao">Procurar como o agente procura</h2>
+    <form class="forma" method="get" action="{% url 'conhecimento_comercial' %}">
+      <label class="largo"><span class="rotulo">Pergunta</span><input type="search" name="q" maxlength="200" value="{{ termo }}"></label>
+      <label><span class="rotulo">Produto ou oferta (opcional)</span><input name="produto" maxlength="200" value="{{ produto }}"></label>
+      <button class="botao" type="submit">Procurar</button>
+    </form>
+    {% if resultado %}
+      {% if resultado.aviso %}<p class="aviso">{{ resultado.aviso }}</p>{% endif %}
+      <ul class="passos-do-robo">
+        {% for t in resultado.trechos %}
+        <li><b>{{ t.titulo }}</b><div class="nota">{{ t.texto|linebreaksbr }}</div><div class="meta">fonte: {{ t.fonte.tipo }} {{ t.fonte.id }}{% if t.produto.nome %} &middot; produto {{ t.produto.nome }}{% endif %} &middot; vigente desde {{ t.vigencia.desde }} &middot; conferido em {{ t.vigencia.conferido_em }}{% if not t.publico %} &middot; documento interno{% endif %}</div></li>
+        {% endfor %}
+        {% for f in resultado.fatos_ao_vivo %}
+        <li>{% if f.capacidade_indisponivel %}<b>Ao vivo, indisponível agora:</b> {{ f.motivo }}{% else %}<b>Ao vivo:</b> {{ f.texto }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

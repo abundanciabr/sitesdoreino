@@ -8,10 +8,27 @@ from django.db import transaction
 from django.utils import timezone
 
 from pagamentos.core import gateway
-from pagamentos.core.models import Intent, PaymentAttempt, PaymentOperation
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt, PaymentOperation
 from pagamentos.core.tentativas import hash_da_tentativa
 
 logger = logging.getLogger(__name__)
+REVERSAO = "pagamento.reversao_confirmada"
+
+
+def reversoes_confirmadas(site_id: str, referencias) -> dict[tuple[str, str], str]:
+    """(empresa, referência) → motivo das reversões já confirmadas, numa consulta."""
+    referencias = sorted({r for r in referencias if r})
+    if not referencias:
+        return {}
+    linhas = OutboxEvent.objects.filter(
+        event=REVERSAO, version=2, payload__platform_site_id=site_id,
+        payload__provider_reference_id__in=referencias,
+    ).values_list("payload__provider", "payload__provider_reference_id", "payload__motivo")
+    return {(empresa, referencia): motivo or "" for empresa, referencia, motivo in linhas}
+
+
+def reversao_confirmada(site_id: str, provider: str, referencia: str) -> str | None:
+    return reversoes_confirmadas(site_id, [referencia]).get((provider, referencia))
 
 
 def estornar(tentativa: PaymentAttempt, motivo: str) -> PaymentAttempt:
@@ -37,6 +54,12 @@ def estornar(tentativa: PaymentAttempt, motivo: str) -> PaymentAttempt:
         referencia = travada.provider_reference_id
         if not referencia or travada.provider not in {"appmax", "mercadopago"}:
             raise ValueError("tentativa sem provedor ou referência para estorno")
+        if travada.state == "approved" and reversao_confirmada(
+            travada.platform_site_id, travada.provider, referencia
+        ) is not None:
+            # Devolução feita fora do painel ou contestação do comprador: o
+            # dinheiro já voltou, e um segundo pedido seria devolução em dobro.
+            raise ValueError("a empresa já confirmou devolução ou contestação desta cobrança")
         if travada.provider == "appmax":
             if (not referencia.isdecimal() or int(referencia) <= 0 or
                     travada.external_order_id != referencia):

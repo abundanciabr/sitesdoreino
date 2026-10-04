@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Conversa{% endblock %}
+{% block corpo %}
+<style>.conv{max-width:1100px}.conv-grade{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;margin-top:20px}.conv h2{font-size:18px;margin-top:0}.conv-msg{max-width:80%;border:1px solid var(--linha);border-radius:12px;padding:10px 14px;margin:0 0 12px;background:var(--painel);overflow-wrap:anywhere}.conv-msg.saida{margin-left:auto;border-color:#28534d;background:#16362f}.conv-msg small{display:block;color:var(--texto-3);font-size:12px}.conv-msg p{margin:6px 0;white-space:pre-wrap}.conv-msg .transcricao{border-left:2px solid var(--linha);padding-left:10px;color:var(--texto-2)}.conv label{display:grid;gap:5px;margin:12px 0;font-size:14px}.conv textarea,.conv input{width:100%;background:var(--fundo);color:var(--texto);border:1px solid var(--linha);border-radius:8px;padding:10px;font:inherit}.conv button{cursor:pointer;font:inherit}.conv .cartao{margin-bottom:16px}.conv .explica{font-size:13px;color:var(--texto-2)}@media(max-width:800px){.conv-grade{grid-template-columns:1fr}.conv-msg{max-width:100%}}
+</style>
+<main class="envolucro conv"><a class="volta" href="{% url 'crm_conversas' %}">← Conversas</a>
+{% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+{% if conversa %}
+<h1>{% if nome %}{{ nome }}{% elif conversa.ambigua %}Contato ambíguo{% else %}Conversa{% endif %}</h1>
+<p class="subtitulo">{{ conversa.canal_nome }} {{ conversa.endereco_mascarado }} · {{ conversa.estado_nome }}{% if quem_atende %} ({{ quem_atende }}){% endif %}</p>
+<div class="conv-grade"><section class="cartao" aria-label="Mensagens">
+{% if anteriores %}<p><a href="{{ anteriores }}">← Mensagens anteriores</a></p>{% endif %}
+{% if antes_de %}<p class="explica">Você está vendo mensagens mais antigas. <a href="{% url 'crm_conversa' conversa.id %}">Voltar às mais recentes →</a></p>{% endif %}
+{% for m in mensagens %}<div class="conv-msg {{ m.direcao }}"><small>{{ m.autor_nome }} · {{ m.momento|date:"d/m/Y H:i" }}{% if m.direcao == "saida" and m.envio_nome %} · {{ m.envio_nome }}{% endif %}{% if m.descadastro %} · Pediu para parar{% endif %}</small>
+{% if m.assunto %}<small>Assunto: {{ m.assunto }}</small>{% endif %}
+{% if m.texto %}<p>{{ m.texto }}</p>{% endif %}
+{% if m.midia_nome %}<small>{{ m.midia_nome }}{% if m.midia.mime %} ({{ m.midia.mime }}){% endif %}{% if not m.transcricao %} · sem transcrição ainda{% endif %}</small>{% endif %}
+{% if m.transcricao %}<p class="transcricao">Transcrição: {{ m.transcricao }}</p>{% endif %}
+{% if m.erro %}<small>{{ m.erro }}</small>{% endif %}</div>
+{% empty %}<p>{% if antes_de %}Não há mensagens mais antigas.{% else %}Ainda não há mensagens nesta conversa.{% endif %}</p>{% endfor %}
+</section><div>
+<section class="cartao"><h2>O contato</h2>
+{% if conversa.ambigua %}<p class="explica">Este endereço corresponde a mais de um contato. Por isso nenhuma ficha é mostrada aqui. Peça na conversa a informação que identifica a pessoa.</p>
+{% elif conversa.ficha %}<p><a href="{{ conversa.ficha }}">Abrir a ficha do contato →</a></p>{% if oportunidade %}<p><a href="{{ oportunidade }}">Abrir a oportunidade no CRM →</a></p>{% endif %}
+{% else %}<p class="explica">Este contato ainda não está ligado a uma ficha do quiz.</p>{% endif %}
+{% if conversa.descadastrado %}<p class="explica">Esta pessoa pediu para não receber mais mensagens neste canal. Só dá para responder quando ela escrever de novo.</p>{% endif %}
+</section>
+<section class="cartao"><h2>Quem atende</h2>
+{% if conversa.estado == "pessoa" %}<p class="explica">Uma pessoa da equipe está atendendo. O agente não responde nesta conversa até ela ser devolvida.</p><form method="post" action="{% url 'crm_conversa' conversa.id %}">{% csrf_token %}<input type="hidden" name="gesto" value="devolver"><button class="botao">Devolver ao agente</button></form>
+{% else %}<p class="explica">{% if conversa.estado == "encerrada" %}A conversa está encerrada. Se o contato escrever de novo, o agente volta a atender.{% else %}O agente está atendendo esta conversa.{% endif %} Ao assumir, o agente para de responder e você continua daqui.</p><form method="post" action="{% url 'crm_conversa' conversa.id %}">{% csrf_token %}<input type="hidden" name="gesto" value="assumir"><button class="botao">Assumir a conversa</button></form>{% endif %}
+</section>
+<section class="cartao"><h2>Responder como equipe</h2>
+{% if whatsapp %}<p class="explica">{% if conversa.janela_aberta %}No WhatsApp, a resposta livre só vale até 24 horas depois da última mensagem do contato. Esta janela fica aberta até {{ conversa.janela_ate|date:"d/m/Y H:i" }}.{% else %}Já passaram 24 horas desde a última mensagem do contato (ou ele ainda não escreveu). Pelas regras do WhatsApp, agora só dá para enviar um modelo de mensagem aprovado. A resposta livre volta a valer quando o contato escrever de novo.{% endif %}</p>{% endif %}
+<form method="post" action="{% url 'crm_conversa' conversa.id %}">{% csrf_token %}<input type="hidden" name="gesto" value="responder"><input type="hidden" name="referencia" value="{{ referencia }}">
+<label>Mensagem<textarea name="texto" rows="4" maxlength="4000" {% if whatsapp and not conversa.janela_aberta %}placeholder="Texto que acompanha o modelo, se houver"{% endif %}>{% if formulario.gesto == "responder" %}{{ formulario.texto }}{% endif %}</textarea></label>
+{% if whatsapp and not conversa.janela_aberta %}<label>Nome do modelo aprovado<input name="modelo" maxlength="200" value="{% if formulario.gesto == 'responder' %}{{ formulario.modelo }}{% endif %}"></label><p class="explica">Só funciona se a conexão do WhatsApp for a oficial (Business) e o modelo já estiver aprovado. Na conexão atual pelo aparelho, o envio fica indisponível até o contato escrever.</p>{% endif %}
+<p class="explica">Ao responder, você assume a conversa: o agente para de responder até você devolver.</p>
+<button class="botao">Enviar</button></form>
+</section></div></div>
+{% endif %}</main>
+{% endblock %}

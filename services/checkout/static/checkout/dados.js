@@ -32,7 +32,15 @@ function dadosIsland() {
     method: "pix",
     appmaxIp: "",
 
+    // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/, e o
+    // destino em <prefixo>/checkout/pedido/... — um caminho absoluto hardcoded
+    // perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
+    irParaPedido(orderId, metodo) {
+      window.location = `../pedido/${orderId}/${metodo === "pix" ? "pix" : "cartao"}/`;
+    },
+
     async init() {
+      let seguindoParaOPedido = false;
       if (this.appmaxPix && window.AppmaxScripts?.init) {
         try {
           window.AppmaxScripts.init({
@@ -45,11 +53,24 @@ function dadosIsland() {
       try {
         let anteriores = {};
         try { anteriores = JSON.parse(localStorage.getItem("checkout-comprador") || "{}"); } catch (_) {}
-        const leadId = new URLSearchParams(window.location.search).get("lead") || "";
+        const consulta = new URLSearchParams(window.location.search);
+        const leadId = consulta.get("lead") || "";
+        const link = consulta.get("link") || "";
         this.session = await api.post("/sessoes", {
           offer_slug: this.offerSlug, utm: this.atribuicao, lead_id: leadId,
           email_para_cpf: anteriores.email || "",
+          ...(link ? { link } : {}),
         });
+        // O link de compra serve um pedido por vez: se ele já virou pedido e o
+        // pedido segue valendo, a pessoa vai para a página dele, em vez de ver
+        // o formulário e esbarrar num erro ao enviar.
+        if (this.session.pedido_existente) {
+          seguindoParaOPedido = true;
+          this.irParaPedido(this.session.pedido_existente.order_id, this.session.pedido_existente.method);
+          return;
+        }
+        const metodoDoLink = this.session.condicao?.metodo;
+        if (metodoDoLink === "pix" || (metodoDoLink === "card" && this.appmaxCard)) this.method = metodoDoLink;
         this.offer = this.session.offer;
         for (const campo of ["name", "email", "phone"]) {
           if (!this.customer[campo]) this.customer[campo] = this.session.prefill?.[campo] || anteriores[campo] || "";
@@ -59,7 +80,7 @@ function dadosIsland() {
       } catch (e) {
         this.erro = "Não foi possível carregar esta oferta.";
       } finally {
-        this.carregando = false;
+        if (!seguindoParaOPedido) this.carregando = false;
       }
     },
 
@@ -105,6 +126,8 @@ function dadosIsland() {
         bump_ids: this.bumpIds,
         method: this.method,
         ...(this.appmaxPix && this.method === "pix" && this.appmaxIp ? { ip: this.appmaxIp } : {}),
+        ...(this.method === "pix" && typeof window.MP_DEVICE_SESSION_ID === "string" && window.MP_DEVICE_SESSION_ID
+          ? { mp_device_id: window.MP_DEVICE_SESSION_ID } : {}),
       };
       // O que define a compra (o IP fica de fora: pode chegar depois do 1º clique).
       const envio = JSON.stringify([corpo.customer, corpo.usar_cpf_anterior, [...corpo.bump_ids].sort(), corpo.method]);
@@ -121,14 +144,18 @@ function dadosIsland() {
             if (!semPedido && !this.enviosQuePodemTerCriado.includes(envio)) this.enviosQuePodemTerCriado.push(envio);
             throw e;
           }
-          // 409: esta sessão já tem pedido. Só segue calado para ele se ele só
-          // pode ter nascido deste mesmo envio (a resposta do clique anterior se
-          // perdeu). Com outra forma de pagamento, outro e-mail, outro bump ou
-          // outro comprador, o pedido que existe não é o que está na tela: avisa
-          // e oferece o link, sem levar para lá calado.
+          // 409: esta sessão já tem pedido. Segue calado para ele quando nenhum
+          // envio desta página pode tê-lo criado (o pedido é de antes: link
+          // reaberto, outra aba) ou quando só um pode ter criado e é igual ao
+          // atual (a resposta do clique anterior se perdeu). Se algum envio
+          // desta página pode ter criado o pedido com dados diferentes dos
+          // atuais (outra forma de pagamento, outro e-mail, outro bump ou outro
+          // comprador), o pedido que existe não é o que está na tela: avisa e
+          // oferece o link, sem levar para lá calado.
           pedido = e.corpo;
-          const mesmoEnvio = this.enviosQuePodemTerCriado.length === 1 && this.enviosQuePodemTerCriado[0] === envio;
-          if (!mesmoEnvio) {
+          const podemTerCriado = this.enviosQuePodemTerCriado;
+          const segueCalado = podemTerCriado.length === 0 || (podemTerCriado.length === 1 && podemTerCriado[0] === envio);
+          if (!segueCalado) {
             const destinoAberto = pedido.payment.method === "pix" ? "pix" : "cartao";
             this.pedidoAberto = `../pedido/${pedido.order_id}/${destinoAberto}/`;
             this.erro = `Seu pedido anterior, por ${pedido.payment.method === "pix" ? "Pix" : "cartão"}, continua aberto. Continue por ele ou recarregue a página para começar outra compra.`;
@@ -136,12 +163,8 @@ function dadosIsland() {
             return;
           }
         }
-        const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
         try { localStorage.setItem("checkout-comprador", JSON.stringify({ name: this.customer.name, email: this.customer.email, phone: telefone })); } catch (_) {}
-        // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
-        // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
-        // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
-        window.location = `../pedido/${pedido.order_id}/${destino}/`;
+        this.irParaPedido(pedido.order_id, pedido.payment.method);
       } catch (e) {
         this.erro = "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
         if (this.appmaxPix && this.method === "pix") {

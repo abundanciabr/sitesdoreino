@@ -25,9 +25,11 @@ const api = {
       body: JSON.stringify(body),
     });
     if (!r.ok) {
+      // O status e o corpo seguem no erro: um 409 do pedido traz o pedido que
+      // a sessão já tem, e a página sabe levar a pessoa até ele.
       const erro = new Error(`POST ${path}: ${r.status}`);
       erro.status = r.status;
-      try { erro.corpo = await r.json(); } catch (_) {}
+      try { erro.corpo = await r.json(); } catch (_) { erro.corpo = null; }
       throw erro;
     }
     return r.json();

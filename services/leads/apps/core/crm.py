@@ -1,8 +1,11 @@
 """Porta do painel admin para acompanhar recuperações e demais oportunidades."""
 
+import hashlib
+import json
 import os
 import re
 import uuid
+from datetime import timedelta
 
 from django.db import transaction
 from django.db.models import Q
@@ -11,7 +14,7 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
-from .models import Oportunidade, RegistroHistoricoOportunidade
+from .models import AcompanhamentoAplicado, Oportunidade, RegistroHistoricoOportunidade
 from .contatos import LEAD_DE_TESTE as _LEAD_DE_TESTE, PALAVRA_DE_TESTE, contatos_dos_quizzes
 from .oportunidades import (
     _como_oportunidade, _corpo, _escolha, _instante, _proximo_passo, _texto,
@@ -269,6 +272,41 @@ def _nota(valor):
     return _texto(valor, "descricao"), evidencia
 
 
+REPETICAO_SEM_CHAVE = timedelta(minutes=10)
+
+
+def _chave_do_acompanhamento(request, corpo):
+    """(chave, vale_para_sempre). Com `chave_idempotencia` (ou o cabeçalho
+    Idempotency-Key) a repetição é reconhecida sempre; sem ela, o mesmo corpo
+    repetido em poucos minutos é tido como reenvio."""
+    explicita = corpo.get("chave_idempotencia") or request.headers.get("Idempotency-Key") or ""
+    if not isinstance(explicita, str):
+        raise HttpError(422, "chave_idempotencia precisa ser texto")
+    explicita = explicita.strip()[:150]
+    if explicita:
+        return f"chave:{explicita}", True
+    sem_chave = {k: v for k, v in corpo.items() if k != "chave_idempotencia"}
+    impressao = hashlib.sha256(
+        json.dumps(sem_chave, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    return f"corpo:{impressao}", False
+
+
+def _ja_aplicado(oportunidade, chave) -> bool:
+    texto, para_sempre = chave
+    agora = timezone.now()
+    registro, criado = AcompanhamentoAplicado.objects.get_or_create(
+        oportunidade=oportunidade, chave=texto, defaults={"aplicado_em": agora},
+    )
+    if criado:
+        return False
+    if para_sempre or agora - registro.aplicado_em < REPETICAO_SEM_CHAVE:
+        return True
+    registro.aplicado_em = agora
+    registro.save(update_fields=["aplicado_em"])
+    return False
+
+
 @router.get("/crm/{opportunity_id}/acompanhamento")
 def ver_acompanhamento_crm(request, opportunity_id: str):
     from .receita import acompanhamento_da_oportunidade
@@ -283,18 +321,28 @@ def acompanhar_crm(request, opportunity_id: str):
     Campos ausentes ficam como estão. `proximo_passo` aceita texto ou o
     objeto {descricao, executar_ate, evidencia_esperada}; `prazo` é a data do
     próximo passo. Uma `nota` vira registro no histórico.
+
+    Reenvio (timeout, retomada) não grava de novo: mande `chave_idempotencia`
+    (ou o cabeçalho Idempotency-Key); sem ela, o mesmo corpo repetido em
+    menos de 10 minutos é reconhecido. A repetição volta com `repetido: true`.
     """
     _admin(request)
-    corpo = _corpo(request, {"autor_id", *_CAMPOS_DO_ACOMPANHAMENTO}, set())
+    corpo = _corpo(request, {"autor_id", "chave_idempotencia", *_CAMPOS_DO_ACOMPANHAMENTO},
+                   set())
     if not (_CAMPOS_DO_ACOMPANHAMENTO & corpo.keys()):
         raise HttpError(422, "Informe ao menos um campo do acompanhamento")
     autor = corpo.get("autor_id") or "admin"
     if not isinstance(autor, str):
         raise HttpError(422, "autor_id precisa ser texto")
+    chave = _chave_do_acompanhamento(request, corpo)
     mudancas = []
     with transaction.atomic():
         item = Oportunidade.objects.select_for_update().select_related("lead").filter(
             pk=_oportunidade(opportunity_id).pk).get()
+        if _ja_aplicado(item, chave):
+            resposta = _item(item, historico=True)
+            resposta["repetido"] = True
+            return JsonResponse(resposta)
         if item.encerrada and ({"proximo_passo", "prazo"} & corpo.keys()):
             raise HttpError(409, "Oportunidade encerrada: não tem próximo passo")
         if "atendido_por" in corpo:

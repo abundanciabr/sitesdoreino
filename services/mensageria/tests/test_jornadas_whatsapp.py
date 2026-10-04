@@ -128,6 +128,10 @@ def test_telefone_ausente_deixa_falha_visivel_sem_enviar(monkeypatch):
 @pytest.mark.django_db
 def test_desconexao_e_resultado_desconhecido_nao_duplicam(monkeypatch):
     entrega = _entrega()
+    # Passo relacional pelo WhatsApp só sai com o aceite (test_consentimentos.py).
+    from apps.consentimentos.servico import registrar
+
+    registrar(site_id=SITE, telefone="+55 11 90000-0001", aceito=True, origem="quiz.completado")
     _liberar(monkeypatch)
     monkeypatch.setattr(
         despacho,
