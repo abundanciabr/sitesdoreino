@@ -258,6 +258,18 @@ def _manter_o_mapa_em_dia() -> None:
         log.exception("Mapa de conhecimento: conferência automática falhou")
 
 
+def _comercial(funcao: str, *args):
+    try:
+        from apps.comercial import coordenador
+    except ImportError:  # pragma: no cover - célula sem a equipe comercial
+        return None
+    try:
+        return getattr(coordenador, funcao)(*args)
+    except Exception:  # noqa: BLE001 - a equipe comercial não derruba o laço
+        log.exception("Equipe comercial: %s falhou", funcao)
+        return None
+
+
 _acordar = threading.Event()
 
 
@@ -282,7 +294,11 @@ def rodar_para_sempre(parar: threading.Event) -> None:
             if timezone.now() - ultimo_reacordar >= INTERVALO_DE_REACORDAR:
                 ultimo_reacordar = timezone.now()
                 reacordar()
+                _comercial("manutencao")
             trabalhou = rodar_uma(trabalhador) is not None
+            if not trabalhou:
+                # A equipe comercial (`apps/comercial`) usa o mesmo laço.
+                trabalhou = _comercial("rodar_um", trabalhador) is not None
         except Exception:  # noqa: BLE001 - o laço não pode morrer
             log.exception("Executor dos robôs: volta falhou")
         if not trabalhou:
