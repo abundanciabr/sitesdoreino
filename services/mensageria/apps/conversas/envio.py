@@ -338,11 +338,13 @@ def _enviar_email(conversa: Conversa, mensagem: MensagemDaConversa) -> MensagemD
     except (smtplib.SMTPConnectError, smtplib.SMTPAuthenticationError, smtplib.SMTPRecipientsRefused,
             smtplib.SMTPSenderRefused, ConnectionError, TimeoutError) as exc:
         registrar_falha()
-        return falhar(f"provedor recusou ({type(exc).__name__})")
+        logger.warning("e-mail da conversa %s: provedor recusou: %r", conversa.pk, exc)
+        return falhar(f"provedor recusou ({type(exc).__name__}: {exc})")
     except (smtplib.SMTPException, OSError) as exc:
         registrar_falha()
+        logger.warning("e-mail da conversa %s: resultado incerto: %r", conversa.pk, exc)
         # Pode ter saído; não reenviar às cegas com a mesma chave.
-        return falhar(f"resultado incerto ({type(exc).__name__})", "desconhecido")
+        return falhar(f"resultado incerto ({type(exc).__name__}: {exc})", "desconhecido")
     if quantos != 1:
         return falhar("provedor nao aceitou a carta")
     registrar_sucesso()
