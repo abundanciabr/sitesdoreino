@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Assistente do site{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
+  <h1>Assistente de atendimento</h1>
+  <p class="subtitulo">Como o assistente se apresenta e fala com quem conversa com {% if nome_do_site %}{{ nome_do_site }}{% else %}este site{% endif %}. Ele sempre se apresenta como assistente da equipe: nunca como o criador do curso nem como uma pessoa.</p>
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
+  {% if not atual.configurada %}<p class="aviso">Ainda não configurado: está valendo o padrão abaixo.</p>{% endif %}
+  <div class="cartao">
+    <h2>Hoje ele se apresenta assim</h2>
+    <p><strong>{{ atual.apresentacao }}</strong></p>
+    <p>Assinatura: {{ atual.assinatura }}</p>
+    <p>Tom: {{ atual.tom_descricao }}</p>
+  </div>
+  <form method="post" class="cartao espaco-28">
+    {% csrf_token %}
+    <p><label for="nome">Nome do assistente (opcional)</label>
+      <input id="nome" name="nome" maxlength="80" value="{{ linha.nome|default:'' }}" placeholder="Ex.: Mia"></p>
+    <p><label for="apresentacao">Apresentação</label>
+      <input id="apresentacao" name="apresentacao" maxlength="300" value="{{ linha.apresentacao|default:'' }}" placeholder="Deixe vazio para: assistente da equipe de {{ nome_do_site|default:'seu site' }}"></p>
+    <p><label for="assinatura">Assinatura</label>
+      <input id="assinatura" name="assinatura" maxlength="200" value="{{ linha.assinatura|default:'' }}" placeholder="Deixe vazio para usar a assinatura padrão"></p>
+    <p class="nota">Nos dois campos você pode escrever {site} e {nome}; eles viram o nome do site e o nome do assistente.</p>
+    <p><label for="tom">Tom da conversa</label>
+      <select id="tom" name="tom">{% for valor, rotulo in tons %}<option value="{{ valor }}"{% if valor == atual.tom %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></p>
+    <p><label for="resposta_em_voz">Respostas em voz</label>
+      <select id="resposta_em_voz" name="resposta_em_voz">{% for valor, rotulo in vozes %}<option value="{{ valor }}"{% if valor == atual.resposta_em_voz %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></p>
+    <p class="nota">Em voz, o assistente também se apresenta como assistente da equipe. Se o canal não aceitar áudio, a resposta vai em texto.</p>
+    <button type="submit">Salvar</button>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}
