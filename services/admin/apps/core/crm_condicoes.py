@@ -150,7 +150,7 @@ def crm_condicoes_salvar(request):
         quem_email=request.admin.get("email", ""),
         quem_id=autor[:64],
         acao=Registro.EDITAR,
-        alvo=oferta[:200],
+        alvo=oferta[:64],  # o campo `alvo` da auditoria tem 64 caracteres; a oferta pode ter mais
         desfecho=Registro.OK if estado == CondicoesClient.OK else Registro.RECUSADO_PELA_CELULA if estado in (CondicoesClient.RECUSADO, CondicoesClient.NAO_EXISTE) else Registro.NAO_RESPONDEU,
         detalhe="CRM: condições do agente (" + ", ".join(liberadas)[:200] + ")",
     )

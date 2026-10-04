@@ -136,6 +136,33 @@ def _itens_do_catalogo(oferta: dict, bump_ids: list) -> list:
     return itens
 
 
+def _intent_desta_compra(intent: dict, method: str, total_cents: int) -> bool:
+    return intent.get("method") == method and intent.get("amount_cents") == total_cents
+
+
+def _chave_da_compra(
+    sessao_id: uuid.UUID, method: str, itens: list, comprador: dict
+) -> str:
+    """Chave de idempotência da COMPRA inteira: sessão, forma de pagamento,
+    produtos com preços e comprador. Repetir a mesma compra (refresh, retry
+    depois do 502) devolve a mesma intent, sem cobrança em dobro [INV-P4]; mudar
+    a forma de pagamento, os itens ou os dados do comprador é outra compra e
+    nunca reaproveita (nem tenta completar) a intent da tentativa anterior."""
+    compra = {
+        "method": method,
+        "itens": [[str(item["product_id"]), item["price_cents"]] for item in itens],
+        "comprador": [
+            comprador["email"].lower(),
+            comprador["name"],
+            comprador["phone"],
+            comprador["cpf"],
+        ],
+    }
+    return str(
+        uuid.uuid5(sessao_id, json.dumps(compra, ensure_ascii=False, sort_keys=True))
+    )
+
+
 def _pedido_criado(pedido: OrderModel) -> dict:
     pagamento = {"method": pedido.method, "intent_id": pedido.intent_id}
     if pedido.method == "pix" and pedido.pix:
@@ -744,97 +771,109 @@ def _fechar_pedido(
                 "Não foi possível identificar sua conexão; recarregue a página e tente novamente",
             ) from None
         comprador_pagamento["document_number"] = cpf
+    cobranca = {
+        "site_id": site["id"],
+        "order_id": str(order_id),
+        "amount_cents": total_cents,
+        "currency": "BRL",
+        "method": method,
+        "customer": comprador_pagamento,
+        # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
+        # para ecoar dado que não é dele (mesma técnica de
+        # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
+        # por causa disto. `product_id` é sempre o do item PRINCIPAL
+        # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
+        # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
+        # bump comprado junto não ganha matrícula própria — é o mesmo
+        # desenho que já existe hoje para `items` no evento `pedido.criado`.
+        "metadata": metadata,
+    }
     try:
+        # Mesma compra ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança
+        # [INV-P4]. A chave sai da compra (forma de pagamento, itens e dados do
+        # comprador), não só da sessão: depois de um 502 o comprador pode trocar
+        # a forma de pagamento ou corrigir o e-mail, e isso não pode cair na
+        # intent da tentativa anterior (que, sendo um Pix incompleto, o
+        # pagamentos tentaria completar no provedor, ainda fora do ar).
         intent = PagamentosClient().criar_intent(
-            # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
-            idempotency_key=str(sessao.id),
-            payload={
-                "site_id": site["id"],
-                "order_id": str(order_id),
-                "amount_cents": total_cents,
-                "currency": "BRL",
-                "method": method,
-                "customer": comprador_pagamento,
-                # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
-                # para ecoar dado que não é dele (mesma técnica de
-                # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
-                # por causa disto. `product_id` é sempre o do item PRINCIPAL
-                # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
-                # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
-                # bump comprado junto não ganha matrícula própria — é o mesmo
-                # desenho que já existe hoje para `items` no evento `pedido.criado`.
-                "metadata": metadata,
+            idempotency_key=_chave_da_compra(sessao.id, method, itens, comprador),
+            payload=cobranca,
+        )
+        # Na repetição depois de uma falha, pagamentos devolve a intent que já
+        # existia, com o order_id da PRIMEIRA tentativa. É esse id que todo aviso
+        # de pagamento carrega; o pedido nasce com ele para o aviso o encontrar.
+        order_id = uuid.UUID(str(intent["order_id"]))
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
+        raise HttpError(502, _PAGAMENTO_NAO_INICIADO) from None
+    if not _intent_desta_compra(intent, method, total_cents):
+        raise HttpError(502, _PAGAMENTO_NAO_INICIADO)
+
+    with transaction.atomic():
+        try:
+            with transaction.atomic():
+                pedido = OrderModel.objects.create(
+                    id=order_id,
+                    session=sessao,
+                    site_id=site["id"],
+                    items=itens,
+                    total_cents=total_cents,
+                    customer=comprador,
+                    method=method,
+                    intent_id=str(intent["id"]),
+                    pix=intent.get("pix") or {},
+                    em_teste=em_teste,
+                    contexto=dict(sessao.contexto or {}),
+                    **referencias,
+                )
+        except IntegrityError:
+            # Dois cliques da mesma compra ao mesmo tempo: os dois receberam a
+            # mesma intent e o mesmo order_id, e o outro criou o pedido antes.
+            # Responde como o ramo do pedido que já existe, não com 500.
+            existente = OrderModel.objects.filter(session=sessao).first()
+            if existente is None:
+                raise
+            return JsonResponse(_pedido_criado(existente), status=409)
+        emitir(  # mesma transação da criação do pedido
+            "pedido.criado",
+            {
+                "site_id": pedido.site_id,
+                "order_id": str(pedido.id),
+                "checkout_session_id": str(sessao.id),
+                "items": itens,
+                "total_cents": total_cents,
+                "customer": {
+                    k: v
+                    for k, v in comprador.items()
+                    if k in ("email", "name", "phone")
+                },
+                **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
+                **({"utm": sessao.utm} if sessao.utm else {}),
+                **referencias,
+                **sinal_de_teste,
             },
         )
-    except (httpx.HTTPError, ValueError):
-        raise HttpError(502, _PAGAMENTO_NAO_INICIADO) from None
-
-    try:
-        with transaction.atomic():
-            pedido = OrderModel.objects.create(
-                id=order_id,
-                session=sessao,
-                site_id=site["id"],
-                items=itens,
-                total_cents=total_cents,
-                customer=comprador,
-                method=method,
-                intent_id=str(intent["id"]),
-                pix=intent.get("pix") or {},
-                em_teste=em_teste,
-                contexto=dict(sessao.contexto or {}),
-                **referencias,
-            )
-            emitir(  # mesma transação da criação do pedido
-                "pedido.criado",
+        if sessao.visitor_id:
+            # [DESENHO-COMUM.md F10] só emite com visitante; sem dado pessoal
+            # (nem customer, nem e-mail, nem CPF). Contrato ainda em voo na
+            # frente irmã F4a — construído contra os campos publicados em
+            # DESENHO-COMUM.md, não contra um schema congelado nesta árvore.
+            emitir(
+                "checkout.pedido-atribuido",
                 {
                     "site_id": pedido.site_id,
                     "order_id": str(pedido.id),
                     "checkout_session_id": str(sessao.id),
-                    "items": itens,
-                    "total_cents": total_cents,
-                    "customer": {
-                        k: v
-                        for k, v in comprador.items()
-                        if k in ("email", "name", "phone")
-                    },
-                    **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
-                    **({"utm": sessao.utm} if sessao.utm else {}),
-                    **referencias,
-                    **sinal_de_teste,
+                    "visitor_id": sessao.visitor_id,
+                    "produto": sessao.offer_slug,
+                    "valor_centavos": total_cents,
+                    "moeda": "BRL",
+                    "criado_em": pedido.created_at.isoformat(),
+                    **(referencias if referencias["oportunidade_ref"] else {}),
                 },
             )
-            if sessao.visitor_id:
-                # [DESENHO-COMUM.md F10] só emite com visitante; sem dado pessoal
-                # (nem customer, nem e-mail, nem CPF). Contrato ainda em voo na
-                # frente irmã F4a — construído contra os campos publicados em
-                # DESENHO-COMUM.md, não contra um schema congelado nesta árvore.
-                emitir(
-                    "checkout.pedido-atribuido",
-                    {
-                        "site_id": pedido.site_id,
-                        "order_id": str(pedido.id),
-                        "checkout_session_id": str(sessao.id),
-                        "visitor_id": sessao.visitor_id,
-                        "produto": sessao.offer_slug,
-                        "valor_centavos": total_cents,
-                        "moeda": "BRL",
-                        "criado_em": pedido.created_at.isoformat(),
-                        **(referencias if referencias["oportunidade_ref"] else {}),
-                    },
-                )
-            # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
-            # do worker cobre qualquer falha aqui — o evento nunca se perde.
-            transaction.on_commit(relay_apos_commit)
-    except IntegrityError:
-        # Dois envios da mesma sessão ao mesmo tempo: o outro gravou o pedido
-        # primeiro e a restrição única barrou este. A cobrança é uma só (a
-        # chave da intent é a sessão), então a resposta é o 409 de sempre com
-        # o pedido que existe, e não um 500.
-        gravado = OrderModel.objects.filter(Q(session=sessao) | Q(pk=order_id)).first()
-        if gravado is None:
-            raise
-        return JsonResponse(_pedido_criado(gravado), status=409)
+        # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
+        # do worker cobre qualquer falha aqui — o evento nunca se perde.
+        transaction.on_commit(relay_apos_commit)
     if link is not None:
         registrar_divergencia_de_valor(link, total_cents)
     return JsonResponse(_pedido_criado(pedido), status=201)
