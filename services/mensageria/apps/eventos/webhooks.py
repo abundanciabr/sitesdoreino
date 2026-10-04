@@ -32,7 +32,7 @@ def webhook_email(request):
 
     token = settings.EMAIL_WEBHOOK_TOKEN
     recebido = request.headers.get("X-Webhook-Token", "")
-    if not token or not secrets.compare_digest(recebido, token):
+    if not token or not secrets.compare_digest(recebido.encode("utf-8"), token.encode("utf-8")):
         return JsonResponse(
             {"erro": "webhook recusado; configure e envie o token correto"},
             status=403,

@@ -31,7 +31,7 @@ ORDEM = {"desconhecido": 0, "aceito": 1, "enviado": 2, "falhou": 2, "entregue": 
 def webhook_whatsapp(request):
     esperado = getattr(settings, "WHATSAPP_WEBHOOK_TOKEN", "")
     recebido = request.headers.get("X-Webhook-Token", "")
-    if not esperado or not secrets.compare_digest(recebido, esperado):
+    if not esperado or not secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8")):
         return JsonResponse({"erro": "nao autorizado"}, status=403)
     try:
         payload = json.loads(request.body)
@@ -145,7 +145,7 @@ def _assinatura_valida(request) -> bool:
     if not segredo or not recebida.startswith("sha256="):
         return False
     esperada = hmac.new(segredo.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
-    return secrets.compare_digest(recebida[len("sha256="):].lower(), esperada)
+    return secrets.compare_digest(recebida[len("sha256="):].lower().encode("utf-8"), esperada.encode("utf-8"))
 
 
 @csrf_exempt
@@ -161,7 +161,7 @@ def webhook_whatsapp_cloud(request):
         esperado = getattr(settings, "WHATSAPP_CLOUD_VERIFY_TOKEN", "")
         recebido = request.GET.get("hub.verify_token", "")
         if (request.GET.get("hub.mode") == "subscribe" and esperado
-                and secrets.compare_digest(recebido, esperado)):
+                and secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8"))):
             return HttpResponse(request.GET.get("hub.challenge", ""), content_type="text/plain")
         return HttpResponse("nao autorizado", status=403, content_type="text/plain")
     if not _assinatura_valida(request):
