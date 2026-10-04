@@ -19,6 +19,8 @@ primeira versão deste arquivo, e o teste pegou.
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {# noindex: higiene, nao protecao — quem protege e a porta. #}
   <meta name="robots" content="noindex, nofollow">
+  {# Sem arquivo de icone: o navegador pedia /favicon.ico e levava 404 em toda tela. O icone vazio (data:) passa pelo img-src do CSP. #}
+  <link rel="icon" href="data:,">
   <title>{% block titulo %}Administração{% endblock %} · Meshcraft</title>
   <style>
     :root {

@@ -12,6 +12,7 @@ disponível — nunca erro 500.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from decimal import Decimal
 
@@ -21,11 +22,15 @@ from django.db.models import Count, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
+logger = logging.getLogger(__name__)
+
 LIMITE_POR_GRUPO = 50
+LIMITE_CONCLUIDOS = 20
 
 # Os grupos da tela, na ordem em que o mantenedor lê.
 GRUPOS = (
@@ -33,12 +38,15 @@ GRUPOS = (
     ("fila", "Na fila", ("na_fila",)),
     ("incerto", "Envio sem confirmação", ("envio_incerto",)),
     ("falha", "Com falha", ("falhou",)),
+    ("concluidos", "Concluídos recentes", ("concluido",)),
 )
+LIMITE_DO_GRUPO = {"concluidos": LIMITE_CONCLUIDOS}
 EXPLICA_GRUPO = {
     "andamento": "Trabalhos que um agente está fazendo agora ou que esperam um serviço ou o teto de gasto.",
     "fila": "Trabalhos esperando a vez.",
     "incerto": "A mensagem ou o link pode ter saído, mas o serviço não confirmou. O agente não repete o envio sozinho.",
     "falha": "Trabalhos que pararam com erro. O motivo aparece em cada um.",
+    "concluidos": "Os últimos trabalhos que terminaram. Abra um para ver cada decisão do agente.",
 }
 
 RECADOS = {
@@ -51,6 +59,9 @@ RECADOS = {
     "nao_encontrada": "Essa versão não foi encontrada.",
     "indisponivel": "A equipe comercial de agentes ainda não está disponível.",
     "papel": "Esse papel não existe.",
+    "analise_pedida": "Análise de resultados pedida. Ela entra na fila e aparece em Trabalhos.",
+    "analise_ja_pedida": "A análise de hoje já foi pedida; ela está em Trabalhos. Uma nova só amanhã.",
+    "analise_desligada": "Os agentes comerciais estão desligados neste ambiente: a análise não foi pedida.",
 }
 
 
@@ -111,15 +122,12 @@ def _inicio_do_mes():
 
 
 def _limite_do_mes(gasto_comercial: Decimal) -> dict:
-    """O teto já autorizado. Se houver uma autorização própria do comercial,
-    vale ela; senão, a dos robôs da equipe, que o comercial divide."""
+    """O teto já autorizado: o MESMO que o gasto usa de verdade
+    (`modelo.autorizacao_ativa()`, a dos robôs da equipe, que o comercial
+    divide). A tela nunca mostra um teto diferente do que trava a chamada."""
     from apps.agentes import modelo
-    from apps.agentes.models import AutorizacaoDeGasto
 
-    autorizacao = (
-        AutorizacaoDeGasto.objects.filter(ativa=True, destino="comercial").first()
-        or AutorizacaoDeGasto.objects.filter(ativa=True, destino="equipe").first()
-    )
+    autorizacao = modelo.autorizacao_ativa()
     if autorizacao is None:
         return {"autorizacao": None, "gasto_comercial": gasto_comercial}
     gasto_da_autorizacao = modelo.gasto_do_mes(autorizacao.pk)
@@ -127,7 +135,7 @@ def _limite_do_mes(gasto_comercial: Decimal) -> dict:
     usado = max(gasto_da_autorizacao, gasto_comercial)
     return {
         "autorizacao": autorizacao,
-        "compartilhado": autorizacao.destino != "comercial",
+        "compartilhado": True,
         "teto": teto,
         "gasto_comercial": gasto_comercial,
         "gasto_da_autorizacao": gasto_da_autorizacao,
@@ -185,7 +193,7 @@ def _grupos(mostrar_testes: bool) -> list[dict]:
     for chave, nome, estados in GRUPOS:
         consulta = base.filter(estado__in=estados).order_by("-atualizado_em", "-id")
         total = consulta.count()
-        trabalhos = list(consulta[:LIMITE_POR_GRUPO])
+        trabalhos = list(consulta[: LIMITE_DO_GRUPO.get(chave, LIMITE_POR_GRUPO)])
         por_trabalho: dict[int, list] = {t.pk: [] for t in trabalhos}
         if trabalhos:
             for decisao in (
@@ -204,6 +212,47 @@ def _grupos(mostrar_testes: bool) -> list[dict]:
             }
         )
     return grupos
+
+
+def _numero_do_trabalho(bruto) -> int | None:
+    """O `?trabalho=` da tela: só dígitos ASCII, até 12. Qualquer outra coisa
+    (letras, sinal, dígitos de outro alfabeto, texto enorme) é ignorada."""
+    s = bruto if isinstance(bruto, str) else ""
+    if s.isascii() and s.isdigit() and len(s) <= 12:
+        return int(s)
+    return None
+
+
+def _detalhe(bruto) -> dict | None:
+    """O trabalho pedido por `?trabalho=<id>`, com todas as decisões dele.
+    Número que não existe vira um aviso; valor inválido some."""
+    numero = _numero_do_trabalho(bruto)
+    if numero is None:
+        return None
+    TrabalhoComercial, DecisaoComercial, _ = _modelos()
+    trabalho = TrabalhoComercial.objects.filter(pk=numero).first()
+    if trabalho is None:
+        return {"numero": numero, "nao_encontrado": True}
+    decisoes = list(
+        DecisaoComercial.objects.filter(trabalho=trabalho).select_related("consumo").order_by("criada_em", "id")
+    )
+    preparado = _preparar_trabalho(trabalho, decisoes)
+    preparado["numero"] = numero
+    preparado["resumo"] = _curto(trabalho.resumo, 600) if trabalho.resumo else ""
+    preparado["linha_do_tempo"] = [
+        {
+            "acao": d.acao or "—",
+            "ferramenta": d.ferramenta or "—",
+            "resultado": d.get_resultado_display(),
+            "resultado_chave": d.resultado,
+            "contexto": contexto_resumido(d.contexto_usado),
+            "saida": _curto(d.saida, 300) if d.saida else "",
+            "quando": d.terminada_em or d.criada_em,
+            "versao": d.versao_estrategia,
+        }
+        for d in decisoes
+    ]
+    return preparado
 
 
 def _estrategias() -> list[dict]:
@@ -234,12 +283,16 @@ def crm_agentes(request):
         "admin": getattr(request, "admin", None),
         "disponivel": False,
         "mostrar_testes": mostrar_testes,
+        "ligado": True,
         "recado": RECADOS.get(request.GET.get("recado", ""), ""),
     }
     if not comercial_disponivel():
         return render(request, "admin/crm_agentes.html", contexto)
     try:
+        from apps.comercial import coordenador
+
         TrabalhoComercial, _, _ = _modelos()
+        contexto["ligado"] = coordenador.ligado()
         inicio = _inicio_do_mes()
         gasto_comercial = (
             TrabalhoComercial.objects.filter(criado_em__gte=inicio).aggregate(s=Sum("custo_usd"))["s"]
@@ -254,8 +307,10 @@ def crm_agentes(request):
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
             estrategias=_estrategias(),
+            detalhe=_detalhe(request.GET.get("trabalho")),
         )
     except (DatabaseError, ImportError, LookupError):
+        logger.exception("Não foi possível ler os registros dos agentes do CRM")
         contexto["disponivel"] = False
         contexto["falha_de_leitura"] = True
     return render(request, "admin/crm_agentes.html", contexto)
@@ -263,6 +318,33 @@ def crm_agentes(request):
 
 def _volta(recado: str, ancora: str = "estrategias"):
     return HttpResponseRedirect(f"{reverse('crm_agentes')}?recado={recado}#{ancora}")
+
+
+@require_POST
+def crm_agentes_analisar(request):
+    """"Analisar agora": põe na fila UMA análise de resultados por dia.
+
+    Usa o tipo que já existe para isso (`analisar_resultados`, o mesmo que o
+    relógio põe a cada hora); a chave é estável por dia, então apertar de
+    novo no mesmo dia devolve o mesmo trabalho e não cria outro. Se ainda não
+    houver o mínimo de abordagens para comparar, o próprio trabalho conclui
+    como inconclusivo sem chamar o modelo (sem gasto)."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "trabalhos")
+    from apps.comercial import coordenador
+
+    if not coordenador.ligado():
+        return _volta("analise_desligada", "trabalhos")
+    hoje = timezone.localdate()
+    trabalho, criado = coordenador.criar(
+        coordenador.T.ANALISAR_RESULTADOS, f"resultados:painel:{hoje:%Y%m%d}", origem="painel"
+    )
+    _auditar(
+        request,
+        f"trabalho:{trabalho.pk}",
+        "CRM agentes: analisar agora" + ("" if criado else " (já pedida hoje)"),
+    )
+    return _volta("analise_pedida" if criado else "analise_ja_pedida", "trabalhos")
 
 
 @require_POST
