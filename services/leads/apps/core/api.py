@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
-from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
+from .contatos import LEAD_DE_TESTE, contatos_do_crm, contatos_dos_quizzes
 from .perfil import resumo_do_perfil
 from .quiz_do_lead import quizzes_do_lead
 
@@ -191,6 +191,26 @@ def _token_do_painel(request) -> bool:
     return bool(token) and request.auth == token
 
 
+@router.post("/alunos/sincronizar", operation_id="syncStudentContacts")
+def sincronizar_alunos(request):
+    if not _token_do_painel(request):
+        raise HttpError(403, "Acesso exclusivo do painel admin")
+    from .alunos import sincronizar_matricula
+    from .oportunidades import _corpo
+
+    corpo = _corpo(request, {"matriculas"}, {"matriculas"})
+    matriculas = corpo["matriculas"]
+    if not isinstance(matriculas, list) or any(not isinstance(m, dict) for m in matriculas):
+        raise HttpError(422, "matriculas precisa ser uma lista de matrículas")
+    matriculas = sorted(matriculas, key=lambda m: str(m.get("criada_em") or ""))
+    resultados = [sincronizar_matricula(m) for m in matriculas]
+    return JsonResponse({
+        "matriculas": len(resultados), "contatos_criados": sum(r["contato_criado"] for r in resultados),
+        "oportunidades_criadas": sum(r["oportunidade_criada"] for r in resultados),
+        "ignoradas": sum(r["ignorada"] for r in resultados),
+    })
+
+
 def _site_da_conta_comercial(request):
     """Site da conta comercial que chama (presa a um site), ou None se não é uma."""
     if _token_do_painel(request):
@@ -275,8 +295,8 @@ def listar_leads(
     origem: str = "",
     testes: str = "ocultar",
 ):
-    if origem not in {"", "quiz"}:
-        raise HttpError(422, "origem deve ser quiz")
+    if origem not in {"", "quiz", "crm"}:
+        raise HttpError(422, "origem deve ser quiz ou crm")
     if testes not in {"ocultar", "mostrar"}:
         raise HttpError(422, "testes deve ser ocultar ou mostrar")
     if pagina < 1:
@@ -288,9 +308,9 @@ def listar_leads(
         "-occurred_at", "-id"
     )
     # `testes=mostrar`: o trabalho de teste do coordenador acha o seu contato de teste.
-    base = (Lead.objects.all() if origem != "quiz"
-            else contatos_dos_quizzes() if testes == "mostrar"
-            else contatos_dos_quizzes().exclude(LEAD_DE_TESTE))
+    base = contatos_do_crm() if origem == "crm" else contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    if origem and testes != "mostrar":
+        base = base.exclude(LEAD_DE_TESTE)
     consulta = base.annotate(
         ultimo_evento=Subquery(ultimo.values("event")[:1]),
         ultimo_evento_em=Subquery(ultimo.values("occurred_at")[:1]),
@@ -404,14 +424,14 @@ _FICHA_LEAD_OPENAPI = {
     openapi_extra=_FICHA_LEAD_OPENAPI,
 )
 def ficha_do_lead(request, lead_id: str, origem: str = ""):
-    if origem not in {"", "quiz"}:
-        raise HttpError(422, "origem deve ser quiz")
+    if origem not in {"", "quiz", "crm"}:
+        raise HttpError(422, "origem deve ser quiz ou crm")
     # Identificador que não é UUID nunca existiu: 404 sem ir ao banco.
     try:
         chave = uuid.UUID(str(lead_id))
     except ValueError:
         raise HttpError(404, "Lead inexistente")
-    base = contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
+    base = contatos_do_crm() if origem == "crm" else contatos_dos_quizzes() if origem == "quiz" else Lead.objects.all()
     site_da_conta = _site_da_conta_comercial(request)
     if site_da_conta is not None:
         base = base.filter(site_id=site_da_conta)
@@ -422,6 +442,7 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
     do_painel = _token_do_painel(request)
 
     eventos = lead.timeline.order_by("-occurred_at", "-id")
+    from .alunos import matriculas_do_contato
     return JsonResponse(
         {
             "id": str(lead.id),
@@ -437,6 +458,7 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
             "atualizado_em": _data(lead.updated_at),
             "quizzes": quizzes_do_lead(lead) if do_painel else [],
             "perfil": resumo_do_perfil(lead) if do_painel else None,
+            "matriculas": matriculas_do_contato(lead) if do_painel else [],
             "linha_do_tempo_total": eventos.count(),
             "linha_do_tempo": [
                 {

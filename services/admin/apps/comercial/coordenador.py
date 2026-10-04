@@ -386,7 +386,7 @@ def _marcar_se_de_teste(trabalho: TrabalhoComercial) -> None:
     passa a ser de teste: fica fora dos resultados e dos totais, como o resto dos dados de teste."""
     if trabalho.teste or not trabalho.contato_id or (trabalho.entrada or {}).get("contato", {}).get("email"):
         return
-    resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "quiz"})
+    resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "crm"})
     if not resposta.ok:
         return
     from . import eventos
@@ -409,7 +409,7 @@ def _do_grupo_de_comparacao(trabalho: TrabalhoComercial) -> bool:
         contato = (trabalho.entrada or {}).get("contato") or {}
         email, telefone = contato.get("email") or "", contato.get("telefone") or ""
         if not (email or telefone):
-            resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "quiz"})
+            resposta = servicos.pedir("contato", trabalho.contato_id, params={"origem": "crm"})
             if resposta.ok:
                 email = str(resposta.dados.get("email") or "")
                 telefone = str(resposta.dados.get("telefone") or resposta.dados.get("phone") or "")
@@ -448,7 +448,7 @@ def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
     contato = entrada.get("contato") or {}
     if not trabalho.contato_id and contato.get("email"):
         resposta = servicos.pedir("buscar_contato", params={
-            "q": contato["email"], "site_id": trabalho.site_id, "origem": "quiz", "por_pagina": 20,
+            "q": contato["email"], "site_id": trabalho.site_id, "origem": "crm", "por_pagina": 20,
             # Trabalho de teste (contato de sandbox) acha o seu contato de teste; o de verdade nunca.
             "testes": "mostrar" if trabalho.teste else "ocultar"})
         if resposta.ok:

@@ -44,6 +44,8 @@ def preparar(item):
     item["aguardando"] = item["aberta"] and item.get("aguardando_resposta") is True
     item["objecao"] = item.get("objecao_principal") if isinstance(item.get("objecao_principal"), str) else ""
     item["atendimento"] = atendimento(item.get("atendido_por"))
+    fonte = item.get("fonte") or {}
+    item["tipo_nome"] = "Próximo curso" if fonte.get("referencia_id") == "proximo-curso" else ""
     return item
 
 

@@ -291,7 +291,7 @@ def test_a_procura_e_os_filtros_vao_na_pergunta_e_voltam_no_link_da_pagina():
     assert params["tag"] == "quente"
     assert params["site_id"] == "principal"
     assert params["pagina"] == "1"
-    assert params["origem"] == "quiz"
+    assert params["origem"] == "crm"
     corpo = r.content.decode()
     assert "Contatos 1 a 1, de 120" in corpo
     assert "pagina=2" in corpo

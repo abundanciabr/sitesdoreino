@@ -369,7 +369,7 @@ def consultar_contato(ctx: Contexto, args: dict) -> dict:
     t = ctx.trabalho
     if not t.contato_id:
         return {"contato": None, "aviso": "O lead ainda não tem ficha no CRM."}
-    dados = _resolver(servicos.pedir("contato", t.contato_id, params={"origem": "quiz"}))
+    dados = _resolver(servicos.pedir("contato", t.contato_id, params={"origem": "crm"}))
     if str(dados.get("site_id") or t.site_id) != str(t.site_id or dados.get("site_id")):
         raise Recusa("Esta ficha não é deste site.")
     ficha = _sem_pessoais(dados)

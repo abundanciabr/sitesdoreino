@@ -157,6 +157,8 @@ def dinheiro(centavos) -> str:
 
 def _oferta_da_referencia(referencia) -> str:
     referencia = _texto(referencia)
+    if referencia == "proximo-curso":
+        return "Próximo curso"
     return referencia[len("oferta:"):] if referencia.startswith("oferta:") else ""
 
 

@@ -2,14 +2,19 @@
 
 ## Contatos do CRM
 
-Contatos são apenas os leads captados nos quizzes, conforme correção do mantenedor
-em 03/10/2026. Cadastro de aluno, pedido ou pagamento sozinho não cria um contato.
-A lista, as fichas, o quadro e seus totais usam a origem registrada no quiz, inclusive
-quando essa captura está preservada no histórico e a origem atual mudou.
+Em 04/10/2026 o mantenedor substituiu a decisão de 03/10: todos os alunos são
+contatos do CRM, junto dos leads captados nos quizzes. Alunos ativos, suspensos,
+ex-alunos e pessoas com matrícula reembolsada permanecem na ficha comercial.
+Pedidos de entrada ainda aguardando ou recusados não são matrículas de aluno.
+Cada pessoa mantém um contato por site, reunindo suas passagens pela escola e
+preservando origem no quiz, consentimentos, compras e histórico já existentes.
+Uma oportunidade inicial de **Próximo curso** acompanha o aluno; matrículas e
+sincronizações repetidas não criam contatos ou oportunidades duplicados.
 
 ## Todo contato é uma oportunidade de venda (03/10/2026)
 
-Alunos e testes de sandbox não são contatos. Cada contato do quiz abre uma
+Alunos passam a ser contatos por decisão de 04/10/2026. Testes de sandbox ficam
+fora dos totais habituais. Cada contato do quiz abre uma
 oportunidade de venda do produto indicado pelo quiz. Os acontecimentos da pessoa
 movem essa oportunidade: responder o quiz abre a oferta, fazer o pedido leva a
 Negociação, pagamento aprovado fecha como venda feita, e recusa ou Pix vencido abrem
@@ -35,7 +40,7 @@ tinha respondido antes.
 
 O levantamento inicial trouxe 44 pagamentos recusados e 10 Pix vencidos contra 18
 aprovados na base técnica, incluindo testes. Isso não mede dinheiro real parado.
-No CRM, a recuperação acompanha apenas os contatos captados pelos quizzes.
+No CRM, a recuperação acompanha os contatos dos quizzes e da escola.
 
 ## Fases
 
@@ -45,9 +50,9 @@ No CRM, a recuperação acompanha apenas os contatos captados pelos quizzes.
    "recuperar", com responsável e prazo; quadro por etapa no admin; ao pagar, vira "ganha".
 3. **Conversa no mesmo lugar** — WhatsApp e e-mails enviados aparecem na ficha; botão de
    mandar WhatsApp dali (depende da retomada da API do WhatsApp).
-4. **Histórico do lead** — quando um contato vindo do quiz se torna aluno, a ficha
-   pode mostrar seus cursos, progresso, pontos, fórum e compras. A matrícula sozinha
-   não inclui uma pessoa na lista de contatos.
+4. **Histórico da pessoa** — todos os alunos têm ficha no CRM, tenham vindo do quiz
+   ou diretamente da escola. A ficha reúne matrículas e oportunidades; cursos,
+   progresso, pontos, fórum e compras podem compor esse acompanhamento.
 5. **Robô no CRM** — o robô do painel lê a ficha, sugere o próximo passo e entrega de
    manhã "com quem falar hoje"; segmentos prontos para campanhas.
 6. **Números** — receita por origem/campanha, quanto da venda recusada foi recuperada,
@@ -74,8 +79,10 @@ das recuperadas. Compra já aprovada antes da recusa não infla essa contagem.
 As compras pagas após uma tentativa são contadas pelo histórico registrado;
 esse número não atribui automaticamente a venda ao atendimento humano.
 
-O recorte corrigido do CRM exibe exclusivamente contatos e oportunidades de leads
-dos quizzes. Os demais registros do serviço permanecem preservados.
+O recorte de 04/10/2026 inclui contatos e oportunidades dos quizzes e dos alunos.
+As mudanças de situação das matrículas mantêm a inclusão dos novos alunos pelo
+consumidor já existente. A importação inicial pode ser repetida sem duplicar.
+Os demais registros do serviço permanecem preservados.
 
 As fases 3 a 6 continuam como próximas entregas. A conexão e o envio real do
 WhatsApp precisam ser concluídos para integrar as conversas à ficha.

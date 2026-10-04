@@ -1,6 +1,6 @@
 """Liga a conversa ao contato do quiz pela API da célula `leads`.
 
-Usa `GET /leads?origem=quiz`, a mesma lista do CRM: só contatos de quiz e sem
+Usa `GET /leads?origem=crm`, a mesma lista do CRM: contatos dos quizzes e alunos e sem
 registros de teste. Esta célula guarda apenas o id opaco do lead; nome, e-mail
 e telefone de quem quer que seja nunca saem daqui.
 """
@@ -41,7 +41,7 @@ def _candidatos(busca: str, site_id: str) -> list[dict] | None:
         return None
     base, token = config
     itens: list[dict] = []
-    params = {"q": busca, "origem": "quiz", "por_pagina": POR_PAGINA}
+    params = {"q": busca, "origem": "crm", "por_pagina": POR_PAGINA}
     if site_id:
         params["site_id"] = site_id
     try:
@@ -106,7 +106,7 @@ def email_do_lead(lead_id: str) -> str:
         return ""
     base, token = config
     try:
-        resposta = httpx.get(f"{base}/leads/{lead_id}", params={"origem": "quiz"},
+        resposta = httpx.get(f"{base}/leads/{lead_id}", params={"origem": "crm"},
                              headers={"Authorization": f"Bearer {token}"}, timeout=TIMEOUT)
         if resposta.status_code != 200:
             return ""

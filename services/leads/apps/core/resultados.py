@@ -23,7 +23,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from ninja import Router
 
-from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
+from .contatos import LEAD_DE_TESTE, contatos_do_crm
 from .crm import _admin
 from .models import CompraDaOportunidade, Lead, Oportunidade
 from .oferta import FONTE, PREFIXO
@@ -96,7 +96,7 @@ def resultados_comerciais(request, site_id: str = "", desde: str = "", ate: str 
     fim = _instante(ate, "ate", fim=True)
     oportunidades = Oportunidade.objects.select_related("lead").filter(
         fonte_tipo=FONTE, fonte_referencia_id__startswith=PREFIXO,
-        lead__in=contatos_dos_quizzes(),
+        lead__in=contatos_do_crm(),
     )
     if site_id:
         oportunidades = oportunidades.filter(lead__site_id=site_id)

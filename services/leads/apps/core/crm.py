@@ -15,7 +15,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .models import AcompanhamentoAplicado, Oportunidade, RegistroHistoricoOportunidade
-from .contatos import LEAD_DE_TESTE as _LEAD_DE_TESTE, PALAVRA_DE_TESTE, contatos_dos_quizzes
+from .contatos import LEAD_DE_TESTE as _LEAD_DE_TESTE, PALAVRA_DE_TESTE, contatos_do_crm
 from .oportunidades import (
     _como_oportunidade, _corpo, _escolha, _instante, _proximo_passo, _texto,
 )
@@ -85,7 +85,7 @@ def _oportunidade(chave):
     except (ValueError, TypeError, AttributeError):
         raise HttpError(404, "Oportunidade inexistente")
     item = Oportunidade.objects.select_related("lead").filter(
-        pk=identificador, lead__in=contatos_dos_quizzes()
+        pk=identificador, lead__in=contatos_do_crm()
     ).first()
     if item is None:
         raise HttpError(404, "Oportunidade inexistente")
@@ -102,7 +102,7 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
         raise HttpError(422, "Paginação inválida")
     if testes not in {"ocultar", "mostrar", "somente"}:
         raise HttpError(422, "testes deve ser ocultar, mostrar ou somente")
-    leads = contatos_dos_quizzes()
+    leads = contatos_do_crm()
     base = Oportunidade.objects.select_related("lead").filter(lead__in=leads)
     if site_id:
         base = base.filter(lead__site_id=site_id)

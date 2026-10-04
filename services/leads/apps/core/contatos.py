@@ -1,4 +1,4 @@
-"""Contatos comerciais são os leads captados nos quizzes."""
+"""Contatos comerciais: capturas dos quizzes e pessoas matriculadas na escola."""
 
 from django.db.models import Q
 
@@ -26,4 +26,11 @@ def contatos_dos_quizzes():
     ).values("lead_id")
     return Lead.objects.filter(
         Q(source__iregex=ORIGEM_QUIZ) | Q(pk__in=capturas)
+    )
+
+
+def contatos_do_crm():
+    matriculas = TimelineEvent.objects.filter(event="aluno.matricula").values("lead_id")
+    return Lead.objects.filter(
+        Q(pk__in=contatos_dos_quizzes().values("pk")) | Q(pk__in=matriculas)
     )

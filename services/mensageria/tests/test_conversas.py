@@ -136,7 +136,7 @@ def test_texto_do_whatsapp_abre_conversa_liga_lead_e_publica_evento(base):
     assert evento.payload["lead"] == LEAD_A and evento.payload["texto"] == "Oi, quero saber do curso"
     assert evento.payload["midia"] is None and evento.payload["descadastro"] is False
     # Busca pela lista do CRM: só quiz, só o site da instância.
-    assert base["pedidos"][0][1]["origem"] == "quiz" and base["pedidos"][0][1]["site_id"] == SITE
+    assert base["pedidos"][0][1]["origem"] == "crm" and base["pedidos"][0][1]["site_id"] == SITE
 
 
 def test_entrega_repetida_nao_duplica_mensagem_nem_evento(base):

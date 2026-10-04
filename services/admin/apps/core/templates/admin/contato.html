@@ -40,6 +40,16 @@
 
   {% if tela.id %}<p class="espaco-20"><a class="botao" href="{% url 'crm' %}?lead_id={{ tela.id|urlencode }}">Ver oportunidades no CRM</a></p>{% endif %}
 
+  {% if tela.matriculas %}
+  <section class="cartao espaco-20">
+    <h2 class="titulo-de-bloco">Escola</h2>
+    {% for matricula in tela.matriculas %}
+    <p><b>{{ matricula.situacao_nome }}</b>{% if matricula.turma %} · {{ matricula.turma }}{% endif %}{% if matricula.product_id %}<br>Curso: {{ matricula.product_id }}{% endif %}</p>
+    {% endfor %}
+    <a href="{% url 'escola_prontuario' %}?email={{ tela.email|urlencode }}">Abrir ficha de matrícula →</a>
+  </section>
+  {% endif %}
+
   {% comment %} Quem atende, próximo passo e interesse: o que a equipe olha primeiro. {% endcomment %}
   <div class="cartoes espaco-20">
     <section class="cartao" id="quem-atende">

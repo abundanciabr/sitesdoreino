@@ -16,7 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .compras import FONTE_RECUPERACAO, PREFIXO_RECUPERACAO
-from .contatos import LEAD_DE_TESTE, contatos_dos_quizzes
+from .contatos import LEAD_DE_TESTE, contatos_do_crm
 from .crm import _admin, _oportunidade
 from .models import CompraDaOportunidade, Lead
 
@@ -221,7 +221,7 @@ def fatos_de_receita(request, site_id: str = "", desde: str = "", ate: str = "")
     _admin(request)
     inicio = _instante(desde, "desde")
     fim = _instante(ate, "ate", fim=True)
-    contatos = contatos_dos_quizzes()
+    contatos = contatos_do_crm()
     compras = CompraDaOportunidade.objects.select_related(
         "lead", "oportunidade", "oportunidade__lead"
     ).filter(aprovado_em__isnull=False).filter(

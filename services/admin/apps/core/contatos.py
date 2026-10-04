@@ -69,6 +69,7 @@ ROTULOS_DOS_EVENTOS = {
     "quiz.captura_parcial": "Começou o quiz e deixou o contato",
     "lead.upsert": "Deixou o contato",
     "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
+    "aluno.matricula": "Matrícula na escola",
 }
 
 #: Forma de pagamento, como o checkout a manda.
@@ -293,6 +294,11 @@ def montar_ficha(resposta) -> dict:
         "origem": _texto(resposta.get("origem")),
         "site_id": _texto(resposta.get("site_id")),
         "tags": _tags(resposta.get("tags")),
+        "matriculas": [
+            dict(m, situacao_nome={"ativa": "Aluno ativo", "encerrada": "Ex-aluno",
+                                  "suspensa": "Acesso suspenso", "reembolsada": "Compra reembolsada"}.get(m.get("status"), ""))
+            for m in resposta.get("matriculas", []) if isinstance(m, dict)
+        ],
         "consentimento": [
             (ROTULOS_DO_CONSENTIMENTO[k], "Sim" if v is True else "Não")
             for k, v in sorted(consentimento.items())

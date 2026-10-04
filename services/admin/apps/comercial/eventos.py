@@ -31,6 +31,7 @@ from django.utils import timezone
 
 from . import comparacao, coordenador, interruptor, otimizador, servicos
 from .models import EventoComercial, TrabalhoComercial
+from apps.core.alunos_no_crm import ao_matricula_situacao_alterada
 
 log = logging.getLogger(__name__)
 
@@ -493,6 +494,8 @@ STREAMS = {
     "eventos.pix.expirado": ao_pix_expirado,
     "eventos.pagamento.reversao_confirmada": ao_reversao_confirmada,
 }
+
+STREAMS["eventos.matricula.situacao-alterada"] = ao_matricula_situacao_alterada
 
 
 def tratar(stream: str, envelope: dict):
