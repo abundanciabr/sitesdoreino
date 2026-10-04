@@ -3,7 +3,9 @@ from django.db import IntegrityError, transaction
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
 from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido
-from .quiz_do_lead import ao_quiz_captura_parcial, registrar_quiz_completo  # noqa: F401
+from .quiz_do_lead import (
+    ao_quiz_captura_parcial, lead_do_quiz_completo, registrar_quiz_completo,
+)  # noqa: F401
 from .recuperacao import sincronizar_pagamento, sincronizar_reversao
 
 
@@ -79,15 +81,8 @@ def _upsert_lead(
 
 def ao_quiz_completado(event_id: str, data: dict) -> None:
     with transaction.atomic():
-        pessoa = data["lead"]
-        lead = _upsert_lead(
-            site_id=data["site_id"],
-            email=pessoa["email"],
-            name=pessoa.get("name", ""),
-            phone=pessoa.get("phone", ""),
-            source=f"quiz:{data['quiz_slug']}",
-            utm=data.get("utm"),
-        )
+        # O contato da captura da mesma sessão, mesmo que o e-mail tenha mudado.
+        lead = lead_do_quiz_completo(event_id, data)
         evento = TimelineEvent.objects.create(
             lead=lead, event="quiz.completado", event_id=event_id, payload=data
         )

@@ -24,6 +24,7 @@ from apps.agentes.models import (
     ChamadaDeFerramenta,
     Execucao,
     FonteDoConhecimento,
+    LigacaoDoConhecimento,
     MaterialComercial,
     TrechoComercial,
 )
@@ -166,8 +167,9 @@ def test_indexa_cursos_e_oferta_sem_preco_nem_rascunho():
     # O catálogo entra no mapa da equipe como coisas e ligações, sem modelo nenhum.
     achado = conhecimento.consultar(["Blender Essencial"], com_privados=True)
     relacoes = {(l["de"], l["relacao"], l["para"]) for l in achado["ligacoes"]}
-    assert ("Blender Essencial", "faz parte do produto", "Escola de Blender") in relacoes
-    assert ("Oferta anual", "vende", "Escola de Blender") in relacoes
+    assert ("Blender Essencial (a.test)", "faz parte do produto", "Escola de Blender") in relacoes
+    assert ("Oferta anual (a.test)", "vende", "Escola de Blender") in relacoes
+    assert ("Blender Essencial (a.test)", "tem módulo", "Primeiros passos (Blender Essencial, a.test)") in relacoes
     assert conhecimento.numeros()["comerciais"] == 2
     assert conhecimento.numeros()["documentos"] == 0
 
@@ -329,6 +331,107 @@ def test_trecho_longo_e_preco_no_meio():
     longo = "palavra " * 400
     assert all(len(p) <= cc.TAMANHO_DO_TRECHO * 2 for p in cc.pedacos(longo))
     assert len(cc.chave("x" * 64, "documento", "y" * 80)) <= 120
+
+
+def test_preco_sem_cifrao_tambem_sai():
+    for frase in (
+        "O curso custa 497 reais.",
+        "Investimento: 12 vezes de 49,70.",
+        "Valor: 497.",
+        "Mensalidade de 49,90 por mês.",
+        "Sai por 1.497,00 no cartão de crédito.",
+        "A anuidade é de 970.",
+    ):
+        assert cc.sem_preco(frase) == "(preço e condições: consultar ao vivo)", frase
+    # O que não é preço continua.
+    for frase in ("Tem 12 aulas em 3 módulos.", "Seis meses de acesso, com duas horas por semana.",
+                  "Acesso 100% on-line."):
+        assert cc.sem_preco(frase) == frase
+    for pergunta in ("Qual o investimento?", "quanto é a mensalidade?", "quais os valores?",
+                     "tem preços diferentes?", "quanto pago?"):
+        assert cc._PERGUNTA_DE_PRECO.search(cc._normal(pergunta)), pergunta
+
+
+@respx.mock
+def test_preco_sem_cifrao_em_documento_nao_vira_trecho_lembrado():
+    _catalogo()
+    _documento("guia", "O curso Blender custa 497 reais em 12 vezes.\n\nTem correção humana.", titulo="Guia")
+    MaterialComercial.objects.create(documento_nome="guia", site_id="site-a", site_host="a.test", tipo="material")
+    cc.atualizar_host("a.test")
+    assert all("497" not in t.texto for t in TrechoComercial.objects.all())
+    resposta = cc.consultar("a.test", "quanto custa o curso blender?")
+    assert all("497" not in t["texto"] for t in resposta["trechos"])
+    assert any(f.get("ao_vivo") and "R$ 497,00" in f.get("texto", "") for f in resposta["fatos_ao_vivo"])
+
+
+@respx.mock
+def test_produtos_fora_do_ar_nao_mexe_em_cursos_nem_no_mapa():
+    _catalogo()
+    _documento("guia", "Correção humana das entregas.", titulo="Guia")
+    MaterialComercial.objects.create(documento_nome="guia", site_id="site-a", site_host="a.test",
+                                     tipo="material", produto="Escola de Blender")
+    cc.atualizar_host("a.test")
+    ids = set(TrechoComercial.objects.values_list("id", flat=True))
+    respx.get(f"{CATALOGO}/produtos").mock(return_value=httpx.Response(503))
+    relatorio = cc.atualizar_host("a.test")
+    assert relatorio["faltou"] and relatorio["mudadas"] == 0 and relatorio["sairam"] == 0
+    assert set(TrechoComercial.objects.values_list("id", flat=True)) == ids
+    curso = TrechoComercial.objects.filter(site_id="site-a", tipo="curso").first()
+    assert curso.produto_nome == "Escola de Blender"
+    assert TrechoComercial.objects.get(ref="guia", ordem=0).produto_ref == "prod-blender"
+    assert LigacaoDoConhecimento.objects.filter(relacao="faz parte do produto").exists()
+
+
+@respx.mock
+def test_mapa_da_equipe_nao_junta_ofertas_de_mesmo_apelido_em_sites_diferentes():
+    _catalogo(cursos_b=[_curso("blender", "Blender Essencial", "prod-zbrush")])
+    respx.get(f"{CURSOS}/cursos/blender/aulas", params={"site_id": "site-b"}).mock(
+        return_value=httpx.Response(200, json=[_aula("01", "Escultura de rosto", "A", "Primeiros passos")]))
+    respx.get(f"{CATALOGO}/sites/site-b/paginas/oferta").mock(return_value=httpx.Response(200, json=_pagina("anual")))
+    respx.get(f"{CATALOGO}/sites/site-b/ofertas/anual").mock(
+        return_value=httpx.Response(200, json=_oferta("site-b", "anual", PRODUTOS[1], preco=19700)))
+    cc.atualizar_host("a.test")
+    cc.atualizar_host("b.test")
+    de_a = conhecimento.consultar(["Oferta anual (a.test)"], com_privados=True, profundidade=1)
+    relacoes = {(l["de"], l["relacao"], l["para"]) for l in de_a["ligacoes"]}
+    assert relacoes == {("Oferta anual (a.test)", "vende", "Escola de Blender")}
+    todas = {(l.origem, l.destino) for l in LigacaoDoConhecimento.objects.all()}
+    assert ("Oferta anual (b.test)", "Escultura no ZBrush") in todas
+    # O curso de mesmo nome e o módulo de mesmo nome também não viram um nó só.
+    assert ("Blender Essencial (b.test)", "Escultura no ZBrush") in todas
+    assert ("Blender Essencial (a.test)", "Primeiros passos (Blender Essencial, a.test)") in todas
+    assert ("Blender Essencial (b.test)", "Primeiros passos (Blender Essencial, b.test)") in todas
+
+
+@respx.mock
+def test_preco_ao_vivo_e_so_do_produto_perguntado_e_diz_qual():
+    _catalogo(cursos_a=[_curso("blender", "Blender Essencial", "prod-blender"),
+                        _curso("zbrush", "ZBrush Avançado", "prod-zbrush")])
+    respx.get(f"{CURSOS}/cursos/zbrush/aulas", params={"site_id": "site-a"}).mock(
+        return_value=httpx.Response(200, json=[_aula("01", "Escultura de rosto", "A", "Anatomia")]))
+    cc.atualizar_host("a.test")
+    resposta = cc.consultar("a.test", "quanto custa o ZBrush Avançado?")
+    assert resposta["trechos"][0]["fonte"]["id"] == "zbrush"
+    assert all(f.get("fonte", {}).get("tipo") != "oferta" for f in resposta["fatos_ao_vivo"])
+    assert all("497" not in (f.get("texto") or "") for f in resposta["fatos_ao_vivo"])
+    sem_oferta = [f for f in resposta["fatos_ao_vivo"] if f.get("fonte", {}).get("tipo") == "produto"]
+    assert sem_oferta and "Escultura no ZBrush" in sem_oferta[0]["texto"]
+
+    blender = cc.consultar("a.test", "quanto custa o Blender Essencial?")
+    precos = [f for f in blender["fatos_ao_vivo"] if f.get("fonte", {}).get("tipo") == "oferta"]
+    assert len(precos) == 1 and "R$ 497,00" in precos[0]["texto"]
+    assert "Escola de Blender" in precos[0]["texto"]
+    assert precos[0]["produto"] == {"ref": "prod-blender", "nome": "Escola de Blender"}
+
+
+@respx.mock
+def test_a_tela_dos_robos_nao_espera_o_catalogo(monkeypatch):
+    from apps.agentes import executor
+
+    chamadas = []
+    monkeypatch.setattr(cc, "manter_em_dia", lambda **_: chamadas.append(1))
+    executor.reacordar()  # é o que os botões de /admin/robos/ chamam
+    assert chamadas == []
 
 
 # ------------------------------------------------------------- a ferramenta

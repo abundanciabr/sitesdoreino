@@ -36,7 +36,7 @@
       keepalive: true
     }).catch(function () { ultima = ""; });
   }
-  ["email", "nome", "telefone"].forEach(function (nome) {
+  ["email", "nome", "telefone", "aceita_whatsapp"].forEach(function (nome) {
     var campo = form.querySelector("input[name=" + nome + "]");
     if (!campo) return;
     campo.addEventListener("change", function () {

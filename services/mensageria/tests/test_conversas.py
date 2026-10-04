@@ -404,7 +404,9 @@ def test_parar_grava_preferencia_barra_agendados_e_bloqueia_acompanhamento(base,
     assert recusa["resultado"] == "descadastrado" and recusa["mensagem"] is None and not posts
     assert _api(cliente, "GET", f"/conversas/{conversa.id}?site_id={SITE}", token=LEITURA).json()["descadastrado"]
     # O contato volta a falar: responder à pergunta dele é atendimento, não acompanhamento.
-    _upsert(cliente, _item(texto="Mudei de ideia, qual o preço?", ident="S2"))
+    # Um segundo depois do PARAR: no mesmo segundo as duas falas empatam.
+    _upsert(cliente, _item(texto="Mudei de ideia, qual o preço?", ident="S2",
+                           messageTimestamp=int(timezone.now().timestamp()) + 1))
     resposta = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
                     {"site_id": SITE, "texto": "Custa R$ 97.", "chave_idempotencia": "resposta-1"}).json()
     assert resposta["resultado"] == "enviada" and len(posts) == 1
@@ -497,6 +499,10 @@ def test_fora_da_janela_devolve_fora_da_janela_salvo_modelo(base, monkeypatch):
     fora = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
                 {"site_id": SITE, "texto": "Oi de novo", "chave_idempotencia": "f1"}).json()
     assert fora["resultado"] == "fora_da_janela" and fora["mensagem"] is None and not posts
+    # Fora da janela, só com o aceite do contato (test_consentimentos.py).
+    from apps.consentimentos.servico import registrar as registrar_aceite
+
+    registrar_aceite(site_id=SITE, telefone="5511988887777", aceito=True, origem="quiz.completado")
     # Transporte atual (Baileys) não tem modelo aprovado: falha explícita, nada sai.
     modelo = {"site_id": SITE, "chave_idempotencia": "m1", "modelo": {"nome": "retomada", "idioma": "pt_BR"}}
     sem_modelo = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens", modelo).json()

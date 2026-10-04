@@ -1,10 +1,12 @@
 """Respostas legíveis no evento e na API interna, e a captura parcial identificada."""
 
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.core import signing
 from django.test import Client, override_settings
+from django.utils import timezone
 
 from apps.quiz.models import (
     CapturaParcial,
@@ -16,6 +18,7 @@ from apps.quiz.models import (
     ResultBand,
     Submission,
 )
+from apps.quiz.tasks import publicar_capturas_paradas
 from apps.quiz.views import COOKIE_SESSAO, SALT_SESSAO
 from tests.test_campanhas_direcionadas import abrir as abrir_campanha
 from tests.test_campanhas_direcionadas import campanha  # noqa: F401
@@ -230,6 +233,11 @@ def test_lista_por_contato_acha_por_email_e_telefone_e_separa_sites(quiz, site_b
 # ---------------------------------------------------------------------------
 # Captura parcial
 # ---------------------------------------------------------------------------
+def parar_e_publicar(minutos=11):
+    """Passa o silêncio da captura e roda a publicação das paradas."""
+    return publicar_capturas_paradas(agora=timezone.now() + timedelta(minutes=minutos))
+
+
 def test_captura_parcial_registra_e_publica_uma_vez_por_sessao(client, quiz):
     entrada = abrir(client, quiz)
     p1, p2 = perguntas(quiz)
@@ -245,26 +253,10 @@ def test_captura_parcial_registra_e_publica_uma_vez_por_sessao(client, quiz):
     captura = CapturaParcial.objects.get()
     assert str(captura.session_id) == entrada["session_id"]
     assert captura.site_id == SITE_A_ID
-    evento = OutboxEvent.objects.get(event="quiz.captura_parcial")
-    assert evento.payload == {
-        "captura_id": str(captura.id),
-        "site_id": SITE_A_ID,
-        "sessao": entrada["session_id"],
-        "quiz_slug": "objetivo",
-        "version_key": "v1",
-        "lead": {"email": "ana@exemplo.com"},
-        "respostas": [
-            {
-                "pergunta_id": p1.id,
-                "pergunta": "Qual o seu objetivo?",
-                "respostas": [{"id": opcao(p1, "Vender online").id, "texto": "Vender online"}],
-                "valor_livre": None,
-            }
-        ],
-        "utm": {},
-    }
+    # A captura só grava: o aviso sai quando a pessoa para sem concluir.
+    assert not OutboxEvent.objects.filter(event="quiz.captura_parcial").exists()
 
-    # Repetir completa a mesma linha e não publica de novo.
+    # Repetir completa a mesma linha.
     resposta = capturar(
         client,
         quiz,
@@ -276,12 +268,28 @@ def test_captura_parcial_registra_e_publica_uma_vez_por_sessao(client, quiz):
     assert resposta.status_code == 200
     assert resposta.json() == {"estado": "atualizada"}
     assert CapturaParcial.objects.count() == 1
-    assert OutboxEvent.objects.filter(event="quiz.captura_parcial").count() == 1
     captura.refresh_from_db()
     assert captura.lead_email == "ana@exemplo.com"  # vazio não apaga
     assert captura.lead_name == "Ana"
     assert captura.lead_phone == "(11) 98888-7777"
     assert set(captura.answers) == {str(p1.id), str(p2.id)}
+
+    # Passado o silêncio, sai um aviso só, com o contato mais completo.
+    assert parar_e_publicar() == 1
+    evento = OutboxEvent.objects.get(event="quiz.captura_parcial")
+    assert evento.payload["captura_id"] == str(captura.id)
+    assert evento.payload["sessao"] == entrada["session_id"]
+    assert evento.payload["lead"] == {
+        "email": "ana@exemplo.com",
+        "name": "Ana",
+        "phone": "(11) 98888-7777",
+    }
+    assert [r["pergunta_id"] for r in evento.payload["respostas"]] == [p1.id, p2.id]
+    assert evento.payload["publicacao"] == 1
+    # O aceite do WhatsApp tem teste próprio (test_consentimento_whatsapp.py).
+    assert evento.payload["consentimento"]["whatsapp"]["aceito"] is False
+    assert parar_e_publicar() == 0
+    assert OutboxEvent.objects.filter(event="quiz.captura_parcial").count() == 1
 
 
 def test_quiz_completo_depois_da_captura_liga_as_duas_coisas(client, quiz):
@@ -300,7 +308,8 @@ def test_quiz_completo_depois_da_captura_liga_as_duas_coisas(client, quiz):
     # Depois de concluir, a captura não faz mais nada.
     resposta = capturar(client, quiz, email="outra@exemplo.com")
     assert resposta.json() == {"estado": "concluida"}
-    assert OutboxEvent.objects.filter(event="quiz.captura_parcial").count() == 1
+    assert parar_e_publicar() == 0
+    assert not OutboxEvent.objects.filter(event="quiz.captura_parcial").exists()
     captura.refresh_from_db()
     assert captura.lead_email == "ana@exemplo.com"
 
@@ -366,6 +375,7 @@ def test_captura_ignora_email_invalido_e_fica_com_o_telefone(client, quiz):
     captura = CapturaParcial.objects.get()
     assert captura.lead_email == ""
     assert captura.answers == {}
+    assert parar_e_publicar() == 1
     assert OutboxEvent.objects.get().payload["lead"] == {"phone": "11 98888-7777"}
 
 
@@ -411,6 +421,7 @@ def test_captura_em_quiz_direcionado_usa_a_tentativa(client, campanha):  # noqa:
     captura = CapturaParcial.objects.get()
     assert str(captura.session_id) == entrada["session_id"]
     assert captura.context == entrada["context"]
+    assert parar_e_publicar() == 1
     assert OutboxEvent.objects.get().payload["context"] == entrada["context"]
 
 
