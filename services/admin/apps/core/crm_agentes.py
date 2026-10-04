@@ -62,6 +62,7 @@ RECADOS = {
     "nao_encontrada": "Essa versão não foi encontrada.",
     "indisponivel": "A equipe comercial de agentes ainda não está disponível.",
     "papel": "Esse papel não existe.",
+    "mudou": "A versão no ar já mudou desde que esta tela abriu. Confira a versão atual antes de voltar de novo.",
     "retomado": "O trabalho voltou para a fila.",
     "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
     "analise_pedida": "Análise de resultados pedida. Ela entra na fila e aparece em Trabalhos.",
@@ -369,7 +370,16 @@ def crm_agentes_voltar(request, papel: str):
     if papel not in EstrategiaComercial.Papel.values:
         return _volta("papel")
     motivo = (request.POST.get("motivo") or "").strip()[:1000]
-    voltou = papeis.voltar_a_anterior(papel, _quem(request), motivo)
+    esperada = request.POST.get("versao_no_ar", "")
+    try:
+        voltou = papeis.voltar_a_anterior(
+            papel,
+            _quem(request),
+            motivo,
+            versao_esperada=int(esperada) if esperada.isascii() and esperada.isdigit() and len(esperada) <= 9 else None,
+        )
+    except papeis.VersaoMudou:
+        return _volta("mudou", f"papel-{papel}")
     if voltou is None:
         return _volta("sem_anterior", f"papel-{papel}")
     _auditar(request, f"estrategia:{papel}:v{voltou.versao}", "CRM agentes: voltar à versão anterior")

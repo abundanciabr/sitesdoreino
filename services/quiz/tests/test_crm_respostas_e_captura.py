@@ -294,6 +294,7 @@ def test_captura_parcial_registra_e_publica_uma_vez_por_sessao(client, quiz):
             "email": "ana@exemplo.com",
             "name": "Ana",
             "phone": "(11) 98888-7777",
+            "phone_digitos": "11988887777",
         },
         "respostas": [
             {
@@ -336,6 +337,7 @@ def test_contato_novo_depois_do_aviso_publica_a_mesma_captura_atualizada(client,
     assert segundo.payload["lead"] == {
         "email": "ana@exemplo.com",
         "phone": "(11) 98888-7777",
+        "phone_digitos": "11988887777",
     }
 
 
@@ -450,7 +452,10 @@ def test_captura_ignora_email_invalido_e_fica_com_o_telefone(client, quiz):
     assert captura.lead_email == ""
     assert captura.answers == {}
     assert publicar_capturas_paradas(depois_do_silencio()) == 1
-    assert avisos()[0].payload["lead"] == {"phone": "11 98888-7777"}
+    assert avisos()[0].payload["lead"] == {
+        "phone": "11 98888-7777",
+        "phone_digitos": "11988887777",
+    }
 
 
 def test_captura_de_outra_sessao_vira_outra_captura(quiz):
@@ -504,3 +509,49 @@ def test_captura_nao_responde_em_host_de_outro_site(client, quiz, site_b):  # no
     resposta = capturar(client, quiz, host=HOST_B, email="ana@exemplo.com")
     assert resposta.status_code == 404
     assert not CapturaParcial.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_captura_que_chega_junto_do_resultado_espera_e_nao_fica_solta(quiz):
+    """A conclusão segura a fila da sessão; a captura espera e vê a submissão."""
+    import threading
+    import time
+
+    from django.db import close_old_connections, transaction
+
+    from apps.quiz.respostas import emitir_quiz_completado, travar_sessao
+
+    client = Client()
+    entrada = abrir(client, quiz)
+    sessao = uuid.UUID(entrada["session_id"])
+    versao = quiz.versions.get()
+    resposta = {}
+
+    def captura_em_paralelo():
+        try:
+            resposta["r"] = capturar(client, quiz, email="ana@exemplo.com").json()
+        finally:
+            close_old_connections()
+
+    with transaction.atomic():
+        travar_sessao(quiz.id, sessao)
+        submissao = Submission.objects.create(
+            quiz=quiz,
+            version=versao,
+            site_id=quiz.site_id,
+            session_id=sessao,
+            score=0,
+            result_key="comeco",
+            answers={},
+            lead_email="ana@exemplo.com",
+        )
+        fio = threading.Thread(target=captura_em_paralelo)
+        fio.start()
+        time.sleep(0.5)  # a captura está esperando a fila
+        assert "r" not in resposta
+        emitir_quiz_completado(quiz, submissao)
+    fio.join(timeout=10)
+
+    assert resposta["r"] == {"estado": "concluida"}
+    assert CapturaParcial.objects.count() == 0
+    assert avisos() == []

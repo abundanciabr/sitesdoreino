@@ -32,7 +32,8 @@ def registrar(conversa: Conversa, momento=None) -> Descadastro:
         defaults={"conversa": conversa, "registrado_em": momento},
     )
     if not criado:
-        descadastro.registrado_em = momento
+        # Pedido antigo (histórico) nunca recua a data de um pedido mais novo.
+        descadastro.registrado_em = max(descadastro.registrado_em, momento)
         descadastro.conversa = conversa
         descadastro.save(update_fields=["registrado_em", "conversa"])
     return descadastro
@@ -76,6 +77,18 @@ def gravar_nas_jornadas(*, destinatario_id: str, site_id: str, canal: str) -> in
             canal=canal, passo__classe__in=CLASSES_DE_ACOMPANHAMENTO,
             resultado="pendente",
         ).update(resultado="barrada_por_preferencia", motivo=f"descadastro pelo {canal}")
+
+
+def pessoa_da_conversa(conversa: Conversa) -> str:
+    """Id de plataforma do contato pelo e-mail dele (ou do lead ligado); vazio se não achar."""
+    if conversa.canal == "email":
+        email = conversa.endereco
+    else:
+        email = leads.email_do_lead(conversa.lead_id) if conversa.ligacao == "ligada" else ""
+    if not email:
+        return ""
+    pessoa, _ = _pessoa_por_email(email)
+    return pessoa or ""
 
 
 def _religar(conversa: Conversa) -> None:
