@@ -14,6 +14,7 @@ from django.utils import timezone
 from pagamentos.core import gateway
 from pagamentos.core.ledger import emitir_reversao_confirmada
 from pagamentos.core.instalacoes_appmax import instalacao_do_inbox
+from pagamentos.core.observacoes import observar_pedido_appmax
 from pagamentos.core.models import (
     ESTADOS_EM_ABERTO,
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
@@ -321,6 +322,10 @@ def _processar_aviso(aviso_id: int) -> bool:
             _registrar_falha(aviso, "pedido_sem_vinculo_unico", definitiva=True)
             return False
         tentativa = tentativas[0]
+        if aviso.event == "order_refused_by_risk":
+            # AC13: só observa o que o GET devolve depois deste aviso; a
+            # decisão abaixo continua a mesma.
+            observar_pedido_appmax(tentativa, order_id=aviso.external_order_id)
         duplicada_em_estorno = (
             tentativa.state == "approved_duplicate"
             and aviso.event == "order_refund"
@@ -394,7 +399,7 @@ def _reconciliar_tentativa(tentativa_id: int) -> bool:
     if tentativa.provider == "mercadopago":
         try:
             if tentativa.intent.method == "pix":
-                reconciliar_intent_pix(tentativa.intent)
+                reconciliar_intent_pix(tentativa.intent, origem="supervisao")
             else:
                 reconciliar_intent_card(tentativa.intent)
         except (gateway.FalhaNoProvedor, IntentNaoConfirmavel, ValueError):

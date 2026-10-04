@@ -13,6 +13,7 @@ from ninja import Router
 
 from pagamentos.core.estorno import estornar
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.core.observacoes import resumo_do_site
 
 router = Router()
 COMPRAS_POR_PAGINA = 100
@@ -82,6 +83,8 @@ def compras(request: HttpRequest, site_id: str, pagina: int = 1):
         "compras": [_linha(item) for item in itens],
         "pagina": pagina, "total": total, "paginas": paginas,
         "mais": pagina < paginas,
+        # O que as empresas responderam, por ponto do caminho (AC11, AC13).
+        "observacao": resumo_do_site(site_id),
     }
 
 

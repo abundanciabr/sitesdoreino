@@ -40,5 +40,19 @@
     {% if pagina_seguinte %}<a href="?pagina={{ pagina_seguinte }}">Compras mais antigas</a>{% endif %}
   </nav>
   {% endif %}
+  {% if observacao %}
+  <h2>O que as empresas responderam</h2>
+  <p class="subtitulo">Contagem por ponto do caminho: recusas do Pix no Mercado Pago e consulta à Appmax depois do aviso de risco.</p>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th>Empresa</th><th>Onde</th><th>Status</th><th>Detalhe</th><th>Quantas</th></tr></thead>
+      <tbody>
+      {% for linha in observacao %}
+        <tr><td>{{ linha.empresa }}</td><td>{{ linha.origem }}</td><td>{{ linha.status|default:"—" }}</td><td>{{ linha.detalhe|default:"—" }}</td><td>{{ linha.total }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
