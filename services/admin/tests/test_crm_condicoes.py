@@ -179,3 +179,21 @@ def test_oferta_com_nome_comprido_nao_derruba_a_auditoria_depois_do_salvamento()
     assert r.status_code == 302 and r["Location"].endswith("?salvo=1") and rota.called
     registro = Registro.objects.get()
     assert registro.alvo == longa[:64] and registro.desfecho == Registro.OK
+    assert longa in registro.detalhe  # o nome inteiro não se perde
+
+
+@respx.mock
+def test_o_painel_espera_mais_que_o_checkout_leva_para_cotar_as_parcelas():
+    # O checkout espera até 5 s pela oferta e até 15 s pela cotação do provedor.
+    rota = respx.get(LISTA).mock(return_value=httpx.Response(200, json=resposta(oferta([item("pix", "pix", 1, 990)]))))
+    dentro().get(reverse("crm_condicoes"))
+    assert rota.calls.last.request.extensions["timeout"]["read"] >= 5.0 + 15.0
+
+
+@respx.mock
+def test_consulta_do_agente_e_link_esperam_mais_que_o_checkout_e_as_outras_rotas_ficam_como_eram():
+    from apps.comercial import servicos
+
+    assert servicos.TIMEOUT_POR_ROTA["condicoes"] >= 5.0 + 15.0
+    assert servicos.TIMEOUT_POR_ROTA["link_de_compra"] >= 5.0 + 15.0
+    assert servicos.TIMEOUT == 8.0

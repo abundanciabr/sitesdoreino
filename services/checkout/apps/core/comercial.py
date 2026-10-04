@@ -41,9 +41,7 @@ CACHE_COTACAO_SEGUNDOS = 120
 # (services/pagamentos: methods/pix/appmax.py e methods/pix/service.py). Fora
 # dessas listas, quem define o prazo é o provedor, e aqui ele não é inventado.
 PRAZO_PIX_MINUTOS = 30
-# Hoje não existe cupom em lugar nenhum do site (catálogo, checkout ou
-# pagamentos). A lista sai vazia até existir um de verdade.
-CUPONS_EXISTENTES: tuple = ()
+# Cupom não existe no checkout (nem o link o aplica): `cupons` sai sempre vazio.
 
 
 def valor_em_reais(centavos: int) -> str:
@@ -178,7 +176,7 @@ def condicoes_da_oferta(site: dict, oferta: dict) -> dict:
         "metodos": metodos,
         "condicoes": condicoes,
         "parcelas": {"consulta": consulta_parcelas, "maximo": maximo},
-        "cupons": list(CUPONS_EXISTENTES),
+        "cupons": [],
         "vencimento_padrao": {"pix_minutos": pix_minutos, "card": None},
     }
 

@@ -127,6 +127,20 @@ def test_condicao_marcada_que_deixa_de_existir_some_sozinha(api, settings, carta
 
 
 @pytest.mark.django_db
+def test_parcela_que_sumiu_e_voltou_fica_desligada_ate_ser_liberada_de_novo(
+    api, settings, cartao_no_site_a, marcar
+):
+    marcar(["pix", "card_3x"])
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset()  # sumiu
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix"]
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})  # reapareceu
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix"]
+    assert sorted(CondicaoDoAgente.objects.values_list("condicao_id", flat=True)) == ["pix"]
+    marcar(["pix", "card_3x"])  # liberada de novo pelo mantenedor
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix", "card_3x"]
+
+
+@pytest.mark.django_db
 def test_parcelas_nao_cotadas_nao_viram_condicao_para_o_agente(api, settings, rede, marcar):
     settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(return_value=httpx.Response(503))
@@ -198,28 +212,18 @@ def test_sem_token_nao_entra(client, rede):
     assert client.get(AGENTE, HTTP_HOST=HOST_A).status_code == 401
 
 
-# --- cupons: só os que existem de verdade, e não vencidos ---------------------
+# --- cupom: o checkout não aplica cupom pelo link, então o agente não o vê ----
 
 
 @pytest.mark.django_db
-def test_cupom_existente_pode_ser_marcado_e_o_vencido_nao_existe(api, rede, marcar, monkeypatch):
-    from apps.core import comercial
-
-    monkeypatch.setattr(
-        comercial,
-        "CUPONS_EXISTENTES",
-        (
-            {"codigo": "VOLTA10", "percentual": 10},
-            {"codigo": "ANTIGO", "percentual": 50, "valido_ate": "2020-01-01T00:00:00+00:00"},
-        ),
-    )
-    assert api.get(AGENTE).json()["cupons"] == []  # nada marcado
-    assert marcar(["cupom:ANTIGO"]).status_code == 422  # vencido não existe
-    assert marcar(["cupom:VOLTA10", "pix"]).status_code == 200
-    corpo = api.get(AGENTE).json()
-    assert [c["id"] for c in corpo["cupons"]] == ["cupom:VOLTA10"]
-    assert corpo["cupons"][0]["percentual"] == 10
-    assert [c["id"] for c in corpo["condicoes"]] == ["pix"]
+def test_cupom_nao_aparece_como_condicao_nem_pode_ser_marcado(api, rede, marcar):
+    assert api.get(AGENTE).json()["cupons"] == []
+    assert api.get(CONDICOES).json()["cupons"] == []
+    resp = marcar(["cupom:VOLTA10"])
+    assert resp.status_code == 422
+    assert CondicaoDoAgente.objects.count() == 0
+    item_da_lista = api.get(LISTA).json()["ofertas"]
+    assert all(i["tipo"] == "condicao" for o in item_da_lista for i in o["itens"])
 
 
 # --- lista para a tela do mantenedor -----------------------------------------
@@ -272,19 +276,20 @@ def test_lista_nao_cai_quando_o_catalogo_nao_responde(api, rede, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_cotacao_fora_do_ar_nao_apaga_a_marca_das_parcelas(api, cartao_no_site_a, rede, marcar):
+def test_cotacao_fora_do_ar_desliga_a_parcela_ate_ser_liberada_de_novo(
+    api, cartao_no_site_a, rede, marcar
+):
     marcar(["pix", "card_3x"])
     # A cotação boa fica guardada por 120 s; aqui ela já venceu e o provedor caiu.
     cache.clear()
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(return_value=httpx.Response(503))
-    # A tela só lista "pix" e "card_1x"; o mantenedor salva sem mexer em card_3x.
+    # A tela só lista "pix" e "card_1x": o que sumiu não fica guardado.
     assert marcar(["pix"]).status_code == 200
     cache.clear()
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(side_effect=_cotacao)
-    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix", "card_3x"]
-    # Desmarcar o que existe agora continua funcionando.
-    marcar(["pix"])
     assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix"]
+    marcar(["pix", "card_3x"])
+    assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix", "card_3x"]
 
 
 @pytest.mark.django_db
