@@ -225,6 +225,33 @@ def test_primeira_mensagem_do_grupo_de_comparacao_acha_a_ficha_e_termina_sem_mod
     assert TrabalhoComercial.objects.count() == 1
 
 
+@pytest.mark.django_db
+@respx.mock
+@pytest.mark.parametrize("status", [500, 404])
+def test_sem_a_ficha_o_lead_marcado_nao_segue_para_o_agente(status, monkeypatch):
+    comparacao.definir_percentual(50, "dono")
+    sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
+    comparacao.decidir("site-1", sem)
+    respx.get(f"{LEADS}/leads/lead-1").respond(status, json={"detail": "fora"})
+    respx.route(url__startswith="http://").respond(404, json={"detail": "sem esta rota"})
+    chamadas = []
+    monkeypatch.setattr(coordenador, "_atender", lambda trabalho: chamadas.append(trabalho.pk))
+    eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1"))
+
+    trabalho = coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert not chamadas
+    assert trabalho.estado == E.NA_FILA  # espera a leads voltar, nunca vai ao agente no escuro
+
+    # Passado o prazo sem ficha, a equipe fica com a conversa: ainda sem agente.
+    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(
+        criado_em=timezone.now() - coordenador.ESPERA_DA_FICHA - timedelta(minutes=1),
+        nao_antes_de=timezone.now() - timedelta(seconds=1))
+    trabalho = coordenador.rodar_um("t1")
+    trabalho.refresh_from_db()
+    assert not chamadas and trabalho.estado == E.ENCERRADO
+
+
 # ---------------------------------------------------------------- o otimizador
 
 
@@ -324,6 +351,20 @@ def test_dado_de_um_site_nao_entra_no_outro_nem_lead_sem_marca_entra():
     intruso = _oportunidade("site-b", email)
     assert crm_resultados.comparacao_com_e_sem_agente(
         {"oportunidades": [intruso], "compras": []}, {})["marcados"] == 0
+
+
+@pytest.mark.django_db
+def test_lead_marcado_com_percentual_zero_nao_entra_na_conta_dos_dois_grupos():
+    # O coordenador ligado com percentual 0 (padrão) marca todo lead como "agente", sem par.
+    antigos = []
+    for i in range(5):
+        email = f"zero{i}@meshcraft.test"
+        assert comparacao.decidir("site-1", email) == comparacao.GRUPO_AGENTE
+        antigos.append(_oportunidade("site-1", email))
+    ops, compras = _grupos_marcados("site-1", 0, 1, 0, 0)
+    r = crm_resultados.comparacao_com_e_sem_agente({"oportunidades": antigos + ops, "compras": compras}, {})
+    assert r["marcados"] == 1
+    assert r["blocos"][0]["geral"]["com"]["pessoas"] == 0 and r["blocos"][0]["geral"]["sem"]["pessoas"] == 1
 
 
 @pytest.mark.django_db
