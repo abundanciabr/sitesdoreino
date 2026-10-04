@@ -47,6 +47,14 @@ ENVIOS = {
 }
 AUTORES = {"lead": "Contato", "agente": "Agente", "pessoa": "Equipe", "sistema": "Sistema"}
 MIDIAS = {"audio": "Áudio", "imagem": "Imagem", "video": "Vídeo", "documento": "Documento"}
+POR_PAGINA = 50
+VARREDURA_MAXIMA = 10  # páginas de 100 conversas lidas por vez no filtro "aguardando"
+CONFERENCIAS_MAXIMAS = 40  # consultas ao último recado por tela, só no filtro "aguardando"
+MENSAGENS_DA_RECUSA = {
+    "fora_da_janela": "Não enviada: já passaram 24 horas desde a última mensagem do contato no WhatsApp. Agora só um modelo aprovado pode ser enviado.",
+    "descadastrado": "Não enviada: o contato pediu para não receber mais mensagens neste canal. Só dá para responder quando ele escrever de novo.",
+    "conversa_com_pessoa": "Não enviada: outra pessoa da equipe está atendendo esta conversa.",
+}
 RESULTADOS = {
     "enviada": "Mensagem enviada.",
     "repetida": "Esta resposta já tinha sido enviada. Não enviamos de novo.",
@@ -121,9 +129,18 @@ def ficha_do_lead(lead_id):
 
 
 def aguardando(conversa):
-    """O contato falou por último e ninguém respondeu ainda."""
-    entrada, ultima = conversa.get("ultima_entrada"), conversa.get("ultima")
-    return conversa.get("estado") != "encerrada" and bool(entrada and ultima and entrada >= ultima)
+    """O contato falou por último e ninguém conseguiu responder ainda.
+
+    Com o último recado em mãos vale ele: resposta que falhou no envio não
+    responde ninguém, mas já atualizou a hora da última mensagem da conversa."""
+    entrada = conversa.get("ultima_entrada")
+    if conversa.get("estado") == "encerrada" or not entrada:
+        return False
+    recado = conversa.get("recado")
+    if recado and recado.get("direcao") in ("entrada", "saida"):
+        return recado["direcao"] == "entrada" or recado.get("estado_envio") == "falhou"
+    ultima = conversa.get("ultima")
+    return bool(ultima and entrada >= ultima)
 
 
 def preparar_conversa(item):
@@ -133,10 +150,10 @@ def preparar_conversa(item):
     item["ultima"] = instante(item.get("ultima_mensagem_em"))
     item["ultima_entrada"] = instante(item.get("ultima_entrada_em"))
     item["janela_ate"] = instante(item.get("janela_aberta_ate"))
-    item["aguardando"] = aguardando(item)
     item["ficha"] = "" if item.get("ambigua") else ficha_do_lead(item.get("lead_id"))
     recado = item.get("ultima_mensagem") if isinstance(item.get("ultima_mensagem"), dict) else None
     item["recado"] = preparar_mensagem(recado) if recado else None
+    item["aguardando"] = aguardando(item)
     return item
 
 
@@ -174,8 +191,9 @@ def ultimo_recado(cliente, site_id, conversas):
         estado, dados = cliente.mensagens(site_id, conversa["id"], limite=1)
         if estado != OK:
             return
-        if dados["mensagens"]:
+        if dados["mensagens"] and isinstance(dados["mensagens"][-1], dict):
             conversa["recado"] = preparar_mensagem(dados["mensagens"][-1])
+            conversa["aguardando"] = aguardando(conversa)
 
 
 @require_GET
@@ -195,29 +213,76 @@ def crm_conversas(request):
     if not site_id:
         contexto["erro"] = "Não consegui identificar este site. Tente novamente em alguns instantes."
         return render(request, "admin/crm_conversas.html", contexto, status=503)
-    params = {"canal": canal, "pagina": pagina, "por_pagina": 100 if filtro == "aguardando" else 50}
+    params = {"canal": canal}
     if filtro in ("agente", "pessoa", "encerrada"):
         params["estado"] = filtro
-    elif filtro == "ambigua":
-        params["ligacao"] = "ambigua"
+    # Sem `ligacao` a mensageria só devolve conversas ligadas a um lead e quem
+    # escreve de um número ambíguo ou desconhecido nunca apareceria na lista.
+    params["ligacao"] = "ambigua" if filtro == "ambigua" else "todas"
     cliente = ConversasClient()
-    estado, dados = cliente.listar(site_id, **params)
+    if filtro == "aguardando":
+        estado, conversas, mais, completo = varrer_aguardando(cliente, site_id, pagina, params)
+        total = len(conversas) if estado == OK else None
+        if estado == OK:
+            inicio = (pagina - 1) * POR_PAGINA
+            mais = len(conversas) > inicio + POR_PAGINA
+            conversas = conversas[inicio:inicio + POR_PAGINA]
+            contexto["parcial"] = not completo
+    else:
+        estado, dados = cliente.listar(site_id, pagina=pagina, por_pagina=POR_PAGINA, **params)
+        if estado == OK:
+            conversas = [preparar_conversa(c) for c in dados["itens"] if isinstance(c, dict) and c.get("id")]
+            total, mais = dados.get("total"), bool(dados.get("tem_mais"))
     if estado == INDISPONIVEL:
         contexto["aviso"] = erro_da_fonte(estado)
         return render(request, "admin/crm_conversas.html", contexto)
     if estado != OK:
         contexto["erro"] = erro_da_fonte(estado)
         return render(request, "admin/crm_conversas.html", contexto, status=503)
-    conversas = [preparar_conversa(c) for c in dados["itens"] if isinstance(c, dict) and c.get("id")]
-    if filtro == "aguardando":
-        conversas = [c for c in conversas if c["aguardando"]]
     ultimo_recado(cliente, site_id, conversas)
     contexto["conversas"] = conversas
-    contexto["total"] = dados.get("total")
+    contexto["total"] = total
     parametros = {k: v for k, v in (("estado", filtro), ("canal", canal)) if v}
-    contexto["proxima"] = "?" + urlencode(dict(parametros, pagina=pagina + 1)) if dados.get("tem_mais") else ""
+    contexto["proxima"] = "?" + urlencode(dict(parametros, pagina=pagina + 1)) if mais else ""
     contexto["anterior"] = "?" + urlencode(dict(parametros, pagina=pagina - 1)) if pagina > 1 else ""
     return render(request, "admin/crm_conversas.html", contexto)
+
+
+def varrer_aguardando(cliente, site_id, pagina, params):
+    """Junta quem espera resposta lendo as páginas da mensageria até achar o bastante.
+
+    A mensageria não filtra por quem falou por último; filtrar só a página que
+    ela devolve deixaria as páginas do painel quase vazias. Por isso o painel
+    lê as páginas em ordem (da mais recente) e guarda só as que esperam.
+    Devolve (estado, conversas, tem_mais_na_mensageria, varredura_completa)."""
+    achadas, conferidas, mais = [], 0, False
+    necessarias = pagina * POR_PAGINA + 1  # uma a mais, para saber se há próxima página
+    for numero in range(1, VARREDURA_MAXIMA + 1):
+        estado, dados = cliente.listar(site_id, pagina=numero, por_pagina=100, **params)
+        if estado != OK:
+            if numero == 1:
+                return estado, [], False, False
+            return OK, achadas, True, False
+        mais = bool(dados.get("tem_mais"))
+        for bruta in dados["itens"]:
+            if not isinstance(bruta, dict) or not bruta.get("id"):
+                continue
+            conversa = preparar_conversa(bruta)
+            if conversa["estado"] == "encerrada" or not conversa["ultima_entrada"]:
+                continue
+            if not conversa["aguardando"] and conversa["recado"] is None and conferidas < CONFERENCIAS_MAXIMAS:
+                # Pela hora parece respondida, mas a resposta pode ter falhado: confere o último recado.
+                conferidas += 1
+                ultimo_recado(cliente, site_id, [conversa])
+                if conversa["recado"] is None:
+                    conferidas = CONFERENCIAS_MAXIMAS  # a leitura tropeçou: não insiste
+            if conversa["aguardando"]:
+                achadas.append(conversa)
+        if not mais:
+            return OK, achadas, False, True
+        if len(achadas) >= necessarias:
+            return OK, achadas, True, True
+    return OK, achadas, True, False
 
 
 def oportunidade_do_lead(lead_id):
@@ -290,29 +355,36 @@ def responder(request, cliente, site_id, conversa_id, autor):
     estado, atual = cliente.mensagens(site_id, conversa_id, limite=1)
     if estado != OK:
         return estado, "Não conseguimos consultar a conversa. Nada foi enviado."
-    if atual["conversa"].get("estado") != "pessoa":
+    conversa = atual["conversa"]
+    if conversa.get("canal") == "whatsapp" and conversa.get("janela_aberta") is False and not modelo:
+        # A mensageria vai recusar: não assume a conversa para nada e o agente continua atendendo.
+        return RECUSADO, MENSAGENS_DA_RECUSA["fora_da_janela"]
+    assumiu = False
+    if conversa.get("estado") != "pessoa":
         estado, _ = cliente.gesto(conversa_id, "assumir", {"site_id": site_id, "pessoa_id": autor})
         registrar(request, conversa_id, "assumir", estado)
         if estado != OK:
             return estado, "Não conseguimos assumir a conversa, então nada foi enviado. Tente novamente."
+        assumiu = True
     corpo = {"site_id": site_id, "texto": texto, "chave_idempotencia": "painel:" + referencia, "autor": "pessoa", "autor_id": autor}
     if modelo:
         corpo["modelo"] = {"nome": modelo[:200], "idioma": "pt_BR", "componentes": []}
     estado, resultado = cliente.gesto(conversa_id, "mensagens", corpo)
     desfecho = resultado.get("resultado") if estado == OK else None
     registrar(request, conversa_id, "responder" + (f" ({desfecho})" if desfecho else ""), RECUSADO if desfecho and desfecho not in RESULTADOS else estado)
+    nao_saiu = estado == RECUSADO or desfecho in ("fora_da_janela", "descadastrado")
+    if assumiu and nao_saiu:
+        # Nada saiu: a conversa volta para quem estava com ela, para o agente não ficar calado à toa.
+        devolvido, _ = cliente.gesto(conversa_id, "devolver", {"site_id": site_id})
+        registrar(request, conversa_id, "devolver (envio recusado)", devolvido)
     if estado == RECUSADO:
         return estado, "A mensageria recusou o envio" + (f": {resultado}" if resultado else ".")
     if estado != OK:
         return estado, "Não conseguimos confirmar o envio. Reabra a conversa e confira antes de repetir."
     if desfecho in RESULTADOS:
         return OK, RESULTADOS[desfecho]
-    if desfecho == "fora_da_janela":
-        return RECUSADO, "Não enviada: já passaram 24 horas desde a última mensagem do contato no WhatsApp. Agora só um modelo aprovado pode ser enviado."
-    if desfecho == "descadastrado":
-        return RECUSADO, "Não enviada: o contato pediu para não receber mais mensagens neste canal. Só dá para responder quando ele escrever de novo."
-    if desfecho == "conversa_com_pessoa":
-        return RECUSADO, "Não enviada: outra pessoa da equipe está atendendo esta conversa."
+    if desfecho in MENSAGENS_DA_RECUSA:
+        return RECUSADO, MENSAGENS_DA_RECUSA[desfecho]
     detalhe = resultado.get("detalhe") or (resultado.get("mensagem") or {}).get("erro") or ""
     return RECUSADO, "O envio falhou" + (f": {detalhe}" if detalhe else ".") + " Confira a conversa antes de tentar de novo."
 
