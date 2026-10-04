@@ -2985,6 +2985,27 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/ofertas-dos-quizzes/",
+      "endereco": "/admin/crm/ofertas-dos-quizzes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Ofertas dos quizzes",
+      "descricao": "Para cada quiz do site, a oferta que cada resultado apresenta, com os quizzes e resultados sem oferta em destaque.",
+      "observacao": "Só administradores. A ligação mora na célula do quiz; nome e preço da oferta vêm do catálogo."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/ofertas-dos-quizzes/<slug:slug>/salvar/",
+      "endereco": "/admin/crm/ofertas-dos-quizzes/<slug:slug>/salvar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar ofertas de um quiz",
+      "descricao": "Troca a oferta e o texto do botão de cada resultado de um quiz, ou o endereço de compra das duas ofertas de uma campanha."
+    },
+    {
+      "celula": "admin",
       "rota": "contatos/",
       "endereco": "/admin/contatos/",
       "alcance": "publico",

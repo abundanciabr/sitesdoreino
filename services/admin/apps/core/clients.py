@@ -1228,6 +1228,37 @@ class CatalogoClient:
             return None
         return corpo
 
+    def oferta_do_site(self, site_id: str, slug: str) -> "tuple[str, dict | None]":
+        """A oferta publicada deste site (`getOffer`): produto e preço.
+
+        Devolve (`ok`, dados), (`nao_existe`, None) quando o catálogo não tem
+        essa oferta neste site, ou (`nao_respondeu`, None) quando não deu para
+        saber. Quem chama nunca trata a segunda como se fosse a terceira.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/sites/{quote(str(site_id), safe='')}/ofertas/{quote(slug, safe='')}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError:
+            return self.NAO_RESPONDEU, None
+        if r.status_code == 404:
+            return "nao_existe", None
+        if r.status_code != 200:
+            return self.NAO_RESPONDEU, None
+        try:
+            corpo = r.json()
+        except ValueError:
+            return self.NAO_RESPONDEU, None
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("product"), dict):
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
     def criar_produto(self, slug: str, nome: str) -> "tuple[str, dict | str]":
         """`createProduct`: cadastra um produto (um curso é um produto).
 

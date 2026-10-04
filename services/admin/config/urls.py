@@ -89,6 +89,7 @@ from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.crm_resultados import crm_resultados
 from apps.core.crm_modelos import crm_modelos
+from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -258,6 +259,8 @@ urlpatterns = [
     path("crm/modelos/", crm_modelos, name="crm_modelos"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
+    path("crm/ofertas-dos-quizzes/", ofertas_dos_quizzes, name="crm_ofertas_dos_quizzes"),
+    path("crm/ofertas-dos-quizzes/<slug:slug>/salvar/", ofertas_dos_quizzes_salvar, name="crm_ofertas_dos_quizzes_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
