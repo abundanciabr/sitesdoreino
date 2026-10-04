@@ -132,3 +132,6 @@ def test_endereco_rascunho_retomado_sem_mudar_publicado(aluna, site_declarado):
     html = cliente.get(reverse('apresentacao_publica'), HTTP_COOKIE=COOKIE).content.decode()
     assert 'value="Ára Meu!"' in html and 'data-address-base="http://testserver/portfolio/"' in html
     assert 'apelido_rascunho' not in vitrine.snapshot_rascunho(p)['conteudo']['pagina']
+    previa = cliente.get(reverse('apresentacao_previa'), HTTP_COOKIE=COOKIE)
+    assert previa['X-Frame-Options'] == 'SAMEORIGIN'
+    assert previa['Content-Security-Policy'] == "frame-ancestors 'self'"

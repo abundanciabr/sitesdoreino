@@ -35,6 +35,8 @@ def previa(request):
         "apelido": (portfolio.apelido if portfolio else "") or request.aluno.get("nome", ""),
         "contato_url": comercial.url_publica(publico.get("oferta", {}).get("contato")), "pdf_url": reverse("dossie")})
     resposta["Cache-Control"] = "no-store"
+    resposta["X-Frame-Options"] = "SAMEORIGIN"
+    resposta["Content-Security-Policy"] = "frame-ancestors 'self'"
     return resposta
 
 

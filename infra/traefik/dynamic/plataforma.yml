@@ -397,6 +397,14 @@ http:
       service: funil
       tls: {}
 
+    portfolio-previa:
+      rule: "Host(`meshcraft.top`) && Path(`/portfolio/apresentacao/previa`)"
+      priority: 12
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin, portfolio-tamanho-do-envio]
+      service: pages
+      tls: {}
+
     portfolio-quiz:
       rule: "Host(`meshcraft.top`) && PathPrefix(`/portfolio/quiz/`)"
       priority: 11
