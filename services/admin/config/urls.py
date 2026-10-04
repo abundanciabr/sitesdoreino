@@ -77,6 +77,7 @@ from apps.core.parametros_da_fila import (
 )
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
+from apps.core.crm_conversas import crm_conversa, crm_conversas
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -239,6 +240,8 @@ urlpatterns = [
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
+    path("crm/conversas/", crm_conversas, name="crm_conversas"),
+    path("crm/conversas/<uuid:conversa_id>/", crm_conversa, name="crm_conversa"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
