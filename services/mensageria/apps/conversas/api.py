@@ -149,6 +149,27 @@ def prontidao_comercial(request, site_id: str):
     }
 
 
+@router.get("/envios-de-pedido")
+def envios_de_pedido(request, site_id: str, pedido_id: str, horas: int = 24):
+    """Os envios automáticos de recuperação que o aviso do pagamento (recusa, Pix vencido) já
+    mandou para ESTE pedido. Não ficam na conversa (são e-mail transacional e modelo de
+    WhatsApp), então o agente que recupera a compra pergunta aqui antes de falar de novo.
+    Sem endereço nem texto: só tipo, canal, situação e quando."""
+    from datetime import timedelta
+
+    from apps.eventos.models import EnvioRegistrado
+
+    if not 1 <= horas <= 72:
+        raise HttpError(422, "horas vai de 1 a 72")
+    desde = timezone.now() - timedelta(hours=horas)
+    achados = EnvioRegistrado.objects.filter(
+        site_id=_site(site_id), order_id=(pedido_id or "").strip()[:100], tipo__startswith="recuperacao_",
+        created_at__gte=desde,
+    ).exclude(status="falhou").order_by("-created_at")
+    return {"envios": [{"tipo": e.tipo, "canal": e.canal, "status": e.status, "criado_em": _data(e.created_at)}
+                       for e in achados]}
+
+
 @router.get("/conversas")
 def listar_conversas(request, site_id: str, lead_id: str = "", estado: str = "", canal: str = "",
                      ligacao: str = "", pagina: int = 1, por_pagina: int = 50):

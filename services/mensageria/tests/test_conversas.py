@@ -1276,3 +1276,28 @@ def test_receber_sem_site_nao_grava_nada(base):
 
     assert receber(Recebida(site_id="  ", canal="email", endereco="a@b.com", texto="oi")) == (None, False)
     assert Conversa.objects.count() == 0
+
+
+def test_envios_de_pedido_mostra_so_a_recuperacao_automatica_do_pedido_e_do_site(base):
+    from apps.eventos.models import EnvioRegistrado
+
+    def envio(site, pedido, tipo, canal="email", status="enviado"):
+        return EnvioRegistrado.objects.create(
+            event="pagamento.recusado", site_id=site, order_id=pedido, tipo=tipo, canal=canal,
+            destinatario="ana@exemplo.com", assunto="a", corpo="b", status=status)
+
+    envio(SITE, "ped-1", "recuperacao_recusado")
+    envio(SITE, "ped-1", "recuperacao_recusado", canal="whatsapp", status="falhou")
+    envio(SITE, "ped-1", "boas_vindas")
+    envio(SITE, "ped-2", "recuperacao_pix")
+    envio("site-xyz", "ped-1", "recuperacao_pix")
+    antigo = envio(SITE, "ped-1", "recuperacao_pix")
+    EnvioRegistrado.objects.filter(pk=antigo.pk).update(created_at=timezone.now() - timedelta(hours=30))
+
+    resposta = _api(Client(), "GET", f"/envios-de-pedido?site_id={SITE}&pedido_id=ped-1", token=LEITURA)
+    assert resposta.status_code == 200
+    envios = resposta.json()["envios"]
+    assert [(e["tipo"], e["canal"], e["status"]) for e in envios] == [("recuperacao_recusado", "email", "enviado")]
+    assert "ana@exemplo.com" not in resposta.content.decode()
+    assert _api(Client(), "GET", "/envios-de-pedido?site_id=&pedido_id=ped-1", token=LEITURA).status_code == 422
+    assert _api(Client(), "GET", f"/envios-de-pedido?site_id={SITE}&pedido_id=ped-1", token="").status_code in (401, 403)

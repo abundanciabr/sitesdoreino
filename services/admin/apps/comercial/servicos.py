@@ -63,6 +63,7 @@ ROTAS = {
     "conversas": ("mensageria", "GET", "/conversas"),
     "conversa": ("mensageria", "GET", "/conversas/{}"),
     "mensagens": ("mensageria", "GET", "/conversas/{}/mensagens"),
+    "envios_do_pedido": ("mensageria", "GET", "/envios-de-pedido"),
     "abrir_conversa": ("mensageria", "POST", "/conversas"),
     "enviar_na_conversa": ("mensageria", "POST", "/conversas/{}/mensagens"),
     # O modelo aprovado do WhatsApp para o primeiro contato (fora da janela de 24 horas); só escolhe e preenche.
