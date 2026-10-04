@@ -120,6 +120,15 @@ def _itens_do_catalogo(oferta: dict, bump_ids: list) -> list:
     return itens
 
 
+def _intent_desta_compra(intent: dict, method: str, total_cents: int) -> bool:
+    return intent.get("method") == method and intent.get("amount_cents") == total_cents
+
+
+def _chave_da_compra(sessao_id: uuid.UUID, method: str, itens: list) -> str:
+    produtos = ",".join(f"{item['product_id']}:{item['price_cents']}" for item in itens)
+    return str(uuid.uuid5(sessao_id, f"{method}|{produtos}"))
+
+
 def _pedido_criado(pedido: OrderModel) -> dict:
     pagamento = {"method": pedido.method, "intent_id": pedido.intent_id}
     if pedido.method == "pix" and pedido.pix:
@@ -478,30 +487,46 @@ def place_order(request, session_id: str):
                 "Não foi possível identificar sua conexão; recarregue a página e tente novamente",
             ) from None
         comprador_pagamento["document_number"] = cpf
+    cobranca = {
+        "site_id": site["id"],
+        "order_id": str(order_id),
+        "amount_cents": total_cents,
+        "currency": "BRL",
+        "method": method,
+        "customer": comprador_pagamento,
+        # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
+        # para ecoar dado que não é dele (mesma técnica de
+        # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
+        # por causa disto. `product_id` é sempre o do item PRINCIPAL
+        # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
+        # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
+        # bump comprado junto não ganha matrícula própria — é o mesmo
+        # desenho que já existe hoje para `items` no evento `pedido.criado`.
+        "metadata": metadata,
+    }
     try:
+        # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
         intent = PagamentosClient().criar_intent(
-            # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
-            idempotency_key=str(sessao.id),
-            payload={
-                "site_id": site["id"],
-                "order_id": str(order_id),
-                "amount_cents": total_cents,
-                "currency": "BRL",
-                "method": method,
-                "customer": comprador_pagamento,
-                # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
-                # para ecoar dado que não é dele (mesma técnica de
-                # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
-                # por causa disto. `product_id` é sempre o do item PRINCIPAL
-                # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
-                # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
-                # bump comprado junto não ganha matrícula própria — é o mesmo
-                # desenho que já existe hoje para `items` no evento `pedido.criado`.
-                "metadata": metadata,
-            },
+            idempotency_key=str(sessao.id), payload=cobranca
         )
-    except (httpx.HTTPError, ValueError):
+        if not _intent_desta_compra(intent, method, total_cents):
+            # A chave da sessão já guardava a intent de OUTRA compra: a primeira
+            # tentativa falhou (502) e o comprador trocou a forma de pagamento
+            # ou os itens antes de repetir. Aquela intent nunca chegou à tela;
+            # esta compra ganha uma chave própria, derivada da sessão e do que
+            # está sendo comprado, e repeti-la continua idempotente.
+            intent = PagamentosClient().criar_intent(
+                idempotency_key=_chave_da_compra(sessao.id, method, itens),
+                payload=cobranca,
+            )
+        # Na repetição depois de uma falha, pagamentos devolve a intent que já
+        # existia, com o order_id da PRIMEIRA tentativa. É esse id que todo aviso
+        # de pagamento carrega; o pedido nasce com ele para o aviso o encontrar.
+        order_id = uuid.UUID(str(intent["order_id"]))
+    except (httpx.HTTPError, ValueError, KeyError, TypeError):
         raise HttpError(502, _PAGAMENTO_NAO_INICIADO) from None
+    if not _intent_desta_compra(intent, method, total_cents):
+        raise HttpError(502, _PAGAMENTO_NAO_INICIADO)
 
     with transaction.atomic():
         pedido = OrderModel.objects.create(

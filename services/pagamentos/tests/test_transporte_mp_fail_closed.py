@@ -272,6 +272,32 @@ def test_replay_com_provedor_ainda_quebrado_nao_devolve_qr_vazio(
     assert Intent.objects.filter(idempotency_key=chave).count() <= 1
 
 
+def test_corrida_com_a_mesma_chave_nao_devolve_pix_sem_qr(
+    client: Client, token_valido: str
+) -> None:
+    """Duas requisições com a mesma chave passam juntas pela checagem do replay;
+    a que perde a criação encontra a vencedora ainda falando com o MP, sem QR."""
+    from unittest.mock import patch
+
+    from django.db import IntegrityError
+
+    chave = "33333333-0000-4000-8000-000000000001"
+
+    def vencedora_ainda_sem_qr(**dados: Any) -> Intent:
+        Intent.objects.create(
+            idempotency_key=chave, site_id=dados["site_id"], order_id=dados["order_id"],
+            method="pix", status="pending", amount_cents=dados["amount_cents"],
+            currency="BRL", customer=dados["customer"], metadata=dados["metadata"],
+        )
+        raise IntegrityError("duplicate key value violates unique constraint")
+
+    with patch("pagamentos.api.intents.criar_intent_pix", side_effect=vencedora_ainda_sem_qr):
+        resp = _post_intent(client, token_valido, chave)
+
+    _assert_nao_apresentou_intent_completa(resp)
+    assert resp.status_code == 502
+
+
 def test_get_de_intent_fantasma_nao_apresenta_qr_vazio(
     client: Client, token_valido: str
 ) -> None:

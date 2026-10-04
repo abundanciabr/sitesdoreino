@@ -24,7 +24,12 @@ const api = {
       headers: this._headers({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
-    if (!r.ok) throw new Error(`POST ${path}: ${r.status}`);
+    if (!r.ok) {
+      const erro = new Error(`POST ${path}: ${r.status}`);
+      erro.status = r.status;
+      try { erro.corpo = await r.json(); } catch (_) {}
+      throw erro;
+    }
     return r.json();
   },
 };

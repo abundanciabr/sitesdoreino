@@ -158,6 +158,23 @@ def test_lote_limitado_reveza_pix_pendentes_em_rodadas_seguidas():
     assert [chamada.kwargs["payment_id"] for chamada in mp.call_args_list] == ["mp-1", "mp-2"]
 
 
+def test_tentativa_que_a_consulta_nao_resolve_nao_trava_o_lote():
+    # Pix que caiu antes de receber referência: a consulta falha toda vez.
+    presa = _attempt(_intent(), state="reconciliation_required", provider_reference_id="")
+    PaymentAttempt.objects.filter(pk=presa.pk).update(
+        updated_at=timezone.now() - timedelta(minutes=10)
+    )
+    segundo = _intent(pix_expires_at=timezone.now() + timedelta(minutes=20),
+                      pix_qr_code="CODIGO-2", provider_payment_id="mp-2")
+    dois = _attempt(segundo, provider_reference_id="mp-2")
+    with patch("pagamentos.core.gateway.consultar_status_do_pagamento",
+               return_value=_mp_status(dois)) as mp:
+        processar_rodada(limite=1)
+        processar_rodada(limite=1)
+    assert [chamada.kwargs["payment_id"] for chamada in mp.call_args_list] == ["mp-2"]
+    assert PaymentAttempt.objects.get(pk=presa.pk).state == "reconciliation_required"
+
+
 def test_supervisao_resgata_pix_apos_queda_uma_vez(settings):
     settings.APPMAX_PIX_FALLBACK_SITES = frozenset({SITE})
     settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"

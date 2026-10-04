@@ -291,9 +291,17 @@ def create_intent(request: HttpRequest) -> JsonResponse:
         # entre o pre-check acima e este `.create()` — devolve a dela, a nossa
         # nunca chegou a existir (criar_intent_pix/card fecha isso num
         # savepoint próprio, então a transação do request atual continua sã).
-        return JsonResponse(
-            _intent_to_dict(Intent.objects.get(idempotency_key=idem_key)), status=200
-        )
+        vencedora = Intent.objects.get(idempotency_key=idem_key)
+        if vencedora.method == "pix" and intent_pix_incompleta(vencedora):
+            # A vencedora ainda fala com o provedor (ou caiu): sem QR não há o
+            # que entregar. Repetir a mesma chave depois devolve o Pix pronto.
+            return JsonResponse(
+                {
+                    "detail": "O Pix ainda não tem QR pagável; consulte o status desta cobrança."
+                },
+                status=502,
+            )
+        return JsonResponse(_intent_to_dict(vencedora), status=200)
     except DadosPixInvalidos as exc:
         raise HttpError(422, str(exc)) from None
     except FalhaNoProvedor as exc:

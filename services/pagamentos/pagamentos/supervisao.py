@@ -398,6 +398,9 @@ def _reconciliar_tentativa(tentativa_id: int) -> bool:
             else:
                 reconciliar_intent_card(tentativa.intent)
         except (gateway.FalhaNoProvedor, IntentNaoConfirmavel, ValueError):
+            # Como no ramo da Appmax: a que a consulta não resolve vai para o fim
+            # da fila, senão ocupa o lote toda rodada e as outras não são vistas.
+            PaymentAttempt.objects.filter(pk=tentativa_id).update(updated_at=timezone.now())
             return False
         tentativa.refresh_from_db()
         if tentativa.intent.method == "pix" and tentativa.state == "pending":
