@@ -32,7 +32,8 @@ def registrar(conversa: Conversa, momento=None) -> Descadastro:
         defaults={"conversa": conversa, "registrado_em": momento},
     )
     if not criado:
-        descadastro.registrado_em = momento
+        # Pedido antigo (histórico) nunca recua a data de um pedido mais novo.
+        descadastro.registrado_em = max(descadastro.registrado_em, momento)
         descadastro.conversa = conversa
         descadastro.save(update_fields=["registrado_em", "conversa"])
     return descadastro
@@ -78,6 +79,31 @@ def gravar_nas_jornadas(*, destinatario_id: str, site_id: str, canal: str) -> in
         ).update(resultado="barrada_por_preferencia", motivo=f"descadastro pelo {canal}")
 
 
+def pessoa_da_conversa(conversa: Conversa) -> str:
+    """Id de plataforma do contato pelo e-mail dele (ou do lead ligado); vazio se não achar."""
+    if conversa.canal == "email":
+        email = conversa.endereco
+    else:
+        email = leads.email_do_lead(conversa.lead_id) if conversa.ligacao == "ligada" else ""
+    if not email:
+        return ""
+    pessoa, _ = _pessoa_por_email(email)
+    return pessoa or ""
+
+
+def _religar(conversa: Conversa) -> None:
+    try:
+        ligacao = leads.procurar(site_id=conversa.site_id, canal=conversa.canal, endereco=conversa.endereco)
+    except Exception:  # noqa: BLE001 - a próxima passada tenta de novo
+        logger.exception("conversas: falha ao religar conversa pendente")
+        return
+    if ligacao.ligacao == "pendente":
+        return
+    conversa.ligacao = ligacao.ligacao
+    conversa.lead_id = ligacao.lead_id if ligacao.ligacao == "ligada" else ""
+    conversa.save(update_fields=["ligacao", "lead_id", "atualizada_em"])
+
+
 def aplicar_preferencia(descadastro: Descadastro) -> bool:
     """Tenta gravar a preferência das jornadas. Volta True quando resolvido."""
     if descadastro.preferencia_registrada:
@@ -86,8 +112,11 @@ def aplicar_preferencia(descadastro: Descadastro) -> bool:
     email = ""
     if descadastro.canal == "email":
         email = descadastro.endereco
-    elif conversa is not None and conversa.ligacao == "ligada":
-        email = leads.email_do_lead(conversa.lead_id)
+    elif conversa is not None:
+        if conversa.ligacao == "pendente":
+            _religar(conversa)  # leads estava fora do ar quando o contato pediu para parar
+        if conversa.ligacao == "ligada":
+            email = leads.email_do_lead(conversa.lead_id)
     motivo = ""
     pessoa = None
     if not email:

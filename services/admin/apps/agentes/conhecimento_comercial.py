@@ -46,12 +46,14 @@ import logging
 import os
 import re
 import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from datetime import timezone as fuso
 from urllib.parse import quote
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -111,7 +113,17 @@ _PRECO = re.compile(
     r"\d\s*(reais|real|d[óo]lares?|euros?|conto)\b|\b(reais|d[óo]lares|euros)\b|"
     r"\d+\s*vezes\s+(de|sem)\b|\b\d{1,3}(\.\d{3})*,\d{2}\b|"
     r"\binvestimento|\bmensalidade|\banuidade|\bvalor(es)?\b|\bcust(a|am|o|ar)\b|"
-    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit",
+    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit|"
+    # condição de compra (garantia, reembolso, vagas, parcelas, juros): vem ao
+    # vivo do catálogo e do checkout, nunca do conhecimento lembrado
+    r"\bgarantia|\breembols|\bdevolu[çc]|\bvagas?\b|\d+\s*[x×]\b|\bsem juros\b|"
+    # preço escrito só com número: "por 497", "só 97", "de 997 por 497", "entrada de 97".
+    # Número de duas casas ou mais depois dessas palavras, a menos que seja medida do curso.
+    r"\b(por|s[óo]|apenas|somente|entrada|de|a partir de|hoje)\s+(apenas\s+|somente\s+)?\d{2,}([.,]\d+)*\b"
+    r"(?!\s*(%|h\b|hs\b|min\w*|horas?|aulas?|m[óo]dulos?|dias?|semanas?|mes(es)?|anos?|alunos?|"
+    r"exerc[íi]cios?|projetos?|v[íi]deos?|li[çc][õo]es|encontros?|p[áa]ginas?|lives?|modelos?|"
+    r"texturas?|arquivos?|materiais|itens?|etapas?|desafios?|temas?|t[óo]picos?|pessoas?|vagas?|"
+    r"partes?|cap[íi]tulos?|mentorias?|corre[çc][õo]es|pacotes?|brushes|pinc[ée]is))",
     re.IGNORECASE,
 )
 _MARCA_DE_PRECO = "(preço e condições: consultar ao vivo)"
@@ -121,7 +133,8 @@ _PERGUNTA_DE_PRECO = re.compile(
     r"\b(preco\w*|valor\w*|custa\w*|custo\w*|quanto (e|custa|sai|fica|pago|cobra\w*)|"
     r"cobra\w*|parcel\w*|desconto\w*|cupo[mn]\w*|pix|boleto|cartao|pagamento\w*|pagar|"
     r"vista|promocao|promocoes|condic\w*|investimento\w*|investir|mensalidade\w*|"
-    r"anuidade\w*|mensal|reais|caro|barato|gratis|gratuito)\b"
+    r"anuidade\w*|mensal|reais|caro|barato|gratis|gratuito|"
+    r"garantia\w*|reembols\w*|devolu\w*|vaga\w*|juros|\d+\s*x)\b"
 )
 
 _VAZIAS = {
@@ -190,6 +203,9 @@ class Leitura:
     fontes: list[Fonte] = field(default_factory=list)
     lidos: set[str] = field(default_factory=set)
     faltou: list[str] = field(default_factory=list)
+    # Fontes que continuam valendo mesmo sem terem sido lidas agora (o catálogo
+    # de produtos não respondeu): não saem do índice. O resto do tipo sai normal.
+    mantidas: set[str] = field(default_factory=set)
 
 
 def chave(site_id: str, tipo: str, ref: str) -> str:
@@ -223,12 +239,20 @@ def sem_preco(texto: str) -> str:
     return "\n".join(linhas).strip()
 
 
+def nome_sem_preco(nome: str, reserva: str) -> str:
+    """Um nome (de curso, de complemento) sem a parte de preço. Se o nome todo
+    era preço, vale a reserva (o apelido ou o id)."""
+    limpo = sem_preco(nome).replace(_MARCA_DE_PRECO, "").strip(" -:;,")
+    return limpo or reserva
+
+
 def _so_marca(texto: str) -> bool:
     return not texto.replace(_MARCA_DE_PRECO, "").strip()
 
 
-def pedacos(texto: str) -> list[str]:
-    """Corta pelo parágrafo, sem passar muito de TAMANHO_DO_TRECHO."""
+def pedacos(texto: str, origem: str = "") -> list[str]:
+    """Corta pelo parágrafo, sem passar muito de TAMANHO_DO_TRECHO. Passando de
+    MAX_TRECHOS_POR_FONTE, o resto é cortado e o corte fica no log."""
     partes, atual = [], ""
     for paragrafo in re.split(r"\n\s*\n", texto or ""):
         paragrafo = paragrafo.strip()
@@ -248,6 +272,11 @@ def pedacos(texto: str) -> list[str]:
         atual = f"{atual}\n\n{paragrafo}" if atual else paragrafo
     if atual:
         partes.append(atual)
+    if len(partes) > MAX_TRECHOS_POR_FONTE:
+        log.warning(
+            "Conhecimento comercial: %s tem %d trechos e só os %d primeiros entram no índice",
+            origem or "uma fonte", len(partes), MAX_TRECHOS_POR_FONTE,
+        )
     return partes[:MAX_TRECHOS_POR_FONTE]
 
 
@@ -299,7 +328,7 @@ def _ler_cursos(leitura: Leitura, produtos: dict[str, str] | None) -> None:
 
 def _fonte_do_curso(leitura: Leitura, curso: dict, aulas: list, produtos: dict) -> Fonte:
     slug = str(curso.get("slug") or "")
-    nome = str(curso.get("nome") or slug)
+    nome = nome_sem_preco(str(curso.get("nome") or slug), slug)
     produto_id = str(curso.get("produto_id") or "")
     produto_nome = produtos.get(produto_id, "")
     publicadas = [a for a in aulas if isinstance(a, dict) and a.get("estado") == "publicada"]
@@ -337,7 +366,7 @@ def _fonte_do_curso(leitura: Leitura, curso: dict, aulas: list, produtos: dict) 
             rotulo += f": {b['nome']}"
         titulos = "; ".join(t for t in b["aulas"] if t)
         linhas.append(f"{rotulo} ({len(b['aulas'])} aula{'s' if len(b['aulas']) != 1 else ''})" + (f". Aulas: {titulos}." if titulos else "."))
-    for pedaco in pedacos("\n\n".join(linhas)):
+    for pedaco in pedacos("\n\n".join(linhas), f"o curso {slug}"):
         partes.append(("Módulos e aulas", pedaco))
 
     datas = [d for d in (_data(a.get("publicada_em")) for a in publicadas) if d]
@@ -410,7 +439,7 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -
         if not isinstance(secao, dict):
             continue
         slots = secao.get("slots") or {}
-        headline = headline or str(slots.get("headline") or "")
+        headline = headline or nome_sem_preco(str(slots.get("headline") or ""), "")
         textos = [
             sem_preco(str(v)) for s, v in slots.items()
             if s not in SLOTS_FORA and isinstance(v, str) and v.strip()
@@ -418,14 +447,15 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -
         texto = "\n\n".join(t for t in textos if t and not _so_marca(t))
         if texto:
             titulo = NOMES_DAS_SECOES.get(str(secao.get("nome")), str(secao.get("nome") or "Página"))
-            for pedaco in pedacos(texto):
+            for pedaco in pedacos(texto, f"a oferta {slug} ({titulo})"):
                 partes.append((titulo, pedaco))
     resumo = f"A oferta '{slug}' do site {leitura.host or leitura.site_id} vende o produto {produto_nome or produto_id}."
     partes.insert(0, ("Oferta", resumo))
     bumps = [b for b in oferta.get("bumps") or [] if isinstance(b, dict) and b.get("name")]
     if bumps:
         partes.append(("Complementos oferecidos junto", "\n".join(
-            f"{b['name']}" + (f": {sem_preco(str(b.get('headline') or ''))}" if b.get("headline") else "")
+            nome_sem_preco(str(b["name"]), "Complemento")
+            + (f": {chamada}" if (chamada := sem_preco(str(b.get("headline") or ""))) else "")
             for b in bumps
         )))
     no_da_oferta = no_do_site(f"Oferta {slug}", leitura)  # o apelido só é único dentro do site
@@ -471,7 +501,6 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             nome__in=[m.documento_nome for m in marcas], arquivado=False
         ).exclude(corpo="")
     }
-    completo = True
     for marca in marcas:
         documento = documentos.get(marca.documento_nome)
         if documento is None:
@@ -480,13 +509,16 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             continue
         tipo = "depoimento" if marca.tipo == MaterialComercial.Tipo.DEPOIMENTO else "documento"
         if produtos is None and (marca.produto or "").strip():
-            # Sem os nomes dos produtos, a marca perderia o produto: fica como está.
-            completo = False
+            # Sem os nomes dos produtos, a marca perderia o produto: esta fonte
+            # fica como está. As outras (e as revogadas) seguem o curso normal.
+            leitura.mantidas.add(chave(leitura.site_id, tipo, documento.nome))
+            leitura.faltou.append(f"documento {documento.nome} (sem os nomes dos produtos)")
             continue
         produto_ref, produto_nome = _produto_da_marca(marca.produto, produtos or {})
         rotulo = f"Depoimento: {documento.titulo}" if tipo == "depoimento" else documento.titulo
         partes = [
-            (rotulo, p) for p in pedacos(sem_preco(documento.corpo)) if not _so_marca(p)
+            (rotulo, p) for p in pedacos(sem_preco(documento.corpo), f"o documento {documento.nome}")
+            if not _so_marca(p)
         ]
         if not partes:
             continue
@@ -502,10 +534,7 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
             vigente_desde=documento.atualizado_em,
             partes=partes,
         ))
-    if completo:
-        leitura.lidos.update({"documento", "depoimento"})
-    else:
-        leitura.faltou.append("documentos marcados com produto (sem os nomes dos produtos)")
+    leitura.lidos.update({"documento", "depoimento"})
 
 
 def ler(site: dict) -> Leitura:
@@ -575,10 +604,56 @@ def _gravar(leitura: Leitura, fonte: Fonte, chave_da_fonte: str, impressao: str,
         ])
 
 
+ESPERA_DA_TRAVA = 120  # segundos esperando a outra atualização do mesmo site
+
+
+def numero_da_trava(site_id: str) -> int:
+    return int.from_bytes(hashlib.sha1(f"{PREFIXO}{site_id}".encode("utf-8")).digest()[:8], "big", signed=True)
+
+
+@contextmanager
+def _um_de_cada_vez(site_id: str):
+    """Uma atualização por site de cada vez, entre processos e entre a tela e a
+    volta automática (trava do Postgres). Quem chega depois lê DEPOIS de quem
+    estava gravando: uma leitura velha não regrava o que outra acabou de tirar.
+    Devolve False se a outra não terminou a tempo."""
+    if connection.vendor != "postgresql":
+        yield True
+        return
+    numero = numero_da_trava(site_id)
+    prazo = time.monotonic() + ESPERA_DA_TRAVA
+    with connection.cursor() as cursor:
+        pegou = False
+        while True:
+            cursor.execute("SELECT pg_try_advisory_lock(%s)", [numero])
+            pegou = bool(cursor.fetchone()[0])
+            if pegou or time.monotonic() >= prazo:
+                break
+            time.sleep(0.2)
+        try:
+            yield pegou
+        finally:
+            if pegou:
+                cursor.execute("SELECT pg_advisory_unlock(%s)", [numero])
+
+
 def atualizar(site: dict) -> dict:
     """Põe o índice comercial do site em dia com o que ele tem agora. Só a
     fonte nova ou mudada é regravada; a que sumiu sai, mas só se o tipo dela
-    foi lido inteiro agora."""
+    foi lido inteiro agora. A leitura e a gravação são uma volta só, uma de
+    cada vez por site."""
+    site_id = str(site.get("id") or "")
+    with _um_de_cada_vez(site_id) as pegou:
+        if not pegou:
+            return {
+                "site": {"id": site_id, "host": str(site.get("host") or "").lower()},
+                "novas": 0, "mudadas": 0, "iguais": 0, "sairam": 0,
+                "faltou": ["outra atualização deste site ainda está rodando"],
+            }
+        return _atualizar(site)
+
+
+def _atualizar(site: dict) -> dict:
     leitura = ler(site)
     agora = timezone.now()
     prefixo = f"{PREFIXO}{leitura.site_id}:"
@@ -603,7 +678,7 @@ def atualizar(site: dict) -> dict:
             mudadas += 1
     sairam = [
         c for c in existentes
-        if c not in vistas and _tipo_da_chave(c) in leitura.lidos
+        if c not in vistas and c not in leitura.mantidas and _tipo_da_chave(c) in leitura.lidos
     ]
     FonteDoConhecimento.objects.filter(chave__in=sairam).delete()
     return {
@@ -631,32 +706,62 @@ def atualizar_host(host: str) -> dict:
 def hosts_conhecidos() -> list[str]:
     configurados = os.environ.get("CONHECIMENTO_COMERCIAL_HOSTS") or HOST_PADRAO
     hosts = [h.strip().lower() for h in configurados.split(",")]
-    hosts += list(TrechoComercial.objects.values_list("site_host", flat=True).distinct())
-    hosts += list(MaterialComercial.objects.values_list("site_host", flat=True).distinct())
+    # `.order_by()` antes do `.distinct()`: a ordem padrão do modelo entraria no
+    # DISTINCT e devolveria o mesmo domínio muitas vezes.
+    hosts += list(TrechoComercial.objects.order_by().values_list("site_host", flat=True).distinct())
+    hosts += list(MaterialComercial.objects.order_by().values_list("site_host", flat=True).distinct())
     return list(dict.fromkeys(h for h in hosts if h))
 
+
+# A volta de sucesso espera meia hora; a que falhou (exceção, ou o catálogo não
+# respondeu em nenhum domínio) tenta de novo logo, sem esperar a meia hora.
+INTERVALO_APOS_FALHA = timedelta(minutes=2)
 
 _ultima_volta: dict[str, datetime] = {}
 _trava = threading.Lock()
 
 
+def _deu_certo(resultados: list[dict]) -> bool:
+    return any(not r.get("capacidade_indisponivel") for r in resultados)
+
+
 def manter_em_dia(*, forcar: bool = False) -> list[dict] | None:
     """A volta automática (do laço dos robôs, a cada meia hora por processo):
     o catálogo mudou, o índice muda junto. Sem o par com o catálogo, não faz
-    nada; e nunca derruba quem chamou."""
+    nada; e nunca derruba quem chamou. A meia hora só conta depois de uma volta
+    que funcionou: se falhou, a próxima tentativa vem em poucos minutos."""
     if CatalogoClient()._configuracao() is None:
         return None
     agora = timezone.now()
     with _trava:
-        ultima = _ultima_volta.get("em")
-        if not forcar and ultima is not None and agora - ultima < INTERVALO:
-            return None
-        _ultima_volta["em"] = agora
+        if _ultima_volta.get("rodando"):
+            return None  # outra volta deste processo está em andamento
+        if not forcar:
+            certa = _ultima_volta.get("certa")
+            falhou = _ultima_volta.get("falhou")
+            if certa is not None and agora - certa < INTERVALO:
+                return None
+            if falhou is not None and agora - falhou < INTERVALO_APOS_FALHA:
+                return None
+        _ultima_volta["rodando"] = agora
     try:
-        return [atualizar_host(h) for h in hosts_conhecidos()]
+        resultados = [atualizar_host(h) for h in hosts_conhecidos()]
     except Exception:  # noqa: BLE001 - o índice não pode derrubar o laço
         log.exception("Conhecimento comercial: a atualização automática falhou")
+        with _trava:
+            _ultima_volta["falhou"] = timezone.now()
         return None
+    finally:
+        with _trava:
+            _ultima_volta.pop("rodando", None)
+    with _trava:
+        if resultados and not _deu_certo(resultados):
+            log.warning("Conhecimento comercial: o catálogo não respondeu; tenta de novo em poucos minutos")
+            _ultima_volta["falhou"] = timezone.now()
+        else:
+            _ultima_volta["certa"] = timezone.now()
+            _ultima_volta.pop("falhou", None)
+    return resultados
 
 
 # -------------------------------------------------------------- a consulta
@@ -694,10 +799,18 @@ def _site_do_indice(site: str) -> tuple[str, str] | None:
     return None
 
 
+def _sem_prefixo_de_oferta(produto: str) -> str:
+    """O coordenador manda 'oferta:<apelido>' (a forma do CRM) ou o apelido do
+    quiz; o índice guarda só o apelido."""
+    return re.sub(r"^\s*oferta\s*:\s*", "", (produto or "").strip(), flags=re.IGNORECASE).strip()
+
+
 def _do_produto(trechos: list[TrechoComercial], produto: str) -> tuple[list[TrechoComercial], bool]:
     """Os trechos daquele produto ou oferta, mais os gerais do site. Trecho de
     OUTRO produto fica de fora. O segundo valor diz se o produto foi achado."""
-    pedido = produto.strip()
+    pedido = _sem_prefixo_de_oferta(produto)
+    if not pedido:
+        return trechos, False
     chave_pedida = _nome_chave(pedido)
 
     def casa(t: TrechoComercial) -> bool:
@@ -743,7 +856,9 @@ def _saida(t: TrechoComercial) -> dict:
     return {
         "titulo": t.titulo,
         "texto": t.texto[: TAMANHO_DO_TRECHO * 2],
-        "fonte": {"tipo": t.tipo, "id": t.ref, "titulo": t.fonte.titulo, "endereco": t.endereco or None},
+        # O endereço de uma fonte que não é pública não sai daqui.
+        "fonte": {"tipo": t.tipo, "id": t.ref, "titulo": t.fonte.titulo,
+                  "endereco": (t.endereco or None) if t.publico else None},
         "produto": {"ref": t.produto_ref or None, "nome": t.produto_nome or None}
         if (t.produto_ref or t.produto_nome) else None,
         "oferta": t.oferta_ref or None,
@@ -857,11 +972,20 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
     if not com_privados:
         trechos = [t for t in trechos if t.publico]
     aviso = ""
-    produto = (produto or "").strip()[:255]
+    produto = _sem_prefixo_de_oferta(produto)[:255]
+    sem_correspondencia = False
     if produto:
-        trechos, casou = _do_produto(trechos, produto)
-        if not casou:
-            aviso = f"Nada indexado para '{produto}' neste site; os trechos são os gerais do site."
+        do_produto, casou = _do_produto(trechos, produto)
+        if casou:
+            trechos = do_produto
+        else:
+            # Apelido que não casa com nada (por exemplo o do quiz): não esconde
+            # o site; devolve tudo dele e avisa que o produto não foi achado.
+            sem_correspondencia = True
+            aviso = (
+                f"Nada indexado para '{produto}' neste site; os trechos vêm do site inteiro e "
+                "podem ser de outro produto: confira a fonte de cada um."
+            )
     termos = _termos(pergunta)
     pontuados = []
     for t in trechos:
@@ -883,6 +1007,8 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
         "fatos_ao_vivo": [],
         "preco_e_condicoes": "ao_vivo",
     }
+    if sem_correspondencia:
+        resposta["produto_sem_correspondencia"] = True
     if _PERGUNTA_DE_PRECO.search(_normal(pergunta)):
         ofertas, sem_oferta = _ofertas_da_pergunta(escolhidos, trechos)
         resposta["fatos_ao_vivo"] = _fatos_ao_vivo(site_id, ofertas, sem_oferta)
@@ -896,7 +1022,9 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
 def numeros(site_id: str) -> dict:
     trechos = TrechoComercial.objects.filter(site_id=site_id)
     por_tipo = {tipo: 0 for tipo in TIPOS}
-    for tipo, fonte_id in trechos.values_list("tipo", "fonte_id").distinct():
+    # `.order_by()` antes do `.distinct()`: a ordem padrão do modelo entra no
+    # DISTINCT e infla a conta (uma linha por trecho, não por fonte).
+    for tipo, fonte_id in trechos.order_by().values_list("tipo", "fonte_id").distinct():
         por_tipo[tipo] = por_tipo.get(tipo, 0) + 1
     ultima = trechos.order_by("-conferido_em").values_list("conferido_em", flat=True).first()
     return {"fontes": por_tipo, "trechos": trechos.count(), "conferido_em": ultima}
@@ -940,3 +1068,12 @@ def executar_ferramenta(argumentos: dict, *, com_privados: bool = True) -> dict:
     if not site or not pergunta:
         return {"erro": "Diga o site e a pergunta."}
     return consultar(site, pergunta, str(argumentos.get("produto") or ""), com_privados=com_privados)
+
+
+def consultar_conhecimento_comercial(*, site_id, termos, produto=None, com_privados=False) -> dict:
+    """A porta da equipe comercial de agentes (`apps.comercial.ferramentas`),
+    que a procura por este nome. O coordenador fala com o lead: nunca recebe
+    material interno, então `com_privados` é sempre falso, seja qual for o
+    valor pedido (o parâmetro existe só para a assinatura combinada)."""
+    pergunta = " ".join(str(t).strip() for t in (termos or []) if str(t).strip())[:500]
+    return consultar(str(site_id or ""), pergunta, str(produto or ""), com_privados=False)

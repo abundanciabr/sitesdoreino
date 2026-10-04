@@ -471,6 +471,153 @@ def test_a_ferramenta_do_robo():
     assert cc.executar_ferramenta({"site": "a.test", "produto": "blender", "pergunta": "módulos"})["achou"]
 
 
+def _trabalho_do_site_a(**entrada):
+    from apps.comercial import coordenador
+    from apps.comercial.models import TrabalhoComercial
+
+    trabalho, _ = coordenador.criar(
+        TrabalhoComercial.Tipo.ABORDAR, f"k-{TrabalhoComercial.objects.count()}", site_id="site-a",
+        entrada={"quiz": "crivo", **entrada})
+    return trabalho
+
+
+@respx.mock
+def test_a_ferramenta_do_coordenador_importa_pelo_nome_e_devolve_trechos():
+    from importlib import import_module
+
+    from apps.comercial import ferramentas as comercial
+
+    _catalogo()
+    _documento("guia-interno", "Correção das entregas em até dois dias.", publico=False)
+    MaterialComercial.objects.create(documento_nome="guia-interno", site_id="site-a", site_host="a.test")
+    cc.atualizar_host("a.test")
+
+    funcao = getattr(import_module("apps.agentes.conhecimento_comercial"), "consultar_conhecimento_comercial")
+    direta = funcao(site_id="site-a", termos=["correção", "entregas"], produto=None, com_privados=True)
+    # O coordenador fala com o lead: o material interno nunca vem, mesmo pedindo.
+    assert direta["achou"] is True
+    assert all(t["fonte"]["id"] != "guia-interno" for t in direta["trechos"])
+    assert all(t["publico"] for t in direta["trechos"])
+
+    trabalho = _trabalho_do_site_a(oferta_ref="oferta:anual")
+    ctx = comercial.Contexto(trabalho=trabalho, papel="abordagem")
+    saida = json.loads(comercial.executar(ctx, "c1", "consultar_conhecimento_comercial",
+                                          json.dumps({"termos": ["duração", "acesso"], "produto": None})))
+    assert "capacidade_indisponivel" not in saida
+    assert saida["achou"] is True and saida["trechos"][0]["titulo"] == "Tempo e duração"
+    assert trabalho.decisoes.get(call_id="c1").resultado == "feito"  # DecisaoComercial.Resultado.FEITO
+
+
+@respx.mock
+def test_o_produto_do_coordenador_perde_o_prefixo_oferta_e_apelido_que_nao_casa_nao_esconde_o_site():
+    _catalogo()
+    cc.atualizar_host("a.test")
+    com_prefixo = cc.consultar("site-a", "o que recebe e quanto tempo?", "oferta:anual")
+    sem_prefixo = cc.consultar("site-a", "o que recebe e quanto tempo?", "anual")
+    assert "produto_sem_correspondencia" not in com_prefixo and "aviso" not in com_prefixo
+    assert [t["titulo"] for t in com_prefixo["trechos"]] == [t["titulo"] for t in sem_prefixo["trechos"]]
+    assert com_prefixo["trechos"]
+
+    # O apelido do quiz não é de nenhum produto: devolve o site inteiro e avisa.
+    do_quiz = cc.consultar("site-a", "quanto tempo de acesso?", "crivo")
+    assert do_quiz["produto_sem_correspondencia"] is True and "Nada indexado" in do_quiz["aviso"]
+    assert do_quiz["achou"] is True and "Seis meses" in do_quiz["trechos"][0]["texto"]
+    so_prefixo = cc.consultar("site-a", "quanto tempo de acesso?", "oferta:")
+    assert "produto_sem_correspondencia" not in so_prefixo and so_prefixo["achou"] is True
+
+
+@respx.mock
+def test_endereco_so_sai_de_fonte_publica():
+    _catalogo()
+    _documento("guia-interno", "A correção das entregas sai em até dois dias.", publico=False)
+    _documento("guia-publico", "A correção das entregas é feita por uma pessoa.", publico=True)
+    for nome in ("guia-interno", "guia-publico"):
+        MaterialComercial.objects.create(documento_nome=nome, site_id="site-a", site_host="a.test")
+    cc.atualizar_host("a.test")
+    assert TrechoComercial.objects.get(ref="guia-interno").endereco  # o índice guarda
+    resposta = cc.consultar("site-a", "como é a correção das entregas?", com_privados=True)
+    por_fonte = {t["fonte"]["id"]: t["fonte"]["endereco"] for t in resposta["trechos"]}
+    assert por_fonte["guia-interno"] is None
+    assert por_fonte["guia-publico"]
+
+
+@respx.mock
+def test_numeros_contam_fontes_e_nao_trechos():
+    _catalogo()
+    cc.atualizar_host("a.test")
+    contagem = cc.numeros("site-a")
+    # O curso tem mais de um trecho, e a oferta também: a conta é por fonte.
+    assert TrechoComercial.objects.filter(tipo="curso").count() > 1
+    assert contagem["fontes"]["curso"] == 1 and contagem["fontes"]["oferta"] == 1
+    assert contagem["trechos"] == TrechoComercial.objects.filter(site_id="site-a").count()
+
+
+def test_garantia_reembolso_vagas_e_parcelas_nao_ficam_lembrados():
+    texto = (
+        "O curso tem aulas gravadas. Garantia de 7 dias. Reembolso sem perguntas. "
+        "Devolução do valor em até 7 dias. Restam poucas vagas. Em 12x no cartão. 10 X no boleto. "
+        "Pague sem juros. Cupom de lançamento. Desconto para quem entra hoje. Acesso por seis meses."
+    )
+    limpo = cc.sem_preco(texto)
+    assert "aulas gravadas" in limpo.split(". ")[0] and "seis meses" in limpo
+    for frase in ("Garantia", "Reembolso", "Devolução", "vagas", "12x", "10 X", "sem juros", "Cupom", "Desconto"):
+        assert frase not in limpo, frase
+    assert "(preço e condições: consultar ao vivo)" in limpo
+    assert cc.sem_preco("Acesso por seis meses e aulas ao vivo.") == "Acesso por seis meses e aulas ao vivo."
+
+
+@respx.mock
+def test_pergunta_de_garantia_ou_vaga_busca_as_condicoes_ao_vivo():
+    _catalogo()
+    cc.atualizar_host("a.test")
+    for pergunta in ("tem garantia?", "posso pedir reembolso?", "ainda tem vaga?", "dá para pagar em 12x?",
+                     "tem juros? e devolução?"):
+        resposta = cc.consultar("site-a", pergunta)
+        assert any(f.get("fonte", {}).get("tipo") == "checkout" for f in resposta["fatos_ao_vivo"]), pergunta
+
+
+@respx.mock
+def test_a_volta_que_falhou_tenta_de_novo_logo_e_so_a_que_deu_certo_espera_meia_hora(monkeypatch):
+    from datetime import timedelta
+
+    monkeypatch.setenv("CONHECIMENTO_COMERCIAL_HOSTS", "a.test")
+    monkeypatch.setattr(cc, "_ultima_volta", {})
+    _catalogo()
+    real = cc.atualizar_host
+    monkeypatch.setattr(cc, "atualizar_host", lambda host: (_ for _ in ()).throw(RuntimeError("caiu")))
+    assert cc.manter_em_dia() is None
+    assert "certa" not in cc._ultima_volta and "falhou" in cc._ultima_volta
+    assert cc.manter_em_dia() is None  # dentro dos poucos minutos de espera depois da falha
+    # Passados os minutos da falha, tenta de novo (e não espera a meia hora).
+    cc._ultima_volta["falhou"] -= cc.INTERVALO_APOS_FALHA + timedelta(seconds=1)
+    monkeypatch.setattr(cc, "atualizar_host", real)
+    feitos = cc.manter_em_dia()
+    assert feitos and feitos[0]["site"]["host"] == "a.test"
+    assert "certa" in cc._ultima_volta and "falhou" not in cc._ultima_volta
+    assert cc.manter_em_dia() is None  # agora sim, a meia hora
+
+    # O catálogo que não respondeu em nenhum domínio também conta como falha.
+    cc._ultima_volta.clear()
+    respx.get(f"{CATALOGO}/sites/by-host/a.test").mock(return_value=httpx.Response(503))
+    resultado = cc.manter_em_dia()
+    assert resultado[0]["capacidade_indisponivel"] is True
+    assert "falhou" in cc._ultima_volta and "certa" not in cc._ultima_volta
+
+
+def test_trecho_cortado_pelo_limite_vai_para_o_log(caplog):
+    import logging
+
+    muito = "\n\n".join(f"Parágrafo {n}: " + "texto " * 100 for n in range(cc.MAX_TRECHOS_POR_FONTE + 10))
+    with caplog.at_level(logging.WARNING, logger=cc.log.name):
+        partes = cc.pedacos(muito, "o curso blender")
+    assert len(partes) == cc.MAX_TRECHOS_POR_FONTE
+    assert any("o curso blender" in r.getMessage() and "só os" in r.getMessage() for r in caplog.records)
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger=cc.log.name):
+        cc.pedacos("curto", "o curso blender")
+    assert not caplog.records
+
+
 # ------------------------------------------------------------------ a tela
 
 
@@ -510,3 +657,82 @@ def test_a_tela_marca_atualiza_e_procura(settings):
 
     _pessoa("Lívia", LIVIA)
     assert _cliente(LIVIA, "Lívia").get(reverse("conhecimento_comercial")).status_code == 404
+
+
+# ------------------------------------------- achados da segunda revisão
+
+
+def test_preco_escrito_so_com_numero_tambem_sai():
+    for frase in (
+        "Hoje por 497 em vez de 997.",
+        "Só 97 por mês.",
+        "Garanta por apenas 497 hoje.",
+        "Oferta de lançamento: de 997 por 497.",
+        "Entrada de 97 mais três de 150.",
+    ):
+        assert cc.sem_preco(frase) == "(preço e condições: consultar ao vivo)", frase
+    # Medida do curso não é preço.
+    for frase in ("Acesso por 365 dias.", "Mais de 200 alunos já fizeram.", "Carga de 40 horas.",
+                  "São 12 aulas, por 6 meses de acesso.", "Dura 90 minutos por encontro."):
+        assert cc.sem_preco(frase) == frase, frase
+
+
+@respx.mock
+def test_preco_no_nome_do_complemento_e_do_curso_nao_e_lembrado():
+    oferta = _oferta("site-a", "anual", PRODUTOS[0])
+    oferta["bumps"][0]["name"] = "Pacote de texturas por R$ 97"
+    _catalogo(cursos_a=[_curso("blender", "Blender Essencial por 497", "prod-blender")])
+    respx.get(f"{CATALOGO}/sites/site-a/ofertas/anual").mock(return_value=httpx.Response(200, json=oferta))
+    cc.atualizar_host("a.test")
+    tudo = [t.texto + " " + t.titulo + " " + t.fonte.titulo for t in TrechoComercial.objects.filter(site_id="site-a")]
+    assert not any("97" in x for x in tudo), tudo
+    nos = [(l.origem, l.destino) for l in LigacaoDoConhecimento.objects.all()]
+    assert not any("97" in a or "97" in b for a, b in nos), nos
+
+
+@respx.mock
+def test_revogar_depoimento_com_catalogo_de_produtos_fora_tira_do_indice_e_guarda_o_resto():
+    _catalogo()
+    _documento("dep-ana", "A Ana conseguiu o primeiro cliente.", titulo="Ana")
+    _documento("guia", "Correção humana das entregas.", titulo="Guia")
+    MaterialComercial.objects.create(documento_nome="dep-ana", site_id="site-a", site_host="a.test",
+                                     tipo="depoimento", utilizavel=True, produto="Escola de Blender")
+    MaterialComercial.objects.create(documento_nome="guia", site_id="site-a", site_host="a.test",
+                                     tipo="material", produto="Escola de Blender")
+    cc.atualizar_host("a.test")
+    assert TrechoComercial.objects.filter(ref="dep-ana").exists()
+    MaterialComercial.objects.filter(documento_nome="dep-ana").update(utilizavel=False)
+    respx.get(f"{CATALOGO}/produtos").mock(return_value=httpx.Response(503))
+    relatorio = cc.atualizar_host("a.test")
+    assert relatorio["faltou"] and relatorio["sairam"] == 1
+    assert not TrechoComercial.objects.filter(ref="dep-ana").exists()
+    # O documento marcado com produto, que não dá para reler sem o catálogo, fica.
+    guia = TrechoComercial.objects.get(ref="guia", ordem=0)
+    assert guia.produto_ref == "prod-blender"
+
+
+@respx.mock
+def test_uma_atualizacao_por_site_de_cada_vez(monkeypatch):
+    """Outra sessão segura a trava do site: esta espera e, passado o prazo, não
+    grava nada (a leitura velha não regrava o que outra acabou de tirar)."""
+    import psycopg
+    from django.conf import settings
+
+    _catalogo()
+    banco = settings.DATABASES["default"]
+    outra = psycopg.connect(
+        dbname=banco["NAME"], user=banco["USER"], password=banco["PASSWORD"],
+        host=banco["HOST"], port=banco["PORT"], autocommit=True,
+    )
+    try:
+        outra.execute("SELECT pg_advisory_lock(%s)", [cc.numero_da_trava("site-a")])
+        monkeypatch.setattr(cc, "ESPERA_DA_TRAVA", 0.3)
+        relatorio = cc.atualizar_host("a.test")
+        assert relatorio["novas"] == 0 and "ainda está rodando" in relatorio["faltou"][0]
+        assert not TrechoComercial.objects.exists()
+        # Outro site não espera por este.
+        assert cc.atualizar_host("b.test")["novas"] == 2
+        outra.execute("SELECT pg_advisory_unlock(%s)", [cc.numero_da_trava("site-a")])
+        assert cc.atualizar_host("a.test")["novas"] == 2
+    finally:
+        outra.close()

@@ -18,7 +18,13 @@ from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
 JANELA_WHATSAPP = timedelta(hours=24)
+# Fala mais velha que a janela do WhatsApp é histórico (sincronização, reconexão):
+# guarda-se com a hora real, mas não abre janela nem chama o agente.
+ANTIGA_APOS = JANELA_WHATSAPP
 MENSAGEM_RECEBIDA = "mensagem.recebida"
+# Plausível: depois de 2009 (o WhatsApp nem existia antes) e, no máximo, 5 minutos à frente.
+_PRIMEIRO_SEGUNDO_PLAUSIVEL = 1_230_768_000
+REENTREGA_SEM_ID = timedelta(minutes=10)
 
 
 @dataclass
@@ -33,19 +39,24 @@ class Recebida:
     em_resposta_a: str = ""
     midia: dict = field(default_factory=dict)  # {tipo, referencia, mime}
     ocorrida_em: datetime | None = None
+    # O provedor mandou como histórico (append): vale como registro, não como fala nova.
+    historica: bool = False
 
 
 def _momento(valor) -> datetime | None:
-    """Timestamp do provedor (segundos) aceito só quando é plausível."""
+    """Timestamp do provedor (segundos) com a hora real da fala.
+
+    Antigo mas legível volta como é: quem decide se é histórico é `receber`.
+    Só ausente, ilegível ou no futuro vira None (e a fala vale como de agora).
+    """
     if isinstance(valor, dict):
         valor = valor.get("low")
     try:
         segundos = int(str(valor))
-    except (TypeError, ValueError):
+        momento = datetime.fromtimestamp(segundos, tz=dt_timezone.utc)
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
-    agora = timezone.now()
-    momento = datetime.fromtimestamp(segundos, tz=dt_timezone.utc) if segundos > 0 else None
-    if momento is None or momento > agora + timedelta(minutes=5) or momento < agora - timedelta(days=7):
+    if segundos < _PRIMEIRO_SEGUNDO_PLAUSIVEL or momento > timezone.now() + timedelta(minutes=5):
         return None
     return momento
 
@@ -58,6 +69,17 @@ def _ligar(conversa: Conversa | None, recebida: Recebida) -> leads.Ligacao | Non
     except Exception:  # noqa: BLE001 - ligação é melhoria; a mensagem não se perde
         logger.exception("conversas: falha ao ligar a conversa ao lead")
         return leads.Ligacao("pendente")
+
+
+def _repetida_sem_id(conversa: Conversa, recebida: Recebida) -> bool:
+    """E-mail sem Message-ID reentregue: mesmo conteúdo na mesma conversa em poucos minutos."""
+    if recebida.id_externo or recebida.canal != "email":
+        return False
+    return conversa.mensagens.filter(
+        direcao="entrada", texto=recebida.texto or "", assunto=(recebida.assunto or "")[:300],
+        em_resposta_a=(recebida.em_resposta_a or "")[:300],
+        ocorrida_em__gte=timezone.now() - REENTREGA_SEM_ID,
+    ).exists()
 
 
 def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
@@ -85,8 +107,9 @@ def _evento(conversa: Conversa, mensagem: MensagemDaConversa) -> dict:
 def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
     """Grava a mensagem e publica `mensagem.recebida`. Volta (mensagem, nova)."""
     recebida.endereco = enderecos.endereco_do_canal(recebida.canal, recebida.endereco)
-    if not recebida.endereco:
-        return None, False
+    recebida.site_id = (recebida.site_id or "").strip()
+    if not recebida.endereco or not recebida.site_id:
+        return None, False  # sem site não há conversa: dado de um site nunca cai em outro
     existente = Conversa.objects.filter(
         site_id=recebida.site_id, canal=recebida.canal, endereco=recebida.endereco,
     ).first()
@@ -94,13 +117,17 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
         direcao="entrada", id_externo=recebida.id_externo,
     ).exists():
         return existente.mensagens.get(direcao="entrada", id_externo=recebida.id_externo), False
+    if existente is not None and _repetida_sem_id(existente, recebida):
+        return None, False
     ligacao = _ligar(existente, recebida)
-    momento = recebida.ocorrida_em or timezone.now()
+    agora = timezone.now()
+    momento = recebida.ocorrida_em or agora
+    historica = recebida.historica or momento < agora - ANTIGA_APOS
     pede_parar = enderecos.pede_descadastro(recebida.texto) or (
         recebida.canal == "email" and enderecos.pede_descadastro(recebida.assunto)
     )
     try:
-        return _gravar(recebida, ligacao, momento, pede_parar)
+        return _gravar(recebida, ligacao, momento, pede_parar, historica)
     except IntegrityError:
         # Mesmo id externo entregue duas vezes ao mesmo tempo: vale a primeira.
         repetida = MensagemDaConversa.objects.filter(
@@ -112,7 +139,8 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
         return repetida, False
 
 
-def _gravar(recebida: Recebida, ligacao, momento, pede_parar) -> tuple[MensagemDaConversa, bool]:
+def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
+            historica: bool = False) -> tuple[MensagemDaConversa, bool]:
     from apps.jornadas.eventos import emitir
     from apps.jornadas.tasks import relay_apos_commit
 
@@ -135,16 +163,18 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar) -> tuple[MensagemD
             em_resposta_a=(recebida.em_resposta_a or "")[:300],
             descadastro=pede_parar, ocorrida_em=momento,
         )
-        campos = ["ultima_entrada_em", "ultima_mensagem_em", "atualizada_em"]
-        conversa.ultima_entrada_em = max(filter(None, [conversa.ultima_entrada_em, momento]))
+        campos = ["ultima_mensagem_em", "atualizada_em"]
         conversa.ultima_mensagem_em = max(filter(None, [conversa.ultima_mensagem_em, momento]))
-        if recebida.canal == "whatsapp":
-            conversa.janela_aberta_ate = conversa.ultima_entrada_em + JANELA_WHATSAPP
-            campos.append("janela_aberta_ate")
+        if not historica:
+            campos.append("ultima_entrada_em")
+            conversa.ultima_entrada_em = max(filter(None, [conversa.ultima_entrada_em, momento]))
+            if recebida.canal == "whatsapp":
+                conversa.janela_aberta_ate = conversa.ultima_entrada_em + JANELA_WHATSAPP
+                campos.append("janela_aberta_ate")
         if recebida.caixa and not conversa.caixa:
             conversa.caixa = recebida.caixa[:254]
             campos.append("caixa")
-        if conversa.estado == "encerrada":
+        if conversa.estado == "encerrada" and not historica:
             conversa.estado = "agente"
             campos.append("estado")
         if ligacao is not None and conversa.ligacao != "ligada":
@@ -153,8 +183,9 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar) -> tuple[MensagemD
             campos += ["ligacao", "lead_id"]
         conversa.save(update_fields=campos)
         registro = descadastros.registrar(conversa, momento) if pede_parar else None
-        emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
-        transaction.on_commit(relay_apos_commit)
+        if not historica:
+            emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
+            transaction.on_commit(relay_apos_commit)
     if registro is not None:
         try:
             descadastros.aplicar_preferencia(registro)
@@ -182,7 +213,8 @@ def _telefone_do_jid(chave: dict, item: dict) -> str:
     return ""
 
 
-def de_evolution(*, site_id: str, instancia: str, item: dict) -> Recebida | None:
+def de_evolution(*, site_id: str, instancia: str, item: dict, tipo_do_upsert: str = "") -> Recebida | None:
+    """`tipo_do_upsert`, quando o provedor informa: notify = fala nova, append = histórico."""
     chave = item.get("key") if isinstance(item.get("key"), dict) else {}
     if chave.get("fromMe") or item.get("fromMe"):
         return None  # saída feita pelo próprio aparelho; não é fala do contato
@@ -191,6 +223,10 @@ def de_evolution(*, site_id: str, instancia: str, item: dict) -> Recebida | None
         return None
     numero = _telefone_do_jid(chave, item)
     identificador = chave.get("id") or item.get("keyId") or item.get("id")
+    if not numero and remoto.endswith("@lid"):
+        # Sem o telefone real não há como responder nem ligar ao lead. Só o id vai ao log.
+        logger.warning("conversas: JID @lid sem remoteJidAlt/senderPn (instancia=%s, id=%s)",
+                       instancia, identificador)
     if not numero or not isinstance(identificador, str) or not identificador:
         return None
     conteudo = item.get("message") if isinstance(item.get("message"), dict) else {}
@@ -209,7 +245,8 @@ def de_evolution(*, site_id: str, instancia: str, item: dict) -> Recebida | None
         return None  # reação, enquete, chamada: nada para a conversa
     return Recebida(site_id=site_id, canal="whatsapp", endereco=numero, texto=str(texto),
                     id_externo=identificador, caixa=instancia, midia=midia,
-                    ocorrida_em=_momento(item.get("messageTimestamp")))
+                    ocorrida_em=_momento(item.get("messageTimestamp")),
+                    historica=str(tipo_do_upsert or item.get("type") or "").lower() == "append")
 
 
 # ---------------------------------------------------------------------------

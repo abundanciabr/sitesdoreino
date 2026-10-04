@@ -67,7 +67,6 @@ ROTULOS_DOS_EVENTOS = {
     "pix.expirado": "Pix venceu sem pagar",
     "quiz.completado": "Respondeu o quiz",
     "quiz.captura_parcial": "Começou o quiz e deixou o contato",
-    "mensagem.recebida": "Mandou mensagem",
     "lead.upsert": "Deixou o contato",
     "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
 }
@@ -364,7 +363,8 @@ def contato(request, lead_id):
         )
     recados = {
         "assumida": "Você assumiu a conversa. O assistente parou de responder.",
-        "devolvida": "Conversa devolvida ao assistente da equipe.",
+        "devolvida": "Conversa devolvida ao assistente da equipe. "
+        "O robô responde a partir da próxima mensagem da pessoa.",
     }
     return render(
         request,
@@ -373,11 +373,18 @@ def contato(request, lead_id):
             "admin": request.admin,
             "tela": tela,
             "recado": recados.get(request.GET.get("atendimento", ""), ""),
+            "aviso": _AVISO_DO_ESPELHO if request.GET.get("espelho") == "falhou" else "",
             "erro": _ERROS_DO_ATENDIMENTO.get(request.GET.get("erro", ""), ""),
         },
         status=200 if desfecho == LeadsClient.OK else 503,
     )
 
+
+#: O que a ficha avisa quando a conversa mudou, mas o CRM não registrou quem atende.
+_AVISO_DO_ESPELHO = (
+    "A conversa mudou, mas o CRM não registrou quem atende agora. "
+    "O quadro do CRM pode mostrar o atendente anterior."
+)
 
 #: O que a ficha diz quando assumir ou devolver não deu certo.
 _ERROS_DO_ATENDIMENTO = {
@@ -432,8 +439,8 @@ def contato_atendimento(request, lead_id):
     if estado != ficha_completa.OK:
         erro = {ficha_completa.NAO_EXISTE: "conversa"}.get(estado, estado)
         return HttpResponseRedirect(voltar + "?erro=" + erro)
-    _, oportunidades = ficha_completa.oportunidades_do_contato(str(lead_id))
-    ficha_completa.marcar_atendimento_no_crm(
+    estado_crm, oportunidades = ficha_completa.oportunidades_do_contato(str(lead_id))
+    espelhou = estado_crm == ficha_completa.OK and ficha_completa.marcar_atendimento_no_crm(
         oportunidades,
         tipo="pessoa" if gesto == "assumir" else "agente",
         nome=quem if gesto == "assumir" else "Assistente da equipe",
@@ -441,4 +448,5 @@ def contato_atendimento(request, lead_id):
     )
     return HttpResponseRedirect(
         voltar + "?atendimento=" + ("assumida" if gesto == "assumir" else "devolvida")
+        + ("" if espelhou else "&espelho=falhou")
     )

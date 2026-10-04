@@ -14,7 +14,9 @@ from apps.eventos.management.commands import consume_eventos
 from apps.jornadas import despacho
 from apps.jornadas.models import Preferencia
 from apps.whatsapp.models import ConfiguracaoWhatsApp
-from test_conversas import ESCRITA, LEITURA, SITE, _api, _conversa_ligada, _gateway_aberto, base  # noqa: F401
+from test_conversas import (  # noqa: F401  (meio_dia fixa o relógio da régua do agente: 08h-20h)
+    ESCRITA, LEITURA, SITE, _api, _conversa_ligada, _gateway_aberto, base, meio_dia,
+)
 from test_jornadas_whatsapp import _entrega, _liberar
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -88,6 +90,16 @@ def test_conclusao_desmarcada_vale_mesmo_se_a_captura_chega_depois():
     handlers.ao_quiz_completado(_evento(aceito=False, sessao="s9"), str(uuid.uuid4()))
     handlers.ao_quiz_captura_parcial(_evento(sessao="s9", registrado_em=antes), str(uuid.uuid4()))
     assert servico.situacao(SITE, TELEFONE).permite is False
+
+
+def test_recusa_atrasada_no_consumidor_nao_vence_aceite_posterior_da_sessao():
+    agora = timezone.now()
+    hora = lambda minutos: (agora - timedelta(minutes=minutos)).isoformat()  # noqa: E731
+    handlers.ao_quiz_captura_parcial(_evento(sessao="s5", registrado_em=hora(20)), str(uuid.uuid4()))
+    # Desmarcou (T-10) e remarcou (T-5); o consumidor só processa agora.
+    handlers.ao_quiz_consentimento(_evento(aceito=False, sessao="s5", registrado_em=hora(10)), str(uuid.uuid4()))
+    handlers.ao_quiz_consentimento(_evento(sessao="s5", registrado_em=hora(5)), str(uuid.uuid4()))
+    assert servico.situacao(SITE, TELEFONE).permite is True
 
 
 def test_descadastro_depois_do_aceite_retira_e_novo_aceite_devolve():

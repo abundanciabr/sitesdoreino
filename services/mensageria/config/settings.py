@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     # `EnvioRegistrado`. Ler ou escrever qualquer outra tabela de lá é o
     # critério de morte §10.7 do plano.
     "apps.jornadas",
+    "apps.whatsapp_modelos",
 ]
 
 MIDDLEWARE = [
@@ -156,12 +157,23 @@ WHATSAPP_GATEWAY_URL = os.environ.get("WHATSAPP_GATEWAY_URL", "")
 WHATSAPP_GATEWAY_TOKEN = os.environ.get("WHATSAPP_GATEWAY_TOKEN", "")
 WHATSAPP_WEBHOOK_URL = os.environ.get("WHATSAPP_WEBHOOK_URL", "")
 WHATSAPP_WEBHOOK_TOKEN = os.environ.get("WHATSAPP_WEBHOOK_TOKEN", "")
-# WhatsApp Business Platform (Cloud API): verificação do webhook e segredo do
-# app que assina X-Hub-Signature-256. Vazios recusam o webhook oficial.
-WHATSAPP_CLOUD_VERIFY_TOKEN = os.environ.get("WHATSAPP_CLOUD_VERIFY_TOKEN", "")
+# WhatsApp oficial (Cloud API da Meta): modelos aprovados e primeiro contato.
+# Vazios = canal oficial ainda não ligado; a tela diz isso e nada quebra.
+WHATSAPP_CLOUD_ACCESS_TOKEN = os.environ.get("WHATSAPP_CLOUD_ACCESS_TOKEN", "")
+WHATSAPP_CLOUD_WABA_ID = os.environ.get("WHATSAPP_CLOUD_WABA_ID", "")
+WHATSAPP_CLOUD_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID", "")
+WHATSAPP_CLOUD_API_VERSION = os.environ.get("WHATSAPP_CLOUD_API_VERSION", "")
 WHATSAPP_CLOUD_APP_SECRET = os.environ.get("WHATSAPP_CLOUD_APP_SECRET", "")
-# Respostas de e-mail recebidas; vazio usa o mesmo token do webhook de e-mail.
+WHATSAPP_CLOUD_VERIFY_TOKEN = os.environ.get("WHATSAPP_CLOUD_VERIFY_TOKEN", "")
+# Respostas de e-mail recebidas (rota pública): só este token vale; vazio recusa tudo.
 EMAIL_ENTRADA_TOKEN = os.environ.get("EMAIL_ENTRADA_TOKEN", "")
+# Teto de mensagens do AGENTE por contato e por dia (America/Sao_Paulo); pessoa da
+# equipe não tem teto. Valor ruim volta ao padrão 3.
+try:
+    CONVERSAS_TETO_DIARIO_AGENTE = int(os.environ.get("CONVERSAS_TETO_DIARIO_AGENTE", "3") or "3")
+except ValueError:
+    logger.warning("CONVERSAS_TETO_DIARIO_AGENTE invalido (%r); usando 3", os.environ["CONVERSAS_TETO_DIARIO_AGENTE"])
+    CONVERSAS_TETO_DIARIO_AGENTE = 3
 # Par mensageria -> leads, para ligar conversa ao contato do quiz. Vazio deixa a
 # ligação pendente (a conversa é gravada e tenta de novo na próxima mensagem).
 LEADS_API_URL = os.environ.get("LEADS_API_URL", "")

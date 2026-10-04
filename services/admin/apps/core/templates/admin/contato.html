@@ -4,6 +4,7 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'contatos' %}">&larr; Contatos</a>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if aviso %}<p class="aviso borda-amarela" role="status">{{ aviso }}</p>{% endif %}
   {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
   {% if tela.veredito == "sem-configuracao" %}
   <h1>Ficha indisponível</h1>
@@ -44,7 +45,7 @@
     <section class="cartao" id="quem-atende">
       <h2 class="titulo-de-bloco">Quem atende</h2>
       <p><span class="selo{% if tela.atendimento.tipo == 'pessoa' %} selo-equipe{% elif tela.atendimento.tipo == 'agente' %} selo-verde{% endif %}">{{ tela.atendimento.texto }}</span></p>
-      {% with atual=tela.conversa.conversas.0 %}
+      {% with atual=tela.conversa.atual %}
       {% if atual and atual.estado != "encerrada" %}
       <form method="post" action="{% url 'contato_atendimento' tela.id %}">{% csrf_token %}
         <input type="hidden" name="conversa_id" value="{{ atual.id }}">
@@ -118,7 +119,7 @@
   <h2 class="titulo-de-bloco espaco-34" id="conversa">Conversa</h2>
   {% if tela.conversa.estado == "ok" %}
     {% if tela.conversa.conversas %}
-      {% with atual=tela.conversa.conversas.0 %}
+      {% with atual=tela.conversa.atual %}
       <p class="nota">{{ atual.canal }} · {{ atual.quem_atende }}{% if atual.assumida_por %} ({{ atual.assumida_por }}){% endif %}{% if atual.canal == "WhatsApp" %} · {% if atual.janela_aberta %}janela de 24h aberta{% else %}fora da janela de 24h{% endif %}{% endif %}{% if atual.descadastrado %} · pediu para não receber mensagens{% endif %}{% if atual.ambigua %} · contato ambíguo, confira antes de responder{% endif %}</p>
       {% endwith %}
       {% if tela.conversa.mensagens_indisponiveis %}<p class="aviso">As mensagens não puderam ser lidas agora.</p>
@@ -132,12 +133,12 @@
         {% endfor %}
       </div>
       {% else %}<p class="nota">Conversa sem mensagens.</p>{% endif %}
-      {% if tela.conversa.conversas|length > 1 %}<p class="nota">Este contato tem {{ tela.conversa.conversas|length }} conversas; aqui aparece a mais recente.</p>{% endif %}
+      {% if tela.conversa.conversas|length > 1 %}<p class="nota">Este contato tem {{ tela.conversa.conversas|length }} conversas; aqui aparece a que está em andamento ou, se todas foram encerradas, a mais recente.</p>{% endif %}
     {% else %}<p class="aviso">Nenhuma conversa com este contato ainda.</p>{% endif %}
   {% elif tela.conversa.estado == "sem-configuracao" %}<p class="aviso">Conversas: ainda indisponível. A administração ainda não está ligada às conversas.</p>
   {% elif tela.conversa.estado == "indisponivel" %}<p class="aviso">Conversas: ainda indisponível.</p>
   {% else %}<p class="aviso borda-vermelha">As conversas não responderam agora. Recarregue em alguns minutos.</p>{% endif %}
-  {% if tela.id %}<p><a class="botao" href="{% url 'crm' %}conversas/?lead_id={{ tela.id|urlencode }}">Abrir a caixa de conversas</a></p>{% endif %}
+  {% if tela.caixa_de_conversas %}<p><a class="botao" href="{{ tela.caixa_de_conversas }}">Abrir a caixa de conversas</a></p>{% endif %}
 
   <h2 class="titulo-de-bloco espaco-34" id="links">Links de compra enviados</h2>
   {% if tela.links.estado == "ok" %}

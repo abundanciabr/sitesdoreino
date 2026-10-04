@@ -49,7 +49,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from . import condicoes, regua
+from . import condicoes, crm, regua
 from .models import Entrega, EstadoDoAluno, Inscricao, Jornada, JornadaVersao, Passo
 
 # Teto de trabalho de UMA passada, como os relays da casa já fazem. Ele limita o
@@ -61,6 +61,8 @@ LOTE = 200
 
 # Quem sabe entregar um passo num canal. Devolve True se ENTREGOU de verdade.
 Despachante = Callable[[Inscricao, Passo, str], bool]
+# Quem confere, no instante do envio, o que já aconteceu com a oportunidade.
+Conferente = Callable[[Inscricao, Passo, datetime], "crm.Conferencia"]
 
 
 class CanalNaoSuportado(Exception):
@@ -103,6 +105,8 @@ class Passada:
     entregues: int = 0
     pendentes: int = 0
     sem_despacho: int = 0
+    encerradas_pelo_crm: int = 0
+    esperando_crm: int = 0
     motivos: list[str] = field(default_factory=list)
     # O teto QUE ESTA PASSADA usou, e não a constante do módulo: `varrer` aceita
     # `lote=` e uma passada menor precisa saber dizer se encheu. Comparar com a
@@ -138,6 +142,8 @@ def inscrever(
     contexto_id: str = "",
     origem_event_id=None,
     momento: datetime | None = None,
+    oportunidade_id: str = "",
+    lead_id: str = "",
 ) -> Inscricao | None:
     """Põe uma pessoa numa jornada. Devolve `None` quando não há onde inscrever.
 
@@ -163,6 +169,10 @@ def inscrever(
     agora = _agora(momento)
     if not jornada.ativa:
         return None
+    # Jornada de uma oportunidade do CRM: o episódio é da oportunidade, então a
+    # mesma pessoa com duas ofertas tem dois relógios.
+    if oportunidade_id and not contexto_id:
+        contexto_id = oportunidade_id
 
     versao = _versao_publicada(jornada)
     if versao is None:
@@ -193,6 +203,8 @@ def inscrever(
                 proximo_em=agora + primeiro.atraso if primeiro else None,
                 origem_event_id=origem_event_id,
                 estado="andando",
+                oportunidade_id=oportunidade_id,
+                lead_id=lead_id,
             )
     except IntegrityError:
         # A trava parcial falou: já existe um episódio andando. Devolvê-lo é a
@@ -367,6 +379,7 @@ def varrer(
     momento: datetime | None = None,
     lote: int = LOTE,
     despachar: Despachante = sem_despacho_ainda,
+    conferir: Conferente = crm.conferir,
 ) -> Passada:
     """Uma passada da varredura. Decide, registra e agenda — não envia sozinha.
 
@@ -410,6 +423,32 @@ def varrer(
             passada.puladas += 1
             continue
 
+        # O QUE JÁ ACONTECEU COM A OPORTUNIDADE, no instante do envio (só para
+        # inscrição com `oportunidade_id`; as de aluno nem vão à rede).
+        conferencia = conferir(inscricao, passo, agora)
+        if conferencia.decisao == crm.ENCERRA:
+            _pular(inscricao, passo, f"CRM: {conferencia.motivo}", agora)
+            crm.encerrar_oportunidade(inscricao, conferencia.motivo)
+            passada.encerradas_pelo_crm += 1
+            passada.motivos.append(f"CRM: {conferencia.motivo}")
+            continue
+        if conferencia.decisao == crm.NAO_SAI:
+            _pular(inscricao, passo, f"CRM: {conferencia.motivo}", agora)
+            Inscricao.objects.filter(pk=inscricao.pk).update(
+                ultima_conferencia=f"CRM: {conferencia.motivo}"[:200]
+            )
+            passada.puladas += 1
+            passada.motivos.append(f"CRM: {conferencia.motivo}")
+            continue
+        if conferencia.decisao == crm.INDISPONIVEL:
+            # Nada sai às cegas, e o passo não se perde: espera o CRM voltar.
+            inscricao.proximo_em = agora + crm.ESPERA_SEM_CRM
+            inscricao.ultima_conferencia = conferencia.motivo[:200]
+            inscricao.save(update_fields=["proximo_em", "ultima_conferencia"])
+            passada.esperando_crm += 1
+            passada.motivos.append(conferencia.motivo)
+            continue
+
         previsto = inscricao.ancora_em + passo.atraso
         entregou_algum = False
         adiar_para: datetime | None = None
@@ -422,6 +461,22 @@ def varrer(
         falhou_o_despacho = False
 
         for canal in passo.canais:
+            if canal in conferencia.canais_barrados:
+                # Descadastro do canal é decisão do lead: definitivo, como a
+                # preferência — os outros canais do passo seguem.
+                Entrega.objects.update_or_create(
+                    inscricao=inscricao,
+                    passo=passo,
+                    canal=canal,
+                    defaults={
+                        "previsto_para": previsto,
+                        "resultado": "barrada_por_preferencia",
+                        "motivo": conferencia.canais_barrados[canal][:200],
+                        "enviado_em": None,
+                    },
+                )
+                passada.barradas += 1
+                continue
             veredito = regua.avaliar(
                 destinatario_id=inscricao.destinatario_id,
                 site_id=inscricao.site_id,
@@ -466,7 +521,7 @@ def varrer(
                         falhou_o_despacho = True
                         continue
 
-                    regua.registrar(
+                    entrega = regua.registrar(
                         veredito,
                         inscricao=inscricao,
                         passo=passo,
@@ -475,6 +530,9 @@ def varrer(
                         momento=agora,
                         pendente_whatsapp=canal == "whatsapp",
                     )
+                    if canal != "whatsapp":
+                        # WhatsApp registra quando sair de verdade (despacho).
+                        crm.agendar_registro_de_contato(entrega)
             except CanalNaoSuportado as motivo_do_canal:
                 # RECUSA DEFINITIVA por canal, e ela é irmã da recusa por
                 # preferência: nada muda com o tempo, então insistir é laço

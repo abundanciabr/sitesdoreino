@@ -78,8 +78,18 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
 from apps.core.crm_conversas import crm_conversa, crm_conversas
-from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
+from apps.core.crm_agentes import (
+    crm_agentes,
+    crm_agentes_ativar,
+    crm_agentes_nova,
+    crm_agentes_retomar,
+    crm_agentes_voltar,
+)
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
+from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
+from apps.core.crm_resultados import crm_resultados
+from apps.core.crm_modelos import crm_modelos
+from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -234,14 +244,23 @@ from config.api import api
 # contrato com o healthcheck do compose, não por `reverse()`.
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 from apps.comercial.views import agentes_comerciais
+from apps.assistente.views import assistente_do_site
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
+    path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),
+    path("crm/resultados/", crm_resultados, name="crm_resultados"),
     # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
     # decisões e estratégias dos quatro papéis. Só do administrador.
-    path("crm/agentes/", agentes_comerciais, name="agentes_comerciais"),
+    path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),
+    # Nome, apresentação, assinatura, tom e voz do assistente de cada site.
+    path("crm/assistente/", assistente_do_site, name="assistente_do_site"),
+    path("crm/modelos/", crm_modelos, name="crm_modelos"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
+    path("crm/ofertas-dos-quizzes/", ofertas_dos_quizzes, name="crm_ofertas_dos_quizzes"),
+    path("crm/ofertas-dos-quizzes/<slug:slug>/salvar/", ofertas_dos_quizzes_salvar, name="crm_ofertas_dos_quizzes_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
@@ -356,8 +375,10 @@ urlpatterns = [
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
     path("robos/conhecimento/comercial", conhecimento_comercial_tela, name="conhecimento_comercial"),
-    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`).
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`): a
+    # única página da equipe comercial de agentes (`apps/comercial`).
     path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/trabalhos/<int:trabalho_id>/retomar/", crm_agentes_retomar, name="crm_agentes_retomar"),
     path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
     path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
     path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),

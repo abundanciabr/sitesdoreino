@@ -5,7 +5,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('quiz', '0011_captura_parcial'),
+        ('quiz', '0012_captura_publicacao'),
     ]
 
     operations = [

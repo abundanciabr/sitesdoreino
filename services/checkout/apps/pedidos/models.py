@@ -29,6 +29,16 @@ class Session(models.Model):
     # ou com um valor que não é um UUID4 canônico — esta célula não é dona do
     # cookie, só lê; nunca sorteia nem corrige o que recebeu.
     visitor_id = models.CharField(max_length=36, null=True, blank=True, default=None)
+    # Sessão aberta de novo pelo mesmo link de compra do atendimento, depois que
+    # a anterior já tinha pedido (Pix vencido, cartão recusado...). A primeira
+    # sessão do link é a `LinkDeCompra.session`; as seguintes apontam para ele aqui.
+    link_origem = models.ForeignKey(
+        "LinkDeCompra",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="sessoes_reabertas",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -75,6 +85,9 @@ class Order(models.Model):
     # link de compra do atendimento) e a oferta (a slug do catálogo).
     oportunidade_ref = models.CharField(max_length=100, blank=True, default="")
     oferta_ref = models.CharField(max_length=200, blank=True, default="")
+    # Pedido que nasceu contra o ambiente de teste do provedor (sandbox): fica
+    # fora dos totais de receita.
+    em_teste = models.BooleanField(default=False)
     # Quando o aviso do provedor confirmou o pagamento (pagamento.aprovado).
     pago_em = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -145,6 +158,37 @@ class LinkDeCompra(models.Model):
         indexes = [
             models.Index(
                 fields=["site_id", "oportunidade_ref"], name="pedidos_lin_site_op_idx"
+            )
+        ]
+
+
+def link_da_sessao(sessao: "Session"):
+    """O link de compra do atendimento que abriu esta sessão, se houve um: a
+    sessão que o próprio link criou ou uma que a página reabriu depois."""
+    if sessao.link_origem_id is not None:
+        return sessao.link_origem
+    return LinkDeCompra.objects.filter(session_id=sessao.pk).first()
+
+
+class CondicaoDoAgente(models.Model):
+    """Uma condição de compra que o mantenedor deixou o agente oferecer.
+
+    Existir a linha é estar liberada. A condição em si (Pix, parcela do cartão,
+    cupom) continua sendo a que o checkout calcula agora; aqui só se guarda a
+    escolha. Nada aqui cria preço, desconto ou prazo.
+    """
+
+    site_id = models.CharField(max_length=64)
+    oferta_slug = models.CharField(max_length=200)
+    condicao_id = models.CharField(max_length=80)
+    liberada_por = models.CharField(max_length=200, blank=True, default="")
+    liberada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "oferta_slug", "condicao_id"],
+                name="condicao_agente_unica_por_oferta",
             )
         ]
 

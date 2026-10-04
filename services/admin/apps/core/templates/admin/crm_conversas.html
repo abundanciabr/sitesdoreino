@@ -13,6 +13,7 @@
 <small>{{ c.ultima|date:"d/m/Y H:i"|default:"Sem mensagens" }}</small>
 {% if c.recado %}<p>{{ c.recado.autor_nome }}: {{ c.recado.resumo|truncatechars:160 }}</p>{% endif %}
 </a>{% empty %}<p class="crm-vazio">Nenhuma conversa {% if filtro or canal %}com este filtro{% else %}ainda{% endif %}.</p>{% endfor %}
+{% if parcial %}<p class="crm-vazio">Foram lidas só as conversas mais recentes. Conversas mais antigas que esperam resposta podem não aparecer aqui.</p>{% endif %}
 {% if proxima or anterior %}<div class="conv-paginacao"><span>{% if anterior %}<a href="{{ anterior }}">← Anteriores</a>{% endif %}</span><span>{% if proxima %}<a href="{{ proxima }}">Mais conversas →</a>{% endif %}</span></div>{% endif %}
 {% endif %}</main>
 {% endblock %}
