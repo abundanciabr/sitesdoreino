@@ -103,16 +103,22 @@ def _dia_de_sao_paulo(agora: datetime) -> tuple[datetime, datetime]:
     return inicio, inicio + timedelta(days=1)
 
 
-def _mensagens_do_agente_no_dia(conversa: Conversa, agora: datetime) -> int:
-    """Saídas do agente a este contato no dia de São Paulo (em qualquer canal do mesmo lead)."""
+def _mensagens_do_agente_no_dia(conversa: Conversa, agora: datetime, ignorar_pk: int | None = None) -> int:
+    """Saídas do agente a este contato no dia de São Paulo (em qualquer canal do mesmo lead).
+
+    `ignorar_pk` é a própria linha que está sendo reenviada: ela não conta contra o teto.
+    """
     inicio, fim = _dia_de_sao_paulo(agora)
     mesmo_contato = Q(pk=conversa.pk)
     if conversa.ligacao == "ligada" and conversa.lead_id:
         mesmo_contato |= Q(lead_id=conversa.lead_id, ligacao="ligada")
-    return MensagemDaConversa.objects.filter(
+    saidas = MensagemDaConversa.objects.filter(
         conversa__in=Conversa.objects.filter(mesmo_contato, site_id=conversa.site_id),
         direcao="saida", autor="agente", ocorrida_em__gte=inicio, ocorrida_em__lt=fim,
-    ).exclude(estado_envio="falhou").count()
+    ).exclude(estado_envio="falhou")
+    if ignorar_pk is not None:
+        saidas = saidas.exclude(pk=ignorar_pk)
+    return saidas.count()
 
 
 def recusa_por_preferencia(conversa: Conversa) -> bool:
@@ -187,7 +193,10 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
                 return Resultado("descadastrado", detalhe=f"o contato pediu para parar no {conversa.canal}")
             if autor == "agente":
                 teto = teto_diario_do_agente()
-                if _mensagens_do_agente_no_dia(conversa, agora) >= teto:
+                # Na retomada, a própria saída pendente não conta contra o teto do dia.
+                ja_enviadas = _mensagens_do_agente_no_dia(
+                    conversa, agora, ignorar_pk=existente.pk if retomada and existente else None)
+                if ja_enviadas >= teto:
                     return Resultado("limite_diario",
                                      detalhe=f"o agente ja mandou {teto} mensagens hoje a este contato",
                                      reagendar_para=regua.proxima_janela(_dia_de_sao_paulo(agora)[1]))

@@ -593,3 +593,34 @@ def test_duas_pessoas_ativando_ou_guardando_ao_mesmo_tempo_nao_dao_erro():
         assert len(versoes) == len(set(versoes)) == 7
     finally:
         _fora_da_transacao(limpar)
+
+
+# --- ajustes de 04/10/2026 (segunda rodada) ----------------------------------------------------
+
+
+@com_comercial
+@respx.mock
+def test_analise_horaria_do_relogio_nao_enche_os_concluidos_e_a_do_botao_continua():
+    import re
+
+    _trabalho("concluido", 1, tipo="atender_mensagem")
+    for hora in range(25):
+        _trabalho("concluido", 100 + hora, tipo="analisar_resultados", papel="resultados", origem="relogio")
+    do_botao = _trabalho("concluido", 200, tipo="analisar_resultados", papel="resultados", origem="painel")
+    html = dentro().get(reverse("crm_agentes")).content.decode()
+    assert "Concluídos recentes · 2" in html
+    ids = set(re.findall(r'href="\?trabalho=(\d+)', html))
+    assert str(do_botao.pk) in ids and len(ids) == 2
+    # O contador do mês conta o mesmo: 2 trabalhos, não 27.
+    assert re.search(r"<strong>2</strong><span>Trabalhos concluídos no mês", html)
+
+
+@com_comercial
+@respx.mock
+def test_encerrado_porque_o_pagamento_foi_aprovado_aparece_nos_concluidos():
+    encerrado = _trabalho("encerrado", 1, motivo="O pagamento foi aprovado pelo provedor: o acompanhamento parou.")
+    cancelado = _trabalho("cancelado", 1)
+    html = dentro().get(reverse("crm_agentes")).content.decode()
+    assert "Concluídos recentes · 2" in html
+    assert f'href="?trabalho={encerrado.pk}' in html and f'href="?trabalho={cancelado.pk}' in html
+    assert "Encerrado sem precisar agir" in html

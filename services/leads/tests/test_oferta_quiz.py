@@ -27,6 +27,7 @@ def quiz(email="maria@gmail.com", slug="crivo"):
 def pedido(email="maria@gmail.com"):
     ao_pedido_criado(str(uuid.uuid4()), {
         "site_id": "a", "order_id": "ped-1", "amount_cents": 990,
+        "items": [{"product_id": "prod-1", "name": "Curso", "price_cents": 990, "kind": "principal"}],
         "customer": {"email": email},
     })
 
@@ -57,6 +58,10 @@ def test_quiz_abre_oferta_pedido_negocia_e_pagamento_vira_venda():
 def test_backfill_abre_oferta_para_quem_ja_respondeu_e_respeita_compra(capsys):
     pagou = Lead.objects.create(site_id="a", email="pagou@gmail.com", source="quiz:crivo")
     TimelineEvent.objects.create(lead=pagou, event="quiz.completado", payload={"quiz_slug": "crivo"})
+    TimelineEvent.objects.create(lead=pagou, event="pedido.criado", payload={
+        "site_id": "a", "order_id": "ped-antigo", "amount_cents": 990,
+        "items": [{"product_id": "prod-1", "name": "Curso", "price_cents": 990, "kind": "principal"}],
+    })
     TimelineEvent.objects.create(lead=pagou, event="pagamento.aprovado", payload={
         "site_id": "a", "order_id": "ped-antigo", "amount_cents": 990,
     })

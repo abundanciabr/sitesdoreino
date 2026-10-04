@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% load crm_menu %}
 {% block titulo %}Resultados do CRM{% endblock %}
 {% block corpo %}
 <style>
@@ -7,6 +8,7 @@
 </style>
 <main class="envolucro res">
   <div class="res-cabecalho"><div><h1>Resultados comerciais</h1><p class="subtitulo">Quem fez um quiz no período e o que aconteceu depois: compras, receita, custos e abordagens.</p></div><a class="botao" href="{% url 'crm' %}">← Voltar ao CRM</a></div>
+  {% menu_do_crm %}
   <form class="peneira" method="get">
     <label class="campo">De<input type="date" name="desde" value="{{ desde|date:'Y-m-d' }}"></label>
     <label class="campo">Até<input type="date" name="ate" value="{{ ate|date:'Y-m-d' }}"></label>

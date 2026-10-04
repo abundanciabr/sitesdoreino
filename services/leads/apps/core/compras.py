@@ -345,8 +345,9 @@ def resolver_oportunidade(compra, lead, momento=None):
 
     Sem referência, casa por produto: o produto ou a oferta do pedido contra o
     que cada oferta aberta conhece (compras já ligadas, oferta indicada pelo
-    quiz e resultado do quiz). A única oferta aberta só vale se o produto do
-    pedido não é de outra oportunidade da pessoa, aberta ou já fechada.
+    quiz e resultado do quiz). A única oferta aberta só vale se o pedido tem
+    produto ou oferta e esse produto não é de outra oportunidade da pessoa,
+    aberta ou já fechada. Pedido sem produto nem oferta não casa sozinho.
     """
     lead = compra.lead
     achada = _por_referencia(compra, lead)
@@ -375,12 +376,13 @@ def resolver_oportunidade(compra, lead, momento=None):
             return casadas[0]
     if len(abertas) == 1 and not compra.oportunidade_ref:
         unica = abertas[0]
-        if da_compra and da_compra & _produtos_das_outras(lead, unica, compra):
+        if not da_compra:
+            # Pedido sem produto nem oferta: não há com o que conferir, e a única
+            # oportunidade aberta pode ser de outro produto. Fica sem oportunidade.
             return None
-        if (
-            not conhecidas[unica.pk] or not da_compra
-            or da_compra & _oferta_indicada_do_perfil(lead.pk)
-        ):
+        if da_compra & _produtos_das_outras(lead, unica, compra):
+            return None
+        if not conhecidas[unica.pk] or da_compra & _oferta_indicada_do_perfil(lead.pk):
             return unica
     return None
 

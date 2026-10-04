@@ -41,7 +41,7 @@ GRUPOS = (
     ("fila", "Na fila", ("na_fila",)),
     ("incerto", "Envio sem confirmação", ("envio_incerto",)),
     ("falha", "Com falha", ("falhou",)),
-    ("concluidos", "Concluídos recentes", ("concluido",)),
+    ("concluidos", "Concluídos recentes", ("concluido", "encerrado", "cancelado")),
 )
 LIMITE_DO_GRUPO = {"concluidos": LIMITE_CONCLUIDOS}
 EXPLICA_GRUPO = {
@@ -49,7 +49,8 @@ EXPLICA_GRUPO = {
     "fila": "Trabalhos esperando a vez.",
     "incerto": "A mensagem ou o link pode ter saído, mas o serviço não confirmou. O agente não repete o envio sozinho.",
     "falha": "Trabalhos que pararam com erro. O motivo aparece em cada um.",
-    "concluidos": "Os últimos trabalhos que terminaram. Abra um para ver cada decisão do agente.",
+    "concluidos": "Os últimos trabalhos que terminaram, inclusive os que pararam porque o pagamento foi aprovado. "
+    "A análise de resultados que o relógio pede a cada hora não entra aqui. Abra um para ver cada decisão do agente.",
 }
 
 RECADOS = {
@@ -194,6 +195,13 @@ def _preparar_trabalho(trabalho, decisoes) -> dict:
     }
 
 
+def _sem_analise_do_relogio(consulta):
+    """A análise de resultados que o relógio pede a cada hora conclui quase
+    sempre sem novidade: se entrasse na lista, empurraria para fora os trabalhos
+    de verdade. A que a pessoa pede pelo botão (origem "painel") continua."""
+    return consulta.exclude(tipo="analisar_resultados", origem="relogio")
+
+
 def _grupos(mostrar_testes: bool) -> list[dict]:
     TrabalhoComercial, DecisaoComercial, _ = _modelos()
     base = TrabalhoComercial.objects.all()
@@ -201,7 +209,10 @@ def _grupos(mostrar_testes: bool) -> list[dict]:
         base = base.filter(teste=False)
     grupos = []
     for chave, nome, estados in GRUPOS:
-        consulta = base.filter(estado__in=estados).order_by("-atualizado_em", "-id")
+        consulta = base.filter(estado__in=estados)
+        if chave == "concluidos":
+            consulta = _sem_analise_do_relogio(consulta)
+        consulta = consulta.order_by("-atualizado_em", "-id")
         total = consulta.count()
         trabalhos = list(consulta[: LIMITE_DO_GRUPO.get(chave, LIMITE_POR_GRUPO)])
         por_trabalho: dict[int, list] = {t.pk: [] for t in trabalhos}
@@ -324,8 +335,8 @@ def crm_agentes(request):
             disponivel=True,
             grupos=_grupos(mostrar_testes),
             gasto=_limite_do_mes(gasto_comercial),
-            concluidos_no_mes=TrabalhoComercial.objects.filter(
-                criado_em__gte=inicio, estado="concluido", teste=False
+            concluidos_no_mes=_sem_analise_do_relogio(
+                TrabalhoComercial.objects.filter(criado_em__gte=inicio, estado="concluido", teste=False)
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
             estrategias=_estrategias(),
