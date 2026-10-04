@@ -111,7 +111,10 @@ _PRECO = re.compile(
     r"\d\s*(reais|real|d[óo]lares?|euros?|conto)\b|\b(reais|d[óo]lares|euros)\b|"
     r"\d+\s*vezes\s+(de|sem)\b|\b\d{1,3}(\.\d{3})*,\d{2}\b|"
     r"\binvestimento|\bmensalidade|\banuidade|\bvalor(es)?\b|\bcust(a|am|o|ar)\b|"
-    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit",
+    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit|"
+    # condição de compra (garantia, reembolso, vagas, parcelas, juros): vem ao
+    # vivo do catálogo e do checkout, nunca do conhecimento lembrado
+    r"\bgarantia|\breembols|\bdevolu[çc]|\bvagas?\b|\d+\s*[x×]\b|\bsem juros\b",
     re.IGNORECASE,
 )
 _MARCA_DE_PRECO = "(preço e condições: consultar ao vivo)"
@@ -121,7 +124,8 @@ _PERGUNTA_DE_PRECO = re.compile(
     r"\b(preco\w*|valor\w*|custa\w*|custo\w*|quanto (e|custa|sai|fica|pago|cobra\w*)|"
     r"cobra\w*|parcel\w*|desconto\w*|cupo[mn]\w*|pix|boleto|cartao|pagamento\w*|pagar|"
     r"vista|promocao|promocoes|condic\w*|investimento\w*|investir|mensalidade\w*|"
-    r"anuidade\w*|mensal|reais|caro|barato|gratis|gratuito)\b"
+    r"anuidade\w*|mensal|reais|caro|barato|gratis|gratuito|"
+    r"garantia\w*|reembols\w*|devolu\w*|vaga\w*|juros|\d+\s*x)\b"
 )
 
 _VAZIAS = {
@@ -227,8 +231,9 @@ def _so_marca(texto: str) -> bool:
     return not texto.replace(_MARCA_DE_PRECO, "").strip()
 
 
-def pedacos(texto: str) -> list[str]:
-    """Corta pelo parágrafo, sem passar muito de TAMANHO_DO_TRECHO."""
+def pedacos(texto: str, origem: str = "") -> list[str]:
+    """Corta pelo parágrafo, sem passar muito de TAMANHO_DO_TRECHO. Passando de
+    MAX_TRECHOS_POR_FONTE, o resto é cortado e o corte fica no log."""
     partes, atual = [], ""
     for paragrafo in re.split(r"\n\s*\n", texto or ""):
         paragrafo = paragrafo.strip()
@@ -248,6 +253,11 @@ def pedacos(texto: str) -> list[str]:
         atual = f"{atual}\n\n{paragrafo}" if atual else paragrafo
     if atual:
         partes.append(atual)
+    if len(partes) > MAX_TRECHOS_POR_FONTE:
+        log.warning(
+            "Conhecimento comercial: %s tem %d trechos e só os %d primeiros entram no índice",
+            origem or "uma fonte", len(partes), MAX_TRECHOS_POR_FONTE,
+        )
     return partes[:MAX_TRECHOS_POR_FONTE]
 
 
@@ -337,7 +347,7 @@ def _fonte_do_curso(leitura: Leitura, curso: dict, aulas: list, produtos: dict) 
             rotulo += f": {b['nome']}"
         titulos = "; ".join(t for t in b["aulas"] if t)
         linhas.append(f"{rotulo} ({len(b['aulas'])} aula{'s' if len(b['aulas']) != 1 else ''})" + (f". Aulas: {titulos}." if titulos else "."))
-    for pedaco in pedacos("\n\n".join(linhas)):
+    for pedaco in pedacos("\n\n".join(linhas), f"o curso {slug}"):
         partes.append(("Módulos e aulas", pedaco))
 
     datas = [d for d in (_data(a.get("publicada_em")) for a in publicadas) if d]
@@ -418,7 +428,7 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -
         texto = "\n\n".join(t for t in textos if t and not _so_marca(t))
         if texto:
             titulo = NOMES_DAS_SECOES.get(str(secao.get("nome")), str(secao.get("nome") or "Página"))
-            for pedaco in pedacos(texto):
+            for pedaco in pedacos(texto, f"a oferta {slug} ({titulo})"):
                 partes.append((titulo, pedaco))
     resumo = f"A oferta '{slug}' do site {leitura.host or leitura.site_id} vende o produto {produto_nome or produto_id}."
     partes.insert(0, ("Oferta", resumo))
@@ -486,7 +496,8 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
         produto_ref, produto_nome = _produto_da_marca(marca.produto, produtos or {})
         rotulo = f"Depoimento: {documento.titulo}" if tipo == "depoimento" else documento.titulo
         partes = [
-            (rotulo, p) for p in pedacos(sem_preco(documento.corpo)) if not _so_marca(p)
+            (rotulo, p) for p in pedacos(sem_preco(documento.corpo), f"o documento {documento.nome}")
+            if not _so_marca(p)
         ]
         if not partes:
             continue
@@ -631,32 +642,62 @@ def atualizar_host(host: str) -> dict:
 def hosts_conhecidos() -> list[str]:
     configurados = os.environ.get("CONHECIMENTO_COMERCIAL_HOSTS") or HOST_PADRAO
     hosts = [h.strip().lower() for h in configurados.split(",")]
-    hosts += list(TrechoComercial.objects.values_list("site_host", flat=True).distinct())
-    hosts += list(MaterialComercial.objects.values_list("site_host", flat=True).distinct())
+    # `.order_by()` antes do `.distinct()`: a ordem padrão do modelo entraria no
+    # DISTINCT e devolveria o mesmo domínio muitas vezes.
+    hosts += list(TrechoComercial.objects.order_by().values_list("site_host", flat=True).distinct())
+    hosts += list(MaterialComercial.objects.order_by().values_list("site_host", flat=True).distinct())
     return list(dict.fromkeys(h for h in hosts if h))
 
+
+# A volta de sucesso espera meia hora; a que falhou (exceção, ou o catálogo não
+# respondeu em nenhum domínio) tenta de novo logo, sem esperar a meia hora.
+INTERVALO_APOS_FALHA = timedelta(minutes=2)
 
 _ultima_volta: dict[str, datetime] = {}
 _trava = threading.Lock()
 
 
+def _deu_certo(resultados: list[dict]) -> bool:
+    return any(not r.get("capacidade_indisponivel") for r in resultados)
+
+
 def manter_em_dia(*, forcar: bool = False) -> list[dict] | None:
     """A volta automática (do laço dos robôs, a cada meia hora por processo):
     o catálogo mudou, o índice muda junto. Sem o par com o catálogo, não faz
-    nada; e nunca derruba quem chamou."""
+    nada; e nunca derruba quem chamou. A meia hora só conta depois de uma volta
+    que funcionou: se falhou, a próxima tentativa vem em poucos minutos."""
     if CatalogoClient()._configuracao() is None:
         return None
     agora = timezone.now()
     with _trava:
-        ultima = _ultima_volta.get("em")
-        if not forcar and ultima is not None and agora - ultima < INTERVALO:
-            return None
-        _ultima_volta["em"] = agora
+        if _ultima_volta.get("rodando"):
+            return None  # outra volta deste processo está em andamento
+        if not forcar:
+            certa = _ultima_volta.get("certa")
+            falhou = _ultima_volta.get("falhou")
+            if certa is not None and agora - certa < INTERVALO:
+                return None
+            if falhou is not None and agora - falhou < INTERVALO_APOS_FALHA:
+                return None
+        _ultima_volta["rodando"] = agora
     try:
-        return [atualizar_host(h) for h in hosts_conhecidos()]
+        resultados = [atualizar_host(h) for h in hosts_conhecidos()]
     except Exception:  # noqa: BLE001 - o índice não pode derrubar o laço
         log.exception("Conhecimento comercial: a atualização automática falhou")
+        with _trava:
+            _ultima_volta["falhou"] = timezone.now()
         return None
+    finally:
+        with _trava:
+            _ultima_volta.pop("rodando", None)
+    with _trava:
+        if resultados and not _deu_certo(resultados):
+            log.warning("Conhecimento comercial: o catálogo não respondeu; tenta de novo em poucos minutos")
+            _ultima_volta["falhou"] = timezone.now()
+        else:
+            _ultima_volta["certa"] = timezone.now()
+            _ultima_volta.pop("falhou", None)
+    return resultados
 
 
 # -------------------------------------------------------------- a consulta
@@ -694,10 +735,18 @@ def _site_do_indice(site: str) -> tuple[str, str] | None:
     return None
 
 
+def _sem_prefixo_de_oferta(produto: str) -> str:
+    """O coordenador manda 'oferta:<apelido>' (a forma do CRM) ou o apelido do
+    quiz; o índice guarda só o apelido."""
+    return re.sub(r"^\s*oferta\s*:\s*", "", (produto or "").strip(), flags=re.IGNORECASE).strip()
+
+
 def _do_produto(trechos: list[TrechoComercial], produto: str) -> tuple[list[TrechoComercial], bool]:
     """Os trechos daquele produto ou oferta, mais os gerais do site. Trecho de
     OUTRO produto fica de fora. O segundo valor diz se o produto foi achado."""
-    pedido = produto.strip()
+    pedido = _sem_prefixo_de_oferta(produto)
+    if not pedido:
+        return trechos, False
     chave_pedida = _nome_chave(pedido)
 
     def casa(t: TrechoComercial) -> bool:
@@ -743,7 +792,9 @@ def _saida(t: TrechoComercial) -> dict:
     return {
         "titulo": t.titulo,
         "texto": t.texto[: TAMANHO_DO_TRECHO * 2],
-        "fonte": {"tipo": t.tipo, "id": t.ref, "titulo": t.fonte.titulo, "endereco": t.endereco or None},
+        # O endereço de uma fonte que não é pública não sai daqui.
+        "fonte": {"tipo": t.tipo, "id": t.ref, "titulo": t.fonte.titulo,
+                  "endereco": (t.endereco or None) if t.publico else None},
         "produto": {"ref": t.produto_ref or None, "nome": t.produto_nome or None}
         if (t.produto_ref or t.produto_nome) else None,
         "oferta": t.oferta_ref or None,
@@ -857,11 +908,20 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
     if not com_privados:
         trechos = [t for t in trechos if t.publico]
     aviso = ""
-    produto = (produto or "").strip()[:255]
+    produto = _sem_prefixo_de_oferta(produto)[:255]
+    sem_correspondencia = False
     if produto:
-        trechos, casou = _do_produto(trechos, produto)
-        if not casou:
-            aviso = f"Nada indexado para '{produto}' neste site; os trechos são os gerais do site."
+        do_produto, casou = _do_produto(trechos, produto)
+        if casou:
+            trechos = do_produto
+        else:
+            # Apelido que não casa com nada (por exemplo o do quiz): não esconde
+            # o site; devolve tudo dele e avisa que o produto não foi achado.
+            sem_correspondencia = True
+            aviso = (
+                f"Nada indexado para '{produto}' neste site; os trechos vêm do site inteiro e "
+                "podem ser de outro produto: confira a fonte de cada um."
+            )
     termos = _termos(pergunta)
     pontuados = []
     for t in trechos:
@@ -883,6 +943,8 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
         "fatos_ao_vivo": [],
         "preco_e_condicoes": "ao_vivo",
     }
+    if sem_correspondencia:
+        resposta["produto_sem_correspondencia"] = True
     if _PERGUNTA_DE_PRECO.search(_normal(pergunta)):
         ofertas, sem_oferta = _ofertas_da_pergunta(escolhidos, trechos)
         resposta["fatos_ao_vivo"] = _fatos_ao_vivo(site_id, ofertas, sem_oferta)
@@ -896,7 +958,9 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
 def numeros(site_id: str) -> dict:
     trechos = TrechoComercial.objects.filter(site_id=site_id)
     por_tipo = {tipo: 0 for tipo in TIPOS}
-    for tipo, fonte_id in trechos.values_list("tipo", "fonte_id").distinct():
+    # `.order_by()` antes do `.distinct()`: a ordem padrão do modelo entra no
+    # DISTINCT e infla a conta (uma linha por trecho, não por fonte).
+    for tipo, fonte_id in trechos.order_by().values_list("tipo", "fonte_id").distinct():
         por_tipo[tipo] = por_tipo.get(tipo, 0) + 1
     ultima = trechos.order_by("-conferido_em").values_list("conferido_em", flat=True).first()
     return {"fontes": por_tipo, "trechos": trechos.count(), "conferido_em": ultima}
@@ -940,3 +1004,12 @@ def executar_ferramenta(argumentos: dict, *, com_privados: bool = True) -> dict:
     if not site or not pergunta:
         return {"erro": "Diga o site e a pergunta."}
     return consultar(site, pergunta, str(argumentos.get("produto") or ""), com_privados=com_privados)
+
+
+def consultar_conhecimento_comercial(*, site_id, termos, produto=None, com_privados=False) -> dict:
+    """A porta da equipe comercial de agentes (`apps.comercial.ferramentas`),
+    que a procura por este nome. O coordenador fala com o lead: nunca recebe
+    material interno, então `com_privados` é sempre falso, seja qual for o
+    valor pedido (o parâmetro existe só para a assinatura combinada)."""
+    pergunta = " ".join(str(t).strip() for t in (termos or []) if str(t).strip())[:500]
+    return consultar(str(site_id or ""), pergunta, str(produto or ""), com_privados=False)

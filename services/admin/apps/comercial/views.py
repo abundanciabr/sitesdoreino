@@ -5,7 +5,7 @@ barra o crachá de equipe fora de `/equipe`)."""
 
 from __future__ import annotations
 
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
@@ -30,11 +30,19 @@ def _quem(request) -> str:
     return str(admin.get("email") or admin.get("nome") or "admin") if isinstance(admin, dict) else "admin"
 
 
+def _numero(valor) -> int:
+    """O número vindo do formulário, ou 404: texto no lugar do número daria 500."""
+    texto = str(valor or "")
+    if not (texto.isascii() and texto.isdigit()) or len(texto) > 18:
+        raise Http404("Número inválido.")
+    return int(texto)
+
+
 def _post(request):
     acao = request.POST.get("acao") or ""
     quem = _quem(request)
     if acao == "ativar":
-        estrategia = get_object_or_404(EstrategiaComercial, pk=request.POST.get("estrategia"))
+        estrategia = get_object_or_404(EstrategiaComercial, pk=_numero(request.POST.get("estrategia")))
         papeis.ativar(estrategia, quem, (request.POST.get("motivo") or "")[:1000])
         resultado = "ativada"
     elif acao == "voltar":
@@ -42,11 +50,11 @@ def _post(request):
                                           (request.POST.get("motivo") or "")[:1000])
         resultado = "voltou" if voltou else "sem_anterior"
     elif acao == "encerrar_teste":
-        teste = get_object_or_404(ExperimentoEstrategia, pk=request.POST.get("teste"))
+        teste = get_object_or_404(ExperimentoEstrategia, pk=_numero(request.POST.get("teste")))
         resultado = "teste_encerrado" if otimizador.encerrar(
             teste, quem, (request.POST.get("motivo") or "")[:500]) else "teste_nao_encerrado"
     elif acao == "retomar":
-        trabalho = get_object_or_404(TrabalhoComercial, pk=request.POST.get("trabalho"))
+        trabalho = get_object_or_404(TrabalhoComercial, pk=_numero(request.POST.get("trabalho")))
         resultado = "retomado" if coordenador.retomar(trabalho, quem) else "nao_retomado"
     else:
         resultado = ""
