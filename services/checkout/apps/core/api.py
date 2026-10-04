@@ -29,7 +29,7 @@ from apps.pedidos.tasks import relay_apos_commit
 # Alias obrigatório: as classes Session/Order definidas abaixo são ninja.Schema
 # (a FORMA exportada no contrato). Importar os models com o mesmo nome faria o
 # Schema sombreá-los silenciosamente — Session.objects viraria o Schema.
-from apps.pedidos.models import LinkDeCompra
+from apps.pedidos.models import LinkDeCompra, link_da_sessao
 from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
@@ -247,18 +247,33 @@ def create_session(request):
     link = _link_da_pagina(corpo.get("link"), site["id"], offer_slug)
     with transaction.atomic():
         visitante_novo = False
+        sessao = None
         if link is not None:
             # Link do atendimento: a página continua a sessão que o link abriu
             # (com o pedido já reservado), em vez de abrir outra. Os dados do
             # contato do link NUNCA vão para a página: quem recebe o link de
             # outra pessoa vê os campos vazios, como em qualquer link.
-            sessao = SessionModel.objects.select_for_update().get(pk=link.session_id)
-            visitante = _visitor_id_do_cookie(request)
-            if visitante and not sessao.visitor_id:
-                sessao.visitor_id = visitante
-                sessao.save(update_fields=["visitor_id"])
-                visitante_novo = True
-        else:
+            link = LinkDeCompra.objects.select_for_update().get(pk=link.pk)
+            sessoes = [link.session, *link.sessoes_reabertas.order_by("created_at")]
+            pedidos = {
+                p.session_id: p.status
+                for p in OrderModel.objects.filter(session__in=sessoes)
+            }
+            if any(st in ("pago", "reembolsado") for st in pedidos.values()):
+                # Link já virou compra paga: a página segue como uma compra
+                # nova, sem herdar a oportunidade.
+                link = None
+            elif sessoes[-1].pk not in pedidos:
+                sessao = SessionModel.objects.select_for_update().get(pk=sessoes[-1].pk)
+                visitante = _visitor_id_do_cookie(request)
+                if visitante and not sessao.visitor_id:
+                    sessao.visitor_id = visitante
+                    sessao.save(update_fields=["visitor_id"])
+                    visitante_novo = True
+            # Senão: a última sessão do link já tem pedido (Pix vencido, cartão
+            # recusado, página fechada no Pix). Abre outra sessão do mesmo
+            # link, que leva a oportunidade para o pedido novo.
+        if sessao is None:
             sessao = SessionModel.objects.create(
                 site_id=site["id"],
                 offer_slug=offer_slug,
@@ -267,6 +282,7 @@ def create_session(request):
                 utm=utm,
                 contexto=contexto,
                 visitor_id=_visitor_id_do_cookie(request),
+                link_origem=link,
             )
             visitante_novo = bool(sessao.visitor_id)
         if visitante_novo:
@@ -312,6 +328,15 @@ def create_session(request):
         },
         status=201,
     )
+
+
+def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool) -> bool:
+    """O pedido nasce contra o sandbox do provedor que vai cobrar? Então o
+    dinheiro não é real e o pedido fica fora dos totais de receita."""
+    usa_appmax = pix_appmax if method == "pix" else site_id in settings.APPMAX_CARD_ENABLED_SITES
+    if usa_appmax:
+        return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower()
+    return settings.MP_PUBLIC_KEY.startswith("TEST-")
 
 
 def _link_da_pagina(bruto, site_id: str, offer_slug: str):
@@ -491,8 +516,15 @@ def place_order(request, session_id: str):
 
     # Pedido aberto por um link do atendimento nasce com o id que o link já
     # devolveu ao CRM, e leva a oportunidade junto.
-    link = LinkDeCompra.objects.filter(session=sessao).first()
-    order_id = link.pedido_id if link is not None else uuid.uuid4()
+    link = link_da_sessao(sessao)
+    # O id que o link devolveu ao CRM vale para o primeiro pedido do link;
+    # uma sessão reaberta (depois de Pix vencido, cartão recusado...) tem
+    # pedido novo, com id novo, e a mesma oportunidade.
+    order_id = (
+        link.pedido_id
+        if link is not None and link.session_id == sessao.pk
+        else uuid.uuid4()
+    )
     referencias = {
         "oportunidade_ref": link.oportunidade_ref if link is not None else "",
         "oferta_ref": sessao.offer_slug,
@@ -518,6 +550,7 @@ def place_order(request, session_id: str):
         # saía com "Finalize aqui:" e nenhum link.
         metadata["recovery_url"] = (
             f"https://{site['host']}/checkout/{sessao.offer_slug}/"
+            + (f"?link={link.id}" if link is not None else "")
         )
     if method == "card" or pix_appmax:
         metadata["items"] = itens
@@ -573,6 +606,7 @@ def place_order(request, session_id: str):
             method=method,
             intent_id=str(intent["id"]),
             pix=intent.get("pix") or {},
+            em_teste=_ambiente_de_teste(site["id"], method, pix_appmax),
             contexto=dict(sessao.contexto or {}),
             **referencias,
         )
