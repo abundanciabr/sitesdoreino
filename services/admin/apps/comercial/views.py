@@ -10,13 +10,16 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from . import coordenador, papeis, resultados
+from . import coordenador, otimizador, papeis, resultados
+from .experimentos import ExperimentoEstrategia
 from .models import EstrategiaComercial, TrabalhoComercial
 
 RESULTADOS = {
     "ativada": "A versão entrou no ar. As conversas já feitas continuam com a versão que usaram.",
     "voltou": "A versão anterior voltou ao ar.",
     "sem_anterior": "Não há versão anterior para voltar.",
+    "teste_encerrado": "O teste acabou: a versão que estava no ar segue sozinha.",
+    "teste_nao_encerrado": "Este teste já tinha acabado.",
     "retomado": "O trabalho voltou para a fila.",
     "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
 }
@@ -38,12 +41,31 @@ def _post(request):
         voltou = papeis.voltar_a_anterior(request.POST.get("papel") or "", quem,
                                           (request.POST.get("motivo") or "")[:1000])
         resultado = "voltou" if voltou else "sem_anterior"
+    elif acao == "encerrar_teste":
+        teste = get_object_or_404(ExperimentoEstrategia, pk=request.POST.get("teste"))
+        resultado = "teste_encerrado" if otimizador.encerrar(
+            teste, quem, (request.POST.get("motivo") or "")[:500]) else "teste_nao_encerrado"
     elif acao == "retomar":
         trabalho = get_object_or_404(TrabalhoComercial, pk=request.POST.get("trabalho"))
         resultado = "retomado" if coordenador.retomar(trabalho, quem) else "nao_retomado"
     else:
         resultado = ""
     return HttpResponseRedirect(f"{reverse('agentes_comerciais')}?resultado={resultado}")
+
+
+def _otimizador_na_tela() -> list[dict]:
+    """Por papel medido: a versão do ar, os números por versão e o teste."""
+    saida = []
+    for papel, dados in otimizador.relatorio().items():
+        saida.append({
+            "papel": papel,
+            "rotulo": dict(EstrategiaComercial.Papel.choices)[papel],
+            "no_ar": dados["no_ar"],
+            "versoes": dados["numeros"]["versoes"],
+            "teste": dados["teste"],
+            "ultimo_teste": dados["ultimo_teste"],
+        })
+    return saida
 
 
 @require_http_methods(["GET", "POST"])
@@ -82,5 +104,6 @@ def agentes_comerciais(request):
         "detalhe": detalhe,
         "decisoes": list(detalhe.decisoes.all()) if detalhe else [],
         "min_amostra": resultados.MIN_AMOSTRA,
+        "otimizador": _otimizador_na_tela(),
         "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
     })
