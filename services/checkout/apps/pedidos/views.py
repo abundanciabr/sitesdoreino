@@ -62,6 +62,11 @@ def _pedido_do_site(request, order_id: uuid.UUID, method: str) -> OrderModel:
     return pedido
 
 
+def _url_da_oferta(request, pedido: OrderModel) -> str:
+    """Volta para a página de dados da mesma oferta, sob o prefixo real."""
+    return request.META.get("SCRIPT_NAME", "").rstrip("/") + f"/{pedido.session.offer_slug}/"
+
+
 def pix(request, order_id: uuid.UUID):
     pedido = _pedido_do_site(request, order_id, "pix")
     return render(
@@ -71,6 +76,7 @@ def pix(request, order_id: uuid.UUID):
             "order_id": str(pedido.id),
             "pix_data": pedido.pix,
             "pix_trocado": bool((pedido.pix or {}).get("trocado_em")),
+            "offer_url": _url_da_oferta(request, pedido),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
             "static_base": _static_base(request),
@@ -89,10 +95,7 @@ def cartao(request, order_id: uuid.UUID):
         {
             "order_id": str(pedido.id),
             "total_cents": pedido.total_cents,
-            "offer_url": (
-                request.META.get("SCRIPT_NAME", "").rstrip("/")
-                + f"/{pedido.session.offer_slug}/"
-            ),
+            "offer_url": _url_da_oferta(request, pedido),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
             "static_base": _static_base(request),

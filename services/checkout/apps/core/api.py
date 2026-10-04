@@ -513,6 +513,12 @@ def place_order(request, session_id: str):
         metadata["pagina_url"] = (
             f"https://{site['host']}/checkout/pedido/{order_id}/pix/"
         )
+        # Link do e-mail "seu Pix expirou" (`pix.expirado.recovery_url`): a
+        # página da oferta, onde a pessoa gera um Pix novo. Sem isto o e-mail
+        # saía com "Finalize aqui:" e nenhum link.
+        metadata["recovery_url"] = (
+            f"https://{site['host']}/checkout/{sessao.offer_slug}/"
+        )
     if method == "card" or pix_appmax:
         metadata["items"] = itens
     comprador_pagamento = dict(comprador)

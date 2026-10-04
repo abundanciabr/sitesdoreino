@@ -19,6 +19,9 @@ from .models import OutboxEvent
 
 logger = logging.getLogger(__name__)
 
+REDIS_PRAZO_CONEXAO_S = 1.0
+REDIS_PRAZO_RESPOSTA_S = 2.0
+
 
 def relay_outbox() -> int:
     """Publica os pendentes e marca `published_at`. Idempotente: linha com
@@ -30,7 +33,16 @@ def relay_outbox() -> int:
     )
     if not pendentes:
         return 0
-    cliente = redis.from_url(os.environ["REDIS_STREAMS_URL"])
+    # Prazo explícito: este relay roda no on_commit de createSession e
+    # placeOrder, dentro do clique de quem compra. Sem prazo, um Redis que
+    # aceita a conexão e não responde prende a resposta para sempre; com ele,
+    # a falha cai no except de relay_apos_commit e o evento fica para a task
+    # periódica.
+    cliente = redis.from_url(
+        os.environ["REDIS_STREAMS_URL"],
+        socket_connect_timeout=REDIS_PRAZO_CONEXAO_S,
+        socket_timeout=REDIS_PRAZO_RESPOSTA_S,
+    )
     publicados = 0
     for evento in pendentes:
         envelope = {
