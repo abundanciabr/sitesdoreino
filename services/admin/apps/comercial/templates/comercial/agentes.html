@@ -12,11 +12,12 @@
     <p class="nota">{% for rotulo, n in por_estado.items %}{% if n %}{{ rotulo }}: {{ n }}{% if not forloop.last %} &middot; {% endif %}{% endif %}{% endfor %}</p>
     <form class="forma" method="get" action="{% url 'agentes_comerciais' %}">
       <label><span class="rotulo">Estado</span>
-        <select name="estado" onchange="this.form.submit()">
+        <select name="estado">
           <option value="">todos</option>
           {% for valor, rotulo in estados %}<option value="{{ valor }}"{% if valor == estado %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
         </select>
       </label>
+      <button class="botao-pequeno" type="submit">Filtrar</button>
     </form>
     <ul class="passos-do-robo">
       {% for t in trabalhos %}

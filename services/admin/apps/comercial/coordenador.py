@@ -73,13 +73,7 @@ class Encerrado(Exception):
     """O pagamento foi aprovado durante o trabalho: para sem agir."""
 
 
-class Esperar(Exception):
-    """Falta algo de outra célula que deve chegar logo (a ficha do lead)."""
-
-    def __init__(self, frase: str, depois: timedelta):
-        super().__init__(frase)
-        self.frase = frase
-        self.depois = depois
+Esperar = ferramentas.Esperar  # a espera nasce nas ferramentas também; o nome continua aqui
 
 
 def ligado() -> bool:
@@ -299,8 +293,21 @@ def _pago_no_checkout(trabalho: TrabalhoComercial) -> bool:
     if not trabalho.pedido_id:
         return False
     resposta = servicos.pedir("pagamento_do_pedido", trabalho.pedido_id, site_id=trabalho.site_id,
-                              host=(trabalho.entrada or {}).get("host") or "")
+                              host=servicos.host_do_trabalho(trabalho))
     return bool(resposta.ok and resposta.dados.get("confirmado") and not resposta.dados.get("reembolsado"))
+
+
+def _oferta_da_oportunidade(oportunidade: dict) -> str:
+    """A oferta que o CRM liga à oportunidade (`oferta_ref`, `oferta_id` ou a
+    primeira de `ofertas`); vazio quando ele não diz nenhuma."""
+    for chave in ("oferta_ref", "oferta_id"):
+        if oportunidade.get(chave):
+            return str(oportunidade[chave])[:120]
+    for oferta in oportunidade.get("ofertas") or []:
+        valor = oferta.get("oferta_ref") if isinstance(oferta, dict) else oferta
+        if valor and isinstance(valor, str):
+            return valor[:120]
+    return ""
 
 
 def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
@@ -327,15 +334,20 @@ def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
             "lead_id": trabalho.contato_id, "situacao": "aberta", "testes": "mostrar"})
         if resposta.ok:
             abertas = [o for o in resposta.dados.get("itens") or [] if isinstance(o, dict)]
-            referencia = f"quiz:{entrada.get('quiz')}" if entrada.get("quiz") else ""
+            # A leads grava a referência da oportunidade do quiz como 'oferta:<quiz>'
+            # (services/leads/apps/core/oferta.py, PREFIXO).
+            referencia = f"oferta:{entrada.get('quiz')}" if entrada.get("quiz") else ""
             escolhida = next(
                 (o for o in abertas if referencia and (o.get("fonte") or {}).get("referencia_id") == referencia),
                 abertas[0] if abertas else None,
             )
             if escolhida:
                 trabalho.oportunidade_id = str(escolhida.get("id") or "")[:80]
-                if escolhida.get("oferta_ref") and not entrada.get("oferta_ref"):
-                    trabalho.entrada = {**entrada, "oferta_ref": escolhida["oferta_ref"]}
+                oferta = _oferta_da_oportunidade(escolhida)
+                if oferta and not entrada.get("oferta_ref"):
+                    # Só a oferta que o CRM de fato diz; sem ela, nada é inventado
+                    # e a ferramenta de condições responde que não há oferta ligada.
+                    trabalho.entrada = {**entrada, "oferta_ref": oferta}
     guardar(trabalho)
     novo = timezone.now() - trabalho.criado_em < ESPERA_DA_FICHA
     if not trabalho.contato_id and contato.get("email") and novo and trabalho.tipo != T.ATENDER_MENSAGEM \

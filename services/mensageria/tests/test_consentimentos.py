@@ -14,7 +14,9 @@ from apps.eventos.management.commands import consume_eventos
 from apps.jornadas import despacho
 from apps.jornadas.models import Preferencia
 from apps.whatsapp.models import ConfiguracaoWhatsApp
-from test_conversas import ESCRITA, LEITURA, SITE, _api, _conversa_ligada, _gateway_aberto, base  # noqa: F401
+from test_conversas import (  # noqa: F401  (meio_dia fixa o relógio da régua do agente: 08h-20h)
+    ESCRITA, LEITURA, SITE, _api, _conversa_ligada, _gateway_aberto, base, meio_dia,
+)
 from test_jornadas_whatsapp import _entrega, _liberar
 
 pytestmark = pytest.mark.django_db(transaction=True)
