@@ -51,7 +51,7 @@ LIMITE_DO_GRUPO = {"concluidos": LIMITE_CONCLUIDOS}
 EXPLICA_GRUPO = {
     "andamento": "Trabalhos que um agente está fazendo agora ou que esperam um serviço ou o teto de gasto.",
     "fila": "Trabalhos esperando a vez.",
-    "incerto": "A mensagem ou o link pode ter saído, mas o serviço não confirmou. O agente não repete o envio sozinho.",
+    "incerto": "A mensagem ou o link pode ter saído, mas o serviço não confirmou. O agente pergunta de novo em cerca de 1 minuto, com a mesma chave: se já saiu, o serviço devolve o que saiu e nada vai em dobro.",
     "falha": "Trabalhos que pararam com erro. O motivo aparece em cada um.",
     "concluidos": "Os últimos trabalhos que terminaram, inclusive os que pararam porque o pagamento foi aprovado. "
     "A análise de resultados que o relógio pede a cada hora não entra aqui. Abra um para ver cada decisão do agente.",

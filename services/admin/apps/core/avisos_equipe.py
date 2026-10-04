@@ -837,7 +837,8 @@ def varrer_trabalhos_comerciais(limite, desde=None, perguntas: _PerguntasALeads 
                 titulo = "Mensagem do agente sem confirmação de envio"
                 texto = (
                     f"O agente mandou uma mensagem há mais de {MINUTOS_DE_TOLERANCIA} minutos e o provedor "
-                    "não confirmou se ela saiu. Ela não será reenviada sozinha: confira a conversa."
+                    "não confirmou se ela saiu. O agente pergunta de novo sozinho, com a mesma chave, e nada vai em dobro; "
+                    "se continuar sem confirmação, confira a conversa."
                 )
             else:
                 titulo = "Trabalho comercial parado"
