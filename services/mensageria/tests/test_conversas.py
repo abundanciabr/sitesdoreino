@@ -9,7 +9,7 @@ from django.core import mail
 from django.test import Client
 from django.utils import timezone
 
-from apps.conversas import enderecos, leads
+from apps.conversas import enderecos, envio, leads
 from apps.conversas.models import Conversa, Descadastro, MensagemDaConversa
 from apps.jornadas.models import OutboxEvent, Preferencia
 from apps.whatsapp.models import ConfiguracaoWhatsApp, MensagemWhatsApp
@@ -628,6 +628,8 @@ def test_agente_so_envia_de_8h_as_20h_e_pessoa_envia_a_qualquer_hora(base, monke
     posts = []
     _gateway_aberto(monkeypatch, posts)
     cliente = Client()
+    # A fala dele ainda sem resposta: responder é atendimento (os testes de resposta cobrem a noite).
+    assert _pedir(cliente, conversa, "resposta-inicial")["resultado"] == "enviada"
     for hora, minuto in ((3, 0), (7, 59), (20, 0), (23, 30)):
         _relogio(monkeypatch, hora, minuto)
         recusa = _pedir(cliente, conversa, f"noite-{hora}-{minuto}")
@@ -638,12 +640,12 @@ def test_agente_so_envia_de_8h_as_20h_e_pessoa_envia_a_qualquer_hora(base, monke
         hoje = timezone.localdate(timezone.now())
         assert (proximo.hour, proximo.minute) == (8, 0)
         assert proximo.date() == (hoje if hora < 8 else hoje + timedelta(days=1))
-    assert not posts and not conversa.mensagens.filter(direcao="saida").exists()
+    assert len(posts) == 1 and conversa.mensagens.filter(direcao="saida").count() == 1
     assert _pedir(cliente, conversa, "equipe-de-noite", autor="pessoa")["resultado"] == "enviada"
     for hora, minuto in ((8, 0), (19, 59)):
         _relogio(monkeypatch, hora, minuto)
         assert _pedir(cliente, conversa, f"dia-{hora}")["resultado"] == "enviada"
-    assert len(posts) == 3
+    assert len(posts) == 4
 
 
 def test_agente_tem_teto_diario_por_contato_e_pessoa_nao_tem(base, monkeypatch, settings):
@@ -651,10 +653,12 @@ def test_agente_tem_teto_diario_por_contato_e_pessoa_nao_tem(base, monkeypatch, 
     posts = []
     _gateway_aberto(monkeypatch, posts)
     cliente = Client()
+    # A resposta à fala dele não conta no teto; as três seguintes são iniciativa do agente.
+    assert _pedir(cliente, conversa, "resposta")["resultado"] == "enviada"
     for i in range(3):
         assert _pedir(cliente, conversa, f"a{i}")["resultado"] == "enviada"
     quarta = _pedir(cliente, conversa, "a3")
-    assert quarta["resultado"] == "limite_diario" and quarta["mensagem"] is None and len(posts) == 3
+    assert quarta["resultado"] == "limite_diario" and quarta["mensagem"] is None and len(posts) == 4
     amanha = datetime.fromisoformat(quarta["reagendar_para"]).astimezone(timezone.get_current_timezone())
     assert amanha.date() == timezone.localdate(timezone.now()) + timedelta(days=1) and amanha.hour == 8
     assert _pedir(cliente, conversa, "a0")["reagendar_para"] is None
@@ -677,9 +681,130 @@ def test_teto_do_agente_conta_os_dois_canais_do_mesmo_lead(base, monkeypatch, se
     aberta = _api(cliente, "POST", "/conversas", {"site_id": SITE, "canal": "email", "lead_id": LEAD_A,
                                                   "endereco": "ana@exemplo.com"}).json()
     email = Conversa.objects.get(pk=aberta["id"])
+    assert _pedir(cliente, zap, "z0")["resultado"] == "enviada"  # resposta à fala dele: fora do teto
     assert _pedir(cliente, zap, "z1")["resultado"] == "enviada"
     assert _pedir(cliente, email, "e1")["resultado"] == "limite_diario"
     assert len(mail.outbox) == 0
+
+
+def _fala_do_contato(cliente, ident, texto="e agora?"):
+    assert _upsert(cliente, _item(texto=texto, ident=ident)).json() == {"recebidas": 1}
+
+
+def test_resposta_a_quem_acabou_de_falar_passa_de_noite(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    _relogio(monkeypatch, 21, 30)
+    resposta = _pedir(cliente, conversa, "r-noite")
+    assert resposta["resultado"] == "enviada" and resposta["reagendar_para"] is None and len(posts) == 1
+
+
+def test_resposta_nao_esbarra_no_teto_nem_conta_nele(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    # Cinco falas dele, cinco respostas: passa da 4ª em diante, sem teto.
+    for i in range(5):
+        if i:
+            _fala_do_contato(cliente, f"Q{i}", f"pergunta {i}")
+        assert _pedir(cliente, conversa, f"r{i}")["resultado"] == "enviada"
+    assert len(posts) == 5
+    # As respostas não gastaram o teto: as três iniciativas do dia ainda cabem e a 4ª bate.
+    iniciativas = [_pedir(cliente, conversa, f"p{i}")["resultado"] for i in range(4)]
+    assert iniciativas == ["enviada", "enviada", "enviada", "limite_diario"] and len(posts) == 8
+    # Fala nova dele: a resposta passa mesmo com o teto das iniciativas estourado.
+    _fala_do_contato(cliente, "Q9", "e o preço?")
+    assert _pedir(cliente, conversa, "r9")["resultado"] == "enviada" and len(posts) == 9
+
+
+def test_so_uma_resposta_por_fala_a_segunda_cai_na_regua(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    _relogio(monkeypatch, 21, 30)
+    assert _pedir(cliente, conversa, "r1")["resultado"] == "enviada"
+    # Sem fala nova dele, a segunda fala do agente é iniciativa: de noite, recusa com a hora de amanhã.
+    segunda = _pedir(cliente, conversa, "r2")
+    assert segunda["resultado"] == "fora_do_horario" and segunda["mensagem"] is None and len(posts) == 1
+    proximo = datetime.fromisoformat(segunda["reagendar_para"]).astimezone(timezone.get_current_timezone())
+    assert (proximo.hour, proximo.minute) == (8, 0)
+    # Fala nova dele libera outra resposta, e só uma.
+    _fala_do_contato(cliente, "Q2")
+    assert _pedir(cliente, conversa, "r3")["resultado"] == "enviada"
+    assert _pedir(cliente, conversa, "r4")["resultado"] == "fora_do_horario" and len(posts) == 2
+    # Quem não falou nada (conversa aberta pelo agente) só recebe iniciativa, sujeita ao horário.
+    aberta = _api(cliente, "POST", "/conversas", {"site_id": SITE, "canal": "email", "lead_id": LEAD_A,
+                                                  "endereco": "ana@exemplo.com"}).json()
+    sem_fala = _pedir(cliente, Conversa.objects.get(pk=aberta["id"]), "e1")
+    assert sem_fala["resultado"] == "fora_do_horario" and len(mail.outbox) == 0
+
+
+def test_iniciativa_acima_do_teto_recusa_depois_da_resposta(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    assert _pedir(cliente, conversa, "r0")["resultado"] == "enviada"
+    assert [_pedir(cliente, conversa, f"p{i}")["resultado"] for i in range(4)] == [
+        "enviada", "enviada", "enviada", "limite_diario"]
+    assert len(posts) == 4
+
+
+def test_saida_que_falhou_nao_gasta_a_resposta(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="x",
+                                      estado_envio="falhou", chave_idempotencia="f1",
+                                      ocorrida_em=timezone.now())
+    _relogio(monkeypatch, 21, 30)
+    # A saída que falhou não respondeu a fala dele: a próxima ainda é resposta.
+    assert _pedir(Client(), conversa, "r1")["resultado"] == "enviada" and len(posts) == 1
+
+
+def test_resposta_de_noite_continua_respeitando_parar_e_conversa_assumida(base, monkeypatch):
+    monkeypatch.delenv("IDENTIDADE_API_URL", raising=False)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    _upsert(cliente, _item(texto="PARAR", ident="N1"))
+    conversa = Conversa.objects.get()
+    _relogio(monkeypatch, 21, 30)
+    assert _pedir(cliente, conversa, "n0")["resultado"] == "descadastrado"
+    _fala_do_contato(cliente, "N2", "ok")
+    assert _pedir(cliente, conversa, "n1")["resultado"] == "enviada"  # fala nova depois do PARAR: uma resposta
+    assert _pedir(cliente, conversa, "n2")["resultado"] == "descadastrado"
+    Descadastro.objects.all().delete()
+    _fala_do_contato(cliente, "N3", "voltei")
+    _api(cliente, "POST", f"/conversas/{conversa.id}/assumir", {"site_id": SITE, "pessoa_id": "p1"})
+    assert _pedir(cliente, conversa, "n3")["resultado"] == "conversa_com_pessoa" and len(posts) == 1
+
+
+def test_resposta_exige_a_janela_de_24h_aberta(base):
+    conversa = _conversa_ligada(base)
+    agora = timezone.now()
+    assert envio.e_resposta(conversa, agora) is True
+    Conversa.objects.filter(pk=conversa.pk).update(janela_aberta_ate=agora - timedelta(minutes=1))
+    conversa.refresh_from_db()
+    assert envio.e_resposta(conversa, agora) is False
+
+
+def test_retomada_de_saida_pendente_de_resposta_tambem_e_resposta(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="Olá",
+                                      estado_envio="pendente", chave_idempotencia="k9",
+                                      ocorrida_em=timezone.now() - timedelta(minutes=10))
+    _relogio(monkeypatch, 21, 30)
+    # A linha abandonada é a resposta à fala dele: reenviá-la não a transforma em iniciativa.
+    retomada = _pedir(Client(), conversa, "k9", texto="Olá")
+    assert retomada["resultado"] == "enviada" and len(posts) == 1
+    assert _pedir(Client(), conversa, "k10")["resultado"] == "fora_do_horario"
 
 
 def test_agente_respeita_preferencia_recusada_e_responde_a_fala_nova(base, monkeypatch):
@@ -1064,13 +1189,13 @@ def test_retomada_de_saida_pendente_nao_conta_a_si_mesma_no_teto_do_dia(base, mo
     posts = []
     _gateway_aberto(monkeypatch, posts)
     cliente = Client()
-    for i in range(2):
+    for i in range(3):  # a primeira responde à fala dele e não conta; as outras duas são iniciativa
         assert _pedir(cliente, conversa, f"a{i}")["resultado"] == "enviada"
     antiga = timezone.now() - timedelta(minutes=10)
     MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="Olá",
                                       estado_envio="pendente", chave_idempotencia="k3", ocorrida_em=antiga)
     retomada = _pedir(cliente, conversa, "k3", texto="Olá")
-    assert retomada["resultado"] == "enviada" and len(posts) == 3
+    assert retomada["resultado"] == "enviada" and len(posts) == 4
     # Com a terceira de fato enviada, a quarta (outra chave) bate no teto.
     assert _pedir(cliente, conversa, "a4")["resultado"] == "limite_diario"
 

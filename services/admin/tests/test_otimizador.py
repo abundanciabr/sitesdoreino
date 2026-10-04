@@ -19,7 +19,7 @@ import respx
 from django.utils import timezone
 
 from apps.agentes import modelo
-from apps.comercial import coordenador, ferramentas, otimizador, papeis
+from apps.comercial import coordenador, eventos, ferramentas, otimizador, papeis
 from apps.comercial.experimentos import ExperimentoEstrategia
 from apps.comercial.models import (
     DecisaoComercial,
@@ -32,6 +32,7 @@ from tests.test_comercial import (  # noqa: F401  (ambiente é fixture automáti
     _corpo,
     _final,
     _guardar_chave,
+    _quiz_completado,
     _resto_404,
     _trabalho,
     ambiente,
@@ -91,11 +92,16 @@ def test_percentual_de_teste_vem_do_ambiente_com_limite(monkeypatch):
 
 
 def _envios(versao: int, n: int, vendas: int, marca: str, *, entrada: dict | None = None,
-            tipo: str = T.ABORDAR, teste: bool = False, depois_da_venda: bool = False):
-    """n envios com a versão pedida; as `vendas` primeiras oportunidades pagam."""
+            tipo: str = T.ABORDAR, teste: bool = False, depois_da_venda: bool = False,
+            ha_dias: int = 0, resultado: str = R.FEITO):
+    """n envios com a versão pedida; as `vendas` primeiras oportunidades pagam.
+    `ha_dias` recua a mensagem (e a venda, uma hora depois dela) no tempo;
+    `resultado` diferente de FEITO é o lead que ficou com a versão e não
+    recebeu a mensagem."""
     papel = "abordagem" if tipo == T.ABORDAR else "atendimento"
     papeis.estrategia_ativa(papel)
     estrategia = EstrategiaComercial.objects.get(papel=papel, versao=versao)
+    quando = timezone.now() - timedelta(days=ha_dias)
     for i in range(n):
         opp = f"opp-{marca}-{i}"
         campos = {"oportunidade_id": opp, "contato_id": f"lead-{marca}-{i}",
@@ -109,11 +115,15 @@ def _envios(versao: int, n: int, vendas: int, marca: str, *, entrada: dict | Non
                                            oportunidade_ref=opp)
         DecisaoComercial.objects.create(
             trabalho=trabalho, papel=estrategia.papel, estrategia=estrategia, versao_estrategia=versao,
-            call_id="c1", ferramenta="enviar_mensagem", acao="mensagem_enviada", resultado=R.FEITO,
+            call_id="c1", ferramenta="enviar_mensagem", acao="mensagem_enviada", resultado=resultado,
             saida={"resultado": "enviada"})
         if not depois_da_venda and i < vendas:
             EventoComercial.objects.create(event_id=f"pg-{marca}-{i}", nome="pagamento.aprovado",
                                            oportunidade_ref=opp)
+        if ha_dias:
+            DecisaoComercial.objects.filter(trabalho=trabalho).update(criada_em=quando)
+            EventoComercial.objects.filter(event_id=f"pg-{marca}-{i}").update(
+                recebido_em=quando - timedelta(hours=1) if depois_da_venda else quando + timedelta(hours=1))
 
 
 def _v2(papel: str = "abordagem", percentual: int = 20):
@@ -434,8 +444,13 @@ def test_candidata_melhor_com_amostra_vira_a_do_ar_e_a_anterior_fica_para_voltar
     assert ativa.pk == proposta.pk and ativa.anterior_id == base.pk
     base.refresh_from_db()
     assert base.situacao == "arquivada"
-    # Depois de promovida, se piorar contra a base no período do teste, volta sozinha.
-    _envios(2, 600, 0, "d")
+    # Depois de promovida, se piorar contra a base no período do teste, volta sozinha. A conferência só
+    # olha mensagens maduras (mais de 7 dias) e a venda feita logo depois delas.
+    quando = timezone.now() - timedelta(days=20)
+    ExperimentoEstrategia.objects.filter(pk=experimento.pk).update(iniciado_em=timezone.now() - timedelta(days=30))
+    DecisaoComercial.objects.update(criada_em=quando)
+    EventoComercial.objects.update(recebido_em=quando + timedelta(hours=1))
+    _envios(2, 600, 0, "d", ha_dias=10)
     volta = otimizador.volta_se_piorou("abordagem")
     assert volta and volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == base.pk
@@ -613,3 +628,233 @@ def test_post_malformado_na_pagina_dos_agentes_nao_da_erro_500(campos):
     cliente.defaults["HTTP_COOKIE"] = "meshcraft_sessao=qualquer-coisa-assinada"
     resposta = cliente.post(reverse("agentes_comerciais"), campos)
     assert resposta.status_code in (302, 404)
+
+
+# ---------------------------------------------------------------- ajustes da revisão (G1 a G7)
+
+
+def _promover_a_v2_e_ela_piora():
+    """v2 promovida pelo otimizador num teste de 30 dias atrás, e depois dela
+    as mensagens (de 10 dias atrás) quase não vendem."""
+    papeis.estrategia_ativa("abordagem")
+    _, experimento = _v2(percentual=50)
+    ExperimentoEstrategia.objects.filter(pk=experimento.pk).update(
+        iniciado_em=timezone.now() - timedelta(days=30))
+    _envios(1, 40, 8, "b", ha_dias=20)
+    _envios(2, 40, 28, "c", ha_dias=20)
+    resultado = otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
+    assert resultado["desfecho"] == "promovida"
+    _envios(2, 600, 0, "d", ha_dias=10)
+    return experimento
+
+
+def test_g1_a_volta_automatica_nao_desfaz_a_volta_que_a_pessoa_fez_depois_dela():
+    _promover_a_v2_e_ela_piora()
+    volta = otimizador.volta_se_piorou("abordagem")
+    assert volta and volta["voltou_para"] == 1
+    # A pessoa decide ficar com a v2 e recoloca: o otimizador não briga com ela.
+    papeis.voltar_a_anterior("abordagem", "pessoa", "quero a v2")
+    assert papeis.estrategia_ativa("abordagem").versao == 2
+    assert otimizador.volta_se_piorou("abordagem") is None
+    assert papeis.estrategia_ativa("abordagem").versao == 2
+    assert otimizador.volta_se_piorou("abordagem") is None  # nem na hora seguinte
+
+
+def test_g2_a_volta_automatica_nao_anda_mais_um_degrau_se_a_pessoa_voltou_no_meio(monkeypatch):
+    papeis.estrategia_ativa("abordagem")
+    v2 = papeis.propor_versao("abordagem", "Instruções novas.", criada_por="x", motivo="m", origem="pessoa")
+    papeis.ativar(v2, "dono", "entrou a v2")
+    _envios(1, 40, 14, "a", ha_dias=20)
+    _envios(2, 40, 0, "b", ha_dias=10)
+    medir = otimizador.numeros
+
+    def medir_e_a_pessoa_volta(*args, **kwargs):
+        dados = medir(*args, **kwargs)
+        papeis.voltar_a_anterior("abordagem", "pessoa", "prefiro a v1")
+        return dados
+
+    monkeypatch.setattr(otimizador, "numeros", medir_e_a_pessoa_volta)
+    assert otimizador.volta_se_piorou("abordagem") is None
+    assert papeis.estrategia_ativa("abordagem").versao == 1
+
+
+def test_g3_se_a_pessoa_encerra_o_teste_durante_a_conferencia_a_candidata_nao_vai_ao_ar(monkeypatch):
+    base = papeis.estrategia_ativa("abordagem")
+    _, experimento = _v2(percentual=50)
+    _envios(1, 40, 8, "b")
+    _envios(2, 40, 28, "c")
+    carregado = ExperimentoEstrategia.objects.get(pk=experimento.pk)
+    medir = otimizador.numeros
+
+    def medir_e_a_pessoa_encerra(*args, **kwargs):
+        dados = medir(*args, **kwargs)
+        otimizador.encerrar(ExperimentoEstrategia.objects.get(pk=experimento.pk), "pessoa", "não quero")
+        return dados
+
+    monkeypatch.setattr(otimizador, "numeros", medir_e_a_pessoa_encerra)
+    resultado = otimizador.avaliar(carregado)
+    assert resultado["desfecho"] != "promovida"
+    experimento.refresh_from_db()
+    assert experimento.estado == X.ENCERRADA
+    assert papeis.estrategia_ativa("abordagem").pk == base.pk
+
+
+def test_g3_promocao_que_falha_ao_por_no_ar_nao_deixa_o_teste_marcado_como_promovido(monkeypatch):
+    base = papeis.estrategia_ativa("abordagem")
+    _, experimento = _v2(percentual=50)
+    _envios(1, 40, 8, "b")
+    _envios(2, 40, 28, "c")
+
+    def fora_do_ar(*args, **kwargs):
+        raise RuntimeError("banco indisponível")
+
+    monkeypatch.setattr(papeis, "ativar", fora_do_ar)
+    with pytest.raises(RuntimeError):
+        otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
+    experimento.refresh_from_db()
+    assert experimento.estado == X.EM_TESTE and experimento.encerrado_em is None
+    assert papeis.estrategia_ativa("abordagem").pk == base.pk
+
+
+def test_g3_se_a_pessoa_poe_outra_versao_no_ar_durante_a_conferencia_a_candidata_nao_a_atropela(monkeypatch):
+    papeis.estrategia_ativa("abordagem")
+    _, experimento = _v2(percentual=50)
+    _envios(1, 40, 8, "b")
+    _envios(2, 40, 28, "c")
+    medir = otimizador.numeros
+    da_pessoa = papeis.propor_versao("abordagem", "da pessoa", criada_por="admin", motivo="m", origem="pessoa")
+
+    def medir_e_a_pessoa_poe_a_dela(*args, **kwargs):
+        dados = medir(*args, **kwargs)
+        papeis.ativar(da_pessoa, "admin")
+        return dados
+
+    monkeypatch.setattr(otimizador, "numeros", medir_e_a_pessoa_poe_a_dela)
+    resultado = otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
+    assert resultado["desfecho"] == "encerrado" and "mudou durante o teste" in resultado["motivo"]
+    assert papeis.estrategia_ativa("abordagem").pk == da_pessoa.pk
+
+
+@respx.mock
+def test_g4_proposta_pendente_nao_chama_o_modelo_forte_de_novo_a_cada_lead_novo(monkeypatch):
+    _guardar_chave()
+    monkeypatch.setenv("OTIMIZADOR_PERCENTUAL_TESTE", "0")
+    _envios(1, 30, 3, "base")
+    openai = respx.post(RESPOSTAS).mock(side_effect=[
+        _proposta_do_modelo(texto=f"Versão {i} da abordagem.") for i in range(5)])
+    for i in range(4):
+        _envios(1, 1, 0, f"novo{i}")
+        analise = _analise()
+        coordenador.rodar_um("t1")
+        analise.refresh_from_db()
+        assert analise.estado == E.CONCLUIDO, analise.motivo
+    assert openai.call_count == 1
+    assert EstrategiaComercial.objects.filter(papel="abordagem", situacao="proposta").count() == 1
+    assert analise.resultado["conclusao"] == "proposta_pendente"
+    assert "não foi chamado" in analise.resumo
+
+
+@respx.mock
+def test_g4_so_volta_a_chamar_o_modelo_forte_com_envios_novos_o_bastante():
+    _guardar_chave()
+    manter = _final({"conclusao": "manter", "papel": None, "instrucoes_propostas": None, "motivo": "ok",
+                     "evidencias": []})
+    openai = respx.post(RESPOSTAS).mock(side_effect=[manter, manter, manter])
+    _envios(1, 30, 3, "base")
+    _analise()
+    coordenador.rodar_um("t1")
+    assert openai.call_count == 1
+    _envios(1, otimizador.MIN_AMOSTRA - 1, 0, "poucos")
+    segundo = _analise()
+    coordenador.rodar_um("t1")
+    segundo.refresh_from_db()
+    assert segundo.resultado["conclusao"] == "sem_novidade" and openai.call_count == 1
+    _envios(1, 1, 0, "o-trigesimo")
+    terceiro = _analise()
+    coordenador.rodar_um("t1")
+    terceiro.refresh_from_db()
+    assert terceiro.estado == E.CONCLUIDO and openai.call_count == 2
+
+
+def test_g5_campanha_do_quiz_real_vem_do_utm_sem_prefixo_ou_do_contexto():
+    real = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-real", utm={"source": "instagram", "campaign": "qz_ansiedade_out26"},
+        context={"src": "instagram", "cpg": "qz_ansiedade_out26", "host": "meshcraft.top"}))
+    assert otimizador._dimensoes(real)["campanha"] == "qz_ansiedade_out26"
+    assert real.teste is False
+    so_contexto = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-ctx", submissao_id="sub-2", utm={}, context={"src": "tiktok", "cpg": "qz_so_contexto"},
+        lead={"email": "outra@exemplo.com", "name": "Bia Souza"}))
+    assert otimizador._dimensoes(so_contexto)["campanha"] == "qz_so_contexto"
+    so_utm = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-utm", submissao_id="sub-3", utm={"source": "x", "campaign": "so_utm"},
+        lead={"email": "terceira@exemplo.com", "name": "Cléo Souza"}))
+    assert otimizador._dimensoes(so_utm)["campanha"] == "so_utm"
+    prefixado = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-pre", submissao_id="sub-4", utm={"utm_campaign": "com_prefixo"},
+        lead={"email": "quarta@exemplo.com", "name": "Dani Souza"}))
+    assert otimizador._dimensoes(prefixado)["campanha"] == "com_prefixo"
+    sem_nada = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-nada", submissao_id="sub-5", utm={},
+        lead={"email": "quinta@exemplo.com", "name": "Eva Souza"}))
+    assert otimizador._dimensoes(sem_nada)["campanha"] == "(sem campanha)"
+
+
+@pytest.mark.parametrize("utm,context", [
+    ({"source": "teste"}, {}),
+    ({"utm_source": "teste"}, {}),
+    ({"source": "sandbox"}, {}),
+    ({}, {"src": "teste"}),
+    ({}, {"cpg": "teste_abril"}),
+    ({"campaign": "teste_abril"}, {}),
+])
+def test_g5_lead_com_a_marca_de_teste_do_quiz_nao_entra_nos_numeros(utm, context):
+    trabalho = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-teste", utm=utm, context=context))
+    assert trabalho.teste is True
+
+
+def test_g5_origem_normal_nao_vira_teste():
+    trabalho = eventos.tratar("eventos.quiz.completado", _quiz_completado(
+        event_id="ev-normal", utm={"source": "instagram", "campaign": "qz_testemunhos"},
+        context={"src": "instagram", "cpg": "qz_testemunhos"}))
+    assert trabalho.teste is False
+
+
+def test_g6_lead_que_ficou_com_a_versao_conta_no_denominador_mesmo_sem_mensagem_enviada():
+    _, experimento = _v2(percentual=50)
+    _envios(1, 200, 20, "b")
+    _envios(2, 40, 12, "c")
+    _envios(2, 160, 0, "d", resultado=R.RECUSADO)  # ficaram na v2 e a mensagem não saiu
+    # Ainda na fila, sem nenhuma decisão: não foi atendido por versão nenhuma.
+    _trabalho(T.ABORDAR, oportunidade_id="opp-fila", chave_da_conversa="lead:site-1:fila")
+    resultado = otimizador.avaliar(ExperimentoEstrategia.objects.get(pk=experimento.pk))
+    assert resultado["comparacao"]["candidata"] == {"abordagens": 200, "vendas": 12}
+    assert resultado["comparacao"]["base"] == {"abordagens": 200, "vendas": 20}
+    assert resultado["desfecho"] == "continua"  # 6% contra 10% não é diferença que se afirme
+
+
+def test_g7_versao_recem_posta_no_ar_nao_e_julgada_pelas_vendas_que_ainda_nao_aconteceram():
+    papeis.estrategia_ativa("abordagem")
+    v2 = papeis.propor_versao("abordagem", "Instruções novas.", criada_por="x", motivo="m", origem="pessoa")
+    papeis.ativar(v2, "dono", "entrou a v2")
+    _envios(1, 160, 22, "b", ha_dias=30)  # base madura
+    _envios(2, 340, 17, "c", ha_dias=2)  # mensagens de anteontem: as vendas ainda vão acontecer
+    assert otimizador.volta_se_piorou("abordagem") is None
+    assert papeis.estrategia_ativa("abordagem").versao == 2
+    # Passada a maturação, a mesma diferença passa a valer.
+    quando = timezone.now() - timedelta(days=10)
+    DecisaoComercial.objects.filter(versao_estrategia=2).update(criada_em=quando)
+    EventoComercial.objects.filter(event_id__startswith="pg-c-").update(recebido_em=quando + timedelta(hours=1))
+    volta = otimizador.volta_se_piorou("abordagem")
+    assert volta and volta["voltou_para"] == 1
+
+
+def test_g7_com_janela_so_conta_a_venda_feita_logo_depois_da_mensagem_e_so_mensagem_madura():
+    papeis.estrategia_ativa("abordagem")
+    _envios(1, 4, 2, "j", ha_dias=30)
+    EventoComercial.objects.filter(event_id="pg-j-1").update(recebido_em=timezone.now() - timedelta(days=10))
+    assert otimizador.numeros("abordagem")["versoes"][0]["vendas"] == 2
+    com_janela = otimizador.numeros("abordagem", janela_de_venda=timedelta(days=7))
+    assert (com_janela["versoes"][0]["abordagens"], com_janela["versoes"][0]["vendas"]) == (4, 1)
+    assert otimizador.numeros("abordagem", ate=timezone.now() - timedelta(days=40))["versoes"] == []
