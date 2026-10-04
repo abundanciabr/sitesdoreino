@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import timedelta
 from decimal import Decimal
 
 from django.apps import apps as django_apps
 from django.db import DatabaseError
-from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Sum
+from django.db.models import Count, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -302,35 +301,6 @@ def _detalhe(trabalho_id: str):
     return preparado
 
 
-def _frase_do_tempo(segundos) -> str:
-    """Segundos em português simples: '12 s', '3 min 20 s', '1 h 05 min'."""
-    total = int(round(segundos))
-    if total < 60:
-        return f"{total} s"
-    minutos, resto = divmod(total, 60)
-    if minutos < 60:
-        return f"{minutos} min {resto:02d} s" if resto else f"{minutos} min"
-    horas, minutos = divmod(minutos, 60)
-    return f"{horas} h {minutos:02d} min"
-
-
-def _tempos_da_fila(TrabalhoComercial) -> dict:
-    """Espera média na fila e tempo até a resposta ao lead, nas últimas 24h.
-    Trabalhos de teste ficam fora. Sem dados, o texto diz 'ainda sem dados'."""
-    desde = timezone.now() - timedelta(hours=24)
-    base = TrabalhoComercial.objects.filter(criado_em__gte=desde, teste=False)
-    espera = base.filter(iniciado_em__isnull=False).aggregate(
-        m=Avg(ExpressionWrapper(F("iniciado_em") - F("criado_em"), output_field=DurationField()))
-    )["m"]
-    resposta = base.filter(tipo="atender_mensagem", estado="concluido", terminado_em__isnull=False).aggregate(
-        m=Avg(ExpressionWrapper(F("terminado_em") - F("criado_em"), output_field=DurationField()))
-    )["m"]
-    return {
-        "espera_na_fila": _frase_do_tempo(espera.total_seconds()) if espera is not None else "ainda sem dados",
-        "tempo_ate_resposta": _frase_do_tempo(resposta.total_seconds()) if resposta is not None else "ainda sem dados",
-    }
-
-
 def _ligado() -> bool:
     from apps.comercial import coordenador
 
@@ -369,7 +339,6 @@ def crm_agentes(request):
                 TrabalhoComercial.objects.filter(criado_em__gte=inicio, estado="concluido", teste=False)
             ).count(),
             testes_ocultos=0 if mostrar_testes else TrabalhoComercial.objects.filter(teste=True).count(),
-            tempos=_tempos_da_fila(TrabalhoComercial),
             estrategias=_estrategias(),
             detalhe=_detalhe(request.GET.get("trabalho", "")),
             ligado=_ligado(),

@@ -43,8 +43,6 @@
       <div class="cartao"><strong>—</strong><span>Disponível no mês</span></div>
       {% endif %}
       <div class="cartao"><strong>{{ concluidos_no_mes }}</strong><span>Trabalhos concluídos no mês</span></div>
-      <div class="cartao"><strong>{{ tempos.espera_na_fila }}</strong><span>Espera média na fila (últimas 24h)</span></div>
-      <div class="cartao"><strong>{{ tempos.tempo_ate_resposta }}</strong><span>Tempo até a resposta ao lead (últimas 24h)</span></div>
     </div>
     {% if gasto.autorizacao %}<p class="crmag-explica">Limite: {{ gasto.autorizacao.descricao }}. Para mudar o limite, use <a href="{% url 'robos_admin' %}">robôs e conexão</a>.</p>{% endif %}
   </section>
