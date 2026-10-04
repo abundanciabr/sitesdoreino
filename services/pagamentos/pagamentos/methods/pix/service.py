@@ -16,6 +16,7 @@ from django.utils import timezone
 from pagamentos.core import gateway, ledger
 from pagamentos.core.ambiente_mp import mp_em_teste
 from pagamentos.core.models import Intent, PaymentAttempt
+from pagamentos.core.observacoes import observar_mp
 from pagamentos.core.tentativas import (
     ResultadoDoProvedor,
     TentativaBloqueada,
@@ -48,6 +49,33 @@ def _validar_comprador(intent: Intent) -> None:
             raise appmax.DadosPixInvalidos(
                 "Informe CPF e telefone com DDD para pagar por Pix."
             )
+
+
+def _dados_do_comprador_para_mp(intent: Intent) -> dict[str, Any]:
+    """O que o MP lê do comprador e do pedido num Pix, igual no envio e no reenvio.
+
+    O checkout grava o documento como `cpf`; só a lista da Appmax o repete como
+    `document_number`. Ler apenas o segundo deixava o Pix dos outros sites sem
+    `payer.identification`."""
+    nome = str(intent.customer.get("name") or "").split()
+    documento = _DIGITOS.sub(
+        "",
+        str(intent.customer.get("document_number") or intent.customer.get("cpf") or ""),
+    )
+    itens = intent.metadata.get("items")
+    return {
+        "payer_first_name": nome[0] if nome else "",
+        "payer_last_name": " ".join(nome[1:]),
+        "payer_identification": (
+            {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
+            if len(documento) in {11, 14}
+            else None
+        ),
+        "itens_do_pedido": itens if isinstance(itens, list) else None,
+        "comprador_nome": " ".join(nome),
+        "comprador_telefone": str(intent.customer.get("phone") or ""),
+        "device_id": str(intent.metadata.get("mp_device_id") or ""),
+    }
 
 
 def criar_intent_pix(
@@ -151,8 +179,6 @@ def completar_intent_pix(intent: Intent) -> Intent:
         if mp.state == "rejected":
             raise gateway.FalhaNoProvedor("Pix recusado pelo Mercado Pago")
     resposta: gateway.ResultadoPix | None = None
-    nome = str(intent.customer.get("name") or "").split()
-    documento = _DIGITOS.sub("", str(intent.customer.get("document_number") or ""))
     vencimento = (
         (datetime.now(UTC) + timedelta(minutes=30))
         .isoformat(timespec="milliseconds")
@@ -189,19 +215,20 @@ def completar_intent_pix(intent: Intent) -> Intent:
                 payer_email=str(intent.customer.get("email") or ""),
                 date_of_expiration=vencimento,
                 notification_url=aviso,
-                payer_first_name=nome[0] if nome else "",
-                payer_last_name=" ".join(nome[1:]),
-                payer_identification=(
-                    {
-                        "type": "CPF" if len(documento) == 11 else "CNPJ",
-                        "number": documento,
-                    }
-                    if len(documento) in {11, 14}
-                    else None
-                ),
+                **_dados_do_comprador_para_mp(intent),
             )
         except gateway.RecusaAntifraude as exc:
+            observar_mp(
+                tentativa, origem="criacao", status="rejected",
+                detalhe=exc.status_detail, referencia=exc.payment_id,
+            )
             return ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
+        except gateway.PixNaoPagavel as exc:
+            observar_mp(
+                tentativa, origem="criacao", status=exc.status,
+                detalhe=exc.status_detail, referencia=exc.payment_id,
+            )
+            raise
         return ResultadoDoProvedor(None, resposta.payment_id, motivo="pending")
 
     def registrar(tentativa: PaymentAttempt, resultado: ResultadoDoProvedor) -> None:
@@ -247,8 +274,6 @@ def completar_intent_pix(intent: Intent) -> Intent:
 
 def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
     """Repete a mesma operação do MP quando a resposta anterior não tinha ID."""
-    nome = str(intent.customer.get("name") or "").split()
-    documento = _DIGITOS.sub("", str(intent.customer.get("document_number") or ""))
     vencimento = (
         intent.pix_expires_at.astimezone(UTC)
         .isoformat(timespec="milliseconds")
@@ -269,16 +294,20 @@ def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
             payer_email=str(intent.customer.get("email") or ""),
             date_of_expiration=vencimento,
             notification_url=aviso,
-            payer_first_name=nome[0] if nome else "",
-            payer_last_name=" ".join(nome[1:]),
-            payer_identification=(
-                {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
-                if len(documento) in {11, 14}
-                else None
-            ),
+            **_dados_do_comprador_para_mp(intent),
             envio_ambiguo_anterior=True,
         )
+    except gateway.PixNaoPagavel as exc:
+        observar_mp(
+            tentativa, origem="criacao", status=exc.status,
+            detalhe=exc.status_detail, referencia=exc.payment_id,
+        )
+        raise
     except gateway.RecusaAntifraude as exc:
+        observar_mp(
+            tentativa, origem="criacao", status="rejected",
+            detalhe=exc.status_detail, referencia=exc.payment_id,
+        )
         resultado = ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
         fechar_reconciliacao(tentativa, resultado=resultado)
         if _na_lista(intent):
@@ -447,7 +476,9 @@ def aplicar_status_mp(tentativa: PaymentAttempt, status: str, motivo: str) -> st
     )
 
 
-def reconciliar_intent_pix(intent: Intent) -> Intent:
+def reconciliar_intent_pix(intent: Intent, *, origem: str = "consulta") -> Intent:
+    """Consulta o MP e aplica o status. `origem` só diz quem perguntou
+    (get_intent, supervisao, consulta), para a observação do AC11."""
     tentativa = (
         PaymentAttempt.objects.filter(intent=intent, provider="mercadopago")
         .order_by("-created_at")
@@ -461,6 +492,10 @@ def reconciliar_intent_pix(intent: Intent) -> Intent:
         payment_id=tentativa.provider_reference_id
     )
     conferir_consulta_mp(tentativa, consulta)
+    observar_mp(
+        tentativa, origem=origem, status=consulta.status,
+        detalhe=consulta.reason_code, referencia=consulta.payment_id,
+    )
     if (
         _sandbox()
         and tentativa.state == "pending"

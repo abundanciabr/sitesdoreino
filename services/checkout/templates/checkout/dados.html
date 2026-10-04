@@ -91,5 +91,7 @@
   <script src="{{ static_base }}/api.js"></script>
   {% if appmax_pix_enabled %}<script src="{{ appmax_script_url }}"></script>{% endif %}
   <script src="{{ static_base }}/dados.js"></script>
+  {# O Pix nasce aqui e o MP é o primeiro provedor: o aparelho (MP_DEVICE_SESSION_ID) vai junto do pedido #}
+  <script src="https://www.mercadopago.com/v2/security.js" view="checkout" async></script>
 </body>
 </html>

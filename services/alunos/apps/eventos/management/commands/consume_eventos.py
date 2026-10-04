@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import redis
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, InterfaceError, OperationalError, transaction
 
 from apps.eventos.models import EventoProcessado
 from apps.matriculas.handlers import (
@@ -359,10 +359,9 @@ def reentregar_presas(r: "redis.Redis", stream: str, handlers: dict) -> None:
        reprocessado pelo MESMO caminho das mensagens novas — idempotência
        segura pós-#43: registro e efeito na mesma transação.
 
-    Se o reprocesso estourar de novo, a exceção propaga como no caminho normal
-    (o processo morre e o supervisor o traz de volta); a mensagem segue no PEL
-    com delivery_count incrementado pelo próprio XAUTOCLAIM — o teto de
-    MAX_ENTREGAS é o que impede o ciclo de ser eterno.
+    Se o reprocesso estourar de novo, só aquela mensagem fica para trás (ver
+    processar_isolada); ela segue no PEL com delivery_count incrementado pelo
+    próprio XAUTOCLAIM, e o teto de MAX_ENTREGAS impede o ciclo de ser eterno.
     """
     presas = r.xpending_range(
         stream, GRUPO, min="-", max="+", count=LOTE_REENTREGA, idle=IDLE_MS_REENTREGA
@@ -377,9 +376,32 @@ def reentregar_presas(r: "redis.Redis", stream: str, handlers: dict) -> None:
         stream, GRUPO, CONSUMIDOR, min_idle_time=IDLE_MS_REENTREGA, count=LOTE_REENTREGA
     )
     for msg_id, campos in resultado[1]:
+        processar_isolada(r, stream, msg_id, campos, handlers)
+
+
+def processar_isolada(
+    r: "redis.Redis", stream, msg_id, campos, handlers: dict
+) -> None:
+    """Processa e dá ACK em UMA mensagem; se ela estourar, as vizinhas seguem.
+
+    Sem este isolamento, a exceção da primeira mensagem do lote saía do laço e
+    as seguintes, já entregues ou já reivindicadas (com a contagem somada),
+    ficavam sem rodar até chegarem juntas à fila morta. A que falhou continua
+    na PEL, sem ACK, e segue a reentrega normal. Queda do banco continua
+    derrubando o worker, como antes: aí o problema não é a mensagem.
+    """
+    try:
         envelope = json.loads(campos[b"json"])
         processar_envelope(envelope, handlers)
         r.xack(stream, GRUPO, msg_id)
+    except (OperationalError, InterfaceError):
+        raise
+    except Exception:  # noqa: BLE001 - isola a falha de UMA mensagem
+        logger.exception(
+            "evento do stream %s (msg_id=%s) falhou; segue na PEL para reentrega",
+            stream,
+            msg_id,
+        )
 
 
 class Command(BaseCommand):
@@ -400,6 +422,4 @@ class Command(BaseCommand):
             )
             for stream, msgs in resp or []:
                 for msg_id, campos in msgs:
-                    envelope = json.loads(campos[b"json"])
-                    processar_envelope(envelope, HANDLERS)
-                    r.xack(stream, GRUPO, msg_id)
+                    processar_isolada(r, stream, msg_id, campos, HANDLERS)
