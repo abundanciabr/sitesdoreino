@@ -35,6 +35,24 @@
     </section>
     {% if publico.obras|length > 1 %}<section class="pp-wrap pp-outros" aria-labelledby="pp-outros-titulo"><h2 id="pp-outros-titulo">Outros trabalhos</h2><div class="pp-outros-grade">{% for obra in publico.obras %}{% if not forloop.first %}<a href="#trabalho-{{ forloop.counter }}">{% if obra.imagem_principal %}<img src="{{ obra.imagem_principal }}" alt="">{% endif %}<span><strong>{{ obra.titulo_comercial|default:obra.titulo|default:obra.legenda|default:"Trabalho" }}</strong>{% if obra.texto_comercial %}<small>{{ obra.texto_comercial|truncatechars:90 }}</small>{% elif obra.descricao %}<small>{{ obra.descricao|truncatechars:90 }}</small>{% endif %}</span></a>{% endif %}{% endfor %}</div></section>{% endif %}
 
+    {% with oferta=publico.oferta %}{% if pagina.oferta or oferta.encomenda or pagina.continuidade or oferta.continuidade or pagina.condicoes or oferta.condicoes or oferta.comprador or oferta.uso or oferta.entregaveis or oferta.formatos or oferta.prazo or oferta.revisoes or oferta.suporte or oferta.exibir_preco and oferta.preco %}
+    <section class="pp-wrap pp-oferta" id="encomendas" aria-labelledby="pp-oferta-titulo">
+      <div class="pp-oferta-texto"><h2 id="pp-oferta-titulo">O que posso criar</h2>
+        {% if pagina.oferta %}<p>{{ pagina.oferta|linebreaksbr }}</p>{% elif oferta.encomenda %}<p>{{ oferta.encomenda|linebreaksbr }}</p>{% endif %}
+        {% if pagina.continuidade or oferta.continuidade %}<h3>Continuidade</h3><p>{{ pagina.continuidade|default:oferta.continuidade|linebreaksbr }}</p>{% endif %}
+        {% if pagina.condicoes or oferta.condicoes %}<h3>Condições</h3><p>{{ pagina.condicoes|default:oferta.condicoes|linebreaksbr }}</p>{% endif %}
+      </div>
+      {% if oferta.comprador or oferta.uso or oferta.entregaveis or oferta.formatos or oferta.prazo or oferta.revisoes or oferta.suporte or oferta.exibir_preco and oferta.preco %}<div class="pp-oferta-detalhes"><h3>Detalhes da encomenda</h3><dl>
+        {% if oferta.comprador %}<div><dt>Para quem</dt><dd>{{ oferta.comprador }}</dd></div>{% endif %}
+        {% if oferta.uso %}<div><dt>Uso previsto</dt><dd>{{ oferta.uso }}</dd></div>{% endif %}
+        {% if oferta.entregaveis %}<div><dt>Entregáveis</dt><dd>{{ oferta.entregaveis }}</dd></div>{% endif %}
+        {% if oferta.formatos %}<div><dt>Formatos</dt><dd>{{ oferta.formatos }}</dd></div>{% endif %}
+        {% if oferta.prazo %}<div><dt>Prazo</dt><dd>{{ oferta.prazo }}</dd></div>{% endif %}
+        {% if oferta.revisoes %}<div><dt>Revisões</dt><dd>{{ oferta.revisoes }}</dd></div>{% endif %}
+        {% if oferta.suporte %}<div><dt>Suporte</dt><dd>{{ oferta.suporte }}</dd></div>{% endif %}
+      </dl>{% if oferta.exibir_preco and oferta.preco %}<p class="pp-preco">{{ oferta.moeda }} {{ oferta.preco }}</p>{% endif %}</div>{% endif %}
+    </section>{% endif %}{% endwith %}
+
     <section class="pp-wrap pp-final" id="sobre"><div><h2>Sobre</h2>{% if pagina.apresentacao %}<p>{{ pagina.apresentacao|linebreaksbr }}</p>{% endif %}{% if pagina.diferenciais %}<p>{{ pagina.diferenciais|linebreaksbr }}</p>{% endif %}</div>{% if pdf_url %}<a class="pp-pdf" href="{{ pdf_url }}" download>↓&nbsp; Baixar portfólio em PDF</a>{% endif %}</section>
     {% if contato_url %}<section class="pp-contato" id="contato"><div class="pp-wrap"><h2>Vamos conversar sobre seu projeto?</h2><a class="pp-cta" href="{{ contato_url }}" rel="noopener noreferrer">{{ pagina.cta|default:"Entrar em contato" }} <span aria-hidden="true">→</span></a></div></section>{% endif %}
   </main>

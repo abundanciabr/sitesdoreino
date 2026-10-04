@@ -244,7 +244,8 @@ def snapshot_rascunho(portfolio: Portfolio) -> dict:
         obras.append({
             "id": peca.pk, "link": principal["link"] if principal else "",
             "imagem_principal": principal["link"] if principal else "",
-            "legenda": peca.legenda, "ordem": peca.ordem, "destaque": peca.destaque,
+            "legenda": peca.legenda, "ordem": peca.ordem,
+            "destaque": str(peca.pk) == pagina["trabalho_destaque"] if pagina.get("trabalho_destaque") else peca.destaque,
             "titulo": peca.titulo, "descricao": peca.descricao,
             "titulo_comercial": legenda.get("titulo") or peca.titulo or peca.legenda,
             "texto_comercial": legenda.get("texto") or peca.descricao or peca.uso_pretendido,

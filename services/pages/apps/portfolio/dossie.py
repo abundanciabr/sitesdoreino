@@ -636,7 +636,9 @@ def montar_visual(*, apelido: str, publico: dict, imagens: dict[str, bytes] | No
     paginas = [abertura]
     capa = None
     if obras:
-        capa = _visual_imagem(obras[0].get("imagem_principal") or obras[0].get("link"), imagens)
+        destaque = next((obra for obra in obras if str(obra.get("id")) == pagina.get("trabalho_destaque")), None)
+        destaque = destaque or next((obra for obra in obras if obra.get("destaque")), obras[0])
+        capa = _visual_imagem(destaque.get("imagem_principal") or destaque.get("link"), imagens)
     if capa:
         abertura["recursos"]["Capa"] = capa
         largura_imagem, altura_imagem = capa[:2]
