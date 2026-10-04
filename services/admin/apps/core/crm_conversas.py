@@ -9,6 +9,7 @@ agente e responder como pessoa. Responder assume a conversa antes de enviar,
 para o agente não falar por cima de quem está atendendo; se o envio não sai no
 mesmo pedido, a conversa volta sozinha para o agente.
 """
+import logging
 import uuid
 from urllib.parse import quote, urlencode
 
@@ -25,6 +26,8 @@ from apps.auditoria.models import Registro
 from .clients import CatalogoClient, LeadsClient, MensageriaClient, http
 from .crm_client import CRMClient
 from .models import AparelhoDaEquipe, MembroDaEquipe
+
+logger = logging.getLogger(__name__)
 
 OK = "ok"
 SEM_CONFIGURACAO = "sem_configuracao"
@@ -50,8 +53,10 @@ ENVIOS = {
     "enviado": "Enviada", "entregue": "Entregue", "lido": "Lida", "falhou": "Falhou",
     "reservado": "Reservada para envio", "desconhecido": "Resultado incerto — confira antes de repetir",
 }
-# Só estes estados dizem que a mensagem de fato saiu.
-ENTREGA_CONFIRMADA = ("enviado", "entregue", "lido")
+# Só estes estados dizem que a mensagem de fato saiu. "aceito" é o provedor ter
+# recebido a mensagem para entregar: é o estado normal logo depois de um envio
+# por WhatsApp (a confirmação da entrega chega depois, pelo retorno do provedor).
+SAIU = ("aceito", "enviado", "entregue", "lido")
 AUTORES = {"lead": "Contato", "agente": "Agente", "pessoa": "Equipe", "sistema": "Sistema"}
 MIDIAS = {"audio": "Áudio", "imagem": "Imagem", "video": "Vídeo", "documento": "Documento"}
 POR_PAGINA = 50
@@ -75,6 +80,7 @@ RESULTADOS = {
 NAO_CONFIRMADA = "Enviada, mas a entrega não foi confirmada; veja o histórico antes de reenviar."
 PODE_TER_SAIDO = "O envio pode ter saído: o serviço de mensagens demorou para responder. Confira o histórico antes de reenviar."
 CONTINUA_COM_O_AGENTE = " Nada foi enviado; a conversa continua com o agente."
+NOME_DO_AGENTE = "Assistente da equipe"
 
 
 class ConversasClient:
@@ -319,22 +325,91 @@ def varrer_aguardando(cliente, site_id, pagina, params):
     return OK, achadas, True, False
 
 
-def oportunidade_do_lead(lead_id):
-    """Link para a oportunidade aberta do lead no CRM, se der para saber."""
+def oportunidades_abertas_do_lead(lead_id):
+    """Ids das oportunidades abertas do lead no CRM. `None` quando não deu para saber."""
     if not lead_id:
-        return ""
+        return []
     estado, dados = CRMClient().quadro(lead_id=str(lead_id), situacao="aberta", por_pagina=5)
     if estado != CRMClient.OK:
-        return ""
+        return None
+    achadas = []
     for item in dados["itens"]:
         if not isinstance(item, dict) or item.get("situacao", "aberta") != "aberta":
             continue
         if item.get("id") and str(item.get("lead_id", lead_id)) == str(lead_id):
             try:
-                return reverse("crm_oportunidade", args=[uuid.UUID(str(item["id"]))])
-            except (ValueError, NoReverseMatch):
-                return ""
-    return ""
+                achadas.append(str(uuid.UUID(str(item["id"]))))
+            except ValueError:
+                continue
+    return achadas
+
+
+def oportunidade_do_lead(lead_id):
+    """Link para a oportunidade aberta do lead no CRM, se der para saber."""
+    achadas = oportunidades_abertas_do_lead(lead_id)
+    if not achadas:
+        return ""
+    try:
+        return reverse("crm_oportunidade", args=[uuid.UUID(achadas[0])])
+    except (ValueError, NoReverseMatch):
+        return ""
+
+
+def nome_de_quem_atende(request):
+    """O nome que o cartão do CRM mostra para quem atendeu: o da equipe, ou o que a sessão traz."""
+    admin = request.admin or {}
+    email = str(admin.get("email") or "").strip().lower()
+    if email:
+        try:
+            membro = MembroDaEquipe.objects.filter(email=email).first()
+        except DatabaseError:
+            membro = None
+        if membro and membro.nome.strip():
+            return membro.nome.strip()
+    return str(admin.get("nome") or admin.get("email") or "Equipe").strip()[:200]
+
+
+def acompanhar_no_crm(request, cliente, site_id, conversa_id, gesto, referencia, campos, lead_id=None):
+    """Depois de um gesto da pessoa na conversa, o cartão da oportunidade acompanha:
+    quem atende, o último contato e se ainda espera resposta.
+
+    Melhor esforço: o gesto já aconteceu na mensageria, e se o CRM não responder
+    a conversa não volta atrás. Só fica o aviso no registro do servidor. A chave
+    é a do gesto, então repetir o mesmo pedido não grava de novo."""
+    falhou = False
+    try:
+        if lead_id is None:
+            estado, dados = cliente.mensagens(site_id, conversa_id, limite=1)
+            if estado != OK:
+                raise RuntimeError("não deu para ler a conversa")
+            lead_id = None if dados["conversa"].get("ambigua") else dados["conversa"].get("lead_id")
+        oportunidades = oportunidades_abertas_do_lead(lead_id) if lead_id else []
+        if oportunidades is None:
+            falhou = True
+        autor = str(request.admin.get("id") or request.admin.get("email") or "mantenedor")[:100]
+        for oportunidade in oportunidades or []:
+            estado, _ = CRMClient().alterar(oportunidade, "PATCH", "/acompanhamento", {
+                **campos, "autor_id": autor, "chave_idempotencia": f"painel:{gesto}:{referencia}",
+            })
+            if estado != CRMClient.OK:
+                falhou = True
+    except Exception:  # o gesto já valeu: nada aqui pode derrubar a resposta da tela
+        logger.exception("caixa de conversas: erro ao atualizar o acompanhamento da conversa %s", conversa_id)
+        return
+    if falhou:
+        logger.warning("caixa de conversas: o gesto %s da conversa %s foi feito, mas o CRM não registrou o acompanhamento",
+                       gesto, conversa_id)
+
+
+def pessoa_atende(request):
+    return {"tipo": "pessoa", "nome": nome_de_quem_atende(request)}
+
+
+def referencia_do_pedido(request):
+    try:
+        return str(uuid.UUID(request.POST.get("referencia", "").strip()))
+    except ValueError:
+        return str(uuid.uuid4())
 
 
 def nome_do_lead(lead_id):
@@ -425,10 +500,11 @@ def devolver_se_assumi(request, cliente, site_id, conversa_id, assumiu):
     return " Nada foi enviado, mas não conseguimos devolver a conversa ao agente: use o botão \"Devolver ao agente\"."
 
 
-def responder(request, cliente, site_id, conversa_id, autor):
+def responder(request, cliente, site_id, conversa_id, autor, lido=None):
     """Devolve (estado, texto). `OK` é enviada ou repetida; `INCERTO` é enviada
     sem confirmação de entrega (ou sem resposta a tempo): o texto fica no
-    formulário e a conversa fica com a pessoa."""
+    formulário e a conversa fica com a pessoa. Em `lido` (se vier) fica o
+    lead da conversa, para o CRM acompanhar."""
     texto = request.POST.get("texto", "").strip()
     modelo = request.POST.get("modelo", "").strip()
     referencia = request.POST.get("referencia", "").strip()
@@ -442,6 +518,8 @@ def responder(request, cliente, site_id, conversa_id, autor):
     if estado != OK:
         return estado, "Não conseguimos consultar a conversa. Nada foi enviado."
     conversa = atual["conversa"]
+    if lido is not None:
+        lido["lead_id"] = None if conversa.get("ambigua") else conversa.get("lead_id")
     if conversa.get("canal") == "whatsapp" and conversa.get("janela_aberta") is False and not modelo:
         # A mensageria vai recusar: não assume a conversa para nada e o agente continua atendendo.
         return RECUSADO, MENSAGENS_DA_RECUSA["fora_da_janela"] + (CONTINUA_COM_O_AGENTE if conversa.get("estado") == "agente" else "")
@@ -468,13 +546,12 @@ def responder(request, cliente, site_id, conversa_id, autor):
         return estado, "A mensageria recusou o envio" + (f": {resultado}" if resultado else ".") + volta
     if estado != OK:
         return estado, "Não conseguimos confirmar o envio. Reabra a conversa e confira antes de repetir."
-    if desfecho == "enviada":
-        saida = resultado.get("mensagem") if isinstance(resultado.get("mensagem"), dict) else {}
-        if saida.get("estado_envio") in ENTREGA_CONFIRMADA:
-            return OK, RESULTADOS["enviada"]
-        return INCERTO, NAO_CONFIRMADA
     if desfecho in RESULTADOS:
-        return OK, RESULTADOS[desfecho]
+        # "enviada" e "repetida" só valem como enviadas se a mensagem saiu de fato.
+        saida = resultado.get("mensagem") if isinstance(resultado.get("mensagem"), dict) else {}
+        if saida.get("estado_envio") in SAIU:
+            return OK, RESULTADOS[desfecho]
+        return INCERTO, NAO_CONFIRMADA
     if desfecho in MENSAGENS_DA_RECUSA:
         return RECUSADO, MENSAGENS_DA_RECUSA[desfecho] + volta
     detalhe = resultado.get("detalhe") or (resultado.get("mensagem") or {}).get("erro") or ""
@@ -514,14 +591,27 @@ def crm_conversa(request, conversa_id):
         estado, detalhe = cliente.gesto(conversa_id, gesto, corpo)
         registrar(request, conversa_id, gesto, estado)
         if estado == OK:
+            acompanhar_no_crm(
+                request, cliente, site_id, conversa_id, gesto, referencia_do_pedido(request),
+                {"atendido_por": pessoa_atende(request) if gesto == "assumir" else {"tipo": "agente", "nome": NOME_DO_AGENTE}},
+            )
             return HttpResponseRedirect(reverse("crm_conversa", args=[conversa_id]) + ("?feito=1" if gesto == "assumir" else "?feito=2"))
         if estado == NAO_EXISTE:
             raise Http404("Conversa não encontrada")
         erro = (detalhe or "A mensageria recusou o pedido.") if estado == RECUSADO else "Não conseguimos confirmar a mudança. Reabra a conversa antes de tentar de novo."
     elif gesto == "responder":
-        estado, erro = responder(request, cliente, site_id, conversa_id, autor)
+        lido = {}
+        estado, erro = responder(request, cliente, site_id, conversa_id, autor, lido)
         if estado == NAO_EXISTE:
             raise Http404("Conversa não encontrada")
+        if estado in (OK, INCERTO):
+            # Saiu, ou pode ter saído: a conversa está com a pessoa. Só o que saiu de fato
+            # conta como contato e tira o "aguardando resposta" do cartão.
+            campos = {"atendido_por": pessoa_atende(request)}
+            if estado == OK:
+                campos.update(ultimo_contato_em=timezone.now().isoformat(), aguardando_resposta=False)
+            acompanhar_no_crm(request, cliente, site_id, conversa_id, "responder", referencia_do_pedido(request),
+                              campos, lead_id=lido.get("lead_id") or "")
         if estado == OK:
             if erro == RESULTADOS["enviada"]:
                 return HttpResponseRedirect(reverse("crm_conversa", args=[conversa_id]) + "?feito=3")

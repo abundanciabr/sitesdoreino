@@ -147,7 +147,8 @@ def listar_crm(request, q: str = "", lead_id: str = "", etapa: str = "",
     elif situacao:
         raise HttpError(422, "situacao inválida")
     if aguardando_resposta == "sim":
-        consulta = consulta.filter(aguardando_resposta=True)
+        # Oportunidade encerrada não espera resposta, mesmo com o campo ainda marcado.
+        consulta = consulta.filter(aguardando_resposta=True, desfecho_encerrada_em__isnull=True)
     elif aguardando_resposta == "nao":
         consulta = consulta.filter(aguardando_resposta=False)
     elif aguardando_resposta:

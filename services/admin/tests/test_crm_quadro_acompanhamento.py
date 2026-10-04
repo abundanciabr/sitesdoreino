@@ -82,11 +82,16 @@ def test_oportunidade_encerrada_nao_mostra_aguardando_resposta():
 
 
 @respx.mock
-def test_filtro_aguardando_sim_nao_traz_encerradas_com_o_campo_sobrando():
-    respx.get(BASE + "/crm").mock(return_value=quadro([
-        item(), item(id="b1", etapa="ganha", situacao="ganha", contato={"id": LEAD, "nome": "Zeca Encerrado", "email": "z@example.com"})]))
+def test_filtro_aguardando_sim_e_da_api_e_o_admin_nao_refiltra_a_pagina():
+    # A API de leads é quem filtra (e quem conta): a página mostra o que ela devolveu,
+    # com o total e a paginação dela, sem esconder cartão por conta própria.
+    rota = respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json={
+        "itens": [item(), item(id="7a0f5f50-2f43-4a8e-9a42-5d1f6a0c9b11", contato={"id": LEAD, "nome": "Zeca Outro", "email": "z@example.com"})],
+        "resumo": RESUMO, "pagina": 1, "total": 250, "tem_mais": True}))
     html = dentro().get(reverse("crm"), {"aguardando_resposta": "sim"}).content.decode()
-    assert "Ana" in html and "Zeca Encerrado" not in html
+    assert rota.calls.last.request.url.params["aguardando_resposta"] == "sim"
+    assert "Ana" in html and "Zeca Outro" in html
+    assert "aguardando_resposta=sim" in html and "pagina=2" in html
 
 
 @respx.mock

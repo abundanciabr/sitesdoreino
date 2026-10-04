@@ -839,6 +839,10 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp/{SITE}/reconcile": {
         "origem": "manual", "referencia": "prova-sem-envio", "provider_id": "mensagem-sintetica",
     },
+    "/avisos-equipe": {
+        "site_id": SITE, "chave": "prova", "destinatario": "equipe@exemplo.com",
+        "assunto": "Prova", "corpo": "Prova",
+    },
     f"/audio/{SITE}/1/transcricao": {"texto": "prova sintética"},
     f"/audio/{SITE}/1/falha": {"erro": "prova sintética"},
     f"/audio/{SITE}/transcricoes": {"telefone": "11999999999"},
@@ -854,6 +858,7 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp-modelos/{SITE}/enviar": {
         "chave_idempotencia": "prova-sem-envio", "destinatario": "11999999999", "modelo": "sintetico",
     },
+    f"/whatsapp-modelos/{SITE}/primeiro-contato": {"variaveis": {}},
     "/conversas": {"site_id": SITE, "canal": "whatsapp", "lead_id": "lead-sintetico", "endereco": "11999999999"},
     "/conversas/{conversa_id}/mensagens": {"site_id": SITE, "texto": "Prova", "chave_idempotencia": "prova"},
     "/conversas/{conversa_id}/assumir": {"site_id": SITE, "pessoa_id": "equipe-sintetica"},

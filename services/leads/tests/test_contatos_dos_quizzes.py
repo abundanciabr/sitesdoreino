@@ -48,6 +48,17 @@ def test_lista_e_ficha_separam_captura_do_quiz_de_cadastro_e_compra(client, auto
     assert Lead.objects.count() == 5
 
 
+def test_contato_de_teste_do_quiz_so_aparece_quando_o_trabalho_de_teste_pede(client, autorizado):
+    teste = Lead.objects.create(site_id="a", email="ciclo-1@example.com", source="quiz:crivo")
+    real = Lead.objects.create(site_id="a", email="pessoa@dominio.com", source="quiz:crivo")
+
+    padrao = client.get("/api/leads/leads", {"origem": "quiz"}, **autorizado).json()
+    assert {i["id"] for i in padrao["itens"]} == {str(real.pk)}
+    mostrando = client.get("/api/leads/leads", {"origem": "quiz", "testes": "mostrar"}, **autorizado).json()
+    assert {i["id"] for i in mostrando["itens"]} == {str(real.pk), str(teste.pk)}
+    assert client.get("/api/leads/leads", {"origem": "quiz", "testes": "talvez"}, **autorizado).status_code == 422
+
+
 def test_crm_conta_so_quiz_e_nao_abre_oportunidade_de_cadastro_direto(client, autorizado):
     for indice, origem in enumerate(("quiz:crivo", "escola")):
         email = f"pessoa{indice}@dominio.com"

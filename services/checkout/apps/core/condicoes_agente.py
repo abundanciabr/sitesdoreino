@@ -15,7 +15,7 @@ import json
 import time
 from datetime import datetime, timezone
 
-from django.db import transaction
+from django.db import connection, transaction
 from django.http import JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
@@ -232,6 +232,14 @@ def put_offer_agent_conditions(request, slug: str):
     # que sumiu por um instante (cotação de parcelas fora do ar) fica guardada:
     # volta a valer quando o provedor volta, sem ninguém ter desmarcado.
     with transaction.atomic():
+        # Uma salvada por vez em cada oferta (a trava solta no fim da transação):
+        # dois PUTs ao mesmo tempo deixavam a união das duas marcações, em vez
+        # da marcação de quem salvou por último.
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s))",
+                [f"condicoes_agente:{site['id']}:{slug}"],
+            )
         CondicaoDoAgente.objects.filter(site_id=site["id"], oferta_slug=slug).filter(
             condicao_id__in=existentes
         ).exclude(condicao_id__in=pedidas).delete()

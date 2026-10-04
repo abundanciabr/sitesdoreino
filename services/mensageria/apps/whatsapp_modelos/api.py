@@ -6,8 +6,8 @@ from apps.core.auth import tokens_de_publicacao
 
 from . import cloud
 from .models import EnvioDeModelo, ModeloWhatsApp
-from .modelos import (definir_mapeamento, enviar_modelo, painel, resumo_de_envio, resumo_de_modelo,
-                      sincronizar_modelos)
+from .modelos import (definir_mapeamento, enviar_modelo, modelo_para_primeiro_contato, painel, resumo_de_envio,
+                      resumo_de_modelo, sincronizar_modelos)
 
 router = Router()
 
@@ -20,6 +20,10 @@ class EnvioEntrada(Schema):
     variaveis: dict = {}
     origem: str = "abordagem"
     referencia: str = ""
+
+
+class PrimeiroContatoEntrada(Schema):
+    variaveis: dict = {}
 
 
 class MapeamentoEntrada(Schema):
@@ -81,6 +85,17 @@ def enviar(request, site_id: str, dados: EnvioEntrada):
                           destinatario=dados.destinatario, modelo=dados.modelo, idioma=dados.idioma,
                           variaveis=dados.variaveis, origem=dados.origem, referencia=dados.referencia)
     return resumo_de_envio(envio)
+
+
+@router.post("/{site_id}/primeiro-contato")
+def primeiro_contato(request, site_id: str, dados: PrimeiroContatoEntrada):
+    """O modelo aprovado que serve ao primeiro contato, já preenchido com `variaveis`
+    (nome, quiz, oferta, link), no formato do campo `modelo` do envio da conversa.
+    Não envia nada. Sem modelo que sirva: `modelo` nulo e o `motivo`."""
+    _escrita(request)  # quem pede é o robô que vai enviar; leitura da porta não escolhe modelo por lead
+    _site(site_id)
+    modelo, motivo = modelo_para_primeiro_contato(dados.variaveis)
+    return {"modelo": modelo, "motivo": motivo}
 
 
 @router.get("/{site_id}/envios/{chave_idempotencia}")

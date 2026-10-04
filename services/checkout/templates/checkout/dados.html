@@ -78,6 +78,7 @@
       <p x-cloak x-show="!appmaxCard">O cartão ainda não pode ser concluído neste site.</p>
 
       <p class="erro" role="alert" x-cloak x-show="erro" x-text="erro"></p>
+      <p x-cloak x-show="pedidoAberto"><a :href="pedidoAberto">Continuar com o pedido anterior</a></p>
       <button class="cta" type="submit" :disabled="enviando">
         <span x-text="enviando ? 'Processando…' : 'Continuar'"></span>
       </button>

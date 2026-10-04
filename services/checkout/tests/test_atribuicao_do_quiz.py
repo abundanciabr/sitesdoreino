@@ -116,6 +116,25 @@ def test_agrupamento_de_pagos_nao_duplica_reenvio(api, rede):
     assert sum(l["pedidos"] for l in pagos_do_quiz("outro-quiz")) == 1
 
 
+@pytest.mark.django_db
+def test_pedido_de_teste_nao_entra_nas_vendas_do_quiz(api, rede):
+    real = _pago(api)
+    teste = _pago(api)
+    reembolsado_de_teste = _pago(api)
+    for p in (real, teste, reembolsado_de_teste):
+        assert aplicar(aprovado_v1(p, mp_payment_id=f"mp-{p.id}")) is True
+    # Pedido que nasceu contra o sandbox do provedor: dinheiro de mentira.
+    Order.objects.filter(pk__in=[teste.pk, reembolsado_de_teste.pk]).update(em_teste=True)
+    Order.objects.filter(pk=reembolsado_de_teste.pk).update(status="reembolsado")
+
+    linhas = pagos_do_quiz("low-ticket")
+
+    assert sum(l["pedidos"] for l in linhas) == 1
+    assert sum(l["receita_cents"] for l in linhas) == real.total_cents
+    assert sum(l["reembolsos"] for l in linhas) == 0
+    assert sum(l["reembolsado_cents"] for l in linhas) == 0
+
+
 def test_op_e_est_do_atendimento_entram_na_atribuicao_e_nao_nas_utms():
     utm, contexto = separar_atribuicao(
         {"op": "op-1", "est": "retomada-quiz", "utm_source": "x", "lixo": "y"}

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
+from apps.core.api import _chave_da_compra
 from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import CondicaoDoAgente, LinkDeCompra, Order, OutboxEvent, Session
 from conftest import (
@@ -666,6 +667,7 @@ def test_reabrir_o_link_com_pix_expirado_abre_novo_pedido_do_mesmo_link(api, red
     link = _link(api, estrategia="retomada-quiz").json()
     sessao1 = _abrir_pelo_link(api, link["link_id"])
     pedido1 = _fechar(api, sessao1["id"])
+    primeiro_pedido = Order.objects.get(pk=pedido1["order_id"])
     assert pedido1["order_id"] == link["pedido_id"]
     assert aplicar(
         pix_expirado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
@@ -689,9 +691,18 @@ def test_reabrir_o_link_com_pix_expirado_abre_novo_pedido_do_mesmo_link(api, red
     segundo = Order.objects.get(pk=pedido2["order_id"])
     assert segundo.oportunidade_ref == "op-123"
     assert segundo.contexto == {"op": "op-123", "est": "retomada-quiz"}
-    # Cada tentativa é uma cobrança nova, com a chave da sessão dela.
-    chaves = {c.request.headers["X-Idempotency-Key"] for c in _intents(rede)}
-    assert chaves == {sessao1["id"], sessao2["id"]}
+    # Cada tentativa é uma cobrança nova, com a chave da compra dela: as duas
+    # chaves são diferentes entre si e a de cada uma é estável para a mesma
+    # compra (mesma sessão, forma de pagamento, itens e comprador).
+    chaves = [c.request.headers["X-Idempotency-Key"] for c in _intents(rede)]
+    assert len(chaves) == 2 and chaves[0] != chaves[1]
+    for chave, sessao, pedido in (
+        (chaves[0], sessao1, primeiro_pedido),
+        (chaves[1], sessao2, segundo),
+    ):
+        assert chave == _chave_da_compra(
+            uuid.UUID(sessao["id"]), pedido.method, pedido.items, pedido.customer
+        )
     # Agora o pedido novo é o que a página mostra.
     assert (
         _abrir_pelo_link(api, link["link_id"])["pedido_existente"]["order_id"]
@@ -1069,3 +1080,168 @@ def test_pedido_de_sandbox_fica_fora_do_total_de_receita(api, cartao_no_site_a, 
     estados = {p["pedido_id"]: p["em_teste"] for p in corpo["pedidos"]}
     assert estados == {teste["order_id"]: True, real["order_id"]: False}
     assert _estado(api, teste["order_id"]).json()["em_teste"] is True
+
+
+# --------------------------------------------------------------------------
+# Segunda revisão do link: aba antiga, catálogo fora do ar, teste, reembolso
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_aba_antiga_nao_fecha_segundo_pedido_depois_da_aprovacao_tardia_do_primeiro(api, rede):
+    link = _link(api).json()
+    sessao1 = _abrir_pelo_link(api, link["link_id"])
+    pedido1 = _fechar(api, sessao1["id"])
+    assert aplicar(recusado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="r1"))
+    # A pessoa reabre o link: sessão nova, ainda sem pedido (a aba antiga fica aberta).
+    sessao2 = _abrir_pelo_link(api, link["link_id"])
+    assert sessao2["id"] != sessao1["id"] and "pedido_existente" not in sessao2
+    # O provedor aprova tarde o 1º pedido.
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido1["order_id"]), provider_reference_id="mp-tarde")
+    )
+    intents_antes = len(_intents(rede))
+
+    resp = api.post(
+        f"/api/checkout/sessoes/{sessao2['id']}/pedido", {"customer": CLIENTE, "method": "pix"}
+    )
+
+    # 409 com o pedido que vale (o front já leva a pessoa até ele); nada novo é cobrado.
+    assert resp.status_code == 409, resp.content
+    assert resp.json()["order_id"] == pedido1["order_id"]
+    assert resp.json()["payment"]["method"] == "pix"
+    assert Order.objects.count() == 1
+    assert len(_intents(rede)) == intents_antes
+
+
+def _catalogo_responde(rede, resposta):
+    from conftest import CATALOGO
+
+    rede.get(f"{CATALOGO}/sites/{SITE_A['id']}/ofertas/{SLUG}").mock(**resposta)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "resposta",
+    [
+        {"return_value": httpx.Response(404)},
+        {"return_value": httpx.Response(503)},
+        {"side_effect": httpx.ConnectError("catálogo fora do ar")},
+    ],
+    ids=["despublicada", "5xx", "sem-conexao"],
+)
+def test_link_de_pedido_pago_abre_o_pedido_mesmo_sem_a_oferta_no_catalogo(api, rede, resposta):
+    link = _link(api).json()
+    pedido = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido["order_id"]), provider_reference_id="mp-1")
+    )
+    _catalogo_responde(rede, resposta)
+
+    de_novo = _abrir_pelo_link(api, link["link_id"])
+
+    assert de_novo["pedido_existente"]["order_id"] == pedido["order_id"]
+    assert de_novo["pedido_existente"]["status"] == "pago"
+    assert Session.objects.count() == 1 and Order.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_link_com_pedido_aguardando_abre_o_pedido_mesmo_com_o_catalogo_fora(api, rede):
+    link = _link(api).json()
+    pedido = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    _catalogo_responde(rede, {"return_value": httpx.Response(503)})
+    de_novo = _abrir_pelo_link(api, link["link_id"])
+    assert de_novo["pedido_existente"]["order_id"] == pedido["order_id"]
+
+
+@pytest.mark.django_db
+def test_link_sem_pedido_e_oferta_fora_do_catalogo_continua_404(api, rede):
+    link = _link(api).json()
+    _catalogo_responde(rede, {"return_value": httpx.Response(404)})
+    resp = api.post("/api/checkout/sessoes", {"offer_slug": SLUG, "link": link["link_id"]})
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_pedido_de_teste_avisa_o_ambiente_sandbox_e_o_real_nao(
+    api, cartao_no_site_a, settings, rede
+):
+    settings.APPMAX_API_URL = "https://api.sandboxappmax.com.br"
+    teste = _pedido_de_cartao(api, "k-teste")
+    settings.APPMAX_API_URL = "https://api.appmax.com.br"
+    real = _pedido_de_cartao(api, "k-real")
+
+    criados = {
+        e.payload["order_id"]: e.payload
+        for e in OutboxEvent.objects.filter(event="pedido.criado")
+    }
+    assert criados[teste["order_id"]]["ambiente"] == "sandbox"
+    assert "ambiente" not in criados[real["order_id"]]
+    # O mesmo sinal vai no metadata da cobrança, de onde pagamentos o ecoa nos avisos.
+    metadados = {
+        json.loads(c.request.content)["order_id"]: json.loads(c.request.content)["metadata"]
+        for c in _intents(rede)
+    }
+    assert metadados[teste["order_id"]]["ambiente"] == "sandbox"
+    assert "ambiente" not in metadados[real["order_id"]]
+
+
+@pytest.mark.django_db
+def test_reembolso_na_cadeia_do_link_nao_some_atras_de_uma_tentativa_mais_nova(api, rede):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(recusado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="r1"))
+    pedido2 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(pix_expirado_v1(Order.objects.get(pk=pedido2["order_id"]), payment_id="e2"))
+    # O 1º é aprovado tarde e depois devolvido; o 2º só expirou.
+    order1 = Order.objects.get(pk=pedido1["order_id"])
+    assert aplicar(aprovado_v2(order1, provider_reference_id="mp-1"))
+    assert aplicar(
+        {
+            "event": "pagamento.reversao_confirmada",
+            "version": 2,
+            "event_id": str(uuid.uuid4()),
+            "occurred_at": "2026-10-03T12:00:00+00:00",
+            "data": {
+                "platform_site_id": order1.site_id,
+                "provider": "mercadopago",
+                "provider_reference_id": "mp-1",
+                "motivo": "estorno",
+                "order_id": str(order1.id),
+            },
+        }
+    )
+    assert Order.objects.get(pk=pedido1["order_id"]).status == "reembolsado"
+
+    estado = _estado(api, link["pedido_id"]).json()
+
+    assert estado["status"] == "reembolsado"
+    assert estado["pedido_atual_id"] == pedido1["order_id"]
+    assert estado["reembolsado"] is True
+
+
+@pytest.mark.django_db
+def test_dois_envios_ao_mesmo_tempo_da_mesma_sessao_dao_409_e_nao_500(api, rede, sessao_a):
+    """O 2º envio chega ao banco depois de o 1º gravar o pedido: a restrição
+    única da sessão barra, e a resposta é o 409 de sempre com o pedido que existe."""
+    from conftest import PAGAMENTOS, _responder_intent
+
+    corpo = {"customer": CLIENTE, "method": "pix"}
+    rota = f"/api/checkout/sessoes/{sessao_a['id']}/pedido"
+    concorrente = {}
+
+    def intent_com_envio_concorrente(request):
+        if not concorrente:
+            concorrente["iniciou"] = True
+            # Outro envio da mesma sessão termina inteiro enquanto este espera o provedor.
+            concorrente["resposta"] = api.post(rota, corpo)
+        return _responder_intent(request)
+
+    rede.post(f"{PAGAMENTOS}/intents").mock(side_effect=intent_com_envio_concorrente)
+
+    resp = api.post(rota, corpo)
+
+    assert concorrente["resposta"].status_code == 201
+    assert resp.status_code == 409, resp.content
+    assert resp.json()["order_id"] == concorrente["resposta"].json()["order_id"]
+    assert Order.objects.count() == 1

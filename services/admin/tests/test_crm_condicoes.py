@@ -165,3 +165,17 @@ def test_o_quadro_do_crm_leva_para_a_tela(monkeypatch):
     respx.get("http://leads:8000/api/leads/crm").mock(return_value=httpx.Response(200, json={"itens": [], "resumo": {}, "pagina": 1, "total": 0, "tem_mais": False}))
     html = dentro().get(reverse("crm")).content.decode()
     assert reverse("crm_condicoes") in html
+
+
+# --- ajustes de 04/10/2026 (segunda rodada) ----------------------------------------------------
+
+
+@respx.mock
+def test_oferta_com_nome_comprido_nao_derruba_a_auditoria_depois_do_salvamento():
+    longa = "curso-" + "x" * 74  # 80 caracteres; o `alvo` da auditoria aceita 64
+    rota = respx.put(url__regex=r"^" + CHECKOUT + r"/interno/ofertas/.+/condicoes-agente$").mock(
+        return_value=httpx.Response(200, json={"condicoes": []}))
+    r = dentro().post(reverse("crm_condicoes_salvar"), {"oferta": longa, "liberar": ["pix"]})
+    assert r.status_code == 302 and r["Location"].endswith("?salvo=1") and rota.called
+    registro = Registro.objects.get()
+    assert registro.alvo == longa[:64] and registro.desfecho == Registro.OK

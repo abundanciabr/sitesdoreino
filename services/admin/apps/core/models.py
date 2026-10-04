@@ -769,3 +769,67 @@ class Comentario(models.Model):
 
     class Meta:
         ordering = ["criado_em", "id"]
+
+
+class AvisoDaEquipe(models.Model):
+    """Um fato do atendimento comercial que pede alguém da equipe.
+
+    Um aviso por fato: `(tipo, site_id, fato)` é único, e é isso que impede o
+    mesmo aviso de chegar duas vezes. `fato` é a referência do acontecimento
+    (a conversa e o momento em que ela foi passada, a oportunidade ganha, o
+    trabalho parado), nunca um texto do lead.
+
+    `responsavel` vazio quer dizer "para a equipe": aparece para todos e o
+    e-mail vai para quem administra o painel.
+    """
+
+    class Tipo(models.TextChoices):
+        PESSOA_PEDIDA = "pessoa_pedida", "Conversa para uma pessoa"
+        VENDA_ASSISTIDA = "venda_assistida", "Venda com atendimento do agente"
+        CONVERSA_AMBIGUA = "conversa_ambigua", "Conversa ambígua"
+        TRABALHO_PARADO = "trabalho_parado", "Trabalho comercial parado"
+        ENVIO_INCERTO = "envio_incerto", "Envio sem confirmação"
+
+    class Email(models.TextChoices):
+        PENDENTE = "pendente", "Aguardando envio"
+        PEDIDO = "pedido", "Enviado ao correio"
+        SEM_DESTINATARIO = "sem_destinatario", "Sem e-mail para avisar"
+        DESISTIU = "desistiu", "Não foi possível enviar"
+
+    tipo = models.CharField(max_length=30, choices=Tipo.choices)
+    site_id = models.CharField(max_length=100, blank=True, default="")
+    fato = models.CharField(max_length=200)
+    responsavel = models.ForeignKey(
+        MembroDaEquipe,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="avisos",
+    )
+    responsavel_informado = models.CharField(max_length=200, blank=True, default="")
+    titulo = models.CharField(max_length=200)
+    texto = models.TextField(blank=True, default="")
+    link = models.CharField(max_length=500, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    visto_em = models.DateTimeField(null=True, blank=True)
+    visto_por = models.CharField(max_length=200, blank=True, default="")
+    email_situacao = models.CharField(
+        max_length=20, choices=Email.choices, default=Email.PENDENTE
+    )
+    email_tentativas = models.PositiveSmallIntegerField(default=0)
+    email_erro = models.CharField(max_length=300, blank=True, default="")
+
+    class Meta:
+        ordering = ["-criado_em", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["tipo", "site_id", "fato"], name="um_aviso_por_fato"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["visto_em", "criado_em"], name="aviso_equipe_visto_idx"),
+            models.Index(fields=["email_situacao"], name="aviso_equipe_email_idx"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.get_tipo_display()}: {self.titulo}"

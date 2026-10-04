@@ -10,7 +10,6 @@ import json
 import re
 
 from django.db import IntegrityError, transaction
-from django.db.models import Max
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -218,6 +217,25 @@ def _analisado_em(bruto):
     return momento
 
 
+CAMPOS_DA_ANALISE = ("resumo", "conteudo", "prioridade", "prioridade_explicacao",
+                     "oferta_indicada", "analisado_por", "versao_estrategia")
+
+
+def _repete_a_vigente(perfil: PerfilDoLead | None, dados: dict) -> bool:
+    """Reenvio da mesma análise (o analista tentou de novo depois de um tempo esgotado).
+
+    Vale quando tudo o que a análise diz, e quem a fez, é igual à versão vigente;
+    só a hora em que foi montada pode mudar de uma tentativa para outra.
+    """
+    if perfil is None:
+        return False
+
+    def forma(origem):
+        return json.dumps({c: origem[c] for c in CAMPOS_DA_ANALISE}, sort_keys=True, default=str)
+
+    return forma(dados) == forma({c: getattr(perfil, c) for c in CAMPOS_DA_ANALISE})
+
+
 def como_perfil(perfil: PerfilDoLead) -> dict:
     conteudo = perfil.conteudo or {}
     visto = {
@@ -320,10 +338,14 @@ def gravar_perfil(request, lead_id: str):
     try:
         with transaction.atomic():
             Lead.objects.select_for_update().filter(pk=lead.pk).get()
-            atual = lead.perfis.aggregate(m=Max("versao"))["m"] or 0
+            vigente = lead.perfis.order_by("-versao").first()
+            atual = vigente.versao if vigente else 0
             if base is not None and base != atual:
                 raise HttpError(409, f"o perfil já está na versão {atual}; leia de novo")
-            perfil = PerfilDoLead.objects.create(lead=lead, versao=atual + 1, **dados)
+            if base is None and _repete_a_vigente(vigente, dados):
+                perfil = vigente
+            else:
+                perfil = PerfilDoLead.objects.create(lead=lead, versao=atual + 1, **dados)
     except IntegrityError:
         raise HttpError(409, "outra análise gravou ao mesmo tempo; leia de novo")
     visto = como_perfil(perfil)
