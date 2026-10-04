@@ -234,6 +234,26 @@ def test_trabalho_de_teste_pede_o_contato_de_teste_e_o_de_verdade_nunca(de_teste
 
 
 @respx.mock
+@pytest.mark.parametrize("email, esperado", [("ciclo-1@example.com", True), (EMAIL, False)])
+def test_atendimento_de_contato_de_teste_vira_trabalho_de_teste(email, esperado):
+    respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "nome": "Ana", "email": email})
+    _resto_404()
+    _trabalho(TrabalhoComercial.Tipo.ATENDER_MENSAGEM, entrada={"texto": "oi", "host": "meshcraft.top"})
+    trabalho = coordenador.pegar_um("t1")
+
+    coordenador._achar_a_ficha(trabalho)
+
+    trabalho.refresh_from_db()
+    assert trabalho.teste is esperado
+
+
+def test_so_slug_deixa_passar_oferta_e_barra_frase_do_modelo():
+    assert coordenador._so_slug("curso-teste") == "curso-teste"
+    assert coordenador._so_slug("Oferta indicada pelo quiz crivo; nome não informado") == ""
+    assert coordenador._so_slug(None) == ""
+
+
+@respx.mock
 def test_analista_le_salva_perfil_com_evidencia_e_poe_a_abordagem_na_fila():
     _guardar_chave()
     eventos.tratar("eventos.quiz.completado", _quiz_completado())
