@@ -266,13 +266,16 @@ def preparar_modelo(nome: str, variaveis: dict | None = None, idioma: str = "") 
 
 
 def _descadastrado(site_id: str, numero: str) -> bool:
-    """Respeita o descadastro guardado pela mensageria, quando ele existir."""
-    try:
-        from apps.whatsapp import descadastro  # type: ignore[attr-defined]
-    except ImportError:
-        return False
-    verificar = getattr(descadastro, "esta_descadastrado", None)
-    return bool(verificar and verificar(site_id=site_id, telefone=numero))
+    """Quem pediu PARAR/SAIR no WhatsApp deste site não recebe primeiro contato."""
+    from apps.conversas.models import Descadastro
+
+    candidatos = {numero}
+    # O WhatsApp entrega alguns números brasileiros sem o nono dígito.
+    if numero.startswith("55") and len(numero) == 13 and numero[4] == "9":
+        candidatos.add(numero[:4] + numero[5:])
+    elif numero.startswith("55") and len(numero) == 12:
+        candidatos.add(numero[:4] + "9" + numero[4:])
+    return Descadastro.objects.filter(site_id=site_id, canal="whatsapp", endereco__in=candidatos).exists()
 
 
 def _falhar(envio: EnvioDeModelo, erro: str, *, codigo: str = "", retomavel: bool = True) -> EnvioDeModelo:

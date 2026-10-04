@@ -844,6 +844,12 @@ CORPOS_DE_ESCRITA = {
     f"/whatsapp-modelos/{SITE}/enviar": {
         "chave_idempotencia": "prova-sem-envio", "destinatario": "11999999999", "modelo": "sintetico",
     },
+    "/conversas": {"site_id": SITE, "canal": "whatsapp", "lead_id": "lead-sintetico", "endereco": "11999999999"},
+    "/conversas/{conversa_id}/mensagens": {"site_id": SITE, "texto": "Prova", "chave_idempotencia": "prova"},
+    "/conversas/{conversa_id}/assumir": {"site_id": SITE, "pessoa_id": "equipe-sintetica"},
+    "/conversas/{conversa_id}/devolver": {"site_id": SITE},
+    "/conversas/{conversa_id}/encerrar": {"site_id": SITE},
+    "/conversas/{conversa_id}/mensagens/{mensagem_id}/transcricao": {"site_id": SITE, "transcricao": "prova"},
 }
 
 

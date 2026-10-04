@@ -192,6 +192,36 @@ def test_status_da_meta_nao_regride_e_chega_antes_do_envio(meta):
     assert envio.estado == "entregue"
 
 
+def test_quem_pediu_parar_nao_recebe_primeiro_contato(meta):
+    from django.utils import timezone
+
+    from apps.conversas.models import Descadastro
+
+    chamadas, _ = meta
+    sincronizar_modelos()
+    # Pediu PARAR por um número sem o nono dígito; o lead deixou o número com ele.
+    Descadastro.objects.create(site_id="site-a", canal="whatsapp", endereco="551188887777",
+                               registrado_em=timezone.now())
+    envio = enviar_modelo(site_id="site-a", chave_idempotencia="p", destinatario="5511988887777",
+                          modelo="primeiro_contato", variaveis=LEAD)
+    assert envio.estado == "falhou" and not envio.retomavel
+    assert not [c for c in chamadas if c[0] == "POST"]
+    outro_site = enviar_modelo(site_id="site-b", chave_idempotencia="p", destinatario="5511988887777",
+                               modelo="primeiro_contato", variaveis=LEAD)
+    assert outro_site.estado == "aceito"
+
+
+def test_preparar_modelo_para_a_conversa_fora_da_janela(meta):
+    from apps.whatsapp_modelos.modelos import preparar_modelo
+
+    sincronizar_modelos()
+    modelo = preparar_modelo("convite_nomeado", {"nome": "Ana", "oferta": "Curso"})
+    assert modelo["nome"] == "convite_nomeado" and modelo["idioma"] == "pt_BR"
+    assert modelo["componentes"][0]["parameters"][0] == {"type": "text", "text": "Ana", "parameter_name": "first_name"}
+    with pytest.raises(ValueError):
+        preparar_modelo("em_analise", LEAD)
+
+
 def _assinado(corpo: dict) -> tuple[bytes, str]:
     bruto = json.dumps(corpo).encode()
     return bruto, "sha256=" + hmac.new(b"segredo-app", bruto, hashlib.sha256).hexdigest()
@@ -215,7 +245,7 @@ def test_webhook_verifica_assinatura_e_aplica_status_e_estado_do_modelo(meta):
     assert cliente.post(url, bruto, content_type="application/json",
                         HTTP_X_HUB_SIGNATURE_256="sha256=falsa").status_code == 403
     resposta = cliente.post(url, bruto, content_type="application/json", HTTP_X_HUB_SIGNATURE_256=assinatura)
-    assert resposta.status_code == 200 and resposta.json() == {"atualizados": 2}
+    assert resposta.status_code == 200 and resposta.json()["atualizadas"] == 2
     envio.refresh_from_db()
     assert envio.estado == "lido"
     modelo = ModeloWhatsApp.objects.get(modelo_id="111")

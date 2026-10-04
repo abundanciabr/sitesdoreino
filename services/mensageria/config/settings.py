@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.eventos",
     "apps.whatsapp",
+    # Caixa de entrada conversacional (WhatsApp e e-mail nos dois sentidos).
+    "apps.conversas",
     # O motor das sequências (`PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.1: o
     # mantenedor escolheu em 30/08/2026 que ele mora DENTRO desta célula, e não
     # numa célula nova). App separado, banco compartilhado: ele lê e escreve as
@@ -159,6 +161,12 @@ WHATSAPP_CLOUD_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID"
 WHATSAPP_CLOUD_API_VERSION = os.environ.get("WHATSAPP_CLOUD_API_VERSION", "")
 WHATSAPP_CLOUD_APP_SECRET = os.environ.get("WHATSAPP_CLOUD_APP_SECRET", "")
 WHATSAPP_CLOUD_VERIFY_TOKEN = os.environ.get("WHATSAPP_CLOUD_VERIFY_TOKEN", "")
+# Respostas de e-mail recebidas; vazio usa o mesmo token do webhook de e-mail.
+EMAIL_ENTRADA_TOKEN = os.environ.get("EMAIL_ENTRADA_TOKEN", "")
+# Par mensageria -> leads, para ligar conversa ao contato do quiz. Vazio deixa a
+# ligação pendente (a conversa é gravada e tenta de novo na próxima mensagem).
+LEADS_API_URL = os.environ.get("LEADS_API_URL", "")
+LEADS_API_TOKEN = os.environ.get("LEADS_API_TOKEN", "")
 
 
 def limite_de_email(nome: str) -> int | None:
