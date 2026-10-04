@@ -319,7 +319,9 @@ def _achar_a_ficha(trabalho: TrabalhoComercial) -> None:
     contato = entrada.get("contato") or {}
     if not trabalho.contato_id and contato.get("email"):
         resposta = servicos.pedir("buscar_contato", params={
-            "q": contato["email"], "site_id": trabalho.site_id, "origem": "quiz", "por_pagina": 20})
+            "q": contato["email"], "site_id": trabalho.site_id, "origem": "quiz", "por_pagina": 20,
+            # Trabalho de teste (contato de sandbox) acha o seu contato de teste; o de verdade nunca.
+            "testes": "mostrar" if trabalho.teste else "ocultar"})
         if resposta.ok:
             achados = [
                 c for c in resposta.dados.get("itens") or []
