@@ -34,7 +34,7 @@ import re
 from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.utils import timezone
 
 from apps.agentes import modelo
@@ -120,6 +120,25 @@ def _livre(trabalho: TrabalhoComercial) -> bool:
     ).exclude(pk=trabalho.pk).exists()
 
 
+# Quem espera resposta vem primeiro: o lead que acabou de escrever passa na
+# frente das análises e abordagens; a análise de resultados fica por último.
+PRIORIDADE = {
+    "atender_mensagem": 0,
+    "acompanhar_pagamento": 1,
+    "abordar": 2,
+    "analisar_lead": 3,
+    "analisar_resultados": 4,
+}
+
+
+def _prioridade():
+    return Case(
+        *[When(tipo=tipo, then=Value(n)) for tipo, n in PRIORIDADE.items()],
+        default=Value(len(PRIORIDADE)),
+        output_field=IntegerField(),
+    )
+
+
 def pegar_um(trabalhador: str) -> TrabalhoComercial | None:
     agora = timezone.now()
     pronto = Q(nao_antes_de__isnull=True) | Q(nao_antes_de__lte=agora)
@@ -131,7 +150,8 @@ def pegar_um(trabalhador: str) -> TrabalhoComercial | None:
                 | Q(estado=E.EXECUTANDO, ocupado_ate__lt=agora)
                 | (Q(estado=E.ENVIO_INCERTO) & pronto)
             )
-            .order_by("criado_em", "id")[:20]
+            .annotate(ordem_da_fila=_prioridade())
+            .order_by("ordem_da_fila", "criado_em", "id")[:20]
         )
         for trabalho in candidatos:
             if not _livre(trabalho):
