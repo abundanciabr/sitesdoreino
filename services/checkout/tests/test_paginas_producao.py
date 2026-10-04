@@ -59,6 +59,8 @@ def test_pagina_de_dados_define_api_base_do_prefixo_real(client, rede, env_de_pr
     assert (
         'src="https://www.mercadopago.com/v2/security.js" view="checkout" async' in html
     )
+    # Comentário de template que vaza vira texto na tela do comprador.
+    assert "{#" not in html and "#}" not in html
 
 
 def test_formulario_nao_oferece_cartao_sem_campo_para_pagar(

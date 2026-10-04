@@ -50,7 +50,7 @@ def _validar_comprador(intent: Intent) -> None:
             )
 
 
-def _comprador_mp(intent: Intent) -> dict[str, Any]:
+def _dados_do_comprador_para_mp(intent: Intent) -> dict[str, Any]:
     """O que o MP lê do comprador e do pedido num Pix, igual no envio e no reenvio.
 
     O checkout grava o documento como `cpf`; só a lista da Appmax o repete como
@@ -214,7 +214,7 @@ def completar_intent_pix(intent: Intent) -> Intent:
                 payer_email=str(intent.customer.get("email") or ""),
                 date_of_expiration=vencimento,
                 notification_url=aviso,
-                **_comprador_mp(intent),
+                **_dados_do_comprador_para_mp(intent),
             )
         except gateway.RecusaAntifraude as exc:
             return ResultadoDoProvedor(False, exc.payment_id, motivo=exc.status_detail)
@@ -283,7 +283,7 @@ def _reenviar_mp(intent: Intent, tentativa: PaymentAttempt) -> Intent:
             payer_email=str(intent.customer.get("email") or ""),
             date_of_expiration=vencimento,
             notification_url=aviso,
-            **_comprador_mp(intent),
+            **_dados_do_comprador_para_mp(intent),
             envio_ambiguo_anterior=True,
         )
     except gateway.RecusaAntifraude as exc:

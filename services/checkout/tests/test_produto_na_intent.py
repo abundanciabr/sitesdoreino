@@ -36,7 +36,10 @@ def test_a_intent_leva_o_product_id_do_item_principal(api, rede, sessao_a):
     cobranca = json.loads(rede.calls.last.request.content)
     assert str(rede.calls.last.request.url) == f"{PAGAMENTOS}/intents"
     assert cobranca["metadata"]["product_id"] == OFERTA_A["product"]["id"]
-    assert "items" not in cobranca["metadata"]
+    # O Pix pelo MP leva os itens do catálogo em todos os sites.
+    assert [i["product_id"] for i in cobranca["metadata"]["items"]] == [
+        OFERTA_A["product"]["id"]
+    ]
 
 
 def test_com_bump_marcado_o_product_id_continua_sendo_o_do_principal(
@@ -56,7 +59,9 @@ def test_com_bump_marcado_o_product_id_continua_sendo_o_do_principal(
 
     cobranca = json.loads(rede.calls.last.request.content)
     assert cobranca["metadata"]["product_id"] == OFERTA_A["product"]["id"]
-    assert "items" not in cobranca["metadata"]
+    assert [i["product_id"] for i in cobranca["metadata"]["items"]] == [
+        OFERTA_A["product"]["id"], BUMP_A["product_id"]
+    ]
     assert cobranca["metadata"]["product_id"] != BUMP_A["product_id"]
 
 
@@ -125,6 +130,7 @@ def test_sites_diferentes_mandam_produtos_diferentes(api, rede):
         ("pix", "  aparelho-sintetico  ", "aparelho-sintetico"),
         ("pix", "a" * 200, "a" * 200),
         ("pix", "a" * 201, None),
+        ("pix", "ab+/cd=", "ab+/cd="),
         ("pix", "a\r\nb", None),
         ("pix", "a b", None),
         ("pix", "é😀", None),

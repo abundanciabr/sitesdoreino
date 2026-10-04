@@ -340,8 +340,9 @@ def test_pix_leva_aparelho_itens_e_comprador_sem_nome_na_fatura() -> None:
     ["a\r\nb", " aparelho", "aparelho ", "ação-1", "é😀", "a" * 201],
 )
 def test_aparelho_fora_do_formato_nao_vira_cabecalho_e_a_cobranca_sai(
-    aparelho: str,
+    aparelho: str, caplog: Any,
 ) -> None:
+    caplog.set_level("WARNING")
     resposta = {"id": 456, "status": "pending",
                 "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}}}
     with respx.mock(assert_all_called=True) as rede:
@@ -361,6 +362,48 @@ def test_aparelho_fora_do_formato_nao_vira_cabecalho_e_a_cobranca_sai(
             payer_email="teste@example.com", device_id=aparelho,
         )
     assert "X-meli-session-id" not in rota.calls.last.request.headers
+    # Descarte avisado no log, sem o valor do aparelho.
+    avisos = [r.getMessage() for r in caplog.records if "aparelho_mp_descartado" in r.getMessage()]
+    assert len(avisos) == 2
+    assert all(aparelho not in aviso for aviso in avisos)
+
+
+def test_aparelho_em_ascii_visivel_vira_cabecalho() -> None:
+    """Formato do MP não é contrato: =, / e + passam; só espaço, controle e não
+    ASCII ficam de fora do cabeçalho."""
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(
+            201, json={"id": 123, "status": "approved"}
+        ))
+        criar_pagamento_card(
+            idempotency_key="operacao-1", amount_cents=1990, order_id="operacao-1",
+            card_token="token-sintetico", installments=1, payment_method_id="visa",
+            payer_email="teste@example.com", device_id="ab+/cd=",
+        )
+    assert rota.calls.last.request.headers["X-meli-session-id"] == "ab+/cd="
+
+
+def test_itens_que_nao_somam_o_valor_ficam_de_fora_com_aviso(caplog: Any) -> None:
+    caplog.set_level("WARNING")
+    with respx.mock(assert_all_called=True) as rede:
+        rota = rede.post(URL).mock(return_value=httpx.Response(201, json={
+            "id": 456, "status": "pending",
+            "point_of_interaction": {"transaction_data": {"qr_code": "PAGAVEL"}},
+        }))
+        criar_pagamento_pix(
+            idempotency_key="pix-1", amount_cents=5000, order_id="pix-1",
+            payer_email="teste@example.com",
+            itens_do_pedido=[
+                {"product_id": "curso", "name": "Curso", "price_cents": 1990, "kind": "principal"},
+            ],
+        )
+    body = json.loads(rota.calls.last.request.content)
+    assert "description" not in body
+    assert "items" not in body.get("additional_info", {})
+    assert any(
+        "itens_mp_descartados motivo=soma_diferente" in r.getMessage()
+        for r in caplog.records
+    )
 
 
 def test_qualidade_nos_bordos_telefone_item_e_textos_longos(settings: Any) -> None:

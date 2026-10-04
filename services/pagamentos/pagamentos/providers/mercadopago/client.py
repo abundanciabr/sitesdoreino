@@ -3,6 +3,7 @@
 # Credencial: settings.MP_ACCESS_TOKEN; o serviço recebe a credencial do ambiente.
 from __future__ import annotations
 
+import logging
 import re
 from decimal import Decimal
 from typing import Any
@@ -12,6 +13,8 @@ import mercadopago
 from django.conf import settings
 from mercadopago.config import RequestOptions
 from mercadopago.http import HttpClient
+
+log = logging.getLogger(__name__)
 
 
 class MercadoPagoError(Exception):
@@ -60,9 +63,9 @@ def _valor_em_reais(amount_cents: int) -> float:
 # statement_descriptor). Sem eles a cobrança chega "anônima" e recusa mais.
 _LIMITE_TEXTO_ITEM = 256
 _LIMITE_FATURA = 13  # statement_descriptor aceita até 13 caracteres
-# O aparelho (security.js do MP) vira cabeçalho HTTP de saída: só o formato que
-# o script gera; qualquer outra coisa é descartada e a cobrança segue sem ele.
-_APARELHO_VALIDO = re.compile(r"[A-Za-z0-9._:-]{1,200}")
+# O aparelho (security.js do MP) vira cabeçalho HTTP de saída: só se bloqueia o
+# que é perigoso num cabeçalho (espaço, controle, não ASCII); o resto passa.
+_APARELHO_VALIDO = re.compile(r"[\x21-\x7e]{1,200}")
 
 
 def _itens_mp(itens_do_pedido: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -74,11 +77,13 @@ def _itens_mp(itens_do_pedido: list[dict[str, Any]] | None) -> list[dict[str, An
     itens: list[dict[str, Any]] = []
     for item in itens_do_pedido or []:
         if not isinstance(item, dict):
+            log.warning("itens_mp_descartados motivo=item_invalido")
             return []
         nome = str(item.get("name") or "").strip()[:_LIMITE_TEXTO_ITEM]
         produto = str(item.get("product_id") or "").strip()
         preco = item.get("price_cents")
         if not nome or not produto or type(preco) is not int or preco < 1:
+            log.warning("itens_mp_descartados motivo=item_invalido")
             return []
         convertido: dict[str, Any] = {
             "id": produto,
@@ -126,7 +131,9 @@ def _completar_qualidade(
 ) -> None:
     itens = _itens_mp(itens_do_pedido)
     if itens and sum(item["price_cents"] for item in itens_do_pedido or []) != amount_cents:
-        itens = []  # itens que não somam o valor cobrado confundem mais do que ajudam
+        # itens que não somam o valor cobrado confundem mais do que ajudam
+        log.warning("itens_mp_descartados motivo=soma_diferente")
+        itens = []
     comprador = _comprador_mp(comprador_nome, comprador_telefone)
     adicional: dict[str, Any] = dict(body.get("additional_info") or {})
     if itens:
@@ -177,6 +184,9 @@ class MercadoPagoClient:
         headers = {"x-idempotency-key": idempotency_key}
         if device_id and _APARELHO_VALIDO.fullmatch(device_id):
             headers["X-meli-session-id"] = device_id
+        elif device_id:
+            # Sem o valor no log: só para notar se o MP usa outro formato.
+            log.warning("aparelho_mp_descartado tamanho=%d", len(device_id))
         return RequestOptions(
             access_token=self._token, connection_timeout=float(self._timeout),
             max_retries=0, custom_headers=headers,

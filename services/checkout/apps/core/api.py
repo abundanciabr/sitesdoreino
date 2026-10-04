@@ -8,6 +8,7 @@
 # components.schemas e quebra o freeze.
 import ipaddress
 import json
+import logging
 import uuid
 import re
 
@@ -40,10 +41,12 @@ router = Router()
 _PAGAMENTO_NAO_INICIADO = "não foi possível iniciar o pagamento; tente novamente"
 _TENTATIVA_NAO_CONCLUIDA = "não foi possível concluir a tentativa; tente novamente"
 
-# Identificador do aparelho do security.js do Mercado Pago: só letras, números e
-# . _ : - (até 200). Ele vai para um cabeçalho de saída; o que sai disso é
+log = logging.getLogger(__name__)
+
+# Identificador do aparelho do security.js do Mercado Pago: ASCII visível, sem
+# espaço (até 200). Ele vai para um cabeçalho de saída; o que sai disso é
 # descartado, não consertado.
-_APARELHO_MP = re.compile(r"[A-Za-z0-9._:-]{1,200}")
+_APARELHO_MP = re.compile(r"[\x21-\x7e]{1,200}")
 
 
 # [DESENHO-COMUM.md F10] Mesmo cookie e MESMO formato que o funil sorteia e
@@ -394,6 +397,8 @@ _PLACE_ORDER_OPENAPI = {
     summary="Fecha o pedido — congela o snapshot e cria a intent de pagamento",
     description=(
         "INV-P2 — o payload traz apenas a intenção do cliente (dados + bump_ids + method).\n"
+        "Junto vêm só sinais sem valor monetário: mp_device_id (aparelho do security.js\n"
+        "do Mercado Pago, só Pix) e ip (só Pix Appmax).\n"
         "O servidor recalcula itens e total a partir do catálogo; qualquer total enviado\n"
         "pelo cliente é ignorado. INV-P1 — o snapshot resultante é create-only.\n"
     ),
@@ -482,8 +487,12 @@ def place_order(request, session_id: str):
         aparelho = corpo.get("mp_device_id")
         if isinstance(aparelho, str) and _APARELHO_MP.fullmatch(aparelho.strip()):
             metadata["mp_device_id"] = aparelho.strip()
-    if method == "card" or pix_appmax:
-        metadata["items"] = itens
+        elif aparelho not in (None, ""):
+            # Sem o valor no log: só para notar se o MP usa outro formato.
+            log.warning("aparelho_mp_descartado no pedido do Pix")
+    # Itens do catálogo (nunca do payload): o cartão e a Appmax exigem; o Pix
+    # pelo MP os leva em additional_info.items em todos os sites.
+    metadata["items"] = itens
     comprador_pagamento = dict(comprador)
     if pix_appmax:
         ip_enviado = corpo.get("ip")
