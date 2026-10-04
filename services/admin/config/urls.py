@@ -77,7 +77,13 @@ from apps.core.parametros_da_fila import (
 )
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.whatsapp import whatsapp
-from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
+from apps.core.crm_agentes import (
+    crm_agentes,
+    crm_agentes_ativar,
+    crm_agentes_nova,
+    crm_agentes_retomar,
+    crm_agentes_voltar,
+)
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -231,13 +237,9 @@ from config.api import api
 # tem `name` porque ninguém o referencia: é endereço de MÁQUINA, fixado por
 # contrato com o healthcheck do compose, não por `reverse()`.
 from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
-from apps.comercial.views import agentes_comerciais
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
-    # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
-    # decisões e estratégias dos quatro papéis. Só do administrador.
-    path("crm/agentes/", agentes_comerciais, name="agentes_comerciais"),
     path("crm/<uuid:opportunity_id>/", crm_oportunidade, name="crm_oportunidade"),
     path("crm/<uuid:opportunity_id>/salvar/", crm_salvar, name="crm_salvar"),
     path("pagamentos/", pagamentos, name="pagamentos"),
@@ -351,8 +353,10 @@ urlpatterns = [
     path("equipe/robo/entregas/<int:id>", entrega_detalhe, name="entrega_do_robo"),
     path("robos/", robos_admin, name="robos_admin"),
     path("robos/conhecimento", mapa_de_conhecimento, name="mapa_de_conhecimento"),
-    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`).
+    # A ÁREA DOS AGENTES DO CRM (03/10/2026, `apps/core/crm_agentes.py`): a
+    # única página da equipe comercial de agentes (`apps/comercial`).
     path("crm/agentes/", crm_agentes, name="crm_agentes"),
+    path("crm/agentes/trabalhos/<int:trabalho_id>/retomar/", crm_agentes_retomar, name="crm_agentes_retomar"),
     path("crm/agentes/estrategias/<int:estrategia_id>/ativar/", crm_agentes_ativar, name="crm_agentes_ativar"),
     path("crm/agentes/estrategias/<slug:papel>/voltar/", crm_agentes_voltar, name="crm_agentes_voltar"),
     path("crm/agentes/estrategias/<slug:papel>/nova/", crm_agentes_nova, name="crm_agentes_nova"),

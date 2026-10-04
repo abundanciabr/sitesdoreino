@@ -217,3 +217,62 @@ def test_nova_versao_sem_texto_e_papel_inexistente_nao_mudam_nada():
     assert EstrategiaComercial.objects.get(papel="resultados", ativa=True).versao == 1
     r = c.post(reverse("crm_agentes_voltar", args=["resultados"]))
     assert "recado=sem_anterior" in r["Location"]
+
+
+@com_comercial
+@respx.mock
+def test_trabalho_escolhido_mostra_todas_as_decisoes_e_retomar_devolve_a_fila():
+    from apps.comercial.models import DecisaoComercial, TrabalhoComercial
+
+    c = dentro()
+    falhou = _trabalho("falhou", 9, motivo="Modelo fora do ar.")
+    DecisaoComercial.objects.create(
+        trabalho=falhou, papel="atendimento", call_id="d1", acao="consultar", ferramenta="consultar_contato",
+        entrada={"oportunidade_ref": OPORTUNIDADE}, resultado="feito",
+    )
+    DecisaoComercial.objects.create(
+        trabalho=falhou, papel="atendimento", call_id="d2", acao="responder", ferramenta="consultar_pagamento",
+        resultado="indisponivel",
+    )
+    html = c.get(reverse("crm_agentes"), {"trabalho": falhou.pk}).content.decode()
+    assert f"Trabalho #{falhou.pk}" in html
+    assert "consultar_contato" in html and "consultar_pagamento" in html and "Capacidade indisponível" in html
+    assert reverse("crm_agentes_retomar", args=[falhou.pk]) in html
+
+    r = c.post(reverse("crm_agentes_retomar", args=[falhou.pk]))
+    assert r.status_code == 302 and "recado=retomado" in r["Location"]
+    falhou.refresh_from_db()
+    assert falhou.estado == "na_fila"
+    assert Registro.objects.filter(alvo=f"trabalho_comercial:{falhou.pk}").exists()
+
+    concluido = _trabalho("concluido", 9)
+    r = c.post(reverse("crm_agentes_retomar", args=[concluido.pk]))
+    assert "recado=nao_retomado" in r["Location"]
+    assert TrabalhoComercial.objects.get(pk=concluido.pk).estado == "concluido"
+    r = c.post(reverse("crm_agentes_retomar", args=[999999]))
+    assert "recado=nao_retomado" in r["Location"]
+    # Um número de trabalho que não existe não derruba a página.
+    assert c.get(reverse("crm_agentes"), {"trabalho": "999999"}).status_code == 200
+
+
+@com_comercial
+@respx.mock
+def test_proposta_do_otimizador_aparece_para_por_no_ar_e_desligado_avisa(monkeypatch):
+    from apps.comercial import papeis
+
+    monkeypatch.setenv("COMERCIAL_AGENTES", "desligado")
+    papeis.estrategia_ativa("abordagem")
+    proposta = papeis.propor_versao("abordagem", "Fale da carga horária.", criada_por="agente:resultados",
+                                    motivo="mais respostas na v1", origem="otimizador")
+    html = dentro().get(reverse("crm_agentes")).content.decode()
+    assert f"Proposta v{proposta.versao}" in html and "mais respostas na v1" in html
+    assert reverse("crm_agentes_ativar", args=[proposta.pk]) in html
+    assert "desligados neste ambiente" in html
+    assert "enviar_mensagem" in html  # ferramentas do papel de abordagem
+
+
+@respx.mock
+def test_retomar_sem_a_equipe_comercial_nao_quebra(monkeypatch):
+    monkeypatch.setattr(crm_agentes, "comercial_disponivel", lambda: False)
+    r = dentro().post(reverse("crm_agentes_retomar", args=[1]))
+    assert r.status_code == 302 and "recado=indisponivel" in r["Location"]

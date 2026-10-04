@@ -2908,8 +2908,18 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "Agentes do CRM",
-      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação e com falha; a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; as estratégias de cada papel com histórico.",
+      "descricao": "Trabalhos do assistente comercial em andamento, na fila, com envio sem confirmação e com falha; a última decisão de cada um, a versão da estratégia, o custo e o gasto do mês frente ao limite autorizado; um trabalho com todas as decisões; as estratégias de cada papel com histórico e as propostas do agente de resultados.",
       "observacao": "Só administradores. Enquanto a equipe comercial de agentes não estiver no ar, a página diz que ainda não está disponível."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/agentes/trabalhos/<int:trabalho_id>/retomar/",
+      "endereco": "/admin/crm/agentes/trabalhos/<int:trabalho_id>/retomar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Retomar trabalho do agente",
+      "descricao": "Devolve à fila um trabalho comercial que falhou ou esperava; envio sem confirmação volta com a mesma chave, sem mensagem repetida."
     },
     {
       "celula": "admin",

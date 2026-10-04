@@ -720,17 +720,19 @@ def test_pagina_dos_agentes_mostra_fila_e_ativa_proposta():
     trabalho = _trabalho(T.ABORDAR)
     proposta = papeis.propor_versao("abordagem", "Versão nova", criada_por="agente:resultados",
                                     motivo="amostra", origem="otimizador")
-    resposta = cliente.get(reverse("agentes_comerciais") + f"?trabalho={trabalho.pk}")
+    # A página dos agentes é a do painel do CRM (`apps/core/crm_agentes.py`).
+    resposta = cliente.get(reverse("crm_agentes") + f"?trabalho={trabalho.pk}")
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert "Agentes comerciais" in html and "Pôr no ar" in html
-    resposta = cliente.post(reverse("agentes_comerciais"), {"acao": "ativar", "estrategia": proposta.pk})
+    assert "Agentes do CRM" in html and f"Pôr no ar a v{proposta.versao}" in html
+    assert f"Trabalho #{trabalho.pk}" in html
+    resposta = cliente.post(reverse("crm_agentes_ativar", args=[proposta.pk]))
     assert resposta.status_code == 302
     assert papeis.estrategia_ativa("abordagem").pk == proposta.pk
-    cliente.post(reverse("agentes_comerciais"), {"acao": "voltar", "papel": "abordagem"})
+    cliente.post(reverse("crm_agentes_voltar", args=["abordagem"]))
     assert papeis.estrategia_ativa("abordagem").versao == 1
     TrabalhoComercial.objects.filter(pk=trabalho.pk).update(estado=E.FALHOU)
-    cliente.post(reverse("agentes_comerciais"), {"acao": "retomar", "trabalho": trabalho.pk})
+    cliente.post(reverse("crm_agentes_retomar", args=[trabalho.pk]))
     trabalho.refresh_from_db()
     assert trabalho.estado == E.NA_FILA
 
