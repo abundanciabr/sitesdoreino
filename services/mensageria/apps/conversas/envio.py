@@ -4,9 +4,12 @@ WhatsApp usa o mesmo cliente do envio transacional e das jornadas
 (`apps.whatsapp.service.enviar_mensagem`), com origem `conversa`. E-mail sai
 pelo SMTP da célula, respondendo à última mensagem recebida (In-Reply-To).
 
-Régua do agente: o robô só fala entre 08h e 20h (America/Sao_Paulo, a mesma
-janela das jornadas), no máximo `CONVERSAS_TETO_DIARIO_AGENTE` mensagens por dia
-a cada contato (padrão 3) e nunca a quem recusou na `Preferencia` das jornadas.
+Régua do agente: quando é INICIATIVA dele (abordagem, acompanhamento, lembrete), o
+robô só fala entre 08h e 20h (America/Sao_Paulo, a mesma janela das jornadas), no
+máximo `CONVERSAS_TETO_DIARIO_AGENTE` mensagens por dia a cada contato (padrão 3) e
+nunca a quem recusou na `Preferencia` das jornadas. RESPOSTA a quem acabou de falar
+(`e_resposta`) não passa por horário nem teto, e não conta no teto das iniciativas;
+descadastro, consentimento, janela de 24h e conversa assumida valem sempre.
 Pessoa da equipe fala a qualquer hora e sem teto.
 """
 from __future__ import annotations
@@ -39,7 +42,8 @@ PENDENTE_ABANDONADA = timedelta(minutes=2)
 @dataclass
 class Resultado:
     # enviada | repetida | fora_da_janela | sem_consentimento | descadastrado | conversa_com_pessoa | falhou
-    # | fora_do_horario | limite_diario (as duas últimas só para autor "agente")
+    # | fora_do_horario | limite_diario (as duas últimas só para autor "agente" em iniciativa dele,
+    # nunca em resposta a quem acabou de falar)
     resultado: str
     mensagem: MensagemDaConversa | None = None
     detalhe: str = ""
@@ -54,19 +58,35 @@ def janela_aberta(conversa: Conversa, agora=None) -> bool:
     return bool(conversa.janela_aberta_ate and conversa.janela_aberta_ate > agora)
 
 
-def fala_sem_resposta(conversa: Conversa, **da_fala) -> bool:
+def fala_sem_resposta(conversa: Conversa, ignorar_pk=None, **da_fala) -> bool:
     """O contato falou de verdade (não o PARAR) e ainda não houve saída depois?
 
     `da_fala` restringe quais falas contam (ex.: `criada_em__gt=...`). Cada fala nova
     libera UMA saída: feita a saída, a próxima só depois de outra fala. Só fala ao
     vivo conta (histórico sincronizado depois não). A ordem é a de gravação (`criada_em`).
+    `ignorar_pk` é a saída que está sendo reenviada: ela não conta como resposta já dada.
     """
     ultima = conversa.mensagens.filter(direcao="entrada", descadastro=False, **da_fala).filter(
         ocorrida_em__gte=F("criada_em") - FALA_AO_VIVO).order_by("-criada_em").first()
     if ultima is None:
         return False
-    return not conversa.mensagens.filter(direcao="saida", criada_em__gt=ultima.criada_em).exclude(
-        estado_envio="falhou").exists()
+    saidas = conversa.mensagens.filter(direcao="saida", criada_em__gt=ultima.criada_em).exclude(
+        estado_envio="falhou")
+    if ignorar_pk is not None:
+        saidas = saidas.exclude(pk=ignorar_pk)
+    return not saidas.exists()
+
+
+def e_resposta(conversa: Conversa, agora: datetime, ignorar_pk=None) -> bool:
+    """A fala do agente agora é RESPOSTA (e não iniciativa dele)?
+
+    É quando o contato falou por último (ao vivo, não o PARAR), o agente ainda não
+    respondeu essa fala e a janela de 24h está aberta. No máximo uma resposta por fala
+    do contato: depois dela a próxima fala do agente já é iniciativa e cai na régua, o
+    que impede laço de robô. Sai dos dados da conversa, sem campo próprio.
+    """
+    return janela_aberta(conversa, agora) and fala_sem_resposta(
+        conversa, ignorar_pk=ignorar_pk, ocorrida_em__gte=agora - FALA_AO_VIVO)
 
 
 def bloqueio_por_descadastro(conversa: Conversa) -> bool:
@@ -103,22 +123,35 @@ def _dia_de_sao_paulo(agora: datetime) -> tuple[datetime, datetime]:
     return inicio, inicio + timedelta(days=1)
 
 
-def _mensagens_do_agente_no_dia(conversa: Conversa, agora: datetime, ignorar_pk: int | None = None) -> int:
-    """Saídas do agente a este contato no dia de São Paulo (em qualquer canal do mesmo lead).
+def _iniciativas_do_agente_no_dia(conversa: Conversa, agora: datetime, ignorar_pk=None) -> int:
+    """Saídas do agente a este contato no dia de São Paulo que foram INICIATIVA dele.
 
+    Conta em qualquer canal do mesmo lead. Resposta (a primeira saída depois de uma fala
+    do contato, dentro de 24h dela, a mesma regra de `e_resposta`) não conta no teto.
     `ignorar_pk` é a própria linha que está sendo reenviada: ela não conta contra o teto.
     """
     inicio, fim = _dia_de_sao_paulo(agora)
     mesmo_contato = Q(pk=conversa.pk)
     if conversa.ligacao == "ligada" and conversa.lead_id:
         mesmo_contato |= Q(lead_id=conversa.lead_id, ligacao="ligada")
-    saidas = MensagemDaConversa.objects.filter(
+    mensagens = MensagemDaConversa.objects.filter(
         conversa__in=Conversa.objects.filter(mesmo_contato, site_id=conversa.site_id),
-        direcao="saida", autor="agente", ocorrida_em__gte=inicio, ocorrida_em__lt=fim,
-    ).exclude(estado_envio="falhou")
-    if ignorar_pk is not None:
-        saidas = saidas.exclude(pk=ignorar_pk)
-    return saidas.count()
+        ocorrida_em__gte=inicio - FALA_AO_VIVO, ocorrida_em__lt=fim,
+    ).exclude(direcao="saida", estado_envio="falhou").order_by("conversa_id", "criada_em").values_list(
+        "conversa_id", "direcao", "autor", "descadastro", "criada_em", "ocorrida_em", "pk")
+    iniciativas, conversa_atual, fala_aberta = 0, None, None
+    for conversa_id, direcao, autor, descadastro, criada_em, ocorrida_em, pk in mensagens:
+        if conversa_id != conversa_atual:
+            conversa_atual, fala_aberta = conversa_id, None
+        if direcao == "entrada":
+            if not descadastro and ocorrida_em >= criada_em - FALA_AO_VIVO:
+                fala_aberta = ocorrida_em  # a fala do contato que ainda espera resposta
+            continue
+        foi_resposta = fala_aberta is not None and ocorrida_em - fala_aberta < FALA_AO_VIVO
+        fala_aberta = None  # qualquer saída responde a fala: a próxima só depois de outra
+        if autor == "agente" and pk != ignorar_pk and ocorrida_em >= inicio and not foi_resposta:
+            iniciativas += 1
+    return iniciativas
 
 
 def recusa_por_preferencia(conversa: Conversa) -> bool:
@@ -142,6 +175,13 @@ def recusa_por_preferencia(conversa: Conversa) -> bool:
     except DatabaseError:
         logger.exception("conversas: preferencia ilegivel; o agente nao envia")
         return True
+
+
+def _fora_do_horario(agora: datetime) -> Resultado | None:
+    if regua.dentro_da_janela(agora):
+        return None
+    return Resultado("fora_do_horario", detalhe="o agente so envia entre 08h e 20h (horario de Sao Paulo)",
+                     reagendar_para=regua.proxima_janela(agora))
 
 
 def _pendente_abandonada(mensagem: MensagemDaConversa) -> bool:
@@ -177,10 +217,11 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
         if not permissao.permite:
             return Resultado("sem_consentimento", detalhe=f"o contato {permissao.frase()}")
     agora = _agora()
+    reenvio = existente.pk if retomada and existente else None
     if autor == "agente":
-        if not regua.dentro_da_janela(agora):
-            return Resultado("fora_do_horario", detalhe="o agente so envia entre 08h e 20h (horario de Sao Paulo)",
-                             reagendar_para=regua.proxima_janela(agora))
+        # Resposta a quem acabou de falar não passa por horário nem teto; iniciativa passa.
+        if not e_resposta(conversa, agora, ignorar_pk=reenvio) and (recusa := _fora_do_horario(agora)):
+            return recusa
         # Responder a uma fala dele de agora é atendimento; a preferência vale para o resto.
         if not fala_sem_resposta(conversa, ocorrida_em__gte=agora - FALA_AO_VIVO) and recusa_por_preferencia(conversa):
             return Resultado("descadastrado", detalhe=f"o contato recusou mensagens no {conversa.canal}")
@@ -191,14 +232,17 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
             Conversa.objects.select_for_update().filter(pk=conversa.pk).first()
             if bloqueio_por_descadastro(conversa):
                 return Resultado("descadastrado", detalhe=f"o contato pediu para parar no {conversa.canal}")
-            if autor == "agente":
+            # Com a conversa travada, de novo: se outra saída respondeu a fala enquanto esta
+            # esperava, esta já é iniciativa e cai na régua (uma resposta por fala do contato).
+            if autor == "agente" and not e_resposta(conversa, agora, ignorar_pk=reenvio):
+                if recusa := _fora_do_horario(agora):
+                    return recusa
                 teto = teto_diario_do_agente()
                 # Na retomada, a própria saída pendente não conta contra o teto do dia.
-                ja_enviadas = _mensagens_do_agente_no_dia(
-                    conversa, agora, ignorar_pk=existente.pk if retomada and existente else None)
+                ja_enviadas = _iniciativas_do_agente_no_dia(conversa, agora, ignorar_pk=reenvio)
                 if ja_enviadas >= teto:
                     return Resultado("limite_diario",
-                                     detalhe=f"o agente ja mandou {teto} mensagens hoje a este contato",
+                                     detalhe=f"o agente ja mandou {teto} mensagens por iniciativa hoje a este contato",
                                      reagendar_para=regua.proxima_janela(_dia_de_sao_paulo(agora)[1]))
             if existente is None:
                 existente = MensagemDaConversa.objects.create(
