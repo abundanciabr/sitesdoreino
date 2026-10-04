@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     # `EnvioRegistrado`. Ler ou escrever qualquer outra tabela de lá é o
     # critério de morte §10.7 do plano.
     "apps.jornadas",
+    "apps.whatsapp_modelos",
 ]
 
 MIDDLEWARE = [
@@ -150,6 +151,14 @@ WHATSAPP_GATEWAY_URL = os.environ.get("WHATSAPP_GATEWAY_URL", "")
 WHATSAPP_GATEWAY_TOKEN = os.environ.get("WHATSAPP_GATEWAY_TOKEN", "")
 WHATSAPP_WEBHOOK_URL = os.environ.get("WHATSAPP_WEBHOOK_URL", "")
 WHATSAPP_WEBHOOK_TOKEN = os.environ.get("WHATSAPP_WEBHOOK_TOKEN", "")
+# WhatsApp oficial (Cloud API da Meta): modelos aprovados e primeiro contato.
+# Vazios = canal oficial ainda não ligado; a tela diz isso e nada quebra.
+WHATSAPP_CLOUD_ACCESS_TOKEN = os.environ.get("WHATSAPP_CLOUD_ACCESS_TOKEN", "")
+WHATSAPP_CLOUD_WABA_ID = os.environ.get("WHATSAPP_CLOUD_WABA_ID", "")
+WHATSAPP_CLOUD_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_CLOUD_PHONE_NUMBER_ID", "")
+WHATSAPP_CLOUD_API_VERSION = os.environ.get("WHATSAPP_CLOUD_API_VERSION", "")
+WHATSAPP_CLOUD_APP_SECRET = os.environ.get("WHATSAPP_CLOUD_APP_SECRET", "")
+WHATSAPP_CLOUD_VERIFY_TOKEN = os.environ.get("WHATSAPP_CLOUD_VERIFY_TOKEN", "")
 
 
 def limite_de_email(nome: str) -> int | None:
