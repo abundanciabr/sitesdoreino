@@ -707,10 +707,10 @@ def test_otimizador_com_amostra_propoe_versao_que_so_entra_no_ar_pela_pagina():
 
 def test_otimizador_volta_sozinho_quando_a_versao_nova_vende_menos_com_amostra():
     v1 = papeis.estrategia_ativa("abordagem")
-    _abordagens(40, vendas=12, versao=1)
+    _abordagens(40, vendas=14, versao=1)
     v2 = papeis.propor_versao("abordagem", "v2", criada_por="admin", motivo="m", origem="pessoa")
     papeis.ativar(v2, "admin")
-    _abordagens(40, vendas=1, versao=2)
+    _abordagens(40, vendas=0, versao=2)
     volta = otimizador.volta_se_piorou("abordagem")
     assert volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == v1.pk
