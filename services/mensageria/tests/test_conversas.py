@@ -579,3 +579,149 @@ def test_transcricao_fica_ligada_ao_audio(base):
     dados = _api(Client(), "POST", f"/conversas/{conversa.id}/mensagens/{mensagem.id}/transcricao",
                  {"site_id": SITE, "transcricao": "quero saber do curso"}).json()
     assert dados["transcricao"] == "quero saber do curso"
+
+
+# ---------------------------------------------------------------------------
+# Correções dos revisores
+# ---------------------------------------------------------------------------
+
+
+def test_historico_antigo_reentregue_nao_abre_janela_nem_vira_evento(base):
+    antigo = int((timezone.now() - timedelta(days=30)).timestamp())
+    _upsert(Client(), _item(messageTimestamp=antigo))
+    conversa = Conversa.objects.get()
+    assert conversa.janela_aberta_ate < timezone.now()
+    assert abs((conversa.ultima_entrada_em - (timezone.now() - timedelta(days=30))).total_seconds()) < 60
+    assert MensagemDaConversa.objects.count() == 1
+    assert not OutboxEvent.objects.filter(event="mensagem.recebida").exists()
+    # Uma fala de agora abre a janela e publica.
+    _upsert(Client(), _item(ident="NOVA", texto="oi"))
+    conversa.refresh_from_db()
+    assert conversa.janela_aberta_ate > timezone.now()
+    assert OutboxEvent.objects.filter(event="mensagem.recebida").count() == 1
+
+
+def test_mensagem_de_poucas_horas_atras_ainda_vira_evento(base):
+    recente = int((timezone.now() - timedelta(hours=3)).timestamp())
+    _upsert(Client(), _item(messageTimestamp=recente))
+    assert OutboxEvent.objects.filter(event="mensagem.recebida").count() == 1
+
+
+def test_parar_com_leads_fora_do_ar_grava_preferencia_quando_ele_volta(base, settings, monkeypatch):
+    from apps.conversas.descadastro import aplicar_pendentes
+
+    base["contatos"].append({"id": LEAD_A, "site_id": SITE, "email": "ana@exemplo.com", "telefone": "11988887777"})
+    settings.LEADS_API_TOKEN = ""
+    monkeypatch.setenv("IDENTIDADE_API_URL", "http://identidade:8000/interno")
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "par-identidade")
+    monkeypatch.setattr("apps.conversas.descadastro.httpx.post",
+                        lambda *a, **k: Resposta(200, {"id": "pessoa-x"}))
+    _upsert(Client(), _item(texto="PARAR"))
+    assert Conversa.objects.get().ligacao == "pendente"
+    assert not Descadastro.objects.get().preferencia_registrada
+    settings.LEADS_API_TOKEN = "par-mensageria"
+    assert aplicar_pendentes() == 1
+    conversa = Conversa.objects.get()
+    assert conversa.ligacao == "ligada" and conversa.lead_id == LEAD_A
+    assert Preferencia.objects.filter(destinatario_id="pessoa-x", canal="whatsapp", aceita=False).count() == 2
+
+
+def test_paginacao_de_mensagens_nao_perde_as_do_mesmo_instante(base):
+    conversa = _conversa_ligada(base)
+    instante = timezone.now() - timedelta(minutes=5)
+    for i in range(3):
+        MensagemDaConversa.objects.create(conversa=conversa, direcao="entrada", autor="lead", texto=f"m{i}",
+                                          estado_envio="recebida", id_externo=f"x{i}", ocorrida_em=instante)
+    cliente = Client()
+    vistos, cursor = [], ""
+    for _ in range(6):
+        caminho = f"/conversas/{conversa.id}/mensagens?site_id={SITE}&limite=1"
+        if cursor:
+            caminho += f"&antes_de={cursor}"
+        dados = _api(cliente, "GET", caminho, token=LEITURA).json()
+        if not dados["mensagens"]:
+            break
+        vistos.append(dados["mensagens"][0]["texto"])
+        cursor = dados["proxima_antes_de"]
+    assert sorted(vistos) == sorted(["m0", "m1", "m2", "Oi, quero saber do curso"])
+    assert _api(cliente, "GET", f"/conversas/{conversa.id}/mensagens?site_id={SITE}&antes_de=lixo",
+                token=LEITURA).status_code == 422
+    # Data ISO continua valendo.
+    antes = (instante + timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+    dados = _api(cliente, "GET", f"/conversas/{conversa.id}/mensagens?site_id={SITE}&antes_de={antes}",
+                 token=LEITURA).json()
+    assert len(dados["mensagens"]) == 3
+
+
+def test_saida_pendente_abandonada_e_reenviada_com_a_mesma_chave(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    antiga = timezone.now() - timedelta(minutes=10)
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="Olá",
+                                      estado_envio="pendente", chave_idempotencia="k1", ocorrida_em=antiga)
+    cliente = Client()
+    pedido = {"site_id": SITE, "texto": "Olá", "chave_idempotencia": "k1"}
+    primeira = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens", pedido).json()
+    assert primeira["resultado"] == "enviada" and len(posts) == 1
+    segunda = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens", pedido).json()
+    assert segunda["resultado"] == "repetida" and len(posts) == 1
+    assert conversa.mensagens.filter(chave_idempotencia="k1").count() == 1
+
+
+def test_saida_pendente_recente_nao_e_reenviada(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="Olá",
+                                      estado_envio="pendente", chave_idempotencia="k2", ocorrida_em=timezone.now())
+    resposta = _api(Client(), "POST", f"/conversas/{conversa.id}/mensagens",
+                    {"site_id": SITE, "texto": "Olá", "chave_idempotencia": "k2"}).json()
+    assert resposta["resultado"] == "repetida" and posts == []
+
+
+def test_token_com_caractere_fora_do_ascii_recusa_com_403_e_nao_500(base):
+    cliente = Client()
+    corpo = {"from": "a@b.com", "text": "oi", "message_id": "<x>"}
+    assert _email(cliente, corpo, token="é").status_code == 403
+    assert _upsert(cliente, _item(), token="é").status_code == 403
+    assert cliente.get("/webhooks/whatsapp/cloud", {"hub.mode": "subscribe", "hub.verify_token": "é",
+                                                    "hub.challenge": "1"}).status_code == 403
+    assert cliente.post("/webhooks/whatsapp/cloud", "{}", content_type="application/json",
+                        HTTP_X_HUB_SIGNATURE_256="sha256=é").status_code == 403
+
+
+def test_email_sem_message_id_reentregue_nao_duplica(base):
+    cliente = Client()
+    corpo = {"from": "ana@exemplo.com", "to": "c@x.com", "subject": "Oi", "text": "Tem vaga?"}
+    assert _email(cliente, corpo, caminho="/webhooks/email/recebido/site-xyz").json()["recebidas"] == 1
+    assert _email(cliente, corpo, caminho="/webhooks/email/recebido/site-xyz").json()["recebidas"] == 0
+    assert MensagemDaConversa.objects.count() == 1
+    assert OutboxEvent.objects.filter(event="mensagem.recebida").count() == 1
+    # Texto diferente é outra mensagem.
+    corpo["text"] = "E o preço?"
+    assert _email(cliente, corpo, caminho="/webhooks/email/recebido/site-xyz").json()["recebidas"] == 1
+
+
+def test_email_de_desconhecido_sem_site_nao_cria_conversa(base):
+    corpo = {"from": "alice@desconhecida.com", "to": "contato@meshcraft.top", "subject": "Oi",
+             "text": "Olá", "message_id": "<d1@x>", "in_reply_to": ""}
+    resposta = _email(Client(), corpo)
+    assert resposta.status_code == 200
+    assert resposta.json() == {"recebidas": 0, "ignoradas": 0, "sem_site": 1}
+    assert Conversa.objects.count() == 0 and MensagemDaConversa.objects.count() == 0
+    assert not OutboxEvent.objects.filter(event="mensagem.recebida").exists()
+
+
+def test_email_com_leads_fora_do_ar_pede_nova_entrega(base, settings):
+    settings.LEADS_API_TOKEN = ""
+    corpo = {"from": "ana@exemplo.com", "text": "oi", "message_id": "<p1@x>"}
+    resposta = _email(Client(), corpo)
+    assert resposta.status_code == 503 and Conversa.objects.count() == 0
+
+
+def test_receber_sem_site_nao_grava_nada(base):
+    from apps.conversas.entrada import Recebida, receber
+
+    assert receber(Recebida(site_id="  ", canal="email", endereco="a@b.com", texto="oi")) == (None, False)
+    assert Conversa.objects.count() == 0
