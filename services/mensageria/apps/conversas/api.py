@@ -22,6 +22,7 @@ from .models import CANAIS, ESTADOS, LIGACOES, Conversa, Descadastro, MensagemDa
 
 router = Router()
 POR_PAGINA_MAXIMO = 100
+ULTIMA_MENSAGEM_TEXTO = 160
 
 
 def _escrita(request):
@@ -61,6 +62,20 @@ def _descadastrados(conversas) -> set[tuple[str, str, str]]:
         endereco__in={c[2] for c in chaves},
     ).values_list("site_id", "canal", "endereco")
     return set(achados) & chaves
+
+
+def _ultimas_mensagens(conversas) -> dict:
+    """A última mensagem de cada conversa do lote, numa consulta só (a mesma ordem de `listar_mensagens`).
+
+    O painel decide quem aguarda resposta por ela; sem isso teria de buscar conversa por conversa."""
+    ultimas = MensagemDaConversa.objects.filter(conversa__in=conversas).select_related("mensagem_whatsapp").order_by(
+        "conversa_id", "-ocorrida_em", "-criada_em", "-id").distinct("conversa_id")
+    resumos = {}
+    for mensagem in ultimas:
+        resumo = mensagem_json(envio._sincronizar(mensagem))
+        resumo["texto"] = resumo["texto"][:ULTIMA_MENSAGEM_TEXTO]
+        resumos[mensagem.conversa_id] = resumo
+    return resumos
 
 
 def conversa_json(conversa: Conversa, descadastrados: set | None = None) -> dict:
@@ -200,7 +215,13 @@ def listar_conversas(request, site_id: str, lead_id: str = "", estado: str = "",
     itens = list(consulta.order_by(F("ultima_mensagem_em").desc(nulls_last=True), "-criada_em")
                  [inicio:inicio + por_pagina])
     parados = _descadastrados(itens)
-    return {"itens": [conversa_json(c, parados) for c in itens], "total": total, "pagina": pagina,
+    ultimas = _ultimas_mensagens(itens)
+    lista = []
+    for c in itens:
+        item = conversa_json(c, parados)
+        item["ultima_mensagem"] = ultimas.get(c.id)  # None: conversa ainda sem mensagem
+        lista.append(item)
+    return {"itens": lista, "total": total, "pagina": pagina,
             "por_pagina": por_pagina, "tem_mais": inicio + por_pagina < total}
 
 
@@ -357,8 +378,9 @@ def encerrar(request, conversa_id: str, dados: SiteEntrada):
     """Encerra; uma nova mensagem do contato reabre com o agente."""
     _escrita(request)
     conversa = _conversa(conversa_id, dados.site_id)
-    conversa.estado = "encerrada"
-    conversa.save(update_fields=["estado", "atualizada_em"])
+    # Encerrada não tem dono: quem assumiu e depois encerrou não fica como atendente de uma conversa que reabre com o agente.
+    conversa.estado, conversa.assumida_por, conversa.assumida_em = "encerrada", "", None
+    conversa.save(update_fields=["estado", "assumida_por", "assumida_em", "atualizada_em"])
     return conversa_json(conversa)
 
 

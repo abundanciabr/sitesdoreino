@@ -767,3 +767,77 @@ def test_filtro_aguardando_traz_quem_so_recebeu_a_orientacao_automatica():
     html = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"}).content.decode()
     assert "Orientação enviada" in html and "Confirmação automática" in html
     assert "Pedido de e-mail" not in html  # essa espera a pessoa, não a equipe
+
+
+# --- frente conversas-caixa, onda 1 (04/10/2026) -----------------------------------------------
+
+
+@respx.mock
+def test_lista_com_o_recado_de_todas_nao_busca_nenhum_e_acha_a_resposta_que_falhou_longe():
+    falhou = mensagem(direcao="saida", autor="agente", texto="Esta nao saiu", estado_envio="falhou", ocorrida_em="2026-10-03T11:00:00Z")
+    entregue = mensagem(direcao="saida", autor="agente", estado_envio="entregue", ocorrida_em="2026-10-03T11:00:00Z")
+    itens = [respondida_pela_hora() | {"ultima_mensagem": entregue} for _ in range(14)]
+    itens.append(respondida_pela_hora() | {"ultima_mensagem": falhou})
+    itens.append(respondida_pela_hora() | {"ultima_mensagem": None})  # conversa sem mensagem: nada a buscar
+    respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(*itens))
+    busca = respx.get(url__regex=r"^" + MENSAGERIA + r"/conversas/[^/]+/mensagens").respond(200, json=mensagens())
+    html = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"}).content.decode()
+    assert not busca.called
+    assert "Esta nao saiu" in html and html.count("Aguardando resposta</span>") == 1
+    # Sem filtro, as 16 mostram o recado que a lista trouxe e nada é buscado.
+    dentro().get(reverse("crm_conversas"))
+    assert not busca.called
+
+
+@respx.mock
+def test_responder_conversa_encerrada_recusado_nao_a_devolve_ao_agente():
+    responder_com("fora_da_janela", conv=conversa(estado="encerrada"), detalhe="x")
+    respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/assumir").respond(200, json=conversa(estado="pessoa"))
+    devolver = respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/devolver").respond(200, json=conversa())
+    encerrar = respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/encerrar").respond(200, json=conversa(estado="encerrada"))
+    html = enviar_resposta("Voltando ao assunto").content.decode()
+    assert encerrar.called and not devolver.called
+    assert json.loads(encerrar.calls.last.request.content) == {"site_id": "site-do-host"}
+    assert "a conversa continua encerrada" in html and "continua com o agente" not in html
+    assert "Voltando ao assunto</textarea>" in html
+    assert Registro.objects.filter(alvo=CONVERSA, detalhe="Conversa: encerrar (envio recusado)").exists()
+
+
+@respx.mock
+def test_responder_conversa_encerrada_com_a_volta_falhando_diz_a_verdade():
+    responder_com("descadastrado", conv=conversa(estado="encerrada"))
+    respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/assumir").respond(200, json=conversa(estado="pessoa"))
+    respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/encerrar").mock(side_effect=httpx.ConnectError("fora"))
+    html = enviar_resposta().content.decode()
+    assert "não conseguimos deixar a conversa encerrada" in html and "continua com o agente" not in html
+
+
+def depois_do_parar(ultimo, **extras):
+    return conversa(descadastrado=True, ultima_mensagem=ultimo, **extras)
+
+
+@respx.mock
+def test_quem_pediu_parar_e_depois_escreveu_aparece_em_aguardando():
+    escreveu = depois_do_parar(mensagem(texto="quero comprar, manda o link"), id=str(uuid.uuid4()))
+    so_parou = depois_do_parar(mensagem(texto="PARAR", descadastro=True), id=str(uuid.uuid4()))
+    respondida = depois_do_parar(mensagem(direcao="saida", autor="pessoa", estado_envio="entregue"), id=str(uuid.uuid4()))
+    respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(escreveu, so_parou, respondida))
+    html = dentro().get(reverse("crm_conversas"), {"estado": "aguardando"}).content.decode()
+    assert "quero comprar, manda o link" in html and "PARAR" not in html
+    assert html.count("Aguardando resposta</span>") == 1
+
+
+@respx.mock
+def test_mensagens_anteriores_usam_o_cursor_da_api_para_nao_pular_o_mesmo_instante():
+    mesmo_instante = "2026-10-03T02:00:00+00:00"
+    cem = [mensagem(ocorrida_em=mesmo_instante) for _ in range(100)]
+    cursor = cem[0]["id"]
+    resposta = mensagens(None, *cem) | {"proxima_antes_de": cursor}
+    rota = respx.get(MENSAGERIA + f"/conversas/{CONVERSA}/mensagens").respond(200, json=resposta)
+    respx.get(LEADS + f"/leads/{LEAD}").respond(200, json={"id": LEAD, "nome": "Ana Souza", "linha_do_tempo": []})
+    respx.get(LEADS + "/crm").respond(200, json={"itens": [], "resumo": {}, "total": 0})
+    c = dentro()
+    html = c.get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
+    assert f"antes_de={cursor}" in html
+    c.get(reverse("crm_conversa", args=[CONVERSA]), {"antes_de": cursor})
+    assert rota.calls.last.request.url.params["antes_de"] == cursor
