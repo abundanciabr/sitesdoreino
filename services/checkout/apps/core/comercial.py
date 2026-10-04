@@ -213,7 +213,23 @@ def _contato(bruto) -> dict:
     return contato
 
 
-def _resposta_existente(link: LinkDeCompra) -> JsonResponse:
+def _resposta_existente(
+    link: LinkDeCompra, slug: str, oportunidade_ref: str, condicao_id: str
+) -> JsonResponse:
+    """Mesma chave devolve o mesmo link, mas só para o mesmo pedido: outra
+    oferta, oportunidade ou condição com a chave já usada é erro de quem
+    chamou, não um link alheio entregue como se fosse o pedido."""
+    if (
+        link.oferta_ref != slug
+        or link.oportunidade_ref != oportunidade_ref
+        or (link.condicao or {}).get("id") != condicao_id
+    ):
+        raise HttpError(
+            409,
+            "chave_idempotencia já foi usada para outro link "
+            f"(oferta {link.oferta_ref!r}, oportunidade {link.oportunidade_ref!r}, "
+            f"condição {(link.condicao or {}).get('id')!r}); use uma chave nova",
+        )
     return JsonResponse(link.resposta, status=200)
 
 
@@ -227,16 +243,15 @@ def create_purchase_link(request):
     site = request.site
     corpo = _corpo(request)
     chave = _texto(corpo.get("chave_idempotencia"), "chave_idempotencia", maximo=200)
-    existente = LinkDeCompra.objects.filter(
-        site_id=site["id"], chave_idempotencia=chave
-    ).first()
-    if existente is not None:
-        return _resposta_existente(existente)
-
     slug = _texto(corpo.get("oferta"), "oferta", maximo=200)
     oportunidade_ref = _texto(corpo.get("oportunidade_ref"), "oportunidade_ref", maximo=100)
     contato = _contato(corpo.get("contato"))
     condicao_id = _texto(corpo.get("condicao"), "condicao", maximo=40)
+    existente = LinkDeCompra.objects.filter(
+        site_id=site["id"], chave_idempotencia=chave
+    ).first()
+    if existente is not None:
+        return _resposta_existente(existente, slug, oportunidade_ref, condicao_id)
 
     oferta = _oferta_ou_404(site, slug)
     condicoes = condicoes_da_oferta(site, oferta)
@@ -288,7 +303,7 @@ def create_purchase_link(request):
         ).first()
         if existente is None:
             raise
-        return _resposta_existente(existente)
+        return _resposta_existente(existente, slug, oportunidade_ref, condicao_id)
     return JsonResponse(link.resposta, status=201)
 
 
@@ -305,6 +320,7 @@ def _estado_do_pedido(pedido: OrderModel) -> dict:
         "moeda": MOEDA,
         "oportunidade_ref": pedido.oportunidade_ref,
         "oferta_ref": pedido.oferta_ref,
+        "em_teste": pedido.em_teste,
         "criado_em": pedido.created_at.isoformat(),
         "pago_em": pedido.pago_em.isoformat() if pedido.pago_em else None,
     }
@@ -372,8 +388,11 @@ def list_orders_by_opportunity(request, oportunidade_ref: str = ""):
         ).order_by("criado_em")
         if link.pedido_id not in com_pedido
     ]
-    aprovado = sum(p.total_cents for p in pedidos if p.status in ("pago", "reembolsado"))
-    estornado = sum(p.total_cents for p in pedidos if p.status == "reembolsado")
+    # Pedido de sandbox/teste aparece na lista (marcado `em_teste`), mas não
+    # entra no que foi recebido: só aparece contado em `testes_fora`.
+    reais = [p for p in pedidos if not p.em_teste]
+    aprovado = sum(p.total_cents for p in reais if p.status in ("pago", "reembolsado"))
+    estornado = sum(p.total_cents for p in reais if p.status == "reembolsado")
     return JsonResponse(
         {
             "oportunidade_ref": referencia,
@@ -383,6 +402,7 @@ def list_orders_by_opportunity(request, oportunidade_ref: str = ""):
                 "aprovado_cents": aprovado,
                 "estornado_cents": estornado,
                 "liquido_cents": aprovado - estornado,
+                "testes_fora": len(pedidos) - len(reais),
                 "moeda": MOEDA,
             },
         }
