@@ -10,6 +10,7 @@
   <div class="crm-cabecalho"><div><h1>CRM</h1><p class="subtitulo">Contatos que vieram dos quizzes, sua história e o próximo passo.</p></div><span><a class="botao" href="{% url 'assistente_do_site' %}">Assistente</a> <a class="botao" href="{% url 'crm_condicoes' %}">Condições do agente</a> <a class="botao" href="{% url 'contatos' %}">Ver contatos →</a></span></div>
   {% menu_do_crm %}
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  <p><a href="{% url 'crm_resultados' %}">Resultados comerciais: conversão, receita e custos →</a></p>
   <div class="crm-abertura"><div class="rotulo">Oportunidades de venda</div><h2>Cada pessoa que responde um quiz vira uma oportunidade de venda.</h2><p>Responder o quiz abre a oferta do produto indicado. Fazer o pedido leva a oferta para Negociação. Pagar fecha como venda feita. Pagamento recusado ou Pix vencido abre uma recuperação.</p></div>
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
   <div class="crm-numeros">
