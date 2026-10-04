@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     # identidade de cada robô, as conversas, as execuções no servidor e as
     # entregas. Dados próprios; as tarefas continuam em `apps.core`.
     "apps.agentes",
+    "apps.comercial",
 ]
 
 MIDDLEWARE = [
