@@ -5,6 +5,7 @@ na VPS), lidas no ponto de uso. Nada aqui registra token, telefone ou corpo.
 """
 from __future__ import annotations
 
+import http.client
 import json
 from urllib import error, parse, request
 
@@ -67,12 +68,12 @@ def pedir(method: str, caminho: str, *, dados: dict | None = None, params: dict 
         try:
             detalhe = json.loads(exc.read(65536) or b"{}")
             codigo = str((detalhe.get("error") or {}).get("code") or "")[:20]
-        except (ValueError, UnicodeDecodeError, AttributeError, OSError):
+        except (ValueError, UnicodeDecodeError, AttributeError, OSError, http.client.HTTPException):
             pass
         if 400 <= exc.code < 500 and exc.code != 408:
             raise CloudRecusou(exc.code, codigo) from None
         raise CloudSemResposta(f"meta respondeu HTTP {exc.code}") from None
-    except (error.URLError, TimeoutError, OSError):
+    except (error.URLError, TimeoutError, OSError, http.client.HTTPException):
         raise CloudSemResposta("meta sem resposta confiavel") from None
     try:
         payload = json.loads(bruto)

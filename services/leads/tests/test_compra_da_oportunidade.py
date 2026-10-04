@@ -429,3 +429,145 @@ def test_aprovacao_antes_do_pedido_corrigida_pela_referencia_reabre_a_oferta_err
     assert cura.etapa == "ganha" and cura.encerrada
     assert crivo.etapa != "ganha" and not crivo.encerrada
     assert CompraDaOportunidade.objects.get().oportunidade_id == cura.id
+
+
+# ---------------------------------------------------------------------------
+# Sem oportunidade_ref/oferta_ref: casa por produto
+# ---------------------------------------------------------------------------
+
+
+def test_sem_referencia_o_produto_do_pedido_casa_com_a_oferta_indicada_pelo_quiz():
+    crivo = quiz("crivo", context={"oferta_ref": "prod-crivo"})
+    cura = quiz("cura", context={"oferta_ref": "prod-cura"})
+    pedido("ped-1", produto="prod-cura")
+    aprovado("ped-1")
+    _recarregar(crivo, cura)
+    assert cura.etapa == "ganha" and cura.encerrada
+    assert crivo.etapa == "nova" and not crivo.encerrada
+    assert CompraDaOportunidade.objects.get().oportunidade_id == cura.id
+
+
+def test_sem_referencia_o_resultado_do_quiz_casa_com_o_produto_do_pedido():
+    from django.utils import timezone
+
+    from apps.core.models import Lead, QuizDoLead
+
+    crivo = quiz("crivo")
+    cura = quiz("cura")
+    lead = Lead.objects.get(email=EMAIL, site_id=SITE)
+    QuizDoLead.objects.create(
+        lead=lead, quiz_slug="crivo", situacao="completo", resultado="Prod-Crivo",
+        completado_em=timezone.now(),
+    )
+    QuizDoLead.objects.create(
+        lead=lead, quiz_slug="cura", situacao="completo", resultado="prod-cura",
+        completado_em=timezone.now(),
+    )
+    pedido("ped-1", produto="prod-crivo")
+    aprovado("ped-1")
+    _recarregar(crivo, cura)
+    assert crivo.etapa == "ganha"
+    assert cura.etapa == "nova"
+
+
+def test_sem_referencia_produto_de_nenhuma_oferta_com_duas_abertas_nao_fecha_nada():
+    from django.utils import timezone
+
+    from apps.core.models import Lead, QuizDoLead
+
+    crivo = quiz("crivo")
+    cura = quiz("cura")
+    lead = Lead.objects.get(email=EMAIL, site_id=SITE)
+    for slug in ("crivo", "cura"):
+        QuizDoLead.objects.create(
+            lead=lead, quiz_slug=slug, situacao="completo",
+            resultado=f"prod-{slug}", completado_em=timezone.now(),
+        )
+    pedido("ped-1", produto="prod-outro")
+    aprovado("ped-1")
+    _recarregar(crivo, cura)
+    assert crivo.etapa == "nova" and cura.etapa == "nova"
+
+
+def test_perfil_que_indica_o_produto_liga_a_unica_oferta_aberta():
+    from django.utils import timezone
+
+    from apps.core.models import Lead, PerfilDoLead
+
+    crivo = quiz("crivo", context={"oferta_ref": "prod-crivo"})
+    lead = Lead.objects.get(email=EMAIL, site_id=SITE)
+    # sem indicação, um produto diferente do que a oferta conhece não a fecha
+    pedido("ped-1", produto="prod-novo")
+    aprovado("ped-1")
+    crivo.refresh_from_db()
+    assert not crivo.encerrada
+
+    PerfilDoLead.objects.create(
+        lead=lead, versao=1, analisado_em=timezone.now(),
+        oferta_indicada={"oferta_ref": "prod-novo", "nome": "Novo"},
+    )
+    pedido("ped-2", produto="prod-novo")
+    aprovado("ped-2")
+    crivo.refresh_from_db()
+    assert crivo.etapa == "ganha"
+    assert CompraDaOportunidade.objects.get(pedido_id="ped-2").oportunidade_id == crivo.id
+
+
+def test_recompra_de_produto_de_oferta_ganha_nao_fecha_a_outra_oferta_aberta():
+    crivo = quiz("crivo")
+    cura = quiz("cura")
+    pedido("ped-1", oportunidade_ref=str(crivo.id), produto="prod-crivo")
+    aprovado("ped-1")
+    _recarregar(crivo, cura)
+    assert crivo.etapa == "ganha" and cura.etapa == "nova"
+
+    pedido("ped-2", produto="prod-crivo")
+    aprovado("ped-2")
+    _recarregar(crivo, cura)
+    assert cura.etapa == "nova" and not cura.encerrada
+    assert CompraDaOportunidade.objects.get(pedido_id="ped-2").oportunidade_id is None
+
+
+def test_unica_oferta_aberta_ainda_vale_quando_o_produto_e_novo():
+    crivo = quiz("crivo")
+    pedido("ped-1", produto="prod-qualquer")
+    aprovado("ped-1")
+    crivo.refresh_from_db()
+    assert crivo.etapa == "ganha"
+
+
+# ---------------------------------------------------------------------------
+# Falha e aprovação no mesmo instante: vale a ordem de gravação
+# ---------------------------------------------------------------------------
+
+
+def _fatos_no_mesmo_instante(*eventos):
+    from django.utils import timezone
+
+    from apps.core.models import Lead, TimelineEvent
+
+    lead = Lead.objects.create(site_id=SITE, email=EMAIL)
+    instante = timezone.now()
+    dados = {"site_id": SITE, "order_id": "ped-7", "amount_cents": 990}
+    for nome in eventos:
+        evento = TimelineEvent.objects.create(lead=lead, event=nome, payload=dados)
+        TimelineEvent.objects.filter(pk=evento.pk).update(occurred_at=instante)
+
+
+def test_backfill_falha_gravada_antes_da_aprovacao_no_mesmo_instante_abre_recuperacao():
+    from django.core.management import call_command
+
+    _fatos_no_mesmo_instante("pagamento.recusado", "pagamento.aprovado")
+    call_command("backfill_recuperacao")
+    call_command("backfill_recuperacao")
+    recuperacao = Oportunidade.objects.get(fonte_tipo="pagamento")
+    assert recuperacao.etapa == "ganha"
+    assert CompraDaOportunidade.objects.get().recuperada
+
+
+def test_backfill_aprovacao_gravada_antes_da_falha_no_mesmo_instante_nao_abre_nada():
+    from django.core.management import call_command
+
+    _fatos_no_mesmo_instante("pagamento.aprovado", "pagamento.recusado")
+    call_command("backfill_recuperacao")
+    assert not Oportunidade.objects.filter(fonte_tipo="pagamento").exists()
