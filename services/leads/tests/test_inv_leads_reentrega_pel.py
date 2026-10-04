@@ -136,3 +136,66 @@ def test_mensagem_recem_entregue_nao_e_roubada_de_outro_worker(r):
     assert TimelineEvent.objects.count() == 0  # ninguém a reprocessou
     assert r.xlen(DLQ) == 0
     assert r.xpending(STREAM, GRUPO)["pending"] == 1  # segue com o worker-vivo
+
+
+# --- Uma mensagem ruim não leva as boas do mesmo lote para a fila morta -----
+# Medido em produção em 03/10/2026: a reversão sem `order_id` estourava antes
+# das duas válidas do mesmo lote, e as três chegaram juntas à fila morta.
+
+STREAM_REVERSAO = "eventos.pagamento.reversao_confirmada"
+
+
+def _reversao(order_id=None) -> dict:
+    data = {
+        "platform_site_id": "site-a",
+        "provider": "appmax",
+        "provider_reference_id": str(uuid.uuid4()),
+        "motivo": "estorno",
+    }
+    if order_id:
+        data["order_id"] = order_id
+    return {
+        "event": "pagamento.reversao_confirmada",
+        "version": 2,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": "2026-10-03T16:16:00Z",
+        "data": data,
+    }
+
+
+def _ruim_e_boa(cliente):
+    ruim, boa = _reversao(), _reversao(order_id="ord-boa")
+    id_ruim = cliente.xadd(STREAM_REVERSAO, {"json": json.dumps(ruim)})
+    cliente.xadd(STREAM_REVERSAO, {"json": json.dumps(boa)})
+    return id_ruim, boa
+
+
+def _so_a_ruim_ficou(cliente, id_ruim, boa):
+    from apps.core.models import ReversaoDePagamento
+
+    assert ReversaoDePagamento.objects.filter(order_id="ord-boa").count() == 1
+    assert EventoProcessado.objects.filter(event_id=boa["event_id"]).exists()
+    pendentes = cliente.xpending_range(STREAM_REVERSAO, GRUPO, "-", "+", 10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]
+
+
+def test_mensagem_nova_ruim_nao_impede_a_boa_do_mesmo_lote(r):
+    id_ruim, boa = _ruim_e_boa(r)
+
+    uma_iteracao(r, block_ms=1)
+
+    _so_a_ruim_ficou(r, id_ruim, boa)
+
+
+def test_presa_ruim_nao_impede_a_boa_reivindicada_junto(r):
+    id_ruim, boa = _ruim_e_boa(r)
+    r.xreadgroup(GRUPO, "worker-que-morreu", {STREAM_REVERSAO: ">"}, count=10)
+    for msg_id, _ in r.xrange(STREAM_REVERSAO):
+        r.xclaim(
+            STREAM_REVERSAO, GRUPO, "worker-que-morreu", 0, [msg_id],
+            idle=IDLE_MS_REENTREGA + 1,
+        )
+
+    uma_iteracao(r, block_ms=1)
+
+    _so_a_ruim_ficou(r, id_ruim, boa)

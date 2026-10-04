@@ -1,0 +1,73 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Ofertas dos quizzes{% endblock %}
+{% block corpo %}
+<style>
+.ofq{max-width:1100px}.ofq h1{font-size:30px;letter-spacing:-1px;margin:0}.ofq .subtitulo{margin:4px 0 20px;color:var(--texto-2)}.ofq-topo{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}.ofq-numeros{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:18px 0}.ofq-numeros strong{display:block;font-size:28px}.ofq-numeros span{color:var(--texto-2);font-size:13px}.ofq-quiz{border:1px solid var(--linha);border-radius:12px;background:var(--painel);padding:18px;margin-bottom:18px}.ofq-quiz.atencao{border-color:#c7973f}.ofq-quiz h2{font-size:18px;margin:0 0 4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ofq-etiqueta{font-size:12px;border:1px solid var(--linha);border-radius:999px;padding:2px 10px;color:var(--texto-2)}.ofq-etiqueta.alerta{border-color:#c7973f;color:#f1bb68}.ofq-faixa{display:grid;grid-template-columns:minmax(140px,1fr) 2fr 1.2fr;gap:12px;padding:12px 0;border-top:1px solid var(--linha);align-items:start}.ofq-faixa b{display:block}.ofq-faixa small{display:block;color:var(--texto-3)}.ofq-faixa label{display:block;font-size:12px;color:var(--texto-2);margin:0 0 3px}.ofq-faixa input{width:100%;box-sizing:border-box;padding:8px 10px;font:inherit;background:var(--fundo);color:var(--texto);border:1px solid var(--linha);border-radius:8px;margin-bottom:8px}.ofq-oferta{font-size:14px}.ofq-oferta.sem{color:#f1bb68;font-weight:600}.ofq-oferta.ruim{color:#e88}.ofq-campanha{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}.ofq-campanha label{display:block;font-size:12px;color:var(--texto-2);margin:0 0 3px}.ofq-campanha input{width:100%;box-sizing:border-box;padding:8px 10px;font:inherit;background:var(--fundo);color:var(--texto);border:1px solid var(--linha);border-radius:8px}.ofq-acoes{margin-top:12px}.ofq-ajuda{font-size:13px;color:var(--texto-3);margin:6px 0 0}
+@media(max-width:760px){.ofq-faixa{grid-template-columns:1fr}.ofq h1{font-size:26px}}
+</style>
+<main class="envolucro ofq">
+  <div class="ofq-topo"><div><h1>Ofertas dos quizzes</h1><p class="subtitulo">Para cada quiz{% if site.nome %} de {{ site.nome }}{% endif %}, a oferta que cada resultado apresenta ao fim.</p></div><a class="botao" href="{% url 'crm' %}">&larr; CRM</a></div>
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if erro and not com_erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+  {% if not indisponivel %}
+  <div class="ofq-numeros">
+    <div class="cartao"><strong>{{ resumo.quizzes }}</strong><span>Quizzes neste site</span></div>
+    <div class="cartao"><strong>{{ resumo.sem_oferta }}</strong><span>Quizzes pedindo atenção</span></div>
+    <div class="cartao"><strong>{{ resumo.resultados_sem_oferta }}</strong><span>Resultados sem oferta</span></div>
+  </div>
+  <p class="ofq-ajuda">Resultado sem oferta termina o quiz sem botão: a pessoa vê o diagnóstico e não tem para onde ir. Escreva o apelido da oferta do catálogo (por exemplo <b>curso-inicial</b>) ou um endereço completo.</p>
+  {% for quiz in quizzes %}
+  <section class="ofq-quiz{% if quiz.precisa_de_atencao %} atencao{% endif %}" id="quiz-{{ quiz.slug }}">
+    <h2>{{ quiz.title }} <span class="ofq-etiqueta">/{{ quiz.slug }}</span>
+      {% if quiz.directed %}<span class="ofq-etiqueta">Campanha com duas ofertas</span>{% endif %}
+      {% if not quiz.published %}<span class="ofq-etiqueta">Ainda não publicado</span>{% endif %}
+      {% if quiz.sem_oferta %}<span class="ofq-etiqueta alerta">{{ quiz.sem_oferta|length }} resultado{{ quiz.sem_oferta|length|pluralize:"s" }} sem oferta</span>{% endif %}
+      {% if quiz.com_problema %}<span class="ofq-etiqueta alerta">Oferta que não existe</span>{% endif %}
+    </h2>
+    {% if com_erro == quiz.slug and erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+    {% if not quiz.faixas %}
+      <p class="aviso">Este quiz ainda não tem resultados publicados, então não há oferta para ligar. Publique uma versão no editor do quiz.</p>
+    {% else %}
+    <form method="post" action="{% url 'crm_ofertas_dos_quizzes_salvar' quiz.slug %}">{% csrf_token %}
+      {% if quiz.directed %}
+      <div class="ofq-campanha">
+        {% for oferta in quiz.ofertas_campanha %}
+        <div><label for="oferta-{{ quiz.slug }}-{{ oferta.id }}">Endereço de compra: {{ oferta.nome|default:oferta.id }}</label><input id="oferta-{{ quiz.slug }}-{{ oferta.id }}" name="oferta_{{ oferta.id }}" type="url" maxlength="500" value="{{ oferta.campo }}" placeholder="https://..." required></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% for faixa in quiz.faixas %}
+      <div class="ofq-faixa">
+        <div><b>{{ faixa.titulo }}</b><small>Pontos {{ faixa.pontos }}</small>{% if faixa.oferta_nome %}<small>Oferta da campanha: {{ faixa.oferta_nome }}</small>{% endif %}</div>
+        <div class="ofq-oferta {% if faixa.oferta.tipo == 'sem_oferta' %}sem{% elif faixa.oferta.tipo == 'inexistente' %}ruim{% endif %}">
+          {% if faixa.oferta.tipo == 'sem_oferta' %}Sem oferta: o resultado termina sem botão.
+          {% elif faixa.oferta.tipo == 'oferta' %}<b>{{ faixa.oferta.produto }}</b>{% if faixa.oferta.preco %} · {{ faixa.oferta.preco }}{% endif %}<small>Oferta {{ faixa.oferta.apelido }}</small>
+          {% elif faixa.oferta.tipo == 'inexistente' %}A oferta {{ faixa.oferta.apelido }} não existe neste site: o botão leva a uma página que não abre.
+          {% elif faixa.oferta.tipo == 'nao_conferida' %}Oferta {{ faixa.oferta.apelido }}<small>Não consegui conferir o nome e o preço no catálogo agora.</small>
+          {% else %}Endereço fora da plataforma<small>{{ faixa.destino }}</small>{% endif %}
+          {% if faixa.divergente %}<small>As versões deste quiz estão com botões diferentes; salvar iguala todas.</small>{% endif %}
+        </div>
+        {% if quiz.directed %}
+        <div><small>Texto do botão</small><b>{{ faixa.rotulo|default:"—" }}</b></div>
+        {% else %}
+        <div>
+          <input type="hidden" name="chave_{{ faixa.numero }}" value="{{ faixa.key }}">
+          <label for="destino-{{ quiz.slug }}-{{ faixa.numero }}">Oferta ou endereço</label>
+          <input id="destino-{{ quiz.slug }}-{{ faixa.numero }}" name="destino_{{ faixa.numero }}" maxlength="500" value="{{ faixa.campo_destino }}" placeholder="curso-inicial">
+          <label for="rotulo-{{ quiz.slug }}-{{ faixa.numero }}">Texto do botão</label>
+          <input id="rotulo-{{ quiz.slug }}-{{ faixa.numero }}" name="rotulo_{{ faixa.numero }}" maxlength="80" value="{{ faixa.campo_rotulo }}" placeholder="Quero saber mais">
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <div class="ofq-acoes"><button class="botao">Salvar ofertas deste quiz</button>
+      {% if quiz.directed %}<p class="ofq-ajuda">Nesta campanha cada resultado leva a uma das duas ofertas; trocar o endereço vale para todas as versões. Para mudar qual oferta cada resultado leva, edite a campanha no editor do quiz.</p>{% else %}<p class="ofq-ajuda">Deixe a oferta em branco para tirar o botão daquele resultado.</p>{% endif %}</div>
+    </form>
+    {% endif %}
+  </section>
+  {% empty %}
+  <p class="aviso">Este site ainda não tem quizzes.</p>
+  {% endfor %}
+  {% endif %}
+</main>
+{% endblock %}

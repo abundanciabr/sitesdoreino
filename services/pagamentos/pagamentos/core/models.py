@@ -280,6 +280,36 @@ class PaymentAttempt(models.Model):
         return f"{self.provider}:{self.operation_id}:{self.state}"
 
 
+class ObservacaoDoProvedor(models.Model):
+    """O que a empresa respondeu sobre uma tentativa, e em que ponto do caminho.
+
+    Só observa: nada aqui decide dinheiro nem rota. Existe para que, com as
+    chaves reais, a resposta usada pelo Mercado Pago na recusa do Pix (AC11) e
+    o status do pedido Appmax depois do aviso `order_refused_by_risk` (AC13)
+    possam ser contados direto no banco e no painel, sem garimpar log.
+    Nenhum dado pessoal: só códigos do provedor e a referência da cobrança.
+    """
+
+    tentativa = models.ForeignKey(
+        PaymentAttempt, on_delete=models.PROTECT, related_name="observacoes"
+    )
+    platform_site_id = models.CharField(max_length=255)
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES)
+    # criacao, aviso, get_intent, supervisao, consulta,
+    # aviso_order_refused_by_risk
+    origem = models.CharField(max_length=40)
+    status = models.CharField(max_length=50, blank=True, default="")
+    detalhe = models.CharField(max_length=120, blank=True, default="")
+    referencia = models.CharField(max_length=255, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["platform_site_id", "provider", "origem"])]
+
+    def __str__(self) -> str:
+        return f"{self.provider}:{self.origem}:{self.status}:{self.detalhe}"
+
+
 class PaymentOperation(models.Model):
     """Uma linha por POST externo, commitada antes da chamada de escrita."""
 
@@ -319,9 +349,9 @@ class InstalacaoAppmax(models.Model):
 
     Durante `POST /app/client/generate` a Appmax chama a nossa URL de validação
     e só emite a credencial se a resposta for 200 com um `external_id` válido e
-    inédito. Por isso `app_id` é único e `external_id` nasce UMA vez: a segunda
-    chamada do mesmo `app_id` devolve o MESMO UUID, nunca um novo, que
-    derrubaria a instalação já existente.
+    inédito. Por isso `app_id` é único e cada health check do mesmo `app_id`
+    grava um `external_id` NOVO no lugar do anterior: a Appmax rejeita valor
+    repetido e o anterior deixa de valer (guides/instalacao).
 
     `client_secret`, `client_key` e `external_key` NUNCA são
     persistidos. Do segredo fica no máximo `client_secret_recebido`, a marca de
@@ -444,7 +474,11 @@ def relay_outbox() -> int:
         )
         if not pendentes:
             return 0
-        cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+        # Prazo curto: este trecho segura linhas da outbox (select_for_update);
+        # um Redis que não responde não pode prender a transação para sempre.
+        cliente = redis.from_url(  # type: ignore[no-untyped-call]
+            settings.REDIS_STREAMS_URL, socket_connect_timeout=5, socket_timeout=5
+        )
         for evento in pendentes:
             envelope = {
                 "event": evento.event,

@@ -6,7 +6,10 @@ from django.db import models
 
 class Lead(models.Model):
     """Uma pessoa, dentro de UM site. A mesma pessoa (mesmo e-mail) em sites
-    diferentes é registrada como leads distintos — upsert é por (site_id, email)."""
+    diferentes é registrada como leads distintos — upsert é por (site_id, email).
+
+    E-mail vazio é de quem deixou só o telefone no quiz: pode haver vários
+    no mesmo site, e o e-mail entra quando a pessoa concluir o quiz."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site_id = models.CharField(max_length=100)
@@ -23,7 +26,9 @@ class Lead(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "email"], name="uniq_lead_site_email"
+                fields=["site_id", "email"],
+                condition=~models.Q(email=""),
+                name="uniq_lead_site_email",
             ),
         ]
 
@@ -101,6 +106,79 @@ class ReversaoDePagamento(models.Model):
         ]
 
 
+class CompraDaOportunidade(models.Model):
+    """Uma compra é um pedido de um site, e uma compra é uma receita.
+
+    Liga o pedido à oportunidade certa (`oportunidade`), guarda o que o
+    provedor confirmou (aprovação, estorno ou contestação) e as falhas de
+    pagamento da mesma compra. Aprovação repetida, tardia ou fora de ordem
+    cai na mesma linha: a unicidade (site, pedido) é o que impede a segunda
+    venda. Oferta inicial e recuperação da mesma compra apontam para esta
+    linha; a receita é contada aqui, não por oportunidade.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=100)
+    pedido_id = models.CharField(max_length=200)
+    lead = models.ForeignKey(Lead, on_delete=models.PROTECT, related_name="compras")
+    oportunidade = models.ForeignKey(
+        "Oportunidade", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="compras",
+    )
+    oportunidade_ref = models.CharField(max_length=200, blank=True, default="")
+    oferta_ref = models.CharField(max_length=200, blank=True, default="")
+    produtos = models.JSONField(default=list, blank=True)
+    valor_pedido_centavos = models.BigIntegerField(null=True, blank=True)
+    falhas = models.JSONField(default=list, blank=True)
+    aprovado_em = models.DateTimeField(null=True, blank=True)
+    valor_aprovado_centavos = models.BigIntegerField(null=True, blank=True)
+    aprovacao_evidencia = models.CharField(max_length=200, blank=True, default="")
+    revertida_em = models.DateTimeField(null=True, blank=True)
+    valor_revertido_centavos = models.BigIntegerField(default=0)
+    motivo_reversao = models.CharField(max_length=40, blank=True, default="")
+    sandbox = models.BooleanField(default=False)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "pedido_id"], name="uniq_compra_site_pedido"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["lead", "aprovado_em"]),
+            models.Index(fields=["oportunidade"]),
+        ]
+
+    @property
+    def situacao(self) -> str:
+        if self.revertida_em is not None:
+            return "revertida"
+        if self.aprovado_em is not None:
+            return "aprovada"
+        if self.falhas:
+            return "recuperacao"
+        return "pendente"
+
+    @property
+    def aprovado_centavos(self) -> int:
+        return int(self.valor_aprovado_centavos or 0) if self.aprovado_em else 0
+
+    @property
+    def estornos_centavos(self) -> int:
+        return int(self.valor_revertido_centavos or 0) if self.revertida_em else 0
+
+    @property
+    def liquido_centavos(self) -> int:
+        return self.aprovado_centavos - self.estornos_centavos
+
+    @property
+    def recuperada(self) -> bool:
+        """Aprovada depois de uma tentativa que falhou."""
+        return self.aprovado_em is not None and bool(self.falhas)
+
+
 class Oportunidade(models.Model):
     """O acompanhamento comercial humano de UMA pessoa já conhecida da casa.
 
@@ -128,6 +206,15 @@ class Oportunidade(models.Model):
     desfecho_motivo = models.TextField(blank=True, default="")
     desfecho_evidencia = models.TextField(blank=True, default="")
     desfecho_encerrada_em = models.DateTimeField(null=True, blank=True)
+    # Acompanhamento do dia a dia, escrito pelo agente ou pela pessoa da
+    # equipe. Próximo passo e prazo são `passo_descricao` e
+    # `passo_executar_ate`; aqui fica o resto do que o quadro mostra.
+    ATENDIDO_POR = ("agente", "pessoa")
+    atendido_por_tipo = models.CharField(max_length=10, blank=True, default="")
+    atendido_por_nome = models.CharField(max_length=200, blank=True, default="")
+    ultimo_contato_em = models.DateTimeField(null=True, blank=True)
+    objecao_principal = models.TextField(blank=True, default="")
+    aguardando_resposta = models.BooleanField(default=False)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -216,5 +303,114 @@ class TransferenciaResponsabilidade(models.Model):
                 fields=["oportunidade"],
                 condition=models.Q(estado="pendente"),
                 name="uniq_transferencia_pendente_por_oportunidade",
+            ),
+        ]
+
+
+class QuizDoLead(models.Model):
+    """O quiz que a pessoa respondeu, com as perguntas e respostas legíveis.
+
+    Uma linha por tentativa: a captura parcial abre a linha e o quiz completo
+    a conclui, sem criar outra. As respostas chegam prontas do quiz (texto da
+    pergunta e das opções), para a ficha e o agente lerem sem perguntar a
+    outra célula.
+    """
+
+    SITUACOES = ("parcial", "completo")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="quizzes")
+    quiz_slug = models.CharField(max_length=100)
+    sessao = models.CharField(max_length=100, blank=True, default="")
+    # Identificador da captura parcial no quiz (`captura_id` na captura,
+    # `captura_parcial_id` no completo): junta as duas pontas mesmo quando o
+    # contato muda entre uma e outra.
+    captura_id = models.CharField(max_length=100, blank=True, default="")
+    # A oportunidade que a captura parcial abriu (vazio se já existia).
+    oportunidade = models.ForeignKey(
+        "Oportunidade", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    submissao_id = models.CharField(max_length=100, blank=True, default="")
+    versao = models.CharField(max_length=100, blank=True, default="")
+    situacao = models.CharField(max_length=10, default="parcial")
+    respostas = models.JSONField(default=list, blank=True)
+    resultado = models.CharField(max_length=100, blank=True, default="")
+    pontuacao = models.IntegerField(null=True, blank=True)
+    utm = models.JSONField(default=dict, blank=True)
+    campanha = models.CharField(max_length=200, blank=True, default="")
+    ultimo_event_id = models.UUIDField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    completado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["lead", "-atualizado_em"]),
+            models.Index(fields=["quiz_slug", "sessao"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lead", "quiz_slug", "sessao"],
+                condition=~models.Q(sessao=""),
+                name="uniq_quiz_do_lead_por_sessao",
+            ),
+        ]
+
+
+class PerfilDoLead(models.Model):
+    """Uma versão do perfil comercial da pessoa, escrita pelo analista.
+
+    Cada análise acrescenta uma versão; a vigente é a de maior número. As
+    anteriores ficam como histórico e não mudam.
+    """
+
+    PRIORIDADES = ("alta", "media", "baixa")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="perfis")
+    versao = models.PositiveIntegerField()
+    resumo = models.TextField(blank=True, default="")
+    conteudo = models.JSONField(default=dict, blank=True)
+    prioridade = models.CharField(max_length=10, blank=True, default="")
+    prioridade_explicacao = models.TextField(blank=True, default="")
+    oferta_indicada = models.JSONField(null=True, blank=True)
+    analisado_em = models.DateTimeField()
+    analisado_por = models.CharField(max_length=200, blank=True, default="")
+    versao_estrategia = models.CharField(max_length=100, blank=True, default="")
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lead", "versao"], name="uniq_perfil_do_lead_versao"
+            ),
+        ]
+        indexes = [models.Index(fields=["lead", "-versao"])]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("versão de perfil não muda: grave uma versão nova")
+        return super().save(*args, **kwargs)
+
+
+class AcompanhamentoAplicado(models.Model):
+    """Atualização de acompanhamento já gravada, para a repetição não gravar
+    de novo no histórico (que não se apaga).
+
+    `chave` é a `chave_idempotencia` mandada pelo agente ou, sem ela, a
+    impressão do corpo; a impressão só vale por alguns minutos (ver crm.py).
+    """
+
+    oportunidade = models.ForeignKey(
+        Oportunidade, on_delete=models.CASCADE, related_name="+"
+    )
+    chave = models.CharField(max_length=200)
+    aplicado_em = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["oportunidade", "chave"], name="uniq_acompanhamento_aplicado"
             ),
         ]

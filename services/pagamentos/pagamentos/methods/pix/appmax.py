@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from pagamentos.core import gateway, ledger, models
 from pagamentos.core.models import (
+    ESTADOS_EM_ABERTO,
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
     PaymentAttempt,
@@ -327,6 +328,26 @@ def reconciliar(intent: Intent) -> Intent:
         .first()
     )
     if tentativa and tentativa.external_order_id.startswith("sim-") and _sandbox():
+        # O Pix simulado não existe na Appmax: não há o que consultar, mas ele
+        # vence como o real, senão fica pendente para sempre na supervisão.
+        if timezone.now() <= _encerramento(intent, tentativa):
+            # Conferido agora, como a consulta "pendente" do Pix real: sem isso a
+            # supervisão o conta como tentativa presa durante toda a margem.
+            PaymentAttempt.objects.filter(
+                pk=tentativa.pk, state__in=ESTADOS_EM_ABERTO
+            ).update(updated_at=timezone.now())
+            return intent
+        fechar_reconciliacao(
+            tentativa,
+            resultado=ResultadoDoProvedor(
+                aprovada=False,
+                provider_reference_id=tentativa.external_order_id,
+                external_order_id=tentativa.external_order_id,
+                motivo=_MOTIVO_VENCIDO,
+            ),
+            registrar_resultado=_registrar_fato,
+        )
+        intent.refresh_from_db()
         return intent
     if not tentativa or not tentativa.external_order_id or not tentativa.customer_id:
         raise gateway.FalhaNoProvedor(

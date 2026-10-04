@@ -198,3 +198,53 @@ def test_abaixo_do_limite_reprocessa_em_vez_de_matar(r, stream):
     assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
     assert r.xpending(stream, GRUPO)["pending"] == 0
     assert r.exists(f"{stream}.dlq") == 0
+
+
+# --- Uma mensagem ruim não leva as boas do mesmo lote para a fila morta -----
+# Medido nas células irmãs em 03/10/2026: a mensagem que estourava primeiro
+# levava as válidas do mesmo lote junto até a fila morta.
+
+
+def _ruim_e_boa(r, stream):
+    ruim = {**_envelope(), "data": {**DATA, "ruim": True}}
+    boa = _envelope()
+    id_ruim = r.xadd(stream, {"json": json.dumps(ruim)})
+    r.xadd(stream, {"json": json.dumps(boa)})
+    r.xgroup_create(stream, GRUPO, id="0")
+    return id_ruim, boa
+
+
+def _handler_que_falha_na_ruim(rodaram: list):
+    def handler(data, event_id, ator_id=None):
+        if data.get("ruim"):
+            raise ValueError("mensagem ruim")
+        rodaram.append(event_id)
+
+    return handler
+
+
+def test_mensagem_nova_ruim_nao_impede_a_boa_do_mesmo_lote(r, stream):
+    id_ruim, boa = _ruim_e_boa(r, stream)
+    rodaram: list = []
+    handler = _handler_que_falha_na_ruim(rodaram)
+
+    for nome, msgs in r.xreadgroup(GRUPO, "worker-1", {stream: ">"}, count=10):
+        for msg_id, campos in msgs:
+            consume_eventos._processar_isolada(r, nome, handler, msg_id, campos)
+
+    assert rodaram == [boa["event_id"]]
+    pendentes = r.xpending_range(stream, GRUPO, min="-", max="+", count=10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]
+
+
+def test_presa_ruim_nao_impede_a_boa_reivindicada_junto(r, stream):
+    id_ruim, boa = _ruim_e_boa(r, stream)
+    r.xreadgroup(GRUPO, "worker-que-morreu", {stream: ">"}, count=10)
+    rodaram: list = []
+
+    with patch.object(consume_eventos, "IDLE_MS_REENTREGA", 0):
+        _reivindicar_presas(r, stream, _handler_que_falha_na_ruim(rodaram))
+
+    assert rodaram == [boa["event_id"]]
+    pendentes = r.xpending_range(stream, GRUPO, min="-", max="+", count=10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]

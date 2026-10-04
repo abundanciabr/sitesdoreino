@@ -186,10 +186,39 @@ def test_04_timeout_replay_usa_mesma_chave_e_tentativa(settings):
         return_value=gateway.ResultadoPix(
             "1004", "CODIGO-MP", "", timezone.now() + timedelta(minutes=30)
         ),
-    ) as mp:
+    ) as reenvio:
         completar_intent_pix(intent)
-    assert mp.call_args.kwargs["idempotency_key"] == str(tentativa.operation_id)
+    assert reenvio.call_args.kwargs["idempotency_key"] == str(tentativa.operation_id)
     assert PaymentAttempt.objects.filter(intent=intent).count() == 1
+    # Mesma chave de idempotência, mesmo corpo: o reenvio descreve o pedido igual.
+    primeiro = {k: v for k, v in mp.call_args.kwargs.items() if k != "envio_ambiguo_anterior"}
+    segundo = {k: v for k, v in reenvio.call_args.kwargs.items() if k != "envio_ambiguo_anterior"}
+    assert primeiro == segundo
+
+
+def test_04b_pix_mp_leva_documento_aparelho_e_itens_do_checkout(settings):
+    _config(settings, lista=False)
+    resultado = gateway.ResultadoPix("1004b", "CODIGO-MP", "", None)
+    with patch(
+        "pagamentos.core.gateway.criar_pagamento_pix", return_value=resultado
+    ) as mp:
+        criar_intent_pix(
+            idempotency_key=str(uuid.uuid4()),
+            site_id=SITE,
+            order_id="pedido-checkout",
+            amount_cents=990,
+            currency="BRL",
+            # forma exata que o checkout manda fora da lista da Appmax
+            customer={"name": "Cliente Teste", "email": "cliente@exemplo.com",
+                      "phone": "11999999999", "cpf": "40827365144"},
+            metadata={**_metadata(), "mp_device_id": "aparelho-sintetico"},
+        )
+    enviado = mp.call_args.kwargs
+    assert enviado["payer_identification"] == {"type": "CPF", "number": "40827365144"}
+    assert enviado["device_id"] == "aparelho-sintetico"
+    assert enviado["itens_do_pedido"] == _metadata()["items"]
+    assert enviado["comprador_nome"] == "Cliente Teste"
+    assert enviado["comprador_telefone"] == "11999999999"
 
 
 def test_05_rejected_com_qr_nunca_e_exposto(settings):
@@ -487,6 +516,48 @@ def test_25_evento_codigo_trocado_tem_dados_sem_cpf(settings):
     assert evento.payload["pagina_url"] == _metadata()["pagina_url"]
     assert evento.payload["customer"]["phone"] == "11999999999"
     assert "40827365144" not in str(evento.payload)
+
+
+def test_26_pix_simulado_vence_sem_chamar_a_appmax(settings):
+    from pagamentos.methods.pix.appmax import reconciliar as reconciliar_pix_appmax
+
+    with patch(
+        "pagamentos.core.gateway.nova_sessao_appmax",
+        side_effect=AssertionError("API Appmax sandbox"),
+    ):
+        intent, _ = _novo(settings, nome="RISCO SANDBOX")
+        assert _tentativa(intent, "appmax").provider_reference_id.startswith("sim-")
+        reconciliar_pix_appmax(intent)
+        intent.refresh_from_db()
+        assert intent.status == "pending"
+        depois = intent.pix_expires_at + timedelta(days=1, minutes=1)
+        with patch("pagamentos.methods.pix.appmax.timezone.now", return_value=depois):
+            reconciliar_pix_appmax(intent)
+    intent.refresh_from_db()
+    assert intent.status == "expired"
+    assert _tentativa(intent, "appmax").state not in {"pending", "sending"}
+    assert len(_eventos("pix.expirado")) == 1
+
+
+def test_26b_pix_simulado_na_margem_nao_conta_como_preso(settings):
+    from pagamentos.supervisao import _reconciliar_tentativa, medir_pendencias
+
+    with patch(
+        "pagamentos.core.gateway.nova_sessao_appmax",
+        side_effect=AssertionError("API Appmax sandbox"),
+    ):
+        intent, _ = _novo(settings, nome="RISCO SANDBOX")
+        tentativa = _tentativa(intent, "appmax")
+        assert tentativa.provider_reference_id.startswith("sim-")
+        PaymentAttempt.objects.filter(pk=tentativa.pk).update(
+            updated_at=timezone.now() - timedelta(hours=6)
+        )
+        assert medir_pendencias()["tentativas_presas"] == 1
+        assert _reconciliar_tentativa(tentativa.pk) is False
+    intent.refresh_from_db()
+    assert intent.status == "pending"
+    assert _tentativa(intent, "appmax").state == "pending"
+    assert medir_pendencias()["tentativas_presas"] == 0
 
 
 @pytest.mark.parametrize("status", ["approved", "refunded"])

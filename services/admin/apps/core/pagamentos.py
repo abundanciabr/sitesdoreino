@@ -1,5 +1,7 @@
 """Página de compras e gesto de devolução na área administrativa."""
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from django.http import HttpResponseBadRequest, HttpResponseNotFound
 from django.shortcuts import render
@@ -10,12 +12,118 @@ from django.views.decorators.http import require_GET, require_POST
 from .clients import PagamentosClient
 from .placar import site_de
 
+BRASILIA = ZoneInfo("America/Sao_Paulo")
+EMPRESAS = {"appmax": "Appmax", "mercadopago": "Mercado Pago"}
+MEIOS = {"card": "Cartão", "pix": "Pix"}
+ESTADOS = {
+    "created": "Não chegou a pagar", "pending": "Aguardando", "approved": "Aprovada",
+    "rejected": "Recusada", "expired": "Pix vencido", "refunded": "Devolvida",
+}
+DEVOLUCOES = {
+    "solicitado": "Pedida à empresa",
+    "ambiguo": "Pedida; a empresa ainda não confirmou",
+    "confirmado": "Devolvida",
+    "contestacao": "Contestada pelo comprador",
+}
+MOTIVOS = {
+    "cancelado": "Appmax cancelou o pedido",
+    "recusado_por_risco": "Antifraude da Appmax",
+    "cc_rejected_high_risk": "Antifraude do Mercado Pago",
+    "cc_rejected_blacklist": "Cartão bloqueado no Mercado Pago",
+    "cc_rejected_insufficient_amount": "Saldo ou limite insuficiente",
+    "cc_rejected_bad_filled_card_number": "Número do cartão errado",
+    "cc_rejected_bad_filled_date": "Validade do cartão errada",
+    "cc_rejected_bad_filled_security_code": "Código de segurança errado",
+    "cc_rejected_bad_filled_other": "Dados do cartão errados",
+    "cc_rejected_call_for_authorize": "Banco pede autorização por telefone",
+    "cc_rejected_card_disabled": "Cartão desativado",
+    "cc_rejected_card_error": "Erro ao processar o cartão",
+    "cc_rejected_duplicated_payment": "Pagamento repetido",
+    "cc_rejected_invalid_installments": "Cartão não aceita essas parcelas",
+    "cc_rejected_max_attempts": "Limite de tentativas do cartão",
+    "cc_rejected_other_reason": "Banco recusou",
+    "pix_vencido": "Pix venceu sem pagamento",
+    "expired": "Pix venceu sem pagamento",
+    "mp_envio_recusado": "Mercado Pago recusou o envio",
+    "mp_sem_resposta": "Mercado Pago não respondeu",
+}
+
 
 def _pagina(valor):
     try:
         return max(1, int(valor))
     except (TypeError, ValueError):
         return 1
+
+
+def _data(valor):
+    if not isinstance(valor, str):
+        return ""
+    try:
+        return datetime.fromisoformat(valor).astimezone(BRASILIA).strftime("%d/%m/%Y %H:%M")
+    except ValueError:
+        return valor
+
+
+def _texto(tabela, codigo):
+    codigo = codigo if isinstance(codigo, str) else ""
+    return tabela.get(codigo) or codigo.replace("_", " ")
+
+
+def _motivo(codigo):
+    # Código que a tabela ainda não conhece: diz que a empresa recusou, em vez
+    # de mostrar o código cru como se fosse texto.
+    if not isinstance(codigo, str) or not codigo:
+        return ""
+    return MOTIVOS.get(codigo) or f"Recusa da empresa (código {codigo})"
+
+
+def _exibir(compra):
+    centavos = compra.get("valor_centavos", 0)
+    if type(centavos) is int and centavos >= 0:
+        compra["valor_exibicao"] = f"{centavos // 100},{centavos % 100:02d}"
+    compra["data_exibicao"] = _data(compra.get("data"))
+    compra["empresa_exibicao"] = _texto(EMPRESAS, compra.get("empresa"))
+    compra["metodo_exibicao"] = _texto(MEIOS, compra.get("metodo"))
+    compra["estado_exibicao"] = _texto(ESTADOS, compra.get("estado"))
+    compra["estorno_exibicao"] = _texto(DEVOLUCOES, compra.get("estorno"))
+    compra["motivo_exibicao"] = _motivo(compra.get("motivo"))
+    primeira = compra.get("primeira_empresa")
+    if compra.get("segunda_empresa") and primeira and primeira != compra.get("empresa"):
+        compra["desvio_exibicao"] = (
+            f"{_texto(EMPRESAS, primeira)} → {compra['empresa_exibicao']}"
+        )
+    elif compra.get("segunda_empresa"):
+        compra["desvio_exibicao"] = "Sim"
+
+
+_ORIGENS = {
+    "criacao": "Ao criar o Pix",
+    "aviso": "Aviso do Mercado Pago",
+    "get_intent": "Página consultou",
+    "supervisao": "Conferência automática",
+    "consulta": "Consulta",
+    "aviso_order_refused_by_risk": "GET depois do aviso de risco",
+}
+
+
+def _observacao(dados):
+    linhas = dados.get("observacao") if dados else None
+    if not isinstance(linhas, list):
+        return []
+    limpas = []
+    for linha in linhas:
+        if not isinstance(linha, dict) or type(linha.get("total")) is not int:
+            continue
+        origem = str(linha.get("origem") or "")
+        limpas.append({
+            "empresa": str(linha.get("empresa") or ""),
+            "origem": _ORIGENS.get(origem, origem),
+            "status": str(linha.get("status") or ""),
+            "detalhe": str(linha.get("detalhe") or ""),
+            "total": linha["total"],
+        })
+    return limpas
 
 
 @require_GET
@@ -26,9 +134,8 @@ def pagamentos(request):
     compras = dados["compras"] if dados is not None else None
     if compras is not None:
         for compra in compras:
-            centavos = compra.get("valor_centavos", 0)
-            if type(centavos) is int and centavos >= 0:
-                compra["valor_exibicao"] = f"{centavos // 100},{centavos % 100:02d}"
+            if isinstance(compra, dict):
+                _exibir(compra)
     return render(request, "admin/pagamentos.html", {
         "admin": request.admin,
         "compras": compras,
@@ -38,6 +145,7 @@ def pagamentos(request):
         "pagina_anterior": dados["pagina"] - 1 if dados and dados["pagina"] > 1 else None,
         "pagina_seguinte": dados["pagina"] + 1 if dados and dados["mais"] else None,
         "total": dados["total"] if dados else None,
+        "observacao": _observacao(dados),
     })
 
 
@@ -55,7 +163,10 @@ def pagamentos_devolver(request):
         return HttpResponseNotFound("Site não encontrado")
     resultado = PagamentosClient().devolver(site_id, tentativa_id)
     if resultado and resultado[0] == 200:
-        desfecho = "solicitado"
+        corpo = resultado[1] if isinstance(resultado[1], dict) else {}
+        desfecho = {
+            "ambiguo": "aguardando", "confirmado": "devolvida",
+        }.get(corpo.get("estorno"), "solicitado")
     elif resultado and resultado[0] == 404:
         return HttpResponseNotFound("Compra não encontrada neste site")
     elif resultado and resultado[0] == 409:

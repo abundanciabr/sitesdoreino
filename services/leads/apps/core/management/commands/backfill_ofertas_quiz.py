@@ -2,9 +2,10 @@
 
 from django.core.management.base import BaseCommand
 
+from apps.core.compras import reconstruir_compras
 from apps.core.contatos import contatos_dos_quizzes
 from apps.core.models import TimelineEvent
-from apps.core.oferta import FONTE, abrir_oferta_do_quiz, avancar_ofertas_com_pedido
+from apps.core.oferta import FONTE, abrir_oferta_do_quiz
 
 
 class Command(BaseCommand):
@@ -22,23 +23,18 @@ class Command(BaseCommand):
             event="quiz.completado", lead__in=contatos
         ).order_by("occurred_at", "id")
         for evento in quizzes.iterator():
-            oportunidade = abrir_oferta_do_quiz(
+            abrir_oferta_do_quiz(
                 evento.lead, evento.payload or {}, evento.event_id or evento.id, evento
             )
-            if oportunidade.encerrada:
-                continue
-            pedido = TimelineEvent.objects.filter(
-                lead=evento.lead, event="pedido.criado", occurred_at__gte=evento.occurred_at
-            ).order_by("occurred_at", "id").first()
-            if pedido is not None:
-                avancar_ofertas_com_pedido(
-                    evento.lead, pedido.payload or {}, pedido.event_id or pedido.id
-                )
         for contato in contatos.iterator():
             if contato.oportunidades.filter(fonte_tipo=FONTE).exists():
                 continue
             origem = contato.source or ""
             slug = origem.split(":", 1)[1] if ":" in origem else ""
-            abrir_oferta_do_quiz(contato, {"quiz_slug": slug}, f"captura:{contato.pk}")
+            abrir_oferta_do_quiz(
+                contato, {"quiz_slug": slug}, f"captura:{contato.pk}", origem="captura"
+            )
+        # Pedidos e pagamentos movem só a oferta da compra correspondente.
+        reconstruir_compras(TimelineEvent.objects.filter(lead__in=contatos))
         depois = sum(c.oportunidades.filter(fonte_tipo=FONTE).count() for c in contatos)
         self.stdout.write(f"Oportunidades de venda criadas: {depois - antes}")

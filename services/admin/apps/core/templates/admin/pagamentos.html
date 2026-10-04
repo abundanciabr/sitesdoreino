@@ -3,10 +3,12 @@
 {% block corpo %}
 <div class="envolucro">
   <h1>Pagamentos</h1>
-  <p class="subtitulo">Compras deste site, por empresa e estado.</p>
-  {% if resultado == "solicitado" %}<p class="aviso">Devolução solicitada. A confirmação aparece após a consulta à empresa.</p>{% endif %}
-  {% if resultado == "conferir" %}<p class="aviso">A devolução já pode estar em andamento. Confira o estado antes de agir.</p>{% endif %}
-  {% if resultado == "incerto" %}<p class="aviso">Não foi possível confirmar o resultado. Confira o estado antes de tentar de novo.</p>{% endif %}
+  <p class="subtitulo">Compras deste site, por empresa e estado. Horário de Brasília.</p>
+  {% if resultado == "solicitado" %}<p class="aviso">Devolução pedida à empresa. A linha muda para "Devolvida" quando a empresa confirmar.</p>{% endif %}
+  {% if resultado == "aguardando" %}<p class="aviso">Devolução pedida, mas a empresa não respondeu com certeza. Não precisa clicar de novo: o sistema consulta a empresa sozinho.</p>{% endif %}
+  {% if resultado == "devolvida" %}<p class="aviso">Esta compra já está devolvida.</p>{% endif %}
+  {% if resultado == "conferir" %}<p class="aviso">Esta compra não pode ser devolvida pelo painel agora (por exemplo, já devolvida, contestada ou não aprovada). Nenhum pedido foi enviado à empresa. Contestação do comprador se resolve direto na empresa.</p>{% endif %}
+  {% if resultado == "incerto" %}<p class="aviso">Não foi possível confirmar o resultado. Confira a linha da compra antes de tentar de novo; um segundo clique nunca pede a devolução duas vezes.</p>{% endif %}
   {% if indisponivel %}
     <p class="aviso">Não foi possível consultar os pagamentos agora.</p>
   {% elif not compras %}
@@ -15,20 +17,25 @@
   <p>{{ total }} compra{{ total|pluralize }} neste site · página {{ pagina }}</p>
   <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse">
-      <thead><tr><th>Data</th><th>Pedido</th><th>Meio</th><th>Valor</th><th>Empresa</th><th>Estado</th><th>Segunda empresa</th><th>Devolução</th><th>Ação</th></tr></thead>
+      <thead><tr><th>Data</th><th>Pedido</th><th>Meio</th><th>Valor</th><th>Empresa</th><th>Estado</th><th>Última recusa</th><th>Troca de empresa</th><th>Devolução</th><th>Ação</th></tr></thead>
       <tbody>
       {% for compra in compras %}
         <tr {% if compra.presa %}style="background:#513218"{% endif %}>
-          <td>{{ compra.data }}</td><td>{{ compra.pedido }}</td><td>{{ compra.metodo }}</td>
+          <td>{{ compra.data_exibicao }}</td><td>{{ compra.pedido }}</td><td>{{ compra.metodo_exibicao }}</td>
           <td>R$ {{ compra.valor_exibicao }}</td>
-          <td>{{ compra.empresa|default:"—" }}</td><td>{{ compra.estado }}{% if compra.presa %} · conferir{% endif %}</td>
-          <td>{% if compra.segunda_empresa %}Sim{% else %}Não{% endif %}</td><td>{{ compra.estorno|default:"—" }}</td>
+          <td>{{ compra.empresa_exibicao|default:"—" }}</td><td>{{ compra.estado_exibicao }}{% if compra.presa %} · conferir{% endif %}</td>
+          <td>{{ compra.motivo_exibicao|default:"—" }}</td>
+          <td>{{ compra.desvio_exibicao|default:"—" }}</td><td>{{ compra.estorno_exibicao|default:"—" }}</td>
           <td>{% if compra.pode_devolver %}
-            <form method="post" action="{% url 'pagamentos_devolver' %}" onsubmit="return confirm('Devolver R$ {{ compra.valor_exibicao }} pela {{ compra.empresa }}?');">
-              {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
-              <input type="hidden" name="pagina" value="{{ pagina }}">
-              <button type="submit">Devolver</button>
-            </form>
+            {# Sem script: o CSP desta área (script-src 'self') bloqueia onsubmit embutido. #}
+            <details>
+              <summary>Devolver</summary>
+              <form method="post" action="{% url 'pagamentos_devolver' %}">
+                {% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ compra.tentativa_id }}">
+                <input type="hidden" name="pagina" value="{{ pagina }}">
+                <button type="submit">Confirmar: devolver R$ {{ compra.valor_exibicao }} pela empresa {{ compra.empresa_exibicao }} (valor inteiro)</button>
+              </form>
+            </details>
           {% endif %}</td>
         </tr>
       {% endfor %}
@@ -39,6 +46,20 @@
     {% if pagina_anterior %}<a href="?pagina={{ pagina_anterior }}">Compras mais recentes</a>{% endif %}
     {% if pagina_seguinte %}<a href="?pagina={{ pagina_seguinte }}">Compras mais antigas</a>{% endif %}
   </nav>
+  {% endif %}
+  {% if observacao %}
+  <h2>O que as empresas responderam</h2>
+  <p class="subtitulo">Contagem por ponto do caminho: recusas do Pix no Mercado Pago e consulta à Appmax depois do aviso de risco.</p>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr><th>Empresa</th><th>Onde</th><th>Status</th><th>Detalhe</th><th>Quantas</th></tr></thead>
+      <tbody>
+      {% for linha in observacao %}
+        <tr><td>{{ linha.empresa }}</td><td>{{ linha.origem }}</td><td>{{ linha.status|default:"—" }}</td><td>{{ linha.detalhe|default:"—" }}</td><td>{{ linha.total }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
 {% endblock %}

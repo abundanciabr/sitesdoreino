@@ -6,8 +6,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Finalizar compra</title>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js" integrity="sha256-IyUZOUxsj9um82Kx2doWEG21E82/iZAR8A2qtAUd8xw=" crossorigin="anonymous" defer></script>
   <style>
+    [x-cloak] { display: none !important; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { max-width: 32rem; margin: 0 auto; padding: 1rem; }
@@ -23,6 +24,7 @@
     .cta { width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; }
     .cta:disabled { opacity: .5; }
     .erro { color: #b91c1c; font-size: .875rem; margin-top: .5rem; }
+    .rotulo { font-size: .875rem; margin: .75rem 0 .25rem; }
   </style>
 </head>
 <body>
@@ -36,7 +38,8 @@
   {{ appmax_external_id|json_script:"appmax-external-id" }}
   <div class="wrap" x-data="dadosIsland()">
     {% if appmax_pix_enabled %}<form data-appmax-customer hidden></form>{% endif %}
-    <div class="card" x-show="!carregando">
+    <p x-show="carregando">Carregando a oferta…</p>
+    <div class="card" x-cloak x-show="!carregando">
       <h1 x-text="offer.product_name"></h1>
       <template x-if="offer.bumps && offer.bumps.length">
         <div>
@@ -44,15 +47,15 @@
           <template x-for="bump in offer.bumps" :key="bump.id">
             <label class="bump">
               <input type="checkbox" :value="bump.id" @change="alternarBump(bump.id)">
-              <span x-text="`${bump.name} (R$ ${(bump.price_cents / 100).toFixed(2)})`"></span>
+              <span x-text="`${bump.name} (${reais(bump.price_cents)})`"></span>
             </label>
           </template>
         </div>
       </template>
-      <p class="total" x-text="`Total: R$ ${(totalCents() / 100).toFixed(2)}`"></p>
+      <p class="total" x-text="`Total: ${reais(totalCents())}`"></p>
     </div>
 
-    <form class="card" @submit.prevent="finalizar" x-show="!carregando">
+    <form class="card" @submit.prevent="finalizar" x-cloak x-show="!carregando">
       <label for="name">Nome completo</label>
       <input id="name" type="text" autocomplete="name" x-model="customer.name" required>
       <label for="email">E-mail</label>
@@ -66,15 +69,15 @@
       </div>
       <input id="cpf" type="text" inputmode="numeric" autocomplete="off" x-model="customer.cpf" :required="!usarCpfAnterior" x-show="!cpfMascarado || trocandoCpf">
 
-      <label>Forma de pagamento</label>
-      <div class="metodo">
+      <p class="rotulo" id="forma-de-pagamento">Forma de pagamento</p>
+      <div class="metodo" role="group" aria-labelledby="forma-de-pagamento">
         <button type="button" :aria-pressed="method === 'pix'" @click="method = 'pix'">Pix</button>
         <button type="button" x-show="appmaxCard" :aria-pressed="method === 'card'" @click="method = 'card'">Cartão</button>
         <button type="button" x-show="!appmaxCard" disabled aria-disabled="true">Cartão indisponível</button>
       </div>
-      <p x-show="!appmaxCard">O cartão ainda não pode ser concluído neste site.</p>
+      <p x-cloak x-show="!appmaxCard">O cartão ainda não pode ser concluído neste site.</p>
 
-      <p class="erro" x-show="erro" x-text="erro"></p>
+      <p class="erro" role="alert" x-cloak x-show="erro" x-text="erro"></p>
       <button class="cta" type="submit" :disabled="enviando">
         <span x-text="enviando ? 'Processando…' : 'Continuar'"></span>
       </button>
@@ -88,5 +91,7 @@
   <script src="{{ static_base }}/api.js"></script>
   {% if appmax_pix_enabled %}<script src="{{ appmax_script_url }}"></script>{% endif %}
   <script src="{{ static_base }}/dados.js"></script>
+  {# O Pix nasce aqui e o MP é o primeiro provedor: o aparelho (MP_DEVICE_SESSION_ID) vai junto do pedido #}
+  <script src="https://www.mercadopago.com/v2/security.js" view="checkout" async></script>
 </body>
 </html>

@@ -32,6 +32,10 @@ def test_insert_do_codigo_antigo_sobrevive_a_migracao() -> None:
         )
     finally:
         MigrationExecutor(connection).migrate([nova])
+        # Volta o banco à última migração, para os testes seguintes acharem
+        # as tabelas criadas depois da 0009.
+        ultima = MigrationExecutor(connection)
+        ultima.migrate(ultima.loader.graph.leaf_nodes())
     assert Intent.objects.get(pk=intent.pk).segunda_opcao_ate is None
     nova_tentativa = PaymentAttempt.objects.get(pk=tentativa.pk)
     assert nova_tentativa.estorno_estado is None

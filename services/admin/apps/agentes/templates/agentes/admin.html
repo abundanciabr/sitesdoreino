@@ -69,6 +69,7 @@
     <div class="equipe-gestos">
       <form method="post" action="{% url 'robos_admin' %}">{% csrf_token %}<input type="hidden" name="acao" value="mapa"><button class="botao-pequeno" type="submit"{% if not mapa.a_ler %} title="Nada mudou desde a última leitura"{% endif %}>Ler os documentos agora</button></form>
       <a class="botao-pequeno" href="{% url 'mapa_de_conhecimento' %}">Procurar no mapa</a>
+      <a class="botao-pequeno" href="{% url 'conhecimento_comercial' %}">Conhecimento comercial</a>
     </div>
     <p class="nota">Custa centavos (modelo rápido, dentro do teto acima). Depois da primeira leitura, documento novo ou mudado entra no mapa sozinho, a cada meia hora.</p>
   </section>

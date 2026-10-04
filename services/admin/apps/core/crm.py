@@ -17,6 +17,9 @@ ETAPAS = (
     ("perdida", "Perdida"), ("desqualificada", "Encerrada"),
 )
 ABERTAS = dict(ETAPAS[:4])
+# Os dois filtros do acompanhamento, com os valores que a API de leads aceita.
+QUEM_ATENDE = (("agente", "Agente"), ("pessoa", "Pessoa da equipe"), ("ninguem", "Ninguém ainda"))
+AGUARDANDO = (("sim", "Aguardando resposta do contato"), ("nao", "Sem resposta pendente"))
 
 
 def instante(texto):
@@ -31,12 +34,25 @@ def preparar(item):
     item = dict(item)
     item["etapa_nome"] = dict(ETAPAS).get(item.get("etapa"), item.get("etapa", ""))
     passo = item.get("proximo_passo") or {}
-    item["prazo"] = instante(passo.get("executar_ate"))
+    item["prazo"] = instante(passo.get("executar_ate") or item.get("prazo"))
     item["atrasada"] = bool(item["prazo"] and timezone.is_aware(item["prazo"]) and item["prazo"] < timezone.now() and item.get("situacao") == "aberta")
     item["prazo_formulario"] = item["prazo"].strftime("%Y-%m-%dT%H:%M") if item["prazo"] else ""
     item["aberta"] = item.get("situacao") == "aberta"
     item["historico"] = [dict(r, data=instante(r.get("registrado_em"))) for r in item.get("historico", [])]
+    item["ultimo_contato"] = instante(item.get("ultimo_contato_em"))
+    item["aguardando"] = item["aberta"] and item.get("aguardando_resposta") is True
+    item["objecao"] = item.get("objecao_principal") if isinstance(item.get("objecao_principal"), str) else ""
+    item["atendimento"] = atendimento(item.get("atendido_por"))
     return item
+
+
+def atendimento(atendido_por):
+    """Quem atende agora, em palavras: "Agente · Nome" ou "Pessoa · Nome"."""
+    if not isinstance(atendido_por, dict) or atendido_por.get("tipo") not in ("agente", "pessoa"):
+        return None
+    tipo = "Agente" if atendido_por["tipo"] == "agente" else "Pessoa"
+    nome = atendido_por.get("nome") if isinstance(atendido_por.get("nome"), str) else ""
+    return {"tipo": atendido_por["tipo"], "rotulo": f"{tipo} · {nome}" if nome.strip() else tipo}
 
 
 def erro_da_fonte(estado):
@@ -47,23 +63,30 @@ def erro_da_fonte(estado):
 
 @require_GET
 def crm(request):
-    filtros = {k: request.GET.get(k, "").strip() for k in ("q", "etapa", "situacao", "lead_id", "testes")}
+    filtros = {k: request.GET.get(k, "").strip() for k in ("q", "etapa", "situacao", "lead_id", "testes", "atendido_por", "aguardando_resposta")}
     if filtros["testes"] not in ("ocultar", "mostrar", "somente"):
         filtros["testes"] = "ocultar"
+    if filtros["atendido_por"] not in dict(QUEM_ATENDE):
+        filtros["atendido_por"] = ""
+    if filtros["aguardando_resposta"] not in dict(AGUARDANDO):
+        filtros["aguardando_resposta"] = ""
     try:
         pagina = min(10000, max(1, int(request.GET.get("pagina", 1))))
     except ValueError:
         pagina = 1
     estado, dados = CRMClient().quadro(**filtros, pagina=pagina, por_pagina=100)
-    contexto = {"admin": request.admin, "filtros": filtros, "etapas": ETAPAS, "colunas": [], "erro": "", "recado": "Alteração salva." if request.GET.get("salvo") == "1" else ""}
+    contexto = {"admin": request.admin, "filtros": filtros, "etapas": ETAPAS, "quem_atende": QUEM_ATENDE, "aguardando": AGUARDANDO, "colunas": [], "erro": "", "recado": "Alteração salva." if request.GET.get("salvo") == "1" else ""}
     if estado != CRMClient.OK:
         contexto["erro"] = erro_da_fonte(estado)
         return render(request, "admin/crm.html", contexto, status=503)
     itens = [preparar(i) for i in dados["itens"]]
+    if filtros["aguardando_resposta"] == "sim":
+        itens = [i for i in itens if i["aguardando"]]
     contexto.update(dados)
     contexto["colunas"] = [{"chave": chave, "nome": nome, "itens": [i for i in itens if i.get("etapa") == chave]} for chave, nome in ETAPAS if any(i.get("etapa") == chave for i in itens) or chave in ABERTAS]
     contexto["hoje"] = sorted([i for i in itens if i["aberta"] and i["prazo"] and i["prazo"].date() <= timezone.localdate()], key=lambda i: i["prazo"])[:8]
     parametros = {k: v for k, v in filtros.items() if v}
+    contexto["filtrado"] = any(filtros[k] for k in ("q", "etapa", "situacao", "lead_id", "atendido_por", "aguardando_resposta"))
     contexto["proxima"] = "?" + urlencode(dict(parametros, pagina=pagina + 1)) if dados.get("tem_mais") else ""
     contexto["anterior"] = "?" + urlencode(dict(parametros, pagina=pagina - 1)) if pagina > 1 else ""
     return render(request, "admin/crm.html", contexto)

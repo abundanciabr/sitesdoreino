@@ -293,3 +293,77 @@ class Marco(models.Model):
                 "painel/registros/ (PLANO-PAINEL-DE-GESTAO.md §6.4)"
             )
         return super().save(*args, **kwargs)
+
+
+class FatoOportunidade(models.Model):
+    """Uma mudança de oportunidade de venda, como a `leads` a afirmou.
+
+    Projeção de `crm.oportunidade-atualizada` (E3) em colunas, para o funil
+    comercial (`/api/metricas/crm/funil`). O `Evento` cru continua sendo a
+    fonte; esta tabela só existe para que agrupar por estratégia e por
+    atendente não custe abrir JSON linha a linha.
+
+    Guarda só o que o payload traz. `email` não entra (o livro não guarda
+    dado pessoal além do necessário); `lead_id` e `telefone` ficam porque são
+    as chaves que ligam a oportunidade à mensagem recebida (E2), e sem elas
+    "com resposta" não se mede.
+    """
+
+    #: O `event_id` do envelope: a chave de idempotência da projeção.
+    event_id = models.UUIDField(unique=True)
+    site_id = models.CharField(max_length=60)
+    oportunidade_id = models.CharField(max_length=60)
+    lead_id = models.CharField(max_length=60, blank=True, default="")
+    etapa = models.CharField(max_length=30, blank=True, default="")
+    motivo = models.CharField(max_length=30, blank=True, default="")
+    atendente = models.CharField(max_length=20, blank=True, default="")
+    estrategia_versao = models.IntegerField(null=True, blank=True)
+    oferta_slug = models.CharField(max_length=120, blank=True, default="")
+    order_id = models.CharField(max_length=120, blank=True, default="")
+    #: `referencia` quando o motivo é `pagamento_aprovado` ou `estorno`.
+    payment_id = models.CharField(max_length=120, blank=True, default="")
+    #: Só quando o payload traz `valor_centavos` (campo aditivo).
+    valor_centavos = models.IntegerField(null=True, blank=True)
+    #: Só dígitos, como veio; vazio quando a `leads` não tinha.
+    telefone = models.CharField(max_length=30, blank=True, default="")
+    #: Quando o payload traz `link_enviado_em` (ou `link_url`, com a hora do fato).
+    link_enviado_em = models.DateTimeField(null=True, blank=True)
+    ocorrido_em = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "ocorrido_em"]),
+            models.Index(fields=["oportunidade_id"]),
+        ]
+        ordering = ["ocorrido_em"]
+
+    def __str__(self) -> str:
+        return f"oportunidade {self.oportunidade_id}: {self.motivo} -> {self.etapa}"
+
+
+class FatoMensagemRecebida(models.Model):
+    """Uma mensagem que uma pessoa mandou (E2, `mensagem.recebida`).
+
+    Só o que o funil precisa: de que lead (e telefone, quando vem), por que
+    canal, de que tipo, se foi descadastro e quando. O texto e o assunto NÃO
+    entram aqui nem no `Evento` (descartados na entrada,
+    `consume_eventos.DESCARTADOS_NA_ENTRADA`).
+    """
+
+    event_id = models.UUIDField(unique=True)
+    site_id = models.CharField(max_length=60)
+    #: O `lead` do payload da `mensageria` (vazio quando a conversa ainda não
+    #: está ligada a um lead). É por ele que a resposta encontra a oportunidade.
+    lead_id = models.CharField(max_length=60, blank=True, default="")
+    telefone = models.CharField(max_length=30, blank=True, default="")
+    canal = models.CharField(max_length=20, blank=True, default="")
+    tipo = models.CharField(max_length=20, blank=True, default="")
+    descadastro = models.BooleanField(default=False)
+    recebida_em = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "telefone", "recebida_em"])]
+        ordering = ["recebida_em"]
+
+    def __str__(self) -> str:
+        return f"mensagem recebida ({self.canal}/{self.tipo}) em {self.recebida_em:%Y-%m-%d}"

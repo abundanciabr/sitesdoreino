@@ -22,11 +22,11 @@
   {% for aviso in avisos %}
   <section class="cartao aviso-da-equipe{% if not aviso.visto_em %} novo{% endif %}">
     <p><small>{{ aviso.get_tipo_display }} · {{ aviso.criado_em|date:"d/m/Y H:i" }}{% if aviso.responsavel %} · Para {{ aviso.responsavel.nome }}{% else %} · Para a equipe{% endif %}</small></p>
-    <h2>{{ aviso.titulo }}</h2>
-    {% if aviso.texto %}<p>{{ aviso.texto }}</p>{% endif %}
-    <p><small>E-mail: {{ aviso.get_email_situacao_display }}{% if aviso.visto_em %} · Visto por {{ aviso.visto_por|default:"alguém da equipe" }} em {{ aviso.visto_em|date:"d/m H:i" }}{% endif %}</small></p>
+    <h2>{{ aviso.titulo_visivel }}</h2>
+    {% if aviso.texto_visivel %}<p>{{ aviso.texto_visivel }}</p>{% endif %}
+    <p><small>E-mail: {{ aviso.get_email_situacao_display }}{% if aviso.erro_visivel %} ({{ aviso.erro_visivel }}){% endif %}{% if aviso.visto_em %} · Visto por {{ aviso.visto_por|default:"alguém da equipe" }} em {{ aviso.visto_em|date:"d/m H:i" }}{% endif %}</small></p>
     <form method="post" action="{% url 'aviso_visto' aviso.id %}">{% csrf_token %}
-      {% if aviso.link %}<button class="botao" name="abrir" value="1">Abrir</button>{% endif %}
+      {% if aviso.link_visivel %}<button class="botao" name="abrir" value="1">Abrir</button>{% endif %}
       {% if not aviso.visto_em %}<button class="volta" name="abrir" value="0">Marcar como visto</button>{% endif %}
     </form>
   </section>

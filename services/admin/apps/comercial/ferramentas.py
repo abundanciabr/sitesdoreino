@@ -22,16 +22,20 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from importlib import import_module
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from . import servicos
 from .models import DecisaoComercial, EstrategiaComercial, EventoComercial, TrabalhoComercial
+
+log = logging.getLogger(__name__)
 
 R = DecisaoComercial.Resultado
 T = TrabalhoComercial.Tipo
@@ -57,6 +61,18 @@ class ProvedorFora(Exception):
 class EnvioIncerto(Exception):
     """O envio saiu e a confirmação não voltou: o trabalho fica
     `envio_incerto` até a reconciliação."""
+
+
+class Esperar(Exception):
+    """Falta algo que deve chegar logo (a ficha do lead) ou o canal só abre
+    mais tarde (fora do horário): o trabalho volta à fila e tenta de novo
+    depois do prazo. Mora aqui porque as ferramentas também a levantam; o
+    coordenador a trata."""
+
+    def __init__(self, frase: str, depois: timedelta):
+        super().__init__(frase)
+        self.frase = frase
+        self.depois = depois
 
 
 @dataclass
@@ -302,7 +318,10 @@ def _oferta(ctx: Contexto, pedida) -> str:
             raise Recusa("Esta oferta não é a desta oportunidade.")
         return pedida
     if not permitidas:
-        raise Recusa("Esta oportunidade ainda não tem oferta ligada.")
+        raise Recusa(
+            "Este trabalho não tem oferta ligada (nem na entrada nem na oportunidade do CRM). "
+            "Não invente oferta, preço nem condição: diga ao lead que vai confirmar com a equipe."
+        )
     oportunidade = ctx.extras.get("oportunidade") or (ctx.trabalho.retomada or {}).get("oportunidade") or {}
     return str(oportunidade.get("oferta_ref") or sorted(permitidas)[0])
 
@@ -339,7 +358,9 @@ def _resolver(resposta: servicos.Resposta, *, escrita: bool = False) -> dict:
 
 
 def _host(t: TrabalhoComercial) -> str:
-    return str((t.entrada or {}).get("host") or "")[:255]
+    """O domínio do site do trabalho; vazio quando não se sabe (o checkout e o
+    quiz então respondem `indisponivel`, nunca com o site de outro domínio)."""
+    return servicos.host_do_trabalho(t)
 
 
 def consultar_contato(ctx: Contexto, args: dict) -> dict:
@@ -416,7 +437,7 @@ def consultar_oportunidade(ctx: Contexto, args: dict) -> dict:
         vista["historico"] = historico[-10:]
     ctx.extras["oportunidade"] = vista
     t.retomada = {**(t.retomada or {}), "oportunidade": {
-        k: vista.get(k) for k in ("id", "oferta_ref", "oferta_id", "ofertas", "etapa") if k in vista
+        k: vista.get(k) for k in ("id", "oferta_ref", "oferta_id", "ofertas", "etapa", "fonte") if k in vista
     }}
     return {"oportunidade": vista}
 
@@ -454,10 +475,11 @@ def consultar_condicoes_compra(ctx: Contexto, args: dict) -> dict:
     return {
         "oferta_ref": oferta,
         "oferta": _sem_pessoais(dados.get("oferta") or {}),
+        "preco_vigente": dados.get("preco_vigente"),
         "condicoes": _sem_pessoais(condicoes),
         "cupons": dados.get("cupons") or [],
         "vencimento_padrao": dados.get("vencimento_padrao"),
-        "aviso": "Só estas condições existem. Nenhuma outra pode ser oferecida.",
+        "aviso": dados.get("aviso") or "Só estas condições existem. Nenhuma outra pode ser oferecida.",
     }
 
 
@@ -749,7 +771,31 @@ _RECUSAS_DO_CANAL = {
     "descadastrado": "O lead pediu para não receber mensagens neste canal.",
     "conversa_com_pessoa": "Uma pessoa da equipe está atendendo esta conversa.",
     "falhou": "O canal não conseguiu entregar a mensagem.",
+    "sem_consentimento": "O lead não autorizou receber mensagens neste canal.",
+    "fora_do_horario": "Fora do horário em que o canal pode abordar este lead.",
+    "limite_diario": "O limite diário de mensagens para este lead já foi atingido.",
+    "limite_do_dia": "O limite diário de mensagens para este lead já foi atingido.",
 }
+
+# O que o canal responde quando a mensagem de fato saiu (ou já tinha saído com
+# a mesma chave). Qualquer outra palavra é recusa: nada é marcado como contatado.
+_ENVIADAS = ("enviada", "repetida")
+ESPERA_MINIMA_DO_CANAL = timedelta(seconds=30)
+ESPERA_MAXIMA_DO_CANAL = timedelta(days=2)
+
+
+def _depois_de(reagendar_para) -> timedelta | None:
+    """Quanto falta para a hora em que o canal disse que abre (ISO 8601)."""
+    if isinstance(reagendar_para, datetime):
+        quando = reagendar_para
+    else:
+        quando = parse_datetime(str(reagendar_para or "").strip()) if reagendar_para else None
+    if quando is None:
+        return None
+    if timezone.is_naive(quando):
+        quando = timezone.make_aware(quando, timezone.get_current_timezone())
+    falta = quando - timezone.now()
+    return max(ESPERA_MINIMA_DO_CANAL, min(falta, ESPERA_MAXIMA_DO_CANAL))
 
 
 def _conversa_para_enviar(ctx: Contexto, canal: str | None) -> str:
@@ -787,6 +833,9 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
         "autor": "agente",
         "autor_id": f"agente:{ctx.papel}",
         "assunto": str(args.get("assunto") or "")[:300],
+        # Abordar por conta própria (sem o lead ter escrito agora) tem regras
+        # do canal que responder a uma mensagem recebida não tem.
+        "proativa": t.tipo != T.ATENDER_MENSAGEM,
     }
     dados = _resolver(servicos.pedir("enviar_na_conversa", conversa_id, corpo=corpo, site_id=t.site_id),
                       escrita=True)
@@ -798,19 +847,37 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
         "canal": (dados.get("conversa") or {}).get("canal"),
         "conversa_id": conversa_id,
     }
-    if resultado in _RECUSAS_DO_CANAL:
-        raise Recusa(json.dumps({**saida, "erro": _RECUSAS_DO_CANAL[resultado],
-                                 "detalhe": dados.get("detalhe")}, ensure_ascii=False))
+    if resultado not in _ENVIADAS:
+        reagendar = dados.get("reagendar_para") or dados.get("reagendado_para")
+        espera = _depois_de(reagendar)
+        if espera is not None:
+            # O canal diz quando abre: o trabalho volta à fila para essa hora e
+            # repete o pedido com a MESMA chave; nada fica marcado como contatado.
+            raise Esperar(
+                f"{_RECUSAS_DO_CANAL.get(resultado, 'O canal ainda não aceita esta mensagem.')} "
+                "Tenta de novo na hora que o canal indicou.",
+                espera,
+            )
+        raise Recusa(json.dumps({
+            **saida,
+            "erro": _RECUSAS_DO_CANAL.get(resultado) or f"O canal respondeu '{resultado}': a mensagem não foi enviada.",
+            "detalhe": dados.get("detalhe"),
+        }, ensure_ascii=False))
     if not t.conversa_id:
         t.conversa_id = conversa_id[:120]
         TrabalhoComercial.objects.filter(pk=t.pk).update(conversa_id=t.conversa_id)
     if t.oportunidade_id:
-        servicos.pedir("acompanhamento", t.oportunidade_id, site_id=t.site_id, corpo={
+        # Mesma chave do envio: se a retomada repetir o pedido, o CRM reconhece e não grava de novo.
+        registro = servicos.pedir("acompanhamento", t.oportunidade_id, site_id=t.site_id, corpo={
             "atendido_por": _atendente(ctx),
             "ultimo_contato_em": timezone.now().isoformat(),
             "aguardando_resposta": True,
             "autor_id": f"agente:{ctx.papel}",
+            "chave_idempotencia": chave,
         })
+        if not registro.ok and registro.estado != "indisponivel":
+            log.warning("comercial: a mensagem saiu, mas o acompanhamento da oportunidade %s não foi "
+                        "gravado (%s)", t.oportunidade_id, registro.estado)
     return saida
 
 
@@ -826,6 +893,54 @@ def _antes_de_enviar(ctx: Contexto, args: dict) -> None:
         raise Recusa("Sem conversa nem ficha deste lead, não há para onde enviar.")
 
 
+# Como a leads grava de onde veio a oportunidade do quiz: fonte {tipo: "quiz",
+# referencia_id: "oferta:<slug do quiz>"} (services/leads/apps/core/oferta.py).
+_PREFIXO_DA_FONTE_DO_QUIZ = "oferta:"
+_MAXIMO_DA_ATRIBUICAO = 100  # o checkout recusa o link inteiro se passar disto
+
+
+def _slug_da_fonte(fonte) -> str:
+    if isinstance(fonte, dict) and fonte.get("tipo") == "quiz":
+        referencia = str(fonte.get("referencia_id") or "")
+        if referencia.startswith(_PREFIXO_DA_FONTE_DO_QUIZ):
+            return referencia[len(_PREFIXO_DA_FONTE_DO_QUIZ):].strip()
+    return ""
+
+
+def _quiz_do_lead(ctx: Contexto) -> str:
+    """O slug do quiz que trouxe o lead: o do evento do quiz (na entrada) ou,
+    no atendimento por mensagem, o que o CRM diz na fonte da oportunidade."""
+    t = ctx.trabalho
+    quiz = str((t.entrada or {}).get("quiz") or "").strip()
+    if quiz:
+        return quiz
+    oportunidade = ctx.extras.get("oportunidade") or (t.retomada or {}).get("oportunidade") or {}
+    quiz = _slug_da_fonte(oportunidade.get("fonte"))
+    if quiz or not t.oportunidade_id:
+        return quiz
+    resposta = servicos.pedir("oportunidade", t.oportunidade_id)
+    if not resposta.ok:
+        return ""
+    if t.contato_id and str(resposta.dados.get("lead_id") or t.contato_id) != str(t.contato_id):
+        return ""  # a oportunidade não é deste lead: não atribui a ela
+    return _slug_da_fonte(resposta.dados.get("fonte"))
+
+
+def _atribuicao_da_venda(ctx: Contexto) -> dict:
+    """O que o link leva para o checkout gravar na venda: a versão da
+    estratégia que atendeu (a mesma `papel:vN` que o otimizador separa nos
+    números), o quiz e a tentativa dele. Sem o dado, a chave nem vai."""
+    t = ctx.trabalho
+    estrategia = ctx.estrategia
+    atribuicao = {
+        "estrategia": f"{estrategia.papel}:v{estrategia.versao}" if estrategia else "",
+        "quiz": _quiz_do_lead(ctx),
+        # A tentativa é o session_id do quiz (`sessao` no evento), o mesmo `qa` do funil.
+        "tentativa": str((t.entrada or {}).get("sessao") or "").strip(),
+    }
+    return {k: v for k, v in atribuicao.items() if v and len(v) <= _MAXIMO_DA_ATRIBUICAO}
+
+
 def _link(ctx: Contexto, args: dict, chave: str) -> dict:
     t = ctx.trabalho
     oferta = _oferta(ctx, args.get("oferta_ref"))
@@ -838,13 +953,13 @@ def _link(ctx: Contexto, args: dict, chave: str) -> dict:
         raise Recusa("Esta condição não está entre as disponíveis para a oferta.")
     if not t.oportunidade_id:
         raise Recusa("Sem oportunidade no CRM, o link não fica rastreável.")
-    contato = {k: v for k, v in _contato_do_trabalho(t).items() if v}
+    # O checkout não guarda o contato (só a oportunidade), então ele nem viaja.
     corpo = {
         "oferta": oferta,
         "oportunidade_ref": t.oportunidade_id,
-        "contato": contato,
         "condicao": condicao,
         "chave_idempotencia": chave,
+        **_atribuicao_da_venda(ctx),
     }
     dados = _resolver(servicos.pedir("link_de_compra", corpo=corpo, site_id=t.site_id, host=_host(t)),
                       escrita=True)

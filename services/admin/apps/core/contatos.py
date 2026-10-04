@@ -39,12 +39,16 @@ from __future__ import annotations
 import uuid
 from urllib.parse import urlencode
 
-from django.http import Http404
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
 
+from apps.auditoria.models import Registro
+
+from . import ficha_do_contato as ficha_completa
 from .clients import LeadsClient
 
 #: Quantos contatos por página. Cinquenta cabem em uma rolagem de celular sem
@@ -62,6 +66,7 @@ ROTULOS_DOS_EVENTOS = {
     "pagamento.recusado": "Pagamento recusado",
     "pix.expirado": "Pix venceu sem pagar",
     "quiz.completado": "Respondeu o quiz",
+    "quiz.captura_parcial": "Começou o quiz e deixou o contato",
     "lead.upsert": "Deixou o contato",
     "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
 }
@@ -353,10 +358,95 @@ def contato(request, lead_id):
     if desfecho != LeadsClient.OK or resposta is None:
         tela = {"veredito": desfecho}
     else:
-        tela = montar_ficha(resposta)
+        tela = ficha_completa.completar_ficha(
+            montar_ficha(resposta), resposta, host=request.get_host().split(":")[0].lower()
+        )
+    recados = {
+        "assumida": "Você assumiu a conversa. O assistente parou de responder.",
+        "devolvida": "Conversa devolvida ao assistente da equipe. "
+        "O robô responde a partir da próxima mensagem da pessoa.",
+    }
     return render(
         request,
         "admin/contato.html",
-        {"admin": request.admin, "tela": tela},
+        {
+            "admin": request.admin,
+            "tela": tela,
+            "recado": recados.get(request.GET.get("atendimento", ""), ""),
+            "aviso": _AVISO_DO_ESPELHO if request.GET.get("espelho") == "falhou" else "",
+            "erro": _ERROS_DO_ATENDIMENTO.get(request.GET.get("erro", ""), ""),
+        },
         status=200 if desfecho == LeadsClient.OK else 503,
+    )
+
+
+#: O que a ficha avisa quando a conversa mudou, mas o CRM não registrou quem atende.
+_AVISO_DO_ESPELHO = (
+    "A conversa mudou, mas o CRM não registrou quem atende agora. "
+    "O quadro do CRM pode mostrar o atendente anterior."
+)
+
+#: O que a ficha diz quando assumir ou devolver não deu certo.
+_ERROS_DO_ATENDIMENTO = {
+    "conversa": "Esta conversa não é deste contato ou não existe mais.",
+    "sem-configuracao": "A administração ainda não está ligada às conversas.",
+    "sem-grau": "A administração ainda não tem permissão para mudar o atendimento.",
+    "indisponivel": "A troca de atendimento ainda não está disponível.",
+    "recusado": "As conversas recusaram a troca de atendimento.",
+    "nao-respondeu": "As conversas não responderam. Recarregue e tente de novo.",
+}
+
+
+@require_POST
+def contato_atendimento(request, lead_id):
+    """Assumir ou devolver o atendimento da conversa deste contato.
+
+    Quem decide se o agente fala é a `mensageria`. A conversa precisa ser
+    deste contato: a lista é pedida de novo, aqui, com o site e o id da ficha.
+    """
+    gesto = request.POST.get("gesto", "")
+    conversa_id = (request.POST.get("conversa_id") or "").strip()
+    voltar = reverse("contato", args=[lead_id])
+    if gesto not in ("assumir", "devolver"):
+        return HttpResponseRedirect(voltar + "?erro=recusado")
+    desfecho, resposta = LeadsClient().ficha(lead_id)
+    if desfecho == LeadsClient.NAO_EXISTE:
+        raise Http404("Contato inexistente")
+    if desfecho != LeadsClient.OK or resposta is None:
+        return HttpResponseRedirect(voltar + "?erro=nao-respondeu")
+    site_id = _texto(resposta.get("site_id"))
+    cliente = ficha_completa.ConversasClient()
+    estado, conversas = cliente.conversas(site_id, str(lead_id))
+    if estado != ficha_completa.OK:
+        return HttpResponseRedirect(voltar + "?erro=" + estado)
+    if conversa_id not in {str(c["id"]) for c in conversas}:
+        return HttpResponseRedirect(voltar + "?erro=conversa")
+    quem = str(request.admin.get("email") or request.admin.get("id") or "equipe")
+    if gesto == "assumir":
+        estado, _ = cliente.assumir(conversa_id, site_id, quem)
+    else:
+        estado, _ = cliente.devolver(conversa_id, site_id)
+    Registro.objects.create(
+        quem_email=request.admin.get("email", ""),
+        quem_id=str(request.admin.get("id") or quem)[:64],
+        acao=Registro.EDITAR,
+        alvo=str(lead_id),
+        desfecho=Registro.OK if estado == ficha_completa.OK
+        else Registro.RECUSADO_PELA_CELULA if estado in (ficha_completa.RECUSADO, ficha_completa.SEM_GRAU)
+        else Registro.NAO_RESPONDEU,
+        detalhe=f"Atendimento: {gesto} a conversa {conversa_id}",
+    )
+    if estado != ficha_completa.OK:
+        erro = {ficha_completa.NAO_EXISTE: "conversa"}.get(estado, estado)
+        return HttpResponseRedirect(voltar + "?erro=" + erro)
+    estado_crm, oportunidades = ficha_completa.oportunidades_do_contato(str(lead_id))
+    espelhou = estado_crm == ficha_completa.OK and ficha_completa.marcar_atendimento_no_crm(
+        oportunidades,
+        tipo="pessoa" if gesto == "assumir" else "agente",
+        nome=quem if gesto == "assumir" else "Assistente da equipe",
+        autor=quem,
+    )
+    return HttpResponseRedirect(
+        voltar + "?atendimento=" + ("assumida" if gesto == "assumir" else "devolvida")
+        + ("" if espelhou else "&espelho=falhou")
     )

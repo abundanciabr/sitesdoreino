@@ -178,3 +178,48 @@ def test_loop_reivindica_presas_antes_de_ler_mensagens_novas(monkeypatch):
     nomes = [chamada[0] for chamada in fake.method_calls]
     assert "xautoclaim" in nomes, "o loop não reivindica o PEL (§9 continua aberto)"
     assert nomes.index("xautoclaim") < nomes.index("xreadgroup")
+
+
+# --- Uma mensagem ruim não leva as boas do mesmo lote para a fila morta -----
+# Medido em produção em 03/10/2026: a reversão sem `order_id` estourava antes
+# das válidas do mesmo lote, e as vizinhas chegavam juntas à fila morta.
+
+
+def _ruim(envelope):
+    return {**envelope, "version": 99, "event_id": envelope["event_id"] + "-ruim"}
+
+
+def test_mensagem_nova_ruim_nao_impede_a_boa_do_mesmo_lote(api, rede, sessao_a, r):
+    from apps.pedidos.management.commands.consume_eventos import _processar_isolada
+
+    order = _pedido(api, sessao_a)
+    boa = aprovado_v1(order, mp_payment_id="mp-boa-nova")
+    id_ruim = r.xadd(STREAM, {"json": json.dumps(_ruim(boa))})
+    r.xadd(STREAM, {"json": json.dumps(boa)})
+
+    for stream, msgs in r.xreadgroup(GRUPO, "worker-1", {STREAM: ">"}, count=10):
+        for msg_id, campos in msgs:
+            _processar_isolada(r, stream.decode(), msg_id, campos)
+
+    order.refresh_from_db()
+    assert order.status == "pago"
+    pendentes = r.xpending_range(STREAM, GRUPO, "-", "+", 10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]
+
+
+def test_presa_ruim_nao_impede_a_boa_reivindicada_junto(api, rede, sessao_a, r):
+    from apps.pedidos.management.commands.consume_eventos import (
+        reivindicar_e_reprocessar_presas,
+    )
+
+    order = _pedido(api, sessao_a)
+    boa = aprovado_v1(order, mp_payment_id="mp-boa-presa")
+    id_ruim = _publicar_presa(r, _ruim(boa), entregas_ja_feitas=1)
+    _publicar_presa(r, boa, entregas_ja_feitas=1)
+
+    reivindicar_e_reprocessar_presas(r)
+
+    order.refresh_from_db()
+    assert order.status == "pago"
+    pendentes = r.xpending_range(STREAM, GRUPO, "-", "+", 10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]

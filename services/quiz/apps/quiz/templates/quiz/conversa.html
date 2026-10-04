@@ -12,6 +12,8 @@
   legend { font-weight: 600; margin-bottom: .5rem; padding: 0; }
   label { display: block; padding: .6rem .8rem; margin-bottom: .4rem; background: #fff;
           border-radius: 8px; border: 1px solid #ddd; }
+  label.consentimento { display: flex; gap: .6rem; align-items: flex-start; font-size: .9rem; }
+  label.consentimento input { margin: .15rem 0 0; flex: none; }
   input[type="email"], input[type="text"], input[type="tel"], textarea {
     width: 100%; box-sizing: border-box; padding: .6rem .8rem; margin-bottom: .8rem;
     border-radius: 8px; border: 1px solid #ddd; font: inherit;
@@ -31,7 +33,7 @@
   {% if erro %}<p class="erro" id="erro-formulario" role="alert" aria-live="assertive">{{ erro }}</p>{% endif %}
 
   {% if fallback %}
-  <form class="crivo" method="post" action="{{ acao_url }}">
+  <form class="crivo" method="post" action="{{ acao_url }}" data-captura="{% url 'quiz-captura' quiz.slug %}">
     {% csrf_token %}
     <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
     <input type="hidden" name="estado" value="{{ estado_token }}">
@@ -59,6 +61,10 @@
       Telefone
       <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true"{% endif %}>
     </label>
+    <label class="consentimento">
+      <input type="checkbox" name="aceita_whatsapp" value="1"{% if aceita_whatsapp_marcada %} checked{% endif %}>
+      {{ texto_consentimento_whatsapp }}
+    </label>
     <button type="submit">Ver resultado</button>
   </form>
   {% else %}
@@ -66,7 +72,7 @@
     {% for papel, texto in turnos %}<p class="fala {{ papel }}">{{ texto }}</p>{% endfor %}
   </section>
   {% if completo %}
-  <form class="crivo" method="post" action="{{ acao_url }}">
+  <form class="crivo" method="post" action="{{ acao_url }}" data-captura="{% url 'quiz-captura' quiz.slug %}">
     {% csrf_token %}
     <input type="hidden" name="quiz_attempt" value="{{ entrada.session_id }}">
     <input type="hidden" name="estado" value="{{ estado_token }}">
@@ -83,6 +89,10 @@
       Telefone
       <input type="tel" name="telefone" value="{{ valores.telefone }}"{% if campo_com_erro == "telefone" %} autofocus aria-invalid="true"{% endif %}>
     </label>
+    <label class="consentimento">
+      <input type="checkbox" name="aceita_whatsapp" value="1"{% if aceita_whatsapp_marcada %} checked{% endif %}>
+      {{ texto_consentimento_whatsapp }}
+    </label>
     <button type="submit">Ver resultado</button>
   </form>
   {% else %}
@@ -98,5 +108,6 @@
   {% endif %}
   {% endif %}
 </main>
+{% if fallback or completo %}{% include 'quiz/_captura.html' %}{% endif %}
 </body>
 </html>

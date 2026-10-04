@@ -4,6 +4,7 @@ leitura de pedidos pagos por versão/campanha/dia sem contar reenvio duas vezes.
 
 import pytest
 
+from apps.pedidos.atribuicao import separar_atribuicao
 from apps.pedidos.management.commands.consume_eventos import aplicar
 from apps.pedidos.models import FatoAplicado, Order, Session
 from apps.pedidos.relatorio import pagos_do_quiz
@@ -113,3 +114,11 @@ def test_agrupamento_de_pagos_nao_duplica_reenvio(api, rede):
     assert por_cpg["maio-roblox"]["dia"] is not None
     assert pagos_do_quiz("low-ticket", site_id="outro-site") == []
     assert sum(l["pedidos"] for l in pagos_do_quiz("outro-quiz")) == 1
+
+
+def test_op_e_est_do_atendimento_entram_na_atribuicao_e_nao_nas_utms():
+    utm, contexto = separar_atribuicao(
+        {"op": "op-1", "est": "retomada-quiz", "utm_source": "x", "lixo": "y"}
+    )
+    assert contexto == {"op": "op-1", "est": "retomada-quiz"}
+    assert utm == {"utm_source": "x", "lixo": "y"}

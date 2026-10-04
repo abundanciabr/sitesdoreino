@@ -40,7 +40,7 @@ from datetime import datetime, timezone
 
 import redis
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, InterfaceError, OperationalError, transaction
 from django.db.models import Q
 
 from django.utils import timezone as django_timezone
@@ -134,6 +134,20 @@ class Aviso:
     status: str
     pix: dict | None = None
     payment_id: str | None = None
+    # Quando o aviso diz que o fato aconteceu (`occurred_at` do envelope); None
+    # quando faltou ou não é uma data legível.
+    occurred_at: datetime | None = None
+
+
+def _quando_aconteceu(envelope: dict) -> datetime | None:
+    bruto = envelope.get("occurred_at")
+    if not isinstance(bruto, str):
+        return None
+    try:
+        quando = datetime.fromisoformat(bruto)
+    except ValueError:
+        return None
+    return quando if quando.tzinfo else quando.replace(tzinfo=timezone.utc)
 
 
 def _valor_no_v1(data: dict, origem: str):
@@ -176,6 +190,7 @@ def normalizar(envelope: dict) -> Aviso:
         status=aviso["status"],
         pix=data["pix"] if evento == "pix.codigo_trocado" else None,
         payment_id=str(data["payment_id"]) if evento == "pix.codigo_trocado" else None,
+        occurred_at=_quando_aconteceu(envelope),
     )
 
 
@@ -202,7 +217,12 @@ def _emitir_pedido_pago(aviso: Aviso) -> None:
             "visitor_id": pedido.session.visitor_id,
             "valor_centavos": pedido.total_cents,
             "moeda": "BRL",
-            "pago_em": django_timezone.now().isoformat(),
+            "pago_em": (pedido.pago_em or django_timezone.now()).isoformat(),
+            **(
+                {"oportunidade_ref": pedido.oportunidade_ref, "oferta_ref": pedido.oferta_ref}
+                if pedido.oportunidade_ref
+                else {}
+            ),
         },
     )
 
@@ -257,13 +277,18 @@ def aplicar(envelope: dict) -> bool:
                 estados_elegiveis |= Q(status="recusado", method__in=("card", "pix"))
             if aviso.status == "reembolsado":
                 estados_elegiveis = Q(status="pago")
+            mudancas = {"status": aviso.status}
+            if aviso.status == "pago":
+                # A hora do pagamento é a que o aviso do provedor traz; a do
+                # processamento só entra se o aviso veio sem ela.
+                mudancas["pago_em"] = aviso.occurred_at or django_timezone.now()
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,
                     site_id=aviso.site_id,  # o site do evento tem de bater
                 )
                 .filter(estados_elegiveis)
-                .update(status=aviso.status)
+                .update(**mudancas)
             )
             if aviso.status == "pago" and atualizados:
                 _emitir_pedido_pago(aviso)
@@ -278,6 +303,28 @@ def _processar(r, stream: str, msg_id, campos) -> None:
     reentrega a reclama depois de IDLE_MS_REENTREGA."""
     aplicar(json.loads(campos[b"json"]))
     r.xack(stream, GRUPO, msg_id)
+
+
+def _processar_isolada(r, stream: str, msg_id, campos) -> None:
+    """Uma mensagem que estoura não leva as vizinhas do mesmo lote junto.
+
+    Sem este isolamento, a exceção da primeira mensagem do lote saía do laço e
+    as seguintes, já entregues ou já reivindicadas (com a contagem somada),
+    ficavam sem rodar até chegarem juntas à fila morta. Em 03/10/2026 uma
+    reversão sem `order_id` fez isso aqui e nas outras células. A que falhou
+    continua no PEL, sem ACK, e segue a reentrega normal. Queda do banco
+    continua derrubando o worker, como antes: aí o problema não é a mensagem.
+    """
+    try:
+        _processar(r, stream, msg_id, campos)
+    except (OperationalError, InterfaceError):
+        raise
+    except Exception:  # noqa: BLE001 - isola a falha de UMA mensagem
+        logger.exception(
+            "evento do stream %s (msg %s) falhou; segue no PEL para reentrega",
+            stream,
+            msg_id,
+        )
 
 
 def _mover_para_fila_morta(r, stream: str, msg_id, campos, entregas: int) -> None:
@@ -343,7 +390,7 @@ def reivindicar_e_reprocessar_presas(r) -> None:
             if entregas >= MAX_ENTREGAS:
                 _mover_para_fila_morta(r, stream, msg_id, campos, entregas)
             else:
-                _processar(r, stream, msg_id, campos)
+                _processar_isolada(r, stream, msg_id, campos)
 
 
 class Command(BaseCommand):
@@ -365,4 +412,4 @@ class Command(BaseCommand):
             )
             for stream, msgs in resp or []:
                 for msg_id, campos in msgs:
-                    _processar(r, stream.decode(), msg_id, campos)
+                    _processar_isolada(r, stream.decode(), msg_id, campos)

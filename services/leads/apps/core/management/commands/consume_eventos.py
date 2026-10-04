@@ -6,12 +6,14 @@ from datetime import datetime, timezone
 
 import redis
 from django.core.management.base import BaseCommand
+from django.db import InterfaceError, OperationalError
 
 from apps.core.handlers import (
     ao_pagamento_aprovado,
     ao_pagamento_recusado,
     ao_pedido_criado,
     ao_pix_expirado,
+    ao_quiz_captura_parcial,
     ao_quiz_completado,
     ao_reversao_confirmada,
     processar_envelope,
@@ -29,6 +31,7 @@ MAX_ENTREGAS = 5  # delivery_count do PEL já em 5 ⇒ fila morta, sem reprocess
 
 STREAMS = {
     "eventos.quiz.completado": ao_quiz_completado,
+    "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
     "eventos.pedido.criado": ao_pedido_criado,
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
@@ -54,6 +57,30 @@ def processar_mensagem(r: redis.Redis, stream, handler, msg_id, campos) -> None:
     envelope = json.loads(campos[b"json"])
     processar_envelope(envelope, handler)
     r.xack(stream, GRUPO, msg_id)
+
+
+def _processar_isolada(r: redis.Redis, stream, handler, msg_id, campos) -> None:
+    """Uma mensagem que estoura não leva as vizinhas do mesmo lote junto.
+
+    Sem este isolamento, a exceção da primeira mensagem do lote saía do laço e
+    as seguintes, já entregues (ou já reivindicadas, com a contagem somada),
+    ficavam sem processar. A cada volta a mesma mensagem ruim estourava
+    primeiro, e as boas chegavam a MAX_ENTREGAS sem nunca rodar: foi assim que
+    duas reversões válidas foram para a fila morta junto com uma sem
+    `order_id` em 03/10/2026. A mensagem que falhou continua na PEL, sem ACK,
+    e segue o caminho normal de reentrega e fila morta. Queda do banco continua
+    derrubando o worker, como antes: aí o problema não é a mensagem.
+    """
+    try:
+        processar_mensagem(r, stream, handler, msg_id, campos)
+    except (OperationalError, InterfaceError):
+        raise
+    except Exception:  # noqa: BLE001 - isola a falha de UMA mensagem
+        log.exception(
+            "evento do stream %s (msg_id=%s) falhou; segue na PEL para reentrega",
+            stream,
+            msg_id,
+        )
 
 
 def _mover_para_fila_morta(r: redis.Redis, stream: str, msg_id, entregas: int) -> None:
@@ -111,7 +138,7 @@ def reivindicar_presas(r: redis.Redis, stream: str, handler) -> None:
         )
         inicio, mensagens = resultado[0], resultado[1]
         for msg_id, campos in mensagens:
-            processar_mensagem(r, stream, handler, msg_id, campos)
+            _processar_isolada(r, stream, handler, msg_id, campos)
         if inicio in (b"0-0", "0-0"):
             break
 
@@ -127,7 +154,7 @@ def uma_iteracao(r: redis.Redis, block_ms: int = 5000) -> None:
     for stream, msgs in resp or []:
         handler = STREAMS[stream.decode()]
         for msg_id, campos in msgs:
-            processar_mensagem(r, stream, handler, msg_id, campos)
+            _processar_isolada(r, stream, handler, msg_id, campos)
 
 
 class Command(BaseCommand):

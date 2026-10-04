@@ -4,6 +4,7 @@
 <div class="envolucro">
   <h1>WhatsApp do site</h1>
   <p class="subtitulo">Conecte o número da escola e acompanhe cada mensagem. A conexão usa WhatsApp Web pela Evolution.</p>
+  <p><a href="{% url 'crm_modelos' %}">Modelos aprovados do WhatsApp oficial (primeiro contato) →</a></p>
   {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
   {% if resultado %}<p class="aviso">{{ resultado }}</p>{% endif %}
   {% if site %}

@@ -37,6 +37,8 @@ POSSE = timedelta(minutes=5)
 MAX_TENTATIVAS = 4
 INTERVALO_SEM_TRABALHO = 2.0
 INTERVALO_DE_REACORDAR = timedelta(minutes=5)
+# Lead que mandou áudio espera resposta: a fila de áudio é olhada mais vezes.
+INTERVALO_DO_AUDIO = timedelta(seconds=20)
 INTERVALO_DO_MAPA = timedelta(minutes=30)
 
 S = Execucao.Situacao
@@ -235,18 +237,32 @@ def reacordar() -> int:
     if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     _manter_o_mapa_em_dia()
-    _avisar_a_equipe()
     return n
 
 
 def _avisar_a_equipe() -> None:
-    """Pergunta às células o que pede alguém da equipe e avisa uma vez."""
+    """Pergunta às células o que pede alguém da equipe e avisa uma vez.
+
+    Só no laço de fundo, nunca na tela: a varredura faz dezenas de chamadas a
+    outras células, e `reacordar()` também roda dentro do clique de
+    /admin/robos/."""
     from apps.core import avisos_equipe
 
     try:
         avisos_equipe.varrer()
     except Exception:  # noqa: BLE001 - os avisos não podem derrubar o laço
         log.exception("Avisos da equipe: varredura falhou")
+
+
+def _transcrever_audios() -> None:
+    """Notas de voz que os leads mandaram no WhatsApp viram texto para o
+    atendente (`apps.voz`), com a mesma chave e o mesmo teto."""
+    try:
+        from apps.voz.servico import processar_audios_pendentes
+
+        processar_audios_pendentes()
+    except Exception:  # noqa: BLE001 - o áudio não pode derrubar o laço
+        log.exception("Áudio: transcrição dos pendentes falhou")
 
 
 def _manter_o_mapa_em_dia() -> None:
@@ -291,6 +307,7 @@ def rodar_para_sempre(parar: threading.Event) -> None:
     """O laço da thread. Cada volta usa uma conexão de banco saudável."""
     trabalhador = nome_do_trabalhador()
     ultimo_reacordar = timezone.now() - INTERVALO_DE_REACORDAR
+    ultimo_audio = timezone.now() - INTERVALO_DO_AUDIO
     log.info("Executor dos robôs ligado: %s", trabalhador)
     while not parar.is_set():
         # Limpa antes de buscar: um aviso que chegar durante a busca faz a
@@ -302,7 +319,17 @@ def rodar_para_sempre(parar: threading.Event) -> None:
             if timezone.now() - ultimo_reacordar >= INTERVALO_DE_REACORDAR:
                 ultimo_reacordar = timezone.now()
                 reacordar()
+                # Só no laço, nunca na tela: a varredura dos avisos fala com
+                # outras células, e não derruba a volta se uma delas demorar.
+                _avisar_a_equipe()
+                # Só no laço, nunca na tela: o catálogo mudou, o índice comercial muda junto.
+                from .conhecimento_comercial import manter_em_dia
+
+                manter_em_dia()
                 _comercial("manutencao")
+            if timezone.now() - ultimo_audio >= INTERVALO_DO_AUDIO:
+                ultimo_audio = timezone.now()
+                _transcrever_audios()
             trabalhou = rodar_uma(trabalhador) is not None
             if not trabalhou:
                 # A equipe comercial (`apps/comercial`) usa o mesmo laço.

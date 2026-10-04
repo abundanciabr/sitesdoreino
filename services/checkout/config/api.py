@@ -2,6 +2,8 @@
 from ninja import NinjaAPI
 
 from apps.core.api import router as checkout_router
+from apps.core.comercial import router as comercial_router
+from apps.core.condicoes_agente import router as condicoes_agente_router
 from apps.core.auth import bearerAuth
 
 api = NinjaAPI(
@@ -23,3 +25,5 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", checkout_router)
+api.add_router("", comercial_router)
+api.add_router("", condicoes_agente_router)

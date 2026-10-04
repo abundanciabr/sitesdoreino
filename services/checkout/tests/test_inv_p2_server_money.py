@@ -7,7 +7,7 @@ import pytest
 
 from apps.core import api as api_do_checkout
 from apps.pedidos.models import Order
-from tests.conftest import BUMP_A, HOST_A, OFERTA_A, PAGAMENTOS
+from tests.conftest import BUMP_A, HOST_A, OFERTA_A, PAGAMENTOS, SLUG
 
 pytestmark = pytest.mark.django_db
 
@@ -60,7 +60,11 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
     assert cobranca["metadata"] == {
         "checkout_session_id": sessao_a["id"],
         "product_id": OFERTA_A["product"]["id"],
+        "oferta_ref": OFERTA_A["slug"],
         "pagina_url": f"https://{HOST_A}/checkout/pedido/{pedido.id}/pix/",
+        "recovery_url": f"https://{HOST_A}/checkout/{SLUG}/",
+        # Itens do catálogo, os mesmos do pedido: os forjados nunca seguem.
+        "items": pedido.items,
     }
 
 
@@ -69,7 +73,11 @@ def test_payload_adulterado_nao_altera_o_snapshot_nem_a_cobranca(api, rede, sess
 # propósito: uma lista de nomes proibidos deixa passar o nome que ninguém
 # previu (um `cupom_cents` acrescentado amanhã), e a promessa do cabeçalho é
 # que nada além da intenção é lido, nem para conferência.
-INTENCAO_DO_COMPRADOR = frozenset({"customer", "method", "bump_ids", "usar_cpf_anterior"})
+# `mp_device_id` não é dinheiro: é o aparelho que o security.js do Mercado Pago
+# identifica no navegador, repassado ao Pix para o antifraude do MP.
+INTENCAO_DO_COMPRADOR = frozenset(
+    {"customer", "method", "bump_ids", "usar_cpf_anterior", "mp_device_id"}
+)
 
 
 class _CorpoEspiao(dict):

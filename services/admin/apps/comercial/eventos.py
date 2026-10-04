@@ -21,7 +21,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from . import coordenador
+from . import coordenador, servicos
 from .models import EventoComercial, TrabalhoComercial
 
 log = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ def _do_quiz(nome: str, envelope: dict, *, parcial: bool) -> TrabalhoComercial |
         "submissao_id": _texto(data.get("submissao_id"), 80),
         "captura_id": _texto(data.get("captura_id") or data.get("captura_parcial_id"), 80),
         "sessao": sessao,
-        "host": _host(data),
+        "host": _host(data) or servicos.host_do_site(site_id),
         "parcial": parcial,
     }
     comum = {
@@ -179,6 +179,8 @@ def ao_mensagem_recebida(envelope: dict):
         return None
     lead = data.get("lead")
     contato_id = _texto(lead.get("id") if isinstance(lead, dict) else lead, 80)
+    if data.get("lead_ligacao") != "ligada" or not contato_id:
+        return None  # o robô só atende contato do quiz; o resto fica na caixa para a equipe
     contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
@@ -195,6 +197,8 @@ def ao_mensagem_recebida(envelope: dict):
         teste=de_teste(contato, data),
         entrada={
             "canal": _texto(data.get("canal"), 20),
+            # O domínio do site: o checkout e o quiz acham o site por ele.
+            "host": _host(data) or servicos.host_do_site(site_id),
             "texto": str(data.get("texto") or "")[:4000],
             "assunto": _texto(data.get("assunto"), 300),
             "midia": midia,

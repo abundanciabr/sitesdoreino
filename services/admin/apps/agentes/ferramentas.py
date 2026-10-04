@@ -28,6 +28,7 @@ from django.utils import timezone
 from apps.core import equipe_operacoes as operacoes
 from apps.core.models import Compromisso, MembroDaEquipe, Objetivo, Tarefa
 
+from . import conhecimento_comercial
 from .models import ChamadaDeFerramenta, Entrega, Execucao, RoboPessoal
 
 Situacao = Tarefa.Situacao
@@ -220,6 +221,7 @@ DEFINICOES = [
             },
         },
     ),
+    conhecimento_comercial.DEFINICAO,
     _ferramenta(
         "salvar_entrega",
         "Salva no site um documento que você escreveu (texto em Markdown), "
@@ -646,6 +648,13 @@ def consultar_conhecimento(ctx: Contexto, args: dict) -> dict:
     return resultado
 
 
+def consultar_conhecimento_comercial(ctx: Contexto, args: dict) -> dict:
+    resultado = conhecimento_comercial.executar_ferramenta(args, com_privados=pode_usar_o_quiz(ctx.membro))
+    if "erro" in resultado:
+        raise Recusa(resultado["erro"])
+    return resultado
+
+
 def consultar_trabalhos_do_robo(ctx: Contexto, args: dict) -> dict:
     saida = []
     for e in ctx.robo.execucoes.exclude(tipo=Execucao.Tipo.CONVERSA)[:10]:
@@ -1059,6 +1068,7 @@ def decidir_proposta_de_versao(ctx: Contexto, args: dict) -> dict:
 
 ACOES = {
     "consultar_conhecimento": consultar_conhecimento,
+    "consultar_conhecimento_comercial": consultar_conhecimento_comercial,
     "perguntar_com_opcoes": perguntar_com_opcoes,
     "consultar_rascunho_do_quiz": consultar_rascunho_do_quiz,
     "criar_rascunho_do_quiz": criar_rascunho_do_quiz,
@@ -1089,6 +1099,7 @@ ACOES = {
 # Como cada ação aparece para a pessoa no passo a passo e na página da execução.
 ROTULOS = {
     "consultar_conhecimento": "consultar o mapa de conhecimento",
+    "consultar_conhecimento_comercial": "consultar o conhecimento comercial do site",
     "perguntar_com_opcoes": "mostrar uma pergunta com opções",
     "consultar_rascunho_do_quiz": "ler as perguntas e ofertas do quiz",
     "criar_rascunho_do_quiz": "montar o quiz no site",
