@@ -29,7 +29,7 @@ from zoneinfo import ZoneInfo
 
 from django.db import transaction
 
-from apps.jornadas import motor
+from apps.jornadas import crm, motor
 from apps.jornadas.models import EnvioDeCheckpoint, Inscricao, Jornada
 
 from .models import EnvioRegistrado
@@ -137,6 +137,12 @@ def ao_pagamento_aprovado(
 ) -> None:
     cliente = data["customer"]
     site_id = _site_id_do_evento(data)
+    # Compra aprovada de uma oportunidade do CRM: a jornada dela, se houver,
+    # termina agora e não espera o próximo passo (quem fala com o cliente é o
+    # robô comercial; ver `apps/jornadas/crm.py`).
+    crm.encerrar_da_oportunidade(
+        str(data.get("oportunidade_ref") or ""), "compra aprovada", site_id
+    )
     tpl = _resolver_template("boas_vindas", site_id)
     contexto = {"name": cliente["name"]}
     _registrar_e_enfileirar(

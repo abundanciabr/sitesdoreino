@@ -26,6 +26,20 @@ Depois do envio, o último contato da oportunidade é atualizado
 no mesmo histórico da caixa de conversas.
 
 A mensagem do lead é conteúdo: aqui só se lê QUANDO ele falou, nunca o texto.
+
+QUEM FALA COM O CLIENTE (decisão da onda 1, jornada da oportunidade)
+--------------------------------------------------------------------
+Numa oportunidade do CRM, **quem fala com o lead é o robô comercial** (célula
+`admin`, `apps/comercial`): ele faz a primeira abordagem, o acompanhamento de 24
+horas, a recuperação de recusa e de Pix vencido, e responde às mensagens. Nada
+no código inscreve um lead numa jornada com `oportunidade_id`, de propósito: uma
+jornada que também mandasse mensagem à mesma pessoa pela mesma oportunidade
+seria mensagem em dobro. O que esta jornada faz pela oportunidade, enquanto
+alguém a inscrever por decisão do mantenedor (por exemplo, para o grupo sem o
+robô, que recebe só o que já existia), é só o descrito acima, mais
+`encerrar_da_oportunidade`: quando a compra é aprovada (aviso `pagamento.aprovado`
+com `oportunidade_ref`), toda jornada andando daquela oportunidade termina na
+hora, sem esperar o próximo passo.
 """
 
 from __future__ import annotations
@@ -221,13 +235,21 @@ def conferir(inscricao: Inscricao, passo=None, agora: datetime | None = None) ->
     return Conferencia(SEGUE, "", barrados, **contatos)
 
 
+def encerrar_da_oportunidade(oportunidade_id: str, motivo: str, site_id: str = "") -> int:
+    """Termina toda jornada andando de uma oportunidade (do site, quando dado)."""
+    if not oportunidade_id:
+        return 0
+    texto = f"CRM: {motivo}"[:200]
+    andando = Inscricao.objects.filter(oportunidade_id=oportunidade_id, estado="andando")
+    if site_id:
+        andando = andando.filter(site_id=site_id)
+    return andando.update(estado="cancelada", proximo_em=None, motivo_de_saida=texto,
+                          ultima_conferencia=texto)
+
+
 def encerrar_oportunidade(inscricao: Inscricao, motivo: str) -> int:
     """Compra aprovada (ou oportunidade fechada) encerra toda jornada dela."""
-    texto = f"CRM: {motivo}"[:200]
-    return Inscricao.objects.filter(
-        oportunidade_id=inscricao.oportunidade_id, estado="andando",
-    ).update(estado="cancelada", proximo_em=None, motivo_de_saida=texto,
-             ultima_conferencia=texto)
+    return encerrar_da_oportunidade(inscricao.oportunidade_id, motivo)
 
 
 # ---------------------------------------------------------------------------
