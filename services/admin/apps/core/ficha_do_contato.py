@@ -38,6 +38,7 @@ import os
 from urllib.parse import quote
 
 import httpx
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -60,6 +61,8 @@ RECUSADO = "recusado"
 MENSAGENS_NA_FICHA = 10
 #: Quantas oportunidades têm os links de compra consultados.
 OPORTUNIDADES_COM_LINKS = 5
+#: O `autor_id` do histórico do CRM cabe em 100 caracteres do outro lado.
+AUTOR_MAXIMO = 100
 
 ETAPAS = {
     "nova": "Nova", "qualificada": "Qualificada", "proposta": "Proposta",
@@ -83,6 +86,7 @@ CAMPOS_DO_PERFIL = (
 )
 TIPOS_DE_EVIDENCIA = {
     "resposta": "Resposta do quiz",
+    "resposta_quiz": "Resposta do quiz",
     "quiz": "Resposta do quiz",
     "mensagem": "Mensagem",
     "respostas": "Resposta do quiz",
@@ -206,7 +210,8 @@ def _evidencias(bruto) -> list:
             continue
         tipo = _texto(item.get("tipo"))
         saida.append({
-            "tipo": TIPOS_DE_EVIDENCIA.get(tipo.casefold(), "Registro"),
+            # Tipo que a ficha ainda não conhece aparece como a `leads` o chama.
+            "tipo": TIPOS_DE_EVIDENCIA.get(tipo.casefold()) or tipo or "Registro",
             "trecho": _texto(item.get("trecho")) or "(sem trecho)",
         })
     return saida
@@ -425,7 +430,7 @@ class ConversasClient:
     def assumir(self, conversa_id: str, site_id: str, pessoa_id: str):
         return self._pedir(
             "POST", "/conversas/" + quote(str(conversa_id), safe="") + "/assumir",
-            corpo={"site_id": site_id, "pessoa_id": pessoa_id[:100]},
+            corpo={"site_id": site_id, "pessoa_id": pessoa_id[:AUTOR_MAXIMO]},
         )
 
     def devolver(self, conversa_id: str, site_id: str):
@@ -471,26 +476,45 @@ def _conversa(bruto: dict) -> dict:
     }
 
 
+def escolher_conversa_atual(conversas: list):
+    """A conversa que a ficha mostra e que os botões usam, escolhida uma vez.
+
+    A primeira que não foi encerrada; se todas foram, a mais recente.
+    `conversas` já vem da mais recente para a mais antiga.
+    """
+    return next((c for c in conversas if c["estado"] != "encerrada"), conversas[0] if conversas else None)
+
+
 def conversa_do_contato(site_id: str, lead_id: str) -> dict:
-    """As conversas do contato e as últimas mensagens da mais recente."""
+    """As conversas do contato e as últimas mensagens da conversa atual."""
     cliente = ConversasClient()
     estado, conversas = cliente.conversas(site_id, lead_id)
     if estado != OK:
-        return {"estado": estado, "conversas": [], "mensagens": []}
+        return {"estado": estado, "conversas": [], "atual": None, "mensagens": []}
     conversas = sorted(
         conversas, key=lambda c: _texto(c.get("ultima_mensagem_em")) or "", reverse=True
     )
     montadas = [_conversa(c) for c in conversas]
+    atual = escolher_conversa_atual(montadas)
     mensagens, estado_mensagens = [], OK
-    if montadas:
-        estado_mensagens, brutas = cliente.mensagens(montadas[0]["id"], site_id)
+    if atual:
+        estado_mensagens, brutas = cliente.mensagens(atual["id"], site_id)
         mensagens = [_mensagem(m) for m in brutas][-MENSAGENS_NA_FICHA:]
     return {
         "estado": OK,
         "conversas": montadas,
+        "atual": atual,
         "mensagens": mensagens,
         "mensagens_indisponiveis": estado_mensagens != OK,
     }
+
+
+def url_da_caixa_de_conversas() -> str:
+    """Endereço da caixa de conversas do painel, ou `""` se esta versão não a tem."""
+    try:
+        return reverse("crm_conversas")
+    except NoReverseMatch:
+        return ""
 
 
 # ---------------------------------------------------------------------------
@@ -505,7 +529,7 @@ class LinksDeCompraClient:
     como a tela de campanhas faz. Só leitura e fail-OPEN.
     """
 
-    TIMEOUT = 4.0
+    TIMEOUT = 2.0
 
     def _configuracao(self):
         base = (os.environ.get("CHECKOUT_API_URL") or "").strip().rstrip("/")
@@ -565,6 +589,11 @@ def links_das_oportunidades(oportunidades: list, host: str) -> dict:
             continue
         estado, dados = cliente.pedidos(oportunidade["id"], host)
         estados.add(estado)
+        if estado == NAO_RESPONDEU:
+            # O checkout não está respondendo: perguntar de novo para cada
+            # oportunidade só faria a ficha esperar o prazo várias vezes. As que
+            # sobraram contam como "não responderam".
+            break
         if estado != OK:
             continue
         if _texto(dados.get("oportunidade_ref")) not in ("", oportunidade["id"]):
@@ -587,9 +616,8 @@ def links_das_oportunidades(oportunidades: list, host: str) -> dict:
 
 def quem_atende(conversa: dict, oportunidades: list) -> dict:
     """Pessoa ou agente. A conversa manda; sem conversa, vale o CRM."""
-    abertas = [c for c in conversa.get("conversas", []) if c["estado"] != "encerrada"]
-    if abertas:
-        atual = abertas[0]
+    atual = conversa.get("atual")
+    if atual and atual["estado"] != "encerrada":
         if atual["estado"] == "pessoa":
             nome = atual["assumida_por"]
             return {"tipo": "pessoa", "texto": "Pessoa da equipe" + (f": {nome}" if nome else "")}
@@ -631,7 +659,7 @@ def completar_ficha(tela: dict, resposta: dict, *, host: str) -> dict:
     conversa = (
         conversa_do_contato(tela["site_id"], lead_id)
         if lead_id and tela.get("site_id")
-        else {"estado": INDISPONIVEL, "conversas": [], "mensagens": []}
+        else {"estado": INDISPONIVEL, "conversas": [], "atual": None, "mensagens": []}
     )
     tela.update({
         "quizzes": quizzes,
@@ -641,6 +669,7 @@ def completar_ficha(tela: dict, resposta: dict, *, host: str) -> dict:
         "proxima": next((o for o in oportunidades if o["aberta"]), None),
         "pagamentos": pagamentos_das_oportunidades(oportunidades) if estado_crm == OK else None,
         "conversa": conversa,
+        "caixa_de_conversas": url_da_caixa_de_conversas(),
         "links": links_das_oportunidades(oportunidades, host) if estado_crm == OK
         else {"estado": INDISPONIVEL, "links": []},
         "atendimento": quem_atende(conversa, oportunidades),
@@ -649,19 +678,23 @@ def completar_ficha(tela: dict, resposta: dict, *, host: str) -> dict:
     return tela
 
 
-def marcar_atendimento_no_crm(oportunidades: list, *, tipo: str, nome: str, autor: str) -> None:
+def marcar_atendimento_no_crm(oportunidades: list, *, tipo: str, nome: str, autor: str) -> bool:
     """Melhor esforço: o quadro do CRM passa a mostrar quem atende.
 
     Quem manda é a conversa na `mensageria`; se a `leads` não aceitar, a
-    conversa já mudou e a ficha continua certa.
+    conversa já mudou e a ficha continua certa. Devolve `False` quando alguma
+    oportunidade não foi marcada, para a ficha avisar a equipe.
     """
     cliente = CRMClient()
+    tudo_certo = True
     for oportunidade in oportunidades:
         if not oportunidade["aberta"] or not oportunidade["id"]:
             continue
         estado, _ = cliente.alterar(
             oportunidade["id"], "PATCH", "/acompanhamento",
-            {"autor_id": autor, "atendido_por": {"tipo": tipo, "nome": nome}},
+            {"autor_id": autor[:AUTOR_MAXIMO], "atendido_por": {"tipo": tipo, "nome": nome}},
         )
         if estado != CRMClient.OK:
+            tudo_certo = False
             logger.warning("ficha: o CRM não registrou quem atende (%s)", estado)
+    return tudo_certo

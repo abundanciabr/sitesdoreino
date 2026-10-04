@@ -15,12 +15,13 @@ O que cada grupo protege:
 from __future__ import annotations
 
 import json
+import uuid
 
 import httpx
 import pytest
 import respx
 from django.test import Client
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from apps.auditoria.models import Registro
 from apps.core import ficha_do_contato as ficha
@@ -220,9 +221,8 @@ def test_ficha_mostra_quiz_perfil_interesse_passo_conversa_links_e_pagamentos():
     # Quem atende e o botão de assumir.
     assert "Assistente da equipe (agente)" in html and "Assumir a conversa" in html
     assert reverse("contato_atendimento", args=[ANA]) in html
-    # Conversa, com o link para a caixa.
+    # Conversa (o botão da caixa de conversas tem teste próprio, abaixo).
     assert "Olá! Sou o assistente da equipe." in html and "janela de 24h aberta" in html
-    assert "/crm/conversas/?lead_id=" + ANA in html
     # Links de compra enviados.
     assert "Link enviado, ainda não aberto" in html
     assert "https://meshcraft.top/checkout/mentoria/?link=ped-2" in html
@@ -370,10 +370,79 @@ def test_devolver_passa_pela_mensageria_e_a_ficha_confirma():
     resposta = cliente.post(
         reverse("contato_atendimento", args=[ANA]), {"gesto": "devolver", "conversa_id": CONVERSA}
     )
-    assert resposta.status_code == 302 and resposta["Location"].endswith("?atendimento=devolvida")
+    # O CRM recusou o espelho: a conversa já voltou, e a ficha avisa isso.
+    assert resposta.status_code == 302
+    assert resposta["Location"].endswith("?atendimento=devolvida&espelho=falhou")
     assert json.loads(devolver.calls.last.request.content) == {"site_id": SITE}
     html = cliente.get(resposta["Location"]).content.decode()
     assert "Conversa devolvida ao assistente da equipe." in html
+    assert "o CRM não registrou quem atende agora." in html
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_devolver_diz_quando_o_robo_volta_a_responder():
+    _tudo_no_ar(conversas=[_conversa(estado="pessoa", assumida_por=DONO)])
+    respx.post(f"{MENSAGERIA}/conversas/{CONVERSA}/devolver").mock(
+        return_value=httpx.Response(200, json=_conversa())
+    )
+    respx.patch(f"{LEADS}/crm/{OPORTUNIDADE}/acompanhamento").mock(
+        return_value=httpx.Response(200, json={"id": OPORTUNIDADE, "historico": []})
+    )
+    cliente = _dentro()
+    resposta = cliente.post(
+        reverse("contato_atendimento", args=[ANA]), {"gesto": "devolver", "conversa_id": CONVERSA}
+    )
+    assert resposta["Location"].endswith("?atendimento=devolvida")
+    html = cliente.get(resposta["Location"]).content.decode()
+    assert "O robô responde a partir da próxima mensagem da pessoa." in html
+    # Com o espelho no CRM certo, não há aviso nenhum.
+    assert "o CRM não registrou quem atende agora." not in html
+    # Assumir não promete nada sobre o robô.
+    assert "O robô responde a partir" not in cliente.get(_url() + "?atendimento=assumida").content.decode()
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_crm_fora_do_ar_ao_trocar_atendimento_avisa_na_ficha():
+    _tudo_no_ar()
+    respx.post(f"{MENSAGERIA}/conversas/{CONVERSA}/assumir").mock(
+        return_value=httpx.Response(200, json=_conversa(estado="pessoa", assumida_por=DONO))
+    )
+    respx.get(f"{LEADS}/crm").mock(side_effect=httpx.ConnectError("fora"))
+    cliente = _dentro()
+    resposta = cliente.post(
+        reverse("contato_atendimento", args=[ANA]), {"gesto": "assumir", "conversa_id": CONVERSA}
+    )
+    assert resposta["Location"].endswith("?atendimento=assumida&espelho=falhou")
+    html = cliente.get(resposta["Location"]).content.decode()
+    assert "Você assumiu a conversa." in html
+    assert "o CRM não registrou quem atende agora." in html
+
+
+@respx.mock
+def test_autor_do_espelho_no_crm_e_cortado_em_100_caracteres():
+    crm = respx.patch(f"{LEADS}/crm/{OPORTUNIDADE}/acompanhamento").mock(
+        return_value=httpx.Response(200, json={"id": OPORTUNIDADE, "historico": []})
+    )
+    autor = ("a" * 150) + "@exemplo.com"
+    ok = ficha.marcar_atendimento_no_crm(
+        [ficha.montar_oportunidade(_oportunidade())], tipo="pessoa", nome=autor, autor=autor
+    )
+    assert ok is True
+    enviado = json.loads(crm.calls.last.request.content)
+    assert enviado["autor_id"] == autor[:100] and len(enviado["autor_id"]) == 100
+
+
+@respx.mock
+def test_espelho_no_crm_devolve_falso_se_alguma_oportunidade_falhou():
+    respx.patch(f"{LEADS}/crm/{OPORTUNIDADE}/acompanhamento").mock(return_value=httpx.Response(500))
+    ok = ficha.marcar_atendimento_no_crm(
+        [ficha.montar_oportunidade(_oportunidade())], tipo="agente", nome="Assistente da equipe", autor="x"
+    )
+    assert ok is False
+    # Sem oportunidade aberta não há o que marcar, e isso não é falha.
+    assert ficha.marcar_atendimento_no_crm([], tipo="agente", nome="x", autor="x") is True
 
 
 @respx.mock
@@ -474,3 +543,192 @@ def test_mesma_compra_em_duas_oportunidades_aparece_uma_vez():
 def test_link_que_nao_e_https_nao_vira_link():
     link = ficha._link({"url": "javascript:alert(1)", "status": "pago"}, {"oferta": ""})
     assert link["url"] == ""
+
+
+# ---------------------------------------------------------------------------
+# 5. Ajustes da revisão (03/10/2026)
+# ---------------------------------------------------------------------------
+
+CONVERSA_ENCERRADA = "2f3e4d5c-6b7a-4f8e-9d0c-1b2a3f4e5d60"
+
+
+def _sem_a_caixa(monkeypatch):
+    def sem_rota(nome, *args, **kwargs):
+        raise NoReverseMatch(nome)
+
+    monkeypatch.setattr(ficha, "reverse", sem_rota)
+
+
+def _com_a_caixa(monkeypatch):
+    def com_rota(nome, *args, **kwargs):
+        if nome == "crm_conversas":
+            return "/crm/conversas/"
+        return reverse(nome, *args, **kwargs)
+
+    monkeypatch.setattr(ficha, "reverse", com_rota)
+
+
+@respx.mock
+def test_botao_da_caixa_de_conversas_usa_a_rota_resolvida_e_nao_inventa_endereco(monkeypatch):
+    _tudo_no_ar()
+    _com_a_caixa(monkeypatch)
+    html = _dentro().get(_url()).content.decode()
+    assert 'href="/crm/conversas/"' in html and "Abrir a caixa de conversas" in html
+    # A caixa não filtra por contato: nada de parâmetro que ela ignora.
+    assert "conversas/?lead_id" not in html
+
+
+@respx.mock
+def test_sem_a_rota_da_caixa_de_conversas_nao_ha_botao(monkeypatch):
+    _tudo_no_ar()
+    _sem_a_caixa(monkeypatch)
+    resposta = _dentro().get(_url())
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert "Abrir a caixa de conversas" not in html
+    assert "/crm/conversas" not in html
+    # O resto da conversa continua na ficha.
+    assert "Olá! Sou o assistente da equipe." in html
+
+
+@respx.mock
+def test_conversa_encerrada_mais_nova_nao_esconde_a_aberta_mais_antiga():
+    """A conversa atual é escolhida uma vez e vale para tudo na ficha."""
+    _tudo_no_ar(conversas=[
+        _conversa(id=CONVERSA_ENCERRADA, estado="encerrada", canal="email", janela_aberta=False,
+                  ultima_mensagem_em="2026-10-03T18:00:00Z"),
+        _conversa(estado="pessoa", assumida_por="carla@exemplo.com",
+                  ultima_mensagem_em="2026-10-02T10:00:00Z"),
+    ])
+    encerrada = respx.get(f"{MENSAGERIA}/conversas/{CONVERSA_ENCERRADA}/mensagens").mock(
+        return_value=httpx.Response(200, json={"conversa": {}, "mensagens": []})
+    )
+    html = _dentro().get(_url()).content.decode()
+    # Crachá, botão e bloco da conversa falam da mesma conversa: a aberta.
+    assert "Pessoa da equipe: carla@exemplo.com" in html
+    assert "Devolver ao assistente" in html and "Assumir a conversa" not in html
+    assert f'name="conversa_id" value="{CONVERSA}"' in html
+    assert CONVERSA_ENCERRADA not in html
+    assert "WhatsApp · Pessoa da equipe (carla@exemplo.com)" in html
+    assert "Olá! Sou o assistente da equipe." in html
+    assert not encerrada.called
+    assert "Este contato tem 2 conversas" in html
+
+
+@respx.mock
+def test_todas_encerradas_a_atual_e_a_mais_recente_e_nao_ha_botao():
+    _tudo_no_ar(conversas=[
+        _conversa(estado="encerrada", ultima_mensagem_em="2026-10-01T10:00:00Z"),
+        _conversa(id=CONVERSA_ENCERRADA, estado="encerrada", canal="email", janela_aberta=False,
+                  ultima_mensagem_em="2026-10-03T18:00:00Z"),
+    ])
+    mais_recente = respx.get(f"{MENSAGERIA}/conversas/{CONVERSA_ENCERRADA}/mensagens").mock(
+        return_value=httpx.Response(200, json={"conversa": {}, "mensagens": [
+            {"id": "m9", "direcao": "entrada", "autor": "contato", "texto": "Obrigada, resolvido",
+             "ocorrida_em": "2026-10-03T18:00:00Z"}]})
+    )
+    html = _dentro().get(_url()).content.decode()
+    assert mais_recente.called and "Obrigada, resolvido" in html
+    assert "E-mail · Conversa encerrada" in html
+    assert "Sem conversa aberta para assumir." in html
+    assert "Assumir a conversa" not in html and "Devolver ao assistente" not in html
+
+
+def test_escolher_conversa_atual():
+    nova_encerrada = {"id": "a", "estado": "encerrada"}
+    antiga_aberta = {"id": "b", "estado": "agente"}
+    outra_aberta = {"id": "c", "estado": "pessoa"}
+    assert ficha.escolher_conversa_atual([nova_encerrada, antiga_aberta, outra_aberta]) is antiga_aberta
+    assert ficha.escolher_conversa_atual([nova_encerrada, {"id": "d", "estado": "encerrada"}]) is nova_encerrada
+    assert ficha.escolher_conversa_atual([]) is None
+
+
+def test_quem_atende_segue_a_conversa_atual_e_nao_a_primeira_da_lista():
+    conversa = {
+        "conversas": [{"id": "a", "estado": "encerrada", "assumida_por": ""},
+                      {"id": "b", "estado": "pessoa", "assumida_por": "carla"}],
+        "atual": {"id": "b", "estado": "pessoa", "assumida_por": "carla"},
+    }
+    assert ficha.quem_atende(conversa, []) == {"tipo": "pessoa", "texto": "Pessoa da equipe: carla"}
+
+
+def _oportunidades_com_id(quantas, primeira=OPORTUNIDADE):
+    ids = [primeira] + [str(uuid.uuid4()) for _ in range(quantas - 1)]
+    return [ficha.montar_oportunidade(_oportunidade(id=i)) for i in ids]
+
+
+@respx.mock
+def test_links_param_na_primeira_falha_de_rede_e_as_restantes_nao_respondem():
+    rota = respx.get(f"{CHECKOUT}/interno/pedidos").mock(side_effect=httpx.ConnectTimeout("lento"))
+    resultado = ficha.links_das_oportunidades(_oportunidades_com_id(5), "meshcraft.top")
+    assert rota.call_count == 1
+    assert resultado == {"estado": ficha.NAO_RESPONDEU, "links": []}
+
+
+@respx.mock
+def test_links_ja_lidos_ficam_e_a_falha_depois_deles_avisa_que_e_parcial():
+    chamadas = []
+
+    def responder(request):
+        chamadas.append(request.url.params["oportunidade_ref"])
+        if len(chamadas) == 1:
+            return httpx.Response(200, json=_pedidos())
+        raise httpx.ReadTimeout("lento")
+
+    respx.get(f"{CHECKOUT}/interno/pedidos").mock(side_effect=responder)
+    resultado = ficha.links_das_oportunidades(_oportunidades_com_id(4), "meshcraft.top")
+    assert len(chamadas) == 2
+    assert resultado["estado"] == ficha.OK and resultado["parcial"] is True
+    assert [l["pedido_id"] for l in resultado["links"]] == ["ped-2"]
+
+
+@respx.mock
+def test_pergunta_ao_checkout_espera_no_maximo_2_segundos():
+    assert ficha.LinksDeCompraClient.TIMEOUT == 2.0
+    rota = respx.get(f"{CHECKOUT}/interno/pedidos").mock(return_value=httpx.Response(200, json=_pedidos()))
+    ficha.links_das_oportunidades(_oportunidades_com_id(1), "meshcraft.top")
+    assert rota.calls.last.request.extensions["timeout"]["read"] == 2.0
+
+
+@respx.mock
+def test_checkout_fora_do_ar_na_ficha_pergunta_uma_vez_so():
+    _tudo_no_ar(oportunidades=[_oportunidade(id=str(uuid.uuid4())) for _ in range(3)])
+    rota = respx.get(f"{CHECKOUT}/interno/pedidos").mock(side_effect=httpx.ConnectError("fora"))
+    resposta = _dentro().get(_url())
+    assert resposta.status_code == 200 and rota.call_count == 1
+    assert "Os links de compra não puderam ser lidos agora." in resposta.content.decode()
+
+
+def test_prova_do_tipo_resposta_quiz_ganha_nome_em_portugues():
+    assert ficha._evidencias([{"tipo": "resposta_quiz", "trecho": "Organizar"}]) == [
+        {"tipo": "Resposta do quiz", "trecho": "Organizar"}
+    ]
+
+
+def test_prova_de_tipo_desconhecido_mostra_o_proprio_tipo_e_sem_tipo_diz_registro():
+    evidencias = ficha._evidencias([
+        {"tipo": "ligacao_gravada", "trecho": "Falou do preço"},
+        {"trecho": "Sem tipo"},
+        {"tipo": "  ", "trecho": ""},
+    ])
+    assert [e["tipo"] for e in evidencias] == ["ligacao_gravada", "Registro", "Registro"]
+    assert evidencias[2]["trecho"] == "(sem trecho)"
+
+
+@respx.mock
+def test_ficha_mostra_prova_resposta_quiz_com_nome_em_portugues():
+    corpo = _ficha()
+    corpo["perfil"]["objetivo_declarado"]["evidencias"] = [
+        {"tipo": "resposta_quiz", "id": "p1", "trecho": "Organizar as finanças"}
+    ]
+    _tudo_no_ar(ficha_do_lead=corpo)
+    html = _dentro().get(_url()).content.decode()
+    assert "Resposta do quiz: “Organizar as finanças”" in html
+    assert "Registro: “Organizar as finanças”" not in html
+
+
+def test_evento_mensagem_recebida_nao_tem_rotulo_proprio():
+    from apps.core import contatos
+
+    assert "mensagem.recebida" not in contatos.ROTULOS_DOS_EVENTOS
+    assert contatos.rotulo_do_evento("mensagem.recebida") == "Outra atividade"
