@@ -29,6 +29,7 @@ from apps.pedidos.tasks import relay_apos_commit
 # Alias obrigatório: as classes Session/Order definidas abaixo são ninja.Schema
 # (a FORMA exportada no contrato). Importar os models com o mesmo nome faria o
 # Schema sombreá-los silenciosamente — Session.objects viraria o Schema.
+from apps.pedidos.models import LinkDeCompra
 from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
@@ -181,6 +182,10 @@ _CREATE_SESSION_OPENAPI = {
                         "offer_slug": {"type": "string"},
                         "lead_id": {"type": "string"},
                         "email_para_cpf": {"type": "string"},
+                        "link": {
+                            "type": "string",
+                            "description": "id do link de compra (?link= da página)",
+                        },
                         "utm": {
                             "type": "object",
                             "additionalProperties": {"type": "string"},
@@ -239,17 +244,32 @@ def create_session(request):
         prefill = {chave: str(prefill.get(chave) or "") for chave in ("name", "email", "phone")}
     cpf_email = str(prefill.get("email") if prefill else corpo.get("email_para_cpf") or "")
     cpf_anterior = _cpf_anterior(site["id"], _visitor_id_do_cookie(request), cpf_email)
+    link = _link_da_pagina(corpo.get("link"), site["id"], offer_slug)
     with transaction.atomic():
-        sessao = SessionModel.objects.create(
-            site_id=site["id"],
-            offer_slug=offer_slug,
-            offer=oferta,
-            lead_id=lead_id,
-            utm=utm,
-            contexto=contexto,
-            visitor_id=_visitor_id_do_cookie(request),
-        )
-        if sessao.visitor_id:
+        visitante_novo = False
+        if link is not None:
+            # Link do atendimento: a página continua a sessão que o link abriu
+            # (com o pedido já reservado), em vez de abrir outra. Os dados do
+            # contato do link NUNCA vão para a página: quem recebe o link de
+            # outra pessoa vê os campos vazios, como em qualquer link.
+            sessao = SessionModel.objects.select_for_update().get(pk=link.session_id)
+            visitante = _visitor_id_do_cookie(request)
+            if visitante and not sessao.visitor_id:
+                sessao.visitor_id = visitante
+                sessao.save(update_fields=["visitor_id"])
+                visitante_novo = True
+        else:
+            sessao = SessionModel.objects.create(
+                site_id=site["id"],
+                offer_slug=offer_slug,
+                offer=oferta,
+                lead_id=lead_id,
+                utm=utm,
+                contexto=contexto,
+                visitor_id=_visitor_id_do_cookie(request),
+            )
+            visitante_novo = bool(sessao.visitor_id)
+        if visitante_novo:
             emitir(
                 "checkout.iniciado",
                 {
@@ -279,9 +299,33 @@ def create_session(request):
             },
             **({"prefill": prefill} if prefill else {}),
             **({"cpf_mascarado": f"***.***.***-{cpf_anterior[-2:]}"} if cpf_anterior else {}),
+            **(
+                {
+                    "condicao": {
+                        "metodo": link.condicao.get("metodo"),
+                        "parcelas": link.condicao.get("parcelas"),
+                    }
+                }
+                if link is not None
+                else {}
+            ),
         },
         status=201,
     )
+
+
+def _link_da_pagina(bruto, site_id: str, offer_slug: str):
+    """O link de compra que a página recebeu em `?link=`, se ele é deste site
+    e desta oferta. Qualquer outra coisa é ignorada e a compra segue normal."""
+    if not isinstance(bruto, str) or not bruto:
+        return None
+    try:
+        link_id = uuid.UUID(bruto)
+    except ValueError:
+        return None
+    return LinkDeCompra.objects.filter(
+        pk=link_id, site_id=site_id, session__offer_slug=offer_slug
+    ).first()
 
 
 def _inline_order_created_status(schema: dict) -> None:
@@ -445,7 +489,14 @@ def place_order(request, session_id: str):
     itens = _itens_do_catalogo(oferta, bump_ids)
     total_cents = sum(item["price_cents"] for item in itens)
 
-    order_id = uuid.uuid4()
+    # Pedido aberto por um link do atendimento nasce com o id que o link já
+    # devolveu ao CRM, e leva a oportunidade junto.
+    link = LinkDeCompra.objects.filter(session=sessao).first()
+    order_id = link.pedido_id if link is not None else uuid.uuid4()
+    referencias = {
+        "oportunidade_ref": link.oportunidade_ref if link is not None else "",
+        "oferta_ref": sessao.offer_slug,
+    }
     comprador = {
         "email": email,
         "name": nome,
@@ -455,6 +506,8 @@ def place_order(request, session_id: str):
     metadata = {
         "checkout_session_id": str(sessao.id),
         "product_id": str(itens[0]["product_id"]),
+        # Ecoadas por pagamentos nos avisos do pagamento (core/ledger.py).
+        **{campo: valor for campo, valor in referencias.items() if valor},
     }
     if method == "pix":
         metadata["pagina_url"] = (
@@ -515,6 +568,7 @@ def place_order(request, session_id: str):
             intent_id=str(intent["id"]),
             pix=intent.get("pix") or {},
             contexto=dict(sessao.contexto or {}),
+            **referencias,
         )
         emitir(  # mesma transação da criação do pedido
             "pedido.criado",
@@ -531,6 +585,7 @@ def place_order(request, session_id: str):
                 },
                 **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
                 **({"utm": sessao.utm} if sessao.utm else {}),
+                **referencias,
             },
         )
         if sessao.visitor_id:
@@ -549,6 +604,7 @@ def place_order(request, session_id: str):
                     "valor_centavos": total_cents,
                     "moeda": "BRL",
                     "criado_em": pedido.created_at.isoformat(),
+                    **(referencias if referencias["oportunidade_ref"] else {}),
                 },
             )
         # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica

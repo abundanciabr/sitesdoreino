@@ -135,6 +135,18 @@ class PagamentosClient:
         r.raise_for_status()
         return r.json()
 
+    def cotar_parcelas(self, *, amount_cents: int) -> dict:
+        """Cotação das parcelas do cartão para um valor, sem pedido aberto
+        (`quoteCardInstallments`). Quem chama trata a falha como "não sei"."""
+        resposta = http().get(
+            f"{self.base}/parcelas",
+            params={"amount_cents": amount_cents},
+            headers=self._headers(),
+            timeout=15.0,
+        )
+        resposta.raise_for_status()
+        return resposta.json()
+
     def consultar_parcelas(self, *, intent_id: str) -> dict:
         resposta = http().get(
             f"{self.base}/intents/{intent_id}/installments",

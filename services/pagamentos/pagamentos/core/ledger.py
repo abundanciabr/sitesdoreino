@@ -44,6 +44,23 @@ ORIGENS_ADMITIDAS: dict[str, frozenset[str]] = {
 }
 
 
+REFERENCIAS_DO_PEDIDO = ("oportunidade_ref", "oferta_ref")
+
+
+def com_referencias_do_pedido(dados: dict[str, Any], intent: Intent) -> dict[str, Any]:
+    """Ecoa no aviso as referências opacas que o checkout pôs no `metadata`
+    (mesma técnica do `product_id`): a oportunidade do CRM e a oferta. Assim
+    quem acompanha a venda casa o pagamento sem consultar outra célula. Sem
+    elas no `metadata`, o aviso sai exatamente como antes."""
+    metadata = intent.metadata if isinstance(intent.metadata, dict) else {}
+    extras = {
+        campo: metadata[campo]
+        for campo in REFERENCIAS_DO_PEDIDO
+        if isinstance(metadata.get(campo), str) and metadata[campo] and campo not in dados
+    }
+    return {**dados, **extras} if extras else dados
+
+
 class AvisoAusente(RuntimeError):
     """A transição de estado não produziu exatamente um aviso na outbox.
 
@@ -96,7 +113,7 @@ def registrar_fato(
         with models.transicao_do_ledger() as avisos:
             travada.status = novo_status
             travada.save(update_fields=["status", "updated_at"])
-            models.emitir(evento, dados, version=version)
+            models.emitir(evento, com_referencias_do_pedido(dados, travada), version=version)
         _exigir_um_aviso(avisos, evento=evento, novo_status=novo_status, intent=travada)
     transaction.on_commit(models.relay_apos_commit)
     intent.refresh_from_db()
@@ -251,7 +268,11 @@ def emitir_reversao_confirmada(tentativa: PaymentAttempt, codigo: str) -> bool:
             payload__provider_reference_id=travada.provider_reference_id,
         ).exists():
             return False
-        models.emitir("pagamento.reversao_confirmada", payload, version=2)
+        models.emitir(
+            "pagamento.reversao_confirmada",
+            com_referencias_do_pedido(payload, travada.intent),
+            version=2,
+        )
     transaction.on_commit(models.relay_apos_commit)
     return True
 
