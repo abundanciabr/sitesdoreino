@@ -235,9 +235,6 @@ def reacordar() -> int:
     if autorizacao and modelo.gasto_do_mes(autorizacao.pk) < autorizacao.teto_mensal_usd:
         n += retomar_os_que_esperam([S.AGUARDANDO_AUTORIZACAO], "há teto de gasto")
     _manter_o_mapa_em_dia()
-    from .conhecimento_comercial import manter_em_dia  # o catálogo mudou, o índice comercial muda junto
-
-    manter_em_dia()
     return n
 
 
@@ -282,6 +279,10 @@ def rodar_para_sempre(parar: threading.Event) -> None:
             if timezone.now() - ultimo_reacordar >= INTERVALO_DE_REACORDAR:
                 ultimo_reacordar = timezone.now()
                 reacordar()
+                # Só no laço, nunca na tela: o catálogo mudou, o índice comercial muda junto.
+                from .conhecimento_comercial import manter_em_dia
+
+                manter_em_dia()
             trabalhou = rodar_uma(trabalhador) is not None
         except Exception:  # noqa: BLE001 - o laço não pode morrer
             log.exception("Executor dos robôs: volta falhou")

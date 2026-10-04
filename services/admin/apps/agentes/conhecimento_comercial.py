@@ -34,6 +34,8 @@ Cada fonte é uma `FonteDoConhecimento` com chave `comercial:<site>:<tipo>:<id>`
 e a mesma `impressao` do mapa: fonte que não mudou não é regravada. Os cursos e
 a oferta entram também como coisas e ligações do mapa (curso faz parte do
 produto, curso tem módulo, oferta vende produto), sem gastar modelo nenhum.
+Curso, módulo e oferta levam o site no nome ('Oferta anual (a.test)'): o
+mesmo apelido em outro site é outra coisa. O produto é do catálogo inteiro.
 """
 
 from __future__ import annotations
@@ -103,16 +105,23 @@ PROGRESSAO = {
 
 # Frase que fala de preço ou de condição de compra: sai do trecho lembrado.
 _PRECO = re.compile(
-    r"R\$|US\$|€|\d+\s*[x×]\s*(de\s+)?(R\$\s*)?\d|\bparcel|\bdesconto|\bcupo[mn]s?\b|"
-    r"\b[àa] vista\b|\bboleto|\bpix\b|\bpre[çc]o|\bpromo[çc]",
+    r"R\$|US\$|€|\$\s*\d|\d+\s*[x×]\s*(de\s+)?(R\$\s*)?\d|\bparcel|\bdesconto|\bcupo[mn]s?\b|"
+    r"\b[àa] vista\b|\bboleto|\bpix\b|\bpre[çc]o|\bpromo[çc]|"
+    # preço sem cifrão: "497 reais", "12 vezes de 49,70", "49,90", "Valor: 497"
+    r"\d\s*(reais|real|d[óo]lares?|euros?|conto)\b|\b(reais|d[óo]lares|euros)\b|"
+    r"\d+\s*vezes\s+(de|sem)\b|\b\d{1,3}(\.\d{3})*,\d{2}\b|"
+    r"\binvestimento|\bmensalidade|\banuidade|\bvalor(es)?\b|\bcust(a|am|o|ar)\b|"
+    r"\bpagamento|\bpagar\b|\bcart[ãa]o de cr[ée]dito|\bgr[áa]tis\b|\bgratuit",
     re.IGNORECASE,
 )
 _MARCA_DE_PRECO = "(preço e condições: consultar ao vivo)"
 
-# Pergunta de preço ou condição: a resposta busca o preço na hora.
+# Pergunta de preço ou condição (já sem acento): a resposta busca o preço na hora.
 _PERGUNTA_DE_PRECO = re.compile(
-    r"\b(preco|valor|custa|custo|quanto (e|custa|sai|fica)|parcel\w*|desconto|cupo[mn]|"
-    r"pix|boleto|cartao|pagamento|pagar|vista|promocao|condic\w*)\b"
+    r"\b(preco\w*|valor\w*|custa\w*|custo\w*|quanto (e|custa|sai|fica|pago|cobra\w*)|"
+    r"cobra\w*|parcel\w*|desconto\w*|cupo[mn]\w*|pix|boleto|cartao|pagamento\w*|pagar|"
+    r"vista|promocao|promocoes|condic\w*|investimento\w*|investir|mensalidade\w*|"
+    r"anuidade\w*|mensal|reais|caro|barato|gratis|gratuito)\b"
 )
 
 _VAZIAS = {
@@ -192,6 +201,11 @@ def chave(site_id: str, tipo: str, ref: str) -> str:
     return inteira[:96] + ":" + hashlib.sha1(inteira.encode("utf-8")).hexdigest()[:23]
 
 
+def no_do_site(nome: str, leitura: Leitura) -> str:
+    """O nome da coisa no mapa da equipe, com o site: 'Oferta anual (a.test)'."""
+    return f"{nome} ({leitura.host or leitura.site_id})"
+
+
 def _tipo_da_chave(texto: str) -> str:
     partes = texto[len(PREFIXO):].split(":")
     return partes[1] if len(partes) > 1 else ""
@@ -248,15 +262,21 @@ def _data(valor) -> datetime | None:
     return lida
 
 
-def _produtos(leitura: Leitura) -> dict[str, str]:
+def _produtos(leitura: Leitura) -> dict[str, str] | None:
+    """Os nomes dos produtos. None quando o catálogo não respondeu: aí o que
+    depende do nome (cursos e documentos marcados com produto) fica como está."""
     lista = CatalogoClient().listar_produtos()
     if lista is None:
         leitura.faltou.append("nomes dos produtos (catálogo)")
-        return {}
+        return None
     return {str(p.get("id")): str(p.get("name") or "") for p in lista if isinstance(p, dict)}
 
 
-def _ler_cursos(leitura: Leitura, produtos: dict[str, str]) -> None:
+def _ler_cursos(leitura: Leitura, produtos: dict[str, str] | None) -> None:
+    if produtos is None:
+        # Sem o nome do produto o curso mudaria à toa e perderia a ligação no mapa.
+        leitura.faltou.append("cursos (sem os nomes dos produtos)")
+        return
     cliente = CursosClient()
     desfecho, cursos = cliente.cursos(leitura.site_id)
     if desfecho != cliente.OK:
@@ -321,15 +341,19 @@ def _fonte_do_curso(leitura: Leitura, curso: dict, aulas: list, produtos: dict) 
         partes.append(("Módulos e aulas", pedaco))
 
     datas = [d for d in (_data(a.get("publicada_em")) for a in publicadas) if d]
-    entidades = [{"nome": nome, "tipo": "curso", "resumo": geral[:500]}]
+    # No mapa da equipe o curso e o módulo levam o site no nome: o curso de
+    # mesmo nome em outro site é outra coisa e não pode virar o mesmo nó.
+    no_do_curso = no_do_site(nome, leitura)
+    entidades = [{"nome": no_do_curso, "tipo": "curso", "resumo": geral[:500]}]
     ligacoes = []
     if produto_nome:
         entidades.append({"nome": produto_nome, "tipo": "produto", "resumo": f"Produto do catálogo (id {produto_id})."})
-        ligacoes.append({"origem": nome, "relacao": "faz parte do produto", "destino": produto_nome, "evidencia": geral[:400]})
+        ligacoes.append({"origem": no_do_curso, "relacao": "faz parte do produto", "destino": produto_nome, "evidencia": geral[:400]})
     for (parte, _ordem, letra), b in sorted(blocos.items()):
         if b["nome"]:
             ligacoes.append({
-                "origem": nome, "relacao": "tem módulo", "destino": b["nome"],
+                "origem": no_do_curso, "relacao": "tem módulo",
+                "destino": f"{b['nome']} ({nome}, {leitura.host or leitura.site_id})",
                 "evidencia": f"Módulo {letra} do curso {nome}, com {len(b['aulas'])} aula(s) publicada(s).",
             })
     return Fonte(
@@ -355,7 +379,7 @@ def oferta_ao_vivo(site_id: str, slug: str) -> tuple[str, dict | str]:
     )
 
 
-def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str]) -> None:
+def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str] | None) -> None:
     catalogo = CatalogoClient()
     desfecho, pagina = catalogo.pagina_publicada(leitura.site_id, "oferta")
     if desfecho == catalogo.SEM_PAGINA:
@@ -376,7 +400,10 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str]) -> None:
         return
     produto = oferta.get("product") or {}
     produto_id = str(produto.get("id") or "")
-    produto_nome = str(produto.get("name") or produtos.get(produto_id, ""))
+    produto_nome = str(produto.get("name") or (produtos or {}).get(produto_id, ""))
+    if not produto_nome and produtos is None:
+        leitura.faltou.append(f"oferta {slug} (sem o nome do produto)")
+        return
     partes = []
     headline = ""
     for secao in (pagina or {}).get("secoes") or []:
@@ -401,11 +428,12 @@ def _ler_oferta(leitura: Leitura, site: dict, produtos: dict[str, str]) -> None:
             f"{b['name']}" + (f": {sem_preco(str(b.get('headline') or ''))}" if b.get("headline") else "")
             for b in bumps
         )))
-    entidades = [{"nome": f"Oferta {slug}", "tipo": "oferta", "resumo": (headline or resumo)[:500]}]
+    no_da_oferta = no_do_site(f"Oferta {slug}", leitura)  # o apelido só é único dentro do site
+    entidades = [{"nome": no_da_oferta, "tipo": "oferta", "resumo": (headline or resumo)[:500]}]
     ligacoes = []
     if produto_nome:
         entidades.append({"nome": produto_nome, "tipo": "produto", "resumo": f"Produto do catálogo (id {produto_id})."})
-        ligacoes.append({"origem": f"Oferta {slug}", "relacao": "vende", "destino": produto_nome, "evidencia": resumo[:400]})
+        ligacoes.append({"origem": no_da_oferta, "relacao": "vende", "destino": produto_nome, "evidencia": resumo[:400]})
     leitura.fontes.append(Fonte(
         tipo="oferta",
         ref=slug,
@@ -434,7 +462,7 @@ def _produto_da_marca(texto: str, produtos: dict[str, str]) -> tuple[str, str]:
     return "", texto
 
 
-def _ler_materiais(leitura: Leitura, produtos: dict[str, str]) -> None:
+def _ler_materiais(leitura: Leitura, produtos: dict[str, str] | None) -> None:
     from .conhecimento import _endereco
 
     marcas = MaterialComercial.objects.filter(site_id=leitura.site_id)
@@ -443,6 +471,7 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str]) -> None:
             nome__in=[m.documento_nome for m in marcas], arquivado=False
         ).exclude(corpo="")
     }
+    completo = True
     for marca in marcas:
         documento = documentos.get(marca.documento_nome)
         if documento is None:
@@ -450,7 +479,11 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str]) -> None:
         if marca.tipo == MaterialComercial.Tipo.DEPOIMENTO and not marca.utilizavel:
             continue
         tipo = "depoimento" if marca.tipo == MaterialComercial.Tipo.DEPOIMENTO else "documento"
-        produto_ref, produto_nome = _produto_da_marca(marca.produto, produtos)
+        if produtos is None and (marca.produto or "").strip():
+            # Sem os nomes dos produtos, a marca perderia o produto: fica como está.
+            completo = False
+            continue
+        produto_ref, produto_nome = _produto_da_marca(marca.produto, produtos or {})
         rotulo = f"Depoimento: {documento.titulo}" if tipo == "depoimento" else documento.titulo
         partes = [
             (rotulo, p) for p in pedacos(sem_preco(documento.corpo)) if not _so_marca(p)
@@ -469,7 +502,10 @@ def _ler_materiais(leitura: Leitura, produtos: dict[str, str]) -> None:
             vigente_desde=documento.atualizado_em,
             partes=partes,
         ))
-    leitura.lidos.update({"documento", "depoimento"})
+    if completo:
+        leitura.lidos.update({"documento", "depoimento"})
+    else:
+        leitura.faltou.append("documentos marcados com produto (sem os nomes dos produtos)")
 
 
 def ler(site: dict) -> Leitura:
@@ -722,16 +758,57 @@ def _reais(centavos) -> str:
     return f"R$ {inteiro:,}".replace(",", ".") + f",{resto:02d}"
 
 
-def _fatos_ao_vivo(site_id: str, ofertas: list[str]) -> list[dict]:
+def _ofertas_da_pergunta(escolhidos: list[TrechoComercial], trechos: list[TrechoComercial]
+                         ) -> tuple[list[str], list[str]]:
+    """As ofertas cujo preço responde à pergunta: as dos trechos escolhidos e
+    as que vendem o MESMO produto deles. Só quando nenhum trecho escolhido é de
+    produto (pergunta geral do site) vêm as ofertas do site. O segundo valor
+    são os produtos dos trechos que não têm oferta indexada neste site."""
+    ofertas = [t.oferta_ref for t in escolhidos if t.oferta_ref]
+    da_oferta = [t for t in trechos if t.tipo == "oferta" and t.oferta_ref]
+    produtos: dict[str, tuple[str, str]] = {}  # nome do produto -> (ref, chave do nome)
+    for t in escolhidos:
+        if t.produto_ref or t.produto_nome:
+            produtos.setdefault(t.produto_nome or t.produto_ref, (t.produto_ref, _nome_chave(t.produto_nome)))
+    if not produtos:
+        ofertas += [t.oferta_ref for t in da_oferta]
+        return list(dict.fromkeys(ofertas)), []
+
+    def do_produto(t: TrechoComercial, ref: str, nome: str) -> bool:
+        return bool(ref and t.produto_ref == ref) or bool(nome and _nome_chave(t.produto_nome) == nome)
+
+    sem_oferta = []
+    for nome_do_produto, (ref, nome) in produtos.items():
+        casadas = [t.oferta_ref for t in da_oferta + escolhidos if t.oferta_ref and do_produto(t, ref, nome)]
+        ofertas += casadas
+        if not casadas:
+            sem_oferta.append(nome_do_produto)
+    return list(dict.fromkeys(ofertas)), sem_oferta
+
+
+def _fatos_ao_vivo(site_id: str, ofertas: list[str], sem_oferta: list[str] = ()) -> list[dict]:
     agora = timezone.now().isoformat()
     fatos = []
-    for slug in ofertas[:2]:
+    for nome in sem_oferta:
+        fatos.append({
+            "texto": f"O produto {nome} não tem oferta indexada neste site; não diga um preço para ele "
+            "(o preço de outra oferta é de outro produto).",
+            "fonte": {"tipo": "produto", "id": nome},
+            "vigencia": {"consultado_em": agora},
+            "ao_vivo": True,
+        })
+    for slug in ofertas[:3]:
         desfecho, oferta = oferta_ao_vivo(site_id, slug)
         if desfecho == "ok":
+            produto = oferta.get("product") or {}
+            nome_do_produto = str(produto.get("name") or produto.get("id") or "")
             fatos.append({
-                "texto": f"Preço da oferta '{slug}' agora no catálogo: {_reais(oferta.get('price_cents') or 0)}"
+                "texto": f"Preço da oferta '{slug}'"
+                + (f", que vende o produto {nome_do_produto}," if nome_do_produto else "")
+                + f" agora no catálogo: {_reais(oferta.get('price_cents') or 0)}"
                 f" (versão {oferta.get('version')}).",
                 "fonte": {"tipo": "oferta", "id": slug},
+                "produto": {"ref": str(produto.get("id") or "") or None, "nome": nome_do_produto or None},
                 "vigencia": {"consultado_em": agora},
                 "ao_vivo": True,
             })
@@ -807,9 +884,8 @@ def consultar(site: str, pergunta: str, produto: str = "", *, com_privados: bool
         "preco_e_condicoes": "ao_vivo",
     }
     if _PERGUNTA_DE_PRECO.search(_normal(pergunta)):
-        ofertas = [t.oferta_ref for t in escolhidos if t.oferta_ref]
-        ofertas += [t.oferta_ref for t in trechos if t.tipo == "oferta" and t.oferta_ref]
-        resposta["fatos_ao_vivo"] = _fatos_ao_vivo(site_id, list(dict.fromkeys(ofertas)))
+        ofertas, sem_oferta = _ofertas_da_pergunta(escolhidos, trechos)
+        resposta["fatos_ao_vivo"] = _fatos_ao_vivo(site_id, ofertas, sem_oferta)
     if not escolhidos:
         aviso = (aviso + " " if aviso else "") + "Nenhum trecho responde a isso. Não invente: diga que vai confirmar."
     if aviso:
