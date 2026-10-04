@@ -712,3 +712,38 @@ def test_sem_oportunidade_aberta_ou_com_contato_ambiguo_nao_chama_o_acompanhamen
     acompanhamento = acompanhamentos()
     responder_com("enviada", conv=conversa(estado="pessoa", ambigua=True, lead_id=None), mensagem=mensagem(direcao="saida", estado_envio="enviado"))
     assert enviar_resposta().status_code == 302 and not acompanhamento.called
+
+
+@respx.mock
+def test_lista_mostra_etiqueta_sem_origem_no_quiz_e_a_orientacao_enviada():
+    sem_origem = conversa(ligacao="desconhecida", lead_id=None, etiqueta="sem_origem_quiz",
+                          orientacao={"tipo": "desconhecida", "enviada_em": "2026-10-03T15:01:00Z"},
+                          ultima_mensagem=mensagem())
+    rota = respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(sem_origem))
+    html = dentro().get(reverse("crm_conversas"), {"estado": "sem_origem"}).content.decode()
+    assert rota.calls.last.request.url.params["ligacao"] == "desconhecida"
+    assert 'conv-selo etiqueta">Sem origem no quiz' in html and "Orientação enviada" in html
+    assert reverse("contato", args=[LEAD]) not in html
+
+
+@respx.mock
+def test_conversa_sem_origem_explica_e_marca_a_orientacao_automatica():
+    conv = conversa(ligacao="desconhecida", lead_id=None, etiqueta="sem_origem_quiz",
+                    orientacao={"tipo": "desconhecida", "enviada_em": "2026-10-03T15:01:00Z"})
+    orientacao = mensagem(direcao="saida", autor="sistema", autor_id="orientacao:desconhecida",
+                          texto="Olá! Aqui é o assistente da equipe.", estado_envio="enviado")
+    respx.get(MENSAGERIA + f"/conversas/{CONVERSA}/mensagens").respond(200, json=mensagens(conv, mensagem(), orientacao))
+    leads = respx.get(url__startswith=LEADS).respond(200, json={})
+    html = dentro().get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
+    assert "Sem origem no quiz" in html and "não foi levada para a lista comercial" in html
+    assert "orientação automática" in html and "assistente da equipe" in html and not leads.called
+
+
+@respx.mock
+def test_conversa_em_que_a_equipe_confirma_nao_mostra_ficha():
+    conv = conversa(ambigua=True, ligacao="ambigua", lead_id=None, etiqueta="equipe_confirma")
+    respx.get(MENSAGERIA + f"/conversas/{CONVERSA}/mensagens").respond(200, json=mensagens(conv, mensagem()))
+    leads = respx.get(url__startswith=LEADS).respond(200, json={})
+    html = dentro().get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
+    assert "A equipe confirma" in html and "Confirme com ela" in html and not leads.called
+

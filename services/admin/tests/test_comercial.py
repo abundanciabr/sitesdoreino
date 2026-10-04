@@ -208,6 +208,41 @@ def test_mensagem_de_quem_nao_e_contato_do_quiz_fica_na_caixa_sem_robo(ligacao):
     assert not TrabalhoComercial.objects.exists()
 
 
+@respx.mock
+def test_mensagem_de_quem_nao_e_do_quiz_leva_o_endereco_do_site_para_a_orientacao(monkeypatch):
+    monkeypatch.setattr(servicos, "host_do_site", lambda site_id, **k: "meusite.exemplo")
+    lida = respx.get(f"{MENSAGERIA}/orientacoes/site-1").respond(
+        200, json={"site_id": "site-1", "endereco_quiz": "", "atendimento_geral": "ajuda@meusite.exemplo"})
+    gravada = respx.put(f"{MENSAGERIA}/orientacoes/site-1").respond(200, json={})
+    data = {"conversa_id": "conv-x", "mensagem_id": "m-x", "canal": "whatsapp", "site_id": "site-1",
+            "lead": None, "lead_ligacao": "desconhecida", "texto": "Oi", "estado_conversa": "agente"}
+    eventos.tratar("eventos.mensagem.recebida", _envelope("mensagem.recebida", data))
+    assert lida.called and gravada.called
+    assert json.loads(gravada.calls.last.request.content) == {
+        "endereco_quiz": "https://meusite.exemplo/", "atendimento_geral": "ajuda@meusite.exemplo"}
+    assert not TrabalhoComercial.objects.exists()
+
+
+@respx.mock
+def test_endereco_definido_pela_equipe_nao_e_sobrescrito(monkeypatch):
+    monkeypatch.setattr(servicos, "host_do_site", lambda site_id, **k: "meusite.exemplo")
+    respx.get(f"{MENSAGERIA}/orientacoes/site-1").respond(
+        200, json={"site_id": "site-1", "endereco_quiz": "https://outro.exemplo/quiz", "atendimento_geral": ""})
+    gravada = respx.put(f"{MENSAGERIA}/orientacoes/site-1").respond(200, json={})
+    assert servicos.garantir_endereco_do_quiz_na_orientacao("site-1") is False
+    assert not gravada.called
+
+
+@respx.mock
+def test_mensageria_fora_do_ar_nao_derruba_o_evento_da_mensagem(monkeypatch):
+    monkeypatch.setattr(servicos, "host_do_site", lambda site_id, **k: "meusite.exemplo")
+    respx.get(f"{MENSAGERIA}/orientacoes/site-1").respond(502)
+    data = {"conversa_id": "conv-y", "mensagem_id": "m-y", "canal": "whatsapp", "site_id": "site-1",
+            "lead": None, "lead_ligacao": "ambigua", "texto": "Oi", "estado_conversa": "agente"}
+    eventos.tratar("eventos.mensagem.recebida", _envelope("mensagem.recebida", data))
+    assert EventoComercial.objects.filter(nome="mensagem.recebida").exists()
+
+
 def test_desligado_no_ambiente_nao_cria_nem_roda(monkeypatch):
     monkeypatch.setenv("COMERCIAL_AGENTES", "desligado")
     eventos.tratar("eventos.quiz.completado", _quiz_completado())

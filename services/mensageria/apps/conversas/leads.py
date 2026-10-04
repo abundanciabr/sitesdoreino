@@ -114,3 +114,36 @@ def email_do_lead(lead_id: str) -> str:
     except (httpx.HTTPError, ValueError):
         return ""
     return enderecos.email(str(dados.get("email") or "")) if isinstance(dados, dict) else ""
+
+
+def _bate_em_parte(a: str, b: str) -> bool:
+    """Mesmo telefone ou os oito últimos dígitos iguais (com ou sem DDI, DDD e nono dígito)."""
+    return len(a) >= 8 and len(b) >= 8 and (a == b or a[-8:] == b[-8:])
+
+
+def confirmar_por_email(*, site_id: str, email: str, telefone_da_conversa: str) -> Ligacao | None:
+    """O e-mail que a pessoa disse liga a conversa só quando é inequívoco.
+
+    Inequívoco = um único contato de quiz do site tem esse e-mail E o telefone dele
+    bate (ao menos em parte) com o da conversa. Qualquer outra coisa (nenhum
+    contato, mais de um, telefone diferente ou ausente, leads fora do ar) devolve
+    None: a equipe confirma. O resultado nunca volta à pessoa; quem pode digitar
+    o e-mail de outro não pode descobrir se ele existe nem de quem é.
+    """
+    itens = _candidatos(email, site_id)
+    if not itens:
+        return None
+    achados = {
+        (str(item.get("id")), str(item.get("site_id") or "")): item
+        for item in itens
+        if item.get("id") and enderecos.email(str(item.get("email") or "")) == email
+        and (not site_id or str(item.get("site_id") or "") == site_id)
+    }
+    if len(achados) != 1:
+        return None
+    (lead_id, site), item = next(iter(achados.items()))
+    do_lead = enderecos.telefone(str(item.get("telefone") or ""))
+    da_conversa = enderecos.telefone(telefone_da_conversa)
+    if not _bate_em_parte(do_lead, da_conversa):
+        return None
+    return Ligacao("ligada", lead_id=lead_id, site_id=site)

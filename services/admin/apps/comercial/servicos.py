@@ -67,6 +67,9 @@ ROTAS = {
     "enviar_na_conversa": ("mensageria", "POST", "/conversas/{}/mensagens"),
     # O modelo aprovado do WhatsApp para o primeiro contato (fora da janela de 24 horas); só escolhe e preenche.
     "modelo_primeiro_contato": ("mensageria", "POST", "/whatsapp-modelos/{}/primeiro-contato"),
+    # Endereços da orientação fixa a quem escreve sem ser do quiz (endereço do quiz e atendimento geral do site).
+    "orientacao_do_site": ("mensageria", "GET", "/orientacoes/{}"),
+    "definir_orientacao_do_site": ("mensageria", "PUT", "/orientacoes/{}"),
     "assumir": ("mensageria", "POST", "/conversas/{}/assumir"),
     "devolver": ("mensageria", "POST", "/conversas/{}/devolver"),
     # checkout (CHECKOUT_API_URL); o site vem do cabeçalho Host
@@ -232,3 +235,26 @@ def pedir(rota: str, *partes, params: dict | None = None, corpo: dict | None = N
     if not isinstance(dados, dict):
         return Resposta("indisponivel", detalhe=f"{servico} respondeu fora do contrato", status=status)
     return Resposta("ok", dados=dados, status=status)
+
+
+def garantir_endereco_do_quiz_na_orientacao(site_id: str) -> bool:
+    """Diz à mensageria o endereço do site, para a orientação a quem não é do quiz citá-lo.
+
+    Só preenche o que está vazio (o que a equipe definiu fica) e nunca levanta erro:
+    sem o domínio ou sem a mensageria, a orientação vai sem o link. Devolve se gravou.
+    """
+    try:
+        host = host_do_site(site_id)
+        if not host:
+            return False
+        atual = pedir("orientacao_do_site", site_id)
+        if not atual.ok or str(atual.dados.get("endereco_quiz") or "").strip():
+            return False
+        gravada = pedir("definir_orientacao_do_site", site_id, corpo={
+            "endereco_quiz": f"https://{host}/",
+            "atendimento_geral": str(atual.dados.get("atendimento_geral") or ""),
+        })
+        return gravada.ok
+    except Exception:  # noqa: BLE001 - cortesia: a mensagem do contato não depende disto
+        log.warning("comercial: não deu para informar o endereço do site %s à mensageria", site_id, exc_info=True)
+        return False

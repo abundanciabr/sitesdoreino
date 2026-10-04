@@ -44,6 +44,7 @@ FILTROS = (
     ("pessoa", "Com uma pessoa"),
     ("aguardando", "Aguardando resposta"),
     ("ambigua", "Contato ambíguo"),
+    ("sem_origem", "Sem origem no quiz"),
     ("encerrada", "Encerradas"),
 )
 CANAIS = {"whatsapp": "WhatsApp", "email": "E-mail"}
@@ -57,6 +58,12 @@ ENVIOS = {
 # recebido a mensagem para entregar: é o estado normal logo depois de um envio
 # por WhatsApp (a confirmação da entrega chega depois, pelo retorno do provedor).
 SAIU = ("aceito", "enviado", "entregue", "lido")
+# Por que a conversa não tem oportunidade ligada (a mensageria diz; aqui só vira português).
+ETIQUETAS = {
+    "sem_origem_quiz": "Sem origem no quiz",
+    "telefone_ambiguo": "Telefone de mais de um contato",
+    "equipe_confirma": "A equipe confirma",
+}
 AUTORES = {"lead": "Contato", "agente": "Agente", "pessoa": "Equipe", "sistema": "Sistema"}
 MIDIAS = {"audio": "Áudio", "imagem": "Imagem", "video": "Vídeo", "documento": "Documento"}
 POR_PAGINA = 50
@@ -183,6 +190,9 @@ def preparar_conversa(item):
     item["ultima_entrada"] = instante(item.get("ultima_entrada_em"))
     item["janela_ate"] = instante(item.get("janela_aberta_ate"))
     item["ficha"] = "" if item.get("ambigua") else ficha_do_lead(item.get("lead_id"))
+    item["etiqueta_nome"] = ETIQUETAS.get(item.get("etiqueta") or "", "")
+    orientacao = item.get("orientacao") if isinstance(item.get("orientacao"), dict) else None
+    item["orientacao_em"] = instante(orientacao.get("enviada_em")) if orientacao else None
     recado = item.get("ultima_mensagem") if isinstance(item.get("ultima_mensagem"), dict) else None
     item["recado"] = preparar_mensagem(recado) if recado else None
     item["aguardando"] = aguardando(item)
@@ -193,6 +203,7 @@ def preparar_mensagem(item):
     item = dict(item)
     item["momento"] = instante(item.get("ocorrida_em"))
     item["autor_nome"] = AUTORES.get(item.get("autor"), item.get("autor") or "")
+    item["orientacao"] = str(item.get("autor_id") or "").startswith("orientacao:")
     item["envio_nome"] = ENVIOS.get(item.get("estado_envio"), item.get("estado_envio") or "")
     midia = item.get("midia") if isinstance(item.get("midia"), dict) else None
     item["midia_nome"] = MIDIAS.get((midia or {}).get("tipo"), (midia or {}).get("tipo") or "") if midia else ""
@@ -256,7 +267,7 @@ def crm_conversas(request):
         params["estado"] = filtro
     # Sem `ligacao` a mensageria só devolve conversas ligadas a um lead e quem
     # escreve de um número ambíguo ou desconhecido nunca apareceria na lista.
-    params["ligacao"] = "ambigua" if filtro == "ambigua" else "todas"
+    params["ligacao"] = {"ambigua": "ambigua", "sem_origem": "desconhecida"}.get(filtro, "todas")
     cliente = ConversasClient()
     if filtro == "aguardando":
         estado, conversas, mais, completo = varrer_aguardando(cliente, site_id, pagina, params)

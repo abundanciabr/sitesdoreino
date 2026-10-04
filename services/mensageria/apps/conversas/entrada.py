@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from . import descadastro as descadastros
-from . import enderecos, leads
+from . import enderecos, leads, orientacao
 from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
@@ -126,8 +126,15 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
     pede_parar = enderecos.pede_descadastro(recebida.texto) or (
         recebida.canal == "email" and enderecos.pede_descadastro(recebida.assunto)
     )
+    equipe_confirma = False
+    if not historica and not pede_parar and _espera_o_email(existente, recebida):
+        email = orientacao.email_do_texto(recebida.texto)
+        if email:
+            # Só liga quando é inequívoco; senão a equipe confirma. Nunca responde com dado de lead.
+            ligacao = _ligar_pelo_email(existente, recebida, email)
+            equipe_confirma = ligacao is None
     try:
-        return _gravar(recebida, ligacao, momento, pede_parar, historica)
+        mensagem, nova = _gravar(recebida, ligacao, momento, pede_parar, historica, equipe_confirma)
     except IntegrityError:
         # Mesmo id externo entregue duas vezes ao mesmo tempo: vale a primeira.
         repetida = MensagemDaConversa.objects.filter(
@@ -137,10 +144,28 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
         if repetida is None or not recebida.id_externo:
             raise
         return repetida, False
+    if nova and not historica:
+        orientacao.apos_receber(mensagem, equipe_acabou_de_confirmar=equipe_confirma)
+    return mensagem, nova
+
+
+def _espera_o_email(conversa: Conversa | None, recebida: Recebida) -> bool:
+    """A conversa é ambígua, a orientação pediu o e-mail e a equipe ainda não está confirmando?"""
+    return (conversa is not None and recebida.canal == "whatsapp" and conversa.ligacao == "ambigua"
+            and conversa.orientacao_tipo == "ambigua" and not conversa.equipe_confirma)
+
+
+def _ligar_pelo_email(conversa: Conversa, recebida: Recebida, email: str) -> leads.Ligacao | None:
+    try:
+        return leads.confirmar_por_email(
+            site_id=recebida.site_id, email=email, telefone_da_conversa=recebida.endereco)
+    except Exception:  # noqa: BLE001 - na dúvida, a equipe confirma
+        logger.exception("conversas: falha ao conferir o e-mail informado")
+        return None
 
 
 def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
-            historica: bool = False) -> tuple[MensagemDaConversa, bool]:
+            historica: bool = False, equipe_confirma: bool = False) -> tuple[MensagemDaConversa, bool]:
     from apps.jornadas.eventos import emitir
     from apps.jornadas.tasks import relay_apos_commit
 
@@ -181,6 +206,12 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
             conversa.ligacao = ligacao.ligacao
             conversa.lead_id = ligacao.lead_id if ligacao.ligacao == "ligada" else ""
             campos += ["ligacao", "lead_id"]
+            if ligacao.ligacao == "ligada" and conversa.equipe_confirma:
+                conversa.equipe_confirma = False
+                campos.append("equipe_confirma")
+        if equipe_confirma and conversa.ligacao == "ambigua" and not conversa.equipe_confirma:
+            conversa.equipe_confirma = True
+            campos.append("equipe_confirma")
         conversa.save(update_fields=campos)
         registro = descadastros.registrar(conversa, momento) if pede_parar else None
         if not historica:

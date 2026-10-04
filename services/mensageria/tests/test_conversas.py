@@ -9,7 +9,7 @@ from django.core import mail
 from django.test import Client
 from django.utils import timezone
 
-from apps.conversas import enderecos, envio, leads
+from apps.conversas import enderecos, envio, leads, orientacao
 from apps.conversas.models import Conversa, Descadastro, MensagemDaConversa
 from apps.jornadas.models import OutboxEvent, Preferencia
 from apps.whatsapp.models import ConfiguracaoWhatsApp, MensagemWhatsApp
@@ -21,6 +21,7 @@ LEITURA = "token-leitura-conversas"
 ESCRITA = "token-escrita-conversas"
 LEAD_A = "11111111-1111-1111-1111-111111111111"
 LEAD_B = "22222222-2222-2222-2222-222222222222"
+_ORIENTAR = orientacao.apos_receber
 
 
 class Resposta:
@@ -61,6 +62,9 @@ def base(settings, monkeypatch):
         return Resposta(200, achado) if achado else Resposta(404, {})
 
     monkeypatch.setattr("apps.conversas.leads.httpx.get", get)
+    # A orientação fixa a quem não é do quiz tem os testes dela (fixture `orientando`);
+    # nos demais, quem escreve sem ser lead não recebe resposta automática.
+    monkeypatch.setattr("apps.conversas.orientacao.apos_receber", lambda *a, **k: "desligada")
     config = ConfiguracaoWhatsApp.objects.create(site_id=SITE, instancia="inst-abc", ativo=True)
     return {"contatos": contatos, "pedidos": pedidos, "config": config}
 
