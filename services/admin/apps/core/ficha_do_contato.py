@@ -85,7 +85,13 @@ TIPOS_DE_EVIDENCIA = {
     "resposta": "Resposta do quiz",
     "quiz": "Resposta do quiz",
     "mensagem": "Mensagem",
+    "respostas": "Resposta do quiz",
     "evento": "Atividade",
+    "timeline": "Atividade",
+    "linha_do_tempo": "Atividade",
+    "oportunidade": "Acompanhamento",
+    "historico": "Acompanhamento",
+    "nota": "Acompanhamento",
     "pedido": "Pedido",
 }
 PRIORIDADES = {"alta": "Alta", "media": "Média", "baixa": "Baixa"}
@@ -200,7 +206,7 @@ def _evidencias(bruto) -> list:
             continue
         tipo = _texto(item.get("tipo"))
         saida.append({
-            "tipo": TIPOS_DE_EVIDENCIA.get(tipo, "Registro"),
+            "tipo": TIPOS_DE_EVIDENCIA.get(tipo.casefold(), "Registro"),
             "trecho": _texto(item.get("trecho")) or "(sem trecho)",
         })
     return saida
