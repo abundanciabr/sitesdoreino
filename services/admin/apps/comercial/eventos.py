@@ -179,6 +179,8 @@ def ao_mensagem_recebida(envelope: dict):
         return None
     lead = data.get("lead")
     contato_id = _texto(lead.get("id") if isinstance(lead, dict) else lead, 80)
+    if data.get("lead_ligacao") != "ligada" or not contato_id:
+        return None  # o robô só atende contato do quiz; o resto fica na caixa para a equipe
     contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
