@@ -3044,6 +3044,17 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/atendimento-geral/",
+      "endereco": "/admin/crm/atendimento-geral/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Atendimento geral",
+      "descricao": "Mostra e edita o endereço do quiz e o caminho de atendimento que a orientação fixa cita a quem escreve no WhatsApp ou por e-mail sem ter feito o quiz.",
+      "observacao": "Só administradores. O texto mora na mensageria; cada alteração fica na auditoria."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/ofertas-dos-quizzes/",
       "endereco": "/admin/crm/ofertas-dos-quizzes/",
       "alcance": "publico",
