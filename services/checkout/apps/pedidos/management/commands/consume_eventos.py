@@ -40,7 +40,7 @@ from datetime import datetime, timezone
 
 import redis
 from django.core.management.base import BaseCommand
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, InterfaceError, OperationalError, transaction
 from django.db.models import Q
 
 from django.utils import timezone as django_timezone
@@ -280,6 +280,28 @@ def _processar(r, stream: str, msg_id, campos) -> None:
     r.xack(stream, GRUPO, msg_id)
 
 
+def _processar_isolada(r, stream: str, msg_id, campos) -> None:
+    """Uma mensagem que estoura não leva as vizinhas do mesmo lote junto.
+
+    Sem este isolamento, a exceção da primeira mensagem do lote saía do laço e
+    as seguintes, já entregues ou já reivindicadas (com a contagem somada),
+    ficavam sem rodar até chegarem juntas à fila morta. Em 03/10/2026 uma
+    reversão sem `order_id` fez isso aqui e nas outras células. A que falhou
+    continua no PEL, sem ACK, e segue a reentrega normal. Queda do banco
+    continua derrubando o worker, como antes: aí o problema não é a mensagem.
+    """
+    try:
+        _processar(r, stream, msg_id, campos)
+    except (OperationalError, InterfaceError):
+        raise
+    except Exception:  # noqa: BLE001 - isola a falha de UMA mensagem
+        logger.exception(
+            "evento do stream %s (msg %s) falhou; segue no PEL para reentrega",
+            stream,
+            msg_id,
+        )
+
+
 def _mover_para_fila_morta(r, stream: str, msg_id, campos, entregas: int) -> None:
     # Defensivo de propósito: uma mensagem cujo b"json" nem parseia é
     # exatamente o tipo de veneno que acaba aqui — a fila morta não pode
@@ -343,7 +365,7 @@ def reivindicar_e_reprocessar_presas(r) -> None:
             if entregas >= MAX_ENTREGAS:
                 _mover_para_fila_morta(r, stream, msg_id, campos, entregas)
             else:
-                _processar(r, stream, msg_id, campos)
+                _processar_isolada(r, stream, msg_id, campos)
 
 
 class Command(BaseCommand):
@@ -365,4 +387,4 @@ class Command(BaseCommand):
             )
             for stream, msgs in resp or []:
                 for msg_id, campos in msgs:
-                    _processar(r, stream.decode(), msg_id, campos)
+                    _processar_isolada(r, stream.decode(), msg_id, campos)

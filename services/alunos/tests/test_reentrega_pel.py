@@ -24,6 +24,7 @@ from apps.eventos.management.commands.consume_eventos import (
     HANDLERS,
     IDLE_MS_REENTREGA,
     MAX_ENTREGAS,
+    processar_isolada,
     reentregar_presas,
 )
 from apps.eventos.models import EventoProcessado
@@ -175,3 +176,42 @@ def test_na_quinta_entrega_vai_para_fila_morta_e_handler_nao_roda(r, stream, cap
         and envelope["event_id"] in registro.getMessage()
         for registro in caplog.records
     )
+
+
+# --- Uma mensagem ruim não leva as boas do mesmo lote para a fila morta -----
+# Medido em produção em 03/10/2026: uma reversão recusada na borda estourava
+# antes das válidas do mesmo lote, e as vizinhas chegavam juntas à fila morta.
+
+
+def _ruim() -> dict:
+    envelope = _envelope("order-ruim")
+    envelope["version"] = 99  # VersaoDesconhecida: estoura antes de gravar
+    return envelope
+
+
+def test_mensagem_nova_ruim_nao_impede_a_boa_do_mesmo_lote(r, stream):
+    id_ruim = r.xadd(stream, {"json": json.dumps(_ruim())})
+    boa = _envelope("order-boa-nova")
+    r.xadd(stream, {"json": json.dumps(boa)})
+    lote = r.xreadgroup(GRUPO, CONSUMIDOR, {stream: ">"}, count=10)
+
+    for _, msgs in lote:
+        for msg_id, campos in msgs:
+            processar_isolada(r, stream, msg_id, campos, HANDLERS)
+
+    assert Matricula.objects.filter(order_id="order-boa-nova").count() == 1
+    pendentes = r.xpending_range(stream, GRUPO, "-", "+", 10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]
+
+
+def test_presa_ruim_nao_impede_a_boa_reivindicada_junto(r, stream):
+    id_ruim = _prender(r, stream, _ruim(), entregas=1)
+    boa = _envelope("order-boa-presa")
+    _prender(r, stream, boa, entregas=1)
+
+    reentregar_presas(r, stream, HANDLERS)
+
+    assert Matricula.objects.filter(order_id="order-boa-presa").count() == 1
+    assert EventoProcessado.objects.filter(event_id=boa["event_id"]).count() == 1
+    pendentes = r.xpending_range(stream, GRUPO, "-", "+", 10)
+    assert [p["message_id"] for p in pendentes] == [id_ruim]
