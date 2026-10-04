@@ -15,12 +15,14 @@ from apps.core.views import (
     healthz,
     landing,
     ligar_avisos,
+    llms_txt,
     marcar_notificacao_lida,
     marcar_todas_notificacoes_lidas,
     manifesto_do_app,
     notificacoes,
     pagina_de_oferta,
     pagina_de_oferta_roblox,
+    robots_txt,
     service_worker,
     servir_estatico,
     sitemap_xml,
@@ -34,6 +36,11 @@ from apps.core.views import (
 urlpatterns = [
     path("healthz", healthz),
     path("sitemap.xml", sitemap_xml, name="sitemap_xml"),  # rota de máquina (D6)
+    # Também rotas de máquina, na raiz por convenção: o `robots.txt` é onde todo
+    # buscador olha primeiro, e o `llms.txt` é onde as IAs procuram o resumo do
+    # site (04/10/2026).
+    path("robots.txt", robots_txt, name="robots_txt"),
+    path("llms.txt", llms_txt, name="llms_txt"),
     # O app instalado na tela do celular. As duas são rotas de MÁQUINA, como o
     # sitemap: nunca levam prefixo de idioma. E as duas moram na RAIZ por
     # exigência do navegador, não por gosto — o manifesto é do site inteiro, e

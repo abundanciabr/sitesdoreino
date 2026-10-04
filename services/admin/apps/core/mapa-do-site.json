@@ -306,6 +306,24 @@
     },
     {
       "celula": "funil",
+      "rota": "robots.txt",
+      "endereco": "/robots.txt",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O aviso para os robôs de busca",
+      "descricao": "O arquivo que o Google e outros buscadores leem primeiro: diz que podem visitar o site, quais áreas de conta não interessam a eles e onde está a lista de páginas."
+    },
+    {
+      "celula": "funil",
+      "rota": "llms.txt",
+      "endereco": "/llms.txt",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O resumo da escola para IAs",
+      "descricao": "O texto que as IAs procuram para entender o site antes de falar dele ou recomendar melhorias: o que é a escola, os cursos, o que já existe e a tecnologia usada. O texto fica em services/funil/apps/core/llms.txt."
+    },
+    {
+      "celula": "funil",
       "rota": "^static/(?P<path>.*)$",
       "endereco": "/static/(?P<path>.*)$",
       "alcance": "publico",

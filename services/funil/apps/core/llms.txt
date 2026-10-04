@@ -1,0 +1,45 @@
+# Meshcraft Academy
+
+> Escola online que ensina modelagem 3D no Blender para criar, vender e entregar itens UGC no Roblox. Para maiores de 18 anos. O site é em português, com versões em inglês e espanhol, e ainda está em versão de testes, construído aos poucos.
+
+Este texto é para IAs que vão falar sobre o site ou recomendar melhorias para ele. Tudo aqui foi conferido no próprio site. O que não estiver escrito aqui, pergunte ao responsável em vez de supor.
+
+## Cursos
+
+- [Primeiros Dólares com Roblox](https://meshcraft.top/primeiros-dolares-com-roblox): aprender a criar itens 3D para Roblox e montar um portfólio para oferecer o serviço e buscar renda.
+- [Desafio Como Ganhar em Dólar com Roblox](https://meshcraft.top/desafio-como-ganhar-em-dolar-com-roblox): um desafio curto para dar os primeiros passos na criação para Roblox.
+- Profissional: o segundo curso da escola, ainda sem página pública de venda.
+
+## O que o site já tem
+
+- [Cadastro](https://meshcraft.top/cadastro) e [entrada na conta](https://meshcraft.top/login).
+- [Sala de aula](https://meshcraft.top/cursos/) para alunos matriculados, com vídeos do YouTube e do Vimeo dentro das aulas.
+- Avaliação de trabalhos com réguas próprias: o Teste STUDS (Silhueta, Topologia, UV, Densidade e eScala, de 0 a 25), a Rubrica de Encomenda e a Rubrica de Produto. Um assistente de IA ajuda a escrever o laudo.
+- [Fórum](https://meshcraft.top/forum/) da comunidade.
+- [Pontos e conquistas](https://meshcraft.top/conquistas/) dos alunos.
+- [Portfólio público](https://meshcraft.top/portfolio/) dos trabalhos dos alunos.
+- Encomendas de clientes feitas por alunos.
+- [Documentos públicos](https://meshcraft.top/docs/) da escola.
+- Quiz de entrada, pagamento por Appmax e Mercado Pago, e avisos por e-mail, WhatsApp e na tela do celular.
+- Aplicativo instalável no celular.
+- Painel da equipe com CRM, métricas e robôs de IA.
+- Ainda não existem: guilda e mentor.
+
+## Tecnologia
+
+- Python e Django, com PostgreSQL e Redis.
+- As páginas são montadas no servidor com templates do Django, CSS próprio e Alpine.js. Todas são pensadas primeiro para o celular.
+- O site não usa React, Next.js, Bubble, WordPress nem plugins.
+- A IA usada no site é o Claude, da Anthropic.
+- Quem programa o site é o Claude Code, dentro do projeto.
+
+## Como recomendar
+
+- Proponha soluções que caibam nesta tecnologia e melhore o que já existe em vez de começar do zero.
+- Não proponha trocar de plataforma. Se recomendar um serviço pago novo, diga quanto ele custa por mês.
+- Explique em português simples: quem decide não é técnico.
+- Termine com um pedido curto e claro, que possa ser colado no Claude Code para ser construído.
+
+## Mais
+
+- [Lista de páginas do site](https://meshcraft.top/sitemap.xml)

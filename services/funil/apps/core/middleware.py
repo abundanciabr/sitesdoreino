@@ -545,7 +545,15 @@ CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js", "/google0e78b54775677e95.
 # não no caminho).
 # A `/telemetria` precisa do Site para conferir o contexto assinado, e fica fora
 # da identidade do visitante: ela lê o cookie e nunca sorteia um número novo.
-CAMINHOS_DE_MAQUINA = ("/sitemap.xml", "/manifest.webmanifest", "/telemetria")
+# O `robots.txt` e o `llms.txt` (04/10/2026) seguem o sitemap: o conteúdo
+# depende do Site, e nenhum dos dois se localiza.
+CAMINHOS_DE_MAQUINA = (
+    "/sitemap.xml",
+    "/manifest.webmanifest",
+    "/telemetria",
+    "/robots.txt",
+    "/llms.txt",
+)
 
 # D6: TODA rota de máquina desta célula — as isentas de Site e a que precisa
 # dele. Nenhuma delas se localiza. As duas listas acima são conferidas no

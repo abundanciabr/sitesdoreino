@@ -230,6 +230,8 @@ AREAS = (
             "/sw.js",
             "/manifest.webmanifest",
             "/sitemap.xml",
+            "/robots.txt",
+            "/llms.txt",
             "/healthz",
             "/google0e78b54775677e95.html",
             "/alunos",

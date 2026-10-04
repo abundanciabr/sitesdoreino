@@ -723,6 +723,47 @@ def sitemap_xml(request):
     return HttpResponse(corpo, content_type="application/xml")
 
 
+# O resumo do Meshcraft para IAs (04/10/2026). O texto mora num arquivo ao lado
+# desta view para ser editado sem mexer em código.
+TEXTO_PARA_IAS = Path(__file__).resolve().parent / "llms.txt"
+
+
+@require_safe
+def llms_txt(request):
+    """`/llms.txt`: o resumo da escola que as IAs procuram na raiz do site.
+    Só no meshcraft.top, e sem prefixo de idioma."""
+    if getattr(request, "idioma", None) is not None or request.path != "/llms.txt":
+        raise Http404("llms.txt não tem prefixo de idioma")
+    if request.site["host"] != "meshcraft.top":
+        raise Http404("o resumo para IAs é só do meshcraft.top")
+    return HttpResponse(
+        TEXTO_PARA_IAS.read_text(encoding="utf-8"),
+        content_type="text/plain; charset=utf-8",
+    )
+
+
+# Áreas de conta e de compra: nada nelas serve a um buscador.
+FECHADO_PARA_ROBOS = ("/admin/", "/api/", "/checkout/", "/notificacoes", "/ver-como")
+
+
+@require_safe
+def robots_txt(request):
+    """`/robots.txt`: libera os buscadores, fecha as áreas de conta e aponta o
+    sitemap (e, no meshcraft.top, o resumo para IAs); 404 em site monolíngue."""
+    if getattr(request, "idioma", None) is not None or request.path != "/robots.txt":
+        raise Http404("robots.txt não tem prefixo de idioma")
+    if getattr(request, "i18n", None) is None:
+        raise Http404("site sem robots.txt")
+    host = request.site["host"]
+    linhas = []
+    if host == "meshcraft.top":
+        linhas.append(f"# Resumo do site para IAs: https://{host}/llms.txt")
+    linhas.append("User-agent: *")
+    linhas.extend(f"Disallow: {caminho}" for caminho in FECHADO_PARA_ROBOS)
+    linhas.extend(["", f"Sitemap: https://{host}/sitemap.xml"])
+    return HttpResponse("\n".join(linhas) + "\n", content_type="text/plain; charset=utf-8")
+
+
 # O app instalável na tela do celular: manifesto e service worker, na raiz do site.
 COR_DO_APP = "#16a34a"
 FUNDO_DO_APP = "#f7f7f8"
