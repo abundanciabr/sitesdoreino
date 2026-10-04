@@ -254,3 +254,171 @@ def test_data_impossivel_cai_no_periodo_padrao():
     assert crm_resultados._data("2026-02-28", padrao) == date(2026, 2, 28)
     assert crm_resultados._inteiro("12") == 12
     assert crm_resultados._inteiro("²") is None and crm_resultados._inteiro("9" * 10) is None
+
+
+# --- funil por etapa, qualidade do atendimento e desempenho técnico (04/10/2026) ---------------
+
+METRICAS = "http://metricas:8000/api/metricas"
+
+
+def _grupo_funil(**extra):
+    base = {"abertas": 40, "com_resposta": 12, "com_link_enviado": 6, "com_pedido": 4, "ganhas": 3,
+            "receita_centavos": 29700, "perdidas": 1, "amostra_insuficiente": False}
+    return {**base, **extra}
+
+
+def _corpo_do_funil():
+    return {
+        "site_id": "site-a", "desde": "2026-09-01", "ate": "2026-10-03", "amostra_minima": 30,
+        "oportunidades": 45, "mensagens_recebidas": 20,
+        "por_estrategia": [
+            dict(_grupo_funil(), estrategia_versao=1),
+            dict(_grupo_funil(abertas=5, com_resposta=1, com_link_enviado=0, com_pedido=0, ganhas=0, receita_centavos=0,
+                              perdidas=0, amostra_insuficiente=True), estrategia_versao=2),
+        ],
+        "por_atendente": [
+            dict(_grupo_funil(abertas=30), atendente="agente"),
+            dict(_grupo_funil(abertas=15, amostra_insuficiente=True), atendente="pessoa"),
+        ],
+    }
+
+
+@pytest.fixture
+def metricas(monkeypatch):
+    monkeypatch.setenv("METRICAS_API_URL", METRICAS)
+    monkeypatch.setenv("METRICAS_API_TOKEN", "t-metricas")
+
+
+@respx.mock
+def test_funil_aparece_na_tela_com_amostra_insuficiente(monkeypatch, metricas):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    rota = respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=_corpo_do_funil()))
+    r = dentro().get(reverse("crm_resultados"), {"site_id": "site-a", "desde": "2026-09-01", "ate": "2026-10-03"})
+    assert r.status_code == 200
+    params = rota.calls.last.request.url.params
+    assert params["site_id"] == "site-a" and params["desde"] == "2026-09-01" and params["ate"] == "2026-10-03"
+    assert rota.calls.last.request.headers["Authorization"] == "Bearer t-metricas"
+    funil = r.context["funil"]
+    assert funil["disponivel"] and funil["total"]["abertas"] == 45 and funil["total"]["ganhas"] == 3
+    assert [l["nome"] for l in funil["por_estrategia"]] == ["Versão 1", "Versão 2"]
+    assert [l["nome"] for l in funil["por_atendente"]] == ["Agente", "Pessoa"]
+    html = r.content.decode()
+    assert "Funil de vendas" in html and "Por versão de estratégia" in html and "Por atendente" in html
+    assert "R$ 297,00" in html and "amostra insuficiente" in html
+    # sem o registro dos agentes, o que só ele sabe fica indisponível
+    assert funil["com_mensagem_do_agente"] is None
+
+
+@respx.mock
+def test_metricas_fora_do_ar_vira_aviso_e_o_resto_da_pagina_continua(monkeypatch, metricas):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(503))
+    r = dentro().get(reverse("crm_resultados"), {"site_id": "site-a"})
+    assert r.status_code == 200
+    assert r.context["funil"]["disponivel"] is False
+    html = r.content.decode()
+    assert "O funil ainda está indisponível" in html and "Conversão dos quizzes" in html
+    assert "Ainda indisponível: os agentes comerciais ainda não registram trabalho" in html
+
+
+@respx.mock
+def test_sem_par_de_metricas_ou_sem_site_o_funil_diz_indisponivel(monkeypatch):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    sem_par = dentro().get(reverse("crm_resultados"), {"site_id": "site-a"})
+    assert sem_par.status_code == 200 and "aguarda a conexão com a medição" in sem_par.content.decode()
+    sem_site = dentro().get(reverse("crm_resultados"))
+    assert sem_site.status_code == 200 and "de qual site perguntar" in sem_site.content.decode()
+
+
+@respx.mock
+def test_funil_fora_do_contrato_vira_aviso(monkeypatch, metricas):
+    monkeypatch.setattr(crm_resultados, "_modelos_comerciais", lambda: None)
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    torto = _corpo_do_funil()
+    torto["por_estrategia"][0]["abertas"] = "muitas"
+    respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=torto))
+    r = dentro().get(reverse("crm_resultados"), {"site_id": "site-a"})
+    assert r.status_code == 200 and r.context["funil"]["disponivel"] is False
+
+
+@pytest.mark.skipif(not apps.is_installed("apps.comercial"), reason="agentes comerciais ainda não estão nesta célula")
+@respx.mock
+def test_qualidade_e_desempenho_batem_com_os_trabalhos_criados(metricas):
+    Trabalho = apps.get_model("comercial", "TrabalhoComercial")
+    Decisao = apps.get_model("comercial", "DecisaoComercial")
+    agora = timezone.now()
+
+    def trabalho(chave, tipo="atender_mensagem", **campos):
+        return Trabalho.objects.create(tipo=tipo, chave_idempotencia=chave, site_id=campos.pop("site_id", "site-a"), **campos)
+
+    def decisao(t, call, ferramenta, resultado, entrada=None, saida=None):
+        return Decisao.objects.create(trabalho=t, call_id=call, papel="atendimento", ferramenta=ferramenta,
+                                      resultado=resultado, entrada=entrada or {}, saida=saida or {})
+
+    t1 = trabalho("q1", entrada={"descadastro": True}, tentativas=1, iniciado_em=agora)
+    t2 = trabalho("q2", estado="falhou", tentativas=3, iniciado_em=agora)
+    t3 = trabalho("q3", estado="envio_incerto", tentativas=2)
+    t4 = trabalho("q4", tentativas=1, iniciado_em=agora)
+    teste = trabalho("q5", teste=True, estado="falhou", entrada={"descadastro": True})
+    outro_site = trabalho("q6", site_id="site-b", estado="falhou")
+    decisao(t4, "p1", "passar_para_responsavel", "feito", entrada={"motivo": "O lead pediu para falar com uma pessoa"})
+    decisao(t4, "p2", "enviar_mensagem", "feito", saida={"resultado": "enviada", "canal": "whatsapp"})
+    decisao(t1, "p3", "enviar_mensagem", "recusado", saida={"resultado": "fora_da_janela"})
+    decisao(t2, "p4", "enviar_mensagem", "recusado", saida={"resultado": "fora_do_horario"})
+    decisao(t3, "p5", "enviar_mensagem", "recusado", saida={"resultado": "limite_diario"})
+    decisao(t3, "p6", "enviar_mensagem", "recusado", saida={"resultado": "limite_do_dia"})
+    decisao(teste, "p7", "enviar_mensagem", "recusado", saida={"resultado": "fora_da_janela"})
+    decisao(outro_site, "p8", "enviar_mensagem", "recusado", saida={"resultado": "fora_da_janela"})
+    # o trabalho demorou 90 segundos para responder e esperou 30 na fila
+    Trabalho.objects.filter(pk=t4.pk).update(criado_em=agora - timedelta(seconds=90), iniciado_em=agora - timedelta(seconds=60))
+    Decisao.objects.filter(trabalho=t4, call_id="p2").update(criada_em=agora)
+
+    desde = (agora - timedelta(days=1)).date()
+    ate = (agora + timedelta(days=1)).date()
+    q = crm_resultados.atendimento.qualidade(desde, ate, "site-a")
+    assert q["disponivel"] and q["trabalhos"] == 4
+    assert q["descadastros"] == 1 and q["descadastros_fonte"] == "agentes"
+    assert q["passaram_para_pessoa"] == 1 and q["passagem_por_motivo"] == [{"nome": "Pediu para falar com uma pessoa", "n": 1}]
+    assert q["falharam"] == 1 and q["envio_incerto"] == 1
+    assert (q["janela"], q["horario"], q["teto"], q["recusadas_total"]) == (1, 1, 2, 4)
+    tudo = crm_resultados.atendimento.qualidade(desde, ate, "")
+    assert tudo["trabalhos"] == 5 and tudo["falharam"] == 2 and tudo["janela"] == 2  # teste fica fora
+
+    d = crm_resultados.atendimento.desempenho(desde, ate, "site-a")
+    assert d["disponivel"] and d["trabalhos"] == 4
+    assert d["respostas"] == 1 and d["resposta_media_texto"] == "1 min 30 s" and d["resposta_pior_texto"] == "1 min 30 s"
+    assert d["fila_amostra"] == 3 and d["fila_pior_texto"] == "30 s"
+    assert d["tentativas_amostra"] == 4 and d["tentativas_maximo"] == 3 and d["tentativas_media_texto"] == "1,8"
+    assert d["falharam"] == 1 and d["envio_incerto"] == 1 and d["falhas_taxa_texto"] == "25,0%"
+
+    # na tela, com o filtro de período e de site
+    respx.get(BASE + "/resultados/comerciais").mock(return_value=httpx.Response(200, json=fatos()))
+    respx.get(METRICAS + "/crm/funil").mock(return_value=httpx.Response(200, json=_corpo_do_funil()))
+    r = dentro().get(reverse("crm_resultados"), {"site_id": "site-a", "desde": desde.isoformat(), "ate": ate.isoformat()})
+    assert r.status_code == 200
+    assert r.context["qualidade"]["falharam"] == 1 and r.context["desempenho"]["respostas"] == 1
+    assert r.context["funil"]["com_mensagem_do_agente"] == 0  # t4 é sem oportunidade: só conta quem tem oportunidade
+    html = r.content.decode()
+    assert "Qualidade do atendimento" in html and "Desempenho técnico" in html and "1 min 30 s" in html
+    assert "O lead pediu" not in html  # a frase do agente nunca aparece, só o grupo
+
+
+@pytest.mark.skipif(not apps.is_installed("apps.comercial"), reason="agentes comerciais ainda não estão nesta célula")
+@respx.mock
+def test_descadastros_vem_da_mensageria_quando_ela_responde(monkeypatch):
+    monkeypatch.setenv("MENSAGERIA_API_URL", MENSAGERIA)
+    monkeypatch.setenv("MENSAGERIA_API_TOKEN", "t")
+    respx.get(MENSAGERIA + "/conversas/resultados").mock(return_value=httpx.Response(200, json={
+        "por_canal": [{"canal": "whatsapp", "descadastros": 3}, {"canal": "email", "descadastros": 2}]}))
+    hoje = timezone.localdate()
+    q = crm_resultados.atendimento.qualidade(hoje, hoje, "site-a")
+    assert q["descadastros"] == 5 and q["descadastros_fonte"] == "mensageria"
+
+
+def test_duracao_em_portugues_simples():
+    d = crm_resultados.atendimento.duracao
+    assert d(None) == "ainda indisponível"
+    assert (d(0), d(45), d(125), d(4200)) == ("0 s", "45 s", "2 min 05 s", "1 h 10 min")

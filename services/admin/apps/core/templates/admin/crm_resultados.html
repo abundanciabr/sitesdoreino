@@ -3,7 +3,7 @@
 {% block titulo %}Resultados do CRM{% endblock %}
 {% block corpo %}
 <style>
-.res{max-width:1300px}.res h1{font-size:32px;letter-spacing:-1px;margin-bottom:4px}.res-cabecalho{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:20px}.res .peneira{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;align-items:end;margin:16px 0 24px}.res .peneira button{margin:0}.res-numeros{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:24px}.res-numeros strong{display:block;font-size:26px}.res-numeros span{color:var(--texto-2);font-size:13px}.res-numeros small{display:block;color:var(--texto-3);font-size:12px;margin-top:4px}.res section{margin:28px 0}.res table{width:100%;border-collapse:collapse;font-size:14px}.res th,.res td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);vertical-align:top}.res th{color:var(--texto-2);font-weight:600}.res td.num,.res th.num{text-align:right;white-space:nowrap}.res .tabela{overflow-x:auto}.res .nota{font-size:13px;color:var(--texto-3);max-width:860px}.res .indisponivel{color:var(--texto-3);font-style:italic}.res .inconclusivo{color:#f1bb68}
+.res{max-width:1300px}.res h1{font-size:32px;letter-spacing:-1px;margin-bottom:4px}.res-cabecalho{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:20px}.res .peneira{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;align-items:end;margin:16px 0 24px}.res .peneira button{margin:0}.res-numeros{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:24px}.res-numeros strong{display:block;font-size:26px}.res-numeros span{color:var(--texto-2);font-size:13px}.res-numeros small{display:block;color:var(--texto-3);font-size:12px;margin-top:4px}.res section{margin:28px 0}.res table{width:100%;border-collapse:collapse;font-size:14px}.res th,.res td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--linha);vertical-align:top}.res th{color:var(--texto-2);font-weight:600}.res td.num,.res th.num{text-align:right;white-space:nowrap}.res .tabela{overflow-x:auto}.res .nota{font-size:13px;color:var(--texto-3);max-width:860px}.res .indisponivel{color:var(--texto-3);font-style:italic}.res .inconclusivo{color:#f1bb68}.res h3{font-size:16px;margin:18px 0 6px}
 @media(max-width:800px){.res-numeros{grid-template-columns:repeat(2,1fr)}.res .peneira{grid-template-columns:1fr 1fr}.res-cabecalho{flex-direction:column;align-items:start}}@media(max-width:480px){.res-numeros,.res .peneira{grid-template-columns:1fr}}
 </style>
 <main class="envolucro res">
@@ -82,6 +82,62 @@
     <div class="tabela"><table><thead><tr><th>Papel</th><th class="num">Versão</th><th class="num">Pessoas atendidas</th><th class="num">Vendas</th><th class="num">Conversão</th><th class="num">Receita líquida</th><th class="num">Consumo dos modelos</th><th>Amostra</th></tr></thead><tbody>
     {% for l in versoes %}<tr><td>{{ l.papel_nome }}</td><td class="num">{{ l.versao|default:"—" }}</td><td class="num">{{ l.pessoas }}</td><td class="num">{{ l.vendas }}</td><td class="num">{{ l.conversao_texto }}</td><td class="num">{{ l.liquido_texto }}</td><td class="num">{{ l.custo_texto }}</td><td>{% if l.suficiente %}suficiente{% else %}<span class="inconclusivo">insuficiente</span>{% endif %}</td></tr>{% empty %}<tr><td colspan="8" class="indisponivel">Nenhum agente atendeu pessoas deste grupo.</td></tr>{% endfor %}
     </tbody></table></div>
+    {% endif %}
+  </section>
+  <section aria-labelledby="t-funil"><h2 id="t-funil" class="titulo-de-bloco">Funil de vendas</h2>
+    <p class="nota">Do site inteiro no período; não muda com os filtros de quiz, oferta e campanha. Cada oportunidade conta uma vez, na versão de estratégia e no atendente mais recentes.</p>
+    {% if not funil.disponivel %}<p class="indisponivel">{{ funil.aviso }}</p>{% else %}
+    {% if funil.total.amostra_insuficiente %}<p class="aviso inconclusivo">Amostra insuficiente: com menos de {{ funil.amostra_minima }} oportunidades abertas, os números mostram o que aconteceu, mas não comparam abordagens.</p>{% endif %}
+    <div class="res-numeros">
+      <div class="cartao"><strong>{{ funil.total.abertas }}</strong><span>Oportunidades abertas</span><small>{{ funil.oportunidades }} oportunidade{{ funil.oportunidades|pluralize:"s" }} com movimento no período</small></div>
+      <div class="cartao"><strong>{% if funil.com_mensagem_do_agente is None %}<span class="indisponivel">ainda indisponível</span>{% else %}{{ funil.com_mensagem_do_agente }}{% endif %}</strong><span>Com mensagem do agente</span><small>Pessoas a quem um agente enviou mensagem</small></div>
+      <div class="cartao"><strong>{{ funil.total.com_resposta }}</strong><span>Com resposta do lead</span><small>{{ funil.mensagens_recebidas }} mensagem{{ funil.mensagens_recebidas|pluralize:"ns" }} recebida{{ funil.mensagens_recebidas|pluralize:"s" }}</small></div>
+      <div class="cartao"><strong>{{ funil.total.com_link_enviado }}</strong><span>Com link de compra enviado</span><small>&nbsp;</small></div>
+      <div class="cartao"><strong>{{ funil.total.com_pedido }}</strong><span>Com pedido</span><small>&nbsp;</small></div>
+      <div class="cartao"><strong>{{ funil.total.ganhas }}</strong><span>Ganhas</span><small>{{ funil.total.perdidas }} perdida{{ funil.total.perdidas|pluralize:"s" }}</small></div>
+      <div class="cartao"><strong>{{ funil.total.receita_texto }}</strong><span>Receita</span><small>Pagamento confirmado pelo provedor, menos estornos</small></div>
+    </div>
+    <h3>Por versão de estratégia</h3>
+    <div class="tabela"><table><thead><tr><th>Versão</th><th class="num">Abertas</th><th class="num">Com resposta</th><th class="num">Com link</th><th class="num">Com pedido</th><th class="num">Ganhas</th><th class="num">Receita</th><th>Amostra</th></tr></thead><tbody>
+    {% for l in funil.por_estrategia %}<tr><td>{{ l.nome }}</td><td class="num">{{ l.abertas }}</td><td class="num">{{ l.com_resposta }}</td><td class="num">{{ l.com_link_enviado }}</td><td class="num">{{ l.com_pedido }}</td><td class="num">{{ l.ganhas }}</td><td class="num">{{ l.receita_texto }}</td><td>{% if l.amostra_insuficiente %}<span class="inconclusivo">amostra insuficiente</span>{% else %}suficiente{% endif %}</td></tr>{% empty %}<tr><td colspan="8" class="indisponivel">Nenhuma oportunidade neste período.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <h3>Por atendente (pessoa ou agente)</h3>
+    <div class="tabela"><table><thead><tr><th>Atendente</th><th class="num">Abertas</th><th class="num">Com resposta</th><th class="num">Com link</th><th class="num">Com pedido</th><th class="num">Ganhas</th><th class="num">Receita</th><th>Amostra</th></tr></thead><tbody>
+    {% for l in funil.por_atendente %}<tr><td>{{ l.nome }}</td><td class="num">{{ l.abertas }}</td><td class="num">{{ l.com_resposta }}</td><td class="num">{{ l.com_link_enviado }}</td><td class="num">{{ l.com_pedido }}</td><td class="num">{{ l.ganhas }}</td><td class="num">{{ l.receita_texto }}</td><td>{% if l.amostra_insuficiente %}<span class="inconclusivo">amostra insuficiente</span>{% else %}suficiente{% endif %}</td></tr>{% empty %}<tr><td colspan="8" class="indisponivel">Nenhuma oportunidade neste período.</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="t-qualidade"><h2 id="t-qualidade" class="titulo-de-bloco">Qualidade do atendimento</h2>
+    <p class="nota">Trabalho dos agentes no período{% if filtros.site_id %}, neste site{% endif %}. Contas de teste ficam fora.</p>
+    {% if not qualidade.disponivel %}<p class="indisponivel">Ainda indisponível: os agentes comerciais ainda não registram trabalho neste painel.</p>{% else %}
+    <div class="res-numeros">
+      <div class="cartao"><strong>{{ qualidade.descadastros }}</strong><span>Descadastros</span><small>Pessoas que pediram para não receber mais ({% if qualidade.descadastros_fonte == "mensageria" %}contados pela mensageria{% else %}contados nos atendimentos dos agentes{% endif %})</small></div>
+      <div class="cartao"><strong>{{ qualidade.passaram_para_pessoa }}</strong><span>Passaram para uma pessoa</span><small>Atendimentos entregues à equipe</small></div>
+      <div class="cartao"><strong>{{ qualidade.falharam }}</strong><span>Trabalhos que falharam</span><small>de {{ qualidade.trabalhos }} trabalho{{ qualidade.trabalhos|pluralize:"s" }} no período</small></div>
+      <div class="cartao"><strong>{{ qualidade.envio_incerto }}</strong><span>Envios sem confirmação</span><small>O canal não confirmou se a mensagem saiu; ela não é enviada duas vezes</small></div>
+      <div class="cartao"><strong>{{ qualidade.recusadas_total }}</strong><span>Mensagens recusadas pelo canal</span><small>{{ qualidade.janela }} por janela, {{ qualidade.horario }} por horário, {{ qualidade.teto }} por teto diário</small></div>
+      <div class="cartao"><strong>{{ qualidade.esperando_teto_de_gasto }}</strong><span>Esperando o teto de gasto</span><small>Trabalhos parados aguardando autorização de gasto</small></div>
+    </div>
+    <div class="tabela"><table><thead><tr><th>Por que a conversa foi para uma pessoa</th><th class="num">Atendimentos</th></tr></thead><tbody>
+    {% for l in qualidade.passagem_por_motivo %}<tr><td>{{ l.nome }}</td><td class="num">{{ l.n }}</td></tr>{% empty %}<tr><td colspan="2" class="indisponivel">Nenhum atendimento passou para uma pessoa neste período.</td></tr>{% endfor %}
+    </tbody></table></div>
+    <div class="tabela"><table><thead><tr><th>Mensagem recusada porque</th><th class="num">Mensagens</th></tr></thead><tbody>
+    {% for l in qualidade.recusadas %}<tr><td>{{ l.nome }}</td><td class="num">{{ l.n }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% endif %}
+  </section>
+
+  <section aria-labelledby="t-desempenho"><h2 id="t-desempenho" class="titulo-de-bloco">Desempenho técnico</h2>
+    <p class="nota">Quanto os agentes demoram e quantas vezes precisam tentar. A espera na fila considera só os trabalhos que começam na hora (atender mensagem e analisar o lead).</p>
+    {% if not desempenho.disponivel %}<p class="indisponivel">Ainda indisponível: os agentes comerciais ainda não registram trabalho neste painel.</p>{% else %}
+    <div class="res-numeros">
+      <div class="cartao"><strong>{% if desempenho.resposta_media_texto %}{{ desempenho.resposta_media_texto }}{% else %}<span class="indisponivel">sem respostas</span>{% endif %}</strong><span>Tempo médio de resposta ao lead</span><small>{% if desempenho.resposta_pior_texto %}Pior caso: {{ desempenho.resposta_pior_texto }}, em {{ desempenho.respostas }} resposta{{ desempenho.respostas|pluralize:"s" }}{% else %}Nenhuma mensagem de lead foi respondida neste período.{% endif %}</small></div>
+      <div class="cartao"><strong>{% if desempenho.fila_media_texto %}{{ desempenho.fila_media_texto }}{% else %}<span class="indisponivel">sem trabalhos</span>{% endif %}</strong><span>Espera média na fila</span><small>{% if desempenho.fila_pior_texto %}Pior caso: {{ desempenho.fila_pior_texto }}, em {{ desempenho.fila_amostra }} trabalho{{ desempenho.fila_amostra|pluralize:"s" }}{% else %}Nenhum trabalho começou neste período.{% endif %}</small></div>
+      <div class="cartao"><strong>{% if desempenho.tentativas_media_texto %}{{ desempenho.tentativas_media_texto }}{% else %}<span class="indisponivel">sem trabalhos</span>{% endif %}</strong><span>Tentativas por trabalho</span><small>{% if desempenho.tentativas_maximo %}Máximo: {{ desempenho.tentativas_maximo }} tentativa{{ desempenho.tentativas_maximo|pluralize:"s" }}{% else %}Nenhum trabalho tentado neste período.{% endif %}</small></div>
+      <div class="cartao"><strong>{{ desempenho.falharam }}</strong><span>Falhas</span><small>{% if desempenho.falhas_taxa_texto %}{{ desempenho.falhas_taxa_texto }} dos {{ desempenho.trabalhos }} trabalhos{% else %}Nenhum trabalho neste período.{% endif %}</small></div>
+      <div class="cartao"><strong>{{ desempenho.envio_incerto }}</strong><span>Envios com estado desconhecido</span><small>Aguardando o canal confirmar</small></div>
+    </div>
     {% endif %}
   </section>
   <p class="nota">Conversão: pessoas que compraram o produto do quiz divididas pelas que fizeram o quiz no período. Recuperação: compras pagas depois de uma tentativa que falhou. Conversão assistida: compras com mensagem ou link de um agente antes do pagamento; não prova que a venda só aconteceu por causa do agente. Pagamento conta só quando o provedor confirma.</p>
