@@ -14,7 +14,7 @@ from django.core.cache import cache
 from django.test import Client
 
 from pagamentos.core import ledger
-from pagamentos.core.models import Intent, OutboxEvent
+from pagamentos.core.models import Intent, OutboxEvent, PaymentAttempt
 
 pytestmark = pytest.mark.django_db
 
@@ -75,6 +75,62 @@ def test_sem_referencias_o_aviso_sai_como_antes() -> None:
 def test_referencia_vazia_ou_que_nao_e_texto_nao_entra() -> None:
     intent = Intent(metadata={"oportunidade_ref": "", "oferta_ref": 7})
     assert ledger.com_referencias_do_pedido({"a": 1}, intent) == {"a": 1}
+
+
+def _tentativa(intent: Intent, state: str = "pending") -> PaymentAttempt:
+    return PaymentAttempt.objects.create(
+        intent=intent, platform_site_id=intent.site_id, provider="appmax",
+        request_hash="h", provider_reference_id="ref-1", amount_cents=990,
+        effective_amount_cents=990, state=state,
+    )
+
+
+REFS = {"oportunidade_ref": "op-1", "oferta_ref": "curso"}
+
+
+def test_aprovacao_e_recusa_pela_tentativa_levam_as_referencias_e_o_pedido() -> None:
+    """O caminho dos provedores (Appmax e cartão) passa pelo mesmo ledger."""
+    aprovada = _intent(REFS)
+    _tentativa(aprovada)
+    assert ledger.registrar_fato_da_tentativa(
+        "appmax", "ref-1", novo_status="approved", evento="pagamento.aprovado",
+        dados=_dados(),
+    ) == "aplicado"
+    recusada = Intent.objects.create(
+        idempotency_key="crm-recusada", site_id="site-crm", order_id="pedido-2",
+        method="card", status="pending", amount_cents=990,
+        customer={"email": "a@b.com"}, metadata=REFS,
+    )
+    PaymentAttempt.objects.create(
+        intent=recusada, platform_site_id="site-crm", provider="appmax",
+        request_hash="h2", provider_reference_id="ref-2", amount_cents=990,
+        effective_amount_cents=990, state="pending",
+    )
+    assert ledger.registrar_fato_da_tentativa(
+        "appmax", "ref-2", novo_status="rejected", evento="pagamento.recusado",
+        dados={**_dados(), "order_id": "pedido-2", "reason_code": "x"},
+    ) == "aplicado"
+    for evento, pedido in (("pagamento.aprovado", "pedido-crm"), ("pagamento.recusado", "pedido-2")):
+        payload = OutboxEvent.objects.get(event=evento, version=2).payload
+        assert payload["order_id"] == pedido
+        assert payload["oportunidade_ref"] == "op-1"
+        assert payload["oferta_ref"] == "curso"
+
+
+def test_webhook_do_pix_e_a_reversao_levam_as_referencias() -> None:
+    intent = _intent(REFS)
+    intent.provider_payment_id = "mp-9"
+    intent.save(update_fields=["provider_payment_id"])
+    assert ledger.transicionar_e_emitir(
+        mp_payment_id="mp-9", novo_status="approved", evento="pagamento.aprovado",
+        dados=_dados(),
+    )
+    assert OutboxEvent.objects.get(event="pagamento.aprovado").payload["oportunidade_ref"] == "op-1"
+    tentativa = _tentativa(intent, state="approved")
+    assert ledger.emitir_reversao_confirmada(tentativa, "refunded")
+    reversao = OutboxEvent.objects.get(event="pagamento.reversao_confirmada").payload
+    assert reversao["order_id"] == "pedido-crm"
+    assert reversao["oportunidade_ref"] == "op-1"
 
 
 @pytest.fixture
