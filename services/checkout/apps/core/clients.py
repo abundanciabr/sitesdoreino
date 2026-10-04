@@ -3,6 +3,7 @@
 # Em dev, aponte CATALOGO_API_URL/PAGAMENTOS_API_URL para os mocks prism
 # (make mocks) — nunca suba a outra célula, nunca leia o banco dela.
 import os
+from urllib.parse import quote
 
 import httpx
 from django.conf import settings
@@ -44,9 +45,16 @@ class CatalogoClient:
         return r.json() if r.status_code == 200 else None
 
     def obter_oferta(self, site_id: str, slug: str) -> dict | None:
-        """Slugs são únicos POR site — o site_id na rota é o que impede vazamento."""
+        """Slugs são únicos POR site — o site_id na rota é o que impede vazamento.
+
+        A slug entra no caminho como UM segmento só: com barra, `..`, `?` ou `#`
+        a consulta saía do caminho da oferta e chegava ao catálogo de outro site
+        com o mesmo token.
+        """
+        if slug in ("", ".", ".."):
+            return None
         r = http().get(
-            f"{self.base}/sites/{site_id}/ofertas/{slug}",
+            f"{self.base}/sites/{quote(site_id, safe='')}/ofertas/{quote(slug, safe='')}",
             headers=self._headers(),
             timeout=5.0,
         )

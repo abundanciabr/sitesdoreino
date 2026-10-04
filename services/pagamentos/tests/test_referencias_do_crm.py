@@ -61,6 +61,19 @@ def test_aviso_do_pagamento_leva_as_referencias_do_pedido() -> None:
     assert "outra" not in payload
 
 
+def test_aviso_de_pedido_de_teste_leva_o_ambiente_sandbox() -> None:
+    """O checkout marca o pedido de teste no `metadata`; o aviso ecoa a marca
+    para o CRM não contar a compra de teste como venda."""
+    intent = _intent({"oportunidade_ref": "op-1", "ambiente": "sandbox"})
+    assert ledger.registrar_fato(
+        intent, novo_status="approved", evento="pagamento.aprovado",
+        dados=_dados(), version=2,
+    )
+    payload = OutboxEvent.objects.get(event="pagamento.aprovado").payload
+    assert payload["ambiente"] == "sandbox"
+    assert payload["oportunidade_ref"] == "op-1"
+
+
 def test_sem_referencias_o_aviso_sai_como_antes() -> None:
     intent = _intent({"product_id": "p"})
     assert ledger.registrar_fato(

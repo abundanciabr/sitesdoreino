@@ -17,7 +17,8 @@ import httpx
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import transaction
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError
@@ -235,9 +236,24 @@ def create_session(request):
     if not isinstance(offer_slug, str) or not offer_slug:
         raise HttpError(422, "offer_slug é obrigatório")
 
-    oferta = CatalogoClient().obter_oferta(site["id"], offer_slug)
+    link = _link_da_pagina(corpo.get("link"), site["id"], offer_slug)
+    decisao = _decisao_do_link(link) if link is not None else None
+    pedido_vigente = decisao is not None and decisao[0] == "existente"
+
+    # Link cujo pedido segue valendo (aguardando ou pago): a pessoa precisa
+    # chegar a ele mesmo com a oferta despublicada ou o catálogo fora do ar.
+    # Só quem vai ver o formulário ou abrir sessão nova exige a oferta.
+    try:
+        oferta = CatalogoClient().obter_oferta(site["id"], offer_slug)
+    except httpx.HTTPError:
+        if not pedido_vigente:
+            raise
+        oferta = None
+    oferta_do_catalogo = oferta is not None
     if oferta is None:
-        raise HttpError(404, "oferta inexistente ou despublicada neste site")
+        if not pedido_vigente:
+            raise HttpError(404, "oferta inexistente ou despublicada neste site")
+        oferta = _oferta_guardada(link.session, offer_slug)
 
     utm_bruto = corpo.get("utm") or {}
     if not isinstance(utm_bruto, dict):
@@ -258,7 +274,6 @@ def create_session(request):
         prefill = {chave: str(prefill.get(chave) or "") for chave in ("name", "email", "phone")}
     cpf_email = str(prefill.get("email") if prefill else corpo.get("email_para_cpf") or "")
     cpf_anterior = _cpf_anterior(site["id"], _visitor_id_do_cookie(request), cpf_email)
-    link = _link_da_pagina(corpo.get("link"), site["id"], offer_slug)
     pedido_existente = None
     with transaction.atomic():
         visitante_novo = False
@@ -271,30 +286,22 @@ def create_session(request):
             # O link é travado antes da sessão: duas aberturas ao mesmo tempo
             # depois de um pedido vencido não podem abrir duas sessões.
             link = LinkDeCompra.objects.select_for_update().get(pk=link.pk)
-            sessoes = [link.session, *link.sessoes_reabertas.order_by("created_at")]
-            pedidos = {
-                p.session_id: p for p in OrderModel.objects.filter(session__in=sessoes)
-            }
-            ultima = SessionModel.objects.select_for_update().get(pk=sessoes[-1].pk)
+            acao, ultima, valendo = _decisao_do_link(link)
+            ultima = SessionModel.objects.select_for_update().get(pk=ultima.pk)
             visitante = _visitor_id_do_cookie(request)
-            pago = next(
-                (
-                    pedidos[s.pk]
-                    for s in sessoes
-                    if s.pk in pedidos and pedidos[s.pk].status in ("pago", "reembolsado")
-                ),
-                None,
-            )
-            anterior = pedidos.get(ultima.pk)
-            if pago is None and anterior is None:
+            if acao == "continuar":
                 sessao = ultima
                 if visitante and not sessao.visitor_id:
                     sessao.visitor_id = visitante
                     sessao.save(update_fields=["visitor_id"])
                     visitante_novo = True
-            elif pago is None and anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
+            elif acao == "nova":
                 # Pix vencido ou cartão recusado: outra sessão do mesmo link,
                 # que leva a oportunidade para o pedido novo.
+                if not oferta_do_catalogo:
+                    # O pedido vigente mudou enquanto a oferta não saía do
+                    # catálogo: sessão nova exige a oferta de verdade.
+                    raise HttpError(404, "oferta inexistente ou despublicada neste site")
                 sessao = _nova_sessao_do_link(link, ultima, oferta, lead_id, visitante)
                 visitante_novo = bool(sessao.visitor_id)
             else:
@@ -302,7 +309,6 @@ def create_session(request):
                 # pago): a página leva a pessoa até ele em vez de tentar fechar
                 # outro (que daria 409 ou cobraria duas vezes).
                 sessao = ultima
-                valendo = pago or anterior
                 pedido_existente = {
                     "order_id": str(valendo.id),
                     "method": valendo.method,
@@ -368,6 +374,63 @@ def create_session(request):
         },
         status=201,
     )
+
+
+def _decisao_do_link(link):
+    """O que a página do link faz agora, olhando as sessões e pedidos do link:
+
+    - ("continuar", ultima, None): ninguém fechou pedido na última sessão;
+    - ("nova", ultima, None): o pedido da última venceu ou foi recusado;
+    - ("existente", ultima, pedido): o link já virou um pedido que segue
+      valendo (pago, devolvido ou aguardando), e é para ele que a pessoa vai.
+    """
+    sessoes = [link.session, *link.sessoes_reabertas.order_by("created_at")]
+    pedidos = {p.session_id: p for p in OrderModel.objects.filter(session__in=sessoes)}
+    ultima = sessoes[-1]
+    pago = next(
+        (
+            pedidos[s.pk]
+            for s in sessoes
+            if s.pk in pedidos and pedidos[s.pk].status in ("pago", "reembolsado")
+        ),
+        None,
+    )
+    anterior = pedidos.get(ultima.pk)
+    if pago is None and anterior is None:
+        return "continuar", ultima, None
+    if pago is None and anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
+        return "nova", ultima, None
+    return "existente", ultima, pago or anterior
+
+
+def _pedido_vigente_de_outra_sessao(link, sessao):
+    """Pedido de OUTRA sessão do link que ainda vale (pago, devolvido ou
+    aguardando). Quem tem uma sessão sem pedido, aberta antes de um aviso
+    tardio do provedor, não pode fechar um segundo."""
+    vigentes = [
+        pedido
+        for pedido in OrderModel.objects.filter(
+            Q(session_id=link.session_id) | Q(session__link_origem=link)
+        )
+        .exclude(session=sessao)
+        .order_by("created_at")
+        if pedido.status not in _STATUS_QUE_LIBERAM_NOVO_PEDIDO
+    ]
+    pago = next((p for p in vigentes if p.status in ("pago", "reembolsado")), None)
+    return pago or (vigentes[-1] if vigentes else None)
+
+
+def _oferta_guardada(sessao, offer_slug: str) -> dict:
+    """A oferta como a sessão a guardou na abertura, para a página que só vai
+    levar a pessoa ao pedido dela quando o catálogo não responde."""
+    guardada = sessao.offer if isinstance(sessao.offer, dict) else {}
+    produto = guardada.get("product") if isinstance(guardada.get("product"), dict) else {}
+    return {
+        "slug": guardada.get("slug") or offer_slug,
+        "product": {"name": produto.get("name") or ""},
+        "price_cents": guardada.get("price_cents") or 0,
+        "bumps": guardada.get("bumps") or [],
+    }
 
 
 def _nova_sessao_do_link(link, anterior, oferta: dict, lead_id: str, visitante):
@@ -570,6 +633,40 @@ def place_order(request, session_id: str):
         # recriar intent nem tocar o snapshot.
         return JsonResponse(_pedido_criado(existente), status=409)
 
+    dados = {
+        "email": email,
+        "nome": nome,
+        "telefone": telefone,
+        "cpf": cpf,
+        "method": method,
+        "pix_appmax": pix_appmax,
+        "bump_ids": bump_ids,
+    }
+    link = link_da_sessao(sessao)
+    if link is None:
+        return _fechar_pedido(request, site, sessao, corpo, None, **dados)
+
+    # Pedido do link: uma compra por vez em TODAS as sessões do link. O link é
+    # travado do começo ao fim do fechamento (até gravar o pedido), para que
+    # duas abas, ou uma aba antiga e uma nova, não fechem dois pedidos. A aba
+    # antiga, aberta antes de o provedor aprovar tarde o 1º pedido, recebe o
+    # 409 com o pedido que vale (o front leva a pessoa até ele).
+    with transaction.atomic():
+        LinkDeCompra.objects.select_for_update().get(pk=link.pk)
+        existente = OrderModel.objects.filter(session=sessao).first()
+        if existente is not None:
+            return JsonResponse(_pedido_criado(existente), status=409)
+        vigente = _pedido_vigente_de_outra_sessao(link, sessao)
+        if vigente is not None:
+            return JsonResponse(_pedido_criado(vigente), status=409)
+        return _fechar_pedido(request, site, sessao, corpo, link, **dados)
+
+
+def _fechar_pedido(
+    request, site, sessao, corpo, link, *, email, nome, telefone, cpf, method, pix_appmax, bump_ids
+):
+    """Do preço relido no catálogo até o pedido gravado. Com link, chamada com
+    ele já travado."""
     # preços relidos do catálogo AGORA, no fechamento — o payload só
     # informa quais bumps foram marcados.
     oferta = CatalogoClient().obter_oferta(site["id"], sessao.offer_slug)
@@ -580,7 +677,6 @@ def place_order(request, session_id: str):
 
     # Pedido aberto por um link do atendimento nasce com o id que o link já
     # devolveu ao CRM, e leva a oportunidade junto.
-    link = link_da_sessao(sessao)
     # O 1º pedido do link leva o id que o link devolveu ao CRM; quando ele
     # vence ou é recusado e a pessoa reabre o link, o pedido seguinte ganha um
     # id derivado dele (mesma oportunidade), e o CRM acompanha tudo pelo id só.
@@ -589,6 +685,11 @@ def place_order(request, session_id: str):
         "oportunidade_ref": link.oportunidade_ref if link is not None else "",
         "oferta_ref": sessao.offer_slug,
     }
+    # Pedido contra o sandbox do provedor: o aviso `pedido.criado` e os avisos
+    # do pagamento levam `ambiente: sandbox` (o leads lê esse campo), e o CRM
+    # não conta a compra de teste como venda.
+    em_teste = _ambiente_de_teste(site["id"], method, pix_appmax)
+    sinal_de_teste = {"ambiente": "sandbox"} if em_teste else {}
     comprador = {
         "email": email,
         "name": nome,
@@ -600,6 +701,7 @@ def place_order(request, session_id: str):
         "product_id": str(itens[0]["product_id"]),
         # Ecoadas por pagamentos nos avisos do pagamento (core/ledger.py).
         **{campo: valor for campo, valor in referencias.items() if valor},
+        **sinal_de_teste,
     }
     if method == "pix":
         metadata["pagina_url"] = (
@@ -667,61 +769,72 @@ def place_order(request, session_id: str):
     except (httpx.HTTPError, ValueError):
         raise HttpError(502, _PAGAMENTO_NAO_INICIADO) from None
 
-    with transaction.atomic():
-        pedido = OrderModel.objects.create(
-            id=order_id,
-            session=sessao,
-            site_id=site["id"],
-            items=itens,
-            total_cents=total_cents,
-            customer=comprador,
-            method=method,
-            intent_id=str(intent["id"]),
-            pix=intent.get("pix") or {},
-            em_teste=_ambiente_de_teste(site["id"], method, pix_appmax),
-            contexto=dict(sessao.contexto or {}),
-            **referencias,
-        )
-        emitir(  # mesma transação da criação do pedido
-            "pedido.criado",
-            {
-                "site_id": pedido.site_id,
-                "order_id": str(pedido.id),
-                "checkout_session_id": str(sessao.id),
-                "items": itens,
-                "total_cents": total_cents,
-                "customer": {
-                    k: v
-                    for k, v in comprador.items()
-                    if k in ("email", "name", "phone")
-                },
-                **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
-                **({"utm": sessao.utm} if sessao.utm else {}),
+    try:
+        with transaction.atomic():
+            pedido = OrderModel.objects.create(
+                id=order_id,
+                session=sessao,
+                site_id=site["id"],
+                items=itens,
+                total_cents=total_cents,
+                customer=comprador,
+                method=method,
+                intent_id=str(intent["id"]),
+                pix=intent.get("pix") or {},
+                em_teste=em_teste,
+                contexto=dict(sessao.contexto or {}),
                 **referencias,
-            },
-        )
-        if sessao.visitor_id:
-            # [DESENHO-COMUM.md F10] só emite com visitante; sem dado pessoal
-            # (nem customer, nem e-mail, nem CPF). Contrato ainda em voo na
-            # frente irmã F4a — construído contra os campos publicados em
-            # DESENHO-COMUM.md, não contra um schema congelado nesta árvore.
-            emitir(
-                "checkout.pedido-atribuido",
+            )
+            emitir(  # mesma transação da criação do pedido
+                "pedido.criado",
                 {
                     "site_id": pedido.site_id,
                     "order_id": str(pedido.id),
                     "checkout_session_id": str(sessao.id),
-                    "visitor_id": sessao.visitor_id,
-                    "produto": sessao.offer_slug,
-                    "valor_centavos": total_cents,
-                    "moeda": "BRL",
-                    "criado_em": pedido.created_at.isoformat(),
-                    **(referencias if referencias["oportunidade_ref"] else {}),
+                    "items": itens,
+                    "total_cents": total_cents,
+                    "customer": {
+                        k: v
+                        for k, v in comprador.items()
+                        if k in ("email", "name", "phone")
+                    },
+                    **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
+                    **({"utm": sessao.utm} if sessao.utm else {}),
+                    **referencias,
+                    **sinal_de_teste,
                 },
             )
-        # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
-        # do worker cobre qualquer falha aqui — o evento nunca se perde.
-        transaction.on_commit(relay_apos_commit)
+            if sessao.visitor_id:
+                # [DESENHO-COMUM.md F10] só emite com visitante; sem dado pessoal
+                # (nem customer, nem e-mail, nem CPF). Contrato ainda em voo na
+                # frente irmã F4a — construído contra os campos publicados em
+                # DESENHO-COMUM.md, não contra um schema congelado nesta árvore.
+                emitir(
+                    "checkout.pedido-atribuido",
+                    {
+                        "site_id": pedido.site_id,
+                        "order_id": str(pedido.id),
+                        "checkout_session_id": str(sessao.id),
+                        "visitor_id": sessao.visitor_id,
+                        "produto": sessao.offer_slug,
+                        "valor_centavos": total_cents,
+                        "moeda": "BRL",
+                        "criado_em": pedido.created_at.isoformat(),
+                        **(referencias if referencias["oportunidade_ref"] else {}),
+                    },
+                )
+            # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
+            # do worker cobre qualquer falha aqui — o evento nunca se perde.
+            transaction.on_commit(relay_apos_commit)
+    except IntegrityError:
+        # Dois envios da mesma sessão ao mesmo tempo: o outro gravou o pedido
+        # primeiro e a restrição única barrou este. A cobrança é uma só (a
+        # chave da intent é a sessão), então a resposta é o 409 de sempre com
+        # o pedido que existe, e não um 500.
+        gravado = OrderModel.objects.filter(Q(session=sessao) | Q(pk=order_id)).first()
+        if gravado is None:
+            raise
+        return JsonResponse(_pedido_criado(gravado), status=409)
     if link is not None:
         registrar_divergencia_de_valor(link, total_cents)
     return JsonResponse(_pedido_criado(pedido), status=201)
