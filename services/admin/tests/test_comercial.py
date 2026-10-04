@@ -754,10 +754,97 @@ def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento()
     assert link.call_count == 1
     corpo = _corpo(link.calls[0])
     assert corpo["oportunidade_ref"] == "opp-1" and corpo["condicao"] == "pix"
+    assert corpo["estrategia"] == "atendimento:v1"  # a versão que atendeu
+    assert "contato" not in corpo and "quiz" not in corpo and "tentativa" not in corpo
     assert link.calls[0].request.headers["host"] == "meshcraft.top"
     assert trabalho.pedido_id == "ped-1"
     acompanhar = TrabalhoComercial.objects.get(tipo=T.ACOMPANHAR_PAGAMENTO)
     assert acompanhar.pedido_id == "ped-1" and acompanhar.nao_antes_de > timezone.now() + timedelta(hours=23)
+
+
+def _link_pronto(entrada: dict, *, estrategia=None, extras=None, **campos):
+    """Um trabalho de atendimento com a oferta ligada, as rotas do checkout
+    simuladas e a ferramenta de link pronta para rodar."""
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", chave_da_conversa="conversa:conv-1",
+                         entrada={"oferta_ref": "curso-3d", "host": "meshcraft.top", **entrada}, **campos)
+    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
+        "site_id": "site-1", "oferta": {"oferta_ref": "curso-3d"},
+        "condicoes": [{"id": "pix", "metodo": "pix", "total_cents": 49700}]})
+    link = respx.post(f"{CHECKOUT}/interno/links-de-compra").respond(201, json={
+        "url": "https://meshcraft.top/checkout/curso-3d/?link=1", "pedido_id": "ped-1"})
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel="atendimento", estrategia=estrategia)
+    ctx.extras.update(extras or {})
+    return ctx, link
+
+
+def _pedir_link(ctx) -> dict:
+    return json.loads(ferramentas.executar(
+        ctx, "c1", "preparar_link_compra", json.dumps({"oferta_ref": None, "condicao_id": "pix"})))
+
+
+@respx.mock
+def test_link_leva_estrategia_quiz_e_tentativa_da_venda_e_nao_leva_o_contato():
+    v2 = papeis.propor_versao("atendimento", "Novas instruções", criada_por="admin", motivo="teste",
+                              origem="pessoa")
+    papeis.ativar(v2, "admin", "melhor")
+    ctx, link = _link_pronto({"contato": _contato(), "quiz": "crivo", "sessao": "sess-77"},
+                             estrategia=papeis.estrategia_ativa("atendimento"))
+    _resto_404()
+    saida = _pedir_link(ctx)
+    assert saida["pedido_id"] == "ped-1"
+    corpo = _corpo(link.calls[0])
+    # A versão é a que atendeu (a mesma que o otimizador separa nos números), não uma fixa.
+    assert corpo["estrategia"] == "atendimento:v2"
+    assert corpo["quiz"] == "crivo" and corpo["tentativa"] == "sess-77"
+    assert "contato" not in corpo
+    bruto = link.calls[0].request.content.decode()
+    assert EMAIL not in bruto and "11999990000" not in bruto and "Ana Souza" not in bruto
+    assert set(corpo) == {"oferta", "oportunidade_ref", "condicao", "chave_idempotencia", "estrategia",
+                          "quiz", "tentativa"}
+
+
+@respx.mock
+def test_link_nao_manda_a_chave_do_que_nao_se_sabe_nem_o_que_o_checkout_recusaria():
+    ctx, link = _link_pronto({"contato": _contato(), "sessao": "x" * 101})
+    _resto_404()  # a leads não responde: o quiz fica desconhecido
+    _pedir_link(ctx)
+    corpo = _corpo(link.calls[0])
+    assert set(corpo) == {"oferta", "oportunidade_ref", "condicao", "chave_idempotencia"}
+    assert "" not in corpo.values()
+
+
+@respx.mock
+def test_link_acha_o_quiz_na_fonte_da_oportunidade_quando_o_trabalho_nao_traz():
+    ctx, link = _link_pronto({"contato": _contato()}, estrategia=papeis.estrategia_ativa("atendimento"))
+    oportunidade = respx.get(f"{LEADS}/crm/opp-1").respond(200, json={
+        "id": "opp-1", "lead_id": "lead-1", "fonte": {"tipo": "quiz", "referencia_id": "oferta:crivo"}})
+    _resto_404()
+    _pedir_link(ctx)
+    corpo = _corpo(link.calls[0])
+    assert corpo["quiz"] == "crivo" and corpo["estrategia"] == "atendimento:v1"
+    assert "tentativa" not in corpo and oportunidade.call_count == 1
+
+
+@respx.mock
+def test_link_usa_a_oportunidade_ja_lida_sem_perguntar_de_novo():
+    fonte = {"tipo": "quiz", "referencia_id": "oferta:crivo"}
+    ctx, link = _link_pronto({"contato": _contato()}, extras={"oportunidade": {"id": "opp-1", "fonte": fonte}})
+    oportunidade = respx.get(f"{LEADS}/crm/opp-1").respond(200, json={"id": "opp-1", "lead_id": "lead-1",
+                                                                       "fonte": fonte})
+    _resto_404()
+    _pedir_link(ctx)
+    assert _corpo(link.calls[0])["quiz"] == "crivo" and not oportunidade.called
+
+
+@respx.mock
+def test_link_ignora_a_fonte_de_uma_oportunidade_de_outro_lead():
+    ctx, link = _link_pronto({"contato": _contato()})
+    respx.get(f"{LEADS}/crm/opp-1").respond(200, json={
+        "id": "opp-1", "lead_id": "lead-de-outro",
+        "fonte": {"tipo": "quiz", "referencia_id": "oferta:crivo"}})
+    _resto_404()
+    _pedir_link(ctx)
+    assert "quiz" not in _corpo(link.calls[0])
 
 
 def test_pagamento_aprovado_fecha_os_acompanhamentos_sem_chamar_o_modelo():
