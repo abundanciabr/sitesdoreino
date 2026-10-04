@@ -591,6 +591,20 @@ def test_abrir_conversa_proativa_nao_troca_o_lead(base):
     assert _api(cliente, "POST", "/conversas", {**corpo, "lead_id": LEAD_B}).status_code == 409
 
 
+def test_abrir_conversa_ambigua_nao_liga_ao_primeiro_lead_que_pedir(base):
+    base["contatos"] += [
+        {"id": LEAD_A, "site_id": SITE, "email": "ana@b.com", "telefone": "11988887777"},
+        {"id": LEAD_B, "site_id": SITE, "email": "bia@b.com", "telefone": "(11) 98888-7777"},
+    ]
+    _upsert(Client(), _item())
+    assert Conversa.objects.get().ligacao == "ambigua"
+    pedido = {"site_id": SITE, "canal": "whatsapp", "lead_id": LEAD_A, "endereco": "(11) 98888-7777"}
+    resposta = _api(Client(), "POST", "/conversas", pedido)
+    assert resposta.status_code == 409
+    conversa = Conversa.objects.get()
+    assert conversa.ligacao == "ambigua" and conversa.lead_id == ""
+
+
 def test_transcricao_fica_ligada_ao_audio(base):
     conversa = _conversa_ligada(base)
     mensagem = conversa.mensagens.get()
@@ -1042,6 +1056,23 @@ def test_saida_pendente_abandonada_e_reenviada_com_a_mesma_chave(base, monkeypat
     segunda = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens", pedido).json()
     assert segunda["resultado"] == "repetida" and len(posts) == 1
     assert conversa.mensagens.filter(chave_idempotencia="k1").count() == 1
+
+
+def test_retomada_de_saida_pendente_nao_conta_a_si_mesma_no_teto_do_dia(base, monkeypatch, settings):
+    settings.CONVERSAS_TETO_DIARIO_AGENTE = 3
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    cliente = Client()
+    for i in range(2):
+        assert _pedir(cliente, conversa, f"a{i}")["resultado"] == "enviada"
+    antiga = timezone.now() - timedelta(minutes=10)
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente", texto="Olá",
+                                      estado_envio="pendente", chave_idempotencia="k3", ocorrida_em=antiga)
+    retomada = _pedir(cliente, conversa, "k3", texto="Olá")
+    assert retomada["resultado"] == "enviada" and len(posts) == 3
+    # Com a terceira de fato enviada, a quarta (outra chave) bate no teto.
+    assert _pedir(cliente, conversa, "a4")["resultado"] == "limite_diario"
 
 
 def test_saida_pendente_recente_nao_e_reenviada(base, monkeypatch):

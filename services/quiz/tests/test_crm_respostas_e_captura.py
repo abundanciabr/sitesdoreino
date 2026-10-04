@@ -555,3 +555,40 @@ def test_captura_que_chega_junto_do_resultado_espera_e_nao_fica_solta(quiz):
     assert resposta["r"] == {"estado": "concluida"}
     assert CapturaParcial.objects.count() == 0
     assert avisos() == []
+
+
+def test_migracao_0014_marca_capturas_antigas_como_ja_publicadas_e_deixa_as_recentes(quiz):
+    """A 0012 já rodou no site sem marcar; quem marca é a 0014."""
+    import importlib
+
+    from django.apps import apps as registro
+
+    migracao = importlib.import_module(
+        "apps.quiz.migrations.0014_marcar_capturas_ja_publicadas"
+    )
+    versao = quiz.versions.get()
+
+    def captura(email, parada_ha):
+        feita = CapturaParcial.objects.create(
+            quiz=quiz, version=versao, session_id=uuid.uuid4(), site_id=quiz.site_id,
+            lead_email=email,
+        )
+        CapturaParcial.objects.filter(pk=feita.pk).update(
+            criada_em=timezone.now() - parada_ha - timedelta(minutes=5),
+            atualizada_em=timezone.now() - parada_ha,
+        )
+        return feita
+
+    antiga = captura("velha@exemplo.com", timedelta(days=3))
+    recente = captura("nova@exemplo.com", timedelta(minutes=2))
+
+    migracao.marcar_ja_publicadas(registro, None)
+
+    antiga.refresh_from_db()
+    recente.refresh_from_db()
+    assert antiga.publicada_em == antiga.criada_em and antiga.publicacoes == 1
+    assert recente.publicada_em is None and recente.publicacoes == 0
+    # A antiga não vira aviso repetido; a recente ainda sai quando passar o silêncio.
+    assert publicar_capturas_paradas() == 0
+    assert publicar_capturas_paradas(depois_do_silencio()) == 1
+    assert [e.payload["lead"]["email"] for e in avisos()] == ["nova@exemplo.com"]

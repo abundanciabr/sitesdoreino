@@ -663,6 +663,7 @@ def test_o_laco_sem_trabalho_volta_na_hora_quando_acordado(monkeypatch):
     voltas = []
     monkeypatch.setattr(executor, "rodar_uma", lambda trabalhador: voltas.append(trabalhador))
     monkeypatch.setattr(executor, "reacordar", lambda: 0)
+    monkeypatch.setattr(executor, "_avisar_a_equipe", lambda: None)
     monkeypatch.setattr(executor, "close_old_connections", lambda: None)
     monkeypatch.setattr(executor, "INTERVALO_SEM_TRABALHO", 30.0)
     parar = threading.Event()
