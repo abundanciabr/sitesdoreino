@@ -6,6 +6,7 @@ from apps.core.auth import bearerAuth
 from apps.core.oportunidades import router as oportunidades_router
 from apps.core.crm import router as crm_router
 from apps.core.receita import router as receita_router
+from apps.core.resultados import router as resultados_router
 
 api = NinjaAPI(
     title="Leads API",
@@ -22,3 +23,4 @@ api.add_router("", leads_router)
 api.add_router("", oportunidades_router)
 api.add_router("", crm_router)
 api.add_router("", receita_router)
+api.add_router("", resultados_router)
