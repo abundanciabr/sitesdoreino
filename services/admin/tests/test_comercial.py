@@ -238,7 +238,9 @@ def test_trabalho_de_teste_pede_o_contato_de_teste_e_o_de_verdade_nunca(de_teste
 def test_atendimento_de_contato_de_teste_vira_trabalho_de_teste(email, esperado):
     respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "nome": "Ana", "email": email})
     _resto_404()
-    _trabalho(TrabalhoComercial.Tipo.ATENDER_MENSAGEM, entrada={"texto": "oi", "host": "meshcraft.top"})
+    # Como a mensagem recebida chega: o id do contato, sem oportunidade e sem e-mail.
+    _trabalho(TrabalhoComercial.Tipo.ATENDER_MENSAGEM, oportunidade_id="",
+              entrada={"texto": "oi", "host": "meshcraft.top"})
     trabalho = coordenador.pegar_um("t1")
 
     coordenador._achar_a_ficha(trabalho)
@@ -1102,6 +1104,10 @@ def test_otimizador_volta_sozinho_quando_a_versao_nova_vende_menos_com_amostra()
     v2 = papeis.propor_versao("abordagem", "v2", criada_por="admin", motivo="m", origem="pessoa")
     papeis.ativar(v2, "admin")
     _abordagens(40, vendas=0, versao=2)
+    # A conferência só olha mensagens maduras (mais de 7 dias) e a venda feita logo depois delas.
+    quando = timezone.now() - timedelta(days=10)
+    DecisaoComercial.objects.update(criada_em=quando)
+    EventoComercial.objects.update(recebido_em=quando + timedelta(hours=1))
     volta = otimizador.volta_se_piorou("abordagem")
     assert volta["voltou_para"] == 1
     assert papeis.estrategia_ativa("abordagem").pk == v1.pk
