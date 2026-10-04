@@ -173,6 +173,50 @@ class Submission(models.Model):
         ]
 
 
+class CapturaParcial(models.Model):
+    """Contato informado antes de concluir o quiz.
+
+    Uma por (quiz, sessão): repetir o envio atualiza a mesma linha e nunca
+    publica outro `quiz.captura_parcial`. Quando a mesma sessão conclui, a
+    submissão fica ligada aqui e o `quiz.completado` leva o id desta captura.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.PROTECT, related_name="capturas_parciais"
+    )
+    version = models.ForeignKey(
+        QuizVersion, on_delete=models.PROTECT, related_name="capturas_parciais"
+    )
+    session_id = models.UUIDField()
+    site_id = models.CharField(max_length=64)
+    lead_email = models.EmailField(blank=True, default="")
+    lead_name = models.CharField(max_length=200, blank=True, default="")
+    lead_phone = models.CharField(max_length=32, blank=True, default="")
+    answers = models.JSONField(default=dict, blank=True)
+    utm = models.JSONField(default=dict, blank=True)
+    context = models.JSONField(default=dict, blank=True)
+    submissao = models.OneToOneField(
+        Submission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="captura_parcial",
+    )
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "lead_email"], name="captura_site_email"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["quiz", "session_id"], name="captura_quiz_sessao_unica"
+            )
+        ]
+
+
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     event_id = models.UUIDField(default=uuid.uuid4, unique=True)
     event = models.CharField(max_length=100)
