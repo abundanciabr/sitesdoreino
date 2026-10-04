@@ -2882,6 +2882,27 @@
     },
     {
       "celula": "admin",
+      "rota": "crm/condicoes/",
+      "endereco": "/admin/crm/condicoes/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Condições que o agente pode oferecer",
+      "descricao": "Por oferta, o mantenedor marca quais condições que o checkout já tem (Pix, parcelas do cartão, cupons) o agente do CRM pode propor ao cliente.",
+      "observacao": "Só administradores. Nenhuma condição nova é criada aqui; sem marca, o agente só informa o preço vigente."
+    },
+    {
+      "celula": "admin",
+      "rota": "crm/condicoes/salvar/",
+      "endereco": "/admin/crm/condicoes/salvar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar condições do agente",
+      "descricao": "Grava no checkout as condições marcadas para uma oferta, com o nome de quem marcou."
+    },
+    {
+      "celula": "admin",
       "rota": "crm/<uuid:opportunity_id>/",
       "endereco": "/admin/crm/<uuid:opportunity_id>/",
       "alcance": "publico",

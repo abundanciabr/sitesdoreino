@@ -533,8 +533,9 @@ def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento()
     trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", chave_da_conversa="conversa:conv-1",
                          entrada={"contato": _contato(), "oferta_ref": "curso-3d", "texto": "quero comprar"})
     respx.get(f"{MENSAGERIA}/conversas/conv-1").respond(200, json={"estado": "agente"})
-    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes").respond(200, json={
+    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
         "site_id": "site-1", "oferta": {"oferta_ref": "curso-3d", "preco": "R$ 497,00"},
+        "preco_vigente": {"cents": 49700, "texto": "R$ 497,00", "moeda": "BRL"},
         "condicoes": [{"id": "pix", "metodo": "pix", "total_cents": 49700}]})
     link = respx.post(f"{CHECKOUT}/interno/links-de-compra").respond(201, json={
         "url": "https://meshcraft.top/checkout/curso-3d/?link=1", "pedido_id": "ped-1", "valor": "R$ 497,00",
@@ -554,6 +555,7 @@ def test_atendimento_prepara_link_so_com_condicao_real_e_agenda_acompanhamento()
     trabalho.refresh_from_db()
     assert trabalho.estado == E.CONCLUIDO, trabalho.motivo
     assert trabalho.decisoes.get(call_id="c2").resultado == R.RECUSADO  # condição inventada
+    assert trabalho.decisoes.get(call_id="c1").saida["preco_vigente"]["cents"] == 49700
     assert trabalho.decisoes.get(call_id="c3").resultado == R.RECUSADO  # oferta de outra oportunidade
     assert trabalho.decisoes.get(call_id="c5").saida["ja_feito"] is True
     assert link.call_count == 1

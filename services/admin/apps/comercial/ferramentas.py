@@ -454,10 +454,11 @@ def consultar_condicoes_compra(ctx: Contexto, args: dict) -> dict:
     return {
         "oferta_ref": oferta,
         "oferta": _sem_pessoais(dados.get("oferta") or {}),
+        "preco_vigente": dados.get("preco_vigente"),
         "condicoes": _sem_pessoais(condicoes),
         "cupons": dados.get("cupons") or [],
         "vencimento_padrao": dados.get("vencimento_padrao"),
-        "aviso": "Só estas condições existem. Nenhuma outra pode ser oferecida.",
+        "aviso": dados.get("aviso") or "Só estas condições existem. Nenhuma outra pode ser oferecida.",
     }
 
 

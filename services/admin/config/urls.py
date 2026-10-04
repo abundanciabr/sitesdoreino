@@ -80,6 +80,7 @@ from apps.core.whatsapp import whatsapp
 from apps.core.crm_conversas import crm_conversa, crm_conversas
 from apps.core.crm_agentes import crm_agentes, crm_agentes_ativar, crm_agentes_nova, crm_agentes_voltar
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
+from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -237,6 +238,8 @@ from apps.comercial.views import agentes_comerciais
 
 urlpatterns = [
     path("crm/", crm, name="crm"),
+    path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
+    path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),
     # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
     # decisões e estratégias dos quatro papéis. Só do administrador.
     path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),
