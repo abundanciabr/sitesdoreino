@@ -1497,3 +1497,71 @@ def test_pedido_do_modelo_fora_da_lista_e_recusado_na_reanalise():
     rodado = coordenador.rodar_um("t1")
     decisao = rodado.decisoes.get(call_id="c1")
     assert decisao.resultado == R.RECUSADO and "não está disponível" in decisao.saida["erro"]
+
+
+def _perfil_para_salvar(resumo, **extra):
+    return {"resumo": resumo, "objetivo_declarado": None, "experiencia": None, "disponibilidade": DISPONIBILIDADE,
+            "duvidas": [], "objecoes": [], "hipoteses": [], "informacoes_ausentes": ["experiência"],
+            "perguntas_uteis": ["Já usou Blender?"], "prioridade": "media", "razao_prioridade": "x",
+            "oferta_motivo": None, "oferta_indicada": "curso-3d", **extra}
+
+
+@respx.mock
+def test_modelo_ve_o_id_de_cada_mensagem_para_ligar_a_afirmacao_a_ela():
+    _guardar_chave()
+    _reanalise_pronta()
+    _rotas_da_reanalise()
+    _resto_404()
+    openai = respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("consultar_conversa", {}, "c1"),
+        _final({"mudou": "nao", "resumo": "x", "o_que_mudou": "", "objecao_principal": None, "proximo_passo": None}),
+    ])
+    coordenador.rodar_um("t1")
+    assert "msg-1" in openai.calls[1].request.content.decode()
+
+
+@respx.mock
+def test_reanalise_com_conflito_na_ficha_e_refeita_com_a_ficha_nova_e_nao_atualiza_o_quadro():
+    _guardar_chave()
+    trabalho = _reanalise_pronta()
+    _rotas_da_reanalise()
+    respx.put(f"{LEADS}/leads/lead-1/perfil").respond(409, json={"detail": "o perfil já está na versão 2; leia de novo"})
+    quadro = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={"id": "opp-1"})
+    _resto_404()
+    objecao = {"texto": "Acha caro", "tipo": "fato", "fonte": "mensagem", "fonte_id": "msg-1", "trecho": "Acho caro"}
+    respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada("salvar_perfil", _perfil_para_salvar("Acha caro.", objecoes=[objecao]), "c1"),
+        _final({"mudou": "sim", "resumo": "x", "o_que_mudou": "preço", "objecao_principal": "preço",
+                "proximo_passo": "Mostrar condições"}),
+    ])
+    rodado = coordenador.rodar_um("t1")
+    rodado.refresh_from_db()
+    assert rodado.estado == E.CONCLUIDO and "refeita" in rodado.resumo
+    assert rodado.resultado["perfil_mudou"] is False and rodado.resultado["quadro"] is None
+    assert not quadro.called
+    refeita = TrabalhoComercial.objects.get(tipo=T.REANALISAR_PERFIL, anterior=rodado)
+    assert refeita.chave_idempotencia == f"{trabalho.chave_idempotencia}:refeita"
+    assert refeita.estado == E.NA_FILA and refeita.entrada["refeita_apos_conflito"] is True
+    assert "perfil_vigente" not in refeita.entrada and "versao_do_perfil" not in refeita.entrada
+
+
+@respx.mock
+def test_valem_as_versoes_gravadas_quando_o_modelo_salva_duas_vezes():
+    _guardar_chave()
+    _reanalise_pronta()
+    _rotas_da_reanalise()
+    respx.put(f"{LEADS}/leads/lead-1/perfil").respond(200, json={"versao": 2})
+    respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={"id": "opp-1"})
+    _resto_404()
+    objecao = {"texto": "Acha caro", "tipo": "fato", "fonte": "mensagem", "fonte_id": "msg-1", "trecho": "Acho caro"}
+    respx.post(RESPOSTAS).mock(side_effect=[
+        # a primeira chamada repete o perfil vigente (sem mudança), a segunda traz a objeção
+        _chamada("salvar_perfil", _perfil_para_salvar("Iniciante com pouco tempo."), "c1"),
+        _chamada("salvar_perfil", _perfil_para_salvar("Acha caro.", objecoes=[objecao]), "c2"),
+        _final({"mudou": "sim", "resumo": "x", "o_que_mudou": "preço", "objecao_principal": "preço",
+                "proximo_passo": "Mostrar condições"}),
+    ])
+    rodado = coordenador.rodar_um("t1")
+    rodado.refresh_from_db()
+    assert rodado.estado == E.CONCLUIDO
+    assert rodado.resultado["perfil_mudou"] is True and rodado.resultado["versao_do_perfil"] == 2
