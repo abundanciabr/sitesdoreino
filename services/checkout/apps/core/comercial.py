@@ -10,11 +10,13 @@
 # Nada aqui cria preço, desconto ou prazo: preço vem do catálogo, parcelas da
 # cotação do provedor, e o pedido só vira "pago" pelo aviso do provedor.
 import json
+import logging
 import re
 import uuid
 
 import httpx
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
@@ -23,13 +25,18 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from apps.core.clients import CatalogoClient, PagamentosClient
+from apps.pedidos.atribuicao import separar_atribuicao
 from apps.pedidos.models import LinkDeCompra
 from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
 router = Router()
+logger = logging.getLogger(__name__)
 
 MOEDA = "BRL"
+# A cotação de parcelas do provedor é refeita no máximo a cada 2 minutos por
+# (site, valor): o agente consulta as condições várias vezes por conversa.
+CACHE_COTACAO_SEGUNDOS = 120
 # O Pix que nasce pela Appmax ou com a segunda empresa ligada vence em 30 min
 # (services/pagamentos: methods/pix/appmax.py e methods/pix/service.py). Fora
 # dessas listas, quem define o prazo é o provedor, e aqui ele não é inventado.
@@ -70,9 +77,23 @@ def _pix_minutos(site_id: str) -> int | None:
     return PRAZO_PIX_MINUTOS if site_id in listas else None
 
 
-def _cotacao_do_cartao(preco_cents: int) -> list | None:
+def _cotacao_do_cartao(site_id: str, preco_cents: int) -> list | None:
     """As opções que o provedor do cartão cota para o preço. None quando a
-    cotação não respondeu ou veio incoerente: "não sei" não vira opção."""
+    cotação não respondeu ou veio incoerente: "não sei" não vira opção.
+
+    Só cotação boa fica guardada (120 s, por site e valor): a que falhou é
+    tentada de novo na próxima consulta."""
+    chave = f"checkout:cotacao:{site_id}:{preco_cents}"
+    guardada = cache.get(chave)
+    if guardada is not None:
+        return [tuple(opcao) for opcao in guardada]
+    opcoes = _cotar_no_provedor(preco_cents)
+    if opcoes is not None:
+        cache.set(chave, opcoes, CACHE_COTACAO_SEGUNDOS)
+    return opcoes
+
+
+def _cotar_no_provedor(preco_cents: int) -> list | None:
     try:
         cotacao = PagamentosClient().cotar_parcelas(amount_cents=preco_cents)
         if not isinstance(cotacao, dict) or cotacao.get("amount_cents") != preco_cents:
@@ -112,34 +133,25 @@ def condicoes_da_oferta(site: dict, oferta: dict) -> dict:
     consulta_parcelas = "sem_cartao"
     if site["id"] in settings.APPMAX_CARD_ENABLED_SITES:
         metodos.append("card")
-        cotacao = _cotacao_do_cartao(preco)
+        cotacao = _cotacao_do_cartao(site["id"], preco)
         if cotacao is None:
             consulta_parcelas = "indisponivel"
-            # O cartão existe; só as parcelas não puderam ser cotadas agora.
-            # A pessoa escolhe a parcela na própria página do cartão.
+            # Sem cotação não há parcela que se possa prometer: fica só o
+            # cartão à vista, cujo total é o próprio preço da oferta.
+            cotacao = [(1, preco)]
+        else:
+            consulta_parcelas = "ok"
+        for quantidade, total in cotacao:
             condicoes.append(
                 {
-                    "id": "card",
+                    "id": f"card_{quantidade}x",
                     "metodo": "card",
-                    "parcelas": None,
-                    "total_cents": None,
-                    "parcela_cents": None,
+                    "parcelas": quantidade,
+                    "total_cents": total,
+                    "parcela_cents": (total + quantidade // 2) // quantidade,
                     "vencimento_minutos": None,
                 }
             )
-        else:
-            consulta_parcelas = "ok"
-            for quantidade, total in cotacao:
-                condicoes.append(
-                    {
-                        "id": f"card_{quantidade}x",
-                        "metodo": "card",
-                        "parcelas": quantidade,
-                        "total_cents": total,
-                        "parcela_cents": (total + quantidade // 2) // quantidade,
-                        "vencimento_minutos": None,
-                    }
-                )
     maximo = max(
         (c["parcelas"] for c in condicoes if c["metodo"] == "card" and c["parcelas"]),
         default=None,
@@ -213,7 +225,23 @@ def _contato(bruto) -> dict:
     return contato
 
 
-def _resposta_existente(link: LinkDeCompra) -> JsonResponse:
+def _resposta_existente(
+    link: LinkDeCompra, *, oferta_ref: str, oportunidade_ref: str, condicao_id: str
+) -> JsonResponse:
+    """A mesma chave com o mesmo pedido devolve o link de sempre. A mesma chave
+    com outra oferta, oportunidade ou condição é uso errado da chave: devolver o
+    link antigo faria o atendimento mandar ao cliente algo diferente do que
+    pediu."""
+    if (
+        link.oferta_ref != oferta_ref
+        or link.oportunidade_ref != oportunidade_ref
+        or (link.condicao or {}).get("id") != condicao_id
+    ):
+        raise HttpError(
+            409,
+            "chave_idempotencia já foi usada para outra oferta, oportunidade ou "
+            "condição; use uma chave nova para um link novo",
+        )
     return JsonResponse(link.resposta, status=200)
 
 
@@ -227,16 +255,25 @@ def create_purchase_link(request):
     site = request.site
     corpo = _corpo(request)
     chave = _texto(corpo.get("chave_idempotencia"), "chave_idempotencia", maximo=200)
+    slug = _texto(corpo.get("oferta"), "oferta", maximo=200)
+    oportunidade_ref = _texto(corpo.get("oportunidade_ref"), "oportunidade_ref", maximo=100)
+    condicao_id = _texto(corpo.get("condicao"), "condicao", maximo=40)
+    # O contato só é conferido (formato) e não é guardado: nada no checkout o
+    # lê, e dado pessoal que ninguém usa não fica parado no banco.
+    _contato(corpo.get("contato"))
+    estrategia = _texto(corpo.get("estrategia"), "estrategia", maximo=100, obrigatorio=False)
+    quiz = _texto(corpo.get("quiz"), "quiz", maximo=100, obrigatorio=False)
+    tentativa = _texto(corpo.get("tentativa"), "tentativa", maximo=100, obrigatorio=False)
+    mesmo_pedido = {
+        "oferta_ref": slug,
+        "oportunidade_ref": oportunidade_ref,
+        "condicao_id": condicao_id,
+    }
     existente = LinkDeCompra.objects.filter(
         site_id=site["id"], chave_idempotencia=chave
     ).first()
     if existente is not None:
-        return _resposta_existente(existente)
-
-    slug = _texto(corpo.get("oferta"), "oferta", maximo=200)
-    oportunidade_ref = _texto(corpo.get("oportunidade_ref"), "oportunidade_ref", maximo=100)
-    contato = _contato(corpo.get("contato"))
-    condicao_id = _texto(corpo.get("condicao"), "condicao", maximo=40)
+        return _resposta_existente(existente, **mesmo_pedido)
 
     oferta = _oferta_ou_404(site, slug)
     condicoes = condicoes_da_oferta(site, oferta)
@@ -247,10 +284,26 @@ def create_purchase_link(request):
             422, f"condição {condicao_id!r} não existe agora para esta oferta; existem: {validas}"
         )
 
+    # A venda que sai deste link carrega de onde veio: a oportunidade (op), a
+    # estratégia (est) e, quando o atendimento souber, o quiz (qz) e a
+    # tentativa (qa) em `contexto`, que o pedido copia; e a origem (crm,
+    # whatsapp, campanha) em `utm`.
+    _, contexto = separar_atribuicao(
+        {"op": oportunidade_ref, "est": estrategia, "qz": quiz, "qa": tentativa}
+    )
+    utm = {
+        "src": "crm",
+        "med": "whatsapp",
+        "cpg": contexto.get("est") or oferta["slug"],
+    }
     try:
         with transaction.atomic():
             sessao = SessionModel.objects.create(
-                site_id=site["id"], offer_slug=oferta["slug"], offer=oferta,
+                site_id=site["id"],
+                offer_slug=oferta["slug"],
+                offer=oferta,
+                utm=utm,
+                contexto=contexto,
             )
             link = LinkDeCompra.objects.create(
                 site_id=site["id"],
@@ -258,7 +311,6 @@ def create_purchase_link(request):
                 session=sessao,
                 oferta_ref=oferta["slug"],
                 oportunidade_ref=oportunidade_ref,
-                contato=contato,
                 condicao=condicao,
             )
             valor = condicao["total_cents"] or condicoes["oferta"]["preco_cents"]
@@ -288,11 +340,33 @@ def create_purchase_link(request):
         ).first()
         if existente is None:
             raise
-        return _resposta_existente(existente)
+        return _resposta_existente(existente, **mesmo_pedido)
     return JsonResponse(link.resposta, status=201)
 
 
-def _estado_do_pedido(pedido: OrderModel) -> dict:
+def registrar_divergencia_de_valor(link: LinkDeCompra, total_do_pedido_cents: int) -> bool:
+    """O link anuncia um valor e o pedido nasce com o total do catálogo. Os dois
+    nem sempre são iguais (cartão parcelado com juros do provedor, bump marcado
+    na página). Quando diferem, fica no log, com os dois números rotulados."""
+    valor_do_link = (link.resposta or {}).get("valor_cents")
+    if valor_do_link == total_do_pedido_cents:
+        return False
+    logger.warning(
+        "valor do link difere do total do pedido: link=%s oportunidade=%s "
+        "condicao=%s valor_do_link_cents=%s total_do_pedido_cents=%s",
+        link.id,
+        link.oportunidade_ref,
+        (link.condicao or {}).get("id"),
+        valor_do_link,
+        total_do_pedido_cents,
+    )
+    return True
+
+
+def _estado_do_pedido(pedido: OrderModel, link: LinkDeCompra | None = None) -> dict:
+    # `valor_cents` é o total do pedido (o que o catálogo cobra, com os bumps
+    # marcados). O valor que o link anunciou ao cliente pode ser outro, por
+    # exemplo o total do cartão parcelado: por isso os dois vêm rotulados.
     return {
         "pedido_id": str(pedido.id),
         "existe": True,
@@ -302,6 +376,8 @@ def _estado_do_pedido(pedido: OrderModel) -> dict:
         "reembolsado": pedido.status == "reembolsado",
         "metodo": pedido.method,
         "valor_cents": pedido.total_cents,
+        "total_do_pedido_cents": pedido.total_cents,
+        "valor_do_link_cents": link.resposta.get("valor_cents") if link is not None else None,
         "moeda": MOEDA,
         "oportunidade_ref": pedido.oportunidade_ref,
         "oferta_ref": pedido.oferta_ref,
@@ -319,6 +395,9 @@ def _estado_do_link(link: LinkDeCompra) -> dict:
         "reembolsado": False,
         "metodo": link.condicao.get("metodo"),
         "valor_cents": link.resposta.get("valor_cents"),
+        # Ainda não há pedido: só existe o valor que o link anunciou.
+        "valor_do_link_cents": link.resposta.get("valor_cents"),
+        "total_do_pedido_cents": None,
         "moeda": MOEDA,
         "oportunidade_ref": link.oportunidade_ref,
         "oferta_ref": link.oferta_ref,
@@ -340,12 +419,21 @@ def get_order_payment_state(request, pedido_id: str):
         chave = uuid.UUID(pedido_id)
     except ValueError:
         raise HttpError(404, "pedido inexistente neste site") from None
+    link = LinkDeCompra.objects.filter(pedido_id=chave, site_id=site["id"]).first()
+    if link is not None:
+        # O id do link responde pelo link inteiro: se a 1ª tentativa venceu e a
+        # pessoa fez outra, vale a que o provedor confirmou, senão a última.
+        tentativas = link.tentativas()
+        if not tentativas:
+            return JsonResponse(_estado_do_link(link))
+        atual = next((p for p in reversed(tentativas) if p.status == "pago"), tentativas[-1])
+        estado = _estado_do_pedido(atual, link)
+        estado["pedido_id"] = str(chave)
+        estado["pedido_atual_id"] = str(atual.id)
+        return JsonResponse(estado)
     pedido = OrderModel.objects.filter(pk=chave, site_id=site["id"]).first()
     if pedido is not None:
         return JsonResponse(_estado_do_pedido(pedido))
-    link = LinkDeCompra.objects.filter(pedido_id=chave, site_id=site["id"]).first()
-    if link is not None:
-        return JsonResponse(_estado_do_link(link))
     raise HttpError(404, "pedido inexistente neste site")
 
 
@@ -365,19 +453,23 @@ def list_orders_by_opportunity(request, oportunidade_ref: str = ""):
         .order_by("created_at")
     )
     com_pedido = {pedido.id for pedido in pedidos}
-    links = [
-        link
-        for link in LinkDeCompra.objects.filter(
+    todos_os_links = list(
+        LinkDeCompra.objects.filter(
             site_id=site["id"], oportunidade_ref=referencia
         ).order_by("criado_em")
-        if link.pedido_id not in com_pedido
-    ]
+    )
+    link_por_pedido = {link.pedido_id: link for link in todos_os_links}
+    link_por_sessao = {link.session_id: link for link in todos_os_links}
+    links = [link for link in todos_os_links if link.pedido_id not in com_pedido]
     aprovado = sum(p.total_cents for p in pedidos if p.status in ("pago", "reembolsado"))
     estornado = sum(p.total_cents for p in pedidos if p.status == "reembolsado")
     return JsonResponse(
         {
             "oportunidade_ref": referencia,
-            "pedidos": [_estado_do_pedido(p) for p in pedidos]
+            "pedidos": [
+                _estado_do_pedido(p, link_por_pedido.get(p.id) or link_por_sessao.get(p.session_id))
+                for p in pedidos
+            ]
             + [_estado_do_link(link) for link in links],
             "resumo": {
                 "aprovado_cents": aprovado,

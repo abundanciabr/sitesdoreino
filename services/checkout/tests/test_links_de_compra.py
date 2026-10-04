@@ -7,7 +7,9 @@ aviso do provedor.
 """
 
 import json
+import logging
 import uuid
+from datetime import datetime, timezone
 
 import httpx
 import pytest
@@ -21,6 +23,8 @@ from conftest import (
     SITE_A,
     SLUG,
     aprovado_v2,
+    pix_expirado_v1,
+    recusado_v1,
 )
 
 CONDICOES = f"/api/checkout/interno/ofertas/{SLUG}/condicoes"
@@ -138,21 +142,48 @@ def test_cartao_ligado_traz_as_parcelas_cotadas_pelo_provedor(api, cartao_no_sit
 
 
 @pytest.mark.django_db
-def test_cotacao_fora_do_ar_mantem_cartao_sem_inventar_parcela(api, rede, settings):
+def test_cotacao_fora_do_ar_oferece_so_pix_e_cartao_a_vista(api, rede, settings):
     settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(
         return_value=httpx.Response(502)
     )
     corpo = api.get(CONDICOES).json()
-    assert corpo["parcelas"] == {"consulta": "indisponivel", "maximo": None}
+    assert corpo["parcelas"] == {"consulta": "indisponivel", "maximo": 1}
+    assert [c["id"] for c in corpo["condicoes"]] == ["pix", "card_1x"]
+    # À vista não depende de cotação: o total é o próprio preço, sem parcela inventada.
     assert corpo["condicoes"][1] == {
-        "id": "card",
+        "id": "card_1x",
         "metodo": "card",
-        "parcelas": None,
-        "total_cents": None,
-        "parcela_cents": None,
+        "parcelas": 1,
+        "total_cents": 990,
+        "parcela_cents": 990,
         "vencimento_minutos": None,
     }
+
+
+@pytest.mark.django_db
+def test_cotacao_boa_fica_guardada_por_site_e_valor(api, cartao_no_site_a, settings):
+    api.get(CONDICOES)
+    api.get(CONDICOES)
+    assert len(cartao_no_site_a.calls) == 1
+    # Outro valor é outra cotação; outro site também.
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"], "site-bbb"})
+    api.get(CONDICOES, host=HOST_B)
+    assert [c.request.url.params["amount_cents"] for c in cartao_no_site_a.calls] == [
+        "990",
+        "4990",
+    ]
+
+
+@pytest.mark.django_db
+def test_cotacao_que_falhou_nao_fica_guardada(api, rede, settings):
+    settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
+    cotacao = rede.get(url__startswith=f"{PAGAMENTOS}/parcelas")
+    cotacao.mock(return_value=httpx.Response(502))
+    assert api.get(CONDICOES).json()["parcelas"]["consulta"] == "indisponivel"
+    cotacao.mock(side_effect=_cotacao)
+    corpo = api.get(CONDICOES).json()
+    assert corpo["parcelas"] == {"consulta": "ok", "maximo": 3}
 
 
 @pytest.mark.django_db
@@ -209,11 +240,9 @@ def test_link_de_compra_devolve_url_valor_vencimento_e_pedido(api, rede):
     sessao = Session.objects.get()
     assert link.session_id == sessao.id
     assert sessao.offer_slug == SLUG and sessao.site_id == SITE_A["id"]
-    assert link.contato == {
-        "nome": "Maria da Silva",
-        "email": "maria@exemplo.com",
-        "telefone": "11988887777",
-    }
+    # Nada no checkout lê o contato do link: o dado pessoal não fica guardado.
+    assert link.contato == {}
+    assert "maria" not in json.dumps(link.resposta).lower()
     # Nenhum pedido nem cobrança: o pedido nasce quando a pessoa confirma.
     assert not Order.objects.exists()
 
@@ -221,12 +250,75 @@ def test_link_de_compra_devolve_url_valor_vencimento_e_pedido(api, rede):
 @pytest.mark.django_db
 def test_mesma_chave_devolve_o_mesmo_link_nunca_um_segundo(api, rede):
     primeiro = _link(api)
-    segundo = _link(api, condicao="outra-qualquer")
+    segundo = _link(api)
     assert primeiro.status_code == 201
     assert segundo.status_code == 200
     assert segundo.json() == primeiro.json()
     assert LinkDeCompra.objects.count() == 1
     assert Session.objects.count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "mudanca",
+    [
+        {"condicao": "outra-qualquer"},
+        {"oportunidade_ref": "op-999"},
+        {"oferta": "outra-oferta"},
+    ],
+)
+def test_mesma_chave_com_outro_pedido_e_409_e_nao_devolve_o_link_antigo(api, rede, mudanca):
+    primeiro = _link(api)
+    segundo = _link(api, **mudanca)
+    assert segundo.status_code == 409
+    assert "chave_idempotencia" in segundo.json()["detail"]
+    assert segundo.content != primeiro.content
+    # O link original continua devolvido a quem repete o pedido original.
+    assert _link(api).json() == primeiro.json()
+    assert LinkDeCompra.objects.count() == 1
+    assert Session.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_sessao_do_link_leva_a_origem_crm_whatsapp_e_a_oportunidade(api, rede):
+    _link(api)
+    sessao = Session.objects.get()
+    assert sessao.contexto == {"op": "op-123"}
+    assert sessao.utm == {"src": "crm", "med": "whatsapp", "cpg": SLUG}
+
+
+@pytest.mark.django_db
+def test_estrategia_quiz_e_tentativa_do_atendimento_vao_para_a_atribuicao(api, rede):
+    tentativa = "7b0c2f9e-3f0a-4c1e-9d52-0a1b2c3d4e5f"
+    _link(api, estrategia="retomada-quiz", quiz="low-ticket", tentativa=tentativa)
+    sessao = Session.objects.get()
+    assert sessao.contexto == {
+        "op": "op-123",
+        "est": "retomada-quiz",
+        "qz": "low-ticket",
+        "qa": tentativa,
+    }
+    assert sessao.utm == {"src": "crm", "med": "whatsapp", "cpg": "retomada-quiz"}
+
+
+@pytest.mark.django_db
+def test_estrategia_com_caractere_invalido_e_descartada_e_a_campanha_vira_a_oferta(api, rede):
+    _link(api, estrategia="<script>")
+    sessao = Session.objects.get()
+    assert "est" not in sessao.contexto
+    assert sessao.utm["cpg"] == SLUG
+
+
+@pytest.mark.django_db
+def test_pedido_do_link_copia_a_atribuicao_da_sessao(api, rede):
+    link = _link(api, estrategia="retomada-quiz").json()
+    pedido = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert Order.objects.get(pk=pedido["order_id"]).contexto == {
+        "op": "op-123",
+        "est": "retomada-quiz",
+    }
+    criado = OutboxEvent.objects.get(event="pedido.criado").payload
+    assert criado["utm"] == {"src": "crm", "med": "whatsapp", "cpg": "retomada-quiz"}
 
 
 @pytest.mark.django_db
@@ -478,3 +570,272 @@ def test_pedidos_da_oportunidade_somam_so_o_que_o_provedor_confirmou(api, rede):
 @pytest.mark.django_db
 def test_pedidos_da_oportunidade_exige_a_referencia(api, rede):
     assert api.get("/api/checkout/interno/pedidos").status_code == 422
+
+
+# --------------------------------------------------------------------------
+# O link serve um pedido por vez
+# --------------------------------------------------------------------------
+
+
+def _intents(rede):
+    return [c for c in rede.calls if c.request.url.path.endswith("/intents")]
+
+
+@pytest.mark.django_db
+def test_reabrir_o_link_com_pedido_aguardando_leva_ao_pedido_existente(api, rede):
+    link = _link(api).json()
+    sessao = _abrir_pelo_link(api, link["link_id"])
+    pedido = _fechar(api, sessao["id"])
+
+    de_novo = _abrir_pelo_link(api, link["link_id"])
+    assert de_novo["pedido_existente"] == {
+        "order_id": pedido["order_id"],
+        "method": "pix",
+        "status": "aguardando_pagamento",
+    }
+    assert de_novo["id"] == sessao["id"]
+    assert "prefill" not in de_novo and "cpf_mascarado" not in de_novo
+    assert Session.objects.count() == 1 and Order.objects.count() == 1
+    # Fechar a mesma sessão outra vez continua sendo 409 com o pedido que existe.
+    repetido = api.post(
+        f"/api/checkout/sessoes/{sessao['id']}/pedido", {"customer": CLIENTE, "method": "pix"}
+    )
+    assert repetido.status_code == 409
+    assert repetido.json()["order_id"] == pedido["order_id"]
+    assert len(_intents(rede)) == 1
+
+
+@pytest.mark.django_db
+def test_reabrir_o_link_depois_de_pago_mostra_o_pedido_pago(api, rede):
+    link = _link(api).json()
+    pedido = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido["order_id"]), provider_reference_id="mp-1")
+    )
+    de_novo = _abrir_pelo_link(api, link["link_id"])
+    assert de_novo["pedido_existente"]["status"] == "pago"
+    assert de_novo["pedido_existente"]["order_id"] == pedido["order_id"]
+    assert Order.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_reabrir_o_link_com_pix_expirado_abre_novo_pedido_do_mesmo_link(api, rede):
+    link = _link(api, estrategia="retomada-quiz").json()
+    sessao1 = _abrir_pelo_link(api, link["link_id"])
+    pedido1 = _fechar(api, sessao1["id"])
+    assert pedido1["order_id"] == link["pedido_id"]
+    assert aplicar(
+        pix_expirado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
+    )
+
+    sessao2 = _abrir_pelo_link(api, link["link_id"])
+    assert "pedido_existente" not in sessao2
+    assert sessao2["id"] != sessao1["id"]
+    assert sessao2["condicao"] == {"metodo": "pix", "parcelas": 1}
+    assert str(LinkDeCompra.objects.get().session_id) == sessao2["id"]
+    nova = Session.objects.get(pk=sessao2["id"])
+    assert nova.contexto == {"op": "op-123", "est": "retomada-quiz"}
+    assert nova.utm == {"src": "crm", "med": "whatsapp", "cpg": "retomada-quiz"}
+    # Abrir de novo antes de fechar continua na mesma sessão nova.
+    assert _abrir_pelo_link(api, link["link_id"])["id"] == sessao2["id"]
+
+    pedido2 = _fechar(api, sessao2["id"])
+    assert pedido2["order_id"] != pedido1["order_id"]
+    segundo = Order.objects.get(pk=pedido2["order_id"])
+    assert segundo.oportunidade_ref == "op-123"
+    assert segundo.contexto == {"op": "op-123", "est": "retomada-quiz"}
+    # Cada tentativa é uma cobrança nova, com a chave da sessão dela.
+    chaves = {c.request.headers["X-Idempotency-Key"] for c in _intents(rede)}
+    assert chaves == {sessao1["id"], sessao2["id"]}
+    # Agora o pedido novo é o que a página mostra.
+    assert (
+        _abrir_pelo_link(api, link["link_id"])["pedido_existente"]["order_id"]
+        == pedido2["order_id"]
+    )
+
+
+@pytest.mark.django_db
+def test_crm_acompanha_pelo_id_do_link_o_pedido_que_vale(api, rede):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(
+        pix_expirado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
+    )
+    # Vencido e ninguém voltou: o estado é o do pedido que existe.
+    vencido = _estado(api, link["pedido_id"]).json()
+    assert vencido["status"] == "expirado"
+
+    pedido2 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    em_aberto = _estado(api, link["pedido_id"]).json()
+    assert em_aberto["status"] == "aguardando_pagamento"
+    assert em_aberto["pedido_atual_id"] == pedido2["order_id"]
+
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido2["order_id"]), provider_reference_id="mp-2")
+    )
+    pago = _estado(api, link["pedido_id"]).json()
+    assert pago["pedido_id"] == link["pedido_id"]
+    assert pago["pedido_atual_id"] == pedido2["order_id"]
+    assert pago["status"] == "pago" and pago["confirmado"] is True
+    # A lista da oportunidade segue dizendo a verdade sobre cada pedido.
+    corpo = api.get("/api/checkout/interno/pedidos?oportunidade_ref=op-123").json()
+    assert {i["pedido_id"]: i["status"] for i in corpo["pedidos"]} == {
+        pedido1["order_id"]: "expirado",
+        pedido2["order_id"]: "pago",
+    }
+    assert corpo["resumo"]["aprovado_cents"] == 990
+
+
+@pytest.mark.django_db
+def test_pedido_recusado_no_cartao_tambem_libera_um_novo_pelo_link(api, cartao_no_site_a):
+    link = _link(api, condicao="card_1x").json()
+    sessao1 = _abrir_pelo_link(api, link["link_id"])
+    pedido1 = _fechar(api, sessao1["id"], method="card")
+    assert aplicar(
+        recusado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
+    )
+    sessao2 = _abrir_pelo_link(api, link["link_id"])
+    assert "pedido_existente" not in sessao2 and sessao2["id"] != sessao1["id"]
+    assert sessao2["condicao"] == {"metodo": "card", "parcelas": 1}
+    pedido2 = _fechar(api, sessao2["id"], method="card")
+
+    # A recusa do 1º ainda pode virar aprovação tardia: o que o provedor
+    # confirmou vale mais que o pedido mais novo.
+    assert aplicar(
+        aprovado_v2(Order.objects.get(pk=pedido1["order_id"]), provider_reference_id="mp-tarde")
+    )
+    estado = _estado(api, link["pedido_id"]).json()
+    assert estado["status"] == "pago"
+    assert estado["pedido_atual_id"] == pedido1["order_id"]
+    assert pedido2["order_id"] != pedido1["order_id"]
+
+
+# --------------------------------------------------------------------------
+# A recuperação volta pelo mesmo link
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_pix_do_link_manda_recovery_url_com_o_link(api, rede):
+    link = _link(api).json()
+    _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    metadata = json.loads(_intents(rede)[-1].request.content)["metadata"]
+    assert metadata["recovery_url"] == (
+        f"https://{HOST_A}/checkout/{SLUG}/?link={link['link_id']}"
+    )
+
+
+@pytest.mark.django_db
+def test_pagina_do_pix_volta_pelo_link_e_sem_link_volta_pela_oferta(
+    client, api, rede, sessao_a
+):
+    link = _link(api).json()
+    do_link = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    html = client.get(f"/pedido/{do_link['order_id']}/pix/", HTTP_HOST=HOST_A).content.decode()
+    assert f'href="/{SLUG}/?link={link["link_id"]}"' in html
+
+    avulso = _fechar(api, sessao_a["id"])
+    html = client.get(f"/pedido/{avulso['order_id']}/pix/", HTTP_HOST=HOST_A).content.decode()
+    assert f'href="/{SLUG}/"' in html and "?link=" not in html
+
+
+@pytest.mark.django_db
+def test_pedido_antigo_depois_do_link_passar_para_outra_sessao_ainda_volta_pelo_link(
+    client, api, rede
+):
+    link = _link(api).json()
+    pedido1 = _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert aplicar(
+        pix_expirado_v1(Order.objects.get(pk=pedido1["order_id"]), payment_id="pg-1")
+    )
+    _abrir_pelo_link(api, link["link_id"])  # o link passa para a sessão nova
+    html = client.get(f"/pedido/{pedido1['order_id']}/pix/", HTTP_HOST=HOST_A).content.decode()
+    assert f'href="/{SLUG}/?link={link["link_id"]}"' in html
+
+
+# --------------------------------------------------------------------------
+# Valor do link e total do pedido
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_estado_rotula_valor_do_link_e_total_do_pedido_e_registra_a_divergencia(
+    api, cartao_no_site_a, caplog
+):
+    link = _link(api, condicao="card_3x").json()
+    assert link["valor_cents"] == 1050
+    antes = _estado(api, link["pedido_id"]).json()
+    assert antes["valor_do_link_cents"] == 1050
+    assert antes["total_do_pedido_cents"] is None
+
+    sessao = _abrir_pelo_link(api, link["link_id"])
+    with caplog.at_level(logging.WARNING, logger="apps.core.comercial"):
+        _fechar(api, sessao["id"], method="card")
+    avisos = [r.getMessage() for r in caplog.records if "valor do link difere" in r.getMessage()]
+    assert len(avisos) == 1
+    assert "valor_do_link_cents=1050" in avisos[0]
+    assert "total_do_pedido_cents=990" in avisos[0]
+    assert "op-123" in avisos[0]
+
+    depois = _estado(api, link["pedido_id"]).json()
+    assert depois["valor_do_link_cents"] == 1050
+    assert depois["total_do_pedido_cents"] == 990
+    assert depois["valor_cents"] == 990  # o campo antigo segue sendo o total do pedido
+    lista = api.get("/api/checkout/interno/pedidos?oportunidade_ref=op-123").json()
+    assert lista["pedidos"][0]["valor_do_link_cents"] == 1050
+    assert lista["pedidos"][0]["total_do_pedido_cents"] == 990
+
+
+@pytest.mark.django_db
+def test_valores_iguais_nao_vao_para_o_log(api, rede, caplog):
+    link = _link(api).json()
+    with caplog.at_level(logging.WARNING, logger="apps.core.comercial"):
+        _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    assert not [r for r in caplog.records if "valor do link difere" in r.getMessage()]
+    assert _estado(api, link["pedido_id"]).json()["valor_do_link_cents"] == 990
+
+
+# --------------------------------------------------------------------------
+# Hora do pagamento
+# --------------------------------------------------------------------------
+
+
+def _pedido_do_link(api):
+    link = _link(api).json()
+    _fechar(api, _abrir_pelo_link(api, link["link_id"])["id"])
+    return Order.objects.get(pk=link["pedido_id"])
+
+
+@pytest.mark.django_db
+def test_pago_em_e_a_hora_que_o_aviso_do_provedor_traz(api, rede):
+    order = _pedido_do_link(api)
+    envelope = aprovado_v2(order, provider_reference_id="mp-hora")
+    envelope["occurred_at"] = "2026-09-20T12:34:56Z"
+    assert aplicar(envelope) is True
+    order.refresh_from_db()
+    assert order.pago_em == datetime(2026, 9, 20, 12, 34, 56, tzinfo=timezone.utc)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("hora", [None, "ontem à tarde", 12345])
+def test_sem_hora_legivel_no_aviso_vale_a_do_processamento(api, rede, hora):
+    order = _pedido_do_link(api)
+    envelope = aprovado_v2(order, provider_reference_id="mp-sem-hora")
+    if hora is None:
+        del envelope["occurred_at"]
+    else:
+        envelope["occurred_at"] = hora
+    antes = datetime.now(timezone.utc)
+    assert aplicar(envelope) is True
+    order.refresh_from_db()
+    assert antes <= order.pago_em <= datetime.now(timezone.utc)
+
+
+@pytest.mark.django_db
+def test_aviso_sem_fuso_conta_como_utc(api, rede):
+    order = _pedido_do_link(api)
+    envelope = aprovado_v2(order, provider_reference_id="mp-sem-fuso")
+    envelope["occurred_at"] = "2026-09-20T12:00:00"
+    assert aplicar(envelope) is True
+    order.refresh_from_db()
+    assert order.pago_em == datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)

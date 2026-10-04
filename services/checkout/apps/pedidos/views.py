@@ -62,9 +62,33 @@ def _pedido_do_site(request, order_id: uuid.UUID, method: str) -> OrderModel:
     return pedido
 
 
+def _link_do_pedido(pedido: OrderModel) -> LinkDeCompra | None:
+    """O link de compra do atendimento de onde o pedido saiu, se saiu de um.
+    Quando o link já passou para uma sessão mais nova, o pedido antigo ainda
+    acha o link pelo id (1ª tentativa) ou pela oportunidade."""
+    link = LinkDeCompra.objects.filter(session_id=pedido.session_id).first()
+    if link is None:
+        link = LinkDeCompra.objects.filter(pedido_id=pedido.id).first()
+    if link is None and pedido.oportunidade_ref:
+        link = (
+            LinkDeCompra.objects.filter(
+                site_id=pedido.site_id,
+                oportunidade_ref=pedido.oportunidade_ref,
+                oferta_ref=pedido.oferta_ref,
+            )
+            .order_by("-criado_em")
+            .first()
+        )
+    return link
+
+
 def _url_da_oferta(request, pedido: OrderModel) -> str:
-    """Volta para a página de dados da mesma oferta, sob o prefixo real."""
-    return request.META.get("SCRIPT_NAME", "").rstrip("/") + f"/{pedido.session.offer_slug}/"
+    """Volta para a página de dados da mesma oferta, sob o prefixo real. Pedido
+    de um link do atendimento volta com `?link=`, para o novo pedido seguir
+    ligado à oportunidade."""
+    url = request.META.get("SCRIPT_NAME", "").rstrip("/") + f"/{pedido.session.offer_slug}/"
+    link = _link_do_pedido(pedido)
+    return f"{url}?link={link.id}" if link is not None else url
 
 
 def pix(request, order_id: uuid.UUID):
@@ -110,6 +134,6 @@ def cartao(request, order_id: uuid.UUID):
 def _parcelas_do_link(pedido: OrderModel) -> int | None:
     """A parcela da condição que o atendimento ofereceu no link, para vir
     marcada na tela do cartão. A pessoa pode trocar; a cotação é a da página."""
-    link = LinkDeCompra.objects.filter(session_id=pedido.session_id).first()
+    link = _link_do_pedido(pedido)
     parcelas = (link.condicao or {}).get("parcelas") if link is not None else None
     return parcelas if type(parcelas) is int else None
