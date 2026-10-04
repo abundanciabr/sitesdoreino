@@ -45,7 +45,7 @@ def test_concluir_sem_marcar_envia_aceito_falso(client, quiz):  # noqa: F811
     assert concluir(client, quiz).status_code == 302
     dados = evento("quiz.completado").get().payload
     assert dados["consentimento"]["whatsapp"]["aceito"] is False
-    assert dados["consentimento"]["whatsapp"]["registrado_em"] is None
+    assert dados["consentimento"]["whatsapp"]["registrado_em"]  # hora da escolha, também na recusa
     assert dados["consentimento"]["whatsapp"]["texto"] == consentimento.TEXTO_WHATSAPP
 
 
