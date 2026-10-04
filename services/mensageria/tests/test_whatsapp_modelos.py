@@ -222,6 +222,84 @@ def test_preparar_modelo_para_a_conversa_fora_da_janela(meta):
         preparar_modelo("em_analise", LEAD)
 
 
+def test_primeiro_contato_so_serve_modelo_aprovado_do_nome_certo_e_preenchido_inteiro(meta):
+    from apps.whatsapp_modelos.modelos import modelo_para_primeiro_contato
+
+    sincronizar_modelos()
+    # Modelo de amostra que toda conta da Meta traz: aprovado, sem variável, mas não é do primeiro contato.
+    ModeloWhatsApp.objects.create(conta="waba-1", nome="hello_world", idioma="en_US", estado="aprovado",
+                                  corpo="Welcome", componentes=[{"type": "BODY", "text": "Welcome"}])
+    sem_link = {k: v for k, v in LEAD.items() if k != "link"}
+    # O modelo do primeiro contato tem um botão com o link; sem o link não se preenche e nada mais serve.
+    modelo, motivo = modelo_para_primeiro_contato(sem_link)
+    assert modelo is None and "nao preenchem" in motivo
+    modelo, motivo = modelo_para_primeiro_contato(LEAD)
+    assert motivo == "" and modelo["nome"] == "primeiro_contato" and modelo["idioma"] == "pt_BR"
+    assert modelo["texto"] == "Oi Ana, vi seu resultado no Quiz da Vocação. Quer saber do Curso Base?"
+    assert [c["type"] for c in modelo["componentes"]] == ["body", "button"]
+    # Dado que o chamador não sabe nunca é inventado nem vai vazio.
+    assert modelo_para_primeiro_contato({"nome": "Ana", "quiz": "", "oferta": "x", "link": "abc"})[0] is None
+
+
+def test_primeiro_contato_prefere_o_nome_exato_depois_pt_br_e_ignora_modelo_que_nao_esta_aprovado(meta):
+    from apps.whatsapp_modelos.modelos import modelo_para_primeiro_contato
+
+    sincronizar_modelos()
+    base = {"conta": "waba-1", "corpo": "Oi {{1}}", "componentes": [{"type": "BODY", "text": "Oi {{1}}"}],
+            "variaveis": [{"chave": "body:1", "componente": "body", "parametro": "1"}],
+            "mapeamento": {"body:1": "nome"}}
+    ModeloWhatsApp.objects.create(nome="primeiro_contato_curto", idioma="pt_BR", estado="aprovado", **base)
+    ModeloWhatsApp.objects.create(nome="primeiro_contato_pausado", idioma="pt_BR", estado="pausado", **base)
+    ModeloWhatsApp.objects.create(nome="primeiro_contato_sumido", idioma="pt_BR", estado="aprovado",
+                                  presente_no_provedor=False, **base)
+    ModeloWhatsApp.objects.create(nome="primeiro_contato_nao_suportado", idioma="pt_BR", estado="aprovado",
+                                  suportado=False, **base)
+    # Só o nome é conhecido: o modelo completo (nome, quiz, oferta, link) não serve; o curto, aprovado, sim.
+    modelo, _ = modelo_para_primeiro_contato({"nome": "Ana"})
+    assert modelo["nome"] == "primeiro_contato_curto" and modelo["texto"] == "Oi Ana"
+    # Com tudo, o de nome exato ganha do curto.
+    assert modelo_para_primeiro_contato(LEAD)[0]["nome"] == "primeiro_contato"
+    # Em inglês só quando não há pt_BR com o mesmo nome.
+    ModeloWhatsApp.objects.create(nome="primeiro_contato_curto", idioma="en_US", estado="aprovado", **base)
+    ModeloWhatsApp.objects.filter(nome="primeiro_contato").update(estado="pausado")
+    assert modelo_para_primeiro_contato({"nome": "Ana"})[0]["idioma"] == "pt_BR"
+    ModeloWhatsApp.objects.filter(nome="primeiro_contato_curto", idioma="pt_BR").update(estado="pausado")
+    assert modelo_para_primeiro_contato({"nome": "Ana"})[0]["idioma"] == "en_US"
+    ModeloWhatsApp.objects.filter(idioma="en_US").update(estado="pausado")
+    modelo, motivo = modelo_para_primeiro_contato({"nome": "Ana"})
+    assert modelo is None and "nenhum modelo aprovado" in motivo
+
+
+def test_primeiro_contato_sem_canal_oficial_nao_escolhe_nada(settings):
+    from apps.whatsapp_modelos.modelos import modelo_para_primeiro_contato
+
+    settings.WHATSAPP_CLOUD_ACCESS_TOKEN = ""
+    modelo, motivo = modelo_para_primeiro_contato(LEAD)
+    assert modelo is None and "nao ligado" in motivo
+
+
+def test_api_primeiro_contato_escolhe_e_preenche_sem_enviar(meta, tokens):
+    chamadas, _ = meta
+    sincronizar_modelos()
+    cliente = Client()
+    url = "/api/mensageria/whatsapp-modelos/site-a/primeiro-contato"
+    corpo = json.dumps({"variaveis": LEAD})
+    assert cliente.post(url, corpo, content_type="application/json").status_code == 401
+    assert cliente.post(url, corpo, content_type="application/json",
+                        HTTP_AUTHORIZATION="Bearer " + LEITURA).status_code == 403
+    resposta = cliente.post(url, corpo, content_type="application/json",
+                            HTTP_AUTHORIZATION="Bearer " + ESCRITA)
+    assert resposta.status_code == 200
+    dados = resposta.json()
+    assert dados["motivo"] == "" and dados["modelo"]["nome"] == "primeiro_contato"
+    assert dados["modelo"]["componentes"][0]["parameters"][0] == {"type": "text", "text": "Ana"}
+    vazio = cliente.post(url, json.dumps({"variaveis": {}}), content_type="application/json",
+                         HTTP_AUTHORIZATION="Bearer " + ESCRITA).json()
+    assert vazio["modelo"] is None and vazio["motivo"]
+    assert not [c for c in chamadas if c[0] == "POST"]  # escolher não envia nada à Meta
+    assert not EnvioDeModelo.objects.exists()
+
+
 def _assinado(corpo: dict) -> tuple[bytes, str]:
     bruto = json.dumps(corpo).encode()
     return bruto, "sha256=" + hmac.new(b"segredo-app", bruto, hashlib.sha256).hexdigest()

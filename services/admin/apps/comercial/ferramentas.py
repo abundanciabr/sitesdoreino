@@ -189,7 +189,9 @@ DEFINICOES = {
     "enviar_mensagem": _ferramenta(
         "enviar_mensagem",
         "Envia UMA mensagem ao lead pelo canal. Volta o identificador do envio e o "
-        "estado do canal (fora_da_janela quando o WhatsApp só aceita modelo aprovado).",
+        "estado do canal. No primeiro contato pelo WhatsApp (fora da janela de 24 horas) "
+        "só sai um modelo aprovado: o site o escolhe no lugar do seu texto e diz qual "
+        "(campos modelo e texto_enviado); sem modelo aprovado, nada é enviado.",
         {
             "texto": {"type": "string"},
             "canal": {"type": ["string", "null"], "enum": ["whatsapp", "email", None]},
@@ -820,6 +822,67 @@ def _conversa_para_enviar(ctx: Contexto, canal: str | None) -> str:
     return str(aberta.get("id") or "")
 
 
+def _primeiro_nome(t: TrabalhoComercial) -> str:
+    partes = _contato_do_trabalho(t)["nome"].split()
+    return partes[0][:60] if partes else ""
+
+
+def _titulo_do_quiz(ctx: Contexto) -> str:
+    """O título do quiz que trouxe o lead (o nome que ele viu); vazio se nenhuma célula disser."""
+    t = ctx.trabalho
+    entrada = t.entrada or {}
+    for rota, referencia in (("respostas_da_submissao", entrada.get("submissao_id")),
+                             ("captura", entrada.get("captura_id"))):
+        if referencia:
+            resposta = servicos.pedir(rota, referencia, params={"site_id": t.site_id}, host=_host(t))
+            if resposta.ok and str(resposta.dados.get("quiz_titulo") or "").strip():
+                return str(resposta.dados["quiz_titulo"]).strip()
+    if t.contato_id and entrada.get("quiz"):
+        resposta = servicos.pedir("respostas_do_lead", t.contato_id, params={"quiz_slug": entrada["quiz"]})
+        quizzes = resposta.dados.get("quizzes") if resposta.ok else None
+        if quizzes and isinstance(quizzes[0], dict) and str(resposta.dados.get("site_id") or t.site_id) == str(t.site_id):
+            return str(quizzes[0].get("quiz_titulo") or "").strip()
+    return ""
+
+
+def _nome_da_oferta(ctx: Contexto) -> str:
+    t = ctx.trabalho
+    try:
+        oferta = _oferta(ctx, None)
+    except Recusa:
+        return ""
+    resposta = servicos.pedir("condicoes", oferta, site_id=t.site_id, host=_host(t))
+    if not resposta.ok or str(resposta.dados.get("site_id") or t.site_id) != str(t.site_id):
+        return ""
+    return str((resposta.dados.get("oferta") or {}).get("produto") or "").strip()
+
+
+def _modelo_do_primeiro_contato(ctx: Contexto) -> tuple[dict | None, str]:
+    """O modelo APROVADO que a mensageria escolhe para o primeiro contato, já
+    preenchido com o que o site sabe do lead: nome, quiz e oferta. O dado que
+    não se sabe não vai (o modelo que o pede não serve) e o link de compra
+    nunca vai (o botão do modelo leva só o final do link). Volta (modelo, "")
+    ou (None, motivo)."""
+    t = ctx.trabalho
+    dados_do_lead = {"nome": _primeiro_nome(t), "quiz": _titulo_do_quiz(ctx), "oferta": _nome_da_oferta(ctx)}
+    dados = _resolver(servicos.pedir(
+        "modelo_primeiro_contato", t.site_id, corpo={"variaveis": {k: v for k, v in dados_do_lead.items() if v}},
+        site_id=t.site_id), escrita=True)
+    modelo = dados.get("modelo")
+    if isinstance(modelo, dict) and modelo.get("nome") and isinstance(modelo.get("componentes"), list):
+        return modelo, ""
+    return None, str(dados.get("motivo") or "")[:300]
+
+
+def _saida_do_envio(dados: dict, conversa_id: str) -> dict:
+    return {
+        "resultado": str(dados.get("resultado") or "enviada"),
+        "mensagem_id": (dados.get("mensagem") or {}).get("id"),
+        "canal": (dados.get("conversa") or {}).get("canal"),
+        "conversa_id": conversa_id,
+    }
+
+
 def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
     t = ctx.trabalho
     canal = args.get("canal") or None
@@ -833,20 +896,33 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
         "autor": "agente",
         "autor_id": f"agente:{ctx.papel}",
         "assunto": str(args.get("assunto") or "")[:300],
-        # Abordar por conta própria (sem o lead ter escrito agora) tem regras
-        # do canal que responder a uma mensagem recebida não tem.
-        "proativa": t.tipo != T.ATENDER_MENSAGEM,
     }
     dados = _resolver(servicos.pedir("enviar_na_conversa", conversa_id, corpo=corpo, site_id=t.site_id),
                       escrita=True)
+    usado = None
+    if str(dados.get("resultado") or "") == "fora_da_janela":
+        # Fora das 24 horas (primeiro contato) o WhatsApp só aceita modelo aprovado. Texto livre
+        # nunca sai: o canal já recusou o texto, então só um modelo aprovado que sirva refaz o
+        # pedido, com a MESMA chave. Sem ele, é recusa clara e nada é enviado.
+        usado, motivo = _modelo_do_primeiro_contato(ctx)
+        if usado is None:
+            raise Recusa(json.dumps({
+                **_saida_do_envio(dados, conversa_id),
+                "erro": "WhatsApp fora da janela de 24 horas e sem modelo aprovado para primeiro contato: "
+                        "nada foi enviado.",
+                "detalhe": motivo or None,
+            }, ensure_ascii=False))
+        dados = _resolver(servicos.pedir(
+            "enviar_na_conversa", conversa_id, site_id=t.site_id,
+            corpo={**corpo, "texto": str(usado.get("texto") or "")[:4000],
+                   "modelo": {k: usado.get(k) for k in ("nome", "idioma", "componentes")}},
+        ), escrita=True)
     resultado = str(dados.get("resultado") or "enviada")
-    mensagem = dados.get("mensagem") or {}
-    saida = {
-        "resultado": resultado,
-        "mensagem_id": mensagem.get("id"),
-        "canal": (dados.get("conversa") or {}).get("canal"),
-        "conversa_id": conversa_id,
-    }
+    saida = _saida_do_envio(dados, conversa_id)
+    if usado is not None:
+        # O lead recebe o modelo, não o texto que o agente escreveu: o agente precisa saber.
+        saida["modelo"] = usado["nome"]
+        saida["texto_enviado"] = str(usado.get("texto") or "")[:1000]
     if resultado not in _ENVIADAS:
         reagendar = dados.get("reagendar_para") or dados.get("reagendado_para")
         espera = _depois_de(reagendar)

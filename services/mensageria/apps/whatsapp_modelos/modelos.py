@@ -269,6 +269,42 @@ def preparar_modelo(nome: str, variaveis: dict | None = None, idioma: str = "") 
             "componentes": montar_componentes(escolhido, limpas)}
 
 
+# Todo WABA nasce com modelos de amostra aprovados (ex.: hello_world) que nunca devem
+# chegar a um lead. O modelo do primeiro contato é o que o mantenedor batizou assim na Meta.
+PREFIXO_DO_PRIMEIRO_CONTATO = "primeiro_contato"
+
+
+def modelo_para_primeiro_contato(variaveis: dict | None = None) -> tuple[dict | None, str]:
+    """Escolhe o modelo APROVADO do primeiro contato com estes dados do lead.
+
+    Serve o modelo aprovado, sincronizado, suportado, com nome começando por
+    `primeiro_contato`, e que se preenche inteiro só com o que o chamador mandou
+    (`faltando_no_mapeamento` e dado ausente tiram o modelo da disputa: nada é
+    inventado nem mandado vazio). Entre os que servem: o de nome exato, depois pt_BR,
+    depois a ordem alfabética.
+
+    Devolve ({"nome", "idioma", "componentes", "texto"}, "") ou (None, motivo). O
+    `texto` é o corpo já preenchido, para a caixa de conversas mostrar o que o lead recebeu.
+    """
+    if not cloud.configurado():
+        return None, "canal oficial do WhatsApp ainda nao ligado"
+    limpas = {k: _texto(v) for k, v in (variaveis or {}).items() if k in VARIAVEIS_DO_LEAD and v}
+    aprovados = [m for m in ModeloWhatsApp.objects.filter(
+        conta=cloud.credenciais()["conta"], estado="aprovado", presente_no_provedor=True, suportado=True)
+        if m.nome.lower().startswith(PREFIXO_DO_PRIMEIRO_CONTATO)]
+    if not aprovados:
+        return None, f"nenhum modelo aprovado com nome iniciado por {PREFIXO_DO_PRIMEIRO_CONTATO}"
+    aprovados.sort(key=lambda m: (m.nome.lower() != PREFIXO_DO_PRIMEIRO_CONTATO, m.idioma != "pt_BR", m.nome, m.idioma))
+    for modelo in aprovados:
+        try:
+            componentes = montar_componentes(modelo, limpas)
+        except ValueError:
+            continue
+        return {"nome": modelo.nome, "idioma": modelo.idioma, "componentes": componentes,
+                "texto": _texto_enviado(modelo, componentes)}, ""
+    return None, "os dados deste lead nao preenchem nenhum modelo aprovado do primeiro contato"
+
+
 def _numero_do_site(site_id: str) -> str:
     """Número da Cloud API deste site; sem ligação própria vale o número da conta."""
     from apps.whatsapp.models import ConfiguracaoWhatsApp

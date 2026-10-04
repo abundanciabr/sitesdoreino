@@ -296,6 +296,11 @@ def _rotas_de_envio(resultado="enviada"):
     return envio
 
 
+def _rota_do_modelo(modelo, motivo=""):
+    return respx.post(f"{MENSAGERIA}/whatsapp-modelos/site-1/primeiro-contato").respond(
+        200, json={"modelo": modelo, "motivo": motivo})
+
+
 @respx.mock
 def test_abordagem_envia_uma_vez_mesmo_quando_o_modelo_pede_de_novo_e_na_retomada():
     _guardar_chave()
@@ -399,10 +404,11 @@ def test_provedor_fora_na_escrita_volta_para_a_fila_e_repete_com_a_mesma_chave()
 
 
 @respx.mock
-def test_whatsapp_fora_da_janela_e_recusa_explicada_ao_modelo():
+def test_whatsapp_fora_da_janela_sem_modelo_aprovado_e_recusa_clara_e_nao_envia_texto_livre():
     _guardar_chave()
     trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
-    _rotas_de_envio("fora_da_janela")
+    envio = _rotas_de_envio("fora_da_janela")
+    modelos = _rota_do_modelo(modelo=None, motivo="nenhum modelo aprovado com nome iniciado por primeiro_contato")
     _resto_404()
     respx.post(RESPOSTAS).mock(side_effect=[
         _chamada("enviar_mensagem", {"texto": "Oi", "canal": "whatsapp", "assunto": None, "razao": "r",
@@ -415,7 +421,85 @@ def test_whatsapp_fora_da_janela_e_recusa_explicada_ao_modelo():
     decisao = trabalho.decisoes.get(call_id="c1")
     assert decisao.resultado == R.RECUSADO
     assert "24 horas" in decisao.saida["erro"]
+    assert "sem modelo aprovado para primeiro contato" in decisao.saida["erro"]
+    assert "primeiro_contato" in decisao.saida["detalhe"] and decisao.saida["resultado"] == "fora_da_janela"
     assert trabalho.resultado["mensagem_enviada"] is False
+    assert modelos.call_count == 1
+    # Só o pedido do texto, que o canal recusou; nenhum segundo pedido com texto livre ou modelo.
+    assert envio.call_count == 1 and "modelo" not in _corpo(envio.calls[0])
+
+
+@respx.mock
+def test_primeiro_contato_fora_da_janela_vai_por_modelo_aprovado_com_a_mesma_chave():
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    texto_do_modelo = "Oi Ana, vi seu resultado no Quiz da Vocação. Quer saber do Curso Base?"
+    modelo = {"nome": "primeiro_contato", "idioma": "pt_BR", "texto": texto_do_modelo, "componentes": [
+        {"type": "body", "parameters": [{"type": "text", "text": "Ana"}]}]}
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").mock(side_effect=[
+        httpx.Response(200, json={"resultado": "fora_da_janela", "mensagem": None, "conversa": {"canal": "whatsapp"}}),
+        httpx.Response(200, json={"resultado": "enviada", "mensagem": {"id": "m-1"}, "conversa": {"canal": "whatsapp"}}),
+    ])
+    modelos = _rota_do_modelo(modelo=modelo)
+    respx.get(f"{LEADS}/leads/lead-1/respostas").respond(200, json={
+        "site_id": "site-1", "quizzes": [{"quiz_slug": "crivo", "quiz_titulo": "Quiz da Vocação"}]})
+    respx.get(f"{CHECKOUT}/interno/ofertas/curso-3d/condicoes-agente").respond(200, json={
+        "site_id": "site-1", "oferta": {"slug": "curso-3d", "produto": "Curso Base"}, "condicoes": []})
+    acompanhamento = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.FEITO
+    assert saida["resultado"] == "enviada" and saida["modelo"] == "primeiro_contato"
+    assert saida["texto_enviado"] == texto_do_modelo
+    texto_livre, com_modelo = (_corpo(c) for c in envio.calls)
+    assert "modelo" not in texto_livre and texto_livre["texto"] == "Oi Ana"
+    assert com_modelo["modelo"] == {"nome": "primeiro_contato", "idioma": "pt_BR", "componentes": modelo["componentes"]}
+    assert com_modelo["texto"] == texto_do_modelo  # a caixa mostra o que o lead recebeu, não o texto do agente
+    assert com_modelo["chave_idempotencia"] == texto_livre["chave_idempotencia"]
+    assert "proativa" not in texto_livre and "proativa" not in com_modelo
+    # A mensageria recebe só o que o site sabe do lead: nome, título do quiz e nome da oferta; nunca o link.
+    assert _corpo(modelos.calls.last) == {"variaveis": {"nome": "Ana", "quiz": "Quiz da Vocação", "oferta": "Curso Base"}}
+    assert _corpo(acompanhamento.calls.last)["chave_idempotencia"] == com_modelo["chave_idempotencia"]
+
+
+@respx.mock
+def test_primeiro_contato_so_manda_a_mensageria_o_dado_que_o_site_sabe():
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1", contato_id="", oportunidade_id="",
+                         entrada={"contato": {"nome": "  ", "email": EMAIL}, "host": "meshcraft.top"})
+    respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": "fora_da_janela", "mensagem": None, "conversa": {"canal": "whatsapp"}})
+    modelos = _rota_do_modelo(modelo=None, motivo="x")
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert saida["resultado"] == "fora_da_janela" and "sem modelo aprovado" in saida["erro"]
+    assert _corpo(modelos.calls.last) == {"variaveis": {}}
+
+
+@respx.mock
+def test_primeiro_contato_sem_a_rota_dos_modelos_na_mensageria_nao_envia_nada():
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": "fora_da_janela", "mensagem": None, "conversa": {"canal": "whatsapp"}})
+    _resto_404()
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.INDISPONIVEL
+    assert saida["capacidade_indisponivel"] is True
+    assert envio.call_count == 1
+
+
+@pytest.mark.parametrize("resultado", ["sem_consentimento", "fora_do_horario", "limite_diario"])
+@respx.mock
+def test_modelo_aprovado_tambem_passa_pelas_recusas_do_canal(resultado):
+    trabalho = _trabalho(T.ABORDAR, conversa_id="conv-1")
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").mock(side_effect=[
+        httpx.Response(200, json={"resultado": "fora_da_janela", "mensagem": None, "conversa": {"canal": "whatsapp"}}),
+        httpx.Response(200, json={"resultado": resultado, "detalhe": "x", "mensagem": None,
+                                  "conversa": {"canal": "whatsapp"}}),
+    ])
+    _rota_do_modelo(modelo={"nome": "primeiro_contato", "idioma": "pt_BR", "texto": "Oi", "componentes": []})
+    acompanhamento = respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
+    _resto_404()
+    saida = _enviar_pela_ferramenta(trabalho)
+    assert trabalho.decisoes.get(call_id="c1").resultado == R.RECUSADO
+    assert saida["resultado"] == resultado and saida["modelo"] == "primeiro_contato"
+    assert envio.call_count == 2 and not acompanhamento.called
 
 
 @respx.mock
@@ -574,7 +658,7 @@ def test_envio_feito_grava_o_acompanhamento_com_a_chave_do_envio(resultado):
 
 
 @respx.mock
-def test_so_a_abordagem_por_conta_propria_e_proativa():
+def test_dentro_da_janela_o_texto_vai_direto_sem_modelo_e_sem_campo_que_a_mensageria_ignora():
     abordagem = _trabalho(T.ABORDAR, conversa_id="conv-1")
     resposta = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-2", chave_da_conversa="conversa:conv-2")
     rotas = {
@@ -582,11 +666,15 @@ def test_so_a_abordagem_por_conta_propria_e_proativa():
             "resultado": "enviada", "mensagem": {"id": "m"}, "conversa": {}})
         for conversa in ("conv-1", "conv-2")
     }
+    modelos = _rota_do_modelo(modelo=None)
     respx.patch(f"{LEADS}/crm/opp-1/acompanhamento").respond(200, json={})
     _enviar_pela_ferramenta(abordagem)
-    _enviar_pela_ferramenta(resposta, papel="atendimento")
-    assert _corpo(rotas["conv-1"].calls.last)["proativa"] is True
-    assert _corpo(rotas["conv-2"].calls.last)["proativa"] is False
+    saida = _enviar_pela_ferramenta(resposta, papel="atendimento")
+    for rota in rotas.values():
+        corpo = _corpo(rota.calls.last)
+        assert rota.call_count == 1 and "proativa" not in corpo and "modelo" not in corpo
+        assert corpo["texto"] == "Oi Ana"
+    assert "modelo" not in saida and not modelos.called
 
 
 @respx.mock
@@ -1030,8 +1118,57 @@ def test_pagina_da_equipe_filtra_por_botao_e_numero_que_nao_e_numero_da_404():
     # O CSP bloqueia atributo de evento: o filtro tem de ser um botão de enviar.
     assert "onchange" not in html and 'type="submit">Filtrar</button>' in html
     for acao, campo in (("ativar", "estrategia"), ("retomar", "trabalho"), ("encerrar_teste", "teste")):
-        for valor in ("abc", "", "1.5", "-3"):
+        for valor in ("abc", "", "1.5", "-3", "²", "٣", "1" * 13):
             assert cliente.post(reverse("agentes_comerciais"), {"acao": acao, campo: valor}).status_code == 404
+
+
+@respx.mock
+def test_pagina_da_equipe_so_aceita_trabalho_em_digitos_ascii_e_o_resto_da_404_sem_500():
+    respx.get(f"{IDENTIDADE}/sessao/completa").respond(200, json={
+        "autenticado": True, "id": "id-1", "nome_exibido": "Dono", "papel": None, "email": DONO})
+    cliente = Client()
+    cliente.defaults["HTTP_COOKIE"] = "meshcraft_sessao=qualquer-coisa-assinada"
+    trabalho = _trabalho(T.ABORDAR)
+    url = reverse("agentes_comerciais")
+    for torto in ("²", "٣", "-1", "1.5", "abc", "1" * 13, "9" * 5000):
+        assert cliente.get(url, {"trabalho": torto}).status_code == 404, torto
+    com_detalhe = cliente.get(url, {"trabalho": str(trabalho.pk)})
+    assert com_detalhe.status_code == 200 and f"Trabalho nº {trabalho.pk}" in com_detalhe.content.decode()
+    assert cliente.get(url, {"trabalho": ""}).status_code == 200  # sem pedido: a página comum
+    assert cliente.get(url, {"trabalho": "999999999"}).status_code == 200  # número válido que não existe
+
+
+@respx.mock
+def test_voltar_versao_leva_a_versao_da_tela_e_a_corrida_vira_mensagem_sem_500():
+    respx.get(f"{IDENTIDADE}/sessao/completa").respond(200, json={
+        "autenticado": True, "id": "id-1", "nome_exibido": "Dono", "papel": None, "email": DONO})
+    cliente = Client()
+    cliente.defaults["HTTP_COOKIE"] = "meshcraft_sessao=qualquer-coisa-assinada"
+    url = reverse("agentes_comerciais")
+    proposta = papeis.propor_versao("abordagem", "Versão nova", criada_por="agente:resultados",
+                                    motivo="amostra", origem="otimizador")
+    papeis.ativar(proposta, "dono", "teste")
+    assert papeis.estrategia_ativa("abordagem").versao == 2
+    # O botão de voltar leva a versão que a tela mostra no ar.
+    assert 'name="versao_no_ar" value="2"' in cliente.get(url).content.decode()
+
+    def voltar(versao):
+        resposta = cliente.post(url, {"acao": "voltar", "papel": "abordagem", "versao_no_ar": versao})
+        assert resposta.status_code == 302
+        return resposta["Location"]
+
+    # Uma aba velha (que ainda mostrava a v1 no ar) não anda mais um degrau.
+    assert voltar("1").endswith("resultado=mudou")
+    assert papeis.estrategia_ativa("abordagem").versao == 2
+    assert voltar("2").endswith("resultado=voltou")
+    assert papeis.estrategia_ativa("abordagem").versao == 1
+    # Clique repetido na mesma tela: a v2 já saiu do ar, a volta não se repete.
+    assert voltar("2").endswith("resultado=mudou")
+    assert papeis.estrategia_ativa("abordagem").versao == 1
+    assert "mudou enquanto você olhava" in cliente.get(url, {"resultado": "mudou"}).content.decode()
+    # Versão da tela torta ou ausente (formulário antigo): sem proteção, mas sem 500.
+    assert voltar("²").endswith("resultado=voltou")
+    assert voltar("").endswith("resultado=voltou")
 
 
 # ---------------------------------------------------------------- consumidor
