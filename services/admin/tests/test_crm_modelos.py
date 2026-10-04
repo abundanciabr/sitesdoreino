@@ -120,3 +120,19 @@ def test_teste_exige_autorizacao_e_usa_o_site_do_host():
     assert corpo["chave_idempotencia"] == "manual:abc" and corpo["origem"] == "manual"
     assert corpo["variaveis"] == {"nome": "Ana"}
     assert "Aceito pela Meta" in resposta.content.decode()
+
+
+@respx.mock
+def test_tela_diz_que_o_primeiro_contato_pede_modelo_sem_botao_ou_com_url_fixa():
+    """O primeiro contato do agente nao manda `link`: modelo com botao de URL dinamica nunca e escolhido."""
+    com_botao = dict(PAINEL["modelos"][0], id=9, nome="primeiro_contato_botao", corpo="Oi {{1}}",
+                     variaveis=[{"chave": "body:1", "componente": "body", "parametro": "1"},
+                                {"chave": "button.0:1", "componente": "button.0", "parametro": "1"}],
+                     mapeamento={"body:1": "nome", "button.0:1": "link"})
+    painel = dict(PAINEL, modelos=[PAINEL["modelos"][0], com_botao])
+    texto = dentro(painel).get(reverse("crm_modelos")).content.decode()
+    # A frase de cima diz a regra.
+    assert "sem botão ou com URL fixa" in texto
+    # O modelo com botao de link variavel avisa que nao serve ao primeiro contato, e nao conta como pronto dele.
+    assert texto.count("tem botão com link que muda a cada pessoa") == 1
+    assert "1 modelo pronto para o primeiro contato" in texto

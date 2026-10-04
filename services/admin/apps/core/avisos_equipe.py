@@ -28,6 +28,17 @@ volta depois de publicar, o que já era velho fica de fora), uma volta manda no
 máximo `EMAILS_POR_VOLTA` e-mails (o resto sai nas voltas seguintes) e o
 trabalho parado avisa uma vez por trabalho, com teto de avisos novos por volta.
 
+Fato de teste não vira aviso nem e-mail, em nenhum dos tipos. É teste o que o
+resto do projeto já chama de teste: contato de e-mail `@example.com` ou
+`@exemplo.test`, nome com "teste", "test" ou "sandbox", origem ou `utm_source`
+"sandbox" (`comercial.eventos.de_teste`, o critério do coordenador, e o
+`LEAD_DE_TESTE` da `leads`). A conversa só traz o `lead_id`, então quem é o
+lead vem da `leads` (uma pergunta por lead, guardada por alguns minutos, com
+teto por volta). Se a `leads` não responde, o aviso espera: nada é criado
+naquela volta e a próxima tenta de novo. O trabalho do robô pessoal
+(`trabalho_parado` de `agentes.Execucao`) não tem contato nenhum, então não há
+o que classificar nele.
+
 O e-mail usa o caminho que já existe para e-mail: a mensageria, que registra o
 envio com chave própria e fala com o provedor. Mensagem do lead não entra no
 aviso: o aviso diz o que aconteceu e leva o link, e quem abre lê a conversa lá.
@@ -51,7 +62,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from .clients import MensageriaClient, http
+from .clients import LeadsClient, MensageriaClient, http
 from .crm_client import CRMClient
 from .models import AvisoDaEquipe, MembroDaEquipe
 
@@ -77,6 +88,14 @@ AVISOS_DE_TRABALHO_POR_VOLTA = 10
 #: Quanto vale, nesta máquina, a resposta "ainda sem pagamento aprovado" da
 #: receita de uma oportunidade (para não perguntar de novo a cada volta).
 VALIDADE_DA_RECEITA = timedelta(minutes=15)
+#: Quanto vale a resposta "este lead é (ou não é) de teste". Nome e e-mail de lead
+#: quase não mudam; só resposta certa fica guardada.
+VALIDADE_DO_LEAD = timedelta(minutes=30)
+#: Perguntas à `leads` que UMA volta pode fazer. O que passar disso espera a
+#: volta seguinte (as respostas já dadas ficam guardadas).
+PERGUNTAS_A_LEADS_POR_VOLTA = 20
+#: Fim do endereço que só existe em teste (mesmos do `LEAD_DE_TESTE` da `leads`).
+ENDERECOS_DE_TESTE = ("@example.com", "@exemplo.test")
 #: O que a pessoa de crachá de equipe lê no lugar do nome e do valor do cliente.
 VENDA_SEM_DADO_DO_CLIENTE = (
     "Venda aprovada com atendimento do agente",
@@ -431,6 +450,79 @@ _CONVERSAS_LIDAS: dict[str, tuple] = {}
 _LIMITE_DAS_MEMORIAS = 1000
 
 
+#: Lead já perguntado à `leads`: id -> (vale até, é de teste).
+_LEADS_DE_TESTE: dict[str, tuple] = {}
+
+
+def _contato_de_teste(nome="", email="", origem="", utm=None, dados=None) -> bool:
+    """O critério de teste do coordenador comercial (`eventos.de_teste`), mais a
+    origem "sandbox" que a `leads` também conta como teste."""
+    from apps.comercial import eventos
+
+    contato = {"nome": str(nome or ""), "email": str(email or "").strip().lower()}
+    base = dict(dados) if isinstance(dados, dict) else {}
+    if "utm" not in base:
+        base["utm"] = utm if isinstance(utm, dict) else {}
+    return bool(eventos.de_teste(contato, base) or "sandbox" in str(origem or "").lower())
+
+
+class _PerguntasALeads:
+    """As perguntas desta volta à `leads` sobre quem é o lead de uma conversa.
+
+    `lead_de_teste` devolve `True` ou `False` quando sabe e `None` quando não dá
+    para saber agora (a `leads` não respondeu, não está configurada ou o teto da
+    volta acabou): quem recebe `None` não avisa, e a próxima volta tenta de novo.
+    Depois da primeira pergunta que não deu, a volta não insiste."""
+
+    def __init__(self) -> None:
+        self.feitas = 0
+        self.fora_do_ar = False
+
+    def lead_de_teste(self, lead_id: str) -> bool | None:
+        lead_id = (lead_id or "").strip()
+        if not lead_id:
+            return False
+        agora = timezone.now()
+        guardada = _LEADS_DE_TESTE.get(lead_id)
+        if guardada is not None and guardada[0] > agora:
+            return guardada[1]
+        if self.fora_do_ar or self.feitas >= PERGUNTAS_A_LEADS_POR_VOLTA:
+            return None
+        self.feitas += 1
+        cliente = LeadsClient()
+        if cliente._configuracao() is None:
+            self.fora_do_ar = True
+            return None
+        desfecho, lead = cliente.lead(lead_id)
+        if desfecho == cliente.NAO_EXISTE:
+            de_teste = False
+        elif desfecho == cliente.OK and isinstance(lead, dict):
+            de_teste = _contato_de_teste(lead.get("nome"), lead.get("email"), lead.get("origem"), lead.get("utm"))
+        else:
+            self.fora_do_ar = True
+            return None
+        if len(_LEADS_DE_TESTE) >= _LIMITE_DAS_MEMORIAS:
+            _LEADS_DE_TESTE.clear()
+        _LEADS_DE_TESTE[lead_id] = (agora + VALIDADE_DO_LEAD, de_teste)
+        return de_teste
+
+    def conversa_de_teste(self, conversa: dict) -> bool | None:
+        """`True` (de teste), `False` (de verdade) ou `None` (não deu para saber)."""
+        if str(conversa.get("endereco_mascarado") or "").strip().lower().endswith(ENDERECOS_DE_TESTE):
+            return True
+        return self.lead_de_teste(str(conversa.get("lead_id") or ""))
+
+    def trabalho_de_teste(self, trabalho) -> bool | None:
+        """O trabalho comercial que o coordenador ainda não marcou como teste: o que
+        o evento trouxe (`entrada`) e, na falta, o contato na `leads`."""
+        entrada = getattr(trabalho, "entrada", None)
+        entrada = entrada if isinstance(entrada, dict) else {}
+        contato = entrada.get("contato") if isinstance(entrada.get("contato"), dict) else {}
+        if _contato_de_teste(contato.get("nome"), contato.get("email"), dados=entrada):
+            return True
+        return self.lead_de_teste(str(getattr(trabalho, "contato_id", "") or ""))
+
+
 def _chave(site_id: str, fato: str) -> tuple[str, str]:
     """A parte do `(tipo, site_id, fato)` que `avisar` grava."""
     return (site_id or "").strip()[:100], _fato(fato)
@@ -486,7 +578,8 @@ def varrer_vendas_assistidas(agora=None) -> list[dict]:
     itens = dados.get("itens") or []
     candidatas = []
     for item in itens:
-        if item.get("registro_de_teste"):
+        contato = item.get("contato") if isinstance(item.get("contato"), dict) else {}
+        if item.get("registro_de_teste") or _contato_de_teste(contato.get("nome"), contato.get("email")):
             continue
         if (_atendido_por(item).get("tipo") or "") != "agente":
             continue
@@ -543,8 +636,9 @@ def _mensagens_ja_lidas(chave: str, ultima_texto: str, ultima) -> bool:
     )
 
 
-def varrer_conversas(site_id: str, agora=None) -> None:
+def varrer_conversas(site_id: str, agora=None, perguntas: _PerguntasALeads | None = None) -> None:
     agora = agora or timezone.now()
+    perguntas = perguntas or _PerguntasALeads()
     correio = _Correio()
     if not correio.ligado():
         return
@@ -566,6 +660,9 @@ def varrer_conversas(site_id: str, agora=None) -> None:
         if quando is None or quando < desde:
             continue
         marca = str(conversa.get("assumida_em") or "")
+        if perguntas.conversa_de_teste(conversa) is not False:
+            # De teste não avisa; sem saber (a `leads` não respondeu), espera a próxima volta.
+            continue
         avisar(
             Tipo.PESSOA_PEDIDA,
             site_id=site_id,
@@ -589,6 +686,8 @@ def varrer_conversas(site_id: str, agora=None) -> None:
             continue
         quando = _instante(conversa.get("ultima_mensagem_em")) or _instante(conversa.get("criada_em"))
         if quando is None or quando < desde:
+            continue
+        if perguntas.conversa_de_teste(conversa) is not False:
             continue
         avisar(
             Tipo.CONVERSA_AMBIGUA,
@@ -621,9 +720,6 @@ def varrer_conversas(site_id: str, agora=None) -> None:
         )
         if not isinstance(mensagens, dict):
             continue
-        if len(_CONVERSAS_LIDAS) >= _LIMITE_DAS_MEMORIAS:
-            _CONVERSAS_LIDAS.clear()
-        _CONVERSAS_LIDAS[lida] = (ultima_texto, agora)
         incertas = 0
         for mensagem in mensagens.get("mensagens") or []:
             if not isinstance(mensagem, dict):
@@ -634,7 +730,16 @@ def varrer_conversas(site_id: str, agora=None) -> None:
             if quando is None or quando > limite or quando < desde:
                 continue
             incertas += 1
-        if not incertas:
+        # Só pergunta quem é o lead quando há mesmo o que avisar. Sem saber (a
+        # `leads` não respondeu), a conversa não fica como "lida": a próxima
+        # volta lê de novo e tenta de novo.
+        de_teste = perguntas.conversa_de_teste(conversa) if incertas else False
+        if de_teste is None:
+            continue
+        if len(_CONVERSAS_LIDAS) >= _LIMITE_DAS_MEMORIAS:
+            _CONVERSAS_LIDAS.clear()
+        _CONVERSAS_LIDAS[lida] = (ultima_texto, agora)
+        if not incertas or de_teste:
             continue
         # Um aviso por conversa: uma queda do provedor deixa várias mensagens
         # da mesma conversa sem confirmação, e é um problema só.
@@ -682,12 +787,16 @@ def _link_do_trabalho(trabalho) -> str:
     return link_da_oportunidade(oportunidade) if oportunidade else "/admin/crm/"
 
 
-def varrer_trabalhos_comerciais(limite, desde=None) -> None:
+def varrer_trabalhos_comerciais(limite, desde=None, perguntas: _PerguntasALeads | None = None) -> None:
     """Trabalho comercial esperando o provedor ou o modelo além da tolerância
     vira `trabalho_parado`; trabalho com envio sem confirmação vira
     `envio_incerto`. Um aviso por trabalho e por estado (não por tentativa),
     com teto de avisos novos por volta. A análise horária do relógio não
-    avisa: ela espera pela mesma causa dos outros trabalhos."""
+    avisa: ela espera pela mesma causa dos outros trabalhos. Trabalho de teste
+    não avisa: o marcado `teste` fica de fora na consulta, e o que o
+    coordenador ainda não marcou é visto pelo que o evento trouxe e pelo
+    contato na `leads` (sem saber, espera a próxima volta)."""
+    perguntas = perguntas or _PerguntasALeads()
     Modelo = _modelo_do_trabalho_comercial()
     if Modelo is None:
         return
@@ -721,6 +830,8 @@ def varrer_trabalhos_comerciais(limite, desde=None) -> None:
                 continue
             if novos >= AVISOS_DE_TRABALHO_POR_VOLTA:
                 return
+            if perguntas.trabalho_de_teste(trabalho) is not False:
+                continue
             motivo = str(getattr(trabalho, "motivo", "") or "")
             if tipo == Tipo.ENVIO_INCERTO:
                 titulo = "Mensagem do agente sem confirmação de envio"
@@ -747,11 +858,11 @@ def varrer_trabalhos_comerciais(limite, desde=None) -> None:
             novos += 1 if criado else 0
 
 
-def varrer_trabalhos_parados(agora=None) -> None:
+def varrer_trabalhos_parados(agora=None, perguntas: _PerguntasALeads | None = None) -> None:
     agora = agora or timezone.now()
     limite = agora - timedelta(minutes=MINUTOS_DE_TOLERANCIA)
     desde = agora - JANELA_DOS_FATOS
-    varrer_trabalhos_comerciais(limite, desde)
+    varrer_trabalhos_comerciais(limite, desde, perguntas)
 
     # Os trabalhos que o executor dos robôs já roda (leitura e conferência do
     # quiz, panorama) param do mesmo jeito quando a conexão com o modelo cai.
@@ -801,17 +912,18 @@ def varrer(agora=None) -> None:
     estado, dados = CRMClient().quadro(situacao="aberta", testes="ocultar", pagina=1, por_pagina=100)
     if estado == CRMClient.OK:
         oportunidades = oportunidades + list(dados.get("itens") or [])
+    perguntas = _PerguntasALeads()
     sites = sites_conhecidos(oportunidades)
     for site in AvisoDaEquipe.objects.exclude(site_id="").values_list("site_id", flat=True).distinct()[:20]:
         if site not in sites:
             sites.append(site)
     for site in sites:
         try:
-            varrer_conversas(site, agora)
+            varrer_conversas(site, agora, perguntas)
         except Exception:  # noqa: BLE001
             log.exception("Avisos da equipe: conversas do site %s", site)
     try:
-        varrer_trabalhos_parados(agora)
+        varrer_trabalhos_parados(agora, perguntas)
     except Exception:  # noqa: BLE001
         log.exception("Avisos da equipe: trabalhos parados")
     enviar_emails_pendentes(EMAILS_POR_VOLTA)

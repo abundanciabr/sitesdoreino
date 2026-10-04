@@ -274,6 +274,16 @@ def preparar_modelo(nome: str, variaveis: dict | None = None, idioma: str = "") 
 PREFIXO_DO_PRIMEIRO_CONTATO = "primeiro_contato"
 
 
+def _botao_sem_dado(modelo: ModeloWhatsApp, variaveis: dict) -> bool:
+    """O modelo tem botao de URL com parte variavel e estes dados nao a preenchem.
+
+    No primeiro contato ninguem manda `link` (o link de compra nunca vai: o botao
+    levaria so o final dele), entao modelo com botao assim nunca e escolhido."""
+    mapa = modelo.mapeamento or {}
+    return any(v["componente"].startswith("button.") and not _texto(variaveis.get(mapa.get(v["chave"], "")))
+               for v in modelo.variaveis)
+
+
 def modelo_para_primeiro_contato(variaveis: dict | None = None) -> tuple[dict | None, str]:
     """Escolhe o modelo APROVADO do primeiro contato com estes dados do lead.
 
@@ -295,13 +305,23 @@ def modelo_para_primeiro_contato(variaveis: dict | None = None) -> tuple[dict | 
     if not aprovados:
         return None, f"nenhum modelo aprovado com nome iniciado por {PREFIXO_DO_PRIMEIRO_CONTATO}"
     aprovados.sort(key=lambda m: (m.nome.lower() != PREFIXO_DO_PRIMEIRO_CONTATO, m.idioma != "pt_BR", m.nome, m.idioma))
+    com_botao = []
     for modelo in aprovados:
         try:
             componentes = montar_componentes(modelo, limpas)
         except ValueError:
+            if _botao_sem_dado(modelo, limpas):
+                com_botao.append(modelo.nome)
             continue
         return {"nome": modelo.nome, "idioma": modelo.idioma, "componentes": componentes,
                 "texto": _texto_enviado(modelo, componentes)}, ""
+    if len(com_botao) == len(aprovados):
+        # Todo candidato tem botao de URL dinamica: dizer isso, porque preencher
+        # nome, quiz e oferta nao resolve e o dono precisa trocar o modelo na Meta.
+        nomes = sorted(set(com_botao))
+        quais = f"o modelo {nomes[0]}" if len(nomes) == 1 else "os modelos " + ", ".join(nomes[:3])
+        return None, (f"{quais} tem botao com link dinamico (URL com parte variavel) e o primeiro contato "
+                      f"nao envia link: use um modelo {PREFIXO_DO_PRIMEIRO_CONTATO} sem botao ou com URL fixa")
     return None, "os dados deste lead nao preenchem nenhum modelo aprovado do primeiro contato"
 
 

@@ -71,6 +71,10 @@ def _preparar_modelo(modelo, variaveis_do_lead):
     } for v in modelo.get("variaveis") or [] if isinstance(v, dict)]
     modelo["pronto"] = (modelo.get("estado") == "aprovado" and modelo.get("suportado")
                         and modelo.get("presente_no_provedor") and not modelo.get("faltando"))
+    # Botão de URL com parte variável pede `link`, e o primeiro contato do agente não manda link.
+    modelo["botao_dinamico"] = any(
+        isinstance(v, dict) and str(v.get("componente", "")).startswith("button.")
+        for v in modelo.get("variaveis") or [])
     return modelo
 
 
@@ -130,6 +134,7 @@ def crm_modelos(request):
     contexto["variaveis_do_lead"] = variaveis_do_lead
     contexto["modelos"] = [_preparar_modelo(m, variaveis_do_lead) for m in dados.get("modelos") or []]
     contexto["aprovados"] = [m for m in contexto["modelos"] if m["pronto"]]
+    contexto["para_o_primeiro_contato"] = [m for m in contexto["aprovados"] if not m["botao_dinamico"]]
     contexto["envios"] = [dict(e, estado_visivel=ESTADOS_DO_ENVIO.get(e.get("estado"), e.get("estado", "")),
                                quando=instante(e.get("criado_em")))
                           for e in dados.get("envios") or []]

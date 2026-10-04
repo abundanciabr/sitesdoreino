@@ -232,13 +232,43 @@ def test_primeiro_contato_so_serve_modelo_aprovado_do_nome_certo_e_preenchido_in
     sem_link = {k: v for k, v in LEAD.items() if k != "link"}
     # O modelo do primeiro contato tem um botão com o link; sem o link não se preenche e nada mais serve.
     modelo, motivo = modelo_para_primeiro_contato(sem_link)
-    assert modelo is None and "nao preenchem" in motivo
+    assert modelo is None and "botao com link dinamico" in motivo
     modelo, motivo = modelo_para_primeiro_contato(LEAD)
     assert motivo == "" and modelo["nome"] == "primeiro_contato" and modelo["idioma"] == "pt_BR"
     assert modelo["texto"] == "Oi Ana, vi seu resultado no Quiz da Vocação. Quer saber do Curso Base?"
     assert [c["type"] for c in modelo["componentes"]] == ["body", "button"]
     # Dado que o chamador não sabe nunca é inventado nem vai vazio.
     assert modelo_para_primeiro_contato({"nome": "Ana", "quiz": "", "oferta": "x", "link": "abc"})[0] is None
+
+
+def test_recusa_do_primeiro_contato_diz_que_botao_de_url_dinamica_nao_serve_quando_so_ha_esse_modelo(meta):
+    """O primeiro contato nao envia `link`: modelo com botao de URL dinamica nunca e escolhido,
+    e a recusa precisa dizer isso (e nao so "os dados nao preenchem")."""
+    from apps.whatsapp_modelos.modelos import modelo_para_primeiro_contato
+
+    sincronizar_modelos()
+    sem_link = {k: v for k, v in LEAD.items() if k != "link"}
+    modelo, motivo = modelo_para_primeiro_contato(sem_link)
+    assert modelo is None
+    assert "primeiro_contato" in motivo and "botao com link dinamico" in motivo
+    assert "sem botao ou com URL fixa" in motivo and len(motivo) < 300
+    # Botao de URL com texto fixo nao tem variavel: esse modelo serve sem link nenhum.
+    ModeloWhatsApp.objects.create(
+        conta="waba-1", nome="primeiro_contato_fixo", idioma="pt_BR", estado="aprovado", corpo="Oi {{1}}",
+        componentes=[{"type": "BODY", "text": "Oi {{1}}"},
+                     {"type": "BUTTONS", "buttons": [{"type": "URL", "text": "Ver", "url": "https://meshcraft.top/c"}]}],
+        variaveis=[{"chave": "body:1", "componente": "body", "parametro": "1"}],
+        mapeamento={"body:1": "nome"})
+    assert modelo_para_primeiro_contato(sem_link)[0]["nome"] == "primeiro_contato_fixo"
+    # Falta dado do corpo (e nao o botao) num modelo sem botao: a recusa continua a de sempre.
+    ModeloWhatsApp.objects.filter(nome="primeiro_contato_fixo").delete()
+    ModeloWhatsApp.objects.create(
+        conta="waba-1", nome="primeiro_contato_curto", idioma="pt_BR", estado="aprovado", corpo="Oi {{1}}",
+        componentes=[{"type": "BODY", "text": "Oi {{1}}"}],
+        variaveis=[{"chave": "body:1", "componente": "body", "parametro": "1"}],
+        mapeamento={"body:1": "nome"})
+    modelo, motivo = modelo_para_primeiro_contato({"quiz": "Quiz", "oferta": "Curso"})
+    assert modelo is None and "nao preenchem" in motivo and "botao" not in motivo
 
 
 def test_primeiro_contato_prefere_o_nome_exato_depois_pt_br_e_ignora_modelo_que_nao_esta_aprovado(meta):

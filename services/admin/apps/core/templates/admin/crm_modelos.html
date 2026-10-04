@@ -4,7 +4,7 @@
 <main class="envolucro">
   <p><a href="{% url 'crm' %}">← CRM</a></p>
   <h1>Modelos do WhatsApp</h1>
-  <p class="subtitulo">No WhatsApp oficial, o primeiro contato com quem respondeu um quiz só sai por um modelo de mensagem aprovado pela Meta. Depois que a pessoa responde, a conversa segue livre por 24 horas. O agente de abordagem usa, no primeiro contato, só um modelo aprovado cujo nome começa com <code>primeiro_contato</code> e que tenha todos os dados do lead ligados abaixo.</p>
+  <p class="subtitulo">No WhatsApp oficial, o primeiro contato com quem respondeu um quiz só sai por um modelo de mensagem aprovado pela Meta. Depois que a pessoa responde, a conversa segue livre por 24 horas. O agente de abordagem usa, no primeiro contato, só um modelo aprovado cujo nome começa com <code>primeiro_contato</code> e que tenha todos os dados do lead ligados abaixo. Esse modelo precisa ser <strong>sem botão ou com URL fixa</strong>: o agente não manda o link de compra no primeiro contato, então um botão com link que muda a cada pessoa (URL com variável no final) faz o modelo nunca ser escolhido.</p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 
@@ -16,7 +16,7 @@
   {% elif canal_oficial == "ligado" %}
   <div class="cartao">
     <h2>Canal oficial ligado</h2>
-    <p>{{ aprovados|length }} modelo{{ aprovados|length|pluralize:"s" }} pronto{{ aprovados|length|pluralize:"s" }} para o primeiro contato.</p>
+    <p>{{ para_o_primeiro_contato|length }} modelo{{ para_o_primeiro_contato|length|pluralize:"s" }} pronto{{ para_o_primeiro_contato|length|pluralize:"s" }} para o primeiro contato.</p>
     <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="sincronizar"><button type="submit">Buscar modelos na Meta agora</button></form>
   </div>
   {% endif %}
@@ -43,7 +43,8 @@
       <button type="submit">Salvar</button>
     </form>
     {% endif %}
-    {% if modelo.pronto %}<p>Pronto para o primeiro contato.</p>{% elif modelo.estado == "aprovado" and modelo.faltando %}<p class="aviso">Escolha o dado de cada lugar antes de usar este modelo.</p>{% endif %}
+    {% if modelo.botao_dinamico %}<p class="aviso">Este modelo tem botão com link que muda a cada pessoa. O agente não manda link no primeiro contato, então ele não é escolhido para isso; serve só onde o link é informado (como a mensagem de teste abaixo). Para o primeiro contato, use um modelo sem botão ou com URL fixa.</p>{% endif %}
+    {% if modelo.pronto and not modelo.botao_dinamico %}<p>Pronto para o primeiro contato.</p>{% elif modelo.estado == "aprovado" and modelo.faltando %}<p class="aviso">Escolha o dado de cada lugar antes de usar este modelo.</p>{% endif %}
   </div>
   {% endfor %}
   {% elif canal_oficial == "ligado" %}

@@ -46,6 +46,7 @@ def ambiente(settings, monkeypatch):
     # As memórias da varredura são do processo, não do teste.
     avisos_equipe._RECEITAS.clear()
     avisos_equipe._CONVERSAS_LIDAS.clear()
+    avisos_equipe._LEADS_DE_TESTE.clear()
 
 
 def _livia() -> MembroDaEquipe:
@@ -81,6 +82,13 @@ def _venda(**mudancas):
         "contato": {"id": LEAD, "nome": "Ana", "email": "ana@exemplo.com", "site_id": SITE},
         "registro_de_teste": False, **mudancas,
     }
+
+
+def _lead(lead_id, nome, email, origem="quiz:abertura", status=200):
+    """A ficha que a `leads` devolve para este lead (qualquer origem)."""
+    return respx.get(LEADS + f"/leads/{lead_id}").mock(return_value=httpx.Response(status, json={
+        "id": lead_id, "nome": nome, "email": email, "origem": origem, "utm": {}, "linha_do_tempo": [],
+    }))
 
 
 def _sem_conversas():
@@ -184,6 +192,7 @@ def test_conversa_passada_ambigua_e_envio_incerto_viram_avisos_por_site():
     _correio()
     respx.get(LEADS + "/crm").mock(return_value=httpx.Response(200, json=_quadro([_venda(etapa="nova", situacao="aberta")])))
     respx.get(LEADS + f"/crm/{OPORTUNIDADE}/receita").mock(return_value=httpx.Response(404))
+    _lead(LEAD, "Ana", "ana@exemplo.com")
     agora = timezone.now()
     passada = {
         "id": CONVERSA, "site_id": SITE, "canal": "whatsapp", "lead_id": LEAD, "ligacao": "ligada",
@@ -635,3 +644,128 @@ def test_o_laco_de_fundo_roda_a_varredura_dos_avisos(monkeypatch):
         executor.acordar()
         laco.join(timeout=5)
         executor._acordar.clear()
+
+
+# ------------------------------------- fato de teste nunca vira aviso nem e-mail
+
+LEAD_DE_TESTE = "a1b2c3d4-0000-4000-8000-00000000aa01"
+OUTRO_LEAD_DE_TESTE = "a1b2c3d4-0000-4000-8000-00000000aa02"
+CONVERSA_DE_TESTE = "7d1c8a51-6f73-4f0e-9c38-0f0a6d0f3e21"
+
+
+def _incerta(agora):
+    return {"id": "m-incerta", "direcao": "saida", "estado_envio": "desconhecido",
+            "ocorrida_em": (agora - timedelta(minutes=30)).isoformat()}
+
+
+@respx.mock
+def test_fato_de_teste_nao_vira_aviso_nem_email_em_nenhum_tipo():
+    """Lead "Agentes Sandbox..." (e-mail @example.com) criado pela prova do ciclo: a conversa
+    passada para a equipe, o envio incerto, a conversa ambígua, o trabalho parado e a venda
+    de teste não geram aviso, e portanto nenhum e-mail aos administradores."""
+    correio = _correio()
+    agora = timezone.now()
+    _lead(LEAD_DE_TESTE, "Agentes Sandbox Ana", "agentes-sandbox-1@example.com", origem="quiz:sandbox")
+    _lead(OUTRO_LEAD_DE_TESTE, "Bia", "bia@exemplo.test")
+    passada = _conversa_passada(agora, id=CONVERSA_DE_TESTE, lead_id=LEAD_DE_TESTE, ligacao="ligada",
+                                ultima_mensagem_em=(agora - timedelta(minutes=20)).isoformat())
+    incerta = _conversa_passada(agora, id=CONVERSA, lead_id=OUTRO_LEAD_DE_TESTE, ligacao="ligada",
+                                estado="agente", assumida_por=None, assumida_em=None,
+                                ultima_mensagem_em=(agora - timedelta(minutes=20)).isoformat())
+    ambigua = _conversa_passada(agora, id="8d1c8a51-6f73-4f0e-9c38-0f0a6d0f3e22", estado="agente",
+                                ligacao="ambigua", ambigua=True, lead_id=None, assumida_por=None,
+                                assumida_em=None, endereco_mascarado="a***@example.com",
+                                ultima_mensagem_em=agora.isoformat())
+
+    def conversas(request):
+        params = request.url.params
+        if params.get("estado") == "pessoa":
+            return httpx.Response(200, json={"itens": [passada]})
+        if params.get("ligacao") == "ambigua":
+            return httpx.Response(200, json={"itens": [ambigua]})
+        return httpx.Response(200, json={"itens": [passada, incerta]})
+
+    respx.get(MENSAGERIA + "/conversas").mock(side_effect=conversas)
+    for conversa in (CONVERSA_DE_TESTE, CONVERSA):
+        respx.get(MENSAGERIA + f"/conversas/{conversa}/mensagens").mock(
+            return_value=httpx.Response(200, json={"mensagens": [_incerta(agora)]})
+        )
+    # Trabalho que o coordenador ainda não marcou como teste, mas o contato é de teste.
+    parado = _trabalho(contato_id=LEAD_DE_TESTE)
+    incerto = _trabalho(estado="envio_incerto", contato_id=OUTRO_LEAD_DE_TESTE)
+    # O que o evento já trouxe diz que é teste: nem pergunta à `leads`.
+    de_evento = _trabalho(entrada={"contato": {"nome": "Agentes Sandbox Caio", "email": "caio@example.com"}})
+    # Venda de contato de teste que a `leads` não marcou como registro de teste.
+    venda = _venda(contato={"id": LEAD_DE_TESTE, "nome": "Agentes Sandbox Ana",
+                            "email": "agentes-sandbox-1@example.com", "site_id": SITE})
+    respx.get(LEADS + "/crm").mock(return_value=httpx.Response(200, json=_quadro([venda])))
+    receita = respx.get(LEADS + f"/crm/{OPORTUNIDADE}/receita").mock(return_value=httpx.Response(200, json={
+        "aprovado_centavos": 19700, "liquido_centavos": 19700,
+    }))
+
+    avisos_equipe.varrer(agora)
+    avisos_equipe.varrer(agora)
+
+    assert not AvisoDaEquipe.objects.exists(), list(AvisoDaEquipe.objects.values_list("tipo", "fato"))
+    assert correio.call_count == 0
+    assert receita.call_count == 0
+    assert TrabalhoComercial.objects.filter(pk__in=[parado.pk, incerto.pk, de_evento.pk]).count() == 3
+
+
+@respx.mock
+def test_lead_de_verdade_continua_avisando_e_a_ficha_e_perguntada_uma_vez_por_lead():
+    correio = _correio()
+    agora = timezone.now()
+    ficha = _lead(LEAD, "Ana", "ana@exemplo.com")
+    passada = _conversa_passada(agora, id=CONVERSA, lead_id=LEAD, ligacao="ligada",
+                                ultima_mensagem_em=(agora - timedelta(minutes=20)).isoformat())
+    respx.get(MENSAGERIA + "/conversas").mock(return_value=httpx.Response(200, json={"itens": [passada]}))
+    respx.get(MENSAGERIA + f"/conversas/{CONVERSA}/mensagens").mock(
+        return_value=httpx.Response(200, json={"mensagens": [_incerta(agora)]})
+    )
+    parado = _trabalho(contato_id=LEAD)
+    avisos_equipe.varrer_conversas(SITE, agora)
+    avisos_equipe.varrer_conversas(SITE, agora)
+    avisos_equipe.varrer_trabalhos_parados(agora)
+    tipos = sorted(AvisoDaEquipe.objects.values_list("tipo", flat=True))
+    assert tipos == ["envio_incerto", "pessoa_pedida", "trabalho_parado"]
+    # A conversa e o trabalho do mesmo lead, em voltas diferentes: uma pergunta só.
+    assert ficha.call_count == 1
+    avisos_equipe.enviar_emails_pendentes()
+    assert correio.call_count == 3 * len(avisos_equipe.administradores())
+    assert AvisoDaEquipe.objects.filter(tipo="trabalho_parado", fato__contains=f":{parado.pk}:").exists()
+
+
+@respx.mock
+def test_leads_fora_do_ar_nao_avisa_naquela_volta_e_avisa_na_proxima_se_o_lead_for_de_verdade():
+    _correio()
+    agora = timezone.now()
+    ficha = _lead(LEAD, "Ana", "ana@exemplo.com", status=503)
+    ficha_de_teste = _lead(LEAD_DE_TESTE, "Agentes Sandbox Ana", "agentes-sandbox-1@example.com")
+    de_teste = _conversa_passada(agora, id=CONVERSA_DE_TESTE, lead_id=LEAD_DE_TESTE, ligacao="ligada",
+                                 ultima_mensagem_em=(agora - timedelta(minutes=20)).isoformat())
+    passada = _conversa_passada(agora, id=CONVERSA, lead_id=LEAD, ligacao="ligada",
+                                ultima_mensagem_em=(agora - timedelta(minutes=20)).isoformat())
+    respx.get(MENSAGERIA + "/conversas").mock(return_value=httpx.Response(200, json={"itens": [passada, de_teste]}))
+    mensagens = respx.get(MENSAGERIA + f"/conversas/{CONVERSA}/mensagens").mock(
+        return_value=httpx.Response(200, json={"mensagens": [_incerta(agora)]})
+    )
+    respx.get(MENSAGERIA + f"/conversas/{CONVERSA_DE_TESTE}/mensagens").mock(
+        return_value=httpx.Response(200, json={"mensagens": [_incerta(agora)]})
+    )
+    avisos_equipe.varrer_conversas(SITE, agora)
+    # A primeira pergunta não deu: sem aviso, e sem insistir em perguntar de novo na mesma volta.
+    assert not AvisoDaEquipe.objects.exists()
+    assert ficha.call_count == 1 and ficha_de_teste.call_count == 0
+    ficha.mock(return_value=httpx.Response(200, json={
+        "id": LEAD, "nome": "Ana", "email": "ana@exemplo.com", "origem": "quiz:abertura", "utm": {},
+    }))
+    avisos_equipe.varrer_conversas(SITE, agora)
+    assert sorted(AvisoDaEquipe.objects.values_list("tipo", "fato")) == sorted([
+        ("pessoa_pedida", f"conversa:{CONVERSA}:{passada['assumida_em']}"),
+        ("envio_incerto", f"conversa:{CONVERSA}:envio_incerto"),
+    ])
+    # A conversa de teste continua sem aviso, mesmo depois de a `leads` voltar.
+    assert not AvisoDaEquipe.objects.filter(fato__contains=CONVERSA_DE_TESTE).exists()
+    # A leitura das mensagens esperou a resposta da `leads`: a conversa não ficou "lida" à toa.
+    assert mensagens.call_count == 2

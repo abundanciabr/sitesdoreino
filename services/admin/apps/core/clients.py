@@ -2343,6 +2343,21 @@ class LeadsClient:
             return self.NAO_RESPONDEU, None
         return self.OK, corpo
 
+    def lead(self, lead_id: "uuid.UUID | str") -> "tuple[str, dict | None]":
+        """UM lead de qualquer origem (a `ficha` só abre contato de quiz).
+
+        Serve para saber quem é a pessoa de uma conversa, e não para mostrar a
+        ficha: o chamador lê só nome, e-mail, origem e `utm`. `NAO_EXISTE` para
+        id que a `leads` não conhece; `NAO_RESPONDEU` para qualquer outra falha.
+        """
+        desfecho, corpo = self._pedir(f"/leads/{quote(str(lead_id), safe='')}", {}, aceita_404=True)
+        if desfecho != self.OK:
+            return desfecho, None
+        if not isinstance(corpo, dict) or "id" not in corpo:
+            logger.error("contatos: o lead veio fora do contrato")
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
 
 class MensageriaClient:
     """As sequências de mensagens da escola: o que existe, quem está dentro, o
