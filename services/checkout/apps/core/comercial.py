@@ -239,8 +239,9 @@ def _resposta_existente(
     ):
         raise HttpError(
             409,
-            "chave_idempotencia já foi usada para outra oferta, oportunidade ou "
-            "condição; use uma chave nova para um link novo",
+            "chave_idempotencia já foi usada para outro link "
+            f"(oferta {link.oferta_ref!r}, oportunidade {link.oportunidade_ref!r}, "
+            f"condição {(link.condicao or {}).get('id')!r}); use uma chave nova",
         )
     return JsonResponse(link.resposta, status=200)
 
@@ -395,6 +396,7 @@ def _estado_do_pedido(pedido: OrderModel, link: LinkDeCompra | None = None) -> d
         "moeda": MOEDA,
         "oportunidade_ref": pedido.oportunidade_ref,
         "oferta_ref": pedido.oferta_ref,
+        "em_teste": pedido.em_teste,
         "criado_em": pedido.created_at.isoformat(),
         "pago_em": pedido.pago_em.isoformat() if pedido.pago_em else None,
     }
@@ -474,9 +476,14 @@ def list_orders_by_opportunity(request, oportunidade_ref: str = ""):
     )
     link_por_pedido = {link.pedido_id: link for link in todos_os_links}
     link_por_sessao = {link.session_id: link for link in todos_os_links}
+    for reaberta in SessionModel.objects.filter(link_origem__in=todos_os_links):
+        link_por_sessao[reaberta.pk] = reaberta.link_origem
     links = [link for link in todos_os_links if link.pedido_id not in com_pedido]
-    aprovado = sum(p.total_cents for p in pedidos if p.status in ("pago", "reembolsado"))
-    estornado = sum(p.total_cents for p in pedidos if p.status == "reembolsado")
+    # Pedido de sandbox/teste aparece na lista (marcado `em_teste`), mas não
+    # entra no que foi recebido: só aparece contado em `testes_fora`.
+    reais = [p for p in pedidos if not p.em_teste]
+    aprovado = sum(p.total_cents for p in reais if p.status in ("pago", "reembolsado"))
+    estornado = sum(p.total_cents for p in reais if p.status == "reembolsado")
     return JsonResponse(
         {
             "oportunidade_ref": referencia,
@@ -489,6 +496,7 @@ def list_orders_by_opportunity(request, oportunidade_ref: str = ""):
                 "aprovado_cents": aprovado,
                 "estornado_cents": estornado,
                 "liquido_cents": aprovado - estornado,
+                "testes_fora": len(pedidos) - len(reais),
                 "moeda": MOEDA,
             },
         }

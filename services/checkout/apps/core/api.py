@@ -30,7 +30,7 @@ from apps.pedidos.tasks import relay_apos_commit
 # Alias obrigatório: as classes Session/Order definidas abaixo são ninja.Schema
 # (a FORMA exportada no contrato). Importar os models com o mesmo nome faria o
 # Schema sombreá-los silenciosamente — Session.objects viraria o Schema.
-from apps.pedidos.models import LinkDeCompra
+from apps.pedidos.models import LinkDeCompra, link_da_sessao
 from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
@@ -254,6 +254,7 @@ def create_session(request):
     pedido_existente = None
     with transaction.atomic():
         visitante_novo = False
+        sessao = None
         if link is not None:
             # Link do atendimento: a página continua a sessão que o link abriu
             # (com o pedido já reservado), em vez de abrir outra. O link não
@@ -262,26 +263,44 @@ def create_session(request):
             # O link é travado antes da sessão: duas aberturas ao mesmo tempo
             # depois de um pedido vencido não podem abrir duas sessões.
             link = LinkDeCompra.objects.select_for_update().get(pk=link.pk)
-            sessao = SessionModel.objects.select_for_update().get(pk=link.session_id)
+            sessoes = [link.session, *link.sessoes_reabertas.order_by("created_at")]
+            pedidos = {
+                p.session_id: p for p in OrderModel.objects.filter(session__in=sessoes)
+            }
+            ultima = SessionModel.objects.select_for_update().get(pk=sessoes[-1].pk)
             visitante = _visitor_id_do_cookie(request)
-            anterior = OrderModel.objects.filter(session=sessao).first()
-            if anterior is None:
+            pago = next(
+                (
+                    pedidos[s.pk]
+                    for s in sessoes
+                    if s.pk in pedidos and pedidos[s.pk].status in ("pago", "reembolsado")
+                ),
+                None,
+            )
+            anterior = pedidos.get(ultima.pk)
+            if pago is None and anterior is None:
+                sessao = ultima
                 if visitante and not sessao.visitor_id:
                     sessao.visitor_id = visitante
                     sessao.save(update_fields=["visitor_id"])
                     visitante_novo = True
-            elif anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
-                sessao = _nova_sessao_do_link(link, sessao, oferta, lead_id, visitante)
+            elif pago is None and anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
+                # Pix vencido ou cartão recusado: outra sessão do mesmo link,
+                # que leva a oportunidade para o pedido novo.
+                sessao = _nova_sessao_do_link(link, ultima, oferta, lead_id, visitante)
                 visitante_novo = bool(sessao.visitor_id)
             else:
-                # O link já virou pedido e ele segue valendo: a página leva a
-                # pessoa até ele em vez de tentar fechar outro (que daria 409).
+                # O link já virou pedido e ele segue valendo (aguardando ou
+                # pago): a página leva a pessoa até ele em vez de tentar fechar
+                # outro (que daria 409 ou cobraria duas vezes).
+                sessao = ultima
+                valendo = pago or anterior
                 pedido_existente = {
-                    "order_id": str(anterior.id),
-                    "method": anterior.method,
-                    "status": anterior.status,
+                    "order_id": str(valendo.id),
+                    "method": valendo.method,
+                    "status": valendo.status,
                 }
-        else:
+        if sessao is None:
             sessao = SessionModel.objects.create(
                 site_id=site["id"],
                 offer_slug=offer_slug,
@@ -290,6 +309,7 @@ def create_session(request):
                 utm=utm,
                 contexto=contexto,
                 visitor_id=_visitor_id_do_cookie(request),
+                link_origem=link,
             )
             visitante_novo = bool(sessao.visitor_id)
         if visitante_novo and pedido_existente is None:
@@ -354,10 +374,18 @@ def _nova_sessao_do_link(link, anterior, oferta: dict, lead_id: str, visitante):
         utm=anterior.utm,
         contexto=anterior.contexto,
         visitor_id=visitante or anterior.visitor_id,
+        link_origem=link,
     )
-    link.session = nova
-    link.save(update_fields=["session"])
     return nova
+
+
+def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool) -> bool:
+    """O pedido nasce contra o sandbox do provedor que vai cobrar? Então o
+    dinheiro não é real e o pedido fica fora dos totais de receita."""
+    usa_appmax = pix_appmax if method == "pix" else site_id in settings.APPMAX_CARD_ENABLED_SITES
+    if usa_appmax:
+        return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower()
+    return settings.MP_PUBLIC_KEY.startswith("TEST-")
 
 
 def _link_da_pagina(bruto, site_id: str, offer_slug: str):
@@ -537,7 +565,10 @@ def place_order(request, session_id: str):
 
     # Pedido aberto por um link do atendimento nasce com o id que o link já
     # devolveu ao CRM, e leva a oportunidade junto.
-    link = LinkDeCompra.objects.filter(session=sessao).first()
+    link = link_da_sessao(sessao)
+    # O 1º pedido do link leva o id que o link devolveu ao CRM; quando ele
+    # vence ou é recusado e a pessoa reabre o link, o pedido seguinte ganha um
+    # id derivado dele (mesma oportunidade), e o CRM acompanha tudo pelo id só.
     order_id = link.proximo_id_de_pedido() if link is not None else uuid.uuid4()
     referencias = {
         "oportunidade_ref": link.oportunidade_ref if link is not None else "",
@@ -622,6 +653,7 @@ def place_order(request, session_id: str):
             method=method,
             intent_id=str(intent["id"]),
             pix=intent.get("pix") or {},
+            em_teste=_ambiente_de_teste(site["id"], method, pix_appmax),
             contexto=dict(sessao.contexto or {}),
             **referencias,
         )

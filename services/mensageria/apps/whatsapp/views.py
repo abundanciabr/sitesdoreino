@@ -26,12 +26,17 @@ ESTADOS = {
 ORDEM = {"desconhecido": 0, "aceito": 1, "enviado": 2, "falhou": 2, "entregue": 3, "lido": 4}
 
 
+def _iguais(recebido: str, esperado: str) -> bool:
+    """Comparação em tempo constante sobre bytes: texto não-ASCII não derruba com 500."""
+    return secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8"))
+
+
 @csrf_exempt
 @require_POST
 def webhook_whatsapp(request):
     esperado = getattr(settings, "WHATSAPP_WEBHOOK_TOKEN", "")
     recebido = request.headers.get("X-Webhook-Token", "")
-    if not esperado or not secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8")):
+    if not esperado or not _iguais(recebido, esperado):
         return JsonResponse({"erro": "nao autorizado"}, status=403)
     try:
         payload = json.loads(request.body)
@@ -49,7 +54,7 @@ def webhook_whatsapp(request):
     dados = payload.get("data")
     itens = dados if isinstance(dados, list) else [dados]
     if evento == "MESSAGES_UPSERT":
-        recebidas = _receber_evolution(config, itens)
+        recebidas = _receber_evolution(config, itens, str(payload.get("type") or ""))
         # Nota de voz do lead: depois da conversa, guarda o áudio para o admin
         # transcrever, ligado à mensagem da conversa.
         from apps.audio.webhook import receber_audios
@@ -121,14 +126,14 @@ def aplicar_estado(config: ConfiguracaoWhatsApp, identificador: str, estado: str
 logger = logging.getLogger(__name__)
 
 
-def _receber_evolution(config: ConfiguracaoWhatsApp, itens: list) -> int:
+def _receber_evolution(config: ConfiguracaoWhatsApp, itens: list, tipo: str = "") -> int:
     from apps.conversas.entrada import de_evolution, receber
 
     novas = 0
     for item in itens:
         if not isinstance(item, dict):
             continue
-        recebida = de_evolution(site_id=config.site_id, instancia=config.instancia, item=item)
+        recebida = de_evolution(site_id=config.site_id, instancia=config.instancia, item=item, tipo_do_upsert=tipo)
         if recebida is None:
             continue
         _, nova = receber(recebida)
@@ -145,7 +150,7 @@ def _assinatura_valida(request) -> bool:
     if not segredo or not recebida.startswith("sha256="):
         return False
     esperada = hmac.new(segredo.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
-    return secrets.compare_digest(recebida[len("sha256="):].lower().encode("utf-8"), esperada.encode("utf-8"))
+    return _iguais(recebida[len("sha256="):].lower(), esperada)
 
 
 @csrf_exempt
@@ -161,7 +166,7 @@ def webhook_whatsapp_cloud(request):
         esperado = getattr(settings, "WHATSAPP_CLOUD_VERIFY_TOKEN", "")
         recebido = request.GET.get("hub.verify_token", "")
         if (request.GET.get("hub.mode") == "subscribe" and esperado
-                and secrets.compare_digest(recebido.encode("utf-8"), esperado.encode("utf-8"))):
+                and _iguais(recebido, esperado)):
             return HttpResponse(request.GET.get("hub.challenge", ""), content_type="text/plain")
         return HttpResponse("nao autorizado", status=403, content_type="text/plain")
     if not _assinatura_valida(request):
