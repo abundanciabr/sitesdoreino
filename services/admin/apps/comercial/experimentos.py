@@ -38,6 +38,7 @@ class ExperimentoEstrategia(models.Model):
     encerrado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        db_table = "comercial_experimentoestrategia"
         ordering = ["-iniciado_em", "-id"]
         constraints = [
             models.UniqueConstraint(

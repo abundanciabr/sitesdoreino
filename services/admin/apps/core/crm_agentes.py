@@ -15,6 +15,7 @@ aqui.
 """
 from __future__ import annotations
 
+import logging
 import uuid
 from decimal import Decimal
 
@@ -24,11 +25,15 @@ from django.db.models import Count, Sum
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
+logger = logging.getLogger(__name__)
+
 LIMITE_POR_GRUPO = 50
+LIMITE_CONCLUIDOS = 20
 
 # Os grupos da tela, na ordem em que o mantenedor lê.
 GRUPOS = (
@@ -36,12 +41,15 @@ GRUPOS = (
     ("fila", "Na fila", ("na_fila",)),
     ("incerto", "Envio sem confirmação", ("envio_incerto",)),
     ("falha", "Com falha", ("falhou",)),
+    ("concluidos", "Concluídos recentes", ("concluido",)),
 )
+LIMITE_DO_GRUPO = {"concluidos": LIMITE_CONCLUIDOS}
 EXPLICA_GRUPO = {
     "andamento": "Trabalhos que um agente está fazendo agora ou que esperam um serviço ou o teto de gasto.",
     "fila": "Trabalhos esperando a vez.",
     "incerto": "A mensagem ou o link pode ter saído, mas o serviço não confirmou. O agente não repete o envio sozinho.",
     "falha": "Trabalhos que pararam com erro. O motivo aparece em cada um.",
+    "concluidos": "Os últimos trabalhos que terminaram. Abra um para ver cada decisão do agente.",
 }
 
 RECADOS = {
@@ -57,6 +65,9 @@ RECADOS = {
     "mudou": "A versão no ar já mudou desde que esta tela abriu. Confira a versão atual antes de voltar de novo.",
     "retomado": "O trabalho voltou para a fila.",
     "nao_retomado": "Este trabalho não pode ser retomado no estado em que está.",
+    "analise_pedida": "Análise de resultados pedida. Ela entra na fila e aparece em Trabalhos.",
+    "analise_ja_pedida": "A análise de hoje já foi pedida; ela está em Trabalhos. Uma nova só amanhã.",
+    "analise_desligada": "Os agentes comerciais estão desligados neste ambiente: a análise não foi pedida.",
 }
 
 # Estados em que o botão "Retomar" aparece (`coordenador.retomar`).
@@ -120,15 +131,12 @@ def _inicio_do_mes():
 
 
 def _limite_do_mes(gasto_comercial: Decimal) -> dict:
-    """O teto já autorizado. Se houver uma autorização própria do comercial,
-    vale ela; senão, a dos robôs da equipe, que o comercial divide."""
+    """O teto já autorizado: o MESMO que o gasto usa de verdade
+    (`modelo.autorizacao_ativa()`, a dos robôs da equipe, que o comercial
+    divide). A tela nunca mostra um teto diferente do que trava a chamada."""
     from apps.agentes import modelo
-    from apps.agentes.models import AutorizacaoDeGasto
 
-    autorizacao = (
-        AutorizacaoDeGasto.objects.filter(ativa=True, destino="comercial").first()
-        or AutorizacaoDeGasto.objects.filter(ativa=True, destino="equipe").first()
-    )
+    autorizacao = modelo.autorizacao_ativa()
     if autorizacao is None:
         return {"autorizacao": None, "gasto_comercial": gasto_comercial}
     gasto_da_autorizacao = modelo.gasto_do_mes(autorizacao.pk)
@@ -136,7 +144,7 @@ def _limite_do_mes(gasto_comercial: Decimal) -> dict:
     usado = max(gasto_da_autorizacao, gasto_comercial)
     return {
         "autorizacao": autorizacao,
-        "compartilhado": autorizacao.destino != "comercial",
+        "compartilhado": True,
         "teto": teto,
         "gasto_comercial": gasto_comercial,
         "gasto_da_autorizacao": gasto_da_autorizacao,
@@ -195,7 +203,7 @@ def _grupos(mostrar_testes: bool) -> list[dict]:
     for chave, nome, estados in GRUPOS:
         consulta = base.filter(estado__in=estados).order_by("-atualizado_em", "-id")
         total = consulta.count()
-        trabalhos = list(consulta[:LIMITE_POR_GRUPO])
+        trabalhos = list(consulta[: LIMITE_DO_GRUPO.get(chave, LIMITE_POR_GRUPO)])
         por_trabalho: dict[int, list] = {t.pk: [] for t in trabalhos}
         if trabalhos:
             for decisao in (
@@ -247,14 +255,22 @@ def _estrategias() -> list[dict]:
     return lista
 
 
+def _numero_do_trabalho(bruto) -> int | None:
+    """O `?trabalho=` da tela: só dígitos ASCII, até 12. Qualquer outra coisa
+    (letras, sinal, dígitos de outro alfabeto, texto enorme) é ignorada."""
+    s = bruto if isinstance(bruto, str) else ""
+    if s.isascii() and s.isdigit() and len(s) <= 12:
+        return int(s)
+    return None
+
+
 def _detalhe(trabalho_id: str):
     """Um trabalho com todas as decisões, na ordem em que aconteceram."""
-    # Só dígitos ASCII curtos: '²' passa em isdigit() mas não vira número.
-    texto = str(trabalho_id)
-    if not (texto.isascii() and texto.isdigit() and len(texto) <= 18):
+    numero = _numero_do_trabalho(trabalho_id)
+    if numero is None:
         return None
     TrabalhoComercial, DecisaoComercial, _ = _modelos()
-    trabalho = TrabalhoComercial.objects.filter(pk=int(texto)).first()
+    trabalho = TrabalhoComercial.objects.filter(pk=numero).first()
     if trabalho is None:
         return None
     decisoes = list(
@@ -318,6 +334,7 @@ def crm_agentes(request):
             min_amostra=_min_amostra(),
         )
     except (DatabaseError, ImportError, LookupError):
+        logger.exception("Não foi possível ler os registros dos agentes do CRM")
         contexto["disponivel"] = False
         contexto["falha_de_leitura"] = True
     return render(request, "admin/crm_agentes.html", contexto)
@@ -389,6 +406,33 @@ def crm_agentes_nova(request, papel: str):
         papeis.ativar(nova, quem, motivo)
     _auditar(request, f"estrategia:{papel}:v{nova.versao}", "CRM agentes: nova versão" + (" ativada" if pos_no_ar else ""))
     return _volta("nova_ativa" if pos_no_ar else "nova", f"papel-{papel}")
+
+
+@require_POST
+def crm_agentes_analisar(request):
+    """"Analisar agora": põe na fila UMA análise de resultados por dia.
+
+    Usa o tipo que já existe para isso (`analisar_resultados`, o mesmo que o
+    relógio põe a cada hora); a chave é estável por dia, então apertar de
+    novo no mesmo dia devolve o mesmo trabalho e não cria outro. Se ainda não
+    houver o mínimo de abordagens para comparar, o próprio trabalho conclui
+    como inconclusivo sem chamar o modelo (sem gasto)."""
+    if not comercial_disponivel():
+        return _volta("indisponivel", "trabalhos")
+    from apps.comercial import coordenador
+
+    if not coordenador.ligado():
+        return _volta("analise_desligada", "trabalhos")
+    hoje = timezone.localdate()
+    trabalho, criado = coordenador.criar(
+        coordenador.T.ANALISAR_RESULTADOS, f"resultados:painel:{hoje:%Y%m%d}", origem="painel"
+    )
+    _auditar(
+        request,
+        f"trabalho_comercial:{trabalho.pk}",
+        "CRM agentes: analisar agora" + ("" if criado else " (já pedida hoje)"),
+    )
+    return _volta("analise_pedida" if criado else "analise_ja_pedida", "trabalhos")
 
 
 @require_POST
