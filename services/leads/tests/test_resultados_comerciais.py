@@ -75,6 +75,20 @@ def test_filtros_por_quiz_campanha_e_oferta(client, admin):
     assert futuro["totais"]["elegiveis"] == 0 and futuro["totais"]["conversao"] is None
 
 
+def test_site_id_isola_os_numeros_de_cada_site(client, admin):
+    _quiz_com_campanha("crivo", "a@gmail.com", "primavera")
+    _entregar(ao_quiz_completado, {
+        "site_id": "site-b", "quiz_slug": "crivo", "result_key": "x",
+        "lead": {"email": "b@gmail.com", "name": "Pessoa"}, "utm": {"utm_campaign": "outono"},
+    })
+    a = client.get(URL, {"site_id": "site-a"}, **admin).json()
+    b = client.get(URL, {"site_id": "site-b"}, **admin).json()
+    assert a["totais"]["elegiveis"] == 1 and [c["campanha"] for c in a["por_campanha"]] == ["primavera"]
+    assert b["totais"]["elegiveis"] == 1 and [c["campanha"] for c in b["por_campanha"]] == ["outono"]
+    # sem site_id é a visão da plataforma inteira, só para o par do painel
+    assert client.get(URL, **admin).json()["totais"]["elegiveis"] == 2
+
+
 def test_exige_o_par_do_painel(client, admin):
     assert client.get(URL).status_code in (401, 403)
     assert client.get(URL, {"desde": "ontem"}, **admin).status_code == 422
