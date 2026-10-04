@@ -404,7 +404,8 @@ def test_parar_grava_preferencia_barra_agendados_e_bloqueia_acompanhamento(base,
     assert recusa["resultado"] == "descadastrado" and recusa["mensagem"] is None and not posts
     assert _api(cliente, "GET", f"/conversas/{conversa.id}?site_id={SITE}", token=LEITURA).json()["descadastrado"]
     # O contato volta a falar: responder à pergunta dele é atendimento, não acompanhamento.
-    _upsert(cliente, _item(texto="Mudei de ideia, qual o preço?", ident="S2"))
+    _upsert(cliente, _item(texto="Mudei de ideia, qual o preço?", ident="S2",
+                           messageTimestamp=int(timezone.now().timestamp()) + 5))
     resposta = _api(cliente, "POST", f"/conversas/{conversa.id}/mensagens",
                     {"site_id": SITE, "texto": "Custa R$ 97.", "chave_idempotencia": "resposta-1"}).json()
     assert resposta["resultado"] == "enviada" and len(posts) == 1
