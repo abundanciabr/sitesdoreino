@@ -22,21 +22,31 @@ CHECKOUT = re.compile(r"^/checkout/([a-z0-9-]+)/?$")
 ROTULO_PADRAO = "Quero saber mais"
 
 
-def _apelido_do_checkout(destino):
-    """O apelido da oferta quando o botão leva ao checkout da plataforma."""
+def _apelido_do_checkout(destino, host=""):
+    """O apelido da oferta quando o botão leva ao checkout da plataforma.
+
+    Endereço completo só conta se for do próprio site; o de outro domínio é externo,
+    mesmo que o caminho se pareça com /checkout/<apelido>.
+    """
     if not destino:
         return ""
-    caminho = urlsplit(destino).path if not destino.startswith("/") else destino.split("?")[0]
-    achou = CHECKOUT.match(caminho)
+    partes = urlsplit(destino)
+    if partes.netloc and (not host or (partes.hostname or "").lower() != host):
+        return ""
+    achou = CHECKOUT.match(partes.path)
     return achou.group(1) if achou else ""
 
 
 class _Ofertas:
     """Perguntas ao catálogo, uma vez por apelido e por abertura de tela."""
 
-    def __init__(self, site_id):
+    def __init__(self, site_id, host=""):
         self.site_id = site_id
+        self.host = (host or "").lower()
         self.vistas = {}
+
+    def apelido(self, destino):
+        return _apelido_do_checkout(destino, self.host)
 
     def consultar(self, apelido):
         if apelido not in self.vistas:
@@ -58,7 +68,7 @@ def _descrever(destino, ofertas):
     """O que o destino do botão significa, em palavras para a equipe."""
     if not destino:
         return {"tipo": "sem_oferta"}
-    apelido = _apelido_do_checkout(destino)
+    apelido = ofertas.apelido(destino)
     if not apelido:
         return {"tipo": "externa"}
     estado, dados = ofertas.consultar(apelido)
@@ -110,7 +120,7 @@ def _contexto(request, *, erro="", recado="", rascunho=None, com_erro=""):
         return contexto, 503
     site = CatalogoClient().site_por_host(host_da_requisicao(request)) or {}
     contexto["site"] = {"id": site.get("id", ""), "nome": site.get("name", ""), "host": host_da_requisicao(request)}
-    ofertas = _Ofertas(site.get("id", ""))
+    ofertas = _Ofertas(site.get("id", ""), host_da_requisicao(request))
     quizzes = [_preparar(q, ofertas, rascunho) for q in itens if isinstance(q, dict) and q.get("slug")]
     contexto["quizzes"] = quizzes
     contexto["resumo"] = {
@@ -137,18 +147,32 @@ def _destino_digitado(texto):
 
 
 def _ler_faixas(request, quiz):
-    """Lê o formulário de um quiz comum. Devolve (corpo, digitado, erro)."""
+    """Lê o formulário de um quiz comum. Devolve (corpo, digitado, erro).
+
+    Cada linha traz a chave da faixa (chave_<n>): a ligação vai para a faixa certa mesmo
+    que o quiz tenha mudado depois de a tela abrir. Faixa que sumiu é ignorada e a que
+    surgiu depois fica como está, sem ser esvaziada.
+    """
+    por_chave = {faixa["key"]: faixa for faixa in quiz["faixas"]}
     corpo, digitado = [], {}
-    for faixa in quiz["faixas"]:
-        n = faixa["numero"]
-        destino = _destino_digitado(request.POST.get(f"destino_{n}", ""))
+    n = 0
+    while f"chave_{n}" in request.POST:
+        chave = request.POST[f"chave_{n}"]
+        bruto = request.POST.get(f"destino_{n}", "").strip()
         rotulo = request.POST.get(f"rotulo_{n}", "").strip()
-        digitado[faixa["key"]] = (request.POST.get(f"destino_{n}", "").strip(), rotulo)
+        n += 1
+        faixa = por_chave.get(chave)
+        if faixa is None or chave in digitado:
+            continue
+        destino = _destino_digitado(bruto)
+        digitado[chave] = (bruto, rotulo)
         if destino and not rotulo:
             rotulo = ROTULO_PADRAO
         if rotulo and not destino:
             return None, digitado, f"O resultado “{faixa['titulo']}” tem texto de botão, mas falta a oferta. Preencha a oferta ou apague o texto."
-        corpo.append({"key": faixa["key"], "destino": destino, "rotulo": rotulo})
+        corpo.append({"key": chave, "destino": destino, "rotulo": rotulo})
+    if not corpo:
+        return None, digitado, "Este quiz mudou desde que a tela abriu. Nada foi alterado: recarregue a página e ajuste de novo."
     return {"faixas": corpo}, digitado, ""
 
 
@@ -163,11 +187,11 @@ def _ler_ofertas_da_campanha(request, quiz):
     return {"ofertas": corpo}, digitado, ""
 
 
-def _conferir_no_catalogo(corpo, site_id):
+def _conferir_no_catalogo(corpo, site_id, host=""):
     """Recusa só o que o catálogo confirma que não existe; falha de consulta não trava."""
-    ofertas = _Ofertas(site_id)
+    ofertas = _Ofertas(site_id, host)
     for faixa in corpo.get("faixas", []):
-        apelido = _apelido_do_checkout(faixa["destino"])
+        apelido = ofertas.apelido(faixa["destino"])
         if apelido and ofertas.consultar(apelido)[0] == "nao_existe":
             return f"A oferta “{apelido}” não existe neste site. Confira o apelido no catálogo."
     return ""
@@ -188,7 +212,7 @@ def ofertas_dos_quizzes_salvar(request, slug):
         corpo, digitado, erro = _ler_faixas(request, quiz)
     if not erro:
         site = CatalogoClient().site_por_host(host_da_requisicao(request)) or {}
-        erro = _conferir_no_catalogo(corpo, site.get("id", ""))
+        erro = _conferir_no_catalogo(corpo, site.get("id", ""), host_da_requisicao(request))
     if erro:
         contexto, estado = _contexto(request, erro=erro, rascunho={slug: digitado}, com_erro=slug)
         return render(request, "admin/crm_ofertas_dos_quizzes.html", contexto, status=422 if estado == 200 else estado)

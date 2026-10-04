@@ -51,6 +51,7 @@
         <div><small>Texto do botão</small><b>{{ faixa.rotulo|default:"—" }}</b></div>
         {% else %}
         <div>
+          <input type="hidden" name="chave_{{ faixa.numero }}" value="{{ faixa.key }}">
           <label for="destino-{{ quiz.slug }}-{{ faixa.numero }}">Oferta ou endereço</label>
           <input id="destino-{{ quiz.slug }}-{{ faixa.numero }}" name="destino_{{ faixa.numero }}" maxlength="500" value="{{ faixa.campo_destino }}" placeholder="curso-inicial">
           <label for="rotulo-{{ quiz.slug }}-{{ faixa.numero }}">Texto do botão</label>
