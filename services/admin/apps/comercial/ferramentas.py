@@ -579,7 +579,7 @@ def consultar_conversa(ctx: Contexto, args: dict) -> dict:
     if conversa.get("site_id") and str(conversa["site_id"]) != str(t.site_id):
         raise Recusa("Esta conversa não é deste site.")
     mensagens = [
-        {k: m.get(k) for k in ("direcao", "autor", "texto", "assunto", "transcricao", "estado_envio",
+        {k: m.get(k) for k in ("id", "direcao", "autor", "texto", "assunto", "transcricao", "estado_envio",
                                "descadastro", "ocorrida_em")}
         for m in (dados.get("mensagens") or [])[-30:] if isinstance(m, dict)
     ]

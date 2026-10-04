@@ -826,10 +826,36 @@ def _reanalisar(trabalho: TrabalhoComercial) -> None:
         "Se nada mudou: NÃO chame salvar_perfil e responda mudou = nao. Em objecao_principal e proximo_passo "
         "diga os de agora (ou os mesmos do quadro; nulo se não houver). Não envie mensagem."
     ), formato=papeis.SAIDA_DA_REANALISE)
-    salvou = trabalho.decisoes.filter(ferramenta="salvar_perfil", resultado=DecisaoComercial.Resultado.FEITO).first()
+    feitas = list(trabalho.decisoes.filter(
+        ferramenta="salvar_perfil", resultado=DecisaoComercial.Resultado.FEITO).order_by("-criada_em", "-id"))
+    # Se o modelo salvou mais de uma vez, vale a que gravou versão; senão, a última.
+    salvou = next((d for d in feitas if (d.saida or {}).get("versao_do_perfil")
+                   and not (d.saida or {}).get("sem_mudanca")), feitas[0] if feitas else None)
     versao = (salvou.saida or {}).get("versao_do_perfil") if salvou else None
     sem_mudanca = bool(salvou and (salvou.saida or {}).get("sem_mudanca"))
     perfil_mudou = bool(versao) and not sem_mudanca
+    # A ficha recusou (409: outra análise gravou no meio) e a nova versão não foi gravada: refaz uma vez, com a
+    # ficha relida, e deixa o quadro para essa nova rodada, para perfil e quadro não ficarem em desacordo.
+    recusada = (str(final.get("mudou") or "").lower() == "sim" and salvou is None and trabalho.decisoes.filter(
+        ferramenta="salvar_perfil", resultado=DecisaoComercial.Resultado.RECUSADO).exists())
+    if recusada:
+        refeita = None
+        if not entrada.get("refeita_apos_conflito"):
+            nova = {k: v for k, v in entrada.items()
+                    if k not in ("perfil_vigente", "versao_do_perfil", "quadro_atual")}
+            nova["refeita_apos_conflito"] = True
+            refeita, _ = criar(
+                T.REANALISAR_PERFIL, f"{trabalho.chave_idempotencia}:refeita"[:200], origem="atendimento",
+                site_id=trabalho.site_id, contato_id=trabalho.contato_id,
+                oportunidade_id=trabalho.oportunidade_id, conversa_id=trabalho.conversa_id,
+                anterior=trabalho, teste=trabalho.teste, entrada=nova)
+        trabalho.resultado = {**(trabalho.resultado or {}), "decisao": final, "versao_do_perfil": None,
+                              "perfil_mudou": False, "quadro": None}
+        terminar(trabalho, E.CONCLUIDO if refeita else E.FALHOU,
+                 resumo="A ficha mudou no meio da análise; a atualização foi refeita com a ficha nova." if refeita
+                 else "A ficha mudou no meio da análise e a nova versão não foi gravada.",
+                 motivo="" if refeita else "A ficha recusou a nova versão do perfil duas vezes.")
+        return
     quadro_novo = None
     objecao = str(final.get("objecao_principal") or "").strip()[:600]
     passo = str(final.get("proximo_passo") or "").strip()[:600]
