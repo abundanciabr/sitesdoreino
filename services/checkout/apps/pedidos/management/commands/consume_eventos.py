@@ -134,6 +134,20 @@ class Aviso:
     status: str
     pix: dict | None = None
     payment_id: str | None = None
+    # Quando o aviso diz que o fato aconteceu (`occurred_at` do envelope); None
+    # quando faltou ou não é uma data legível.
+    occurred_at: datetime | None = None
+
+
+def _quando_aconteceu(envelope: dict) -> datetime | None:
+    bruto = envelope.get("occurred_at")
+    if not isinstance(bruto, str):
+        return None
+    try:
+        quando = datetime.fromisoformat(bruto)
+    except ValueError:
+        return None
+    return quando if quando.tzinfo else quando.replace(tzinfo=timezone.utc)
 
 
 def _valor_no_v1(data: dict, origem: str):
@@ -176,6 +190,7 @@ def normalizar(envelope: dict) -> Aviso:
         status=aviso["status"],
         pix=data["pix"] if evento == "pix.codigo_trocado" else None,
         payment_id=str(data["payment_id"]) if evento == "pix.codigo_trocado" else None,
+        occurred_at=_quando_aconteceu(envelope),
     )
 
 
@@ -264,7 +279,9 @@ def aplicar(envelope: dict) -> bool:
                 estados_elegiveis = Q(status="pago")
             mudancas = {"status": aviso.status}
             if aviso.status == "pago":
-                mudancas["pago_em"] = django_timezone.now()
+                # A hora do pagamento é a que o aviso do provedor traz; a do
+                # processamento só entra se o aviso veio sem ela.
+                mudancas["pago_em"] = aviso.occurred_at or django_timezone.now()
             atualizados = (
                 OrderModel.objects.filter(
                     pk=aviso.order_id,

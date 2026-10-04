@@ -22,6 +22,7 @@ from ninja import Field, Router, Schema
 from ninja.errors import HttpError
 
 from apps.core.clients import CatalogoClient, PagamentosClient, QuizClient
+from apps.core.comercial import registrar_divergencia_de_valor
 from apps.pedidos.atribuicao import separar_atribuicao
 from apps.pedidos.emitir import emitir
 from apps.pedidos.tasks import relay_apos_commit
@@ -34,6 +35,11 @@ from apps.pedidos.models import Order as OrderModel
 from apps.pedidos.models import Session as SessionModel
 
 router = Router()
+
+# Pedido do link que já não vale: a pessoa pode reabrir o mesmo link e fazer
+# outro. Qualquer outro estado (aguardando, pago, reembolsado) é o pedido que
+# a página deve mostrar, nunca um segundo.
+_STATUS_QUE_LIBERAM_NOVO_PEDIDO = ("expirado", "recusado")
 
 # Frases do 502 que o comprador lê quando pagamentos não responde, responde 5xx
 # ou devolve corpo inválido: o pedido segue como estava e a nova tentativa leva
@@ -245,34 +251,55 @@ def create_session(request):
     cpf_email = str(prefill.get("email") if prefill else corpo.get("email_para_cpf") or "")
     cpf_anterior = _cpf_anterior(site["id"], _visitor_id_do_cookie(request), cpf_email)
     link = _link_da_pagina(corpo.get("link"), site["id"], offer_slug)
+    pedido_existente = None
     with transaction.atomic():
         visitante_novo = False
         sessao = None
         if link is not None:
             # Link do atendimento: a página continua a sessão que o link abriu
-            # (com o pedido já reservado), em vez de abrir outra. Os dados do
-            # contato do link NUNCA vão para a página: quem recebe o link de
-            # outra pessoa vê os campos vazios, como em qualquer link.
+            # (com o pedido já reservado), em vez de abrir outra. O link não
+            # guarda dado pessoal do contato, e quem recebe o link de outra
+            # pessoa vê os campos vazios, como em qualquer link.
+            # O link é travado antes da sessão: duas aberturas ao mesmo tempo
+            # depois de um pedido vencido não podem abrir duas sessões.
             link = LinkDeCompra.objects.select_for_update().get(pk=link.pk)
             sessoes = [link.session, *link.sessoes_reabertas.order_by("created_at")]
             pedidos = {
-                p.session_id: p.status
-                for p in OrderModel.objects.filter(session__in=sessoes)
+                p.session_id: p for p in OrderModel.objects.filter(session__in=sessoes)
             }
-            if any(st in ("pago", "reembolsado") for st in pedidos.values()):
-                # Link já virou compra paga: a página segue como uma compra
-                # nova, sem herdar a oportunidade.
-                link = None
-            elif sessoes[-1].pk not in pedidos:
-                sessao = SessionModel.objects.select_for_update().get(pk=sessoes[-1].pk)
-                visitante = _visitor_id_do_cookie(request)
+            ultima = SessionModel.objects.select_for_update().get(pk=sessoes[-1].pk)
+            visitante = _visitor_id_do_cookie(request)
+            pago = next(
+                (
+                    pedidos[s.pk]
+                    for s in sessoes
+                    if s.pk in pedidos and pedidos[s.pk].status in ("pago", "reembolsado")
+                ),
+                None,
+            )
+            anterior = pedidos.get(ultima.pk)
+            if pago is None and anterior is None:
+                sessao = ultima
                 if visitante and not sessao.visitor_id:
                     sessao.visitor_id = visitante
                     sessao.save(update_fields=["visitor_id"])
                     visitante_novo = True
-            # Senão: a última sessão do link já tem pedido (Pix vencido, cartão
-            # recusado, página fechada no Pix). Abre outra sessão do mesmo
-            # link, que leva a oportunidade para o pedido novo.
+            elif pago is None and anterior.status in _STATUS_QUE_LIBERAM_NOVO_PEDIDO:
+                # Pix vencido ou cartão recusado: outra sessão do mesmo link,
+                # que leva a oportunidade para o pedido novo.
+                sessao = _nova_sessao_do_link(link, ultima, oferta, lead_id, visitante)
+                visitante_novo = bool(sessao.visitor_id)
+            else:
+                # O link já virou pedido e ele segue valendo (aguardando ou
+                # pago): a página leva a pessoa até ele em vez de tentar fechar
+                # outro (que daria 409 ou cobraria duas vezes).
+                sessao = ultima
+                valendo = pago or anterior
+                pedido_existente = {
+                    "order_id": str(valendo.id),
+                    "method": valendo.method,
+                    "status": valendo.status,
+                }
         if sessao is None:
             sessao = SessionModel.objects.create(
                 site_id=site["id"],
@@ -285,7 +312,7 @@ def create_session(request):
                 link_origem=link,
             )
             visitante_novo = bool(sessao.visitor_id)
-        if visitante_novo:
+        if visitante_novo and pedido_existente is None:
             emitir(
                 "checkout.iniciado",
                 {
@@ -313,8 +340,13 @@ def create_session(request):
                     for b in oferta.get("bumps") or []
                 ],
             },
-            **({"prefill": prefill} if prefill else {}),
-            **({"cpf_mascarado": f"***.***.***-{cpf_anterior[-2:]}"} if cpf_anterior else {}),
+            **({"pedido_existente": pedido_existente} if pedido_existente else {}),
+            **({"prefill": prefill} if prefill and not pedido_existente else {}),
+            **(
+                {"cpf_mascarado": f"***.***.***-{cpf_anterior[-2:]}"}
+                if cpf_anterior and not pedido_existente
+                else {}
+            ),
             **(
                 {
                     "condicao": {
@@ -328,6 +360,23 @@ def create_session(request):
         },
         status=201,
     )
+
+
+def _nova_sessao_do_link(link, anterior, oferta: dict, lead_id: str, visitante):
+    """O pedido do link venceu ou foi recusado e a pessoa abriu o link de novo:
+    a página ganha uma sessão nova, ligada ao MESMO link (mesma oportunidade,
+    mesma atribuição, mesma condição). Chamada com o link já travado."""
+    nova = SessionModel.objects.create(
+        site_id=anterior.site_id,
+        offer_slug=anterior.offer_slug,
+        offer=oferta,
+        lead_id=anterior.lead_id or lead_id,
+        utm=anterior.utm,
+        contexto=anterior.contexto,
+        visitor_id=visitante or anterior.visitor_id,
+        link_origem=link,
+    )
+    return nova
 
 
 def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool) -> bool:
@@ -517,14 +566,10 @@ def place_order(request, session_id: str):
     # Pedido aberto por um link do atendimento nasce com o id que o link já
     # devolveu ao CRM, e leva a oportunidade junto.
     link = link_da_sessao(sessao)
-    # O id que o link devolveu ao CRM vale para o primeiro pedido do link;
-    # uma sessão reaberta (depois de Pix vencido, cartão recusado...) tem
-    # pedido novo, com id novo, e a mesma oportunidade.
-    order_id = (
-        link.pedido_id
-        if link is not None and link.session_id == sessao.pk
-        else uuid.uuid4()
-    )
+    # O 1º pedido do link leva o id que o link devolveu ao CRM; quando ele
+    # vence ou é recusado e a pessoa reabre o link, o pedido seguinte ganha um
+    # id derivado dele (mesma oportunidade), e o CRM acompanha tudo pelo id só.
+    order_id = link.proximo_id_de_pedido() if link is not None else uuid.uuid4()
     referencias = {
         "oportunidade_ref": link.oportunidade_ref if link is not None else "",
         "oferta_ref": sessao.offer_slug,
@@ -547,7 +592,9 @@ def place_order(request, session_id: str):
         )
         # Link do e-mail "seu Pix expirou" (`pix.expirado.recovery_url`): a
         # página da oferta, onde a pessoa gera um Pix novo. Sem isto o e-mail
-        # saía com "Finalize aqui:" e nenhum link.
+        # saía com "Finalize aqui:" e nenhum link. Pedido que nasceu de um link
+        # do atendimento volta pelo mesmo link, para a venda seguir ligada à
+        # oportunidade.
         metadata["recovery_url"] = (
             f"https://{site['host']}/checkout/{sessao.offer_slug}/"
             + (f"?link={link.id}" if link is not None else "")
@@ -650,6 +697,8 @@ def place_order(request, session_id: str):
         # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
         # do worker cobre qualquer falha aqui — o evento nunca se perde.
         transaction.on_commit(relay_apos_commit)
+    if link is not None:
+        registrar_divergencia_de_valor(link, total_cents)
     return JsonResponse(_pedido_criado(pedido), status=201)
 
 

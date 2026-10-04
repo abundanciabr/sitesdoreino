@@ -21,8 +21,9 @@ class Session(models.Model):
     offer = models.JSONField()
     lead_id = models.CharField(max_length=64, blank=True, default="")
     utm = models.JSONField(default=dict, blank=True)
-    # Atribuição vinda do quiz (v, fmt, seg, src, med, cpg, ctv, qa, qz): valores
-    # curtos, opacos, sem dado pessoal. Preserva o que chegou na abertura.
+    # Atribuição vinda do quiz (v, fmt, seg, src, med, cpg, ctv, qa, qz) e do
+    # link de compra do atendimento (op, est): valores curtos, opacos, sem dado
+    # pessoal. Preserva o que chegou na abertura.
     contexto = models.JSONField(default=dict, blank=True)
     # [DESENHO-COMUM.md F10] o UUID4 do cookie `meshcraft_visitante` (funil),
     # lido na abertura da sessão. Nulo quando o navegador chegou sem o cookie
@@ -147,6 +148,27 @@ class LinkDeCompra(models.Model):
     condicao = models.JSONField(default=dict)
     resposta = models.JSONField(default=dict)
     criado_em = models.DateTimeField(auto_now_add=True)
+
+    def id_da_tentativa(self, numero: int) -> uuid.UUID:
+        """O link serve um pedido por vez. A 1ª tentativa leva o id que o CRM
+        já recebeu (`pedido_id`); quando ela expira ou é recusada e a pessoa
+        reabre o link, a tentativa seguinte ganha um id derivado dele. Assim o
+        CRM segue com um id só e a cadeia se acha sem guardar nada a mais."""
+        return self.pedido_id if numero == 1 else uuid.uuid5(self.pedido_id, str(numero))
+
+    def tentativas(self) -> list:
+        """Os pedidos deste link, do primeiro ao último."""
+        achados = []
+        while True:
+            pedido = Order.objects.filter(
+                pk=self.id_da_tentativa(len(achados) + 1), site_id=self.site_id
+            ).first()
+            if pedido is None:
+                return achados
+            achados.append(pedido)
+
+    def proximo_id_de_pedido(self) -> uuid.UUID:
+        return self.id_da_tentativa(len(self.tentativas()) + 1)
 
     class Meta:
         constraints = [

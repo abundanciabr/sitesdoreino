@@ -7,6 +7,7 @@ import json
 
 import httpx
 import pytest
+from django.core.cache import cache
 
 from apps.pedidos.models import CondicaoDoAgente, Session
 from conftest import HOST_A, HOST_B, OFERTA_A, PAGAMENTOS, SITE_A, SITE_B, SLUG
@@ -126,13 +127,17 @@ def test_condicao_marcada_que_deixa_de_existir_some_sozinha(api, settings, carta
 def test_parcelas_nao_cotadas_nao_viram_condicao_para_o_agente(api, settings, rede, marcar):
     settings.APPMAX_CARD_ENABLED_SITES = frozenset({SITE_A["id"]})
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(return_value=httpx.Response(503))
-    # Sem cotação só existe "card" sem parcelas; ele só entra se for marcado.
+    # Sem cotação só existe o cartão à vista; ele só entra se for marcado, e
+    # parcelamento nenhum é prometido.
     assert api.get(AGENTE).json()["condicoes"] == []
-    marcar(["card"])
+    assert marcar(["card"]).status_code == 422
+    assert marcar(["card_3x"]).status_code == 422
+    assert marcar(["card_1x"]).status_code == 200
     corpo = api.get(AGENTE).json()
-    assert [c["id"] for c in corpo["condicoes"]] == ["card"]
-    assert corpo["condicoes"][0]["parcelas"] is None
-    assert corpo["parcelas"] == {"consulta": "indisponivel", "maximo": None}
+    assert [c["id"] for c in corpo["condicoes"]] == ["card_1x"]
+    assert corpo["condicoes"][0]["parcelas"] == 1
+    assert corpo["condicoes"][0]["total_cents"] == 990
+    assert corpo["parcelas"] == {"consulta": "indisponivel", "maximo": 1}
 
 
 @pytest.mark.django_db
@@ -266,9 +271,12 @@ def test_lista_nao_cai_quando_o_catalogo_nao_responde(api, rede, monkeypatch):
 @pytest.mark.django_db
 def test_cotacao_fora_do_ar_nao_apaga_a_marca_das_parcelas(api, cartao_no_site_a, rede, marcar):
     marcar(["pix", "card_3x"])
+    # A cotação boa fica guardada por 120 s; aqui ela já venceu e o provedor caiu.
+    cache.clear()
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(return_value=httpx.Response(503))
-    # A tela só lista "pix" e "card"; o mantenedor salva sem mexer em card_3x.
-    assert marcar(["pix", "card"]).status_code == 200
+    # A tela só lista "pix" e "card_1x"; o mantenedor salva sem mexer em card_3x.
+    assert marcar(["pix"]).status_code == 200
+    cache.clear()
     rede.get(url__startswith=f"{PAGAMENTOS}/parcelas").mock(side_effect=_cotacao)
     assert [c["id"] for c in api.get(AGENTE).json()["condicoes"]] == ["pix", "card_3x"]
     # Desmarcar o que existe agora continua funcionando.
