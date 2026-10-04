@@ -156,7 +156,7 @@ from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.funil import funil
-from apps.core.contatos import contato, contatos
+from apps.core.contatos import contato, contato_atendimento, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
@@ -800,6 +800,11 @@ urlpatterns = [
     # e telefone de cliente são dado de dono, e `equipe/` abre para o crachá.
     path("contatos/", contatos, name="contatos"),
     path("contatos/<uuid:lead_id>/", contato, name="contato"),
+    path(
+        "contatos/<uuid:lead_id>/atendimento/",
+        contato_atendimento,
+        name="contato_atendimento",
+    ),
     # O FECHAMENTO DO CICLO (`apps/core/fechamento.py`, 07/09/2026) — o fim das
     # 12 semanas: a meta bateu ou não, as medidas de direção previram isso ou
     # não, o que a escola PARA de fazer (sem isso o ciclo não fecha), a meta
