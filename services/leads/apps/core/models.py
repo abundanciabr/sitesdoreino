@@ -128,6 +128,15 @@ class Oportunidade(models.Model):
     desfecho_motivo = models.TextField(blank=True, default="")
     desfecho_evidencia = models.TextField(blank=True, default="")
     desfecho_encerrada_em = models.DateTimeField(null=True, blank=True)
+    # Acompanhamento do dia a dia, escrito pelo agente ou pela pessoa da
+    # equipe. Próximo passo e prazo são `passo_descricao` e
+    # `passo_executar_ate`; aqui fica o resto do que o quadro mostra.
+    ATENDIDO_POR = ("agente", "pessoa")
+    atendido_por_tipo = models.CharField(max_length=10, blank=True, default="")
+    atendido_por_nome = models.CharField(max_length=200, blank=True, default="")
+    ultimo_contato_em = models.DateTimeField(null=True, blank=True)
+    objecao_principal = models.TextField(blank=True, default="")
+    aguardando_resposta = models.BooleanField(default=False)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -218,3 +227,78 @@ class TransferenciaResponsabilidade(models.Model):
                 name="uniq_transferencia_pendente_por_oportunidade",
             ),
         ]
+
+
+class QuizDoLead(models.Model):
+    """O quiz que a pessoa respondeu, com as perguntas e respostas legíveis.
+
+    Uma linha por tentativa: a captura parcial abre a linha e o quiz completo
+    a conclui, sem criar outra. As respostas chegam prontas do quiz (texto da
+    pergunta e das opções), para a ficha e o agente lerem sem perguntar a
+    outra célula.
+    """
+
+    SITUACOES = ("parcial", "completo")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="quizzes")
+    quiz_slug = models.CharField(max_length=100)
+    sessao = models.CharField(max_length=100, blank=True, default="")
+    submissao_id = models.CharField(max_length=100, blank=True, default="")
+    versao = models.CharField(max_length=100, blank=True, default="")
+    situacao = models.CharField(max_length=10, default="parcial")
+    respostas = models.JSONField(default=list, blank=True)
+    resultado = models.CharField(max_length=100, blank=True, default="")
+    pontuacao = models.IntegerField(null=True, blank=True)
+    utm = models.JSONField(default=dict, blank=True)
+    campanha = models.CharField(max_length=200, blank=True, default="")
+    ultimo_event_id = models.UUIDField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    completado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["lead", "-atualizado_em"])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lead", "quiz_slug", "sessao"],
+                condition=~models.Q(sessao=""),
+                name="uniq_quiz_do_lead_por_sessao",
+            ),
+        ]
+
+
+class PerfilDoLead(models.Model):
+    """Uma versão do perfil comercial da pessoa, escrita pelo analista.
+
+    Cada análise acrescenta uma versão; a vigente é a de maior número. As
+    anteriores ficam como histórico e não mudam.
+    """
+
+    PRIORIDADES = ("alta", "media", "baixa")
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="perfis")
+    versao = models.PositiveIntegerField()
+    resumo = models.TextField(blank=True, default="")
+    conteudo = models.JSONField(default=dict, blank=True)
+    prioridade = models.CharField(max_length=10, blank=True, default="")
+    prioridade_explicacao = models.TextField(blank=True, default="")
+    oferta_indicada = models.JSONField(null=True, blank=True)
+    analisado_em = models.DateTimeField()
+    analisado_por = models.CharField(max_length=200, blank=True, default="")
+    versao_estrategia = models.CharField(max_length=100, blank=True, default="")
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lead", "versao"], name="uniq_perfil_do_lead_versao"
+            ),
+        ]
+        indexes = [models.Index(fields=["lead", "-versao"])]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("versão de perfil não muda: grave uma versão nova")
+        return super().save(*args, **kwargs)
