@@ -27,9 +27,11 @@ def ao_notificacao_devida(data: dict, *, ator_id: str | None = None) -> None:
     # depois o que é entrega. `avisar_os_aparelhos` nunca levanta — servidor de
     # push fora do ar, chave ausente ou aparelho que sumiu não podem derrubar o
     # consumidor do fio nem impedir a carta seguinte de ser gravada.
-    avisar_os_aparelhos(
-        site_id=data["site_id"],
-        destinatario_id=data["destinatario_id"],
-        assunto=data["assunto"],
-        parametros=data["parametros"],
-    )
+    # A Fila do Dólar está restrita à central interna. O push é outro canal.
+    if not data["assunto"].startswith("marketplace."):
+        avisar_os_aparelhos(
+            site_id=data["site_id"],
+            destinatario_id=data["destinatario_id"],
+            assunto=data["assunto"],
+            parametros=data["parametros"],
+        )

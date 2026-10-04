@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core import telas_do_cliente
+from apps.core import telas_do_cliente, telas_marketplace
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -37,6 +37,30 @@ from config.api import api
 # que alguém escreveria por instinto. Quem registra "pago pela escola" é o
 # plantão, com autor e data (lei §3.4).
 urlpatterns = [
+    path("escola/", telas_marketplace.escola, name="marketplace_escola"),
+    path("escola/autorizar/<str:tipo>/", telas_marketplace.autorizar, name="marketplace_autorizar"),
+    path("escola/fase/<str:tipo>/", telas_marketplace.alterar_fase, name="marketplace_alterar_fase"),
+    path("fila/", telas_marketplace.fila, name="marketplace_fila"),
+    path("fila/disponibilidade/", telas_marketplace.disponibilidade, name="marketplace_disponibilidade"),
+    path("fila/ofertas/<uuid:oferta_id>/<str:acao>/", telas_marketplace.responder_oferta, name="marketplace_responder_oferta"),
+    path("cliente/", telas_marketplace.cliente, name="marketplace_cliente"),
+    path("cliente/novo/", telas_marketplace.novo, name="marketplace_novo"),
+    path("cliente/salvar/", telas_marketplace.salvar, name="marketplace_salvar"),
+    path("cliente/autosave/", telas_marketplace.autosave, name="marketplace_autosave"),
+    path("cliente/pedidos/<uuid:pedido_id>/editar/", telas_marketplace.editar, name="marketplace_editar"),
+    path("cliente/pedidos/<uuid:pedido_id>/salvar/", telas_marketplace.salvar, name="marketplace_salvar_edicao"),
+    path("cliente/pedidos/<uuid:pedido_id>/repetir/", telas_marketplace.repetir, name="marketplace_repetir"),
+    path("cliente/pedidos/<uuid:pedido_id>/publicar/", telas_marketplace.publicar, name="marketplace_publicar"),
+    path("cliente/pedidos/<uuid:pedido_id>/cobrar/", telas_marketplace.cobrar, name="marketplace_cobrar"),
+    path("cliente/pedidos/<uuid:pedido_id>/confirmar-paypal/", telas_marketplace.confirmar_paypal, name="marketplace_confirmar_paypal"),
+    path("cliente/pedidos/<uuid:pedido_id>/retorno-paypal/", telas_marketplace.retorno_paypal, name="marketplace_retorno_paypal"),
+    path("cliente/pedidos/<uuid:pedido_id>/", telas_marketplace.pedido_cliente, name="marketplace_pedido_cliente"),
+    path("marketplace/pedidos/<uuid:pedido_id>/", telas_marketplace.pedido, name="marketplace_pedido"),
+    path("marketplace/pedidos/<uuid:pedido_id>/mensagem/", telas_marketplace.mensagem, name="marketplace_mensagem"),
+    path("marketplace/pedidos/<uuid:pedido_id>/arquivo/", telas_marketplace.enviar_arquivo, name="marketplace_arquivo"),
+    path("marketplace/arquivos/<uuid:arquivo_id>/", telas_marketplace.baixar_arquivo, name="marketplace_baixar"),
+    path("marketplace/pedidos/<uuid:pedido_id>/entregar/", telas_marketplace.entregar, name="marketplace_entregar"),
+    path("marketplace/pedidos/<uuid:pedido_id>/<str:acao>/", telas_marketplace.avaliar, name="marketplace_avaliar"),
     path("healthz", healthz),
     path("plantao", plantao, name="plantao"),
     path("plantao/titulo", dar_titulo, name="plantao_titulo"),

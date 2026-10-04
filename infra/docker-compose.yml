@@ -35,6 +35,7 @@ services:
       - /opt/plataforma/env:/run/plataforma-env:ro
       - /opt/plataforma/admin-dados:/opt/plataforma/admin-dados:ro
       - /opt/plataforma/admin-midia:/opt/plataforma/admin-midia
+      - /opt/plataforma/encomendas-arquivos:/arquivos/encomendas
 
   # Perfil separado: a aplicação continua subindo sem configuração WhatsApp.
   # Evolution fica acessível só pela rede interna, sem porta, manager ou chave pública.

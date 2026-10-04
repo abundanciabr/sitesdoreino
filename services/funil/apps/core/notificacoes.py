@@ -1,7 +1,11 @@
 """Avisos da pessoa para a página /notificacoes e para o aviso no celular."""
 
 import logging
+import os
 import uuid
+from urllib.parse import quote
+
+import httpx
 
 from django.apps import apps as registro
 from django.db import DatabaseError
@@ -32,7 +36,15 @@ TIPOS_POR_ASSUNTO = {
     "matricula.situacao-alterada": "matricula",
     "pages.portfolio-conferido": "portfolio",
     "sistema.teste-de-aviso": "teste",
+    "marketplace.oferta": "marketplace_oferta",
+    "marketplace.acordo": "marketplace_acordo",
+    "marketplace.entrega": "marketplace_entrega",
+    "marketplace.ajuste": "marketplace_ajuste",
+    "marketplace.aprovacao": "marketplace_aprovacao",
+    "marketplace.pagamento": "marketplace_pagamento",
+    "marketplace.recebimento": "marketplace_recebimento",
 }
+ASSUNTOS_DO_ALUNO = frozenset({"marketplace.oferta", "marketplace.ajuste", "marketplace.aprovacao", "marketplace.recebimento"})
 SITUACOES_CONHECIDAS = frozenset(
     {"ativa", "reembolsada", "suspensa", "encerrada", "aguardando", "recusada"}
 )
@@ -85,14 +97,34 @@ def buscar_avisos(destinatario_id: str, site_id: str) -> "list[dict] | None":
     return None
 
 
-def link_do_cartao(tipo: str, sugestao_id: str = "") -> str:
+def link_do_cartao(tipo: str, sugestao_id: str = "", pedido_id: str = "") -> str:
     if tipo == "sugestao":
         return url_da_sugestao(sugestao_id) if sugestao_id else ""
     if tipo in {"nivel", "conquista", "marco", "destaque"}:
         return url_das_conquistas()
     if tipo == "portfolio":
         return url_da_prancheta()
+    if tipo.startswith("marketplace_") and pedido_id:
+        return f"/encomendas/marketplace/pedidos/{pedido_id}/"
     return ""
+
+
+def _acesso_aluno_marketplace(destinatario_id: str) -> bool:
+    """Consulta a mesma permissão da fila; indisponibilidade mantém o aviso oculto."""
+    base = (os.environ.get("ENCOMENDAS_API_URL") or "").rstrip("/")
+    token = os.environ.get("ENCOMENDAS_API_TOKEN") or ""
+    if not base or not token:
+        return False
+    try:
+        resposta = httpx.get(
+            f"{base}/perfis/{quote(destinatario_id, safe='')}/fila",
+            headers={"Authorization": f"Bearer {token}"}, timeout=3,
+        )
+        resposta.raise_for_status()
+        dados = resposta.json()
+        return isinstance(dados, dict) and dados.get("existe") is True
+    except (httpx.HTTPError, ValueError):
+        return False
 
 
 def links_para_o_celular() -> dict:
@@ -119,6 +151,14 @@ def _sugestao_id(item: dict) -> str:
 
 def _passo_id(item: dict) -> str:
     valor = _texto(item["parametros"], "passo_id")
+    try:
+        return str(uuid.UUID(valor))
+    except ValueError:
+        return ""
+
+
+def _pedido_id(item: dict) -> str:
+    valor = _texto(item["parametros"], "pedido_id")
     try:
         return str(uuid.UUID(valor))
     except ValueError:
@@ -188,7 +228,7 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
         "criado_em": parse_datetime(item["criado_em"]),
         "tipo": tipo,
         "cartao": "generica" if tipo == "desconhecido" else tipo,
-        "link": link_do_cartao(tipo, sugestao_id),
+        "link": link_do_cartao(tipo, sugestao_id, _pedido_id(item)),
         "titulo_da_ideia": ideia.get("titulo", ""),
         "passo_titulo": passo.get("titulo", ""),
         "passo_corpo": passo.get("corpo", ""),
@@ -218,7 +258,13 @@ def avisos_para_tela(
         (_passo_id(i) for i in itens if i["assunto"] == ASSUNTO_JORNADA), idioma
     )
     visiveis = []
+    acesso_aluno = None
     for item in itens:
+        if item["assunto"] in ASSUNTOS_DO_ALUNO:
+            if acesso_aluno is None:
+                acesso_aluno = _acesso_aluno_marketplace(destinatario_id)
+            if not acesso_aluno:
+                continue
         if ideias_dos_avisos.get(_sugestao_id(item), {}).get("apagada"):
             if not item["lido_em"]:
                 marcar_aviso(destinatario_id, site_id, item["id"])

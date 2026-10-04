@@ -593,6 +593,10 @@ def rodar(agora: datetime, *, site_id: str) -> Tique:
     foi fechado não aparece no filtro. É a mesma propriedade do motor, e é ela
     que faz um worker reiniciado no meio de uma fila cheia não duplicar nada.
     """
+    from .participacao import fase_liberada
+
+    if not fase_liberada(site_id):
+        return Tique()
     expiradas = expirar_ofertas_vencidas(agora, site_id=site_id)
     reservas = expirar_reservas_vencidas(agora, site_id=site_id)
     propostas = expirar_propostas_vencidas(agora, site_id=site_id)

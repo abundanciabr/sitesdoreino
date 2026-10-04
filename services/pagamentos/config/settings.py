@@ -137,7 +137,16 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "pagamentos.core",
     "pagamentos.api",
+    "pagamentos.marketplace",
 ]
+
+# A Fila do Dólar só cria cobranças de teste nesta fase. A ausência de qualquer
+# credencial ou token do par encomendas deixa suas rotas financeiras fechadas.
+MARKETPLACE_API_TOKEN = os.environ.get("TOKENS_ACEITOS_ENCOMENDAS", "")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
+MARKETPLACE_PAYPAL_RETURN_BASE_URL = os.environ.get("MARKETPLACE_PAYPAL_RETURN_BASE_URL", "").rstrip("/")
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

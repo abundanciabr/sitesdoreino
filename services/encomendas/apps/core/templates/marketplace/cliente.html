@@ -1,0 +1,7 @@
+{% extends 'marketplace/base.html' %}{% block title %}Meus pedidos{% endblock %}{% block body %}
+<div class="eyebrow">Encomendas</div><h1>O que você precisa criar?</h1><p class="lead">Escolha uma categoria e descreva o seu projeto.</p>
+<div class="grid three">{% for chave,nome,descricao in categorias %}<a class="category" href="{% url 'marketplace_novo' %}?categoria={{ chave }}"><span class="symbol">◇</span><strong>{{ nome }}</strong><span class="muted">{{ descricao }}</span></a>{% endfor %}</div>
+<p class="tiny">Exemplos de trabalhos publicados pela escola aparecem aqui quando estiverem disponíveis.</p>
+<div class="spacer"></div><div class="row"><h2>Meus pedidos</h2><a class="btn secondary" href="{% url 'marketplace_novo' %}">Criar pedido</a></div>
+<div class="card">{% if pedidos %}<div class="table-wrap"><table><thead><tr><th>Pedido</th><th>Situação</th><th>Valor</th><th></th></tr></thead><tbody>{% for pedido in pedidos %}<tr><td><strong>{{ pedido.titulo|default:'Rascunho' }}</strong><br><span class="tiny">{{ pedido.criado_em|date:'d/m/Y' }}</span></td><td><span class="badge">{{ pedido.get_status_display|default:pedido.status }}</span></td><td>{% if pedido.valor_cents %}{{ pedido.valor_exibido }}{% else %}—{% endif %}</td><td><a href="{% url 'marketplace_pedido' pedido.pk %}">Ver pedido</a>{% if pedido.status == 'rascunho' %} · <a href="{% url 'marketplace_editar' pedido.pk %}">Editar</a>{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p>Seus pedidos aparecerão aqui.</p>{% endif %}</div>
+{% endblock %}

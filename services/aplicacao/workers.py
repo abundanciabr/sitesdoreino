@@ -27,6 +27,7 @@ CONSUMIDORES = {
     "mensageria": "eventos",
     "metricas": "fatos",
     "notificacoes": "eventos",
+    "encomendas": "core",
 }
 
 HUEYS = (
@@ -136,8 +137,9 @@ class Workers:
 
     @staticmethod
     def _consumir(servico: str, app: str) -> None:
+        comando = "consume_marketplace" if servico == "encomendas" else "consume_eventos"
         modulo = import_module(
-            f"modules.{servico}.apps.{app}.management.commands.consume_eventos"
+            f"modules.{servico}.apps.{app}.management.commands.{comando}"
         )
         modulo.Command().handle()
 

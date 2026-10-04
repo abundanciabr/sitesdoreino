@@ -30,6 +30,35 @@ from apps.encomendas.models import Encomenda, PerfilProfissional, Pessoa
 
 SITE_PADRAO = "escola-a"
 
+
+@pytest.fixture(autouse=True)
+def participacao_explicita_nos_cenarios_legados(request):
+    """O legado é exercitado com participantes autorizados apenas no banco de teste.
+
+    Os testes da preparação e do marketplace montam sua própria autorização.
+    Não há sinal de autorização nem dados semeados no código de produção.
+    """
+    if "marketplace" in request.node.path.name or request.node.path.name == "test_participacao_reservada.py":
+        yield
+        return
+    from django.db.models.signals import post_save
+    from apps.encomendas.models import FaseMarketplace, AutorizacaoMarketplaceAluno
+
+    def selecionar_cenario(sender, instance, created, **kwargs):
+        if created:
+            FaseMarketplace.objects.update_or_create(
+                site_id=instance.site_id, defaults={"alunos_liberados": True}
+            )
+            AutorizacaoMarketplaceAluno.objects.get_or_create(
+                site_id=instance.site_id, pessoa_id=instance.pessoa_id,
+                defaults={"ativa": True, "autorizada_por": "equipe-do-teste"},
+            )
+    post_save.connect(selecionar_cenario, sender=PerfilProfissional, weak=False)
+    try:
+        yield
+    finally:
+        post_save.disconnect(selecionar_cenario, sender=PerfilProfissional)
+
 # O cartão decide o nível, e o banco recusa o par errado
 # (`o_cartao_decide_o_nivel`). A tabela mora aqui, e não dentro de cada fábrica,
 # porque duas fábricas a usam e duas cópias divergiriam no primeiro cartão novo.
@@ -48,7 +77,7 @@ CARTAO_DO_NIVEL = {
 
 
 @pytest.fixture
-def semeado(db):
+def semeado(db, request):
     """Os 33 parâmetros com valor no banco, pelo caminho da instalação.
 
     Vinte e sete da lei §6; o `relogio_da_reserva_no_mural` e as três da
@@ -60,6 +89,9 @@ def semeado(db):
     cenário.
     """
     call_command("semear_parametros", site=SITE_PADRAO, stdout=StringIO())
+    if "marketplace" not in request.node.path.name and request.node.path.name != "test_participacao_reservada.py":
+        from apps.encomendas.models import FaseMarketplace
+        FaseMarketplace.objects.update_or_create(site_id=SITE_PADRAO, defaults={"alunos_liberados": True})
     return SITE_PADRAO
 
 

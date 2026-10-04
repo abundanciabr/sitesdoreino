@@ -1741,3 +1741,242 @@ class Parametro(models.Model):
                 "ou confira a data de `desde` das linhas."
             )
         return int(linha.valor)
+
+
+# A modalidade de termos fechados nasce em tabelas próprias. Nenhuma encomenda
+# antiga muda de versão, estado ou acordo por causa da Fila do Dólar.
+class FaseMarketplace(models.Model):
+    site_id = id_do_site()
+    alunos_liberados = models.BooleanField(default=False)
+    clientes_liberados = models.BooleanField(default=False)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id"], name="mp_fase_site_unica")]
+
+
+class AutorizacaoMarketplaceAluno(models.Model):
+    site_id = id_do_site()
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    ativa = models.BooleanField(default=False)
+    autorizada_por = id_da_plataforma()
+    autorizada_em = models.DateTimeField(null=True, blank=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id", "pessoa"], name="mp_aluno_site_unico"),
+        ]
+
+
+class AutorizacaoMarketplaceCliente(models.Model):
+    site_id = id_do_site()
+    cliente_id = models.CharField(max_length=64)
+    ativa = models.BooleanField(default=False)
+    autorizada_por = id_da_plataforma()
+    autorizada_em = models.DateTimeField(null=True, blank=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["site_id", "cliente_id"], name="mp_cliente_site_unico"),
+        ]
+
+
+class PedidoMarketplace(models.Model):
+    class Status(models.TextChoices):
+        RASCUNHO = "rascunho", "Rascunho"
+        AGUARDANDO_PAGAMENTO = "aguardando_pagamento", "Aguardando pagamento"
+        NA_FILA = "na_fila", "Na fila"
+        OFERECIDO = "oferecido", "Oferecido"
+        EM_PRODUCAO = "em_producao", "Em produção"
+        ENTREGUE = "entregue", "Entregue"
+        EM_AJUSTE = "em_ajuste", "Em ajuste"
+        APROVADO = "aprovado", "Aprovado"
+        CANCELADO = "cancelado", "Cancelado"
+        MEDIACAO = "mediacao", "Mediação"
+
+    class PrazoUnidade(models.TextChoices):
+        DIAS_CORRIDOS = "dias_corridos", "Dias corridos"
+        DIAS_UTEIS = "dias_uteis", "Dias úteis"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    cliente_id = models.CharField(max_length=64)
+    aluno = models.ForeignKey(
+        PerfilProfissional, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="pedidos_marketplace",
+    )
+    cartao = models.CharField(max_length=20, choices=Encomenda.Cartao.choices, blank=True)
+    nivel = models.CharField(max_length=14, choices=Encomenda.Nivel.choices, blank=True)
+    categoria = models.CharField(max_length=80, blank=True)
+    titulo = models.CharField(max_length=200, blank=True)
+    briefing = models.JSONField(default=dict, blank=True)
+    valor_cents = models.PositiveIntegerField(default=0)
+    moeda = models.CharField(max_length=3, default="BRL")
+    prazo_quantidade = models.PositiveSmallIntegerField(default=0)
+    prazo_unidade = models.CharField(max_length=14, choices=PrazoUnidade.choices, blank=True)
+    ajustes_inclusos = models.PositiveSmallIntegerField(default=0)
+    ambiente = models.CharField(max_length=16, default="sandbox")
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.RASCUNHO)
+    versao = models.PositiveIntegerField(default=1)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    publicado_em = models.DateTimeField(null=True, blank=True)
+    pagamento_referencia = models.CharField(max_length=160, blank=True, default="")
+    pagamento_confirmado_em = models.DateTimeField(null=True, blank=True)
+    producao_iniciada_em = models.DateTimeField(null=True, blank=True)
+    producao_prazo_ate = models.DateTimeField(null=True, blank=True)
+    aprovado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "status", "criado_em"], name="mp_pedidos_por_estado"),
+            models.Index(fields=["site_id", "cliente_id"], name="mp_pedidos_por_cliente"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pagamento_referencia"],
+                condition=~models.Q(pagamento_referencia=""),
+                name="mp_pagamento_referencia_unica",
+            ),
+        ]
+
+
+class OfertaMarketplace(models.Model):
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        ACEITA = "aceita", "Aceita"
+        PASSOU = "passou", "Passou"
+        EXPIROU = "expirou", "Expirou"
+        CANCELADA = "cancelada", "Cancelada"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="ofertas")
+    aluno = models.ForeignKey(PerfilProfissional, on_delete=models.PROTECT, related_name="ofertas_marketplace")
+    versao_pedido = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDENTE)
+    motivo = models.CharField(max_length=160, blank=True)
+    oferecida_em = models.DateTimeField()
+    expira_em = models.DateTimeField()
+    respondida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["pedido"], condition=models.Q(status="pendente"), name="mp_pedido_oferta_pendente"),
+            models.UniqueConstraint(fields=["aluno"], condition=models.Q(status="pendente"), name="mp_aluno_oferta_pendente"),
+            models.UniqueConstraint(fields=["pedido", "aluno"], name="mp_aluno_ve_pedido_uma_vez"),
+        ]
+        indexes = [models.Index(fields=["site_id", "status", "expira_em"], name="mp_ofertas_a_expirar")]
+
+
+class AcordoMarketplace(models.Model):
+    site_id = id_do_site()
+    pedido = models.OneToOneField(PedidoMarketplace, on_delete=models.PROTECT, related_name="acordo")
+    oferta = models.OneToOneField(OfertaMarketplace, on_delete=models.PROTECT)
+    aluno = models.ForeignKey(PerfilProfissional, on_delete=models.PROTECT)
+    versao_pedido = models.PositiveIntegerField()
+    termos = models.JSONField(default=dict)
+    aceito_em = models.DateTimeField()
+
+
+class EntregaMarketplace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="entregas")
+    versao = models.PositiveIntegerField()
+    comentario = models.TextField(blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    aprovada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["pedido", "versao"], name="mp_versao_entrega_unica")]
+
+
+class ArquivoMarketplace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="arquivos")
+    entrega = models.ForeignKey(EntregaMarketplace, on_delete=models.PROTECT, null=True, blank=True, related_name="arquivos")
+    ator_id = models.CharField(max_length=64)
+    papel = models.CharField(max_length=12)
+    nome = models.CharField(max_length=255)
+    chave = models.CharField(max_length=400)
+    legenda = models.TextField(blank=True)
+    tamanho_bytes = models.PositiveBigIntegerField(null=True, blank=True)
+    tipo_mime = models.CharField(max_length=120, blank=True)
+    sha256 = models.CharField(max_length=64, blank=True)
+    versao_exportacao = models.CharField(max_length=80, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id", "chave"], name="mp_arquivo_chave_unica")]
+
+
+class MensagemMarketplace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="mensagens")
+    entrega = models.ForeignKey(EntregaMarketplace, on_delete=models.PROTECT, null=True, blank=True)
+    ator_id = models.CharField(max_length=64)
+    papel = models.CharField(max_length=12)
+    texto = models.TextField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+
+class AjusteMarketplace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="ajustes")
+    entrega = models.ForeignKey(EntregaMarketplace, on_delete=models.PROTECT)
+    texto = models.TextField()
+    pedido_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["entrega"], name="mp_ajuste_por_entrega")]
+
+
+class RecebivelMarketplace(models.Model):
+    class Status(models.TextChoices):
+        PENDENTE = "pendente", "Pendente"
+        EM_PROCESSAMENTO = "em_processamento", "Em processamento"
+        RECEBIDO = "recebido", "Recebido"
+        EXCECAO = "excecao", "Exceção"
+
+    site_id = id_do_site()
+    pedido = models.OneToOneField(PedidoMarketplace, on_delete=models.PROTECT, related_name="recebivel")
+    aluno = models.ForeignKey(PerfilProfissional, on_delete=models.PROTECT)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDENTE)
+    valor_liquido_cents = models.PositiveIntegerField(null=True, blank=True)
+    referencia_repasse = models.CharField(max_length=160, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    recebido_em = models.DateTimeField(null=True, blank=True)
+
+
+class EventoMarketplace(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="eventos")
+    chave = models.CharField(max_length=160, unique=True)
+    tipo = models.CharField(max_length=80)
+    dados = models.JSONField(default=dict)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    entregue_em = models.DateTimeField(null=True, blank=True)
+
+
+class OutboxMarketplace(models.Model):
+    """Envelope pendente de publicação, gravado na transação do fato."""
+
+    site_id = id_do_site()
+    evento = models.OneToOneField(EventoMarketplace, on_delete=models.PROTECT)
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField(default=dict)
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    envelope_extra = models.JSONField(default=dict, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["published_at"], name="mp_outbox_pendente")]

@@ -3,6 +3,20 @@ import types
 import workers
 
 
+def test_consumidor_marketplace_roda_na_celula_encomendas(monkeypatch):
+    chamados = []
+    class Command:
+        def handle(self):
+            chamados.append("executado")
+    def importar(nome):
+        assert nome == "modules.encomendas.apps.core.management.commands.consume_marketplace"
+        return types.SimpleNamespace(Command=Command)
+    monkeypatch.setattr(workers, "import_module", importar)
+    assert workers.CONSUMIDORES["encomendas"] == "core"
+    workers.Workers._consumir("encomendas", "core")
+    assert chamados == ["executado"]
+
+
 def test_huey_decodifica_mensagem_enfileirada_antes_do_bundle():
     from huey.registry import Message, Registry
 

@@ -75,6 +75,8 @@
             {% endif %}
             {% if aviso.link and aviso.tipo == "portfolio" %}
               <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_portfolio" %}</a></p>
+            {% elif aviso.link and aviso.tipo|slice:':12' == 'marketplace_' %}
+              <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_pedido" %}</a></p>
             {% elif aviso.link and aviso.tipo != "sugestao" %}
               <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_conquistas" %}</a></p>
             {% endif %}

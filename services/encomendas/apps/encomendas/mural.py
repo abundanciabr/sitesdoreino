@@ -294,6 +294,10 @@ def listar(perfil_id, agora: datetime, *, site_id: str) -> tuple[Encomenda, ...]
     "reconhecer não é autorizar" é invariante desta célula, e quem não tem
     perfil aqui não tem Mural nenhum para ver.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return ()
     perfil = PerfilProfissional.objects.filter(pk=perfil_id, site_id=site_id).first()
     if perfil is None:
         return ()
@@ -344,6 +348,10 @@ def pegar(encomenda_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho
     bloqueia a oferta pendente e o [INV-ENC-N6] bloqueia a
     negociação viva, inclusive quando ela começou no Mural.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return Desfecho(feito=False, razao=motor.FORA_DA_FILA)
     projeto = (
         Encomenda.objects.select_for_update()
         .filter(pk=encomenda_id, site_id=site_id)

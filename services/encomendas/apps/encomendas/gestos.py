@@ -199,6 +199,10 @@ def _travar_a_oferta(oferta_id, perfil_id, *, site_id: str):
     pessoa recebem a MESMA razão de propósito: distinguir as duas contaria, a
     quem tentasse adivinhar identificadores, quais existem.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return None, None, Desfecho(feito=False, razao=NAO_E_SUA)
     oferta = Oferta.objects.filter(pk=oferta_id, site_id=site_id).first()
     if oferta is None:
         return None, None, Desfecho(feito=False, razao=NAO_E_SUA)
@@ -247,6 +251,9 @@ def aceitar(oferta_id, perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     perfil = PerfilProfissional.objects.select_for_update().get(pk=perfil_id)
     if perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:
         return Desfecho(feito=False, razao=motor.NAO_ESTA_DISPONIVEL)
+    from .models import OfertaMarketplace
+    if OfertaMarketplace.objects.filter(site_id=site_id, aluno=perfil, status=OfertaMarketplace.Status.PENDENTE).exists():
+        return Desfecho(feito=False, razao=motor.COM_OFERTA_PENDENTE)
 
     try:
         with transaction.atomic():
@@ -366,6 +373,10 @@ def aceitar_a_chamada_aberta(
     `ja_ofertada_a` vazio. É a exceção literal do [INV-ENC-J6] — quem passou ou
     ficou em silêncio nesta encomenda pode levá-la na chamada aberta.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return Desfecho(feito=False, razao=motor.FORA_DA_FILA)
     encomenda = (
         Encomenda.objects.select_for_update()
         .filter(pk=encomenda_id, site_id=site_id)
@@ -440,6 +451,10 @@ def pausar(perfil_id, *, site_id: str) -> Desfecho:
     no meio de uma encomenda não se desliga da fila pelo próprio botão — ele
     entrega ou abandona, e ambos são outros gestos.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return Desfecho(feito=False, razao=motor.FORA_DA_FILA)
     perfil = PerfilProfissional.objects.select_for_update().get(
         pk=perfil_id, site_id=site_id
     )
@@ -468,6 +483,10 @@ def religar(perfil_id, agora: datetime, *, site_id: str) -> Desfecho:
     também não se desfaz antes da hora: um botão que apagasse as duas tornaria as
     duas decorativas. A recusa é nomeada, para a tela poder dizer até quando.
     """
+    from .participacao import perfil_autorizado
+
+    if not perfil_autorizado(site_id, perfil_id):
+        return Desfecho(feito=False, razao=motor.FORA_DA_FILA)
     perfil = PerfilProfissional.objects.select_for_update().get(
         pk=perfil_id, site_id=site_id
     )

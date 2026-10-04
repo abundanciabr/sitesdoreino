@@ -29,7 +29,8 @@ from huey import crontab
 
 from config.huey import huey
 
-from . import tique
+from . import marketplace, tique
+from .models import FaseMarketplace
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +56,13 @@ def bater_o_tique() -> dict[str, tique.Tique]:
     """
     agora = timezone.now()
     resultados: dict[str, tique.Tique] = {}
-    for site_id in tique.sites_com_parametros():
+    sites = set(tique.sites_com_parametros()) | set(
+        FaseMarketplace.objects.values_list("site_id", flat=True)
+    )
+    for site_id in sorted(sites):
         try:
             resultados[site_id] = tique.rodar(agora, site_id=site_id)
+            marketplace.rodar_marketplace(site_id=site_id, agora=agora)
         except Exception:  # noqa: BLE001 - um site torto não para os outros
             logger.exception("o tique da fila falhou no site %s", site_id)
     return resultados

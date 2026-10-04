@@ -331,7 +331,9 @@ def fila_de_uma_pessoa(request, id: str):
     """
     site = _site()
     agora = timezone.now()
-    perfil = PerfilModel.objects.filter(pessoa_id=id, site_id=site).first()
+    from apps.encomendas.marketplace import acesso_aluno
+
+    perfil = PerfilModel.objects.filter(pessoa_id=id, site_id=site).first() if acesso_aluno(site_id=site, pessoa_id=id) else None
     if perfil is None:
         return 200, {
             "existe": False,
@@ -421,7 +423,9 @@ def pecas_aprovadas(request, id: str):
     dele, e um campo que aparece depois muda a tela de quem já consumia.
     """
     site = _site()
-    perfil = PerfilModel.objects.filter(pessoa_id=id, site_id=site).first()
+    from apps.encomendas.marketplace import acesso_aluno
+
+    perfil = PerfilModel.objects.filter(pessoa_id=id, site_id=site).first() if acesso_aluno(site_id=site, pessoa_id=id) else None
     if perfil is None:
         return 200, {"entregas": 0, "no_prazo": 0, "pecas": []}
 

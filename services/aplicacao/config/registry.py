@@ -76,7 +76,10 @@ def service_for_path(
                 ):
                     if host != "meshcraft.top":
                         continue
-                elif not (path.startswith("/api/pagamentos/appmax") and host == "meshcraft.top"):
+                elif not (host == "meshcraft.top" and (
+                    path.startswith("/api/pagamentos/appmax")
+                    or path.startswith("/api/pagamentos/marketplace/webhooks/")
+                )):
                     continue
             return service, script_name
     return "funil", ""

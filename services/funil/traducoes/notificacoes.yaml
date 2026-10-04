@@ -134,6 +134,83 @@ vazio:
   pt-br: "Você ainda não tem avisos."
   es: "Todavía no tienes avisos."
 
+ver_pedido:
+  _fonte: "e0f101"
+  en: "Open order"
+  pt-br: "Abrir pedido"
+  es: "Abrir pedido"
+
+marketplace_oferta_titulo:
+  _fonte: "e0f102"
+  en: "A new project is waiting for you"
+  pt-br: "Uma nova oferta espera por você"
+  es: "Hay una nueva oferta para ti"
+marketplace_oferta_corpo:
+  _fonte: "e0f103"
+  en: "Open the project to review its terms and response deadline."
+  pt-br: "Abra o pedido para conferir os termos e o prazo de resposta."
+  es: "Abre el pedido para revisar los términos y el plazo de respuesta."
+marketplace_acordo_titulo:
+  _fonte: "e0f104"
+  en: "The student accepted your project"
+  pt-br: "O aluno aceitou seu pedido"
+  es: "El estudiante aceptó tu pedido"
+marketplace_acordo_corpo:
+  _fonte: "e0f105"
+  en: "The agreed production has started."
+  pt-br: "A produção combinada começou."
+  es: "La producción acordada ha comenzado."
+marketplace_entrega_titulo:
+  _fonte: "e0f106"
+  en: "Your project was delivered"
+  pt-br: "Seu pedido foi entregue"
+  es: "Tu pedido fue entregado"
+marketplace_entrega_corpo:
+  _fonte: "e0f107"
+  en: "Open the project to review the files."
+  pt-br: "Abra o pedido para conferir os arquivos."
+  es: "Abre el pedido para revisar los archivos."
+marketplace_ajuste_titulo:
+  _fonte: "e0f108"
+  en: "The client requested an adjustment"
+  pt-br: "O cliente pediu um ajuste"
+  es: "El cliente pidió un ajuste"
+marketplace_ajuste_corpo:
+  _fonte: "e0f109"
+  en: "Open the project to see the request."
+  pt-br: "Abra o pedido para ver a solicitação."
+  es: "Abre el pedido para ver la solicitud."
+marketplace_aprovacao_titulo:
+  _fonte: "e0f10a"
+  en: "Your delivery was approved"
+  pt-br: "Sua entrega foi aprovada"
+  es: "Tu entrega fue aprobada"
+marketplace_aprovacao_corpo:
+  _fonte: "e0f10b"
+  en: "You can follow the receivable separately in the project."
+  pt-br: "Você pode acompanhar o recebível separadamente no pedido."
+  es: "Puedes seguir el importe por cobrar por separado en el pedido."
+marketplace_pagamento_titulo:
+  _fonte: "e0f10c"
+  en: "Your payment was confirmed"
+  pt-br: "Seu pagamento foi confirmado"
+  es: "Tu pago fue confirmado"
+marketplace_pagamento_corpo:
+  _fonte: "e0f10d"
+  en: "Your project can now enter the queue."
+  pt-br: "Seu pedido já pode entrar na fila."
+  es: "Tu pedido ya puede entrar en la cola."
+marketplace_recebimento_titulo:
+  _fonte: "e0f10e"
+  en: "Your payout was confirmed"
+  pt-br: "Seu repasse foi confirmado"
+  es: "Tu pago fue confirmado"
+marketplace_recebimento_corpo:
+  _fonte: "e0f10f"
+  en: "Open the project to see its details."
+  pt-br: "Abra o pedido para ver os detalhes."
+  es: "Abre el pedido para ver los detalles."
+
 status_em_analise:
   _fonte: "fca773"
   en: "under review"

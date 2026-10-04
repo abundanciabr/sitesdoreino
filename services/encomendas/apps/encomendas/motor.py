@@ -414,11 +414,22 @@ def candidatos_do_banco(site_id: str) -> tuple[Candidato, ...]:
     consulta: uma regra escrita metade em SQL e metade em Python é uma regra que
     ninguém consegue ler inteira.
     """
+    from .participacao import fase_liberada
+    from .models import AutorizacaoMarketplaceAluno, OfertaMarketplace
+
+    if not fase_liberada(site_id):
+        return ()
+    autorizados = AutorizacaoMarketplaceAluno.objects.filter(
+        site_id=site_id, ativa=True
+    ).values_list("pessoa_id", flat=True)
     com_oferta_pendente = set(
         Oferta.objects.filter(
             site_id=site_id, resultado=Oferta.Resultado.PENDENTE
         ).values_list("aluno_id", flat=True)
     )
+    com_oferta_pendente.update(OfertaMarketplace.objects.filter(
+        site_id=site_id, status=OfertaMarketplace.Status.PENDENTE,
+    ).values_list("aluno_id", flat=True))
     com_negociacao_viva = set(
         Encomenda.objects.filter(
             site_id=site_id,
@@ -437,7 +448,7 @@ def candidatos_do_banco(site_id: str) -> tuple[Candidato, ...]:
             abandonos=tuple(perfil.abandonos or ()),
             tem_negociacao_viva=perfil.id in com_negociacao_viva,
         )
-        for perfil in PerfilProfissional.objects.filter(site_id=site_id)
+        for perfil in PerfilProfissional.objects.filter(site_id=site_id, pessoa_id__in=autorizados)
     )
 
 
@@ -498,6 +509,10 @@ def rodar(
     interrompida no meio não desfaz o que já decidiu: a próxima continua de onde
     parou. É reavaliação periódica, nunca timer agendado.
     """
+    from .participacao import fase_liberada
+
+    if not fase_liberada(site_id):
+        return Rodada()
     regras = Regras.do_banco(agora, site_id=site_id)
     expira_em = calcular_expiracao(agora, site_id=site_id)
     candidatos = list(candidatos_do_banco(site_id))
@@ -536,6 +551,20 @@ def rodar(
                 # degrau 2.4 que a vira chamada aberta às 24h.
                 # Ela também não bloqueia as de trás: a varredura continua.
                 desfechos[encomenda_id] = escolha.desfecho
+                continue
+
+            # As duas modalidades usam a mesma trava de aluno para não criar
+            # ofertas simultâneas em tabelas diferentes.
+            from .models import OfertaMarketplace
+            from .participacao import perfil_autorizado
+            perfil = PerfilProfissional.objects.select_for_update().get(pk=escolha.escolhido.perfil_id)
+            if (
+                not perfil_autorizado(site_id, perfil.pk)
+                or perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL
+                or Oferta.objects.filter(site_id=site_id, aluno=perfil, resultado=Oferta.Resultado.PENDENTE).exists()
+                or OfertaMarketplace.objects.filter(site_id=site_id, aluno=perfil, status=OfertaMarketplace.Status.PENDENTE).exists()
+            ):
+                desfechos[encomenda_id] = CORRIDA_PERDIDA
                 continue
 
             try:

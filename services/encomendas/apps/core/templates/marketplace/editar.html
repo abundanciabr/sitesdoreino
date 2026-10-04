@@ -1,0 +1,77 @@
+{% extends 'marketplace/base.html' %}{% block title %}Descreva seu pedido{% endblock %}{% block body %}
+<div class="eyebrow">Novo pedido</div><h1>Descreva seu pedido</h1><p class="lead">Informe os detalhes do resultado esperado. Você poderá revisar antes de publicar.</p>
+<div class="grid two"><div class="card"><form id="form-pedido" method="post" action="{% if pedido %}{% url 'marketplace_salvar_edicao' pedido.pk %}{% else %}{% url 'marketplace_salvar' %}{% endif %}" data-autosave="{% url 'marketplace_autosave' %}" data-pedido="{{ pedido.pk|default:'' }}">{% csrf_token %}<input type="hidden" name="pedido_id" value="{{ pedido.pk|default:'' }}">
+<div class="fields"><div class="field wide"><label for="titulo">Título</label><input id="titulo" name="titulo" value="{{ pedido.titulo|default:'' }}" required maxlength="160" placeholder="Ex.: três espadas para meu jogo"></div>
+<div class="field"><label for="categoria">Categoria</label><select id="categoria" name="categoria">{% for chave,nome,descricao in categorias %}<option value="{{ chave }}" {% if chave == categoria %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+<div class="field"><label for="cartao">Tipo de trabalho</label><select id="cartao" name="cartao"><option value="item_simples" {% if pedido.cartao == 'item_simples' %}selected{% endif %}>Item simples</option><option value="vestivel_ou_veiculo" {% if pedido.cartao == 'vestivel_ou_veiculo' %}selected{% endif %}>Vestível ou veículo</option><option value="personagem" {% if pedido.cartao == 'personagem' %}selected{% endif %}>Personagem</option></select></div>
+<div class="field"><label for="quantidade">Quantidade de peças</label><input id="quantidade" name="quantidade" type="number" min="1" value="{{ pedido.briefing.quantidade|default:1 }}"></div>
+<div class="field"><label for="modelos">Modelos diferentes</label><input id="modelos" name="modelos" type="number" min="1" value="{{ pedido.briefing.modelos|length|default:1 }}"></div>
+<div class="field"><label for="variacoes">Variações de cada modelo</label><input id="variacoes" name="variacoes" type="number" min="0" value="{{ pedido.briefing.variacoes|default:0 }}"></div>
+<div class="field"><label for="destino">Onde será usado</label><input id="destino" name="destino" value="{{ pedido.briefing.destino|default:'' }}" placeholder="Ex.: dentro do meu jogo"></div>
+<div class="field"><label for="plataforma">Plataforma</label><input id="plataforma" name="plataforma" value="{{ pedido.briefing.plataforma|default:'' }}" placeholder="Ex.: Roblox"></div>
+<div class="field wide"><label for="estilo">Estilo e técnica</label><input id="estilo" name="estilo" value="{{ pedido.briefing.estilo|default:'' }}" placeholder="Ex.: low poly"></div>
+<div class="field wide"><label>O que você recebe</label><div class="checks">{% for chave,nome in entregaveis %}<label><input type="checkbox" name="entregaveis" value="{{ chave }}" {% if chave in pedido.briefing.entregaveis %}checked{% endif %}>{{ nome }}</label>{% endfor %}</div></div>
+<div class="field wide"><label for="observacoes">Detalhes importantes</label><textarea id="observacoes" name="observacoes" placeholder="Cores, proporções, compatibilidade e outros detalhes do trabalho">{{ pedido.briefing.observacoes|default:'' }}</textarea></div>
+<div class="field"><label for="valor_reais">Valor total oferecido (R$)</label><input id="valor_reais" name="valor_reais" inputmode="decimal" value="{{ pedido.valor_formulario|default:'' }}" placeholder="Ex.: 180,00"></div>
+<div class="field"><label for="prazo_quantidade">Prazo de produção após aceite</label><input id="prazo_quantidade" name="prazo_quantidade" type="number" min="1" value="{{ pedido.prazo_quantidade|default:'' }}"></div>
+<div class="field"><label for="prazo_unidade">Contagem do prazo</label><select id="prazo_unidade" name="prazo_unidade"><option value="dias_corridos">Dias corridos</option><option value="dias_uteis" {% if pedido.prazo_unidade == 'dias_uteis' %}selected{% endif %}>Dias úteis</option></select></div>
+<div class="field"><label for="ajustes">Ajustes incluídos</label><input id="ajustes" name="ajustes" type="number" min="0" value="{{ pedido.ajustes_inclusos|default:0 }}"></div></div>
+<p class="tiny" id="estado-rascunho" role="status">Rascunho salvo ao continuar.</p><div class="actions"><button type="submit">Salvar rascunho</button>{% if pedido %}<a class="btn secondary" href="{% url 'marketplace_pedido' pedido.pk %}">Revisar pedido</a>{% else %}<a class="btn secondary" id="link-revisar" href="#" hidden>Revisar pedido</a>{% endif %}</div></form></div>
+<div class="stack"><div class="card"><h2>Resumo do anúncio</h2><p><strong id="resumo-titulo">{{ pedido.titulo|default:'Seu título aparecerá aqui' }}</strong></p><p id="resumo-detalhes">Confira quantidade, entregáveis, valor e prazo antes de publicar. O pagamento é iniciado depois da publicação.</p><div class="stage"><span class="on">Descrever</span><span>Publicar</span><span>Pagar</span><span>Fila</span></div></div>{% if pedido %}<div class="card"><h2>Referências</h2><p>Adicione imagens ou arquivos que ajudem a explicar o pedido.</p><form method="post" enctype="multipart/form-data" action="{% url 'marketplace_arquivo' pedido.pk %}">{% csrf_token %}<input type="hidden" name="papel" value="referencia"><label for="arquivo">Arquivo de referência</label><input id="arquivo" type="file" name="arquivo" required><label for="legenda">Legenda</label><input id="legenda" name="legenda" placeholder="O que observar nesta referência"><button class="secondary" type="submit">Adicionar referência</button></form>{% for arquivo in referencias %}<div class="file"><span>{{ arquivo.nome }}{% if arquivo.legenda %}<br><small>{{ arquivo.legenda }}</small>{% endif %}</span><a href="{% url 'marketplace_baixar' arquivo.pk %}">Baixar</a></div>{% endfor %}</div>{% else %}<div class="card" id="referencias-pendentes" hidden><h2>Referências</h2><p>Seu rascunho foi salvo. <a id="link-referencias" href="#">Abra o pedido para anexar referências.</a></p></div>{% endif %}</div></div>
+<script>
+(() => {
+  const form = document.getElementById('form-pedido');
+  const state = document.getElementById('estado-rascunho');
+  const title = document.getElementById('resumo-titulo');
+  const details = document.getElementById('resumo-detalhes');
+  let draftId = form.dataset.pedido || '';
+  let timer;
+  let queue = Promise.resolve();
+  let submitting = false;
+  function payload() {
+    const data = new FormData(form);
+    const body = Object.fromEntries(data.entries());
+    body.entregaveis = data.getAll('entregaveis');
+    body.pedido_id = draftId;
+    return body;
+  }
+  function updateSummary() {
+    const data = payload();
+    title.textContent = data.titulo || 'Seu título aparecerá aqui';
+    details.textContent = [data.quantidade ? data.quantidade + ' peça(s)' : '', data.estilo,
+      data.valor_reais ? 'R$ ' + data.valor_reais : '',
+      data.prazo_quantidade ? data.prazo_quantidade + ' ' + (data.prazo_unidade === 'dias_uteis' ? 'dias úteis' : 'dias corridos') + ' após o aceite' : ''].filter(Boolean).join(' · ');
+  }
+  function save() {
+    const body = payload();
+    if (!body.titulo && !draftId) return queue;
+    state.textContent = 'Salvando rascunho…';
+    queue = queue.catch(() => {}).then(async () => {
+      body.pedido_id = draftId;
+      const response = await fetch(form.dataset.autosave, {
+        method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: JSON.stringify(body),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.erro || 'Não foi possível salvar.');
+      draftId = result.pedido_id;
+      form.querySelector('[name=pedido_id]').value = draftId;
+      state.textContent = 'Rascunho salvo.';
+      const references = document.getElementById('referencias-pendentes');
+      if (references) { references.hidden = false; document.getElementById('link-referencias').href = result.editar_url; }
+    }).catch(error => { state.textContent = error.message + ' Use Salvar rascunho para tentar novamente.'; });
+    return queue;
+  }
+  form.addEventListener('input', () => { updateSummary(); clearTimeout(timer); timer = setTimeout(save, 700); });
+  form.addEventListener('change', () => { updateSummary(); clearTimeout(timer); timer = setTimeout(save, 350); });
+  form.addEventListener('submit', event => {
+    if (submitting) return;
+    event.preventDefault();
+    clearTimeout(timer);
+    save().then(() => { submitting = true; form.submit(); });
+  });
+  updateSummary();
+})();
+</script>
+{% endblock %}

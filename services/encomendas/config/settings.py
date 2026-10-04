@@ -227,6 +227,7 @@ SITE_ERRORS_REDIS_URL = os.environ.get("SITE_ERRORS_REDIS_URL") or (
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MARKETPLACE_UPLOAD_ROOT = Path(os.environ.get("MARKETPLACE_UPLOAD_ROOT", str(BASE_DIR / "marketplace_uploads")))
 
 USE_TZ = True
 
