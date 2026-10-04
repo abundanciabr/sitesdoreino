@@ -437,7 +437,7 @@ def consultar_oportunidade(ctx: Contexto, args: dict) -> dict:
         vista["historico"] = historico[-10:]
     ctx.extras["oportunidade"] = vista
     t.retomada = {**(t.retomada or {}), "oportunidade": {
-        k: vista.get(k) for k in ("id", "oferta_ref", "oferta_id", "ofertas", "etapa") if k in vista
+        k: vista.get(k) for k in ("id", "oferta_ref", "oferta_id", "ofertas", "etapa", "fonte") if k in vista
     }}
     return {"oportunidade": vista}
 
@@ -893,6 +893,54 @@ def _antes_de_enviar(ctx: Contexto, args: dict) -> None:
         raise Recusa("Sem conversa nem ficha deste lead, não há para onde enviar.")
 
 
+# Como a leads grava de onde veio a oportunidade do quiz: fonte {tipo: "quiz",
+# referencia_id: "oferta:<slug do quiz>"} (services/leads/apps/core/oferta.py).
+_PREFIXO_DA_FONTE_DO_QUIZ = "oferta:"
+_MAXIMO_DA_ATRIBUICAO = 100  # o checkout recusa o link inteiro se passar disto
+
+
+def _slug_da_fonte(fonte) -> str:
+    if isinstance(fonte, dict) and fonte.get("tipo") == "quiz":
+        referencia = str(fonte.get("referencia_id") or "")
+        if referencia.startswith(_PREFIXO_DA_FONTE_DO_QUIZ):
+            return referencia[len(_PREFIXO_DA_FONTE_DO_QUIZ):].strip()
+    return ""
+
+
+def _quiz_do_lead(ctx: Contexto) -> str:
+    """O slug do quiz que trouxe o lead: o do evento do quiz (na entrada) ou,
+    no atendimento por mensagem, o que o CRM diz na fonte da oportunidade."""
+    t = ctx.trabalho
+    quiz = str((t.entrada or {}).get("quiz") or "").strip()
+    if quiz:
+        return quiz
+    oportunidade = ctx.extras.get("oportunidade") or (t.retomada or {}).get("oportunidade") or {}
+    quiz = _slug_da_fonte(oportunidade.get("fonte"))
+    if quiz or not t.oportunidade_id:
+        return quiz
+    resposta = servicos.pedir("oportunidade", t.oportunidade_id)
+    if not resposta.ok:
+        return ""
+    if t.contato_id and str(resposta.dados.get("lead_id") or t.contato_id) != str(t.contato_id):
+        return ""  # a oportunidade não é deste lead: não atribui a ela
+    return _slug_da_fonte(resposta.dados.get("fonte"))
+
+
+def _atribuicao_da_venda(ctx: Contexto) -> dict:
+    """O que o link leva para o checkout gravar na venda: a versão da
+    estratégia que atendeu (a mesma `papel:vN` que o otimizador separa nos
+    números), o quiz e a tentativa dele. Sem o dado, a chave nem vai."""
+    t = ctx.trabalho
+    estrategia = ctx.estrategia
+    atribuicao = {
+        "estrategia": f"{estrategia.papel}:v{estrategia.versao}" if estrategia else "",
+        "quiz": _quiz_do_lead(ctx),
+        # A tentativa é o session_id do quiz (`sessao` no evento), o mesmo `qa` do funil.
+        "tentativa": str((t.entrada or {}).get("sessao") or "").strip(),
+    }
+    return {k: v for k, v in atribuicao.items() if v and len(v) <= _MAXIMO_DA_ATRIBUICAO}
+
+
 def _link(ctx: Contexto, args: dict, chave: str) -> dict:
     t = ctx.trabalho
     oferta = _oferta(ctx, args.get("oferta_ref"))
@@ -905,13 +953,13 @@ def _link(ctx: Contexto, args: dict, chave: str) -> dict:
         raise Recusa("Esta condição não está entre as disponíveis para a oferta.")
     if not t.oportunidade_id:
         raise Recusa("Sem oportunidade no CRM, o link não fica rastreável.")
-    contato = {k: v for k, v in _contato_do_trabalho(t).items() if v}
+    # O checkout não guarda o contato (só a oportunidade), então ele nem viaja.
     corpo = {
         "oferta": oferta,
         "oportunidade_ref": t.oportunidade_id,
-        "contato": contato,
         "condicao": condicao,
         "chave_idempotencia": chave,
+        **_atribuicao_da_venda(ctx),
     }
     dados = _resolver(servicos.pedir("link_de_compra", corpo=corpo, site_id=t.site_id, host=_host(t)),
                       escrita=True)
