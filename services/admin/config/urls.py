@@ -76,6 +76,7 @@ from apps.core.parametros_da_fila import (
     parametros_da_fila_mudar,
 )
 from apps.core.avisos import avisos, avisos_testar
+from apps.core.avisos_equipe import aviso_visto, avisos_da_equipe
 from apps.core.whatsapp import whatsapp
 from apps.core.crm_conversas import crm_conversa, crm_conversas
 from apps.core.crm_agentes import (
@@ -354,6 +355,10 @@ urlpatterns = [
     # por elas. Mora sob `equipe/` para o crachá de equipe abrir; o placar
     # inteiro (`placar/`) continua só da administração.
     path("equipe/placar", placar_da_equipe, name="placar_da_equipe"),
+    # Avisos do atendimento comercial para a equipe (conversa passada, venda
+    # assistida, conversa ambígua, trabalho parado, envio incerto).
+    path("equipe/avisos/", avisos_da_equipe, name="avisos_da_equipe"),
+    path("equipe/avisos/<int:id>/visto", aviso_visto, name="aviso_visto"),
     # OS ROBÔS PESSOAIS (01/10/2026, `apps/agentes`). Debaixo de `/equipe`,
     # abrem com o crachá de equipe; `robos/` é só do administrador.
     path("equipe/robo/", robo_da_pessoa, name="robo_da_pessoa"),

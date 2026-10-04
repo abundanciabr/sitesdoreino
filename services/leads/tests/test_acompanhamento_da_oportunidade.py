@@ -165,3 +165,15 @@ def test_patch_recusado_nao_marca_como_aplicado(client, oferta, autorizado):
     assert patch(client, oferta, corpo, autorizado).status_code == 422
     corpo["prazo"] = "2026-10-05T12:00:00-03:00"
     assert patch(client, oferta, corpo, autorizado).json().get("repetido") is None
+
+
+def test_filtro_aguardando_resposta_sim_nao_traz_oportunidade_encerrada(client, oferta, autorizado):
+    from django.utils import timezone
+
+    patch(client, oferta, {"aguardando_resposta": True}, autorizado)
+    antes = client.get("/api/leads/crm", {"aguardando_resposta": "sim"}, **autorizado).json()
+    assert antes["total"] == 1
+    # Encerrada com o campo sobrando: a pessoa não espera mais resposta de ninguém.
+    Oportunidade.objects.filter(pk=oferta.pk).update(desfecho_encerrada_em=timezone.now(), etapa="perdida")
+    depois = client.get("/api/leads/crm", {"aguardando_resposta": "sim"}, **autorizado).json()
+    assert depois["total"] == 0 and depois["itens"] == []

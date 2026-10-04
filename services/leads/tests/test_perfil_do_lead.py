@@ -115,6 +115,19 @@ def test_cada_analise_vira_versao_e_historico_fica(client, lead, autorizado):
         antiga.save()
 
 
+def test_reenvio_da_mesma_analise_sem_versao_base_nao_duplica_a_versao(client, lead, autorizado):
+    primeira = put(client, lead, PERFIL, autorizado)
+    # Tentativa repetida depois de um tempo esgotado: só a hora de montagem mudou.
+    de_novo = put(client, lead, {**PERFIL, "analisado_em": "2026-10-03T10:00:30-03:00"}, autorizado)
+    assert de_novo.status_code == 200 and de_novo.json()["versao"] == primeira.json()["versao"] == 1
+    assert PerfilDoLead.objects.filter(lead=lead).count() == 1
+    # Análise de verdade diferente continua virando versão nova.
+    nova = put(client, lead, {**PERFIL, "resumo": "Agora quer começar já."}, autorizado)
+    assert nova.json()["versao"] == 2
+    # E repetir uma análise antiga (já não é a vigente) também vira versão, porque mudou o que se sabe.
+    assert put(client, lead, PERFIL, autorizado).json()["versao"] == 3
+
+
 def test_perfil_avisa_fatos_novos_depois_da_analise(client, lead, autorizado):
     put(client, lead, {**PERFIL, "analisado_em": None}, autorizado)
     assert client.get(f"/api/leads/leads/{lead.pk}/perfil",

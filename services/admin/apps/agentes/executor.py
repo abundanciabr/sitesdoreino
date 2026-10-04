@@ -240,6 +240,20 @@ def reacordar() -> int:
     return n
 
 
+def _avisar_a_equipe() -> None:
+    """Pergunta às células o que pede alguém da equipe e avisa uma vez.
+
+    Só no laço de fundo, nunca na tela: a varredura faz dezenas de chamadas a
+    outras células, e `reacordar()` também roda dentro do clique de
+    /admin/robos/."""
+    from apps.core import avisos_equipe
+
+    try:
+        avisos_equipe.varrer()
+    except Exception:  # noqa: BLE001 - os avisos não podem derrubar o laço
+        log.exception("Avisos da equipe: varredura falhou")
+
+
 def _transcrever_audios() -> None:
     """Notas de voz que os leads mandaram no WhatsApp viram texto para o
     atendente (`apps.voz`), com a mesma chave e o mesmo teto."""
@@ -305,6 +319,9 @@ def rodar_para_sempre(parar: threading.Event) -> None:
             if timezone.now() - ultimo_reacordar >= INTERVALO_DE_REACORDAR:
                 ultimo_reacordar = timezone.now()
                 reacordar()
+                # Só no laço, nunca na tela: a varredura dos avisos fala com
+                # outras células, e não derruba a volta se uma delas demorar.
+                _avisar_a_equipe()
                 # Só no laço, nunca na tela: o catálogo mudou, o índice comercial muda junto.
                 from .conhecimento_comercial import manter_em_dia
 

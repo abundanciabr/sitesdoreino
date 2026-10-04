@@ -20,8 +20,10 @@ def pagos_do_quiz(slug: str, site_id: str | None = None, desde=None, ate=None):
     """
     # Reembolsado entra só para ser mostrado à parte: a venda estornada sai de
     # `pedidos` e de `receita_cents` e aparece em `reembolsos`.
+    # Pedido de teste (sandbox do provedor, ensaio) é dinheiro de mentira: fica
+    # fora, como já fica do resumo do CRM em comercial.py.
     consulta = Order.objects.filter(
-        status__in=("pago", "reembolsado"), contexto__qz=slug
+        status__in=("pago", "reembolsado"), contexto__qz=slug, em_teste=False
     )
     if site_id:
         consulta = consulta.filter(site_id=site_id)

@@ -44,14 +44,15 @@ ORIGENS_ADMITIDAS: dict[str, frozenset[str]] = {
 }
 
 
-REFERENCIAS_DO_PEDIDO = ("oportunidade_ref", "oferta_ref")
+REFERENCIAS_DO_PEDIDO = ("oportunidade_ref", "oferta_ref", "ambiente")
 
 
 def com_referencias_do_pedido(dados: dict[str, Any], intent: Intent) -> dict[str, Any]:
     """Ecoa no aviso as referências opacas que o checkout pôs no `metadata`
-    (mesma técnica do `product_id`): a oportunidade do CRM e a oferta. Assim
-    quem acompanha a venda casa o pagamento sem consultar outra célula. Sem
-    elas no `metadata`, o aviso sai exatamente como antes."""
+    (mesma técnica do `product_id`): a oportunidade do CRM, a oferta e, no
+    pedido de teste, `ambiente: sandbox` (o CRM não conta compra de teste como
+    venda). Assim quem acompanha a venda casa o pagamento sem consultar outra
+    célula. Sem elas no `metadata`, o aviso sai exatamente como antes."""
     metadata = intent.metadata if isinstance(intent.metadata, dict) else {}
     extras = {
         campo: metadata[campo]

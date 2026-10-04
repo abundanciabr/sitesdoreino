@@ -219,6 +219,21 @@ def test_desligado_no_ambiente_nao_cria_nem_roda(monkeypatch):
 
 
 @respx.mock
+@pytest.mark.parametrize("de_teste, esperado", [(True, "mostrar"), (False, "ocultar")])
+def test_trabalho_de_teste_pede_o_contato_de_teste_e_o_de_verdade_nunca(de_teste, esperado):
+    lista = respx.get(f"{LEADS}/leads").respond(200, json={"itens": [
+        {"id": "lead-9", "site_id": "site-1", "email": EMAIL, "nome": "Ana Souza"}]})
+    _resto_404()
+    _trabalho(TrabalhoComercial.Tipo.ANALISAR_LEAD, contato_id="", oportunidade_id="", teste=de_teste)
+    trabalho = coordenador.pegar_um("t1")
+
+    coordenador._achar_a_ficha(trabalho)
+
+    assert dict(lista.calls.last.request.url.params)["testes"] == esperado
+    assert trabalho.contato_id == "lead-9"
+
+
+@respx.mock
 def test_analista_le_salva_perfil_com_evidencia_e_poe_a_abordagem_na_fila():
     _guardar_chave()
     eventos.tratar("eventos.quiz.completado", _quiz_completado())

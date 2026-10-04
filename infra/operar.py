@@ -741,7 +741,7 @@ OPERACOES: dict[str, Operacao] = {
                       escolhas=tuple(sorted(set(SERVICOS_PADRAO) | {"estado-servico"}))),
                 Param("servico", "nome exato no Compose; padrão por operação, exceto estado-servico",
                       regex=r"(?:[a-z][a-z0-9-]{0,63})?"),
-                Param("referencia", "SHA-256 da chave idempotente (64 hex), quando a operação pede",
+                Param("referencia", "SHA-256 do id da sessão do checkout (a Referência mostrada no erro do Pix; 64 hex), quando a operação pede",
                       regex=r"(?:[0-9a-f]{64})?"),
             ),
             prazo=2 * 60,

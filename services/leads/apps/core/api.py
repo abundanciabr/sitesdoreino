@@ -273,9 +273,12 @@ def listar_leads(
     pagina: int = 1,
     por_pagina: int = POR_PAGINA,
     origem: str = "",
+    testes: str = "ocultar",
 ):
     if origem not in {"", "quiz"}:
         raise HttpError(422, "origem deve ser quiz")
+    if testes not in {"ocultar", "mostrar"}:
+        raise HttpError(422, "testes deve ser ocultar ou mostrar")
     if pagina < 1:
         raise HttpError(422, "pagina começa em 1")
     if not 1 <= por_pagina <= POR_PAGINA_MAXIMO:
@@ -284,8 +287,10 @@ def listar_leads(
     ultimo = TimelineEvent.objects.filter(lead=OuterRef("pk")).order_by(
         "-occurred_at", "-id"
     )
-    base = (contatos_dos_quizzes().exclude(LEAD_DE_TESTE) if origem == "quiz"
-            else Lead.objects.all())
+    # `testes=mostrar`: o trabalho de teste do coordenador acha o seu contato de teste.
+    base = (Lead.objects.all() if origem != "quiz"
+            else contatos_dos_quizzes() if testes == "mostrar"
+            else contatos_dos_quizzes().exclude(LEAD_DE_TESTE))
     consulta = base.annotate(
         ultimo_evento=Subquery(ultimo.values("event")[:1]),
         ultimo_evento_em=Subquery(ultimo.values("occurred_at")[:1]),
