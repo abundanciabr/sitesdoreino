@@ -841,3 +841,13 @@ def test_mensagens_anteriores_usam_o_cursor_da_api_para_nao_pular_o_mesmo_instan
     assert f"antes_de={cursor}" in html
     c.get(reverse("crm_conversa", args=[CONVERSA]), {"antes_de": cursor})
     assert rota.calls.last.request.url.params["antes_de"] == cursor
+
+
+@respx.mock
+def test_as_telas_de_conversas_levam_o_menu_das_areas_do_crm():
+    respx.get(MENSAGERIA + "/conversas").respond(200, json=lista(conversa(ultima_mensagem=mensagem())))
+    html = dentro().get(reverse("crm_conversas")).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html and reverse("crm_resultados") in html
+    leitura_da_conversa(None, mensagem())
+    html = dentro().get(reverse("crm_conversa", args=[CONVERSA])).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html and reverse("crm_resultados") in html

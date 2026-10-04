@@ -1,4 +1,5 @@
 """Contatos e recuperação de vendas no painel do mantenedor."""
+import uuid
 from urllib.parse import urlencode
 
 from django.http import Http404, HttpResponseRedirect
@@ -70,12 +71,26 @@ def crm(request):
         filtros["atendido_por"] = ""
     if filtros["aguardando_resposta"] not in dict(AGUARDANDO):
         filtros["aguardando_resposta"] = ""
+    # Filtro que a API de leads recusaria (422) é ignorado aqui, e a tela diz isso;
+    # senão o endereço mal digitado aparece como "o CRM não respondeu".
+    ignorados = []
+    if filtros["situacao"] not in ("", "aberta", "encerrada"):
+        filtros["situacao"] = ""
+        ignorados.append("situação")
+    if filtros["lead_id"]:
+        try:
+            filtros["lead_id"] = str(uuid.UUID(filtros["lead_id"]))
+        except ValueError:
+            filtros["lead_id"] = ""
+            ignorados.append("contato")
     try:
         pagina = min(10000, max(1, int(request.GET.get("pagina", 1))))
     except ValueError:
         pagina = 1
     estado, dados = CRMClient().quadro(**filtros, pagina=pagina, por_pagina=100)
     contexto = {"admin": request.admin, "filtros": filtros, "etapas": ETAPAS, "quem_atende": QUEM_ATENDE, "aguardando": AGUARDANDO, "colunas": [], "erro": "", "recado": "Alteração salva." if request.GET.get("salvo") == "1" else ""}
+    if ignorados:
+        contexto["recado"] = "O filtro de " + " e de ".join(ignorados) + " não foi reconhecido e foi ignorado."
     if estado != CRMClient.OK:
         contexto["erro"] = erro_da_fonte(estado)
         return render(request, "admin/crm.html", contexto, status=503)

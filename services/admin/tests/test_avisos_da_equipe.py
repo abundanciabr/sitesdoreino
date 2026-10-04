@@ -263,7 +263,7 @@ def test_trabalho_parado_alem_da_tolerancia_avisa_quem_pediu():
         robo=robo, tipo=Execucao.Tipo.LEITURA_QUIZ, situacao=Execucao.Situacao.AGUARDANDO_DEPENDENCIA,
         pedido_por_membro_id=livia.pk, motivo="o provedor do modelo não respondeu",
     )
-    recente = Execucao.objects.create(
+    Execucao.objects.create(
         robo=robo, tipo=Execucao.Tipo.LEITURA_QUIZ, situacao=Execucao.Situacao.AGUARDANDO_DEPENDENCIA,
     )
     antigo = timezone.now() - timedelta(minutes=30)
@@ -274,8 +274,8 @@ def test_trabalho_parado_alem_da_tolerancia_avisa_quem_pediu():
     assert avisos.count() == 1
     assert avisos[0].responsavel == livia
     assert avisos[0].link.endswith(f"/execucoes/{parada.pk}")
-    assert avisos[0].fato == f"execucao:{parada.pk}"
-    assert not avisos.filter(fato=f"execucao:{recente.pk}").exists()
+    assert avisos[0].fato.startswith(f"execucoes_paradas:{livia.pk}:")
+    assert avisos[0].texto.startswith("Este trabalho espera")
 
 
 @respx.mock
@@ -362,12 +362,12 @@ def test_trabalho_comercial_parado_avisa_mesmo_com_o_rotulo_de_app_do_site(monke
     parado = _trabalho()
     incerto = _trabalho(estado="envio_incerto", chave_da_conversa="")
     avisos_equipe.varrer_trabalhos_parados()
-    assert AvisoDaEquipe.objects.get(tipo="trabalho_parado").fato == f"trabalho_comercial:{parado.pk}:aguardando_dependencia"
+    assert AvisoDaEquipe.objects.get(tipo="trabalho_parado").fato.startswith("trabalhos_parados:")
     assert AvisoDaEquipe.objects.get(tipo="envio_incerto").fato == f"trabalho_comercial:{incerto.pk}:envio_incerto"
 
 
 @respx.mock
-def test_trabalho_comercial_avisa_uma_vez_por_trabalho_e_nao_por_tentativa_nem_pela_analise_da_hora():
+def test_trabalho_comercial_avisa_uma_vez_por_causa_e_nao_por_tentativa_nem_pela_analise_da_hora():
     correio = _correio()
     parado = _trabalho()
     analise = _trabalho(tipo="analisar_resultados", estado="aguardando_dependencia")
@@ -376,9 +376,9 @@ def test_trabalho_comercial_avisa_uma_vez_por_trabalho_e_nao_por_tentativa_nem_p
         TrabalhoComercial.objects.filter(pk=parado.pk).update(tentativas=tentativa)
         avisos_equipe.varrer_trabalhos_parados()
     avisos = AvisoDaEquipe.objects.filter(tipo="trabalho_parado")
-    assert [a.fato for a in avisos] == [f"trabalho_comercial:{parado.pk}:aguardando_dependencia"]
-    assert not avisos.filter(fato__contains=f":{analise.pk}:").exists()
-    assert not avisos.filter(fato__contains=f":{velho.pk}:").exists()
+    assert avisos.count() == 1 and avisos[0].fato.startswith("trabalhos_parados:")
+    # A análise da hora e o trabalho de três dias atrás não entram na conta.
+    assert avisos[0].texto.startswith("Um trabalho comercial espera") and avisos[0].link.endswith("/crm/")
     # A varredura não manda e-mail por conta própria: quem manda é o fim da volta.
     assert correio.call_count == 0
     avisos_equipe.enviar_emails_pendentes()
@@ -388,8 +388,8 @@ def test_trabalho_comercial_avisa_uma_vez_por_trabalho_e_nao_por_tentativa_nem_p
 @respx.mock
 def test_uma_volta_cria_no_maximo_dez_avisos_de_trabalho_parado_e_o_resto_vem_na_seguinte():
     _correio()
-    for _ in range(15):
-        _trabalho()
+    for i in range(15):
+        _trabalho(motivo="causa " + chr(97 + i))
     avisos_equipe.varrer_trabalhos_parados()
     assert AvisoDaEquipe.objects.filter(tipo="trabalho_parado").count() == avisos_equipe.AVISOS_DE_TRABALHO_POR_VOLTA == 10
     avisos_equipe.varrer_trabalhos_parados()
@@ -733,7 +733,7 @@ def test_lead_de_verdade_continua_avisando_e_a_ficha_e_perguntada_uma_vez_por_le
     assert ficha.call_count == 1
     avisos_equipe.enviar_emails_pendentes()
     assert correio.call_count == 3 * len(avisos_equipe.administradores())
-    assert AvisoDaEquipe.objects.filter(tipo="trabalho_parado", fato__contains=f":{parado.pk}:").exists()
+    assert parado.pk and AvisoDaEquipe.objects.filter(tipo="trabalho_parado", fato__startswith="trabalhos_parados:").exists()
 
 
 @respx.mock
@@ -769,3 +769,99 @@ def test_leads_fora_do_ar_nao_avisa_naquela_volta_e_avisa_na_proxima_se_o_lead_f
     assert not AvisoDaEquipe.objects.filter(fato__contains=CONVERSA_DE_TESTE).exists()
     # A leitura das mensagens esperou a resposta da `leads`: a conversa não ficou "lida" à toa.
     assert mensagens.call_count == 2
+
+
+# --------------------------------------------- onda 1: causa única, e-mail que volta, contador
+
+
+@respx.mock
+def test_dez_trabalhos_parados_pela_mesma_falha_sao_um_aviso_e_um_email():
+    correio = _correio()
+    for numero in range(10):
+        _trabalho(motivo=f"o provedor do modelo não respondeu (tentativa {numero})")
+    avisos_equipe.varrer_trabalhos_parados()
+    avisos_equipe.varrer_trabalhos_parados()
+    avisos = AvisoDaEquipe.objects.filter(tipo="trabalho_parado")
+    assert avisos.count() == 1
+    assert avisos[0].titulo == "Trabalhos comerciais parados" and avisos[0].texto.startswith("10 trabalhos comerciais")
+    avisos_equipe.enviar_emails_pendentes()
+    assert correio.call_count == len(avisos_equipe.administradores())
+
+
+@respx.mock
+def test_causas_diferentes_ou_sites_diferentes_continuam_separados():
+    _correio()
+    _trabalho(motivo="o modelo não respondeu")
+    _trabalho(motivo="o modelo não respondeu", site_id=OUTRO_SITE)
+    _trabalho(motivo="a conta ficou sem saldo")
+    avisos_equipe.varrer_trabalhos_parados()
+    assert AvisoDaEquipe.objects.filter(tipo="trabalho_parado").count() == 3
+
+
+@respx.mock
+def test_execucoes_do_mesmo_robo_paradas_pela_mesma_queda_sao_um_aviso():
+    _correio()
+    livia = _livia()
+    robo = RoboPessoal.objects.create(membro=livia, nome="Robô da Lívia")
+    for _ in range(4):
+        execucao = Execucao.objects.create(
+            robo=robo, tipo=Execucao.Tipo.LEITURA_QUIZ, situacao=Execucao.Situacao.AGUARDANDO_DEPENDENCIA,
+            pedido_por_membro_id=livia.pk, motivo="a conexão com o modelo caiu",
+        )
+        Execucao.objects.filter(pk=execucao.pk).update(atualizada_em=timezone.now() - timedelta(minutes=30))
+    avisos_equipe.varrer_trabalhos_parados()
+    aviso = AvisoDaEquipe.objects.get(tipo="trabalho_parado")
+    assert aviso.responsavel == livia and aviso.texto.startswith("4 trabalhos esperam")
+
+
+@respx.mock
+def test_email_que_desistiu_volta_a_fila_quando_o_correio_responde_de_novo():
+    rota = respx.post(MENSAGERIA + "/avisos-equipe").mock(return_value=httpx.Response(503))
+    a1, _ = avisos_equipe.avisar("envio_incerto", site_id=SITE, fato="m:1", titulo="Um")
+    a2, _ = avisos_equipe.avisar("envio_incerto", site_id=SITE, fato="m:2", titulo="Dois")
+    for _ in range(avisos_equipe.MAXIMO_DE_TENTATIVAS + 3):
+        avisos_equipe.enviar_emails_pendentes()
+    a1.refresh_from_db()
+    a2.refresh_from_db()
+    assert a1.email_situacao == a2.email_situacao == AvisoDaEquipe.Email.DESISTIU
+    # Correio fora: a prova de cada volta é uma chamada só, sem rajada.
+    antes = rota.call_count
+    avisos_equipe.enviar_emails_pendentes()
+    assert rota.call_count == antes + 1
+    rota.mock(return_value=httpx.Response(200, json={"envio_id": 1, "criado": True, "status": "pendente"}))
+    avisos_equipe.enviar_emails_pendentes()
+    avisos_equipe.enviar_emails_pendentes()
+    a1.refresh_from_db()
+    a2.refresh_from_db()
+    assert a1.email_situacao == a2.email_situacao == AvisoDaEquipe.Email.PEDIDO
+
+
+@respx.mock
+def test_email_sem_destinatario_volta_a_fila_quando_aparece_quem_administra(settings):
+    _correio()
+    settings.ADMIN_EMAILS = ""
+    aviso, _ = avisos_equipe.avisar("envio_incerto", site_id=SITE, fato="m:1", titulo="Um")
+    aviso.refresh_from_db()
+    assert aviso.email_situacao == AvisoDaEquipe.Email.SEM_DESTINATARIO
+    avisos_equipe.enviar_emails_pendentes()
+    aviso.refresh_from_db()
+    assert aviso.email_situacao == AvisoDaEquipe.Email.SEM_DESTINATARIO
+    settings.ADMIN_EMAILS = DONO
+    avisos_equipe.enviar_emails_pendentes()
+    avisos_equipe.enviar_emails_pendentes()
+    aviso.refresh_from_db()
+    assert aviso.email_situacao == AvisoDaEquipe.Email.PEDIDO
+
+
+@respx.mock
+def test_a_aba_avisos_mostra_quantos_avisos_novos_ha_em_todas_as_telas_da_equipe():
+    _correio()
+    avisos_equipe.avisar("envio_incerto", site_id=SITE, fato="m:1", titulo="Um")
+    vista, _ = avisos_equipe.avisar("envio_incerto", site_id=SITE, fato="m:2", titulo="Dois")
+    AvisoDaEquipe.objects.filter(pk=vista.pk).update(visto_em=timezone.now())
+    dono = _cliente()
+    for url in (reverse("avisos_da_equipe"), reverse("painel_da_equipe"), reverse("placar_da_equipe")):
+        pagina = dono.get(url).content.decode()
+        assert ">Avisos (1)</a>" in pagina, url
+    AvisoDaEquipe.objects.update(visto_em=timezone.now())
+    assert ">Avisos</a>" in dono.get(reverse("avisos_da_equipe")).content.decode()

@@ -624,3 +624,10 @@ def test_encerrado_porque_o_pagamento_foi_aprovado_aparece_nos_concluidos():
     assert "Concluídos recentes · 2" in html
     assert f'href="?trabalho={encerrado.pk}' in html and f'href="?trabalho={cancelado.pk}' in html
     assert "Encerrado sem precisar agir" in html
+
+
+@respx.mock
+def test_a_tela_dos_agentes_leva_o_menu_das_areas_do_crm(monkeypatch):
+    monkeypatch.setattr(crm_agentes, "comercial_disponivel", lambda: False)
+    html = dentro().get(reverse("crm_agentes")).content.decode()
+    assert 'aria-label="Áreas do CRM"' in html and reverse("crm_conversas") in html

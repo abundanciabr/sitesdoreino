@@ -119,3 +119,24 @@ def test_visitante_nao_chega_aos_contatos():
 def test_cliente_recusa_resposta_sem_forma():
     respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json=[]))
     assert CRMClient().quadro()[0] == CRMClient.NAO_RESPONDEU
+
+
+@respx.mock
+@pytest.mark.parametrize("parametros", [{"situacao": "qualquer"}, {"lead_id": "abc"}, {"lead_id": "٩" * 31}])
+def test_filtro_mal_escrito_e_ignorado_e_a_tela_avisa_em_vez_de_dizer_que_o_crm_caiu(parametros):
+    rota = respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json={"itens": [oportunidade()], "resumo": {"contatos": 1, "sem_oportunidade": 0, "abertas": 1, "atrasadas": 0, "ganhas": 0}, "pagina": 1, "total": 1, "tem_mais": False}))
+    r = dentro().get(reverse("crm"), parametros)
+    assert r.status_code == 200
+    html = r.content.decode()
+    assert "não foi reconhecido e foi ignorado" in html and "Não foi possível consultar" not in html
+    pedido = rota.calls.last.request.url.params
+    assert "situacao" not in pedido and "lead_id" not in pedido
+
+
+@respx.mock
+def test_filtro_valido_segue_para_a_api_de_leads_e_lead_id_vai_normalizado():
+    rota = respx.get(BASE + "/crm").mock(return_value=httpx.Response(200, json={"itens": [], "resumo": {"contatos": 1, "sem_oportunidade": 0, "abertas": 0, "atrasadas": 0, "ganhas": 0}, "pagina": 1, "total": 0, "tem_mais": False}))
+    r = dentro().get(reverse("crm"), {"situacao": "encerrada", "lead_id": LEAD.upper()})
+    assert r.status_code == 200 and "foi ignorado" not in r.content.decode()
+    pedido = rota.calls.last.request.url.params
+    assert pedido["situacao"] == "encerrada" and pedido["lead_id"] == LEAD

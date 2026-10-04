@@ -2,6 +2,7 @@
 As abas do painel da equipe. Moram aqui, e não em cada tela, para que as seis
 visões ofereçam sempre as mesmas portas na mesma ordem. `visao` diz qual acende.
 {% endcomment %}
+{% load avisos_menu %}{% avisos_novos as avisos_novos_n %}
 <nav class="abas" aria-label="Visões do painel">
   <a class="aba{% if visao == 'minhas' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=minhas">Minhas tarefas</a>
   <a class="aba{% if visao == 'equipe' %} ativa{% endif %}" href="{% url 'painel_da_equipe' %}?visao=equipe">Equipe</a>
@@ -9,5 +10,5 @@ visões ofereçam sempre as mesmas portas na mesma ordem. `visao` diz qual acend
   <a class="aba{% if visao == 'objetivos' %} ativa{% endif %}" href="{% url 'objetivos_da_equipe' %}">Objetivos</a>
   <a class="aba{% if visao == 'placar' %} ativa{% endif %}" href="{% url 'placar_da_equipe' %}">Placar</a>
   <a class="aba{% if visao == 'robo' %} ativa{% endif %}" href="{% url 'robo_da_pessoa' %}">Meu robô</a>
-  <a class="aba{% if visao == 'avisos' %} ativa{% endif %}" href="{% url 'avisos_da_equipe' %}">Avisos</a>
+  <a class="aba{% if visao == 'avisos' %} ativa{% endif %}" href="{% url 'avisos_da_equipe' %}">Avisos{% if avisos_novos_n %} ({{ avisos_novos_n }}){% endif %}</a>
 </nav>

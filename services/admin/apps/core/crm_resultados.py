@@ -32,7 +32,6 @@ from decimal import Decimal, InvalidOperation
 
 import httpx
 from django.apps import apps
-from django.db.models import Q
 from django.shortcuts import render
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
@@ -261,6 +260,17 @@ def _modelos_comerciais():
         return None
 
 
+#: Quantos valores cabem num `IN` desta tela (o Postgres aceita 65535 por consulta).
+LOTE_DO_IN = 5000
+
+
+def _em_lotes(valores, tamanho=None):
+    valores = list(valores)
+    tamanho = tamanho or LOTE_DO_IN
+    for inicio in range(0, len(valores), tamanho):
+        yield valores[inicio:inicio + tamanho]
+
+
 def fatos_dos_agentes(oportunidades: list, compras: list) -> "dict | None":
     """Interações, envios, custos e versões dos agentes para a coorte.
 
@@ -275,10 +285,16 @@ def fatos_dos_agentes(oportunidades: list, compras: list) -> "dict | None":
     do_lead = defaultdict(list)
     for o in oportunidades:
         do_lead[o.get("lead_id")].append(o["id"])
-    trabalhos = Trabalho.objects.filter(teste=False).filter(
-        Q(oportunidade_id__in=list(por_oportunidade)) | Q(oportunidade_id="", contato_id__in=list(do_lead))
-    )
-    info = {t["id"]: t for t in trabalhos.values("id", "oportunidade_id", "contato_id", "site_id", "conversa_id", "custo_usd")}
+    campos = ("id", "oportunidade_id", "contato_id", "site_id", "conversa_id", "custo_usd")
+    info = {}
+    # Em lotes: um IN com dezenas de milhares de valores estoura o limite de
+    # parâmetros de uma consulta no Postgres.
+    for lote in _em_lotes(por_oportunidade):
+        for t in Trabalho.objects.filter(teste=False, oportunidade_id__in=lote).values(*campos):
+            info[t["id"]] = t
+    for lote in _em_lotes(do_lead):
+        for t in Trabalho.objects.filter(teste=False, oportunidade_id="", contato_id__in=lote).values(*campos):
+            info[t["id"]] = t
 
     def alvos(trabalho):
         if trabalho["oportunidade_id"]:
@@ -290,9 +306,15 @@ def fatos_dos_agentes(oportunidades: list, compras: list) -> "dict | None":
     versoes = defaultdict(lambda: {"custo_usd": Decimal(0), "oportunidades": set(), "envios": defaultdict(int)})
     envios = {canal: {"enviadas": 0, "pessoas": set(), "primeiro_envio": {}} for canal in CANAIS}
     envios_sem_canal = 0
-    for d in Decisao.objects.filter(trabalho_id__in=list(info)).values(
-        "trabalho_id", "papel", "versao_estrategia", "ferramenta", "resultado", "custo_usd", "criada_em", "saida"
-    ).order_by("criada_em", "id"):
+    decisoes = []
+    for lote in _em_lotes(info):
+        decisoes.extend(
+            Decisao.objects.filter(trabalho_id__in=lote).values(
+                "id", "trabalho_id", "papel", "versao_estrategia", "ferramenta", "resultado", "custo_usd", "criada_em", "saida"
+            )
+        )
+    decisoes.sort(key=lambda d: (d["criada_em"], d["id"]))
+    for d in decisoes:
         trabalho = info[d["trabalho_id"]]
         custo = Decimal(d["custo_usd"] or 0)
         custo_das_decisoes[d["trabalho_id"]] += custo

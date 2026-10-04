@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% load crm_menu %}
 {% block titulo %}Agentes do CRM{% endblock %}
 {% block corpo %}
 <style>
@@ -24,6 +25,7 @@
 </style>
 <main class="envolucro crmag">
   <a class="volta" href="{% url 'crm' %}">← CRM</a>
+  {% menu_do_crm %}
   <h1>Agentes do CRM</h1>
   <p class="subtitulo">O que o assistente comercial está fazendo, o que decidiu, quanto gastou e com que estratégia.</p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}

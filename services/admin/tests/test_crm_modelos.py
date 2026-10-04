@@ -136,3 +136,13 @@ def test_tela_diz_que_o_primeiro_contato_pede_modelo_sem_botao_ou_com_url_fixa()
     # O modelo com botao de link variavel avisa que nao serve ao primeiro contato, e nao conta como pronto dele.
     assert texto.count("tem botão com link que muda a cada pessoa") == 1
     assert "1 modelo pronto para o primeiro contato" in texto
+
+
+@respx.mock
+@pytest.mark.parametrize("modelo_id", ["²", "٣", "7" * 40, "-1"])
+def test_id_de_modelo_com_digito_nao_ascii_ou_enorme_nao_derruba_a_tela(modelo_id):
+    mapa = respx.post(MODELOS + "/modelos/mapeamento").respond(200, json={"id": 7})
+    resposta = dentro().post(reverse("crm_modelos"), {"acao": "mapear", "modelo_id": modelo_id, "lugar:body:1": "nome"})
+    assert resposta.status_code == 200
+    assert "Este modelo não foi reconhecido." in resposta.content.decode()
+    assert not mapa.called

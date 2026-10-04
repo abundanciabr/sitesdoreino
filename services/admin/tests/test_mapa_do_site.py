@@ -648,3 +648,15 @@ def test_mapa_lista_o_painel_de_resultados_e_o_botao_analisar_agora():
     assert rotas["crm/resultados/"]["gesto"] is False and rotas["crm/resultados/"]["endereco"] == "/admin/crm/resultados/"
     assert rotas["crm/agentes/analisar/"]["gesto"] is True
     assert "Analisar agora" in rotas["crm/agentes/"]["descricao"] and "concluídos" in rotas["crm/agentes/"]["descricao"]
+
+
+def test_mapa_lista_as_telas_do_crm_que_faltavam():
+    rotas = {e["rota"]: e for e in _arquivo()["enderecos"]}
+    for rota, gesto in (
+        ("crm/conversas/", False),
+        ("crm/conversas/<uuid:conversa_id>/", False),
+        ("crm/assistente/", False),
+        ("crm/agentes/equipe/", False),
+        ("crm/agentes/comparacao/", True),
+    ):
+        assert rotas[rota]["gesto"] is gesto and rotas[rota]["endereco"] == "/admin/" + rota
