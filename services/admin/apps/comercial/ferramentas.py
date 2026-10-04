@@ -921,6 +921,12 @@ def _saida_do_envio(dados: dict, conversa_id: str) -> dict:
 def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
     t = ctx.trabalho
     canal = args.get("canal") or None
+    if t.teste:
+        # Contato de teste (sandbox): nada sai por WhatsApp nem por e-mail, nem a conversa é aberta.
+        raise Recusa(json.dumps({
+            "resultado": "registro_de_teste",
+            "erro": "Registro de teste (sandbox): nada é enviado pelo canal. A mensagem não saiu.",
+        }, ensure_ascii=False))
     conversa_id = _conversa_para_enviar(ctx, canal)
     if not conversa_id:
         raise Indisponivel("A conversa não pôde ser aberta.")

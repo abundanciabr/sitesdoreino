@@ -515,7 +515,7 @@ def _sobre_o_lead(trabalho: TrabalhoComercial) -> str:
     if entrada.get("oferta_ref"):
         linhas.append(f"Oferta da oportunidade: {entrada['oferta_ref']}.")
     if trabalho.teste:
-        linhas.append("Registro de teste (sandbox).")
+        linhas.append("Registro de teste (sandbox): nenhuma mensagem sai pelo canal.")
     return "\n".join(linhas)
 
 
