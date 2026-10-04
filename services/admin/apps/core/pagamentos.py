@@ -26,13 +26,26 @@ DEVOLUCOES = {
     "contestacao": "Contestada pelo comprador",
 }
 MOTIVOS = {
-    "cancelado": "Banco recusou",
+    "cancelado": "Appmax cancelou o pedido",
     "recusado_por_risco": "Antifraude da Appmax",
     "cc_rejected_high_risk": "Antifraude do Mercado Pago",
     "cc_rejected_blacklist": "Cartão bloqueado no Mercado Pago",
+    "cc_rejected_insufficient_amount": "Saldo ou limite insuficiente",
+    "cc_rejected_bad_filled_card_number": "Número do cartão errado",
+    "cc_rejected_bad_filled_date": "Validade do cartão errada",
+    "cc_rejected_bad_filled_security_code": "Código de segurança errado",
+    "cc_rejected_bad_filled_other": "Dados do cartão errados",
+    "cc_rejected_call_for_authorize": "Banco pede autorização por telefone",
+    "cc_rejected_card_disabled": "Cartão desativado",
+    "cc_rejected_card_error": "Erro ao processar o cartão",
+    "cc_rejected_duplicated_payment": "Pagamento repetido",
+    "cc_rejected_invalid_installments": "Cartão não aceita essas parcelas",
+    "cc_rejected_max_attempts": "Limite de tentativas do cartão",
+    "cc_rejected_other_reason": "Banco recusou",
     "pix_vencido": "Pix venceu sem pagamento",
     "expired": "Pix venceu sem pagamento",
     "mp_envio_recusado": "Mercado Pago recusou o envio",
+    "mp_sem_resposta": "Mercado Pago não respondeu",
     "segunda_opcao_nao_enviada": "Página fechada antes da segunda opção",
 }
 
@@ -56,6 +69,14 @@ def _texto(tabela, codigo):
     return tabela.get(codigo) or codigo.replace("_", " ")
 
 
+def _motivo(codigo):
+    # Código que a tabela ainda não conhece: diz que a empresa recusou, em vez
+    # de mostrar o código cru como se fosse texto.
+    if not isinstance(codigo, str) or not codigo:
+        return ""
+    return MOTIVOS.get(codigo) or f"Recusa da empresa (código {codigo})"
+
+
 def _exibir(compra):
     centavos = compra.get("valor_centavos", 0)
     if type(centavos) is int and centavos >= 0:
@@ -65,7 +86,7 @@ def _exibir(compra):
     compra["metodo_exibicao"] = _texto(MEIOS, compra.get("metodo"))
     compra["estado_exibicao"] = _texto(ESTADOS, compra.get("estado"))
     compra["estorno_exibicao"] = _texto(DEVOLUCOES, compra.get("estorno"))
-    compra["motivo_exibicao"] = _texto(MOTIVOS, compra.get("motivo"))
+    compra["motivo_exibicao"] = _motivo(compra.get("motivo"))
     primeira = compra.get("primeira_empresa")
     if compra.get("segunda_empresa") and primeira and primeira != compra.get("empresa"):
         compra["desvio_exibicao"] = (

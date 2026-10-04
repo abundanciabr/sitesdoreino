@@ -29,6 +29,11 @@ def test_pagina_mostra_empresa_valor_e_confirmacao():
     assert b"R$ 9,90" in resposta.content
     assert "Mercado Pago".encode() in resposta.content
     assert b"Devolver" in resposta.content
+    # A confirmação não pode depender de script embutido: o CSP da área
+    # administrativa (script-src 'self') o bloqueia e o clique devolveria direto.
+    assert b"onsubmit" not in resposta.content
+    assert b"<details>" in resposta.content
+    assert "Confirmar: devolver R$ 9,90 pela empresa Mercado Pago (valor inteiro)".encode() in resposta.content
 
 
 def test_pagina_fala_portugues_com_recusa_troca_e_devolucao():
@@ -57,9 +62,19 @@ def test_pagina_fala_portugues_com_recusa_troca_e_devolucao():
     assert "Antifraude da Appmax" in html
     assert "Contestada pelo comprador" in html
     assert "Aprovada" in html and "Recusada" in html and "Cartão" in html
-    assert "codigo novo da empresa" in html
+    assert "Recusa da empresa (código codigo_novo_da_empresa)" in html
     assert "approved" not in html and "recusado_por_risco" not in html
-    assert "Devolver</button>" not in html
+    assert "<summary>Devolver</summary>" not in html
+    assert "Confirmar: devolver" not in html
+
+
+def test_motivos_novos_em_portugues_e_cancelado_sem_afirmar_banco():
+    from apps.core.pagamentos import _motivo
+    assert _motivo("cancelado") == "Appmax cancelou o pedido"
+    assert _motivo("cc_rejected_insufficient_amount") == "Saldo ou limite insuficiente"
+    assert _motivo("cc_rejected_bad_filled_card_number") == "Número do cartão errado"
+    assert _motivo("") == "" and _motivo(None) == ""
+    assert "cc_rejected" not in _motivo("cc_rejected_bad_filled_card_number")
 
 
 def _devolver_com(resposta_do_servico):

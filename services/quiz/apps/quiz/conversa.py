@@ -31,7 +31,8 @@ from django.utils import timezone
 
 from .direcionadas import url_da_experiencia
 from .experiencias import resolver_experiencia
-from .models import OutboxEvent, Submission, TelemetryEvent
+from .models import Submission, TelemetryEvent
+from .respostas import emitir_quiz_completado
 from .tasks import relay_apos_commit
 from .views import (
     LIMITES_DO_CONTATO,
@@ -520,24 +521,7 @@ def _concluir(request, quiz, versao, entrada, perguntas, estado):
             },
         )
         if criada:
-            lead = {"email": submissao.lead_email}
-            if submissao.lead_name:
-                lead["name"] = submissao.lead_name
-            if submissao.lead_phone:
-                lead["phone"] = submissao.lead_phone
-            OutboxEvent.objects.create(
-                event="quiz.completado",
-                payload={
-                    "site_id": submissao.site_id,
-                    "quiz_slug": quiz.slug,
-                    "result_key": submissao.result_key,
-                    "score": submissao.score,
-                    "version_key": submissao.version.key,
-                    "lead": lead,
-                    "utm": submissao.utm,
-                    "context": submissao.context,
-                },
-            )
+            emitir_quiz_completado(quiz, submissao)
             # Percurso: só o que a pessoa digitou e o que a IA respondeu.
             TelemetryEvent.objects.get_or_create(
                 session_id=submissao.session_id,

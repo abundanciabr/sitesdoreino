@@ -319,9 +319,9 @@ class InstalacaoAppmax(models.Model):
 
     Durante `POST /app/client/generate` a Appmax chama a nossa URL de validação
     e só emite a credencial se a resposta for 200 com um `external_id` válido e
-    inédito. Por isso `app_id` é único e `external_id` nasce UMA vez: a segunda
-    chamada do mesmo `app_id` devolve o MESMO UUID, nunca um novo, que
-    derrubaria a instalação já existente.
+    inédito. Por isso `app_id` é único e cada health check do mesmo `app_id`
+    grava um `external_id` NOVO no lugar do anterior: a Appmax rejeita valor
+    repetido e o anterior deixa de valer (guides/instalacao).
 
     `client_secret`, `client_key` e `external_key` NUNCA são
     persistidos. Do segredo fica no máximo `client_secret_recebido`, a marca de
@@ -444,7 +444,11 @@ def relay_outbox() -> int:
         )
         if not pendentes:
             return 0
-        cliente = redis.from_url(settings.REDIS_STREAMS_URL)  # type: ignore[no-untyped-call]
+        # Prazo curto: este trecho segura linhas da outbox (select_for_update);
+        # um Redis que não responde não pode prender a transação para sempre.
+        cliente = redis.from_url(  # type: ignore[no-untyped-call]
+            settings.REDIS_STREAMS_URL, socket_connect_timeout=5, socket_timeout=5
+        )
         for evento in pendentes:
             envelope = {
                 "event": evento.event,
