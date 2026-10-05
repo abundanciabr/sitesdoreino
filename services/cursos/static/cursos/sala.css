@@ -313,6 +313,10 @@ button {
 .conteudo-pratica-nativa .links, .controles-pratica { display: flex; flex-wrap: wrap; gap: 12px; }
 .conteudo-pratica-nativa .links a { color: var(--marca); }
 .conteudo-pratica-nativa summary { cursor: pointer; font-weight: 600; }
+.telas-producao { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
+.telas-producao figure { margin: 0; }
+.telas-producao img, .resultado-producao { display: block; width: 100%; height: auto; border-radius: 10px; }
+.fala-livia { max-width: 860px; }
 .pratica-guiada { overflow-anchor: none; }
 .pratica-guiada h2 { font-size: 48px; line-height: 1.2; }
 .instrucao-pratica { font-size: 34px; line-height: 1.45; margin: 12px 0; }

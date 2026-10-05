@@ -1,0 +1,56 @@
+{
+  "titulo": "Dia 1 — Do Huge Cat ao seu primeiro projeto 3D",
+  "duracao": "7 a 8 minutos, ajustados à leitura da Lívia",
+  "orientacao": "Gravar os seis blocos separados, na horizontal. Ler somente o campo Fala. As indicações de edição não são faladas. Deixar dois segundos de silêncio antes e depois de cada bloco. A Lívia não precisa operar o Blender durante a gravação: as demonstrações reais já foram preparadas.",
+  "estado": "Roteiro e montagem-base preparados. Faltam a gravação real da Lívia e as provas que o mantenedor confirmou que fornecerá.",
+  "blocos": [
+    {
+      "numero": 1,
+      "titulo": "Gancho: existe trabalho por trás do jogo",
+      "tempo": "0:00–1:15 · estimativa",
+      "tela": "Abrir com 3 segundos do modelo no Blender. Corte para a Lívia. Voltar ao gato quando ela disser 'Esse aqui é o nosso projeto'. Selo DIA 1 DE 7.",
+      "fala": "Enquanto você passa horas indo e voltando do trabalho, tem gente trabalhando de casa com coisas que aparecem em jogos. Personagens, cenários, acessórios. Coisas que, olhando de fora, parecem só um joguinho.\n\nEu sou a Lívia. Trabalho com esse universo há quatro anos. E quero te mostrar o que existe entre gostar de um jogo e conseguir criar alguma coisa para ele.\n\nVocê lembra do Huge Cat do Pet Simulator X? Esse gato em formato de bloco, com orelhas pontudas e olhos enormes? Esse aqui é o nosso projeto do desafio. Vamos recriar sua aparência como exercício de estudo no Blender.\n\nNos próximos sete dias de prática, você vai aprender a construir o corpo, montar as partes, fazer o rosto, aplicar as cores e apresentar o resultado. O objetivo é terminar com um modelo que você mesma criou e sabe explicar.\n\nHoje você não precisa saber modelar. Precisa enxergar o caminho. E quando chegar ao final, vai ter uma prova concreta: o seu projeto salvo no computador."
+    },
+    {
+      "numero": 2,
+      "titulo": "História real e ponto de partida",
+      "tempo": "1:15–3:30 · estimativa",
+      "tela": "Lívia em câmera. Entrar com a tela 'Começar pequeno também é começar'. Usar fotografia ou registro da trajetória apenas quando o mantenedor fornecer. Não recriar a história como se fosse um registro real.",
+      "fala": "Talvez você esteja aqui porque quer aprender uma habilidade nova. Talvez esteja cansada de olhar para a sua rotina e pensar: eu precisava de outra possibilidade. Eu entendo essa vontade.\n\nEu comecei no PC da minha mãe. Sem uma placa de vídeo boa, sem saber inglês e sem experiência com modelagem 3D. Antes disso, já tinha tentado programação e fracassado. Cheguei a pensar que aquilo simplesmente não era para mim.\n\nQuando você vê um modelo pronto, parece que a pessoa nasceu sabendo fazer. Você vê o resultado e não vê as tentativas, as dúvidas, o arquivo que deu errado ou aquela primeira forma que ficou esquisita. Isso também fez parte do meu começo.\n\nO que mudou foi começar a olhar para uma tarefa pequena de cada vez. Em vez de pensar 'preciso aprender tudo sobre 3D', pensar 'qual é a próxima forma que eu preciso construir?'.\n\nOlha para esse gato comigo. O corpo lembra um bloco. As orelhas lembram triângulos. Os olhos têm formas ovais. As patinhas são pequenos volumes. O rosto tem poucos detalhes, mas cada detalhe ajuda a reconhecer o personagem.\n\nIsso não significa que qualquer trabalho fica pronto sem esforço. Significa que existe uma primeira tarefa possível. Você não precisa dominar um programa inteiro para começar a aprender uma parte dele.\n\nDurante o desafio, eu vou te mostrar os movimentos, explicar o que eles fazem e te dar uma tarefa para repetir no seu computador. Você pode pausar, voltar e tentar de novo. Não precisa acompanhar a velocidade da minha mão.\n\nSe você chegar a uma aula e uma parte não funcionar, volte ao passo anterior. O objetivo não é fingir que você entendeu. É conseguir fazer e perceber o que mudou na tela."
+    },
+    {
+      "numero": 3,
+      "titulo": "Prova visual: revelar as formas e os materiais",
+      "tempo": "3:30–5:30 · estimativa",
+      "tela": "Demonstração real: selecionar corpo, entrar e sair do modo de edição, selecionar orelha e olho, mostrar Cor de base, conferir a vista frontal e outro ângulo. A fala pode ser gravada em câmera; a montagem cobre esse trecho com o Blender.",
+      "fala": "Esse programa é o Blender. Ele é gratuito, e é nele que vamos trabalhar. O modelo que você está vendo foi preparado para mostrar o destino do nosso exercício. Amanhã começamos a construir a nossa versão, com calma.\n\nAgora observe o corpo selecionado. O contorno laranja mostra qual objeto está ativo. Quando eu entro no modo de edição, aparecem os pontos e as arestas da forma. Por trás desse personagem existe uma estrutura que podemos modificar.\n\nAqui está uma orelha. Ela é uma peça separada. Aqui está o olho branco. E aqui está o material do corpo: é ele que define essa aparência cinza. Temos também branco nos olhos e nas orelhas e azul bem escuro nos detalhes do rosto.\n\nVeja o gato de frente. As duas orelhas e os dois olhos precisam conversar entre si. Agora veja de outro ângulo. O rosto precisa funcionar junto com o volume do corpo. Criar também envolve conferir.\n\nExiste trabalho profissional com modelos 3D. Mas construir um modelo, conseguir um cliente e receber por um trabalho são etapas diferentes. Neste desafio vamos começar pela habilidade que você pode praticar e mostrar: criar um projeto e apresentar o que fez.\n\nO Huge Cat é a nossa referência de estudo. Reproduzir esse personagem ajuda a aprender as formas; isso não significa que essa reprodução já esteja pronta para uma venda. Mais adiante, podemos usar o que você aprendeu para desenvolver personagens próprios e atender pedidos com objetivos definidos.\n\nHoje, a prova que eu quero colocar na sua frente é essa: um personagem reconhecível pode ser estudado como um conjunto de partes. E você pode aprender a construir essas partes, uma por vez."
+    },
+    {
+      "numero": 4,
+      "titulo": "O mapa dos sete dias",
+      "tempo": "5:30–6:30 · estimativa",
+      "tela": "Mostrar o mapa completo. Destacar cada dia conforme a fala. Manter DIA 1 DE 7. As sete etapas são o plano do desafio, não a indicação de que sete aulas já estão publicadas.",
+      "fala": "Esse é o Dia 1 de 7. Hoje você conhece o projeto e reconhece suas partes.\n\nNo Dia 2, começamos pelo corpo em formato de bloco e pelos primeiros movimentos no Blender. No Dia 3, entram as orelhas e as patinhas. No Dia 4, trabalhamos os olhos e a expressão do rosto.\n\nNo Dia 5, aplicamos e conferimos os materiais. No Dia 6, testamos o modelo de diferentes ângulos, organizamos o arquivo e vemos a exportação. No Dia 7, preparamos a apresentação do projeto.\n\nSão sete dias de prática, no seu ritmo. Se você precisar repetir uma etapa, repita. O arquivo salvo é o que permite continuar de onde parou.\n\nNo final, eu quero que você consiga olhar para o seu modelo e dizer: eu construí isso, sei quais são as partes e consigo mostrar o resultado."
+    },
+    {
+      "numero": 5,
+      "titulo": "Declarar uma meta realizável",
+      "tempo": "6:30–7:30 · estimativa",
+      "tela": "Lívia em câmera. Tela da meta em seguida. Mostrar os comentários reais da aula somente com a página publicada; não fabricar comentários nem notificações.",
+      "fala": "Agora eu quero que você transforme essa vontade em uma tarefa concreta.\n\nNos comentários desta aula, escreva: 'Minha meta é terminar meu modelo em sete dias de prática'. Se você já sabe quando pode começar, acrescente a data ou o horário que vai reservar para a primeira etapa.\n\nPode ser um período pequeno, mas escolha um período que realmente cabe na sua rotina. O importante é conseguir voltar ao projeto.\n\nSe quiser fazer com alguém, convide essa pessoa para acompanhar o desafio. Vocês podem comparar o que aprenderam e ajudar um ao outro a encontrar o próximo passo.\n\nHoje você não precisa modelar o gato inteiro. Faça a prática da página para reconhecer o corpo, as orelhas, os olhos e os materiais. Depois, confira se o Blender abre no seu computador.\n\nEsse é o resultado do Dia 1: entender o projeto, conhecer o caminho e escolher quando você vai começar a construir."
+    },
+    {
+      "numero": 6,
+      "titulo": "Gancho para começar a construir",
+      "tempo": "7:30–fim · estimativa",
+      "tela": "Lívia em câmera. Entrar com o corpo do modelo e a tela 'Dia 2: o primeiro bloco'. Fechar com o gato pronto por 3 segundos. Sem tela de ganho financeiro.",
+      "fala": "Na próxima aula, vamos começar pelo primeiro bloco. Vou te mostrar como preparar o ambiente e transformar uma forma simples no corpo do nosso gato.\n\nTambém vamos organizar uma dúvida que aparece cedo: onde o Blender termina e onde o Roblox Studio entra? E por que criar um pet para uma experiência é diferente de publicar um acessório para avatar no Marketplace?\n\nVocê não precisa resolver tudo isso hoje. Primeiro, vamos construir e entender o nosso projeto.\n\nGuarde a sua meta e prepare um lugar no computador para salvar seus arquivos. Na próxima etapa, você sai da observação e começa a criar."
+    }
+  ],
+  "provas_pendentes": [
+    "Registro autêntico da experiência de quatro anos da Lívia e, se disponível, do começo no PC da mãe. Relatos confirmados pelo mantenedor; materiais ainda não recebidos.",
+    "Comissão de aluno: receber autorização de uso, contexto, objeto, valor e moeda reais antes de inserir o caso na edição. O caso fica fora da fala-base até os materiais chegarem.",
+    "Pagamento ou saldo da Lívia: receber captura real com dados privados já ocultados antes de inserir. A montagem-base não contém tela financeira."
+  ],
+  "insercao_opcional_comissao": "Depois de receber as provas, gravar separadamente: 'Neste caso específico, o aluno fez [trabalho real] para [tipo de cliente] e recebeu [valor e moeda comprovados]. É um exemplo daquele trabalho, não uma previsão do que você vai receber com este exercício.' Substituir todos os campos antes da gravação."
+}

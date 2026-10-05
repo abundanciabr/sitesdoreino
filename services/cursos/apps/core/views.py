@@ -36,6 +36,7 @@ script. Molde: `services/gamificacao/apps/core/views.py`.
 from __future__ import annotations
 
 import mimetypes
+import json
 import re
 from pathlib import Path
 from urllib.parse import quote, urlsplit
@@ -633,6 +634,7 @@ def mapa(request, curso: str):
             "atual": atual,
             **resumo,
             "recado": RECADOS.get(request.GET.get("recado", "")),
+            "producao_huge_cat": curso.slug == "desafio-como-ganhar-em-dolar-com-roblox" and quem_e(request).eh_professor,
             **_de_fora(curso),
         },
     )
@@ -747,6 +749,7 @@ def _video_por_url(video_url: str) -> dict:
         embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
     )
     praticas = {f"/cursos/static/{pasta}/index.html": pasta for pasta in PRATICAS}
+    praticas["/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4"] = "huge-cat-dia1"
     pratica = praticas.get(urlsplit(url).path)
     interativa = (
         pratica is not None
@@ -1464,6 +1467,26 @@ def _professor(request):
     if not ator.eh_professor:
         return None, _negar_plantao(request)
     return ator, None
+
+
+@require_GET
+@never_cache
+def producao_huge_cat(request):
+    ator, recusa = _professor(request)
+    if recusa is not None:
+        return recusa
+    pasta = Path(settings.BASE_DIR) / "static" / "huge-cat-dia1"
+    roteiro = json.loads((pasta / "roteiro-livia.json").read_text(encoding="utf-8"))
+    return render(request, "cursos/producao_huge_cat.html", {
+        "roteiro": roteiro,
+        "video": _video_por_url("https://meshcraft.top/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4"),
+        "telas": [(f"huge-cat-dia1/tela-{numero:02d}-{nome}.png", titulo) for numero, nome, titulo in [
+            (1, "projeto", "O projeto"), (2, "comeco", "O ponto de partida"),
+            (3, "caminho", "O caminho da criação"), (4, "dias", "Os sete dias"),
+            (5, "meta", "A meta"), (6, "amanha", "A próxima etapa"),
+        ]],
+        **_de_fora(),
+    })
 
 
 def _envio_do_plantao(site_id: str | None, envio_id: int) -> Envio:

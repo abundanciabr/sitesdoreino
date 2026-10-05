@@ -14,6 +14,7 @@ from apps.core.views import (
     mapa,
     plantao_ficha,
     plantao_fila,
+    producao_huge_cat,
     registrar_pausa,
     servir_estatico,
 )
@@ -54,6 +55,7 @@ urlpatterns = [
     # reconhece, nunca autoriza.
     path("plantao", plantao_fila, name="plantao"),
     path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
+    path("producao/huge-cat-dia1/", producao_huge_cat, name="producao-huge-cat-dia1"),
     path("aulas", aulas_avulsas, name="aulas-avulsas"),
     path("aulas/<slug:slug>", aula_avulsa, name="aula-avulsa"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
