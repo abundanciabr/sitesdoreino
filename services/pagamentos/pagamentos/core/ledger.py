@@ -59,6 +59,16 @@ def com_referencias_do_pedido(dados: dict[str, Any], intent: Intent) -> dict[str
         for campo in REFERENCIAS_DO_PEDIDO
         if isinstance(metadata.get(campo), str) and metadata[campo] and campo not in dados
     }
+    # A credencial de teste do Mercado Pago também pode começar com APP_USR.
+    # A marca acompanha a aprovação até a matrícula, inclusive em intents
+    # antigas que nasceram sem o ambiente no metadata.
+    from django.conf import settings
+    from pagamentos.core.ambiente_mp import mp_em_teste
+
+    provider = dados.get("provider")
+    if ((provider == "appmax" and "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower())
+            or (provider == "mercadopago" and mp_em_teste())):
+        extras["ambiente"] = "sandbox"
     return {**dados, **extras} if extras else dados
 
 

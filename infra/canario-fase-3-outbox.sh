@@ -108,6 +108,7 @@ matricula, criada = matricular(
     product_id=os.environ["CANARIO_PRODUCT_ID"],
     email=os.environ["CANARIO_EMAIL"].strip().lower(),
     name="Canario Fase 3",
+    em_teste=True,
 )
 evento = (
     OutboxEvent.objects.filter(

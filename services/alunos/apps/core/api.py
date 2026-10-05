@@ -1322,7 +1322,7 @@ _GET_STUDENT_RECORD_OPENAPI = {
                                         },
                                         "origem": {
                                             "type": "string",
-                                            "enum": ["comprou", "liberado"],
+                                            "enum": ["comprou", "liberado", "administrativo", "teste"],
                                         },
                                         "nome_completo": {"type": "string"},
                                         "whatsapp": {"type": "string"},
@@ -1496,7 +1496,7 @@ _LIST_ALL_ENROLLMENTS_OPENAPI = {
                                 },
                                 "origem": {
                                     "type": "string",
-                                    "enum": ["comprou", "liberado", "administrativo"],
+                                    "enum": ["comprou", "liberado", "administrativo", "teste"],
                                     "description": _D1,
                                 },
                                 "product_id": {"type": "string"},
@@ -1599,7 +1599,7 @@ _UPDATE_ENROLLMENT_OPENAPI = {
                             },
                             "origem": {
                                 "type": "string",
-                                "enum": ["comprou", "liberado"],
+                                "enum": ["comprou", "liberado", "administrativo", "teste"],
                                 "description": _D2,
                             },
                             "criada_em": {"type": "string", "format": "date-time"},

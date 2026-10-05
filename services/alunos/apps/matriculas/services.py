@@ -75,6 +75,7 @@ def matricular(
     name: str,
     provider: str = "",
     provider_reference_id: str = "",
+    em_teste: bool = False,
 ) -> tuple[Matricula, bool]:
     """Matrícula sob select_for_update() + transaction.atomic(), idempotente
     por order_id. Chamada tanto pelo consumer do evento (R4) quanto pelo reprocesso
@@ -133,6 +134,7 @@ def matricular(
                     name=name,
                     provider=provider,
                     provider_reference_id=provider_reference_id,
+                    em_teste=em_teste,
                     status=(
                         Matricula.STATUS_REEMBOLSADA
                         if pagamento is not None and pagamento.estornado

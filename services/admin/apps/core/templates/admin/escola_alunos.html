@@ -367,7 +367,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">
-        {% if pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Você liberou{% endif %}
+        {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Você liberou{% endif %}
         {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
         {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
         &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>

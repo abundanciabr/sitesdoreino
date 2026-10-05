@@ -58,6 +58,7 @@ def ao_pagamento_aprovado(data: dict) -> None:
         # onde começar depois.
         provider=data["provider"],
         provider_reference_id=data["provider_reference_id"],
+        em_teste=data.get("ambiente") == "sandbox",
     )
 
 

@@ -209,6 +209,7 @@ class Matricula(models.Model):
     # de casar com todas elas de uma vez.
     provider = models.CharField(max_length=32, blank=True, default="")
     provider_reference_id = models.CharField(max_length=128, blank=True, default="")
+    em_teste = models.BooleanField(default=False)
     email = models.EmailField()
     name = models.CharField(max_length=255)
     status = models.CharField(
@@ -259,7 +260,7 @@ class Matricula(models.Model):
         return self.enrolled_at.isoformat()
 
     def origem(self) -> str:
-        """`comprou` ou `liberado`: COMO esta pessoa virou aluna.
+        """Como a pessoa virou aluna; sandbox é teste, não venda.
 
         Derivado do prefixo, nunca de um campo proprio — um campo "origem"
         gravado seria um segundo lugar guardando o que o `order_id` ja diz, e
@@ -269,6 +270,8 @@ class Matricula(models.Model):
         turmas anteriores entram pedindo aprovacao (`liberado`), e os alunos
         que a meta de vendas conta vem do checkout (`comprou`).
         """
+        if self.em_teste:
+            return "teste"
         if self.order_id.startswith(self.PREFIXO_DA_FILA):
             return "liberado"
         if self.order_id.startswith(self.PREFIXO_ADMINISTRATIVO):
