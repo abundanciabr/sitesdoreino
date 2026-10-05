@@ -1,0 +1,18 @@
+<div class="pratica-guiada bloco-da-pratica" id="pratica-interativa" data-base="{{ video.pratica_base }}">
+  {{ video.pratica|json_script:"dados-pratica" }}
+  <p class="rotulo" data-pratica="counter">Prática guiada · 5 etapas</p>
+  <progress data-pratica="progress" max="5" value="0" aria-label="Progresso da prática"></progress>
+  <h2 data-pratica="title">Pratique na imagem</h2>
+  <p class="instrucao-pratica" data-pratica="instruction">Clique no alvo indicado na imagem.</p>
+  <p class="recado">Clique na imagem abaixo: a seta verde e o círculo mostram o alvo. Cada clique dá uma resposta e abre a próxima ação. Depois, repita no Blender do seu computador.</p>
+  <div class="quadro-pratica" data-pratica="stage">
+    <img data-pratica="screen" width="{{ video.pratica.width }}" height="{{ video.pratica.height }}" decoding="async" fetchpriority="high" alt="Captura real do Blender" src="{{ video.pratica_base }}{{ video.pratica.steps.0.image }}">
+    <button data-pratica="target" type="button" aria-label="Clique no alvo indicado na imagem" hidden>
+      <span class="alvo-pratica" aria-hidden="true"></span>
+      <span class="seta-pratica" aria-hidden="true"><svg viewBox="0 0 210 90"><path d="M5 20 H133 V5 L205 45 L133 85 V70 H5 Z" fill="#aaff00" stroke="#102000" stroke-width="5" stroke-linejoin="round"/></svg><span class="numero-pratica"><small>Clique</small><span data-pratica="number">1</span></span></span>
+    </button>
+  </div>
+  <p class="resposta-pratica" data-pratica="feedback" role="status" aria-live="polite"></p>
+  <div class="controles-pratica"><button data-pratica="back" type="button" disabled>Voltar</button><button data-pratica="next" type="button">Avançar</button><button data-pratica="restart" type="button">Recomeçar</button></div>
+  <noscript><p>Ative o JavaScript para praticar com os cliques. Você também pode assistir à gravação e seguir as instruções no seu computador.</p></noscript>
+</div>

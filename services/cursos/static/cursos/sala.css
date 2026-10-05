@@ -306,6 +306,42 @@ button {
   padding: 10px 18px;
 }
 
+/* Práticas do Blender: conteúdo nativo, com a paleta e os controles da sala. */
+.bloco-da-pratica { margin: 24px 0; }
+.bloco-da-pratica + .bloco-da-pratica { border-top: 1px solid var(--borda); padding-top: 24px; }
+.conteudo-pratica-nativa video { display: block; width: 100%; aspect-ratio: 1366 / 768; background: #000; border-radius: 10px; }
+.conteudo-pratica-nativa .links, .controles-pratica { display: flex; flex-wrap: wrap; gap: 12px; }
+.conteudo-pratica-nativa .links a { color: var(--marca); }
+.conteudo-pratica-nativa summary { cursor: pointer; font-weight: 600; }
+.pratica-guiada { overflow-anchor: none; }
+.pratica-guiada h2 { font-size: 48px; line-height: 1.2; }
+.instrucao-pratica { font-size: 34px; line-height: 1.45; margin: 12px 0; }
+.pratica-guiada progress { width: 100%; height: 10px; accent-color: var(--marca); margin: 8px 0 20px; }
+.resposta-pratica { color: var(--verde); margin: 12px 0; }
+.controles-pratica button:disabled { opacity: .5; cursor: default; }
+.quadro-pratica { position: relative; overflow: hidden; line-height: 0; border: 1px solid var(--borda); border-radius: 10px; background: #303030; }
+.quadro-pratica img { display: block; width: 100%; height: auto; user-select: none; }
+.quadro-pratica button { position: absolute; transform: translate(-50%, -50%); width: 64px; height: 64px; padding: 0; border: 0; background: transparent; overflow: visible; z-index: 2; }
+.quadro-pratica button[hidden] { display: none; }
+.quadro-pratica button:focus-visible { outline: 4px solid white; outline-offset: 4px; }
+.alvo-pratica { position: absolute; inset: 0; border: 5px solid #aaff00; border-radius: 50%; background: #aaff0025; box-shadow: 0 0 0 3px #101722, 0 0 24px #aaff00; }
+.seta-pratica { position: absolute; right: calc(50% + 24px); top: 50%; width: clamp(170px, 20vw, 280px); height: 140px; transform: translateY(-50%); filter: drop-shadow(0 5px 5px #0009); animation: seta-pratica .85s ease-in-out infinite alternate; }
+.seta-pratica svg { width: 100%; height: 100%; overflow: visible; }
+.numero-pratica { position: absolute; left: 14%; top: 50%; transform: translateY(-50%); font-size: 60px; line-height: 1; font-weight: 900; color: #102000; }
+.numero-pratica small { display: block; font-size: 20px; text-transform: uppercase; }
+.quadro-pratica button[data-side="left"] .seta-pratica { right: auto; left: calc(50% + 24px); }
+.quadro-pratica button[data-side="left"] svg { transform: scaleX(-1); }
+.quadro-pratica button[data-side="left"] .numero-pratica { left: auto; right: 14%; }
+@keyframes seta-pratica { from { transform: translate(-8px, -50%); } to { transform: translate(0, -50%); } }
+@media(max-width: 600px) {
+  .pratica-guiada h2 { font-size: 32px; }
+  .instrucao-pratica { font-size: 24px; }
+  .quadro-pratica button { width: 48px; height: 48px; }
+  .seta-pratica { width: 130px; height: 100px; }
+  .numero-pratica small { font-size: 16px; }
+}
+@media(prefers-reduced-motion: reduce) { .seta-pratica { animation: none; } }
+
 .registro dt { font-weight: 600; margin-top: 8px; }
 .registro dd { margin: 0; white-space: pre-line; }
 

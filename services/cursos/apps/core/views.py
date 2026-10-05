@@ -39,6 +39,7 @@ import mimetypes
 import re
 from pathlib import Path
 from urllib.parse import quote, urlsplit
+from .praticas import PRATICAS
 
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -745,27 +746,20 @@ def _video_por_url(video_url: str) -> dict:
     youtube = bool(
         embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
     )
-    praticas = {
-        "/cursos/static/pet-aula/index.html": ("pet-aula", "colorindo o cãozinho"),
-        "/cursos/static/joguinho-ep1/index.html": ("joguinho-ep1", "É só um joguinho?"),
-    }
+    praticas = {f"/cursos/static/{pasta}/index.html": pasta for pasta in PRATICAS}
     pratica = praticas.get(urlsplit(url).path)
     interativa = (
         pratica is not None
         and urlsplit(url).hostname == "meshcraft.top"
         and urlsplit(url).scheme == "https"
     )
-    pratica_html = ""
-    if interativa:
-        pasta, titulo = pratica
-        pratica_html = (Path(settings.BASE_DIR) / f"static/{pasta}/index.html").read_text(encoding="utf-8")
-        pratica_html = pratica_html.replace("<head>", f'<head><base href="/cursos/static/{pasta}/">', 1)
-        pratica_html = pratica_html.replace("new URLSearchParams(location.search).has('embedded')", "true")
-        pratica_html = pratica_html.replace("},location.origin)", "},parent.location.origin)")
+    conteudo = PRATICAS[pratica] if interativa else {}
     return {
         "interativa": interativa,
-        "pratica_titulo": pratica[1] if interativa else "",
-        "pratica_html": pratica_html,
+        "pratica_titulo": conteudo.get("title", ""),
+        "pratica_template": conteudo.get("template", ""),
+        "pratica_base": reverse("estatico", args=[f"{pratica}/"]) if interativa else "",
+        "pratica": conteudo,
         "link": url,
         "embutido": embutido,
         "youtube_id": embutido.rsplit("/", 1)[-1] if youtube else "",

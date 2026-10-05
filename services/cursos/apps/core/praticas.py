@@ -1,0 +1,106 @@
+"""Conteúdo das práticas nativas da sala de aula."""
+
+PRATICAS = {'pet-aula': {'steps': [{'image': 'cao-01-modelo.webp',
+                         'title': '1. Selecione o corpo',
+                         'text': 'Clique na lateral do corpo do cãozinho. O painel de materiais já '
+                                 'está aberto à direita.',
+                         'stage': 1,
+                         'point': [770.0, 800.0],
+                         'reply': 'Corpo selecionado.'},
+                        {'image': 'cao-01-modelo.webp',
+                         'title': '2. Crie um material',
+                         'text': 'Clique em Novo(a) para criar o material do corpo.',
+                         'stage': 2,
+                         'point': [2240.0, 823.0],
+                         'reply': 'Material criado para o corpo.'},
+                        {'image': 'cao-03-cor-base.webp',
+                         'title': '3. Abra a cor de base',
+                         'text': 'Clique no retângulo claro ao lado de Cor de base, em Superfície.',
+                         'stage': 3,
+                         'point': [2332.5, 1246.0],
+                         'reply': 'Cor de base aberta.'},
+                        {'image': 'cao-04-seletor.webp',
+                         'title': '4. Escolha azul',
+                         'text': 'Clique na região azul da roda de cores. No Blender, a cor do '
+                                 'corpo muda na hora.',
+                         'stage': 4,
+                         'point': [2352.5, 743.0],
+                         'reply': 'Azul escolhido para o corpo.'},
+                        {'image': 'cao-05-corpo-azul.webp',
+                         'title': '5. Observe o resultado',
+                         'text': 'O corpo ficou azul e a barriga continua clara, porque são peças '
+                                 'separadas. Clique no corpo azul para concluir esta prática.',
+                         'stage': 5,
+                         'point': [770.0, 800.0],
+                         'reply': 'Você reconheceu o resultado da cor no corpo.'}],
+              'width': 2560,
+              'height': 1408,
+              'final': {'image': 'cao-06-pet-colorido.webp',
+                        'title': '5. Pet colorido!',
+                        'text': 'Este é o exemplo com todas as partes coloridas. Você concluiu a '
+                                'prática! Use as dicas abaixo para continuar no seu Blender.'},
+              'template': 'cursos/_conteudo_pet-aula.html',
+              'title': 'colorindo o cãozinho'},
+ 'joguinho-ep1': {'steps': [{'stage': 1,
+                             'image': '01-cena.webp',
+                             'title': '1. Identifique a árvore',
+                             'text': 'Clique na árvore da imagem. Ela é o objeto do cenário que '
+                                     'vamos acompanhar nesta série.',
+                             'point': [422, 338],
+                             'reply': 'Árvore identificada: um objeto de cenário criado com formas '
+                                      'e cores.'},
+                            {'stage': 2,
+                             'image': '02-tronco.webp',
+                             'title': '2. Reconheça o tronco',
+                             'text': 'Clique em Tronco na lista à direita da imagem. O contorno '
+                                     'laranja identifica a parte selecionada.',
+                             'point': [1040, 318],
+                             'reply': 'Tronco reconhecido: a peça marrom sustenta a copa.'},
+                            {'stage': 2,
+                             'image': '03-copa.webp',
+                             'title': '2. Reconheça a copa',
+                             'text': 'Clique em Copa na lista à direita da imagem. A árvore usa '
+                                     'duas formas simples para a copa.',
+                             'point': [1038, 244],
+                             'reply': 'Copa reconhecida: as duas formas verdes compõem a parte '
+                                      'superior da árvore.'},
+                            {'stage': 2,
+                             'image': '04-materiais.webp',
+                             'title': '2. Reconheça os materiais',
+                             'text': 'Clique na cor verde ao lado de Cor de base na imagem. Um '
+                                     'material define a aparência da peça.',
+                             'point': [1204, 653],
+                             'reply': 'Material reconhecido: a copa usa verde e o tronco usa '
+                                      'marrom.'},
+                            {'stage': 3,
+                             'image': '01-cena.webp',
+                             'title': '3. Relacione ao pedido',
+                             'text': 'Clique na árvore da imagem que atende ao pedido simulado: '
+                                     'uma árvore estática, estilizada, com poucas formas e cores.',
+                             'point': [422, 338],
+                             'reply': 'Pedido relacionado ao objeto. É uma simulação didática de '
+                                      'encomenda para um cenário de jogo.'},
+                            {'stage': 4,
+                             'image': '05-ambiente.webp',
+                             'title': '4. Confira o ambiente',
+                             'text': 'Clique em Abrir… no menu Arquivo da imagem. No seu '
+                                     'computador, use esse caminho para abrir arvore-estudo.blend.',
+                             'point': [149, 111],
+                             'reply': 'Ambiente conferido: o arquivo de estudo abre no Blender por '
+                                      'Arquivo → Abrir.'},
+                            {'stage': 5,
+                             'image': '06-resultado.webp',
+                             'title': '5. Confira o projeto completo',
+                             'text': 'Clique na árvore da imagem para confirmar o objetivo da '
+                                     'série: criar, testar e apresentar uma árvore simples.',
+                             'point': [421, 338],
+                             'reply': 'Objetivo conferido: tronco + copa + materiais + teste + '
+                                      'apresentação. Hoje você observa e reconhece.'}],
+                  'width': 1366,
+                  'height': 768,
+                  'final': {'image': '06-resultado.webp',
+                            'title': 'Você reconheceu o projeto!',
+                            'text': 'Por que alguém contrataria outra pessoa para fazer isso? Esse '
+                                    'é o ponto de partida do próximo episódio.'},
+                  'template': 'cursos/_conteudo_joguinho-ep1.html',
+                  'title': 'É só um joguinho?'}}

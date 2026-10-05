@@ -27,7 +27,7 @@ def test_numero_visivel_acompanha_ordem_sem_mudar_identidade():
         "http://meshcraft.top/cursos/static/joguinho-ep1/index.html",
     ],
 )
-def test_so_pratica_da_casa_e_embutida(url):
+def test_so_pratica_da_casa_e_nativa(url):
     assert not _video_por_url(url)["interativa"]
 
 
@@ -50,8 +50,10 @@ def test_pratica_aparece_dentro_da_aula_com_navegacao():
         },
     )
     assert 'id="pratica-interativa"' in html
-    assert 'srcdoc="' in html
-    assert "Colorindo seu primeiro pet" in html
+    assert 'srcdoc=' not in html
+    assert '<iframe' not in html
+    assert 'data-pratica="screen"' in html
+    assert "caozinho-aula-1366x768.mp4" in html
     assert 'href="/proxima"' in html
 
 
@@ -59,11 +61,22 @@ def test_episodio_usa_a_mesma_integracao_protegida_e_titulo_proprio():
     video = _video_por_url("https://meshcraft.top/cursos/static/joguinho-ep1/index.html")
     assert video["interativa"]
     assert video["pratica_titulo"] == "É só um joguinho?"
-    assert "arvore-estudo.blend" in video["pratica_html"]
-    assert "},parent.location.origin)" in video["pratica_html"]
-    assert "if(true)" in video["pratica_html"]
     aula = SimpleNamespace(titulo_na_ordem="É só um joguinho?",numero="J01",curso=SimpleNamespace(slug="roblox"),bloco=SimpleNamespace(parte=1))
-    html = render_to_string("cursos/aula.html", {"aula":aula,"video":video,"navegacao":{"anterior":{"url":"/pet","titulo":"Pet"},"proxima":{"url":"/proxima","titulo":"Próxima"}}})
-    assert 'srcdoc="' in html
+    html = render_to_string("cursos/aula.html", {"aula":aula,"video":video,"conclusao":{"feita":False},"navegacao":{"anterior":{"url":"/pet","titulo":"Pet"},"proxima":{"url":"/proxima","titulo":"Próxima"}}})
+    assert '<iframe' not in html
+    assert 'srcdoc=' not in html
+    assert 'postMessage' not in html
+    assert 'arvore-estudo.blend' in html
+    assert 'episodio-1366x768.mp4' in html
+    assert 'Concluir esta aula' in html
     assert "Prática guiada: É só um joguinho?" in html
     assert 'href="/proxima"' in html
+
+
+def test_pratica_nao_carrega_pagina_html_de_apoio(monkeypatch):
+    from pathlib import Path
+    def recusar_leitura(*args, **kwargs):
+        raise AssertionError("A aula não deve ler a página separada")
+    monkeypatch.setattr(Path, "read_text", recusar_leitura)
+    for pasta in ["pet-aula", "joguinho-ep1"]:
+        assert _video_por_url(f"https://meshcraft.top/cursos/static/{pasta}/index.html")["pratica_template"]
