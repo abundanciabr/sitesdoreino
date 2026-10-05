@@ -182,8 +182,8 @@ def conferir_callback() -> None:
     )
 
 
-def validar_merchant(auth: str, api: str, merchant_id: str, merchant_secret: str) -> None:
-    """Prova OAuth MERCHANT e leitura de produtos no mesmo ambiente do instalador."""
+def validar_merchant(auth: str, merchant_id: str, merchant_secret: str) -> str:
+    """Prova o par MERCHANT por OAuth e devolve o token para a consulta opcional."""
     from urllib.parse import urlencode
 
     oauth = postar(
@@ -202,6 +202,11 @@ def validar_merchant(auth: str, api: str, merchant_id: str, merchant_secret: str
     tipo = oauth.get("token_type")
     if not isinstance(token, str) or not token or not isinstance(tipo, str) or tipo.lower() != "bearer":
         raise FalhaDeInstalacao("O OAuth MERCHANT não devolveu Bearer válido.")
+    return token
+
+
+def consultar_produtos(api: str, token: str) -> None:
+    """Confere a leitura de produtos sem decidir se o par emitido será salvo."""
     produtos = postar(
         f"{api}/v1/products",
         b"",
@@ -212,6 +217,17 @@ def validar_merchant(auth: str, api: str, merchant_id: str, merchant_secret: str
     dados = produtos.get("data")
     if not isinstance(dados, dict) or not isinstance(dados.get("products"), list):
         raise FalhaDeInstalacao("A API não devolveu a lista de produtos do MERCHANT.")
+
+
+def guardar_merchant_pendente(merchant_id: str, merchant_secret: str) -> Path:
+    """Preserva o par de emissão única até que o OAuth e a gravação terminem."""
+    caminho = ENV.with_name(f"{ENV.name}.merchant-pendente-{time.time_ns()}")
+    fd = os.open(caminho, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as arquivo:
+        arquivo.write(f"{CHAVES_MERCHANT[0]}={merchant_id}\n{CHAVES_MERCHANT[1]}={merchant_secret}\n")
+        arquivo.flush()
+        os.fsync(arquivo.fileno())
+    return caminho
 
 
 def gravar_merchant(merchant_id: str, merchant_secret: str) -> Path:
@@ -341,20 +357,28 @@ def instalar() -> None:
         raise FalhaDeInstalacao(
             "A instalação não retornou o par MERCHANT; confira o health check antes de nova tentativa."
         )
-    # O par só existe nesta memória: validar aqui, no mesmo ambiente, e gravar
-    # direto no env, sem depender do roteiro sandbox nem do estado do cartão.
+    # A emissão é única. Preserve o par antes de qualquer nova chamada externa.
+    pendente = guardar_merchant_pendente(merchant_id, merchant_secret)
     for tentativa in range(1, TENTATIVAS_DE_VALIDACAO + 1):
         try:
-            validar_merchant(auth, api, merchant_id, merchant_secret)
+            token_merchant = validar_merchant(auth, merchant_id, merchant_secret)
             break
         except FalhaDeInstalacao as exc:
             if tentativa == TENTATIVAS_DE_VALIDACAO or input(
-                f"Validação MERCHANT em {ambiente} falhou ({exc}). Enter tenta de novo; N desiste: "
+                f"OAuth MERCHANT em {ambiente} falhou ({exc}). Enter tenta de novo; N desiste: "
             ).strip().lower() == "n":
                 raise FalhaDeInstalacao(
-                    f"O par MERCHANT foi emitido, mas a validação em {ambiente} falhou e nada foi gravado. {exc}"
+                    f"O par MERCHANT foi emitido, mas o OAuth em {ambiente} falhou. "
+                    f"O par está preservado em {pendente}; confira antes de nova instalação. {exc}"
                 ) from None
     copia = gravar_merchant(merchant_id, merchant_secret)
+    pendente.unlink()
+    try:
+        consultar_produtos(api, token_merchant)
+    except FalhaDeInstalacao as exc:
+        print(f"AVISO: par MERCHANT gravado em {ENV}, mas a leitura de produtos falhou: {exc}")
+        print(f"Cópia anterior em {copia}. Recarregue a aplicação para usar o par novo.")
+        return
     print(
         f"INSTALACAO_OK: OAuth MERCHANT e leitura de produtos validados em {ambiente}; "
         f"par gravado em {ENV} (cópia anterior em {copia}). Nada foi reiniciado: "

@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -196,7 +197,9 @@ class InstalacaoSandboxTest(unittest.TestCase):
             self.assertIsNone(erro)
             texto = env.read_text(encoding="utf-8")
             copias = list(Path(pasta).glob("pagamentos.env.bak-instalador-*"))
+            pendentes = list(Path(pasta).glob("pagamentos.env.merchant-pendente-*"))
             self.assertEqual(len(copias), 1)
+            self.assertEqual(pendentes, [])
             self.assertIn("APPMAX_MERCHANT_CLIENT_ID=antigo-repetido\n", copias[0].read_text(encoding="utf-8"))
             sobras = [p.name for p in Path(pasta).iterdir() if p.name.startswith(".instalador-")]
         self.assertEqual(sobras, [])
@@ -235,7 +238,7 @@ class InstalacaoSandboxTest(unittest.TestCase):
         self.assertIn("APPMAX_MERCHANT_CLIENT_SECRET=merchant-segredo-falso\n", texto)
         self.assertIn("INSTALACAO_OK", saida)
 
-    def test_validacao_tenta_de_novo_e_desistencia_nao_grava(self) -> None:
+    def test_oauth_tenta_de_novo_e_desistencia_preserva_par_fora_do_env(self) -> None:
         recusa = instalador.FalhaDeInstalacao("HTTP 401 em OAuth MERCHANT")
         with tempfile.TemporaryDirectory() as pasta:
             env, postar, saida, erro = self.instalar_em(
@@ -247,13 +250,41 @@ class InstalacaoSandboxTest(unittest.TestCase):
             )
             env_antes = env.read_text(encoding="utf-8")
             copias = list(Path(pasta).glob("pagamentos.env.bak-instalador-*"))
+            pendentes = list(Path(pasta).glob("pagamentos.env.merchant-pendente-*"))
+            self.assertEqual(len(pendentes), 1)
+            par_preservado = pendentes[0].read_text(encoding="utf-8")
+            modo_pendente = pendentes[0].stat().st_mode & 0o777
         self.assertIsNotNone(erro)
-        self.assertIn("nada foi gravado", str(erro))
+        self.assertIn(str(pendentes[0]), str(erro))
         self.assertNotIn("merchant-segredo-falso", str(erro))
+        self.assertIn("APPMAX_MERCHANT_CLIENT_SECRET=merchant-segredo-falso", par_preservado)
+        if os.name == "posix":
+            self.assertEqual(modo_pendente, 0o600)
         self.assertEqual(postar.call_count, 5)
         self.assertEqual(copias, [])
         self.assertIn("APPMAX_MERCHANT_CLIENT_ID=antigo\n", env_antes)
-        self.assertNotIn("merchant-", env_antes)
+        self.assertNotIn("merchant-id-falso", env_antes)
+
+    def test_produtos_indisponiveis_sao_aviso_apos_gravar_par_validado(self) -> None:
+        falha_produtos = instalador.FalhaDeInstalacao("HTTP 503 em leitura de produtos MERCHANT")
+        with tempfile.TemporaryDirectory() as pasta:
+            env, postar, saida, erro = self.instalar_em(
+                pasta,
+                instalador.AUTH_PRODUCAO,
+                instalador.API_PRODUCAO,
+                self.RESPOSTAS_ATE_O_PAR + [self.VALIDACAO_OK[0], falha_produtos],
+                [],
+            )
+            texto = env.read_text(encoding="utf-8")
+            copias = list(Path(pasta).glob("pagamentos.env.bak-instalador-*"))
+            pendentes = list(Path(pasta).glob("pagamentos.env.merchant-pendente-*"))
+        self.assertIsNone(erro)
+        self.assertEqual(postar.call_count, 5)
+        self.assertIn("APPMAX_MERCHANT_CLIENT_SECRET=merchant-segredo-falso", texto)
+        self.assertEqual(len(copias), 1)
+        self.assertEqual(pendentes, [])
+        self.assertIn("AVISO: par MERCHANT gravado", saida)
+        self.assertNotIn("merchant-segredo-falso", saida)
 
     def test_curl_get_sem_corpo_com_bearer(self) -> None:
         if not shutil.which("curl"):
