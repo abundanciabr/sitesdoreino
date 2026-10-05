@@ -14,6 +14,11 @@ REFERENCIA_PROXIMO_CURSO = "proximo-curso"
 
 @transaction.atomic
 def sincronizar_matricula(matricula):
+    from .pessoas_reais import conferir, ContatoDeTeste
+    try:
+        conferir(matricula)
+    except ContatoDeTeste:
+        return {"ignorada": True, "contato_criado": False, "oportunidade_criada": False}
     site = str(matricula.get("site_id") or "").strip()
     email = str(matricula.get("email") or "").strip().lower()
     identificador = str(matricula.get("id") or "").strip()

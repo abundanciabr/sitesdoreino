@@ -4,6 +4,27 @@ import uuid
 from django.db import models
 
 
+class ContatosReaisQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        from .pessoas_reais import conferir
+        conferir(kwargs)
+        return super().update(**kwargs)
+
+    def bulk_create(self, objs, **kwargs):
+        from .pessoas_reais import conferir
+        objs = list(objs)
+        for obj in objs:
+            conferir(vars(obj))
+        return super().bulk_create(objs, **kwargs)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        from .pessoas_reais import conferir
+        objs = list(objs)
+        for obj in objs:
+            conferir(vars(obj))
+        return super().bulk_update(objs, fields, **kwargs)
+
+
 class Lead(models.Model):
     """Uma pessoa, dentro de UM site. A mesma pessoa (mesmo e-mail) em sites
     diferentes é registrada como leads distintos — upsert é por (site_id, email).
@@ -12,6 +33,7 @@ class Lead(models.Model):
     no mesmo site, e o e-mail entra quando a pessoa concluir o quiz."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    objects = ContatosReaisQuerySet.as_manager()
     site_id = models.CharField(max_length=100)
     email = models.EmailField()
     name = models.CharField(max_length=200, blank=True, default="")
@@ -22,6 +44,12 @@ class Lead(models.Model):
     consent = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        from .pessoas_reais import conferir
+        conferir({"site_id": self.site_id, "email": self.email, "name": self.name,
+                  "source": self.source, "tags": self.tags})
+        return super().save(*args, **kwargs)
 
     class Meta:
         constraints = [

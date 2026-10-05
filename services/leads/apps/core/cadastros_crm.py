@@ -11,6 +11,9 @@ from .recuperacao import _responsavel
 
 @transaction.atomic
 def incluir(*, site_id, email, nome="", telefone="", origem="", evento="cadastro.site", dados):
+    from .pessoas_reais import conferir
+    conferir({"site_id": site_id, "email": email, "name": nome, "source": origem})
+    conferir(dados)
     email = email.strip().lower()
     if not site_id or not email or not dados.get("id"):
         raise ValueError("Cadastro sem identificação")

@@ -1,5 +1,6 @@
 # apps/core/handlers.py  # [RECEITA:R4 v1]
 from django.db import IntegrityError, transaction
+from .pessoas_reais import ignorar_evento_de_teste
 
 from .models import EventoProcessado, FatoDePagamentoProcessado, Lead, TimelineEvent
 from .oferta import abrir_oferta_do_quiz, avancar_ofertas_com_pedido
@@ -103,6 +104,7 @@ def _evento_do_quiz_ja_registrado(lead, data: dict):
     return None
 
 
+@ignorar_evento_de_teste
 def ao_quiz_completado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         # O contato da captura da mesma sessão, mesmo que o e-mail tenha mudado.
@@ -116,6 +118,7 @@ def ao_quiz_completado(event_id: str, data: dict) -> None:
         registrar_quiz_completo(lead, event_id, data)
 
 
+@ignorar_evento_de_teste
 def ao_pedido_criado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         cliente = data["customer"]
@@ -189,6 +192,7 @@ def _fato_ja_processado(evento: str, site_id: str, chave: str) -> bool:
     return False
 
 
+@ignorar_evento_de_teste
 def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         site_id = _site_id_de(data)
@@ -211,6 +215,7 @@ def ao_pagamento_aprovado(event_id: str, data: dict) -> None:
         )
 
 
+@ignorar_evento_de_teste
 def ao_pagamento_recusado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         site_id = _site_id_de(data)
@@ -231,6 +236,7 @@ def ao_pagamento_recusado(event_id: str, data: dict) -> None:
         sincronizar_pagamento(lead, "pagamento.recusado", data, event_id, evento)
 
 
+@ignorar_evento_de_teste
 def ao_pix_expirado(event_id: str, data: dict) -> None:
     with transaction.atomic():
         cliente = data["customer"]
@@ -246,5 +252,6 @@ def ao_pix_expirado(event_id: str, data: dict) -> None:
         sincronizar_pagamento(lead, "pix.expirado", data, event_id, evento)
 
 
+@ignorar_evento_de_teste
 def ao_reversao_confirmada(event_id: str, data: dict) -> None:
     sincronizar_reversao(event_id, data)

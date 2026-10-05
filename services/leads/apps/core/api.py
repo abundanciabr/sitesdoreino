@@ -94,6 +94,12 @@ def upsert_lead(request):
     except json.JSONDecodeError:
         raise HttpError(422, "JSON inválido")
 
+    from .pessoas_reais import conferir, ContatoDeTeste
+    try:
+        conferir(body)
+    except ContatoDeTeste as erro:
+        raise HttpError(422, str(erro))
+
     site_id = body.get("site_id")
     email = body.get("email")
     if not site_id or not email:

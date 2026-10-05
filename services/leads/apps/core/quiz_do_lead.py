@@ -22,6 +22,7 @@ from .models import (
     Lead, Oportunidade, QuizDoLead, RegistroHistoricoOportunidade, TimelineEvent,
 )
 from .oferta import PASSO_DA_CAPTURA
+from .pessoas_reais import ignorar_evento_de_teste
 
 log = logging.getLogger("leads.quiz_do_lead")
 
@@ -429,6 +430,7 @@ def _abrir_oferta_da_captura(lead, slug, event_id):
     return oportunidade
 
 
+@ignorar_evento_de_teste
 def ao_quiz_captura_parcial(event_id: str, data: dict) -> None:
     """A pessoa deixou contato e ainda não terminou o quiz.
 

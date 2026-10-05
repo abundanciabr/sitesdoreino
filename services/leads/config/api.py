@@ -28,3 +28,10 @@ api.add_router("", quiz_do_lead_router)
 api.add_router("", perfil_router)
 api.add_router("", receita_router)
 api.add_router("", resultados_router)
+
+from apps.core.pessoas_reais import ContatoDeTeste
+
+
+@api.exception_handler(ContatoDeTeste)
+def contato_de_teste_recusado(request, erro):
+    return api.create_response(request, {"detail": str(erro)}, status=422)
