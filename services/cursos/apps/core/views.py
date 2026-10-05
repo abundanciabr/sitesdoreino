@@ -411,7 +411,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         # A parte vai junto porque ela é METADE do endereço da aula: sem ela o
         # template teria de adivinhá-la, e o mapa é justamente quem sabe.
         "parte": aula.bloco.parte,
-        "titulo": aula.titulo_exibido,
+        "titulo": aula.titulo_na_ordem,
         "estado": estado,
         "estado_visual": estado_visual,
         "rotulo": rotulo,
@@ -746,6 +746,9 @@ def _video_por_url(video_url: str) -> dict:
         embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
     )
     return {
+        "interativa": urlsplit(url).path == "/cursos/static/pet-aula/index.html"
+        and urlsplit(url).hostname == "meshcraft.top"
+        and urlsplit(url).scheme == "https",
         "link": url,
         "embutido": embutido,
         "youtube_id": embutido.rsplit("/", 1)[-1] if youtube else "",
@@ -1057,7 +1060,7 @@ def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
             continue
         porta = _porta(vizinha, portas.progresso_de(pessoa, vizinha))
         navegacao[direcao] = {
-            "titulo": vizinha.titulo_exibido,
+            "titulo": vizinha.titulo_na_ordem,
             "url": _url_da_aula(curso, vizinha) if porta["abre"] else "",
             "explicacao": porta["explicacao"],
         }
@@ -1532,7 +1535,7 @@ def _aulas_do_curso(envio: Envio) -> list[dict]:
         {
             "id": uma_aula.id,
             "numero": uma_aula.numero,
-            "titulo": uma_aula.titulo_exibido,
+            "titulo": uma_aula.titulo_na_ordem,
         }
         for uma_aula in envio.aula.curso.aulas.order_by("ordem")
     ]
@@ -1610,7 +1613,8 @@ def _preenchido_pela_ia(sugestao: assistente.Sugestao, envio: Envio, digitado) -
             "mudancas_adicionais",
             "\n".join(
                 f"{numeros.get(int(item['aula_id']), '')} | {item['texto']}"
-                for item in sugestao.mudancas[1:] if item.get("aula_id", "").isdigit()
+                for item in sugestao.mudancas[1:]
+                if item.get("aula_id", "").isdigit()
             ),
         )
     return campos
@@ -1686,10 +1690,12 @@ def _gravar_laudo(request, envio: Envio, avaliador):
         request.POST.get(f"forca_{indice}", "") for indice in range(NUMERO_DE_FORCAS)
     ]
     forcas.extend(request.POST.get("forcas_adicionais", "").splitlines())
-    mudanca = [{
-        "texto": request.POST.get("mudanca_texto", ""),
-        "aula_id": request.POST.get("mudanca_aula", ""),
-    }]
+    mudanca = [
+        {
+            "texto": request.POST.get("mudanca_texto", ""),
+            "aula_id": request.POST.get("mudanca_aula", ""),
+        }
+    ]
     for linha in request.POST.get("mudancas_adicionais", "").splitlines():
         if not linha.strip():
             continue
@@ -1701,7 +1707,9 @@ def _gravar_laudo(request, envio: Envio, avaliador):
                 .values_list("id", flat=True)
                 .first()
             ) or numero.strip()
-        mudanca.append({"texto": texto.strip() if separador else linha.strip(), "aula_id": aula_id})
+        mudanca.append(
+            {"texto": texto.strip() if separador else linha.strip(), "aula_id": aula_id}
+        )
     decisao = request.POST.get("decisao", "")
     data_de_retorno = parse_date(request.POST.get("data_de_retorno") or "")
     ajuste_feito = request.POST.get("ajuste_feito", "")

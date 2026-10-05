@@ -76,4 +76,5 @@ finally{clearTimeout(waiting);busy=false;$('target').disabled=complete;$('mobile
 
 $('target').onclick=e=>{e.stopPropagation();next();};$('stage').onclick=()=>{if(complete)return;$('feedback').textContent='Tente a área marcada: '+steps[step].text;};$('back').onclick=()=>{if(complete){show();return;}if(step>0){step--;show();}};function restart(){step=0;show();}$('restart').onclick=restart;$('mobileNext').onclick=next;show();
 prepare(base+steps[0].image).then(()=>{for(const image of new Set([...steps.map(s=>s.image),'cao-06-pet-colorido.webp']))prepare(base+image).catch(()=>{});}).catch(()=>{});
+if(new URLSearchParams(location.search).has('embedded')){document.querySelector('main > a').hidden=true;new ResizeObserver(()=>parent.postMessage({type:'pet-aula-height',height:Math.ceil(document.querySelector('main').getBoundingClientRect().height)},location.origin)).observe(document.querySelector('main'));}
 </script></body></html>

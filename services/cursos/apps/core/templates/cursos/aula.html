@@ -18,12 +18,12 @@ Formulário normal com melhoria progressiva: nenhum caminho existe só com
 script. O HTML das peças vem do renderizador da casa (`apps/core/markdown.py`),
 que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% endcomment %}
-{% block titulo %}{{ aula.titulo_exibido }}{% endblock %}
+{% block titulo %}{{ aula.titulo_na_ordem }}{% endblock %}
 {% block atributos_principal %} class="sala-com-conteudo"{% endblock %}
 
 {% block faixa %}
   <a href="{{ url_do_mapa }}">{{ curso.nome }}</a>
-  <span class="onde">{{ aula.titulo_exibido }}</span>
+  <span class="onde">{{ aula.titulo_na_ordem }}</span>
 {% endblock %}
 
 {% block conteudo %}
@@ -89,9 +89,19 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 <div class="aula-layout">
 <section class="video" id="video">
   <div class="atalho-conteudo"><button type="button" class="abrir-conteudo" aria-controls="conteudo-do-curso" aria-expanded="false" hidden><span aria-hidden="true">☰</span> Conteúdo do curso</button></div>
-  {% if not video.youtube_id %}<h2>O vídeo da aula</h2>{% endif %}
-  {% if video.youtube_id %}
-  {% include "cursos/_player_youtube_vsl.html" with youtube_id=video.youtube_id titulo=aula.titulo_exibido vertical=video.vertical %}
+  {% if video.interativa %}<h2>Prática guiada: colorindo o cãozinho</h2>{% elif not video.youtube_id %}<h2>O vídeo da aula</h2>{% endif %}
+  {% if video.interativa %}
+  <iframe id="pratica-interativa" src="{{ video.link }}?embedded=1" title="Prática: colorindo o cãozinho" style="width:100%;height:2800px;border:0" scrolling="no"></iframe>
+  <p><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir a prática em outra aba</a></p>
+  <script>
+  window.addEventListener('message', function(event){
+    var frame=document.getElementById('pratica-interativa');
+    if(event.origin!==location.origin || event.source!==frame.contentWindow || event.data.type!=='pet-aula-height')return;
+    if(Number.isFinite(event.data.height) && event.data.height>0 && event.data.height<30000)frame.style.height=event.data.height+'px';
+  });
+  </script>
+  {% elif video.youtube_id %}
+  {% include "cursos/_player_youtube_vsl.html" with youtube_id=video.youtube_id titulo=aula.titulo_na_ordem vertical=video.vertical %}
   {% elif video.embutido %}
   <div class="quadro"><iframe src="{{ video.embutido }}" referrerpolicy="strict-origin-when-cross-origin" title="Vídeo da aula" loading="lazy" allowfullscreen allow="fullscreen"></iframe></div>
   <p class="miudo"><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir o vídeo em outra aba</a></p>

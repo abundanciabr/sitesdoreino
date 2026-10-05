@@ -50,6 +50,7 @@ Nunca um `save()`.
 """
 
 import uuid
+import re
 from datetime import timedelta
 
 from django.db import models
@@ -402,6 +403,12 @@ class Aula(models.Model):
                 condition=models.Q(versao__gte=1), name="versao_de_aula_comeca_em_1"
             ),
         ]
+
+    @property
+    def titulo_na_ordem(self):
+        return re.sub(
+            r"^Aula \d+(?=$|[ :—–-])", f"Aula {self.ordem + 1}", self.titulo_exibido
+        )
 
     def __str__(self) -> str:
         return f"{self.numero} {self.titulo_exibido}"

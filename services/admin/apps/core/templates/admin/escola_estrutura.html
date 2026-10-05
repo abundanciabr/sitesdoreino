@@ -80,6 +80,19 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </div>
   {% endif %}
 
+  {% if atuais %}
+  <h2>Ordem das aulas</h2>
+  <p>Use Subir ou Descer para mudar a posição no módulo. A alteração é salva ao clicar. Para adicionar aulas, edite a lista abaixo.</p>
+  {% for a in atuais %}
+  <form method="post" action="{{ url_de_importar }}" class="dois-botoes">
+    {% csrf_token %}
+    <span><b>Aula {{ a.posicao }}</b> · {{ a.titulo_exibido }}</span>
+    <button class="botao" name="mover" value="{{ a.numero }}:-1" {% if not a.sobe %}disabled{% endif %} aria-label="Subir aula {{ a.posicao }}">↑ Subir</button>
+    <button class="botao" name="mover" value="{{ a.numero }}:1" {% if not a.desce %}disabled{% endif %} aria-label="Descer aula {{ a.posicao }}">↓ Descer</button>
+  </form>
+  {% endfor %}
+  {% endif %}
+
   <form method="post" class="forma" action="{{ url_de_prever }}">
     {% csrf_token %}
     <label for="estrutura"><b>Os módulos e as aulas</b></label>

@@ -475,10 +475,73 @@ def _resumo(modulos: list, a_apagar: list) -> dict:
     }
 
 
+def texto_atual(aulas):
+    linhas = []
+    ultimo = None
+    for aula in aulas:
+        bloco = aula["bloco"]
+        if bloco["letra"] != ultimo:
+            linhas.extend(
+                [
+                    f"## Parte {bloco['parte']}",
+                    "# "
+                    + (bloco.get("nome") or "Bloco " + bloco["letra"])
+                    + (
+                        (" | Boss: " + bloco["boss_titulo"])
+                        if bloco.get("boss_titulo")
+                        else ""
+                    ),
+                ]
+            )
+            ultimo = bloco["letra"]
+        linhas.append(
+            aula["numero"]
+            + " "
+            + aula["titulo_exibido"]
+            + (" [boss]" if aula.get("e_boss") else "")
+        )
+    return "\n".join(linhas)
+
+
+def mover_aula(aulas, numero, direcao):
+    novas = list(aulas)
+    origem = next((i for i, a in enumerate(novas) if a["numero"] == numero), None)
+    if origem is None or direcao not in (-1, 1):
+        raise ValueError("A aula ou a direção não existe.")
+    destino = origem + direcao
+    if (
+        not 0 <= destino < len(novas)
+        or novas[origem]["bloco"]["letra"] != novas[destino]["bloco"]["letra"]
+    ):
+        raise ValueError("Esta aula já está no limite do módulo.")
+    novas[origem], novas[destino] = novas[destino], novas[origem]
+    return novas
+
+
 @require_GET
 def estrutura(request, curso: str):
-    """A área de colar, vazia. Nenhuma ida à porta: aqui ainda não há texto."""
-    return _desenhar(request, curso, "", {})
+    site = _site_desta_requisicao(request)
+    if site is None:
+        return _sem_site(request, curso, "")
+    desfecho, aulas = CursosClient().aulas(site["id"], curso)
+    if desfecho != CursosClient.OK:
+        return _desenhar(
+            request, curso, "", {"falha_da_sala": _falha(desfecho)}, status=503
+        )
+    aulas = aulas or []
+    atuais = []
+    for i, aula in enumerate(aulas):
+        atuais.append(
+            {
+                **aula,
+                "posicao": i + 1,
+                "sobe": i > 0
+                and aulas[i - 1]["bloco"]["letra"] == aula["bloco"]["letra"],
+                "desce": i + 1 < len(aulas)
+                and aulas[i + 1]["bloco"]["letra"] == aula["bloco"]["letra"],
+            }
+        )
+    return _desenhar(request, curso, texto_atual(aulas), {"atuais": atuais})
 
 
 @require_POST
@@ -503,6 +566,27 @@ def estrutura_importar(request, curso: str):
     para esta tela explicar: o 422 dela conta o motivo, e nada foi gravado.
     """
     colado = (request.POST.get("estrutura") or "").replace("\r\n", "\n")
+    if request.POST.get("mover"):
+        site = _site_desta_requisicao(request)
+        if site is None:
+            return _sem_site(request, curso, colado)
+        desfecho, aulas = CursosClient().aulas(site["id"], curso)
+        if desfecho != CursosClient.OK:
+            return _desenhar(
+                request, curso, colado, {"falha_da_sala": _falha(desfecho)}, status=503
+            )
+        try:
+            numero, direcao = request.POST["mover"].split(":")
+            colado = texto_atual(mover_aula(aulas, numero, int(direcao)))
+        except (ValueError, TypeError):
+            return _desenhar(
+                request,
+                curso,
+                colado,
+                {"erro": "Não foi possível mover esta aula."},
+                status=400,
+            )
+
     preparado, resposta = _preparar(request, curso, colado)
     if resposta is not None:
         return resposta
@@ -529,6 +613,10 @@ def estrutura_importar(request, curso: str):
             f"{rastro}; {contagens['criadas']} criada(s), "
             f"{contagens['apagadas']} apagada(s)",
         )
+        if request.POST.get("mover"):
+            from django.http import HttpResponseRedirect
+
+            return HttpResponseRedirect(request.path.rsplit("/", 1)[0] + "/")
         return _desenhar(
             request, curso, colado, resumo | {"importou": True} | contagens
         )

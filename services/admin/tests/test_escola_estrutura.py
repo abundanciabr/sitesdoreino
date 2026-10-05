@@ -306,15 +306,14 @@ def _tela(nome="escola_estrutura"):
 
 
 @respx.mock
-def test_a_tela_abre_vazia_e_ensina_o_formato():
+def test_a_tela_le_as_aulas_atuais_e_ensina_o_formato():
     _mock_site()
     leitura = _mock_aulas()
     corpo = _dentro().get(_tela()).content.decode()
     assert "Os módulos e as aulas do curso" in corpo
     assert "# Módulo 1: Comece por aqui" in corpo
     assert "01 Boas-vindas ao curso" in corpo
-    # Abrir a tela não pergunta as aulas à sala: ainda não há texto para comparar.
-    assert not leitura.called
+    assert leitura.called
 
 
 @respx.mock
@@ -523,3 +522,36 @@ def test_a_lista_de_cursos_leva_a_esta_tela():
     corpo = _dentro().get(reverse("escola_cursos")).content.decode()
     assert _tela() in corpo
     assert "Módulos e aulas" in corpo
+
+
+@respx.mock
+def test_subir_aula_preserva_todas_as_aulas_e_banca():
+    import json
+
+    _mock_site()
+    aulas = [
+        _aula_gravada("01", "Aula 1", banca=2),
+        _aula_gravada("PET", "Aula 2 — Pet"),
+        _aula_gravada("02", "Aula 3"),
+    ]
+    _mock_aulas(aulas)
+    escrita = _mock_estrutura()
+    resposta = _dentro().post(_tela("escola_estrutura_importar"), {"mover": "PET:-1"})
+    assert resposta.status_code == 302
+    gravado = json.loads(escrita.calls.last.request.content)
+    itens = gravado["blocos"][0]["aulas"]
+    assert [a["numero"] for a in itens] == ["PET", "01", "02"]
+    assert itens[1]["banca_nivel"] == 2
+    assert itens[1]["titulo"] == "Aula 1"
+
+
+@respx.mock
+def test_editor_mostra_lista_preenchida_e_botoes_de_ordem():
+    _mock_site()
+    _mock_aulas(
+        [_aula_gravada("01", "Aula 1"), _aula_gravada("PET", "Colorindo o pet")]
+    )
+    corpo = _dentro().get(_tela()).content.decode()
+    assert "PET Colorindo o pet" in corpo
+    assert 'value="PET:-1"' in corpo
+    assert 'value="01:1"' in corpo
