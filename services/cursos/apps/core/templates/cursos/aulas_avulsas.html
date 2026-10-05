@@ -3,6 +3,7 @@
 {% block faixa %}<a href="{% url 'catalogo' %}">Cursos</a><span class="onde">Aulas avulsas</span>{% endblock %}
 {% block conteudo %}
 <section class="abertura"><p class="rotulo">Meshcraft Academy</p><h1>Aulas avulsas</h1><p class="passo">Respostas diretas para dúvidas que apareceram na comunidade.</p></section>
+<article class="curso"><h2><a href="{% url 'estatico' 'pet-aula/index.html' %}">Colorindo seu primeiro pet no Blender</a></h2><p>Uma aula de teste com um coelhinho simples, passos interativos, gravação da tela e modelos para baixar.</p><p class="entrar"><a href="{% url 'estatico' 'pet-aula/index.html' %}">Praticar a colorização</a></p></article>
 {% for aula in aulas %}
 <article class="curso"><h2><a href="{% url 'aula-avulsa' aula.slug %}">{{ aula.titulo }}</a></h2>{% if aula.descricao %}<p>{{ aula.descricao|truncatechars:180 }}</p>{% endif %}<p class="entrar"><a href="{% url 'aula-avulsa' aula.slug %}">Abrir aula</a></p></article>
 {% empty %}
