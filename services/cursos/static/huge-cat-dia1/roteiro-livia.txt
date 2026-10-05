@@ -56,7 +56,7 @@ BLOCO 3 — Prova visual: revelar as formas e os materiais
 
 3:30–5:30 · estimativa
 
-NA EDIÇÃO: Demonstração real: selecionar corpo, entrar e sair do modo de edição, selecionar orelha e olho, mostrar Cor de base, conferir a vista frontal e outro ângulo. A fala pode ser gravada em câmera; a montagem cobre esse trecho com o Blender.
+NA EDIÇÃO: Demonstração real: selecionar corpo, entrar e sair do modo de edição, selecionar orelha e olho, mostrar Cor de base, conferir a vista frontal e outro ângulo. A fala pode ser gravada em câmera; a montagem cobre esse trecho com o Blender. Ao citar a comissão de aluno, inserir apenas os registros reais que o mantenedor fornecer; valor e moeda entram somente após receber os detalhes.
 
 FALA DA LÍVIA:
 
@@ -68,7 +68,9 @@ Aqui está uma orelha. Ela é uma peça separada. Aqui está o olho branco. E aq
 
 Veja o gato de frente. As duas orelhas e os dois olhos precisam conversar entre si. Agora veja de outro ângulo. O rosto precisa funcionar junto com o volume do corpo. Criar também envolve conferir.
 
-Existe trabalho profissional com modelos 3D. Mas construir um modelo, conseguir um cliente e receber por um trabalho são etapas diferentes. Neste desafio vamos começar pela habilidade que você pode praticar e mostrar: criar um projeto e apresentar o que fez.
+Existe trabalho profissional com modelos 3D. Eu já tive aluno que recebeu por uma comissão. É um caso da trajetória de um aluno, com um projeto e um cliente específicos. Vamos mostrar os registros e o contexto desse trabalho na edição.
+
+Mas construir um modelo, conseguir um cliente e receber por um trabalho são etapas diferentes. Neste desafio vamos começar pela habilidade que você pode praticar e mostrar: criar um projeto e apresentar o que fez.
 
 O Huge Cat é a nossa referência de estudo. Reproduzir esse personagem ajuda a aprender as formas; isso não significa que essa reprodução já esteja pronta para uma venda. Mais adiante, podemos usar o que você aprendeu para desenvolver personagens próprios e atender pedidos com objetivos definidos.
 
@@ -140,7 +142,7 @@ PROVAS A INSERIR QUANDO RECEBIDAS
 
 Registro autêntico da experiência de quatro anos da Lívia e, se disponível, do começo no PC da mãe. Relatos confirmados pelo mantenedor; materiais ainda não recebidos.
 
-Comissão de aluno: receber autorização de uso, contexto, objeto, valor e moeda reais antes de inserir o caso na edição. O caso fica fora da fala-base até os materiais chegarem.
+Comissão de aluno: relato confirmado pelo mantenedor e mantido na fala. Receber os registros, autorização de uso, contexto, objeto, valor e moeda reais para a inserção visual; os valores ficam fora da fala-base até os materiais chegarem.
 
 Pagamento ou saldo da Lívia: receber captura real com dados privados já ocultados antes de inserir. A montagem-base não contém tela financeira.
 
