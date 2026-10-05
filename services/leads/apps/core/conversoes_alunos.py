@@ -5,6 +5,7 @@ from django.utils.dateparse import parse_datetime
 
 from .contatos import LEAD_DE_TESTE
 from .models import Lead
+from .origem_contato import origem_do_contato
 
 
 def vinculos_comerciais(pessoas):
@@ -52,7 +53,7 @@ def vinculos_comerciais(pessoas):
                 continue
             resultado[chave] = {
                 "contato_crm_id": str(contato.pk),
-                "venda_origem": "quiz" if quiz else "trafego" if contato.utm else "crm",
+                "venda_origem": origem_do_contato(contato)["venda_origem"],
             }
             break
     return resultado

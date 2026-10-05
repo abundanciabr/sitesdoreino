@@ -5,10 +5,24 @@ import httpx
 import pytest
 import respx
 from django.test import RequestFactory
+from django.template.loader import render_to_string
 
 from apps.core import vendas_do_crm, views
 from apps.core.clients import AlunosClient
 from apps.core.placar import contar_compras
+
+
+def test_escola_mostra_origem_e_campanha_sem_perguntar_a_origem():
+    html = render_to_string("admin/escola_alunos.html", {
+        "esperando": [{"id": "1", "origem_identificada": {
+            "origem_rotulo": "Quiz", "origem_registrada": "quiz:crivo", "campanha": "instagram · entrada",
+            "contato_crm_id": "00000000-0000-4000-8000-000000000001"}}],
+        "cursos": [{"id": "curso", "name": "Curso"}], "admin": {},
+    })
+    assert "Origem identificada pelo sistema" in html
+    assert "quiz:crivo" in html and "instagram · entrada" in html
+    assert 'name="venda_origem"' not in html
+    assert 'name="nova_venda"' in html
 
 
 @pytest.mark.django_db
@@ -19,10 +33,10 @@ def test_liberar_com_a_origem_e_o_contato_conferido(monkeypatch, origem):
     monkeypatch.setattr(AlunosClient, "decidir", lambda *a, **kw: (calls.append(kw) or (AlunosClient.OK, "")))
     def contatos(pessoas):
         assert pessoas[0]["email"] == "certo@dominio.com"
-        return {"1": {"contato_crm_id": "lead-confirmado", "venda_origem": "quiz"}}
+        return {"1": {"contato_crm_id": "lead-confirmado", "venda_origem": origem or "quiz"}}
     monkeypatch.setattr(vendas_do_crm, "vinculos", contatos)
     request = RequestFactory().post("/escola/decidir", {
-        "alvo": "1", "decisao": "liberar", "product_id": "curso", "venda_origem": origem,
+        "alvo": "1", "decisao": "liberar", "product_id": "curso", "venda_origem": "forjada", "nova_venda": "1" if origem else "",
         "pessoa_email": "forjado@dominio.com", "contato_crm_id": "forjado",
     })
     request.admin = {"id": "dono", "email": "dono@dominio.com"}
@@ -38,7 +52,7 @@ def test_sem_vinculo_confirmado_nao_libera_como_venda(monkeypatch, retorno, reca
     monkeypatch.setattr(AlunosClient, "fila", lambda *a: [{"id": "1", "site_id": "site", "email": "a@dominio.com"}])
     monkeypatch.setattr(vendas_do_crm, "vinculos", lambda pessoas: retorno)
     monkeypatch.setattr(AlunosClient, "decidir", lambda *a, **kw: pytest.fail("não deveria liberar"))
-    request = RequestFactory().post("/escola/decidir", {"alvo": "1", "decisao": "liberar", "product_id": "curso", "venda_origem": "quiz"})
+    request = RequestFactory().post("/escola/decidir", {"alvo": "1", "decisao": "liberar", "product_id": "curso", "nova_venda": "1"})
     request.admin = {"id": "dono"}
     assert recado in views.escola_decidir(request).url
 

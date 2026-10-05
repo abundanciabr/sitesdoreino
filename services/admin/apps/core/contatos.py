@@ -292,6 +292,7 @@ def montar_ficha(resposta) -> dict:
         "email": _texto(resposta.get("email")),
         "telefone": _texto(resposta.get("telefone")),
         "origem": _texto(resposta.get("origem")),
+        "origem_identificada": resposta.get("origem_identificada") or {},
         "site_id": _texto(resposta.get("site_id")),
         "tags": _tags(resposta.get("tags")),
         "matriculas": [

@@ -27,7 +27,9 @@
     </section>
     <section class="cartao">
       <h2 class="titulo-de-bloco">Origem e tags</h2>
-      <p>{% if tela.origem %}{{ tela.origem }}{% else %}Origem não informada{% endif %}</p>
+      <p>{% if tela.origem_identificada %}{{ tela.origem_identificada.origem_rotulo }}{% elif tela.origem %}{{ tela.origem }}{% else %}Origem não identificada{% endif %}</p>
+      {% if tela.origem_identificada.origem_registrada %}<p class="nota">Registro de entrada: {{ tela.origem_identificada.origem_registrada }}</p>{% endif %}
+      {% if tela.origem_identificada.campanha %}<p class="nota">Tráfego / campanha: {{ tela.origem_identificada.campanha }}</p>{% endif %}
       {% if tela.tags %}<p>{% for etiqueta in tela.tags %}<a class="selo" href="{% url 'contatos' %}?tag={{ etiqueta|urlencode }}">{{ etiqueta }}</a> {% endfor %}</p>{% else %}<p class="nota">Sem tags.</p>{% endif %}
     </section>
     <section class="cartao">
@@ -45,7 +47,7 @@
     <h2 class="titulo-de-bloco">Escola</h2>
     {% for matricula in tela.matriculas %}
     <p><b>{{ matricula.situacao_nome }}</b>{% if matricula.turma %} · {{ matricula.turma }}{% endif %}{% if matricula.product_id %}<br>Curso: {{ matricula.product_id }}{% endif %}</p>
-    {% if matricula.venda_origem %}<p class="nota">Nova venda — {% if matricula.venda_origem == "quiz" %}Quiz{% elif matricula.venda_origem == "trafego" %}Tráfego{% else %}CRM / atendimento{% endif %}</p>{% endif %}
+    {% if matricula.venda_origem %}<p class="nota">Nova venda — {% if matricula.venda_origem == "quiz" %}Quiz{% elif matricula.venda_origem == "trafego" %}Tráfego{% elif matricula.venda_origem == "crm" %}CRM / atendimento{% elif matricula.venda_origem == "outros" %}Outra origem{% else %}Origem não identificada{% endif %}</p>{% endif %}
     {% endfor %}
     <a href="{% url 'escola_prontuario' %}?email={{ tela.email|urlencode }}">Abrir ficha de matrícula →</a>
   </section>

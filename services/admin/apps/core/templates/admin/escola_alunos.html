@@ -212,6 +212,20 @@
       clicado. POST com CSRF — decisão que se aplica por GET é decisão que um
       pré-carregador de link toma sozinho.
       {% endcomment %}
+        <div class="cartao">
+          <b>Origem identificada pelo sistema:</b>
+          {% if pessoa.origem_indisponivel %}
+            <p>Não foi possível consultar a origem no CRM agora.</p>
+          {% elif pessoa.origem_identificada %}
+            <p>{{ pessoa.origem_identificada.origem_rotulo }}</p>
+            {% if pessoa.origem_identificada.origem_registrada %}<p class="nota">Registro de entrada: {{ pessoa.origem_identificada.origem_registrada }}</p>{% endif %}
+            {% if pessoa.origem_identificada.campanha %}<p class="nota">Tráfego / campanha: {{ pessoa.origem_identificada.campanha }}</p>{% endif %}
+            <a href="{% url 'contato' pessoa.origem_identificada.contato_crm_id %}">Ver contato e histórico no CRM</a>
+          {% else %}
+            <p>Origem não identificada — nenhum contato correspondente encontrado no CRM.</p>
+          {% endif %}
+        </div>
+
       <form class="decidir" method="post" action="{% url 'escola_decidir' %}">
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
@@ -236,14 +250,8 @@
           <option value="{{ curso.id }}">{{ curso.name }}</option>
           {% endfor %}
         </select>
-        <label class="rotulo" for="venda-origem-{{ pessoa.id }}">Esta liberação é:</label>
-        <select id="venda-origem-{{ pessoa.id }}" name="venda_origem">
-          <option value="">Aluno antigo — outro lançamento ou plataforma</option>
-          <option value="quiz">Nova venda — Quiz</option>
-          <option value="trafego">Nova venda — Tráfego</option>
-          <option value="crm">Nova venda — CRM / atendimento</option>
-        </select>
-        <p class="nota">Marque nova venda somente com pagamento confirmado. O placar conta quem já era lead/contato do CRM antes de virar aluno. Alunos antigos e testes ficam fora.</p>
+        <label><input type="checkbox" name="nova_venda" value="1"> Confirmo que esta liberação corresponde a uma nova venda paga.</label>
+        <p class="nota">A origem vem do histórico do CRM e não é escolhida aqui. Deixe desmarcado para aluno antigo ou liberação de acesso. Testes ficam fora do placar.</p>
         <button class="sim" name="decisao" value="liberar" type="submit">Liberar</button>
         {% endif %}
         <button class="nao" name="decisao" value="recusar" type="submit">Recusar</button>
@@ -375,7 +383,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">
-        {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.venda_origem == "quiz" %}Nova venda — Quiz{% elif pessoa.venda_origem == "trafego" %}Nova venda — Tráfego{% elif pessoa.venda_origem == "crm" %}Nova venda — CRM / atendimento{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Aluno antigo — acesso liberado{% endif %}
+        {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.venda_origem == "quiz" %}Nova venda — Quiz{% elif pessoa.venda_origem == "trafego" %}Nova venda — Tráfego{% elif pessoa.venda_origem == "outros" %}Nova venda — outra origem{% elif pessoa.venda_origem == "desconhecida" %}Nova venda — origem não identificada{% elif pessoa.venda_origem == "crm" %}Nova venda — CRM / atendimento{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Aluno antigo — acesso liberado{% endif %}
         {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
         {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
         &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>

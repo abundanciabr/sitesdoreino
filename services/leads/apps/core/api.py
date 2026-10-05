@@ -16,6 +16,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from .models import Lead, TimelineEvent
+from .origem_contato import origem_do_contato
 from .contatos import LEAD_DE_TESTE, contatos_do_crm, contatos_dos_quizzes
 from .perfil import resumo_do_perfil
 from .quiz_do_lead import quizzes_do_lead
@@ -196,12 +197,16 @@ def student_commercial_links(request):
     if not _token_do_painel(request):
         return JsonResponse({"detail": "acesso restrito ao painel"}, status=403)
     try:
-        pessoas = json.loads(request.body).get("pessoas")
+        corpo = json.loads(request.body)
+        pessoas = corpo.get("pessoas")
     except (ValueError, AttributeError):
         pessoas = None
     if not isinstance(pessoas, list) or len(pessoas) > 500 or any(not isinstance(p, dict) for p in pessoas):
         return JsonResponse({"detail": "envie até 500 pessoas"}, status=422)
     from .conversoes_alunos import vinculos_comerciais
+    if corpo.get("somente_origem") is True:
+        from .origem_contato import origens_das_pessoas
+        return JsonResponse({"vinculos": origens_das_pessoas(pessoas)})
     return JsonResponse({"vinculos": vinculos_comerciais(pessoas)})
 
 
@@ -465,6 +470,7 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
             "email": lead.email,
             "telefone": lead.phone,
             "origem": lead.source,
+            "origem_identificada": origem_do_contato(lead),
             "utm": lead.utm,
             "tags": lead.tags,
             "consentimento": lead.consent,

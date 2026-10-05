@@ -795,6 +795,10 @@ def escola_alunos(request):
     # o vocabulário dela é outro (aguardando/recusada), e um `<select>` de
     # gestão aplicado ali esvaziaria a fila sempre.
     esperando_na_tela = peneirar(esperando, procurado)
+    from .vendas_do_crm import vinculos
+    origens = vinculos(esperando_na_tela or [], somente_origem=True)
+    esperando_na_tela = [dict(p, origem_identificada=(origens or {}).get(str(p.get("id"))),
+                             origem_indisponivel=origens is None) for p in (esperando_na_tela or [])] if esperando_na_tela is not None else None
 
     return render(
         request,
@@ -1434,12 +1438,10 @@ def escola_decidir(request):
         # pessoa nenhuma.
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-curso")
 
-    venda_origem = (request.POST.get("venda_origem") or "").strip() if decisao == Registro.LIBERAR else ""
+    nova_venda = decisao == Registro.LIBERAR and request.POST.get("nova_venda") == "1"
     venda = {}
-    if venda_origem:
+    if nova_venda:
         from .vendas_do_crm import vinculos
-        if venda_origem not in ("quiz", "trafego", "crm"):
-            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=origem-invalida")
         fila = AlunosClient().fila("aguardando")
         if fila is None:
             return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-deu")
@@ -1452,7 +1454,7 @@ def escola_decidir(request):
         contato = contatos.get(alvo)
         if contato is None:
             return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-contato-crm")
-        venda = {"venda_origem": venda_origem, "contato_crm_id": contato["contato_crm_id"]}
+        venda = {"venda_origem": contato["venda_origem"], "contato_crm_id": contato["contato_crm_id"]}
 
     desfecho, detalhe = AlunosClient().decidir(
         alvo=alvo,

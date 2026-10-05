@@ -6,7 +6,7 @@ from django.utils.dateparse import parse_datetime
 from .clients import LeadsClient, http
 
 
-def vinculos(pessoas):
+def vinculos(pessoas, *, somente_origem=False):
     if not pessoas:
         return {}
     cliente = LeadsClient()
@@ -20,14 +20,14 @@ def vinculos(pessoas):
                 for p in pessoas[inicio:inicio + 500]]
         try:
             resposta = http().post(
-                base + "/alunos/vinculos-comerciais", json={"pessoas": lote},
+                base + "/alunos/vinculos-comerciais", json={"pessoas": lote, "somente_origem": somente_origem},
                 headers={"Authorization": "Bearer " + token}, timeout=cliente.TIMEOUT,
             )
             resposta.raise_for_status()
             dados = resposta.json()["vinculos"]
             if not isinstance(dados, dict) or any(
                 not isinstance(v, dict) or not v.get("contato_crm_id")
-                or v.get("venda_origem") not in ("quiz", "trafego", "crm") for v in dados.values()
+                or v.get("venda_origem") not in ("quiz", "trafego", "crm", "outros", "desconhecida") for v in dados.values()
             ):
                 return None
             encontrados.update(dados)

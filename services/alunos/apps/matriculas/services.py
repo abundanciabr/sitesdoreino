@@ -423,7 +423,7 @@ def decidir_na_fila(
     if decisao == "liberar" and not product_id:
         return None, "sem-curso"
     if decisao == "liberar" and (
-        venda_origem not in ("", "quiz", "trafego", "crm")
+        venda_origem not in ("", "quiz", "trafego", "crm", "outros", "desconhecida")
         or (venda_origem and not contato_crm_id)
     ):
         return None, "sem-contato-crm"

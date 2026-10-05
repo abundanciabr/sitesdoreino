@@ -615,7 +615,7 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
                             ],
                             "description": "OBRIGATORIO quando decisao=recusar (422 sem ele).",
                         },
-                        "venda_origem": {"type": "string", "enum": ["", "quiz", "trafego", "crm"]},
+                        "venda_origem": {"type": "string", "enum": ["", "quiz", "trafego", "crm", "outros", "desconhecida"]},
                         "contato_crm_id": {"type": "string"},
                         "product_id": {
                             "type": [
