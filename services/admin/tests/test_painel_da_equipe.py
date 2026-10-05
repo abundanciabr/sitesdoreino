@@ -50,6 +50,12 @@ DE_FORA = "estranho@exemplo.com"
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    # Estas fichas simulam contatos comerciais previamente conferidos.
+    def contatos_confirmados(pessoas):
+        for n, pessoa in enumerate(pessoas):
+            pessoa.setdefault("id", str(n))
+        return {str(p["id"]): {"contato_crm_id": str(p["id"]), "venda_origem": "crm"} for p in pessoas}
+    monkeypatch.setattr("apps.core.vendas_do_crm.vinculos", contatos_confirmados)
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-admin")
     settings.ADMIN_EMAILS = DONO

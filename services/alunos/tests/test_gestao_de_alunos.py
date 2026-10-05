@@ -49,6 +49,8 @@ CHAVES = {
     "product_id",
     "criada_em",
     "virou_aluno_em",
+    "venda_origem",
+    "contato_crm_id",
 }
 
 

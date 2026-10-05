@@ -236,6 +236,14 @@
           <option value="{{ curso.id }}">{{ curso.name }}</option>
           {% endfor %}
         </select>
+        <label class="rotulo" for="venda-origem-{{ pessoa.id }}">Esta liberação é:</label>
+        <select id="venda-origem-{{ pessoa.id }}" name="venda_origem">
+          <option value="">Aluno antigo — outro lançamento ou plataforma</option>
+          <option value="quiz">Nova venda — Quiz</option>
+          <option value="trafego">Nova venda — Tráfego</option>
+          <option value="crm">Nova venda — CRM / atendimento</option>
+        </select>
+        <p class="nota">Marque nova venda somente com pagamento confirmado. O placar conta quem já era lead/contato do CRM antes de virar aluno. Alunos antigos e testes ficam fora.</p>
         <button class="sim" name="decisao" value="liberar" type="submit">Liberar</button>
         {% endif %}
         <button class="nao" name="decisao" value="recusar" type="submit">Recusar</button>
@@ -367,7 +375,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">
-        {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Você liberou{% endif %}
+        {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.venda_origem == "quiz" %}Nova venda — Quiz{% elif pessoa.venda_origem == "trafego" %}Nova venda — Tráfego{% elif pessoa.venda_origem == "crm" %}Nova venda — CRM / atendimento{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Aluno antigo — acesso liberado{% endif %}
         {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
         {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
         &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>

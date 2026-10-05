@@ -639,7 +639,8 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         # UMA leitura de cada porta por requisição: a contagem, a restrição, a
         # direção e os doze olham as MESMAS listas, senão discordariam entre si
         # por um segundo de diferença.
-        alunos = cliente.alunos()
+        from .vendas_do_crm import para_o_placar
+        alunos = para_o_placar(cliente.alunos())
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
         contagem = contar_compras(alunos, partida_em, hoje)

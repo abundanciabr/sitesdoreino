@@ -210,6 +210,8 @@ class Matricula(models.Model):
     provider = models.CharField(max_length=32, blank=True, default="")
     provider_reference_id = models.CharField(max_length=128, blank=True, default="")
     em_teste = models.BooleanField(default=False)
+    venda_origem = models.CharField(max_length=16, blank=True, default="")
+    contato_crm_id = models.CharField(max_length=64, blank=True, default="")
     email = models.EmailField()
     name = models.CharField(max_length=255)
     status = models.CharField(
@@ -272,6 +274,8 @@ class Matricula(models.Model):
         """
         if self.em_teste:
             return "teste"
+        if self.venda_origem and self.contato_crm_id:
+            return "comprou"
         if self.order_id.startswith(self.PREFIXO_DA_FILA):
             return "liberado"
         if self.order_id.startswith(self.PREFIXO_ADMINISTRATIVO):

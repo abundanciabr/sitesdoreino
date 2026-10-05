@@ -543,6 +543,8 @@ class AlunosClient:
         decidido_por: str,
         motivo: str = "",
         product_id: str = "",
+        venda_origem: str = "",
+        contato_crm_id: str = "",
     ) -> "tuple[str, str]":
         """Libera ou recusa quem está na fila. Devolve `(desfecho, detalhe)`.
 
@@ -565,6 +567,9 @@ class AlunosClient:
             corpo["motivo"] = motivo
         if product_id:
             corpo["product_id"] = product_id
+        if venda_origem and decisao == "liberar":
+            corpo["venda_origem"] = venda_origem
+            corpo["contato_crm_id"] = contato_crm_id
 
         try:
             r = http().post(

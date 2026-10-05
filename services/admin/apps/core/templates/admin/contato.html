@@ -45,6 +45,7 @@
     <h2 class="titulo-de-bloco">Escola</h2>
     {% for matricula in tela.matriculas %}
     <p><b>{{ matricula.situacao_nome }}</b>{% if matricula.turma %} · {{ matricula.turma }}{% endif %}{% if matricula.product_id %}<br>Curso: {{ matricula.product_id }}{% endif %}</p>
+    {% if matricula.venda_origem %}<p class="nota">Nova venda — {% if matricula.venda_origem == "quiz" %}Quiz{% elif matricula.venda_origem == "trafego" %}Tráfego{% else %}CRM / atendimento{% endif %}</p>{% endif %}
     {% endfor %}
     <a href="{% url 'escola_prontuario' %}?email={{ tela.email|urlencode }}">Abrir ficha de matrícula →</a>
   </section>

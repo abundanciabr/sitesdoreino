@@ -615,6 +615,8 @@ _DECIDE_PRE_ENROLLMENT_OPENAPI = {
                             ],
                             "description": "OBRIGATORIO quando decisao=recusar (422 sem ele).",
                         },
+                        "venda_origem": {"type": "string", "enum": ["", "quiz", "trafego", "crm"]},
+                        "contato_crm_id": {"type": "string"},
                         "product_id": {
                             "type": [
                                 "string",
@@ -842,7 +844,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
     payload, erro = _payload_valido(
         request.body,
         obrigatorias={"decisao", "decidido_por"},
-        opcionais={"motivo", "product_id"},
+        opcionais={"motivo", "product_id", "venda_origem", "contato_crm_id"},
     )
     if erro is not None:
         return erro
@@ -870,7 +872,11 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
         motivo=motivo,
         product_id=product_id,
         destinatario_id=_para_quem_avisar(id),
+        venda_origem=str(payload.get("venda_origem") or "").strip(),
+        contato_crm_id=str(payload.get("contato_crm_id") or "").strip(),
     )
+    if resultado == "sem-contato-crm":
+        return JsonResponse({"detail": "nova venda exige origem e contato do CRM"}, status=422)
     if resultado == "sem-curso":
         # A frase diz o que faltou E o que fazer: quem lê este 422
         # é a tela de liberar do painel, e o mantenedor precisa entender o que
@@ -1499,6 +1505,8 @@ _LIST_ALL_ENROLLMENTS_OPENAPI = {
                                     "enum": ["comprou", "liberado", "administrativo", "teste"],
                                     "description": _D1,
                                 },
+                                "venda_origem": {"type": "string"},
+                                "contato_crm_id": {"type": "string"},
                                 "product_id": {"type": "string"},
                                 "criada_em": {"type": "string", "format": "date-time"},
                                 "virou_aluno_em": {
@@ -1602,6 +1610,8 @@ _UPDATE_ENROLLMENT_OPENAPI = {
                                 "enum": ["comprou", "liberado", "administrativo", "teste"],
                                 "description": _D2,
                             },
+                                "venda_origem": {"type": "string"},
+                                "contato_crm_id": {"type": "string"},
                             "criada_em": {"type": "string", "format": "date-time"},
                         },
                     }

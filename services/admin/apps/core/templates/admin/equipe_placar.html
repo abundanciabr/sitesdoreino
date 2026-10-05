@@ -24,9 +24,9 @@
         <p class="aviso borda-amarela"><b>O número não aparece:</b> falta o cartão dele no placar. Nada aqui está quebrado por sua causa.</p>
       {% else %}
         <p class="pergunta">{{ meta.pergunta }}</p>
-        <p class="nota">Somente compras reais confirmadas pelo site. Compras de teste, liberações manuais e reembolsos não entram.</p>
+        <p class="nota">Somente novas vendas confirmadas de leads/contatos do CRM que viraram alunos, por quiz, tráfego ou atendimento. Alunos antigos, compras de teste e reembolsos não entram.</p>
         {% if placar.veredito == "nao-consigo-contar" %}
-          <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu{% if contagem.campo_ausente %} com a data e a origem de cada compra{% endif %}. Isto não é zero: abra de novo daqui a pouco.</p>
+          <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> Não consegui conferir as matrículas e seus contatos no CRM{% if contagem.campo_ausente %} com a data e a origem de cada compra{% endif %}. Isto não é zero: abra de novo daqui a pouco.</p>
         {% else %}
           <div class="valor">{{ placar.x }}{% if placar.alvo is not None %} <span>de {{ placar.alvo }} {{ meta.unidade }}</span>{% endif %}</div>
           {% if placar.alvo is not None %}

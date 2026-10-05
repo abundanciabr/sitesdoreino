@@ -191,6 +191,20 @@ def _token_do_painel(request) -> bool:
     return bool(token) and request.auth == token
 
 
+@router.post("/alunos/vinculos-comerciais", operation_id="studentCommercialLinks")
+def student_commercial_links(request):
+    if not _token_do_painel(request):
+        return JsonResponse({"detail": "acesso restrito ao painel"}, status=403)
+    try:
+        pessoas = json.loads(request.body).get("pessoas")
+    except (ValueError, AttributeError):
+        pessoas = None
+    if not isinstance(pessoas, list) or len(pessoas) > 500 or any(not isinstance(p, dict) for p in pessoas):
+        return JsonResponse({"detail": "envie até 500 pessoas"}, status=422)
+    from .conversoes_alunos import vinculos_comerciais
+    return JsonResponse({"vinculos": vinculos_comerciais(pessoas)})
+
+
 @router.post("/alunos/sincronizar", operation_id="syncStudentContacts")
 def sincronizar_alunos(request):
     if not _token_do_painel(request):

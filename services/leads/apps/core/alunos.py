@@ -56,6 +56,8 @@ def sincronizar_matricula(matricula):
             "product_id",
             "turma",
             "origem",
+            "venda_origem",
+            "contato_crm_id",
             "criada_em",
             "virou_aluno_em",
         )

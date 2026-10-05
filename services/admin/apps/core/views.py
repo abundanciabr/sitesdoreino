@@ -1278,6 +1278,9 @@ def escola_resetar_senha(request):
 #: querystring, e não em `messages`, porque `django.contrib.messages` precisa de
 #: sessão — e esta célula não assina sessão nenhuma, de propósito:.
 RECADOS = {
+    "sem-contato-crm": "Não encontrei um contato comercial anterior para este e-mail no CRM. Confira o e-mail do contato antes de marcar nova venda; aluno antigo pode ser liberado normalmente.",
+    "crm-indisponivel": "Não consegui conferir o contato no CRM agora. A liberação como nova venda não foi feita; tente novamente.",
+    "origem-invalida": "Escolha a origem da nova venda: quiz, tráfego ou CRM.",
     "liberado": "Pronto: a pessoa foi liberada e já entra na área de alunos.",
     # [A MAO] Os quatro desfechos do cadastro à mão. O terceiro é o que importa:
     # quando a liberação falha, a tela diz ONDE a pessoa ficou, em vez de um
@@ -1431,6 +1434,26 @@ def escola_decidir(request):
         # pessoa nenhuma.
         return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-curso")
 
+    venda_origem = (request.POST.get("venda_origem") or "").strip() if decisao == Registro.LIBERAR else ""
+    venda = {}
+    if venda_origem:
+        from .vendas_do_crm import vinculos
+        if venda_origem not in ("quiz", "trafego", "crm"):
+            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=origem-invalida")
+        fila = AlunosClient().fila("aguardando")
+        if fila is None:
+            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-deu")
+        pessoa = next((p for p in fila if str(p.get("id")) == alvo), None)
+        if pessoa is None:
+            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+        contatos = vinculos([pessoa])
+        if contatos is None:
+            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=crm-indisponivel")
+        contato = contatos.get(alvo)
+        if contato is None:
+            return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-contato-crm")
+        venda = {"venda_origem": venda_origem, "contato_crm_id": contato["contato_crm_id"]}
+
     desfecho, detalhe = AlunosClient().decidir(
         alvo=alvo,
         decisao=decisao,
@@ -1443,6 +1466,7 @@ def escola_decidir(request):
         # o id, não.
         decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
         motivo=motivo,
+        **venda,
     )
 
     Registro.objects.create(

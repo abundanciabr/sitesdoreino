@@ -120,7 +120,8 @@ def ciclo(request):
     colunas do que houve dizem que não deu para perguntar."""
     meta, recusas = ler_cartao(CARTAO_DA_META, diretorio_dos_cartoes())
     faixas = semanas_do_ciclo(meta) if meta else []
-    reais = contar_por_semana(AlunosClient().alunos(), faixas) if faixas else None
+    from .vendas_do_crm import para_o_placar
+    reais = contar_por_semana(para_o_placar(AlunosClient().alunos()), faixas) if faixas else None
     hoje = timezone.localdate()
     return render(
         request,

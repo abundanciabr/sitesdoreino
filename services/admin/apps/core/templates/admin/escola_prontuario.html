@@ -83,7 +83,7 @@ aconteceu.
     <div class="cartao">
       <div class="rotulo">{{ p.estado_na_tela }}</div>
       <div class="nota">
-        {% if p.origem == "teste" %}Compra de teste{% elif p.origem == "administrativo" %}Matrícula feita por você{% elif p.origem == "liberado" %}Você liberou{% else %}Comprou pelo site{% endif %}
+        {% if p.origem == "teste" %}Compra de teste{% elif p.venda_origem == "quiz" %}Nova venda — Quiz{% elif p.venda_origem == "trafego" %}Nova venda — Tráfego{% elif p.venda_origem == "crm" %}Nova venda — CRM / atendimento{% elif p.origem == "administrativo" %}Matrícula feita por você{% elif p.origem == "liberado" %}Aluno antigo — acesso liberado{% else %}Comprou pelo site{% endif %}
         &middot; escola: {{ p.site_id }}
       </div>
       <div class="nota">

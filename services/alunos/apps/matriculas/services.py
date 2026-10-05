@@ -379,6 +379,8 @@ def decidir_na_fila(
     motivo: str = "",
     product_id: str = "",
     destinatario_id: str = "",
+    venda_origem: str = "",
+    contato_crm_id: str = "",
 ) -> tuple[Matricula | None, str]:
     """[FILA] Liberar ou recusar quem está na fila.
 
@@ -420,6 +422,11 @@ def decidir_na_fila(
     """
     if decisao == "liberar" and not product_id:
         return None, "sem-curso"
+    if decisao == "liberar" and (
+        venda_origem not in ("", "quiz", "trafego", "crm")
+        or (venda_origem and not contato_crm_id)
+    ):
+        return None, "sem-contato-crm"
 
     with transaction.atomic():
         try:
@@ -449,6 +456,8 @@ def decidir_na_fila(
         # Recusa não grava curso — quem foi recusado não é aluno de nada.
         if liberou:
             linha.product_id = product_id
+            linha.venda_origem = venda_origem
+            linha.contato_crm_id = contato_crm_id if venda_origem else ""
         linha.save(
             update_fields=[
                 "status",
@@ -456,6 +465,8 @@ def decidir_na_fila(
                 "decidido_por",
                 "motivo_recusa",
                 "product_id",
+                "venda_origem",
+                "contato_crm_id",
             ]
         )
 
@@ -678,6 +689,8 @@ def como_o_painel_ve(matricula: Matricula, nomes_de_turma=None) -> dict:
         # MODELO desde 05/09/2026, porque o evento `matricula.situacao-alterada`
         # tambem a le: duas derivacoes discordariam no primeiro backfill.
         "origem": matricula.origem(),
+        "venda_origem": matricula.venda_origem,
+        "contato_crm_id": matricula.contato_crm_id,
         "criada_em": matricula.enrolled_at.isoformat(),
         "virou_aluno_em": matricula.virou_aluno_em(),
     }
