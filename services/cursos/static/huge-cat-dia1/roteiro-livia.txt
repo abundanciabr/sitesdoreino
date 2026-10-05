@@ -1,6 +1,6 @@
 Dia 1 — Do Huge Cat ao seu primeiro projeto 3D
 
-Gravar os seis blocos separados, na horizontal. Ler somente o campo Fala. As indicações de edição não são faladas. Deixar dois segundos de silêncio antes e depois de cada bloco. A Lívia não precisa operar o Blender durante a gravação: as demonstrações reais já foram preparadas.
+Gravar os seis blocos separados, na horizontal. Montagem final em 1920×1200. Ler somente o campo Fala. As indicações de edição não são faladas. Deixar dois segundos de silêncio antes e depois de cada bloco. A Lívia não precisa operar o Blender: as demonstrações reais já foram preparadas. Enviar os arquivos originais da câmera, sem reduzir a resolução.
 
 Roteiro e montagem-base preparados. Faltam a gravação real da Lívia e as provas que o mantenedor confirmou que fornecerá.
 
@@ -10,13 +10,15 @@ BLOCO 1 — Gancho: existe trabalho por trás do jogo
 
 0:00–1:15 · estimativa
 
-NA EDIÇÃO: Abrir com 3 segundos do modelo no Blender. Corte para a Lívia. Voltar ao gato quando ela disser 'Esse aqui é o nosso projeto'. Selo DIA 1 DE 7.
+NA EDIÇÃO: Abrir com 3 segundos do modelo no Blender. Corte para a Lívia. Voltar ao gato quando ela disser 'Esse aqui é o nosso projeto'. Selo DIA 1 DE 7. O pagamento ou saldo entra somente com a captura real fornecida; não simular números nem uma conta financeira.
 
 FALA DA LÍVIA:
 
-Enquanto você passa horas indo e voltando do trabalho, tem gente trabalhando de casa com coisas que aparecem em jogos. Personagens, cenários, acessórios. Coisas que, olhando de fora, parecem só um joguinho.
+Enquanto você tá preso no trânsito, tem gente ganhando em dólar de casa. Com um joguinho de criança.
 
-Eu sou a Lívia. Trabalho com esse universo há quatro anos. E quero te mostrar o que existe entre gostar de um jogo e conseguir criar alguma coisa para ele.
+Isso que você acabou de ouvir não é hype. É literalmente o que eu vivo há quatro anos.
+
+Sou a Lívia. E nos próximos dias eu vou te mostrar, passo a passo, como sair de nunca ter aberto um programa de modelagem 3D até construir o seu primeiro projeto. É uma jornada de sete dias. E no fim dela, você vai ter uma coisa que hoje não tem: prova de que consegue.
 
 Você lembra do Huge Cat do Pet Simulator X? Esse gato em formato de bloco, com orelhas pontudas e olhos enormes? Esse aqui é o nosso projeto do desafio. Vamos recriar sua aparência como exercício de estudo no Blender.
 
@@ -90,9 +92,9 @@ Esse é o Dia 1 de 7. Hoje você conhece o projeto e reconhece suas partes.
 
 No Dia 2, começamos pelo corpo em formato de bloco e pelos primeiros movimentos no Blender. No Dia 3, entram as orelhas e as patinhas. No Dia 4, trabalhamos os olhos e a expressão do rosto.
 
-No Dia 5, aplicamos e conferimos os materiais. No Dia 6, testamos o modelo de diferentes ângulos, organizamos o arquivo e vemos a exportação. No Dia 7, preparamos a apresentação do projeto.
+No Dia 5, aplicamos e conferimos os materiais. Essa é a nossa meta para terminar o modelo. No Dia 6, testamos o modelo de diferentes ângulos, organizamos o arquivo e vemos a exportação. No Dia 7, preparamos a apresentação do projeto.
 
-São sete dias de prática, no seu ritmo. Se você precisar repetir uma etapa, repita. O arquivo salvo é o que permite continuar de onde parou.
+A meta é terminar o modelo em até cinco dias; os dois seguintes completam a jornada com teste e apresentação. São sete dias de prática, no seu ritmo. Se você precisar repetir uma etapa, repita. O arquivo salvo é o que permite continuar de onde parou.
 
 No final, eu quero que você consiga olhar para o seu modelo e dizer: eu construí isso, sei quais são as partes e consigo mostrar o resultado.
 
@@ -106,13 +108,15 @@ NA EDIÇÃO: Lívia em câmera. Tela da meta em seguida. Mostrar os comentários
 
 FALA DA LÍVIA:
 
-Agora eu quero que você transforme essa vontade em uma tarefa concreta.
+Esse é o bloco mais importante do vídeo inteiro. E eu preciso que você faça isso agora, não depois.
 
-Nos comentários desta aula, escreva: 'Minha meta é terminar meu modelo em sete dias de prática'. Se você já sabe quando pode começar, acrescente a data ou o horário que vai reservar para a primeira etapa.
+Comenta aqui embaixo, agora: 'Eu vou ter meu primeiro item pronto em até 5 dias'. Neste desafio, isso significa terminar o nosso modelo de estudo. Nos dois dias seguintes, vamos conferir, organizar e apresentar esse projeto.
 
-Pode ser um período pequeno, mas escolha um período que realmente cabe na sua rotina. O importante é conseguir voltar ao projeto.
+Escolha quando vai começar e reserve um período que realmente cabe na sua rotina. Se precisar repetir uma etapa, repita. O importante é conseguir voltar ao projeto.
 
-Se quiser fazer com alguém, convide essa pessoa para acompanhar o desafio. Vocês podem comparar o que aprenderam e ajudar um ao outro a encontrar o próximo passo.
+E mostra esse desafio para uma pessoa que também quer aprender uma habilidade nova. Desafia ela a fazer isso com você. Vocês podem comparar o que aprenderam e ajudar um ao outro a encontrar o próximo passo.
+
+Eu vou responder pessoalmente os primeiros comentários com a meta. Então escreve agora, enquanto tá assistindo.
 
 Hoje você não precisa modelar o gato inteiro. Faça a prática da página para reconhecer o corpo, as orelhas, os olhos e os materiais. Depois, confira se o Blender abre no seu computador.
 
@@ -130,7 +134,7 @@ FALA DA LÍVIA:
 
 Na próxima aula, vamos começar pelo primeiro bloco. Vou te mostrar como preparar o ambiente e transformar uma forma simples no corpo do nosso gato.
 
-Também vamos organizar uma dúvida que aparece cedo: onde o Blender termina e onde o Roblox Studio entra? E por que criar um pet para uma experiência é diferente de publicar um acessório para avatar no Marketplace?
+Também vou te explicar o que é o Programa UGC do Roblox e organizar uma dúvida que aparece cedo: onde o Blender termina e onde o Roblox Studio entra? E por que criar um pet para uma experiência é diferente de publicar um acessório para avatar no Marketplace?
 
 Você não precisa resolver tudo isso hoje. Primeiro, vamos construir e entender o nosso projeto.
 
@@ -146,6 +150,14 @@ Comissão de aluno: relato confirmado pelo mantenedor e mantido na fala. Receber
 
 Pagamento ou saldo da Lívia: receber captura real com dados privados já ocultados antes de inserir. A montagem-base não contém tela financeira.
 
+Se forem usados os exemplos de 20, 50 e 900 dólares, receber os registros de cada caso e seu contexto. Não inserir uma expectativa de rendimento nem atribuir um desses valores a este modelo de estudo.
+
 
 
 Depois de receber as provas, gravar separadamente: 'Neste caso específico, o aluno fez [trabalho real] para [tipo de cliente] e recebeu [valor e moeda comprovados]. É um exemplo daquele trabalho, não uma previsão do que você vai receber com este exercício.' Substituir todos os campos antes da gravação.
+
+
+
+Material de produção: `https://meshcraft.top/cursos/producao/huge-cat-dia1/`
+
+Roteiro: `https://meshcraft.top/cursos/static/huge-cat-dia1/roteiro-livia.txt`

@@ -749,6 +749,7 @@ def _video_por_url(video_url: str) -> dict:
     )
     praticas = {f"/cursos/static/{pasta}/index.html": pasta for pasta in PRATICAS}
     praticas["/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4"] = "huge-cat-dia1"
+    praticas["/cursos/static/huge-cat-dia1/demonstracao-1920x1200.mp4"] = "huge-cat-dia1"
     pratica = praticas.get(urlsplit(url).path)
     interativa = (
         pratica is not None
@@ -1475,7 +1476,7 @@ def producao_huge_cat(request):
     roteiro = json.loads((pasta / "roteiro-livia.json").read_text(encoding="utf-8"))
     return render(request, "cursos/producao_huge_cat.html", {
         "roteiro": roteiro,
-        "video": _video_por_url("https://meshcraft.top/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4"),
+        "video": _video_por_url("https://meshcraft.top/cursos/static/huge-cat-dia1/demonstracao-1920x1200.mp4"),
         "telas": [(f"huge-cat-dia1/tela-{numero:02d}-{nome}.png", titulo) for numero, nome, titulo in [
             (1, "projeto", "O projeto"), (2, "comeco", "O ponto de partida"),
             (3, "caminho", "O caminho da criação"), (4, "dias", "Os sete dias"),

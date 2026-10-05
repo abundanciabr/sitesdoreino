@@ -1,44 +1,32 @@
 DIA 1 — HUGE CAT: PROJETO DE ESTUDO
 
-Referência: aparência do Huge Cat de Pet Simulator X, enviada pelo mantenedor.
-Este modelo foi reconstruído no Blender. Não é um arquivo extraído do jogo.
-O exercício não representa venda, pagamento ou contratação.
+Referência: aparência do Huge Cat de Pet Simulator X enviada pelo mantenedor.
+O modelo foi reconstruído no Blender, com partes separadas. O exercício não representa venda, pagamento ou contratação.
+Hoje: reconhecer as partes e conferir o Blender. Não é necessário modelar tudo.
 
-HOJE
-Reconheça corpo, orelhas, olhos e materiais. Você não precisa modelar tudo.
-Abra o Blender no seu computador. Arquivo → Abrir… → huge-cat-estudo.blend.
-Selecione as peças pela lista à direita. Veja os nomes e os três materiais.
-Salve uma cópia com Arquivo → Salvar como, sem sobrescrever o arquivo de estudo.
-Se precisar usar um computador mais lento, fique na visualização sólida.
+Abra o Blender: Arquivo → Abrir… → huge-cat-estudo-1920x1200.blend.
+Selecione corpo, orelha e olho na lista à direita. Confira Cor de base.
+Use Arquivo → Salvar como para guardar sua própria cópia.
+O arquivo inicial mostra só o corpo e preserva as outras peças ocultas.
+O GLB foi conferido no Blender; ainda não foi testado no Roblox Studio.
 
-ARQUIVOS
-huge-cat-estudo.blend: modelo completo, partes separadas, materiais e cena.
-huge-cat-inicio.blend: corpo visível; outras peças preservadas e ocultas.
-huge-cat-estudo.glb: exportação do modelo, conferida no Blender.
-O teste gravado foi no Blender 3.6.23; o modelo ainda não foi testado no Roblox Studio.
+META E PLANO
+“Eu vou ter meu primeiro item pronto em até 5 dias.”
+Pronto, aqui, significa terminar o modelo de estudo; dias 6 e 7 completam teste e apresentação.
+1. Reconhecer o projeto. 2. Corpo. 3. Orelhas e patinhas. 4. Olhos e expressão.
+5. Materiais. 6. Teste, organização e exportação. 7. Apresentação.
+Plano da série; as aulas serão publicadas por etapa.
 
-PLANO DOS SETE DIAS
-1. Reconhecer o projeto e conferir o ambiente.
-2. Corpo e primeiros movimentos.
-3. Orelhas e patinhas.
-4. Olhos e expressão.
-5. Materiais.
-6. Teste visual, organização e exportação.
-7. Apresentação.
-Este é o plano da série, não a indicação de que todas as aulas já estão publicadas.
+PRODUÇÃO
+Ações reais gravadas no Blender 3.6.23, em português, 1920×1200 nativos.
+Interface ampliada antes da captura; sem ampliar um vídeo menor.
+Títulos 48 px; instruções 34 px. Montagem-base sem voz, aguardando os takes reais da Lívia e as provas fornecidas pelo mantenedor.
 
-PARA A LÍVIA E A EDIÇÃO
-A demonstração contém ações reais na interface em português, com 1366×768 nativos.
-O vídeo não tem áudio. A montagem-base reserva os seis blocos para a gravação real.
-Grave os takes na horizontal, lendo somente as falas do roteiro.
-Não existem registros financeiros ou depoimentos fabricados neste material.
-As provas e os takes reais serão inseridos quando fornecidos pelo mantenedor.
-
-ENDEREÇOS COMPLETOS
-Preparação nativa no site: `https://meshcraft.top/cursos/producao/huge-cat-dia1/`
-Modelo completo: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-estudo.blend`
-Arquivo inicial: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-inicio.blend`
-Exportação: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-estudo.glb`
-Demonstração: `https://meshcraft.top/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4`
-Montagem-base: `https://meshcraft.top/cursos/static/huge-cat-dia1/montagem-base-1366x768.mp4`
+ENDEREÇOS
+Curso: `https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/`
+Produção: `https://meshcraft.top/cursos/producao/huge-cat-dia1/`
+Modelo: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-estudo-1920x1200.blend`
+Inicial: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-inicio-1920x1200.blend`
+GLB: `https://meshcraft.top/cursos/static/huge-cat-dia1/huge-cat-estudo.glb`
 Roteiro: `https://meshcraft.top/cursos/static/huge-cat-dia1/roteiro-livia.txt`
+Estudos: `https://meshcraft.top/cursos/static/huge-cat-dia1/arquivos-de-estudo.zip`

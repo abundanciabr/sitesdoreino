@@ -34,7 +34,7 @@
   }
   function render(reply = '') {
     const s = complete ? data.final : steps[step];
-    $('counter').textContent = complete ? 'Prática concluída · 5 etapas' : `Etapa ${s.stage} de 5${data.width === 1366 && s.stage === 2 ? ' · partes e materiais' : ''}`;
+    $('counter').textContent = complete ? 'Prática concluída · 5 etapas' : `Etapa ${s.stage} de 5${s.stage === 2 && steps.filter(item => item.stage === 2).length > 1 ? ' · partes e materiais' : ''}`;
     $('progress').value = complete ? 5 : s.stage - 1;
     $('title').textContent = s.title; $('instruction').textContent = s.text;
     $('screen').src = base + s.image; $('screen').alt = s.title + ' — captura real do Blender em português';

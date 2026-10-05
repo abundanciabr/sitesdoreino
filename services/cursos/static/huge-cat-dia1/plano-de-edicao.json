@@ -1,96 +1,96 @@
 {
   "resolucao": [
-    1366,
-    768
+    1920,
+    1200
   ],
   "audio": "aguardando gravação real da Lívia",
   "duracao_base": 465,
   "demonstracao": [
     {
       "inicio_demo": 0,
-      "duracao": 18,
-      "original_de": 36,
-      "original_ate": 54,
+      "duracao": 14,
+      "original_de": 10,
+      "original_ate": 24,
       "tela": "1. Corpo em formato de bloco",
       "legenda": "O contorno laranja mostra a peça selecionada."
     },
     {
-      "inicio_demo": 18,
-      "duracao": 18,
-      "original_de": 68,
-      "original_ate": 86,
+      "inicio_demo": 14,
+      "duracao": 10,
+      "original_de": 24,
+      "original_ate": 34,
       "tela": "2. Por dentro da forma",
-      "legenda": "Modo de edição: pontos e arestas do corpo."
+      "legenda": "Tab: entrar e sair do modo de edição."
     },
     {
-      "inicio_demo": 36,
-      "duracao": 9,
-      "original_de": 95,
-      "original_ate": 104,
+      "inicio_demo": 24,
+      "duracao": 10,
+      "original_de": 39,
+      "original_ate": 49,
       "tela": "3. Orelha separada",
       "legenda": "Uma forma simples ajuda a reconhecer o gato."
     },
     {
-      "inicio_demo": 45,
-      "duracao": 11,
-      "original_de": 103,
-      "original_ate": 114,
+      "inicio_demo": 34,
+      "duracao": 10,
+      "original_de": 48,
+      "original_ate": 58,
       "tela": "4. Olho branco",
       "legenda": "Olho e pupila são peças diferentes."
     },
     {
-      "inicio_demo": 56,
-      "duracao": 15,
-      "original_de": 150,
-      "original_ate": 165,
+      "inicio_demo": 44,
+      "duracao": 12,
+      "original_de": 58,
+      "original_ate": 70,
       "tela": "5. Material do corpo",
       "legenda": "À direita: Superfície → Cor de base."
     },
     {
-      "inicio_demo": 71,
+      "inicio_demo": 56,
       "duracao": 10,
-      "original_de": 165,
-      "original_ate": 175,
+      "original_de": 70,
+      "original_ate": 80,
       "tela": "6. Conferir a cor",
       "legenda": "O seletor mostra a cor do material cinza."
     },
     {
-      "inicio_demo": 81,
-      "duracao": 17,
-      "original_de": 194,
-      "original_ate": 211,
+      "inicio_demo": 66,
+      "duracao": 15,
+      "original_de": 90,
+      "original_ate": 105,
       "tela": "7. Conferir de frente",
-      "legenda": "Observe a posição das orelhas e dos olhos."
+      "legenda": "Teclado numérico 1: veja orelhas, olhos e patinhas."
     },
     {
-      "inicio_demo": 98,
-      "duracao": 10,
-      "original_de": 211,
-      "original_ate": 221,
+      "inicio_demo": 81,
+      "duracao": 20,
+      "original_de": 106,
+      "original_ate": 126,
       "tela": "8. Conferir outro ângulo",
-      "legenda": "O personagem também precisa funcionar em volume."
+      "legenda": "Teclado numérico 6 e 8: veja o volume."
     },
     {
-      "inicio_demo": 108,
-      "duracao": 19,
-      "original_de": 223,
-      "original_ate": 242,
+      "inicio_demo": 101,
+      "duracao": 12,
+      "original_de": 126,
+      "original_ate": 138,
       "tela": "9. Apresentar o resultado",
       "legenda": "Corpo, orelhas, olhos, rosto e patinhas juntos."
     },
     {
-      "inicio_demo": 127,
-      "duracao": 11,
-      "original_de": 242,
-      "original_ate": 253,
+      "inicio_demo": 113,
+      "duracao": 10,
+      "original_de": 138,
+      "original_ate": 148,
       "tela": "10. Salvar o projeto",
       "legenda": "Ctrl + S salva o arquivo para a próxima etapa."
     },
     {
-      "inicio_demo": 138,
-      "duracao": 12,
-      "original_de": 253,
-      "original_ate": 265,
+      "inicio_demo": 123,
+      "duracao": 14,
+      "original_de": 148,
+      "original_ate": 162,
       "tela": "11. Abrir no seu computador",
       "legenda": "Use Arquivo → Abrir… e escolha o arquivo .blend."
     }
@@ -100,8 +100,8 @@
       "numero": 1,
       "titulo": "Gancho: existe trabalho por trás do jogo",
       "tempo": "0:00–1:15 · estimativa",
-      "tela": "Abrir com 3 segundos do modelo no Blender. Corte para a Lívia. Voltar ao gato quando ela disser 'Esse aqui é o nosso projeto'. Selo DIA 1 DE 7.",
-      "fala": "Enquanto você passa horas indo e voltando do trabalho, tem gente trabalhando de casa com coisas que aparecem em jogos. Personagens, cenários, acessórios. Coisas que, olhando de fora, parecem só um joguinho.\n\nEu sou a Lívia. Trabalho com esse universo há quatro anos. E quero te mostrar o que existe entre gostar de um jogo e conseguir criar alguma coisa para ele.\n\nVocê lembra do Huge Cat do Pet Simulator X? Esse gato em formato de bloco, com orelhas pontudas e olhos enormes? Esse aqui é o nosso projeto do desafio. Vamos recriar sua aparência como exercício de estudo no Blender.\n\nNos próximos sete dias de prática, você vai aprender a construir o corpo, montar as partes, fazer o rosto, aplicar as cores e apresentar o resultado. O objetivo é terminar com um modelo que você mesma criou e sabe explicar.\n\nHoje você não precisa saber modelar. Precisa enxergar o caminho. E quando chegar ao final, vai ter uma prova concreta: o seu projeto salvo no computador."
+      "tela": "Abrir com 3 segundos do modelo no Blender. Corte para a Lívia. Voltar ao gato quando ela disser 'Esse aqui é o nosso projeto'. Selo DIA 1 DE 7. O pagamento ou saldo entra somente com a captura real fornecida; não simular números nem uma conta financeira.",
+      "fala": "Enquanto você tá preso no trânsito, tem gente ganhando em dólar de casa. Com um joguinho de criança.\n\nIsso que você acabou de ouvir não é hype. É literalmente o que eu vivo há quatro anos.\n\nSou a Lívia. E nos próximos dias eu vou te mostrar, passo a passo, como sair de nunca ter aberto um programa de modelagem 3D até construir o seu primeiro projeto. É uma jornada de sete dias. E no fim dela, você vai ter uma coisa que hoje não tem: prova de que consegue.\n\nVocê lembra do Huge Cat do Pet Simulator X? Esse gato em formato de bloco, com orelhas pontudas e olhos enormes? Esse aqui é o nosso projeto do desafio. Vamos recriar sua aparência como exercício de estudo no Blender.\n\nNos próximos sete dias de prática, você vai aprender a construir o corpo, montar as partes, fazer o rosto, aplicar as cores e apresentar o resultado. O objetivo é terminar com um modelo que você mesma criou e sabe explicar.\n\nHoje você não precisa saber modelar. Precisa enxergar o caminho. E quando chegar ao final, vai ter uma prova concreta: o seu projeto salvo no computador."
     },
     {
       "numero": 2,
@@ -122,21 +122,21 @@
       "titulo": "O mapa dos sete dias",
       "tempo": "5:30–6:30 · estimativa",
       "tela": "Mostrar o mapa completo. Destacar cada dia conforme a fala. Manter DIA 1 DE 7. As sete etapas são o plano do desafio, não a indicação de que sete aulas já estão publicadas.",
-      "fala": "Esse é o Dia 1 de 7. Hoje você conhece o projeto e reconhece suas partes.\n\nNo Dia 2, começamos pelo corpo em formato de bloco e pelos primeiros movimentos no Blender. No Dia 3, entram as orelhas e as patinhas. No Dia 4, trabalhamos os olhos e a expressão do rosto.\n\nNo Dia 5, aplicamos e conferimos os materiais. No Dia 6, testamos o modelo de diferentes ângulos, organizamos o arquivo e vemos a exportação. No Dia 7, preparamos a apresentação do projeto.\n\nSão sete dias de prática, no seu ritmo. Se você precisar repetir uma etapa, repita. O arquivo salvo é o que permite continuar de onde parou.\n\nNo final, eu quero que você consiga olhar para o seu modelo e dizer: eu construí isso, sei quais são as partes e consigo mostrar o resultado."
+      "fala": "Esse é o Dia 1 de 7. Hoje você conhece o projeto e reconhece suas partes.\n\nNo Dia 2, começamos pelo corpo em formato de bloco e pelos primeiros movimentos no Blender. No Dia 3, entram as orelhas e as patinhas. No Dia 4, trabalhamos os olhos e a expressão do rosto.\n\nNo Dia 5, aplicamos e conferimos os materiais. Essa é a nossa meta para terminar o modelo. No Dia 6, testamos o modelo de diferentes ângulos, organizamos o arquivo e vemos a exportação. No Dia 7, preparamos a apresentação do projeto.\n\nA meta é terminar o modelo em até cinco dias; os dois seguintes completam a jornada com teste e apresentação. São sete dias de prática, no seu ritmo. Se você precisar repetir uma etapa, repita. O arquivo salvo é o que permite continuar de onde parou.\n\nNo final, eu quero que você consiga olhar para o seu modelo e dizer: eu construí isso, sei quais são as partes e consigo mostrar o resultado."
     },
     {
       "numero": 5,
       "titulo": "Declarar uma meta realizável",
       "tempo": "6:30–7:30 · estimativa",
       "tela": "Lívia em câmera. Tela da meta em seguida. Mostrar os comentários reais da aula somente com a página publicada; não fabricar comentários nem notificações.",
-      "fala": "Agora eu quero que você transforme essa vontade em uma tarefa concreta.\n\nNos comentários desta aula, escreva: 'Minha meta é terminar meu modelo em sete dias de prática'. Se você já sabe quando pode começar, acrescente a data ou o horário que vai reservar para a primeira etapa.\n\nPode ser um período pequeno, mas escolha um período que realmente cabe na sua rotina. O importante é conseguir voltar ao projeto.\n\nSe quiser fazer com alguém, convide essa pessoa para acompanhar o desafio. Vocês podem comparar o que aprenderam e ajudar um ao outro a encontrar o próximo passo.\n\nHoje você não precisa modelar o gato inteiro. Faça a prática da página para reconhecer o corpo, as orelhas, os olhos e os materiais. Depois, confira se o Blender abre no seu computador.\n\nEsse é o resultado do Dia 1: entender o projeto, conhecer o caminho e escolher quando você vai começar a construir."
+      "fala": "Esse é o bloco mais importante do vídeo inteiro. E eu preciso que você faça isso agora, não depois.\n\nComenta aqui embaixo, agora: 'Eu vou ter meu primeiro item pronto em até 5 dias'. Neste desafio, isso significa terminar o nosso modelo de estudo. Nos dois dias seguintes, vamos conferir, organizar e apresentar esse projeto.\n\nEscolha quando vai começar e reserve um período que realmente cabe na sua rotina. Se precisar repetir uma etapa, repita. O importante é conseguir voltar ao projeto.\n\nE mostra esse desafio para uma pessoa que também quer aprender uma habilidade nova. Desafia ela a fazer isso com você. Vocês podem comparar o que aprenderam e ajudar um ao outro a encontrar o próximo passo.\n\nEu vou responder pessoalmente os primeiros comentários com a meta. Então escreve agora, enquanto tá assistindo.\n\nHoje você não precisa modelar o gato inteiro. Faça a prática da página para reconhecer o corpo, as orelhas, os olhos e os materiais. Depois, confira se o Blender abre no seu computador.\n\nEsse é o resultado do Dia 1: entender o projeto, conhecer o caminho e escolher quando você vai começar a construir."
     },
     {
       "numero": 6,
       "titulo": "Gancho para começar a construir",
       "tempo": "7:30–fim · estimativa",
       "tela": "Lívia em câmera. Entrar com o corpo do modelo e a tela 'Dia 2: o primeiro bloco'. Fechar com o gato pronto por 3 segundos. Sem tela de ganho financeiro.",
-      "fala": "Na próxima aula, vamos começar pelo primeiro bloco. Vou te mostrar como preparar o ambiente e transformar uma forma simples no corpo do nosso gato.\n\nTambém vamos organizar uma dúvida que aparece cedo: onde o Blender termina e onde o Roblox Studio entra? E por que criar um pet para uma experiência é diferente de publicar um acessório para avatar no Marketplace?\n\nVocê não precisa resolver tudo isso hoje. Primeiro, vamos construir e entender o nosso projeto.\n\nGuarde a sua meta e prepare um lugar no computador para salvar seus arquivos. Na próxima etapa, você sai da observação e começa a criar."
+      "fala": "Na próxima aula, vamos começar pelo primeiro bloco. Vou te mostrar como preparar o ambiente e transformar uma forma simples no corpo do nosso gato.\n\nTambém vou te explicar o que é o Programa UGC do Roblox e organizar uma dúvida que aparece cedo: onde o Blender termina e onde o Roblox Studio entra? E por que criar um pet para uma experiência é diferente de publicar um acessório para avatar no Marketplace?\n\nVocê não precisa resolver tudo isso hoje. Primeiro, vamos construir e entender o nosso projeto.\n\nGuarde a sua meta e prepare um lugar no computador para salvar seus arquivos. Na próxima etapa, você sai da observação e começa a criar."
     }
   ]
 }

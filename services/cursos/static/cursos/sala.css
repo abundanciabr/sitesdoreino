@@ -310,6 +310,7 @@ button {
 .bloco-da-pratica { margin: 24px 0; }
 .bloco-da-pratica + .bloco-da-pratica { border-top: 1px solid var(--borda); padding-top: 24px; }
 .conteudo-pratica-nativa video { display: block; width: 100%; aspect-ratio: 1366 / 768; background: #000; border-radius: 10px; }
+.conteudo-pratica-nativa video.video-huge-cat { aspect-ratio: 1920 / 1200; }
 .conteudo-pratica-nativa .links, .controles-pratica { display: flex; flex-wrap: wrap; gap: 12px; }
 .conteudo-pratica-nativa .links a { color: var(--marca); }
 .conteudo-pratica-nativa summary { cursor: pointer; font-weight: 600; }
