@@ -755,6 +755,7 @@ def _video_por_url(video_url: str) -> dict:
         pratica_html = (Path(settings.BASE_DIR) / "static/pet-aula/index.html").read_text(encoding="utf-8")
         pratica_html = pratica_html.replace("<head>", '<head><base href="/cursos/static/pet-aula/">', 1)
         pratica_html = pratica_html.replace("new URLSearchParams(location.search).has('embedded')", "true")
+        pratica_html = pratica_html.replace("},location.origin)", "},parent.location.origin)")
     return {
         "interativa": interativa,
         "pratica_html": pratica_html,
