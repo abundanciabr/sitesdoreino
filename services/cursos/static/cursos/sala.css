@@ -316,6 +316,7 @@ button {
 .conteudo-pratica-nativa summary { cursor: pointer; font-weight: 600; }
 .telas-producao { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 20px; }
 .telas-producao figure { margin: 0; }
+.telas-producao code { overflow-wrap: anywhere; }
 .telas-producao img, .resultado-producao { display: block; width: 100%; height: auto; border-radius: 10px; }
 .fala-livia { max-width: 860px; }
 .pratica-guiada { overflow-anchor: none; }

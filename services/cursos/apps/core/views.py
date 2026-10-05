@@ -764,6 +764,7 @@ def _video_por_url(video_url: str) -> dict:
         "pratica_template": conteudo.get("template", ""),
         "pratica_base": reverse("estatico", args=[f"{pratica}/"]) if interativa else "",
         "pratica": conteudo,
+        "producao_livia": _material_livia_dia2() if interativa and pratica == "huge-cat-dia2" else None,
         "link": url,
         "embutido": embutido,
         "youtube_id": embutido.rsplit("/", 1)[-1] if youtube else "",
@@ -1483,6 +1484,40 @@ def producao_huge_cat(request):
             (3, "caminho", "O caminho da criação"), (4, "dias", "Os sete dias"),
             (5, "meta", "A meta"), (6, "amanha", "A próxima etapa"),
         ]],
+        **_de_fora(),
+    })
+
+
+def _material_livia_dia2():
+    pasta = Path(settings.BASE_DIR) / "static" / "huge-cat-dia2"
+    roteiro = json.loads((pasta / "roteiro-livia.json").read_text(encoding="utf-8"))
+    telas = ["ugc", "comecar", "tamanhos", "concluir", "amanha"]
+    capturas = [
+        [("huge-cat-dia2/06-resultado.webp", "Destino de hoje: corpo preparado e dimensões conferidas")],
+        [("huge-cat-dia2/01-inicio.webp", "Ponto de partida: o bloco inicial de 2 × 2 × 2")],
+        [("huge-cat-dia2/02-largura.webp", "Depois de ajustar X: largura de 4 m"),
+         ("huge-cat-dia2/03-profundidade.webp", "Depois de ajustar Y: profundidade de 3.5 m"),
+         ("huge-cat-dia2/04-altura.webp", "Depois de ajustar Z: altura de 3.86 m")],
+        [("huge-cat-dia2/05-salvar.webp", "Menu real do Blender: Salvar e Salvar como…"),
+         ("huge-cat-dia2/06-resultado.webp", "Conferência do corpo para o print do aluno")],
+        [("huge-cat-dia1/huge-cat-apresentacao-1920x1200.png", "Destino da série: modelo completo de estudo; hoje fazemos apenas o corpo")],
+    ]
+    blocos = []
+    for bloco, nome, imagens in zip(roteiro["blocos"], telas, capturas):
+        tela = f"huge-cat-dia2/tela-{bloco['numero']:02d}-{nome}.png"
+        blocos.append({**bloco, "imagem_tela": tela,
+                       "url_tela": "https://meshcraft.top/cursos/static/" + tela,
+                       "capturas": [{"arquivo": arquivo, "legenda": legenda,
+                                     "url": "https://meshcraft.top/cursos/static/" + arquivo}
+                                    for arquivo, legenda in imagens]})
+    return {**roteiro, "blocos": blocos}
+
+
+@require_GET
+@never_cache
+def producao_huge_cat_dia2(request):
+    return render(request, "cursos/producao_huge_cat_dia2.html", {
+        "video": _video_por_url("https://meshcraft.top/cursos/static/huge-cat-dia2/demonstracao-1920x1200.mp4"),
         **_de_fora(),
     })
 

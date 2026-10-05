@@ -1,0 +1,14 @@
+{% extends "cursos/moldura.html" %}
+{% block titulo %}Dia 2 — Preparação com a Lívia{% endblock %}
+{% block atributos_principal %} class="sala-com-conteudo"{% endblock %}
+{% block faixa %}<a href="{% url 'curso' 'desafio-como-ganhar-em-dolar-com-roblox' %}">Desafio Como Ganhar em Dólar com Roblox</a><span class="onde">Dia 2 · Preparação com a Lívia</span>{% endblock %}
+{% block conteudo %}
+<section class="abertura conteudo-pratica-nativa">
+  <p class="rotulo">Produção da aula · Lívia + demonstrações reais</p>
+  <h1>Dia 2 — Prepare e salve o corpo do Huge Cat</h1>
+  <p class="recado">Roteiro em cinco blocos, telas explicativas e montagem-base preparados. A versão com a apresentadora aguarda os takes reais da Lívia.</p>
+  <nav class="links"><a href="#demonstracao-huge-cat-dia2">Demonstração</a><a href="#pratica-interativa">Prévia da prática</a><a href="#preparacao-livia">Falas e telas da Lívia</a><a href="#montagem-base">Montagem-base</a><a href="{% url 'aula-do-curso' 'desafio-como-ganhar-em-dolar-com-roblox' 1 'D02' %}#preparacao-livia">Ver na aula do curso</a></nav>
+</section>
+<section class="conteudo-pratica-nativa" aria-label="Prévia nativa do conteúdo do Dia 2">{% include "cursos/_conteudo_huge-cat-dia2.html" %}</section>
+<script src="{% url 'estatico' 'cursos/pratica_guiada.js' %}" defer></script>
+{% endblock %}

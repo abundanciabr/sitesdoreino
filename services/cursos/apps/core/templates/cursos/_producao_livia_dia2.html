@@ -1,0 +1,47 @@
+<section id="roteiro-livia" aria-label="Preparação da Lívia para o Dia 2">
+  <p class="rotulo">Gravação da apresentadora · Dia 2 de 7</p>
+  <h2>O que a Lívia precisa falar</h2>
+  <p>{{ producao.orientacao }}</p>
+  <p class="recado">Falas, telas e demonstrações preparadas. A montagem-base aguarda os cinco takes reais da Lívia. Esta versão não contém voz ou imagem da apresentadora.</p>
+  <div class="links">
+    <a href="{% url 'estatico' 'huge-cat-dia2/roteiro-livia.txt' %}" download>Baixar o roteiro completo</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/kit-producao-livia.zip' %}" download>Baixar roteiro e telas</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/plano-de-edicao.json' %}" download>Baixar plano de edição</a>
+  </div>
+  {% for bloco in producao.blocos %}
+  <details class="bloco-da-pratica" id="livia-bloco-{{ bloco.numero }}"{% if forloop.first %} open{% endif %}>
+    <summary>Bloco {{ bloco.numero }} — {{ bloco.titulo }} · {{ bloco.tempo }}</summary>
+    <p class="recado"><strong>Na edição:</strong> {{ bloco.tela }}</p>
+    <div class="telas-producao">
+      <figure>
+        <a href="{% url 'estatico' bloco.imagem_tela %}" download>
+          <img src="{% url 'estatico' bloco.imagem_tela %}" width="1920" height="1200" loading="lazy" decoding="async" alt="Tela explicativa do bloco {{ bloco.numero }}: {{ bloco.titulo }}">
+          <figcaption>Tela explicativa do bloco {{ bloco.numero }} — clique para baixar</figcaption>
+        </a>
+        <p class="miudo"><code>{{ bloco.url_tela }}</code></p>
+      </figure>
+      {% for captura in bloco.capturas %}
+      <figure>
+        <a href="{% url 'estatico' captura.arquivo %}" download>
+          <img src="{% url 'estatico' captura.arquivo %}" width="1920" height="1200" loading="lazy" decoding="async" alt="{{ captura.legenda }}">
+          <figcaption>{{ captura.legenda }} — clique para baixar</figcaption>
+        </a>
+        <p class="miudo"><code>{{ captura.url }}</code></p>
+      </figure>
+      {% endfor %}
+    </div>
+    <div class="fala-livia"><h3>Fala da Lívia — bloco {{ bloco.numero }}</h3>{{ bloco.fala|linebreaks }}</div>
+  </details>
+  {% endfor %}
+</section>
+<section id="montagem-base" class="bloco-da-pratica">
+  <h2>Montagem-base para receber os takes</h2>
+  <p><strong>8 minutos em 1920×1200.</strong> As telas indicam onde entram os takes da Lívia; a parte prática usa as ações reais gravadas no Blender. As durações são estimativas para a gravação e serão ajustadas ao ritmo da fala real.</p>
+  <video class="video-huge-cat" id="base-huge-cat-dia2" controls playsinline preload="metadata" poster="{% url 'estatico' 'huge-cat-dia2/tela-01-ugc.png' %}" aria-label="Montagem-base do Dia 2, aguardando gravação da Lívia"><source src="{% url 'estatico' 'huge-cat-dia2/montagem-base-1920x1200.mp4' %}" type="video/mp4"></video>
+  <div class="links bloco-da-pratica">
+    <a href="{% url 'estatico' 'huge-cat-dia2/montagem-base-1920x1200.mp4' %}" download>Baixar montagem-base</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/demonstracao-1920x1200.mp4' %}" download>Baixar demonstração legendada</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/gravacao-original-1920x1200.mp4' %}" download>Baixar captura original do Blender</a>
+  </div>
+  <p class="miudo">Telas em 1920×1200: títulos de 48 px e texto principal de 34 px. As capturas mostram o programa real; os cartões explicativos acompanham a fala.</p>
+</section>

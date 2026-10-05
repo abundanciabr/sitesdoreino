@@ -12,6 +12,8 @@ def test_dia2_nativo_preserva_navegacao_e_conclusao():
     assert '<iframe' not in html and 'srcdoc=' not in html and 'postMessage' not in html
     assert 'Concluir esta aula' in html and 'href="/dia1"' in html and 'href="/seguinte"' in html
     assert 'Dia 2 concluído' in html and 'huge-cat-dia2-inicio.blend' in html
+    assert 'id="preparacao-livia"' in html and 'Fala da Lívia — bloco 5' in html
+    assert 'tela-05-amanha.png' in html and 'montagem-base-1920x1200.mp4' in html
     assert not _video_por_url('https://outro.example/cursos/static/huge-cat-dia2/demonstracao-1920x1200.mp4')['interativa']
 
 def test_dia2_cinco_etapas_com_tamanhos_em_passos_separados():
@@ -23,3 +25,21 @@ def test_dia2_cinco_etapas_com_tamanhos_em_passos_separados():
     for s in p['steps']:
         assert s['text'].startswith('Clique') and 'imagem' in s['text']
         assert (Path(settings.BASE_DIR)/'static/huge-cat-dia2'/s['image']).is_file()
+
+def test_preparacao_dia2_reusa_falas_e_imagens_na_aula_sem_progresso():
+    from django.test import RequestFactory
+    from django.urls import reverse
+    from apps.core.views import producao_huge_cat_dia2
+    response=producao_huge_cat_dia2(RequestFactory().get(reverse('producao-huge-cat-dia2')))
+    html=response.content.decode()
+    assert response.status_code==200
+    assert '<iframe' not in html and 'srcdoc=' not in html
+    for n in range(1,6):
+        assert f'id="livia-bloco-{n}"' in html and f'Fala da Lívia — bloco {n}' in html
+    assert '8 minutos em 1920×1200' in html and 'aguarda os cinco takes reais' in html
+    assert 'Concluir esta aula</button>' not in html
+    assert 'D02#preparacao-livia' in html
+    p=_video_por_url('https://meshcraft.top/cursos/static/huge-cat-dia2/demonstracao-1920x1200.mp4')['producao_livia']
+    for b in p['blocos']:
+        for file in [b['imagem_tela'],*[c['arquivo'] for c in b['capturas']]]:
+            assert (Path(settings.BASE_DIR)/'static'/file).is_file()
