@@ -1,0 +1,37 @@
+É SÓ UM JOGUINHO? — EPISÓDIO 1
+Curso: https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/
+Aula: https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/J01
+
+Quem criou essa árvore?
+Um objeto de cenário precisa de escolhas: formas, proporções, materiais e uma conferência visual no ambiente.
+
+PEDIDO FICTÍCIO — SIMULAÇÃO DIDÁTICA
+Criar uma árvore simples, estática, estilizada, com poucas formas e cores para um cenário de jogo.
+Este pedido e esta cena são simulações. Não representam contratação, vendas, pagamentos ou resultados financeiros.
+
+PEDIDO → CRIAÇÃO → TESTE → APRESENTAÇÃO
+Pedido: entender o objeto, o estilo e o uso esperado.
+Criação: montar um tronco e uma copa; escolher os materiais.
+Teste: conferir silhueta, tamanho e cores no cenário. Nesta aula, o teste é visual no Blender.
+Apresentação: mostrar o resultado e organizar os arquivos.
+
+ARQUIVOS PARA GUARDAR
+https://meshcraft.top/cursos/static/joguinho-ep1/arvore-estudo.blend — árvore isolada; Tronco, Copa e Copa lateral são peças separadas.
+https://meshcraft.top/cursos/static/joguinho-ep1/arvore-cenario.blend — árvore no chão com caminho e pedras; cena didática.
+https://meshcraft.top/cursos/static/joguinho-ep1/arvore-estilizada.glb — modelo exportado para intercâmbio; preserve o .blend para continuar o trabalho.
+https://meshcraft.top/cursos/static/joguinho-ep1/episodio-1366x768.mp4 — demonstração real, sem áudio, com instruções na tela.
+
+NO SEU COMPUTADOR
+1. Baixe arvore-estudo.blend e guarde uma cópia.
+2. Abra o Blender. Use Arquivo → Abrir e escolha o arquivo baixado.
+3. Na lista de objetos, clique em Tronco e depois em Copa. Observe o contorno da peça selecionada.
+4. Na área 3D, use o modo Sólido com cores de material ou Prévia de material para ver as cores.
+5. Abra Propriedades de material, o ícone de esfera. A copa usa verde e o tronco usa marrom.
+6. Use Arquivo → Salvar como e escolha um nome próprio, como minha-arvore-episodio-1.blend.
+7. Não é necessário modelar a árvore inteira agora. Guarde os arquivos para as próximas aulas.
+
+OBJETIVO DA SÉRIE
+Você vai criar uma árvore simples, estática, com poucas formas e cores; aplicar materiais; testar e apresentar o resultado. Hoje, basta reconhecer o objeto, as partes, o pedido e o ambiente.
+
+PARA O PRÓXIMO EPISÓDIO
+Por que alguém contrataria outra pessoa para fazer isso?

@@ -745,19 +745,26 @@ def _video_por_url(video_url: str) -> dict:
     youtube = bool(
         embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
     )
+    praticas = {
+        "/cursos/static/pet-aula/index.html": ("pet-aula", "colorindo o cãozinho"),
+        "/cursos/static/joguinho-ep1/index.html": ("joguinho-ep1", "É só um joguinho?"),
+    }
+    pratica = praticas.get(urlsplit(url).path)
     interativa = (
-        urlsplit(url).path == "/cursos/static/pet-aula/index.html"
+        pratica is not None
         and urlsplit(url).hostname == "meshcraft.top"
         and urlsplit(url).scheme == "https"
     )
     pratica_html = ""
     if interativa:
-        pratica_html = (Path(settings.BASE_DIR) / "static/pet-aula/index.html").read_text(encoding="utf-8")
-        pratica_html = pratica_html.replace("<head>", '<head><base href="/cursos/static/pet-aula/">', 1)
+        pasta, titulo = pratica
+        pratica_html = (Path(settings.BASE_DIR) / f"static/{pasta}/index.html").read_text(encoding="utf-8")
+        pratica_html = pratica_html.replace("<head>", f'<head><base href="/cursos/static/{pasta}/">', 1)
         pratica_html = pratica_html.replace("new URLSearchParams(location.search).has('embedded')", "true")
         pratica_html = pratica_html.replace("},location.origin)", "},parent.location.origin)")
     return {
         "interativa": interativa,
+        "pratica_titulo": pratica[1] if interativa else "",
         "pratica_html": pratica_html,
         "link": url,
         "embutido": embutido,

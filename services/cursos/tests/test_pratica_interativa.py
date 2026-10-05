@@ -23,6 +23,8 @@ def test_numero_visivel_acompanha_ordem_sem_mudar_identidade():
         "https://outro.example/cursos/static/pet-aula/index.html",
         "http://meshcraft.top/cursos/static/pet-aula/index.html",
         "https://meshcraft.top/cursos/static/outra.html",
+        "https://outro.example/cursos/static/joguinho-ep1/index.html",
+        "http://meshcraft.top/cursos/static/joguinho-ep1/index.html",
     ],
 )
 def test_so_pratica_da_casa_e_embutida(url):
@@ -50,4 +52,18 @@ def test_pratica_aparece_dentro_da_aula_com_navegacao():
     assert 'id="pratica-interativa"' in html
     assert 'srcdoc="' in html
     assert "Colorindo seu primeiro pet" in html
+    assert 'href="/proxima"' in html
+
+
+def test_episodio_usa_a_mesma_integracao_protegida_e_titulo_proprio():
+    video = _video_por_url("https://meshcraft.top/cursos/static/joguinho-ep1/index.html")
+    assert video["interativa"]
+    assert video["pratica_titulo"] == "É só um joguinho?"
+    assert "arvore-estudo.blend" in video["pratica_html"]
+    assert "},parent.location.origin)" in video["pratica_html"]
+    assert "if(true)" in video["pratica_html"]
+    aula = SimpleNamespace(titulo_na_ordem="É só um joguinho?",numero="J01",curso=SimpleNamespace(slug="roblox"),bloco=SimpleNamespace(parte=1))
+    html = render_to_string("cursos/aula.html", {"aula":aula,"video":video,"navegacao":{"anterior":{"url":"/pet","titulo":"Pet"},"proxima":{"url":"/proxima","titulo":"Próxima"}}})
+    assert 'srcdoc="' in html
+    assert "Prática guiada: É só um joguinho?" in html
     assert 'href="/proxima"' in html
