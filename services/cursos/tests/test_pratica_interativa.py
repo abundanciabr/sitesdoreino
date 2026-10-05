@@ -48,5 +48,6 @@ def test_pratica_aparece_dentro_da_aula_com_navegacao():
         },
     )
     assert 'id="pratica-interativa"' in html
-    assert "index.html?embedded=1" in html
+    assert 'srcdoc="' in html
+    assert "Colorindo seu primeiro pet" in html
     assert 'href="/proxima"' in html

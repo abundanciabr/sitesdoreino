@@ -91,7 +91,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   <div class="atalho-conteudo"><button type="button" class="abrir-conteudo" aria-controls="conteudo-do-curso" aria-expanded="false" hidden><span aria-hidden="true">☰</span> Conteúdo do curso</button></div>
   {% if video.interativa %}<h2>Prática guiada: colorindo o cãozinho</h2>{% elif not video.youtube_id %}<h2>O vídeo da aula</h2>{% endif %}
   {% if video.interativa %}
-  <iframe id="pratica-interativa" src="{{ video.link }}?embedded=1" title="Prática: colorindo o cãozinho" style="width:100%;height:2800px;border:0" scrolling="no"></iframe>
+  <iframe id="pratica-interativa" srcdoc="{{ video.pratica_html }}" title="Prática: colorindo o cãozinho" style="width:100%;height:2800px;border:0" scrolling="no"></iframe>
   <p><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir a prática em outra aba</a></p>
   <script>
   window.addEventListener('message', function(event){

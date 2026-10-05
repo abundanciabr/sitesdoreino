@@ -745,10 +745,19 @@ def _video_por_url(video_url: str) -> dict:
     youtube = bool(
         embutido and embutido.startswith("https://www.youtube-nocookie.com/embed/")
     )
-    return {
-        "interativa": urlsplit(url).path == "/cursos/static/pet-aula/index.html"
+    interativa = (
+        urlsplit(url).path == "/cursos/static/pet-aula/index.html"
         and urlsplit(url).hostname == "meshcraft.top"
-        and urlsplit(url).scheme == "https",
+        and urlsplit(url).scheme == "https"
+    )
+    pratica_html = ""
+    if interativa:
+        pratica_html = (Path(settings.BASE_DIR) / "static/pet-aula/index.html").read_text(encoding="utf-8")
+        pratica_html = pratica_html.replace("<head>", '<head><base href="/cursos/static/pet-aula/">', 1)
+        pratica_html = pratica_html.replace("new URLSearchParams(location.search).has('embedded')", "true")
+    return {
+        "interativa": interativa,
+        "pratica_html": pratica_html,
         "link": url,
         "embutido": embutido,
         "youtube_id": embutido.rsplit("/", 1)[-1] if youtube else "",
