@@ -750,6 +750,7 @@ def _video_por_url(video_url: str) -> dict:
     praticas = {f"/cursos/static/{pasta}/index.html": pasta for pasta in PRATICAS}
     praticas["/cursos/static/huge-cat-dia1/demonstracao-1366x768.mp4"] = "huge-cat-dia1"
     praticas["/cursos/static/huge-cat-dia1/demonstracao-1920x1200.mp4"] = "huge-cat-dia1"
+    praticas["/cursos/static/huge-cat-dia2/demonstracao-1920x1200.mp4"] = "huge-cat-dia2"
     pratica = praticas.get(urlsplit(url).path)
     interativa = (
         pratica is not None

@@ -1,0 +1,93 @@
+Aula 2 — Dia 2 de 7: seu primeiro corpo no Blender
+
+Demonstração real pronta. Montagem-base aguarda os cinco takes reais da Lívia; nenhuma voz foi inventada.
+
+Gravar cada bloco separado, em enquadramento horizontal. Ler apenas Fala. Deixar dois segundos antes e depois de cada take. Duração planejada de 8 minutos inclui pausas da prática; ajustar o ritmo na edição. Não citar comentários de alunos, resultados financeiros ou promessas de respostas sem confirmação real.
+
+BLOCO 1 — Callback: o UGC não impede começar | 0:00–1:00
+
+NA EDIÇÃO: Corte direto para a Lívia. Contador Dia 2 de 7. Usar tela-01-ugc.png. Sem inventar nomes ou comentários de alunos.
+
+FALA DA LÍVIA:
+
+Ontem eu deixei uma pergunta sobre o Programa UGC do Roblox. Vou começar fechando a parte que você precisa saber agora: você não precisa entrar nesse programa para fazer o exercício de hoje.
+
+O Marketplace é voltado a itens de avatar e tem regras de publicação. O nosso Huge Cat é um projeto de estudo de um pet. Fazer uma forma no Blender e publicar um acessório de avatar são etapas diferentes. Vamos aprofundar isso nos próximos dias, antes de escolher um caminho de publicação.
+
+Hoje é o Dia 2 de 7. Se você comentou sua meta ontem, chegou a hora de dar o primeiro passo. E, se não comentou ou ainda não começou, pode começar comigo agora. No fim desta etapa, você vai ter preparado e salvo o corpo do nosso projeto.
+
+BLOCO 2 — Da intenção para a primeira ação | 1:00–2:00
+
+NA EDIÇÃO: Lívia + tela-02-comecar.png. Mostrar o corpo pronto por sete segundos antes de ensinar.
+
+FALA DA LÍVIA:
+
+Depois da empolgação do primeiro dia, pode aparecer aquela vontade de deixar para depois. Se você está pensando “não sei mexer nesse programa”, fica comigo: hoje não vamos fazer o gato inteiro.
+
+A meta que propus ontem foi terminar o modelo de estudo em até cinco dias e usar os dois seguintes para conferir e apresentar. O passo de hoje cabe nessa meta: ajustar o corpo e guardar o arquivo. Uma tarefa só.
+
+Olha o resultado na tela. É um bloco cinza. Não precisa desenhar um rosto, criar orelha ou decorar nomes de ferramentas agora. Você vai mudar três valores e salvar.
+
+Pode pausar quantas vezes precisar. Se um passo sair diferente, volte e compare com a tela. A sua sequência começa com uma tentativa feita por você, não com velocidade.
+
+BLOCO 3 — Prática: preparar e salvar o corpo | 2:00–6:00
+
+NA EDIÇÃO: Ações reais do Blender, interface em português e escala ampliada. Intercalar o take com a Lívia. Reservar pausas para o aluno agir. Não esticar a gravação com espera vazia; 4 minutos incluem as pausas orientadas.
+
+FALA DA LÍVIA:
+
+Esse é o destino de hoje: o corpo do projeto, com quatro metros na largura, três e meio na profundidade e três vírgula oitenta e seis na altura. Aqui os metros são a unidade da cena do Blender. Estamos preparando a proporção; o tamanho de uso no jogo será conferido em outra etapa.
+
+Baixe o arquivo inicial que está nesta aula. No Blender, abra o menu Arquivo, escolha Abrir e selecione esse arquivo. O corpo já vem selecionado e as outras peças estão escondidas. Elas ficaram preservadas para o estudo, mas hoje você só precisa deste bloco.
+
+Se o painel da direita não aparecer, no menu Visualizar procure Barra lateral. Abra a aba Item. Procure a palavra Dimensões. Não é a seção Escala. Se a parte de baixo ficou escondida, passe o mouse na borda do painel e role para baixo. Agora devem aparecer as linhas X, Y e Z.
+
+Vamos fazer a primeira. Na linha X de Dimensões, dê dois cliques sobre o valor. Aperte Control e A para selecionar o texto. Digite quatro e confirme com Enter. O bloco fica mais largo. Pause aqui e faça no seu computador.
+
+Agora a linha Y. Dois cliques sobre o valor, Control e A, digite três ponto cinco e Enter. Use ponto no decimal, como está na tela. Esse é o tamanho da frente para trás. Pause e confira: X quatro, Y três ponto cinco.
+
+Por último, a linha Z. Dois cliques, Control e A, digite três ponto oitenta e seis e confirme com Enter. O bloco ganha altura. Pronto: você preparou o corpo do projeto. Olhe as três linhas e compare com o exemplo.
+
+Se alguma ficou diferente, não precisa começar tudo de novo. Dê dois cliques só no valor daquela linha, selecione o texto e digite novamente. Esse é um jeito de corrigir o tamanho sem adivinhar no olho.
+
+Agora vamos guardar o trabalho. Abra Arquivo e escolha Salvar como. Escolha uma pasta sua, dê um nome que você reconheça, como huge-cat-dia2-meu-corpo.blend, e confirme o salvamento. A demonstração usa Salvar porque já tem um arquivo de trabalho aberto. No seu computador, a primeira cópia pode ser feita com Salvar como; depois você pode usar Salvar.
+
+Confira o nome do arquivo no topo e guarde essa pasta. Esse é o arquivo que você vai continuar usando. Hoje você não precisa mudar material nem mostrar as outras peças. O objetivo é terminar este corpo e conseguir voltar a ele amanhã.
+
+BLOCO 4 — Prova de conclusão e check-in | 6:00–7:00
+
+NA EDIÇÃO: tela-04-concluir.png. Mostrar corpo e dimensões no Blender e o campo real de comentário da aula. Sem fabricar comentários.
+
+FALA DA LÍVIA:
+
+Antes de seguir, eu quero que você confira o que fez. Seu corpo está aparecendo na tela? Dimensões mostra X quatro, Y três ponto cinco e Z três ponto oitenta e seis? Você salvou o arquivo numa pasta que consegue encontrar?
+
+Se sim, tire um print da sua tela e guarde junto do projeto. Essa imagem vai ajudar você a ver o progresso quando chegarem as orelhas, as patinhas e o rosto.
+
+Agora comenta nesta aula: “Dia 2 concluído”, com o sinal de confirmação. O comentário é o nosso check-in. O print fica no seu computador; o campo desta aula recebe texto. Se você travou em uma etapa, escreva qual foi e o que apareceu na tela.
+
+Depois de fazer a tarefa no seu computador, use o botão Concluir esta aula. Uma aula concluída soma ao seu progresso no curso. A conquista de hoje é esse arquivo feito e salvo por você.
+
+BLOCO 5 — Próximo passo: identidade do personagem | 7:00–8:00
+
+NA EDIÇÃO: tela-05-amanha.png. Mostrar rapidamente a referência do estudo e voltar ao corpo. Sem preço, pagamento ou promessa de venda.
+
+FALA DA LÍVIA:
+
+Você acabou de preparar sua primeira forma do nosso projeto. Ela ainda é só o corpo. O que faz esse bloco começar a parecer um gato?
+
+Na próxima etapa, vamos trabalhar orelhas e patinhas. Você vai ver como poucas formas, bem posicionadas, começam a dar identidade ao personagem. Não é uma ferramenta mágica: é comparar a referência e construir uma parte de cada vez.
+
+E vamos retomar a diferença entre criar um pet para uma experiência e criar um item para avatar. Essa distinção vem antes de pensar em publicar ou vender. O nosso modelo de estudo não é uma promessa de venda.
+
+Por hoje, faça o check-in e guarde o arquivo. Amanhã a gente continua exatamente de onde você parou.
+
+FONTES OFICIAIS
+
+`https://create.roblox.com/docs/marketplace`
+
+`https://create.roblox.com/docs/marketplace/publish-to-marketplace`
+
+`https://create.roblox.com/docs/art/modeling`
+
+Aula: `https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/D02`

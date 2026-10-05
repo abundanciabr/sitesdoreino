@@ -1,0 +1,29 @@
+DIA 2 DE 7 — PREPARAR E SALVAR O CORPO
+
+Hoje: um corpo em bloco. Referência de estudo: Huge Cat de Pet Simulator X.
+Não é necessário criar o personagem inteiro. Os demais objetos ficam ocultos e preservados.
+
+1. Baixe huge-cat-dia2-inicio.blend e abra no Blender por Arquivo → Abrir.
+2. Selecione o bloco. Abra Visualizar → Barra lateral → Item, se precisar.
+3. Em Dimensões, dê dois cliques no valor X. Ctrl+A seleciona o texto. Digite 4 e Enter.
+4. Repita no Y: 3.5 e Enter. Repita no Z: 3.86 e Enter. Use ponto no decimal.
+5. Confira as três linhas. As unidades são as da cena; a escala no jogo será conferida depois.
+6. Arquivo → Salvar como. Guarde uma cópia na sua pasta com um nome próprio terminado em .blend.
+7. Salve um print da sua tela junto do projeto. Comente “Dia 2 concluído ✅” na aula.
+8. Depois da tarefa no seu PC, use Concluir esta aula. Não basta apenas assistir.
+
+SE APARECER DIFERENTE
+Dimensões fica abaixo de Escala. Role o painel pela borda direita para ver X, Y e Z.
+Se errar um valor, selecione só aquela linha e digite de novo.
+Se precisar comparar, abra o resultado de referência em outra cópia; preserve seu arquivo.
+Se o Blender ainda não abre, use a prática da página para reconhecer o caminho e retome no PC quando o programa estiver disponível. O clique na imagem não altera seu arquivo Blender.
+
+O UGC NÃO IMPEDE ESTA TAREFA
+Criar este modelo no Blender não exige publicar no Marketplace. Marketplace reúne itens de avatar; um pet de uma experiência segue outro contexto de uso. Vamos aprofundar a diferença nas próximas aulas.
+Fontes: `https://create.roblox.com/docs/marketplace` e `https://create.roblox.com/docs/art/modeling`.
+
+ENDEREÇOS
+Aula: `https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/D02`
+Inicial: `https://meshcraft.top/cursos/static/huge-cat-dia2/huge-cat-dia2-inicio.blend`
+Resultado: `https://meshcraft.top/cursos/static/huge-cat-dia2/huge-cat-dia2-corpo.blend`
+Roteiro: `https://meshcraft.top/cursos/static/huge-cat-dia2/roteiro-livia.txt`
