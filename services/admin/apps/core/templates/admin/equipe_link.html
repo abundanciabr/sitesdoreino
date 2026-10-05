@@ -16,14 +16,38 @@
     <div class="qr" aria-label="QR code do link">{{ qr }}</div>
     <label class="campo">
       <span class="rotulo">Link</span>
-      <textarea readonly rows="4">{{ endereco }}</textarea>
+      <textarea id="link-gerado" readonly rows="4">{{ endereco }}</textarea>
     </label>
   </div>
 
+  {% if not para_si %}
+  <p class="nota">Novo link gerado em {{ link.criado_em|date:"d/m/Y H:i:s" }}.</p>
+  <button class="botao" type="button" id="copiar-link">Copiar este link</button>
+  <span id="recado-copia" role="status"></span>
+  <form method="post" action="{% url 'ficha_gerar_link' pessoa.id %}">
+    {% csrf_token %}
+    <button class="botao" type="submit">Gerar outro link de acesso</button>
+  </form>
+  <script>
+  document.getElementById('copiar-link').addEventListener('click', async function () {
+    var campo = document.getElementById('link-gerado');
+    var recado = document.getElementById('recado-copia');
+    try {
+      await navigator.clipboard.writeText(campo.value);
+      recado.textContent = 'Link copiado. Envie para {{ pessoa.nome|escapejs }}.';
+    } catch (e) {
+      campo.focus(); campo.select();
+      recado.textContent = 'Selecionei o link. Copie com Ctrl+C ou pelo menu do celular.';
+    }
+  });
+  </script>
+  {% endif %}
+
   <p class="aviso">
     <b>Vale uma vez, até {{ link.expira_em|date:"d/m/Y H:i" }}.</b>
-    Quem abrir este link antes disso entra como {{ pessoa.nome }}; depois de
-    usado, copiar o link não abre mais nada. Ele aparece só agora: se perder,
+    Quem abrir este link antes disso conecta um aparelho como {{ pessoa.nome }}.
+    Depois de usado, ele abre o painel no aparelho já conectado; outro aparelho precisa de um novo link.
+    Ele aparece só agora: se perder,
     gere outro, e o anterior fica cancelado.
   </p>
 </div>

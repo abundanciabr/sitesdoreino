@@ -6,8 +6,8 @@
   {% if recusado %}
   <div class="aviso erro-do-formulario">
     <b>Este link não vale mais.</b>
-    Ele já foi usado, foi cancelado ou passou do prazo: cada link conecta um
-    aparelho só, uma vez. Peça um link novo a quem mandou. Se você já
+    {{ motivo }} <a href="{% url 'painel_da_equipe' %}">Abrir meu painel</a>.
+    Se você já
     escolheu e-mail e senha no seu perfil, <a href="{% url 'entrar_na_equipe' %}">entre por aqui</a>.
   </div>
   {% else %}

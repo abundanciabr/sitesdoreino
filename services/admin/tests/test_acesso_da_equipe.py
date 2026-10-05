@@ -205,6 +205,33 @@ def test_o_link_vale_uma_vez_e_copiar_depois_nao_abre_nada():
 
 
 @respx.mock
+def test_reabrir_link_no_aparelho_conectado_volta_ao_painel():
+    codigo = _gerar_link(_ryan()).group(2)
+    navegador, _ = _abrir(codigo)
+    resposta = navegador.post(reverse("magic_link"), {"codigo": codigo})
+    assert resposta.status_code == 302
+    assert resposta["Location"] == reverse(PAINEL) + "?visao=minhas"
+    assert AparelhoDaEquipe.objects.count() == 1
+    AparelhoDaEquipe.objects.update(desconectado_em=timezone.now())
+    assert navegador.post(reverse("magic_link"), {"codigo": codigo}).status_code == 400
+
+
+@respx.mock
+def test_gerar_outro_mostra_codigo_novo_com_prazo_e_copia():
+    pessoa = _ryan()
+    primeiro = _gerar_link(pessoa).group(2)
+    resposta = _dono().post(reverse("ficha_gerar_link", args=[pessoa.id]))
+    segundo = LINK.search(_texto(resposta)).group(2)
+    assert segundo != primeiro
+    assert 'id="copiar-link"' in _texto(resposta)
+    assert "Novo link gerado em" in _texto(resposta)
+    assert "script-src 'self' 'sha256-" in resposta["Content-Security-Policy"]
+    assert LinkDeAcesso.objects.latest("id").expira_em > timezone.now() + timedelta(minutes=10)
+    assert "Use o link mais recente" in _texto(_abrir(primeiro)[1])
+    assert _abrir(segundo)[1].status_code == 302
+
+
+@respx.mock
 def test_link_vencido_cancelado_ou_de_quem_saiu_nao_conecta():
     ryan = _ryan()
     codigo = _gerar_link(ryan).group(2)

@@ -273,6 +273,12 @@ def magic_link(request):
         if codigo
         else None
     )
+    # Reabrir o convite no aparelho que já entrou não é uma nova conexão.
+    # A credencial do aparelho, e não o código já usado, autoriza a volta.
+    if link and link.usado_em and not link.cancelado_em and link.membro.ativo:
+        aparelho = aparelho_da_requisicao(request)
+        if aparelho and aparelho.membro_id == link.membro_id:
+            return HttpResponseRedirect(reverse("painel_da_equipe") + "?visao=minhas")
     # Usar é um UPDATE condicional: dois navegadores abrindo o mesmo link ao
     # mesmo tempo, só um muda a linha, e só ele entra.
     usado = (
@@ -287,11 +293,19 @@ def magic_link(request):
         == 1
     )
     if not usado:
+        if link and link.cancelado_em:
+            motivo = "Foi gerado outro link para esta pessoa ou este acesso foi cancelado. Use o link mais recente."
+        elif link and link.usado_em:
+            motivo = "Este link já conectou um aparelho. Nesse aparelho, abra o painel; para conectar outro, peça um novo link."
+        elif link and link.expira_em <= agora:
+            motivo = "O prazo deste link terminou. Peça um novo link."
+        else:
+            motivo = "O link está incompleto, não foi reconhecido ou a pessoa não está mais ativa na equipe. Peça um novo link."
         return _com_csp_do_script(
             render(
                 request,
                 "admin/equipe_magic_link.html",
-                {"recusado": True},
+                {"recusado": True, "motivo": motivo},
                 status=400,
             )
         )
@@ -529,10 +543,12 @@ def ficha_gerar_link(request, id: int):
         return _nao_existe(request)
     pessoa = get_object_or_404(MembroDaEquipe, pk=id, ativo=True)
     gerado = _gerar_link(request, pessoa, Origem.MANTENEDOR)
-    return render(
-        request,
-        "admin/equipe_link.html",
-        {"admin": request.admin, "pessoa": pessoa, "para_si": False, **gerado},
+    return _com_csp_do_script(
+        render(
+            request,
+            "admin/equipe_link.html",
+            {"admin": request.admin, "pessoa": pessoa, "para_si": False, **gerado},
+        )
     )
 
 
