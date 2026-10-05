@@ -535,6 +535,7 @@ def estrutura(request, curso: str):
             {
                 **aula,
                 "posicao": i + 1,
+                "descricao": re.sub(r"^Aula \d+(?:\s*[—–:-]\s*)?", "", aula["titulo_exibido"]).strip(),
                 "sobe": i > 0
                 and aulas[i - 1]["bloco"]["letra"] == aula["bloco"]["letra"],
                 "desce": i + 1 < len(aulas)

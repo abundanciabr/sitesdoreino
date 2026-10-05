@@ -86,7 +86,7 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   {% for a in atuais %}
   <form method="post" action="{{ url_de_importar }}" class="dois-botoes">
     {% csrf_token %}
-    <span><b>Aula {{ a.posicao }}</b> · {{ a.titulo_exibido }}</span>
+    <span><b>Aula {{ a.posicao }}</b>{% if a.descricao %} · {{ a.descricao }}{% endif %}</span>
     <button class="botao" name="mover" value="{{ a.numero }}:-1" {% if not a.sobe %}disabled{% endif %} aria-label="Subir aula {{ a.posicao }}">↑ Subir</button>
     <button class="botao" name="mover" value="{{ a.numero }}:1" {% if not a.desce %}disabled{% endif %} aria-label="Descer aula {{ a.posicao }}">↓ Descer</button>
   </form>
