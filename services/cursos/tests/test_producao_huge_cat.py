@@ -12,10 +12,14 @@ from apps.core import views
 from apps.core.praticas import PRATICAS
 
 
-def test_producao_recusa_visitante_usando_a_porta_existente(monkeypatch):
-    monkeypatch.setattr(views, 'quem_e', lambda request: SimpleNamespace(eh_professor=False))
-    monkeypatch.setattr(views, '_negar_plantao', lambda request: HttpResponse(status=403))
-    assert views.producao_huge_cat(RequestFactory().get(reverse('producao-huge-cat-dia1'))).status_code == 403
+def test_producao_libera_visitante_pelo_link_direto(monkeypatch):
+    def restricao_inesperada(request):
+        raise AssertionError('A aula pública não exige identidade de professor')
+    monkeypatch.setattr(views, '_professor', restricao_inesperada)
+    monkeypatch.setattr(views, 'quem_e', restricao_inesperada)
+    response = views.producao_huge_cat(RequestFactory().get(reverse('producao-huge-cat-dia1')))
+    assert response.status_code == 200
+    assert b'demonstracao-1366x768.mp4' in response.content
 
 
 def test_producao_nativa_entrega_roteiro_sem_criar_progresso(monkeypatch):

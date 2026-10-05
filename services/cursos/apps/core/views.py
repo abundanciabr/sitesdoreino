@@ -634,7 +634,6 @@ def mapa(request, curso: str):
             "atual": atual,
             **resumo,
             "recado": RECADOS.get(request.GET.get("recado", "")),
-            "producao_huge_cat": curso.slug == "desafio-como-ganhar-em-dolar-com-roblox" and quem_e(request).eh_professor,
             **_de_fora(curso),
         },
     )
@@ -1472,9 +1471,6 @@ def _professor(request):
 @require_GET
 @never_cache
 def producao_huge_cat(request):
-    ator, recusa = _professor(request)
-    if recusa is not None:
-        return recusa
     pasta = Path(settings.BASE_DIR) / "static" / "huge-cat-dia1"
     roteiro = json.loads((pasta / "roteiro-livia.json").read_text(encoding="utf-8"))
     return render(request, "cursos/producao_huge_cat.html", {
