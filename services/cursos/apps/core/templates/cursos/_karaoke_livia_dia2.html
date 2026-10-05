@@ -1,0 +1,39 @@
+<section id="karaoke-livia" class="bloco-da-pratica karaoke-livia" data-roteiro="{% url 'estatico' 'huge-cat-dia2/karaoke-livia.json' %}" aria-label="Ensaio da fala da Lívia">
+  <p class="rotulo">Gravação da apresentadora · Dia 2 de 7</p>
+  <h2>Leia a fala no ritmo da tela</h2>
+  <p>Acompanhe as palavras em verde enquanto grava o áudio no seu gravador. O texto é exatamente o roteiro abaixo. Use <strong>Tela cheia</strong> para ler com letras maiores.</p>
+  <p class="miudo">Tempos planejados para o ensaio de 8 minutos. Ainda não há áudio da Lívia: depois da gravação, a edição pode acompanhar o ritmo real dela. As pausas da prática também estão marcadas.</p>
+  <div class="karaoke-palco">
+    <div class="karaoke-quadro">
+      <video class="video-huge-cat" controls playsinline preload="metadata" poster="{% url 'estatico' 'huge-cat-dia2/tela-01-ugc.png' %}" aria-label="Ensaio da Lívia, telas e ações reais em 1920 por 1200"><source src="{% url 'estatico' 'huge-cat-dia2/ensaio-livia-1920x1200.mp4' %}" type="video/mp4"></video>
+      <div class="karaoke-legenda" hidden aria-hidden="true"></div>
+    </div>
+    <div class="karaoke-comandos">
+      <p class="karaoke-status" role="status">Carregando as falas…</p>
+      <div class="controles-pratica">
+        <button type="button" data-acao="play" disabled>Iniciar ensaio</button>
+        <button type="button" data-acao="anterior" disabled>Frase anterior</button>
+        <button type="button" data-acao="repetir" disabled>Repetir frase</button>
+        <button type="button" data-acao="proxima" disabled>Próxima frase</button>
+        <button type="button" data-acao="reiniciar" disabled>Recomeçar</button>
+        <button type="button" data-acao="tela" disabled>Tela cheia</button>
+      </div>
+      <div class="karaoke-ajustes">
+        <label>Ir para o bloco <select data-ajuste="bloco" disabled>
+          <option value="0">1 — O UGC e o exercício</option><option value="60">2 — Primeira ação</option><option value="120">3 — Prática no Blender</option><option value="360">4 — Conclusão e check-in</option><option value="420">5 — Próximo passo</option>
+        </select></label>
+        <label>Ritmo de leitura <select data-ajuste="ritmo" disabled><option value="0.75">Mais devagar · 75%</option><option value="0.9">Devagar · 90%</option><option value="1" selected>Planejado · 100%</option><option value="1.1">Mais rápido · 110%</option></select></label>
+      </div>
+      <label class="karaoke-tempo">Posição no ensaio <output>0:00 / 8:00</output><input aria-label="Posição no ensaio" type="range" min="0" max="480" step="0.01" value="0" disabled></label>
+      <p class="karaoke-leitura" aria-label="Fala atual"></p>
+      <p class="karaoke-seguinte" aria-label="Próxima fala"></p>
+    </div>
+  </div>
+  <p class="miudo">“Repetir frase” toca apenas o trecho atual e pausa no final. “Iniciar ensaio” continua a leitura. Mudar o ritmo mantém palavras e imagens juntas. Este modo não grava nem envia o seu microfone.</p>
+  <div class="links">
+    <a href="{% url 'estatico' 'huge-cat-dia2/ensaio-karaoke-1920x1200.mp4' %}" download>Baixar vídeo com karaokê · 1920×1200</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/legendas-livia.srt' %}" download>Baixar legendas para edição</a>
+    <a href="{% url 'estatico' 'huge-cat-dia2/kit-gravacao-karaoke.zip' %}" download>Baixar roteiro e marcações</a>
+  </div>
+</section>
+<script src="{% url 'estatico' 'cursos/karaoke-livia.js' %}" defer></script>

@@ -1,0 +1,241 @@
+WEBVTT
+
+00:00:00.000 --> 00:00:04.950
+Ontem eu deixei uma pergunta sobre o Programa UGC do Roblox.
+
+00:00:04.950 --> 00:00:11.630
+Vou começar fechando a parte que você precisa saber agora: você não precisa entrar nesse
+
+00:00:11.630 --> 00:00:14.890
+programa para fazer o exercício de hoje.
+
+00:00:14.890 --> 00:00:20.690
+O Marketplace é voltado a itens de avatar e tem regras de publicação.
+
+00:00:20.690 --> 00:00:25.820
+O nosso Huge Cat é um projeto de estudo de um pet.
+
+00:00:25.820 --> 00:00:32.220
+Fazer uma forma no Blender e publicar um acessório de avatar são etapas diferentes.
+
+00:00:32.220 --> 00:00:38.350
+Vamos aprofundar isso nos próximos dias, antes de escolher um caminho de publicação.
+
+00:00:38.350 --> 00:00:46.970
+Hoje é o Dia 2 de 7. Se você comentou sua meta ontem, chegou a hora de dar o primeiro
+
+00:00:46.970 --> 00:00:53.250
+passo. E, se não comentou ou ainda não começou, pode começar comigo agora.
+
+00:00:53.250 --> 00:01:00.000
+No fim desta etapa, você vai ter preparado e salvo o corpo do nosso projeto.
+
+00:01:00.000 --> 00:01:06.510
+Depois da empolgação do primeiro dia, pode aparecer aquela vontade de deixar para depois.
+
+00:01:06.510 --> 00:01:13.570
+Se você está pensando “não sei mexer nesse programa”, fica comigo: hoje não vamos fazer o
+
+00:01:13.570 --> 00:01:14.660
+gato inteiro.
+
+00:01:14.660 --> 00:01:22.910
+A meta que propus ontem foi terminar o modelo de estudo em até cinco dias e usar os dois
+
+00:01:22.910 --> 00:01:25.530
+seguintes para conferir e apresentar.
+
+00:01:25.530 --> 00:01:31.940
+O passo de hoje cabe nessa meta: ajustar o corpo e guardar o arquivo.
+
+00:01:31.940 --> 00:01:33.440
+Uma tarefa só.
+
+00:01:33.440 --> 00:01:37.550
+Olha o resultado na tela. É um bloco cinza.
+
+00:01:37.550 --> 00:01:43.560
+Não precisa desenhar um rosto, criar orelha ou decorar nomes de ferramentas agora.
+
+00:01:43.560 --> 00:01:46.720
+Você vai mudar três valores e salvar.
+
+00:01:46.720 --> 00:01:53.470
+Pode pausar quantas vezes precisar. Se um passo sair diferente, volte e compare com a
+
+00:01:53.470 --> 00:02:00.000
+tela. A sua sequência começa com uma tentativa feita por você, não com velocidade.
+
+00:02:00.000 --> 00:02:08.680
+Esse é o destino de hoje: o corpo do projeto, com quatro metros na largura, três e meio na
+
+00:02:08.680 --> 00:02:13.080
+profundidade e três vírgula oitenta e seis na altura.
+
+00:02:13.080 --> 00:02:17.750
+Aqui os metros são a unidade da cena do Blender.
+
+00:02:17.750 --> 00:02:25.000
+Estamos preparando a proporção; o tamanho de uso no jogo será conferido em outra etapa.
+
+00:02:25.000 --> 00:02:29.520
+Baixe o arquivo inicial que está nesta aula.
+
+00:02:29.520 --> 00:02:36.460
+No Blender, abra o menu Arquivo, escolha Abrir e selecione esse arquivo.
+
+00:02:36.460 --> 00:02:42.610
+O corpo já vem selecionado e as outras peças estão escondidas.
+
+00:02:42.610 --> 00:02:50.000
+Elas ficaram preservadas para o estudo, mas hoje você só precisa deste bloco.
+
+00:02:50.000 --> 00:02:56.770
+Se o painel da direita não aparecer, no menu Visualizar procure Barra lateral.
+
+00:02:56.770 --> 00:03:01.110
+Abra a aba Item. Procure a palavra Dimensões.
+
+00:03:01.110 --> 00:03:09.890
+Não é a seção Escala. Se a parte de baixo ficou escondida, passe o mouse na borda do
+
+00:03:09.890 --> 00:03:17.000
+painel e role para baixo. Agora devem aparecer as linhas X, Y e Z.
+
+00:03:17.000 --> 00:03:25.760
+Vamos fazer a primeira. Na linha X de Dimensões, dê dois cliques sobre o valor.
+
+00:03:25.760 --> 00:03:30.400
+Aperte Control e A para selecionar o texto.
+
+00:03:30.400 --> 00:03:36.940
+Digite quatro e confirme com Enter. O bloco fica mais largo.
+
+00:03:36.940 --> 00:03:41.000
+Pause aqui e faça no seu computador.
+
+00:03:45.000 --> 00:03:55.020
+Agora a linha Y. Dois cliques sobre o valor, Control e A, digite três ponto cinco e Enter.
+
+00:03:55.020 --> 00:03:59.520
+Use ponto no decimal, como está na tela.
+
+00:03:59.520 --> 00:04:03.880
+Esse é o tamanho da frente para trás.
+
+00:04:03.880 --> 00:04:09.000
+Pause e confira: X quatro, Y três ponto cinco.
+
+00:04:13.000 --> 00:04:22.910
+Por último, a linha Z. Dois cliques, Control e A, digite três ponto oitenta e seis e
+
+00:04:22.910 --> 00:04:27.420
+confirme com Enter. O bloco ganha altura.
+
+00:04:27.420 --> 00:04:31.780
+Pronto: você preparou o corpo do projeto.
+
+00:04:31.780 --> 00:04:37.000
+Olhe as três linhas e compare com o exemplo.
+
+00:04:41.000 --> 00:04:46.730
+Se alguma ficou diferente, não precisa começar tudo de novo.
+
+00:04:46.730 --> 00:04:54.530
+Dê dois cliques só no valor daquela linha, selecione o texto e digite novamente.
+
+00:04:54.530 --> 00:05:01.000
+Esse é um jeito de corrigir o tamanho sem adivinhar no olho.
+
+00:05:01.000 --> 00:05:08.880
+Agora vamos guardar o trabalho. Abra Arquivo e escolha Salvar como.
+
+00:05:08.880 --> 00:05:17.220
+Escolha uma pasta sua, dê um nome que você reconheça, como huge-cat-dia2-meu-corpo.blend,
+
+00:05:17.220 --> 00:05:27.380
+e confirme o salvamento. A demonstração usa Salvar porque já tem um arquivo de trabalho
+
+00:05:27.380 --> 00:05:37.740
+aberto. No seu computador, a primeira cópia pode ser feita com Salvar como; depois você
+
+00:05:37.740 --> 00:05:40.000
+pode usar Salvar.
+
+00:05:40.000 --> 00:05:45.020
+Confira o nome do arquivo no topo e guarde essa pasta.
+
+00:05:45.020 --> 00:05:49.210
+Esse é o arquivo que você vai continuar usando.
+
+00:05:49.210 --> 00:05:54.430
+Hoje você não precisa mudar material nem mostrar as outras peças.
+
+00:05:54.430 --> 00:06:00.000
+O objetivo é terminar este corpo e conseguir voltar a ele amanhã.
+
+00:06:00.000 --> 00:06:04.270
+Antes de seguir, eu quero que você confira o que fez.
+
+00:06:04.270 --> 00:06:10.840
+Seu corpo está aparecendo na tela? Dimensões mostra X quatro, Y três ponto cinco e Z três
+
+00:06:10.840 --> 00:06:16.180
+ponto oitenta e seis? Você salvou o arquivo numa pasta que consegue encontrar?
+
+00:06:16.180 --> 00:06:21.260
+Se sim, tire um print da sua tela e guarde junto do projeto.
+
+00:06:21.260 --> 00:06:27.850
+Essa imagem vai ajudar você a ver o progresso quando chegarem as orelhas, as patinhas e o
+
+00:06:27.850 --> 00:06:28.420
+rosto.
+
+00:06:28.420 --> 00:06:33.320
+Agora comenta nesta aula: “Dia 2 concluído”, com o sinal de confirmação.
+
+00:06:33.320 --> 00:06:39.910
+O comentário é o nosso check-in. O print fica no seu computador; o campo desta aula recebe
+
+00:06:39.910 --> 00:06:46.180
+texto. Se você travou em uma etapa, escreva qual foi e o que apareceu na tela.
+
+00:06:46.180 --> 00:06:51.740
+Depois de fazer a tarefa no seu computador, use o botão Concluir esta aula.
+
+00:06:51.740 --> 00:06:55.360
+Uma aula concluída soma ao seu progresso no curso.
+
+00:06:55.360 --> 00:07:00.000
+A conquista de hoje é esse arquivo feito e salvo por você.
+
+00:07:00.000 --> 00:07:05.120
+Você acabou de preparar sua primeira forma do nosso projeto.
+
+00:07:05.120 --> 00:07:12.890
+Ela ainda é só o corpo. O que faz esse bloco começar a parecer um gato?
+
+00:07:12.890 --> 00:07:17.030
+Na próxima etapa, vamos trabalhar orelhas e patinhas.
+
+00:07:17.030 --> 00:07:24.090
+Você vai ver como poucas formas, bem posicionadas, começam a dar identidade ao personagem.
+
+00:07:24.090 --> 00:07:31.740
+Não é uma ferramenta mágica: é comparar a referência e construir uma parte de cada vez.
+
+00:07:31.740 --> 00:07:39.870
+E vamos retomar a diferença entre criar um pet para uma experiência e criar um item para
+
+00:07:39.870 --> 00:07:45.690
+avatar. Essa distinção vem antes de pensar em publicar ou vender.
+
+00:07:45.690 --> 00:07:51.070
+O nosso modelo de estudo não é uma promessa de venda.
+
+00:07:51.070 --> 00:07:55.480
+Por hoje, faça o check-in e guarde o arquivo.
+
+00:07:55.480 --> 00:08:00.000
+Amanhã a gente continua exatamente de onde você parou.

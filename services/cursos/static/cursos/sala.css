@@ -319,6 +319,28 @@ button {
 .telas-producao code { overflow-wrap: anywhere; }
 .telas-producao img, .resultado-producao { display: block; width: 100%; height: auto; border-radius: 10px; }
 .fala-livia { max-width: 860px; }
+.karaoke-quadro { position: relative; container-type: inline-size; background: #000; border-radius: 10px; overflow: hidden; }
+.karaoke-legenda { position: absolute; bottom: 1%; left: 2%; right: 2%; padding: .5em .6em; background: #0c121bf5; color: white; text-align: center; font: 700 clamp(13px, 2.5cqw, 48px)/1.25 Arial, sans-serif; border-radius: 8px; pointer-events: none; }
+.karaoke-legenda[hidden] { display: none; }
+.karaoke-legenda .palavra-atual { color: #aaff00; text-decoration: underline; text-underline-offset: .12em; }
+.karaoke-legenda .palavra-lida { color: #b6c3d3; }
+.karaoke-leitura { font-size: clamp(22px, 3vw, 34px); line-height: 1.45; min-height: 4.35em; }
+.karaoke-leitura .palavra-atual { color: var(--marca); background: #dcf6a8; border-radius: 4px; text-decoration: underline; }
+.karaoke-leitura .palavra-lida { opacity: .65; }
+.karaoke-ajustes { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; }
+.karaoke-ajustes label { display: flex; flex-direction: column; gap: 6px; max-width: 100%; }
+.karaoke-ajustes select { max-width: 100%; padding: 8px; font: inherit; border-radius: 8px; }
+.karaoke-tempo { display: block; margin: 16px 0; }
+.karaoke-tempo output { float: right; }
+.karaoke-tempo input { display: block; width: 100%; accent-color: var(--marca); }
+.karaoke-seguinte { min-height: 3em; }
+.karaoke-palco:fullscreen { background: #0c121b; color: white; overflow: auto; display: flex; flex-direction: column; align-items: center; }
+.karaoke-palco:fullscreen .karaoke-quadro { width: min(100vw, calc((100vh - 220px) * 1.6)); flex-shrink: 0; }
+.karaoke-palco:fullscreen .karaoke-comandos { width: min(96vw, 1500px); }
+.karaoke-palco:fullscreen .karaoke-leitura, .karaoke-palco:fullscreen .karaoke-seguinte { display: none; }
+.karaoke-palco:fullscreen .karaoke-status { margin: 8px 0; }
+.karaoke-palco:fullscreen .karaoke-ajustes { margin: 8px 0; }
+.karaoke-palco:fullscreen .karaoke-tempo { margin: 8px 0; }
 .pratica-guiada { overflow-anchor: none; }
 .pratica-guiada h2 { font-size: 48px; line-height: 1.2; }
 .instrucao-pratica { font-size: 34px; line-height: 1.45; margin: 12px 0; }

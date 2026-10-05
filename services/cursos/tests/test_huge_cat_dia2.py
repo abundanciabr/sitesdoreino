@@ -43,3 +43,25 @@ def test_preparacao_dia2_reusa_falas_e_imagens_na_aula_sem_progresso():
     for b in p['blocos']:
         for file in [b['imagem_tela'],*[c['arquivo'] for c in b['capturas']]]:
             assert (Path(settings.BASE_DIR)/'static'/file).is_file()
+
+def test_karaoke_preserva_verbatim_e_tempos_dos_cinco_blocos():
+    import json
+    pasta=Path(settings.BASE_DIR)/'static/huge-cat-dia2'
+    script=json.loads((pasta/'roteiro-livia.json').read_text(encoding='utf-8'))
+    cues=json.loads((pasta/'karaoke-livia.json').read_text(encoding='utf-8'))
+    assert cues['duracao']==480 and cues['resolucao']==[1920,1200]
+    assert ' '.join(f['texto'] for f in cues['frases'])==' '.join(' '.join(b['fala'].split()) for b in script['blocos'])
+    last=0
+    for f in cues['frases']:
+        block=next(b for b in cues['blocos'] if b['numero']==f['bloco'])
+        assert block['inicio'] <= f['inicio'] < f['fim'] <= block['fim']
+        assert last<=f['inicio']
+        last=f['fim']
+        assert ' '.join(w['texto'] for w in f['palavras'])==f['texto']
+        for w in f['palavras']:
+            assert f['inicio']<=w['inicio']<w['fim']<=f['fim']
+    assert len(cues['pausas'])==3
+    html=render_to_string('cursos/_karaoke_livia_dia2.html')
+    assert '<iframe' not in html and 'karaoke-livia.js' in html
+    for name in ['ensaio-livia-1920x1200.mp4','ensaio-karaoke-1920x1200.mp4','legendas-livia.srt','kit-gravacao-karaoke.zip']:
+        assert name in html and (pasta/name).is_file()

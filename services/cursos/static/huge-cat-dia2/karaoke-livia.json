@@ -1,0 +1,5600 @@
+{
+  "titulo": "Aula 2 — Dia 2 de 7: seu primeiro corpo no Blender",
+  "duracao": 480,
+  "resolucao": [
+    1920,
+    1200
+  ],
+  "tipo_tempo": "Tempos planejados para gravação, ainda sem áudio real da Lívia.",
+  "blocos": [
+    {
+      "numero": 1,
+      "titulo": "Callback: o UGC não impede começar",
+      "inicio": 0,
+      "fim": 60
+    },
+    {
+      "numero": 2,
+      "titulo": "Da intenção para a primeira ação",
+      "inicio": 60,
+      "fim": 120
+    },
+    {
+      "numero": 3,
+      "titulo": "Prática: preparar e salvar o corpo",
+      "inicio": 120,
+      "fim": 360
+    },
+    {
+      "numero": 4,
+      "titulo": "Prova de conclusão e check-in",
+      "inicio": 360,
+      "fim": 420
+    },
+    {
+      "numero": 5,
+      "titulo": "Próximo passo: identidade do personagem",
+      "inicio": 420,
+      "fim": 480
+    }
+  ],
+  "frases": [
+    {
+      "bloco": 1,
+      "inicio": 0.0,
+      "fim": 4.95,
+      "texto": "Ontem eu deixei uma pergunta sobre o Programa UGC do Roblox.",
+      "palavras": [
+        {
+          "texto": "Ontem",
+          "inicio": 0.0,
+          "fim": 0.44
+        },
+        {
+          "texto": "eu",
+          "inicio": 0.44,
+          "fim": 0.83
+        },
+        {
+          "texto": "deixei",
+          "inicio": 0.83,
+          "fim": 1.29
+        },
+        {
+          "texto": "uma",
+          "inicio": 1.29,
+          "fim": 1.7
+        },
+        {
+          "texto": "pergunta",
+          "inicio": 1.7,
+          "fim": 2.19
+        },
+        {
+          "texto": "sobre",
+          "inicio": 2.19,
+          "fim": 2.64
+        },
+        {
+          "texto": "o",
+          "inicio": 2.64,
+          "fim": 3.01
+        },
+        {
+          "texto": "Programa",
+          "inicio": 3.01,
+          "fim": 3.5
+        },
+        {
+          "texto": "UGC",
+          "inicio": 3.5,
+          "fim": 3.91
+        },
+        {
+          "texto": "do",
+          "inicio": 3.91,
+          "fim": 4.3
+        },
+        {
+          "texto": "Roblox.",
+          "inicio": 4.3,
+          "fim": 4.95
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 4.95,
+      "fim": 11.63,
+      "texto": "Vou começar fechando a parte que você precisa saber agora: você não precisa entrar nesse",
+      "palavras": [
+        {
+          "texto": "Vou",
+          "inicio": 4.95,
+          "fim": 5.36
+        },
+        {
+          "texto": "começar",
+          "inicio": 5.36,
+          "fim": 5.84
+        },
+        {
+          "texto": "fechando",
+          "inicio": 5.84,
+          "fim": 6.33
+        },
+        {
+          "texto": "a",
+          "inicio": 6.33,
+          "fim": 6.71
+        },
+        {
+          "texto": "parte",
+          "inicio": 6.71,
+          "fim": 7.15
+        },
+        {
+          "texto": "que",
+          "inicio": 7.15,
+          "fim": 7.55
+        },
+        {
+          "texto": "você",
+          "inicio": 7.55,
+          "fim": 7.98
+        },
+        {
+          "texto": "precisa",
+          "inicio": 7.98,
+          "fim": 8.46
+        },
+        {
+          "texto": "saber",
+          "inicio": 8.46,
+          "fim": 8.9
+        },
+        {
+          "texto": "agora:",
+          "inicio": 8.9,
+          "fim": 9.42
+        },
+        {
+          "texto": "você",
+          "inicio": 9.42,
+          "fim": 9.85
+        },
+        {
+          "texto": "não",
+          "inicio": 9.85,
+          "fim": 10.25
+        },
+        {
+          "texto": "precisa",
+          "inicio": 10.25,
+          "fim": 10.73
+        },
+        {
+          "texto": "entrar",
+          "inicio": 10.73,
+          "fim": 11.19
+        },
+        {
+          "texto": "nesse",
+          "inicio": 11.19,
+          "fim": 11.63
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 11.63,
+      "fim": 14.89,
+      "texto": "programa para fazer o exercício de hoje.",
+      "palavras": [
+        {
+          "texto": "programa",
+          "inicio": 11.63,
+          "fim": 12.13
+        },
+        {
+          "texto": "para",
+          "inicio": 12.13,
+          "fim": 12.55
+        },
+        {
+          "texto": "fazer",
+          "inicio": 12.55,
+          "fim": 13.0
+        },
+        {
+          "texto": "o",
+          "inicio": 13.0,
+          "fim": 13.37
+        },
+        {
+          "texto": "exercício",
+          "inicio": 13.37,
+          "fim": 13.88
+        },
+        {
+          "texto": "de",
+          "inicio": 13.88,
+          "fim": 14.27
+        },
+        {
+          "texto": "hoje.",
+          "inicio": 14.27,
+          "fim": 14.89
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 14.89,
+      "fim": 20.69,
+      "texto": "O Marketplace é voltado a itens de avatar e tem regras de publicação.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 14.89,
+          "fim": 15.26
+        },
+        {
+          "texto": "Marketplace",
+          "inicio": 15.26,
+          "fim": 15.81
+        },
+        {
+          "texto": "é",
+          "inicio": 15.81,
+          "fim": 16.19
+        },
+        {
+          "texto": "voltado",
+          "inicio": 16.19,
+          "fim": 16.67
+        },
+        {
+          "texto": "a",
+          "inicio": 16.67,
+          "fim": 17.04
+        },
+        {
+          "texto": "itens",
+          "inicio": 17.04,
+          "fim": 17.48
+        },
+        {
+          "texto": "de",
+          "inicio": 17.48,
+          "fim": 17.87
+        },
+        {
+          "texto": "avatar",
+          "inicio": 17.87,
+          "fim": 18.33
+        },
+        {
+          "texto": "e",
+          "inicio": 18.33,
+          "fim": 18.71
+        },
+        {
+          "texto": "tem",
+          "inicio": 18.71,
+          "fim": 19.11
+        },
+        {
+          "texto": "regras",
+          "inicio": 19.11,
+          "fim": 19.58
+        },
+        {
+          "texto": "de",
+          "inicio": 19.58,
+          "fim": 19.97
+        },
+        {
+          "texto": "publicação.",
+          "inicio": 19.97,
+          "fim": 20.69
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 20.69,
+      "fim": 25.82,
+      "texto": "O nosso Huge Cat é um projeto de estudo de um pet.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 20.69,
+          "fim": 21.07
+        },
+        {
+          "texto": "nosso",
+          "inicio": 21.07,
+          "fim": 21.51
+        },
+        {
+          "texto": "Huge",
+          "inicio": 21.51,
+          "fim": 21.94
+        },
+        {
+          "texto": "Cat",
+          "inicio": 21.94,
+          "fim": 22.35
+        },
+        {
+          "texto": "é",
+          "inicio": 22.35,
+          "fim": 22.72
+        },
+        {
+          "texto": "um",
+          "inicio": 22.72,
+          "fim": 23.11
+        },
+        {
+          "texto": "projeto",
+          "inicio": 23.11,
+          "fim": 23.59
+        },
+        {
+          "texto": "de",
+          "inicio": 23.59,
+          "fim": 23.98
+        },
+        {
+          "texto": "estudo",
+          "inicio": 23.98,
+          "fim": 24.44
+        },
+        {
+          "texto": "de",
+          "inicio": 24.44,
+          "fim": 24.83
+        },
+        {
+          "texto": "um",
+          "inicio": 24.83,
+          "fim": 25.22
+        },
+        {
+          "texto": "pet.",
+          "inicio": 25.22,
+          "fim": 25.82
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 25.82,
+      "fim": 32.22,
+      "texto": "Fazer uma forma no Blender e publicar um acessório de avatar são etapas diferentes.",
+      "palavras": [
+        {
+          "texto": "Fazer",
+          "inicio": 25.82,
+          "fim": 26.27
+        },
+        {
+          "texto": "uma",
+          "inicio": 26.27,
+          "fim": 26.68
+        },
+        {
+          "texto": "forma",
+          "inicio": 26.68,
+          "fim": 27.12
+        },
+        {
+          "texto": "no",
+          "inicio": 27.12,
+          "fim": 27.51
+        },
+        {
+          "texto": "Blender",
+          "inicio": 27.51,
+          "fim": 27.99
+        },
+        {
+          "texto": "e",
+          "inicio": 27.99,
+          "fim": 28.36
+        },
+        {
+          "texto": "publicar",
+          "inicio": 28.36,
+          "fim": 28.86
+        },
+        {
+          "texto": "um",
+          "inicio": 28.86,
+          "fim": 29.25
+        },
+        {
+          "texto": "acessório",
+          "inicio": 29.25,
+          "fim": 29.77
+        },
+        {
+          "texto": "de",
+          "inicio": 29.77,
+          "fim": 30.16
+        },
+        {
+          "texto": "avatar",
+          "inicio": 30.16,
+          "fim": 30.62
+        },
+        {
+          "texto": "são",
+          "inicio": 30.62,
+          "fim": 31.03
+        },
+        {
+          "texto": "etapas",
+          "inicio": 31.03,
+          "fim": 31.49
+        },
+        {
+          "texto": "diferentes.",
+          "inicio": 31.49,
+          "fim": 32.22
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 32.22,
+      "fim": 38.35,
+      "texto": "Vamos aprofundar isso nos próximos dias, antes de escolher um caminho de publicação.",
+      "palavras": [
+        {
+          "texto": "Vamos",
+          "inicio": 32.22,
+          "fim": 32.66
+        },
+        {
+          "texto": "aprofundar",
+          "inicio": 32.66,
+          "fim": 33.19
+        },
+        {
+          "texto": "isso",
+          "inicio": 33.19,
+          "fim": 33.62
+        },
+        {
+          "texto": "nos",
+          "inicio": 33.62,
+          "fim": 34.03
+        },
+        {
+          "texto": "próximos",
+          "inicio": 34.03,
+          "fim": 34.52
+        },
+        {
+          "texto": "dias,",
+          "inicio": 34.52,
+          "fim": 35.03
+        },
+        {
+          "texto": "antes",
+          "inicio": 35.03,
+          "fim": 35.47
+        },
+        {
+          "texto": "de",
+          "inicio": 35.47,
+          "fim": 35.86
+        },
+        {
+          "texto": "escolher",
+          "inicio": 35.86,
+          "fim": 36.36
+        },
+        {
+          "texto": "um",
+          "inicio": 36.36,
+          "fim": 36.75
+        },
+        {
+          "texto": "caminho",
+          "inicio": 36.75,
+          "fim": 37.23
+        },
+        {
+          "texto": "de",
+          "inicio": 37.23,
+          "fim": 37.62
+        },
+        {
+          "texto": "publicação.",
+          "inicio": 37.62,
+          "fim": 38.35
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 38.35,
+      "fim": 46.97,
+      "texto": "Hoje é o Dia 2 de 7. Se você comentou sua meta ontem, chegou a hora de dar o primeiro",
+      "palavras": [
+        {
+          "texto": "Hoje",
+          "inicio": 38.35,
+          "fim": 38.78
+        },
+        {
+          "texto": "é",
+          "inicio": 38.78,
+          "fim": 39.16
+        },
+        {
+          "texto": "o",
+          "inicio": 39.16,
+          "fim": 39.54
+        },
+        {
+          "texto": "Dia",
+          "inicio": 39.54,
+          "fim": 39.95
+        },
+        {
+          "texto": "2",
+          "inicio": 39.95,
+          "fim": 40.33
+        },
+        {
+          "texto": "de",
+          "inicio": 40.33,
+          "fim": 40.72
+        },
+        {
+          "texto": "7.",
+          "inicio": 40.72,
+          "fim": 41.3
+        },
+        {
+          "texto": "Se",
+          "inicio": 41.3,
+          "fim": 41.69
+        },
+        {
+          "texto": "você",
+          "inicio": 41.69,
+          "fim": 42.12
+        },
+        {
+          "texto": "comentou",
+          "inicio": 42.12,
+          "fim": 42.63
+        },
+        {
+          "texto": "sua",
+          "inicio": 42.63,
+          "fim": 43.04
+        },
+        {
+          "texto": "meta",
+          "inicio": 43.04,
+          "fim": 43.47
+        },
+        {
+          "texto": "ontem,",
+          "inicio": 43.47,
+          "fim": 44.01
+        },
+        {
+          "texto": "chegou",
+          "inicio": 44.01,
+          "fim": 44.47
+        },
+        {
+          "texto": "a",
+          "inicio": 44.47,
+          "fim": 44.85
+        },
+        {
+          "texto": "hora",
+          "inicio": 44.85,
+          "fim": 45.28
+        },
+        {
+          "texto": "de",
+          "inicio": 45.28,
+          "fim": 45.68
+        },
+        {
+          "texto": "dar",
+          "inicio": 45.68,
+          "fim": 46.09
+        },
+        {
+          "texto": "o",
+          "inicio": 46.09,
+          "fim": 46.47
+        },
+        {
+          "texto": "primeiro",
+          "inicio": 46.47,
+          "fim": 46.97
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 46.97,
+      "fim": 53.25,
+      "texto": "passo. E, se não comentou ou ainda não começou, pode começar comigo agora.",
+      "palavras": [
+        {
+          "texto": "passo.",
+          "inicio": 46.97,
+          "fim": 47.62
+        },
+        {
+          "texto": "E,",
+          "inicio": 47.62,
+          "fim": 48.08
+        },
+        {
+          "texto": "se",
+          "inicio": 48.08,
+          "fim": 48.47
+        },
+        {
+          "texto": "não",
+          "inicio": 48.47,
+          "fim": 48.89
+        },
+        {
+          "texto": "comentou",
+          "inicio": 48.89,
+          "fim": 49.39
+        },
+        {
+          "texto": "ou",
+          "inicio": 49.39,
+          "fim": 49.79
+        },
+        {
+          "texto": "ainda",
+          "inicio": 49.79,
+          "fim": 50.24
+        },
+        {
+          "texto": "não",
+          "inicio": 50.24,
+          "fim": 50.65
+        },
+        {
+          "texto": "começou,",
+          "inicio": 50.65,
+          "fim": 51.22
+        },
+        {
+          "texto": "pode",
+          "inicio": 51.22,
+          "fim": 51.65
+        },
+        {
+          "texto": "começar",
+          "inicio": 51.65,
+          "fim": 52.13
+        },
+        {
+          "texto": "comigo",
+          "inicio": 52.13,
+          "fim": 52.6
+        },
+        {
+          "texto": "agora.",
+          "inicio": 52.6,
+          "fim": 53.25
+        }
+      ]
+    },
+    {
+      "bloco": 1,
+      "inicio": 53.25,
+      "fim": 60.0,
+      "texto": "No fim desta etapa, você vai ter preparado e salvo o corpo do nosso projeto.",
+      "palavras": [
+        {
+          "texto": "No",
+          "inicio": 53.25,
+          "fim": 53.64
+        },
+        {
+          "texto": "fim",
+          "inicio": 53.64,
+          "fim": 54.06
+        },
+        {
+          "texto": "desta",
+          "inicio": 54.06,
+          "fim": 54.51
+        },
+        {
+          "texto": "etapa,",
+          "inicio": 54.51,
+          "fim": 55.04
+        },
+        {
+          "texto": "você",
+          "inicio": 55.04,
+          "fim": 55.47
+        },
+        {
+          "texto": "vai",
+          "inicio": 55.47,
+          "fim": 55.88
+        },
+        {
+          "texto": "ter",
+          "inicio": 55.88,
+          "fim": 56.3
+        },
+        {
+          "texto": "preparado",
+          "inicio": 56.3,
+          "fim": 56.82
+        },
+        {
+          "texto": "e",
+          "inicio": 56.82,
+          "fim": 57.2
+        },
+        {
+          "texto": "salvo",
+          "inicio": 57.2,
+          "fim": 57.65
+        },
+        {
+          "texto": "o",
+          "inicio": 57.65,
+          "fim": 58.02
+        },
+        {
+          "texto": "corpo",
+          "inicio": 58.02,
+          "fim": 58.47
+        },
+        {
+          "texto": "do",
+          "inicio": 58.47,
+          "fim": 58.87
+        },
+        {
+          "texto": "nosso",
+          "inicio": 58.87,
+          "fim": 59.32
+        },
+        {
+          "texto": "projeto.",
+          "inicio": 59.32,
+          "fim": 60.0
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 60.0,
+      "fim": 66.51,
+      "texto": "Depois da empolgação do primeiro dia, pode aparecer aquela vontade de deixar para depois.",
+      "palavras": [
+        {
+          "texto": "Depois",
+          "inicio": 60.0,
+          "fim": 60.46
+        },
+        {
+          "texto": "da",
+          "inicio": 60.46,
+          "fim": 60.84
+        },
+        {
+          "texto": "empolgação",
+          "inicio": 60.84,
+          "fim": 61.37
+        },
+        {
+          "texto": "do",
+          "inicio": 61.37,
+          "fim": 61.76
+        },
+        {
+          "texto": "primeiro",
+          "inicio": 61.76,
+          "fim": 62.25
+        },
+        {
+          "texto": "dia,",
+          "inicio": 62.25,
+          "fim": 62.74
+        },
+        {
+          "texto": "pode",
+          "inicio": 62.74,
+          "fim": 63.16
+        },
+        {
+          "texto": "aparecer",
+          "inicio": 63.16,
+          "fim": 63.65
+        },
+        {
+          "texto": "aquela",
+          "inicio": 63.65,
+          "fim": 64.11
+        },
+        {
+          "texto": "vontade",
+          "inicio": 64.11,
+          "fim": 64.59
+        },
+        {
+          "texto": "de",
+          "inicio": 64.59,
+          "fim": 64.97
+        },
+        {
+          "texto": "deixar",
+          "inicio": 64.97,
+          "fim": 65.43
+        },
+        {
+          "texto": "para",
+          "inicio": 65.43,
+          "fim": 65.85
+        },
+        {
+          "texto": "depois.",
+          "inicio": 65.85,
+          "fim": 66.51
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 66.51,
+      "fim": 73.57,
+      "texto": "Se você está pensando “não sei mexer nesse programa”, fica comigo: hoje não vamos fazer o",
+      "palavras": [
+        {
+          "texto": "Se",
+          "inicio": 66.51,
+          "fim": 66.89
+        },
+        {
+          "texto": "você",
+          "inicio": 66.89,
+          "fim": 67.32
+        },
+        {
+          "texto": "está",
+          "inicio": 67.32,
+          "fim": 67.74
+        },
+        {
+          "texto": "pensando",
+          "inicio": 67.74,
+          "fim": 68.23
+        },
+        {
+          "texto": "“não",
+          "inicio": 68.23,
+          "fim": 68.65
+        },
+        {
+          "texto": "sei",
+          "inicio": 68.65,
+          "fim": 69.06
+        },
+        {
+          "texto": "mexer",
+          "inicio": 69.06,
+          "fim": 69.5
+        },
+        {
+          "texto": "nesse",
+          "inicio": 69.5,
+          "fim": 69.94
+        },
+        {
+          "texto": "programa”,",
+          "inicio": 69.94,
+          "fim": 70.53
+        },
+        {
+          "texto": "fica",
+          "inicio": 70.53,
+          "fim": 70.95
+        },
+        {
+          "texto": "comigo:",
+          "inicio": 70.95,
+          "fim": 71.49
+        },
+        {
+          "texto": "hoje",
+          "inicio": 71.49,
+          "fim": 71.91
+        },
+        {
+          "texto": "não",
+          "inicio": 71.91,
+          "fim": 72.32
+        },
+        {
+          "texto": "vamos",
+          "inicio": 72.32,
+          "fim": 72.76
+        },
+        {
+          "texto": "fazer",
+          "inicio": 72.76,
+          "fim": 73.2
+        },
+        {
+          "texto": "o",
+          "inicio": 73.2,
+          "fim": 73.57
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 73.57,
+      "fim": 74.66,
+      "texto": "gato inteiro.",
+      "palavras": [
+        {
+          "texto": "gato",
+          "inicio": 73.57,
+          "fim": 73.99
+        },
+        {
+          "texto": "inteiro.",
+          "inicio": 73.99,
+          "fim": 74.66
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 74.66,
+      "fim": 82.91,
+      "texto": "A meta que propus ontem foi terminar o modelo de estudo em até cinco dias e usar os dois",
+      "palavras": [
+        {
+          "texto": "A",
+          "inicio": 74.66,
+          "fim": 75.04
+        },
+        {
+          "texto": "meta",
+          "inicio": 75.04,
+          "fim": 75.48
+        },
+        {
+          "texto": "que",
+          "inicio": 75.48,
+          "fim": 75.91
+        },
+        {
+          "texto": "propus",
+          "inicio": 75.91,
+          "fim": 76.38
+        },
+        {
+          "texto": "ontem",
+          "inicio": 76.38,
+          "fim": 76.84
+        },
+        {
+          "texto": "foi",
+          "inicio": 76.84,
+          "fim": 77.26
+        },
+        {
+          "texto": "terminar",
+          "inicio": 77.26,
+          "fim": 77.78
+        },
+        {
+          "texto": "o",
+          "inicio": 77.78,
+          "fim": 78.16
+        },
+        {
+          "texto": "modelo",
+          "inicio": 78.16,
+          "fim": 78.64
+        },
+        {
+          "texto": "de",
+          "inicio": 78.64,
+          "fim": 79.04
+        },
+        {
+          "texto": "estudo",
+          "inicio": 79.04,
+          "fim": 79.52
+        },
+        {
+          "texto": "em",
+          "inicio": 79.52,
+          "fim": 79.92
+        },
+        {
+          "texto": "até",
+          "inicio": 79.92,
+          "fim": 80.34
+        },
+        {
+          "texto": "cinco",
+          "inicio": 80.34,
+          "fim": 80.8
+        },
+        {
+          "texto": "dias",
+          "inicio": 80.8,
+          "fim": 81.24
+        },
+        {
+          "texto": "e",
+          "inicio": 81.24,
+          "fim": 81.63
+        },
+        {
+          "texto": "usar",
+          "inicio": 81.63,
+          "fim": 82.06
+        },
+        {
+          "texto": "os",
+          "inicio": 82.06,
+          "fim": 82.47
+        },
+        {
+          "texto": "dois",
+          "inicio": 82.47,
+          "fim": 82.91
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 82.91,
+      "fim": 85.53,
+      "texto": "seguintes para conferir e apresentar.",
+      "palavras": [
+        {
+          "texto": "seguintes",
+          "inicio": 82.91,
+          "fim": 83.44
+        },
+        {
+          "texto": "para",
+          "inicio": 83.44,
+          "fim": 83.88
+        },
+        {
+          "texto": "conferir",
+          "inicio": 83.88,
+          "fim": 84.39
+        },
+        {
+          "texto": "e",
+          "inicio": 84.39,
+          "fim": 84.78
+        },
+        {
+          "texto": "apresentar.",
+          "inicio": 84.78,
+          "fim": 85.53
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 85.53,
+      "fim": 91.94,
+      "texto": "O passo de hoje cabe nessa meta: ajustar o corpo e guardar o arquivo.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 85.53,
+          "fim": 85.91
+        },
+        {
+          "texto": "passo",
+          "inicio": 85.91,
+          "fim": 86.37
+        },
+        {
+          "texto": "de",
+          "inicio": 86.37,
+          "fim": 86.78
+        },
+        {
+          "texto": "hoje",
+          "inicio": 86.78,
+          "fim": 87.22
+        },
+        {
+          "texto": "cabe",
+          "inicio": 87.22,
+          "fim": 87.66
+        },
+        {
+          "texto": "nessa",
+          "inicio": 87.66,
+          "fim": 88.11
+        },
+        {
+          "texto": "meta:",
+          "inicio": 88.11,
+          "fim": 88.64
+        },
+        {
+          "texto": "ajustar",
+          "inicio": 88.64,
+          "fim": 89.13
+        },
+        {
+          "texto": "o",
+          "inicio": 89.13,
+          "fim": 89.52
+        },
+        {
+          "texto": "corpo",
+          "inicio": 89.52,
+          "fim": 89.98
+        },
+        {
+          "texto": "e",
+          "inicio": 89.98,
+          "fim": 90.36
+        },
+        {
+          "texto": "guardar",
+          "inicio": 90.36,
+          "fim": 90.86
+        },
+        {
+          "texto": "o",
+          "inicio": 90.86,
+          "fim": 91.24
+        },
+        {
+          "texto": "arquivo.",
+          "inicio": 91.24,
+          "fim": 91.94
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 91.94,
+      "fim": 93.44,
+      "texto": "Uma tarefa só.",
+      "palavras": [
+        {
+          "texto": "Uma",
+          "inicio": 91.94,
+          "fim": 92.36
+        },
+        {
+          "texto": "tarefa",
+          "inicio": 92.36,
+          "fim": 92.84
+        },
+        {
+          "texto": "só.",
+          "inicio": 92.84,
+          "fim": 93.44
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 93.44,
+      "fim": 97.55,
+      "texto": "Olha o resultado na tela. É um bloco cinza.",
+      "palavras": [
+        {
+          "texto": "Olha",
+          "inicio": 93.44,
+          "fim": 93.86
+        },
+        {
+          "texto": "o",
+          "inicio": 93.86,
+          "fim": 94.23
+        },
+        {
+          "texto": "resultado",
+          "inicio": 94.23,
+          "fim": 94.73
+        },
+        {
+          "texto": "na",
+          "inicio": 94.73,
+          "fim": 95.12
+        },
+        {
+          "texto": "tela.",
+          "inicio": 95.12,
+          "fim": 95.73
+        },
+        {
+          "texto": "É",
+          "inicio": 95.73,
+          "fim": 96.1
+        },
+        {
+          "texto": "um",
+          "inicio": 96.1,
+          "fim": 96.48
+        },
+        {
+          "texto": "bloco",
+          "inicio": 96.48,
+          "fim": 96.92
+        },
+        {
+          "texto": "cinza.",
+          "inicio": 96.92,
+          "fim": 97.55
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 97.55,
+      "fim": 103.56,
+      "texto": "Não precisa desenhar um rosto, criar orelha ou decorar nomes de ferramentas agora.",
+      "palavras": [
+        {
+          "texto": "Não",
+          "inicio": 97.55,
+          "fim": 97.95
+        },
+        {
+          "texto": "precisa",
+          "inicio": 97.95,
+          "fim": 98.42
+        },
+        {
+          "texto": "desenhar",
+          "inicio": 98.42,
+          "fim": 98.91
+        },
+        {
+          "texto": "um",
+          "inicio": 98.91,
+          "fim": 99.3
+        },
+        {
+          "texto": "rosto,",
+          "inicio": 99.3,
+          "fim": 99.81
+        },
+        {
+          "texto": "criar",
+          "inicio": 99.81,
+          "fim": 100.25
+        },
+        {
+          "texto": "orelha",
+          "inicio": 100.25,
+          "fim": 100.71
+        },
+        {
+          "texto": "ou",
+          "inicio": 100.71,
+          "fim": 101.09
+        },
+        {
+          "texto": "decorar",
+          "inicio": 101.09,
+          "fim": 101.56
+        },
+        {
+          "texto": "nomes",
+          "inicio": 101.56,
+          "fim": 102.0
+        },
+        {
+          "texto": "de",
+          "inicio": 102.0,
+          "fim": 102.38
+        },
+        {
+          "texto": "ferramentas",
+          "inicio": 102.38,
+          "fim": 102.93
+        },
+        {
+          "texto": "agora.",
+          "inicio": 102.93,
+          "fim": 103.56
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 103.56,
+      "fim": 106.72,
+      "texto": "Você vai mudar três valores e salvar.",
+      "palavras": [
+        {
+          "texto": "Você",
+          "inicio": 103.56,
+          "fim": 103.98
+        },
+        {
+          "texto": "vai",
+          "inicio": 103.98,
+          "fim": 104.38
+        },
+        {
+          "texto": "mudar",
+          "inicio": 104.38,
+          "fim": 104.81
+        },
+        {
+          "texto": "três",
+          "inicio": 104.81,
+          "fim": 105.23
+        },
+        {
+          "texto": "valores",
+          "inicio": 105.23,
+          "fim": 105.71
+        },
+        {
+          "texto": "e",
+          "inicio": 105.71,
+          "fim": 106.07
+        },
+        {
+          "texto": "salvar.",
+          "inicio": 106.07,
+          "fim": 106.72
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 106.72,
+      "fim": 113.47,
+      "texto": "Pode pausar quantas vezes precisar. Se um passo sair diferente, volte e compare com a",
+      "palavras": [
+        {
+          "texto": "Pode",
+          "inicio": 106.72,
+          "fim": 107.14
+        },
+        {
+          "texto": "pausar",
+          "inicio": 107.14,
+          "fim": 107.6
+        },
+        {
+          "texto": "quantas",
+          "inicio": 107.6,
+          "fim": 108.07
+        },
+        {
+          "texto": "vezes",
+          "inicio": 108.07,
+          "fim": 108.51
+        },
+        {
+          "texto": "precisar.",
+          "inicio": 108.51,
+          "fim": 109.19
+        },
+        {
+          "texto": "Se",
+          "inicio": 109.19,
+          "fim": 109.58
+        },
+        {
+          "texto": "um",
+          "inicio": 109.58,
+          "fim": 109.96
+        },
+        {
+          "texto": "passo",
+          "inicio": 109.96,
+          "fim": 110.4
+        },
+        {
+          "texto": "sair",
+          "inicio": 110.4,
+          "fim": 110.82
+        },
+        {
+          "texto": "diferente,",
+          "inicio": 110.82,
+          "fim": 111.41
+        },
+        {
+          "texto": "volte",
+          "inicio": 111.41,
+          "fim": 111.85
+        },
+        {
+          "texto": "e",
+          "inicio": 111.85,
+          "fim": 112.22
+        },
+        {
+          "texto": "compare",
+          "inicio": 112.22,
+          "fim": 112.69
+        },
+        {
+          "texto": "com",
+          "inicio": 112.69,
+          "fim": 113.1
+        },
+        {
+          "texto": "a",
+          "inicio": 113.1,
+          "fim": 113.47
+        }
+      ]
+    },
+    {
+      "bloco": 2,
+      "inicio": 113.47,
+      "fim": 120.0,
+      "texto": "tela. A sua sequência começa com uma tentativa feita por você, não com velocidade.",
+      "palavras": [
+        {
+          "texto": "tela.",
+          "inicio": 113.47,
+          "fim": 114.08
+        },
+        {
+          "texto": "A",
+          "inicio": 114.08,
+          "fim": 114.45
+        },
+        {
+          "texto": "sua",
+          "inicio": 114.45,
+          "fim": 114.85
+        },
+        {
+          "texto": "sequência",
+          "inicio": 114.85,
+          "fim": 115.36
+        },
+        {
+          "texto": "começa",
+          "inicio": 115.36,
+          "fim": 115.82
+        },
+        {
+          "texto": "com",
+          "inicio": 115.82,
+          "fim": 116.22
+        },
+        {
+          "texto": "uma",
+          "inicio": 116.22,
+          "fim": 116.62
+        },
+        {
+          "texto": "tentativa",
+          "inicio": 116.62,
+          "fim": 117.13
+        },
+        {
+          "texto": "feita",
+          "inicio": 117.13,
+          "fim": 117.57
+        },
+        {
+          "texto": "por",
+          "inicio": 117.57,
+          "fim": 117.97
+        },
+        {
+          "texto": "você,",
+          "inicio": 117.97,
+          "fim": 118.47
+        },
+        {
+          "texto": "não",
+          "inicio": 118.47,
+          "fim": 118.88
+        },
+        {
+          "texto": "com",
+          "inicio": 118.88,
+          "fim": 119.28
+        },
+        {
+          "texto": "velocidade.",
+          "inicio": 119.28,
+          "fim": 120.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 120.0,
+      "fim": 128.68,
+      "texto": "Esse é o destino de hoje: o corpo do projeto, com quatro metros na largura, três e meio na",
+      "palavras": [
+        {
+          "texto": "Esse",
+          "inicio": 120.0,
+          "fim": 120.45
+        },
+        {
+          "texto": "é",
+          "inicio": 120.45,
+          "fim": 120.84
+        },
+        {
+          "texto": "o",
+          "inicio": 120.84,
+          "fim": 121.24
+        },
+        {
+          "texto": "destino",
+          "inicio": 121.24,
+          "fim": 121.74
+        },
+        {
+          "texto": "de",
+          "inicio": 121.74,
+          "fim": 122.16
+        },
+        {
+          "texto": "hoje:",
+          "inicio": 122.16,
+          "fim": 122.69
+        },
+        {
+          "texto": "o",
+          "inicio": 122.69,
+          "fim": 123.09
+        },
+        {
+          "texto": "corpo",
+          "inicio": 123.09,
+          "fim": 123.55
+        },
+        {
+          "texto": "do",
+          "inicio": 123.55,
+          "fim": 123.97
+        },
+        {
+          "texto": "projeto,",
+          "inicio": 123.97,
+          "fim": 124.56
+        },
+        {
+          "texto": "com",
+          "inicio": 124.56,
+          "fim": 124.99
+        },
+        {
+          "texto": "quatro",
+          "inicio": 124.99,
+          "fim": 125.48
+        },
+        {
+          "texto": "metros",
+          "inicio": 125.48,
+          "fim": 125.97
+        },
+        {
+          "texto": "na",
+          "inicio": 125.97,
+          "fim": 126.38
+        },
+        {
+          "texto": "largura,",
+          "inicio": 126.38,
+          "fim": 126.97
+        },
+        {
+          "texto": "três",
+          "inicio": 126.97,
+          "fim": 127.42
+        },
+        {
+          "texto": "e",
+          "inicio": 127.42,
+          "fim": 127.81
+        },
+        {
+          "texto": "meio",
+          "inicio": 127.81,
+          "fim": 128.26
+        },
+        {
+          "texto": "na",
+          "inicio": 128.26,
+          "fim": 128.68
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 128.68,
+      "fim": 133.08,
+      "texto": "profundidade e três vírgula oitenta e seis na altura.",
+      "palavras": [
+        {
+          "texto": "profundidade",
+          "inicio": 128.68,
+          "fim": 129.28
+        },
+        {
+          "texto": "e",
+          "inicio": 129.28,
+          "fim": 129.67
+        },
+        {
+          "texto": "três",
+          "inicio": 129.67,
+          "fim": 130.12
+        },
+        {
+          "texto": "vírgula",
+          "inicio": 130.12,
+          "fim": 130.63
+        },
+        {
+          "texto": "oitenta",
+          "inicio": 130.63,
+          "fim": 131.13
+        },
+        {
+          "texto": "e",
+          "inicio": 131.13,
+          "fim": 131.53
+        },
+        {
+          "texto": "seis",
+          "inicio": 131.53,
+          "fim": 131.98
+        },
+        {
+          "texto": "na",
+          "inicio": 131.98,
+          "fim": 132.39
+        },
+        {
+          "texto": "altura.",
+          "inicio": 132.39,
+          "fim": 133.08
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 133.08,
+      "fim": 137.75,
+      "texto": "Aqui os metros são a unidade da cena do Blender.",
+      "palavras": [
+        {
+          "texto": "Aqui",
+          "inicio": 133.08,
+          "fim": 133.53
+        },
+        {
+          "texto": "os",
+          "inicio": 133.53,
+          "fim": 133.95
+        },
+        {
+          "texto": "metros",
+          "inicio": 133.95,
+          "fim": 134.43
+        },
+        {
+          "texto": "são",
+          "inicio": 134.43,
+          "fim": 134.86
+        },
+        {
+          "texto": "a",
+          "inicio": 134.86,
+          "fim": 135.26
+        },
+        {
+          "texto": "unidade",
+          "inicio": 135.26,
+          "fim": 135.76
+        },
+        {
+          "texto": "da",
+          "inicio": 135.76,
+          "fim": 136.18
+        },
+        {
+          "texto": "cena",
+          "inicio": 136.18,
+          "fim": 136.63
+        },
+        {
+          "texto": "do",
+          "inicio": 136.63,
+          "fim": 137.04
+        },
+        {
+          "texto": "Blender.",
+          "inicio": 137.04,
+          "fim": 137.75
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 137.75,
+      "fim": 145.0,
+      "texto": "Estamos preparando a proporção; o tamanho de uso no jogo será conferido em outra etapa.",
+      "palavras": [
+        {
+          "texto": "Estamos",
+          "inicio": 137.75,
+          "fim": 138.26
+        },
+        {
+          "texto": "preparando",
+          "inicio": 138.26,
+          "fim": 138.82
+        },
+        {
+          "texto": "a",
+          "inicio": 138.82,
+          "fim": 139.21
+        },
+        {
+          "texto": "proporção;",
+          "inicio": 139.21,
+          "fim": 139.84
+        },
+        {
+          "texto": "o",
+          "inicio": 139.84,
+          "fim": 140.24
+        },
+        {
+          "texto": "tamanho",
+          "inicio": 140.24,
+          "fim": 140.74
+        },
+        {
+          "texto": "de",
+          "inicio": 140.74,
+          "fim": 141.16
+        },
+        {
+          "texto": "uso",
+          "inicio": 141.16,
+          "fim": 141.59
+        },
+        {
+          "texto": "no",
+          "inicio": 141.59,
+          "fim": 142.0
+        },
+        {
+          "texto": "jogo",
+          "inicio": 142.0,
+          "fim": 142.45
+        },
+        {
+          "texto": "será",
+          "inicio": 142.45,
+          "fim": 142.9
+        },
+        {
+          "texto": "conferido",
+          "inicio": 142.9,
+          "fim": 143.44
+        },
+        {
+          "texto": "em",
+          "inicio": 143.44,
+          "fim": 143.86
+        },
+        {
+          "texto": "outra",
+          "inicio": 143.86,
+          "fim": 144.33
+        },
+        {
+          "texto": "etapa.",
+          "inicio": 144.33,
+          "fim": 145.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 145.0,
+      "fim": 149.52,
+      "texto": "Baixe o arquivo inicial que está nesta aula.",
+      "palavras": [
+        {
+          "texto": "Baixe",
+          "inicio": 145.0,
+          "fim": 145.55
+        },
+        {
+          "texto": "o",
+          "inicio": 145.55,
+          "fim": 146.0
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 146.0,
+          "fim": 146.59
+        },
+        {
+          "texto": "inicial",
+          "inicio": 146.59,
+          "fim": 147.18
+        },
+        {
+          "texto": "que",
+          "inicio": 147.18,
+          "fim": 147.68
+        },
+        {
+          "texto": "está",
+          "inicio": 147.68,
+          "fim": 148.21
+        },
+        {
+          "texto": "nesta",
+          "inicio": 148.21,
+          "fim": 148.75
+        },
+        {
+          "texto": "aula.",
+          "inicio": 148.75,
+          "fim": 149.52
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 149.52,
+      "fim": 156.46,
+      "texto": "No Blender, abra o menu Arquivo, escolha Abrir e selecione esse arquivo.",
+      "palavras": [
+        {
+          "texto": "No",
+          "inicio": 149.52,
+          "fim": 150.0
+        },
+        {
+          "texto": "Blender,",
+          "inicio": 150.0,
+          "fim": 150.69
+        },
+        {
+          "texto": "abra",
+          "inicio": 150.69,
+          "fim": 151.21
+        },
+        {
+          "texto": "o",
+          "inicio": 151.21,
+          "fim": 151.67
+        },
+        {
+          "texto": "menu",
+          "inicio": 151.67,
+          "fim": 152.19
+        },
+        {
+          "texto": "Arquivo,",
+          "inicio": 152.19,
+          "fim": 152.88
+        },
+        {
+          "texto": "escolha",
+          "inicio": 152.88,
+          "fim": 153.47
+        },
+        {
+          "texto": "Abrir",
+          "inicio": 153.47,
+          "fim": 154.02
+        },
+        {
+          "texto": "e",
+          "inicio": 154.02,
+          "fim": 154.47
+        },
+        {
+          "texto": "selecione",
+          "inicio": 154.47,
+          "fim": 155.11
+        },
+        {
+          "texto": "esse",
+          "inicio": 155.11,
+          "fim": 155.63
+        },
+        {
+          "texto": "arquivo.",
+          "inicio": 155.63,
+          "fim": 156.46
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 156.46,
+      "fim": 162.61,
+      "texto": "O corpo já vem selecionado e as outras peças estão escondidas.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 156.46,
+          "fim": 156.92
+        },
+        {
+          "texto": "corpo",
+          "inicio": 156.92,
+          "fim": 157.46
+        },
+        {
+          "texto": "já",
+          "inicio": 157.46,
+          "fim": 157.94
+        },
+        {
+          "texto": "vem",
+          "inicio": 157.94,
+          "fim": 158.44
+        },
+        {
+          "texto": "selecionado",
+          "inicio": 158.44,
+          "fim": 159.12
+        },
+        {
+          "texto": "e",
+          "inicio": 159.12,
+          "fim": 159.58
+        },
+        {
+          "texto": "as",
+          "inicio": 159.58,
+          "fim": 160.06
+        },
+        {
+          "texto": "outras",
+          "inicio": 160.06,
+          "fim": 160.63
+        },
+        {
+          "texto": "peças",
+          "inicio": 160.63,
+          "fim": 161.17
+        },
+        {
+          "texto": "estão",
+          "inicio": 161.17,
+          "fim": 161.72
+        },
+        {
+          "texto": "escondidas.",
+          "inicio": 161.72,
+          "fim": 162.61
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 162.61,
+      "fim": 170.0,
+      "texto": "Elas ficaram preservadas para o estudo, mas hoje você só precisa deste bloco.",
+      "palavras": [
+        {
+          "texto": "Elas",
+          "inicio": 162.61,
+          "fim": 163.14
+        },
+        {
+          "texto": "ficaram",
+          "inicio": 163.14,
+          "fim": 163.72
+        },
+        {
+          "texto": "preservadas",
+          "inicio": 163.72,
+          "fim": 164.4
+        },
+        {
+          "texto": "para",
+          "inicio": 164.4,
+          "fim": 164.92
+        },
+        {
+          "texto": "o",
+          "inicio": 164.92,
+          "fim": 165.38
+        },
+        {
+          "texto": "estudo,",
+          "inicio": 165.38,
+          "fim": 166.05
+        },
+        {
+          "texto": "mas",
+          "inicio": 166.05,
+          "fim": 166.55
+        },
+        {
+          "texto": "hoje",
+          "inicio": 166.55,
+          "fim": 167.08
+        },
+        {
+          "texto": "você",
+          "inicio": 167.08,
+          "fim": 167.6
+        },
+        {
+          "texto": "só",
+          "inicio": 167.6,
+          "fim": 168.08
+        },
+        {
+          "texto": "precisa",
+          "inicio": 168.08,
+          "fim": 168.67
+        },
+        {
+          "texto": "deste",
+          "inicio": 168.67,
+          "fim": 169.21
+        },
+        {
+          "texto": "bloco.",
+          "inicio": 169.21,
+          "fim": 170.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 170.0,
+      "fim": 176.77,
+      "texto": "Se o painel da direita não aparecer, no menu Visualizar procure Barra lateral.",
+      "palavras": [
+        {
+          "texto": "Se",
+          "inicio": 170.0,
+          "fim": 170.44
+        },
+        {
+          "texto": "o",
+          "inicio": 170.44,
+          "fim": 170.86
+        },
+        {
+          "texto": "painel",
+          "inicio": 170.86,
+          "fim": 171.38
+        },
+        {
+          "texto": "da",
+          "inicio": 171.38,
+          "fim": 171.81
+        },
+        {
+          "texto": "direita",
+          "inicio": 171.81,
+          "fim": 172.35
+        },
+        {
+          "texto": "não",
+          "inicio": 172.35,
+          "fim": 172.81
+        },
+        {
+          "texto": "aparecer,",
+          "inicio": 172.81,
+          "fim": 173.46
+        },
+        {
+          "texto": "no",
+          "inicio": 173.46,
+          "fim": 173.9
+        },
+        {
+          "texto": "menu",
+          "inicio": 173.9,
+          "fim": 174.38
+        },
+        {
+          "texto": "Visualizar",
+          "inicio": 174.38,
+          "fim": 174.97
+        },
+        {
+          "texto": "procure",
+          "inicio": 174.97,
+          "fim": 175.51
+        },
+        {
+          "texto": "Barra",
+          "inicio": 175.51,
+          "fim": 176.01
+        },
+        {
+          "texto": "lateral.",
+          "inicio": 176.01,
+          "fim": 176.77
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 176.77,
+      "fim": 181.11,
+      "texto": "Abra a aba Item. Procure a palavra Dimensões.",
+      "palavras": [
+        {
+          "texto": "Abra",
+          "inicio": 176.77,
+          "fim": 177.25
+        },
+        {
+          "texto": "a",
+          "inicio": 177.25,
+          "fim": 177.66
+        },
+        {
+          "texto": "aba",
+          "inicio": 177.66,
+          "fim": 178.12
+        },
+        {
+          "texto": "Item.",
+          "inicio": 178.12,
+          "fim": 178.82
+        },
+        {
+          "texto": "Procure",
+          "inicio": 178.82,
+          "fim": 179.36
+        },
+        {
+          "texto": "a",
+          "inicio": 179.36,
+          "fim": 179.78
+        },
+        {
+          "texto": "palavra",
+          "inicio": 179.78,
+          "fim": 180.32
+        },
+        {
+          "texto": "Dimensões.",
+          "inicio": 180.32,
+          "fim": 181.11
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 181.11,
+      "fim": 189.89,
+      "texto": "Não é a seção Escala. Se a parte de baixo ficou escondida, passe o mouse na borda do",
+      "palavras": [
+        {
+          "texto": "Não",
+          "inicio": 181.11,
+          "fim": 181.57
+        },
+        {
+          "texto": "é",
+          "inicio": 181.57,
+          "fim": 181.99
+        },
+        {
+          "texto": "a",
+          "inicio": 181.99,
+          "fim": 182.41
+        },
+        {
+          "texto": "seção",
+          "inicio": 182.41,
+          "fim": 182.91
+        },
+        {
+          "texto": "Escala.",
+          "inicio": 182.91,
+          "fim": 183.64
+        },
+        {
+          "texto": "Se",
+          "inicio": 183.64,
+          "fim": 184.08
+        },
+        {
+          "texto": "a",
+          "inicio": 184.08,
+          "fim": 184.5
+        },
+        {
+          "texto": "parte",
+          "inicio": 184.5,
+          "fim": 185.0
+        },
+        {
+          "texto": "de",
+          "inicio": 185.0,
+          "fim": 185.44
+        },
+        {
+          "texto": "baixo",
+          "inicio": 185.44,
+          "fim": 185.94
+        },
+        {
+          "texto": "ficou",
+          "inicio": 185.94,
+          "fim": 186.43
+        },
+        {
+          "texto": "escondida,",
+          "inicio": 186.43,
+          "fim": 187.1
+        },
+        {
+          "texto": "passe",
+          "inicio": 187.1,
+          "fim": 187.6
+        },
+        {
+          "texto": "o",
+          "inicio": 187.6,
+          "fim": 188.02
+        },
+        {
+          "texto": "mouse",
+          "inicio": 188.02,
+          "fim": 188.52
+        },
+        {
+          "texto": "na",
+          "inicio": 188.52,
+          "fim": 188.96
+        },
+        {
+          "texto": "borda",
+          "inicio": 188.96,
+          "fim": 189.45
+        },
+        {
+          "texto": "do",
+          "inicio": 189.45,
+          "fim": 189.89
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 189.89,
+      "fim": 197.0,
+      "texto": "painel e role para baixo. Agora devem aparecer as linhas X, Y e Z.",
+      "palavras": [
+        {
+          "texto": "painel",
+          "inicio": 189.89,
+          "fim": 190.41
+        },
+        {
+          "texto": "e",
+          "inicio": 190.41,
+          "fim": 190.83
+        },
+        {
+          "texto": "role",
+          "inicio": 190.83,
+          "fim": 191.31
+        },
+        {
+          "texto": "para",
+          "inicio": 191.31,
+          "fim": 191.79
+        },
+        {
+          "texto": "baixo.",
+          "inicio": 191.79,
+          "fim": 192.5
+        },
+        {
+          "texto": "Agora",
+          "inicio": 192.5,
+          "fim": 193.0
+        },
+        {
+          "texto": "devem",
+          "inicio": 193.0,
+          "fim": 193.5
+        },
+        {
+          "texto": "aparecer",
+          "inicio": 193.5,
+          "fim": 194.06
+        },
+        {
+          "texto": "as",
+          "inicio": 194.06,
+          "fim": 194.5
+        },
+        {
+          "texto": "linhas",
+          "inicio": 194.5,
+          "fim": 195.02
+        },
+        {
+          "texto": "X,",
+          "inicio": 195.02,
+          "fim": 195.53
+        },
+        {
+          "texto": "Y",
+          "inicio": 195.53,
+          "fim": 195.94
+        },
+        {
+          "texto": "e",
+          "inicio": 195.94,
+          "fim": 196.36
+        },
+        {
+          "texto": "Z.",
+          "inicio": 196.36,
+          "fim": 197.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 197.0,
+      "fim": 205.76,
+      "texto": "Vamos fazer a primeira. Na linha X de Dimensões, dê dois cliques sobre o valor.",
+      "palavras": [
+        {
+          "texto": "Vamos",
+          "inicio": 197.0,
+          "fim": 197.56
+        },
+        {
+          "texto": "fazer",
+          "inicio": 197.56,
+          "fim": 198.13
+        },
+        {
+          "texto": "a",
+          "inicio": 198.13,
+          "fim": 198.6
+        },
+        {
+          "texto": "primeira.",
+          "inicio": 198.6,
+          "fim": 199.48
+        },
+        {
+          "texto": "Na",
+          "inicio": 199.48,
+          "fim": 199.98
+        },
+        {
+          "texto": "linha",
+          "inicio": 199.98,
+          "fim": 200.54
+        },
+        {
+          "texto": "X",
+          "inicio": 200.54,
+          "fim": 201.01
+        },
+        {
+          "texto": "de",
+          "inicio": 201.01,
+          "fim": 201.51
+        },
+        {
+          "texto": "Dimensões,",
+          "inicio": 201.51,
+          "fim": 202.27
+        },
+        {
+          "texto": "dê",
+          "inicio": 202.27,
+          "fim": 202.76
+        },
+        {
+          "texto": "dois",
+          "inicio": 202.76,
+          "fim": 203.3
+        },
+        {
+          "texto": "cliques",
+          "inicio": 203.3,
+          "fim": 203.91
+        },
+        {
+          "texto": "sobre",
+          "inicio": 203.91,
+          "fim": 204.48
+        },
+        {
+          "texto": "o",
+          "inicio": 204.48,
+          "fim": 204.95
+        },
+        {
+          "texto": "valor.",
+          "inicio": 204.95,
+          "fim": 205.76
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 205.76,
+      "fim": 210.4,
+      "texto": "Aperte Control e A para selecionar o texto.",
+      "palavras": [
+        {
+          "texto": "Aperte",
+          "inicio": 205.76,
+          "fim": 206.35
+        },
+        {
+          "texto": "Control",
+          "inicio": 206.35,
+          "fim": 206.96
+        },
+        {
+          "texto": "e",
+          "inicio": 206.96,
+          "fim": 207.43
+        },
+        {
+          "texto": "A",
+          "inicio": 207.43,
+          "fim": 207.9
+        },
+        {
+          "texto": "para",
+          "inicio": 207.9,
+          "fim": 208.44
+        },
+        {
+          "texto": "selecionar",
+          "inicio": 208.44,
+          "fim": 209.12
+        },
+        {
+          "texto": "o",
+          "inicio": 209.12,
+          "fim": 209.59
+        },
+        {
+          "texto": "texto.",
+          "inicio": 209.59,
+          "fim": 210.4
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 210.4,
+      "fim": 216.94,
+      "texto": "Digite quatro e confirme com Enter. O bloco fica mais largo.",
+      "palavras": [
+        {
+          "texto": "Digite",
+          "inicio": 210.4,
+          "fim": 210.99
+        },
+        {
+          "texto": "quatro",
+          "inicio": 210.99,
+          "fim": 211.58
+        },
+        {
+          "texto": "e",
+          "inicio": 211.58,
+          "fim": 212.05
+        },
+        {
+          "texto": "confirme",
+          "inicio": 212.05,
+          "fim": 212.68
+        },
+        {
+          "texto": "com",
+          "inicio": 212.68,
+          "fim": 213.2
+        },
+        {
+          "texto": "Enter.",
+          "inicio": 213.2,
+          "fim": 214.01
+        },
+        {
+          "texto": "O",
+          "inicio": 214.01,
+          "fim": 214.48
+        },
+        {
+          "texto": "bloco",
+          "inicio": 214.48,
+          "fim": 215.05
+        },
+        {
+          "texto": "fica",
+          "inicio": 215.05,
+          "fim": 215.59
+        },
+        {
+          "texto": "mais",
+          "inicio": 215.59,
+          "fim": 216.13
+        },
+        {
+          "texto": "largo.",
+          "inicio": 216.13,
+          "fim": 216.94
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 216.94,
+      "fim": 221.0,
+      "texto": "Pause aqui e faça no seu computador.",
+      "palavras": [
+        {
+          "texto": "Pause",
+          "inicio": 216.94,
+          "fim": 217.51
+        },
+        {
+          "texto": "aqui",
+          "inicio": 217.51,
+          "fim": 218.05
+        },
+        {
+          "texto": "e",
+          "inicio": 218.05,
+          "fim": 218.52
+        },
+        {
+          "texto": "faça",
+          "inicio": 218.52,
+          "fim": 219.06
+        },
+        {
+          "texto": "no",
+          "inicio": 219.06,
+          "fim": 219.56
+        },
+        {
+          "texto": "seu",
+          "inicio": 219.56,
+          "fim": 220.08
+        },
+        {
+          "texto": "computador.",
+          "inicio": 220.08,
+          "fim": 221.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 225.0,
+      "fim": 235.02,
+      "texto": "Agora a linha Y. Dois cliques sobre o valor, Control e A, digite três ponto cinco e Enter.",
+      "palavras": [
+        {
+          "texto": "Agora",
+          "inicio": 225.0,
+          "fim": 225.54
+        },
+        {
+          "texto": "a",
+          "inicio": 225.54,
+          "fim": 226.0
+        },
+        {
+          "texto": "linha",
+          "inicio": 226.0,
+          "fim": 226.55
+        },
+        {
+          "texto": "Y.",
+          "inicio": 226.55,
+          "fim": 227.24
+        },
+        {
+          "texto": "Dois",
+          "inicio": 227.24,
+          "fim": 227.77
+        },
+        {
+          "texto": "cliques",
+          "inicio": 227.77,
+          "fim": 228.35
+        },
+        {
+          "texto": "sobre",
+          "inicio": 228.35,
+          "fim": 228.9
+        },
+        {
+          "texto": "o",
+          "inicio": 228.9,
+          "fim": 229.36
+        },
+        {
+          "texto": "valor,",
+          "inicio": 229.36,
+          "fim": 230.0
+        },
+        {
+          "texto": "Control",
+          "inicio": 230.0,
+          "fim": 230.59
+        },
+        {
+          "texto": "e",
+          "inicio": 230.59,
+          "fim": 231.05
+        },
+        {
+          "texto": "A,",
+          "inicio": 231.05,
+          "fim": 231.6
+        },
+        {
+          "texto": "digite",
+          "inicio": 231.6,
+          "fim": 232.17
+        },
+        {
+          "texto": "três",
+          "inicio": 232.17,
+          "fim": 232.69
+        },
+        {
+          "texto": "ponto",
+          "inicio": 232.69,
+          "fim": 233.24
+        },
+        {
+          "texto": "cinco",
+          "inicio": 233.24,
+          "fim": 233.78
+        },
+        {
+          "texto": "e",
+          "inicio": 233.78,
+          "fim": 234.24
+        },
+        {
+          "texto": "Enter.",
+          "inicio": 234.24,
+          "fim": 235.02
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 235.02,
+      "fim": 239.52,
+      "texto": "Use ponto no decimal, como está na tela.",
+      "palavras": [
+        {
+          "texto": "Use",
+          "inicio": 235.02,
+          "fim": 235.52
+        },
+        {
+          "texto": "ponto",
+          "inicio": 235.52,
+          "fim": 236.07
+        },
+        {
+          "texto": "no",
+          "inicio": 236.07,
+          "fim": 236.55
+        },
+        {
+          "texto": "decimal,",
+          "inicio": 236.55,
+          "fim": 237.24
+        },
+        {
+          "texto": "como",
+          "inicio": 237.24,
+          "fim": 237.76
+        },
+        {
+          "texto": "está",
+          "inicio": 237.76,
+          "fim": 238.28
+        },
+        {
+          "texto": "na",
+          "inicio": 238.28,
+          "fim": 238.76
+        },
+        {
+          "texto": "tela.",
+          "inicio": 238.76,
+          "fim": 239.52
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 239.52,
+      "fim": 243.88,
+      "texto": "Esse é o tamanho da frente para trás.",
+      "palavras": [
+        {
+          "texto": "Esse",
+          "inicio": 239.52,
+          "fim": 240.04
+        },
+        {
+          "texto": "é",
+          "inicio": 240.04,
+          "fim": 240.5
+        },
+        {
+          "texto": "o",
+          "inicio": 240.5,
+          "fim": 240.96
+        },
+        {
+          "texto": "tamanho",
+          "inicio": 240.96,
+          "fim": 241.55
+        },
+        {
+          "texto": "da",
+          "inicio": 241.55,
+          "fim": 242.03
+        },
+        {
+          "texto": "frente",
+          "inicio": 242.03,
+          "fim": 242.59
+        },
+        {
+          "texto": "para",
+          "inicio": 242.59,
+          "fim": 243.12
+        },
+        {
+          "texto": "trás.",
+          "inicio": 243.12,
+          "fim": 243.88
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 243.88,
+      "fim": 249.0,
+      "texto": "Pause e confira: X quatro, Y três ponto cinco.",
+      "palavras": [
+        {
+          "texto": "Pause",
+          "inicio": 243.88,
+          "fim": 244.42
+        },
+        {
+          "texto": "e",
+          "inicio": 244.42,
+          "fim": 244.88
+        },
+        {
+          "texto": "confira:",
+          "inicio": 244.88,
+          "fim": 245.57
+        },
+        {
+          "texto": "X",
+          "inicio": 245.57,
+          "fim": 246.03
+        },
+        {
+          "texto": "quatro,",
+          "inicio": 246.03,
+          "fim": 246.69
+        },
+        {
+          "texto": "Y",
+          "inicio": 246.69,
+          "fim": 247.15
+        },
+        {
+          "texto": "três",
+          "inicio": 247.15,
+          "fim": 247.67
+        },
+        {
+          "texto": "ponto",
+          "inicio": 247.67,
+          "fim": 248.22
+        },
+        {
+          "texto": "cinco.",
+          "inicio": 248.22,
+          "fim": 249.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 253.0,
+      "fim": 262.91,
+      "texto": "Por último, a linha Z. Dois cliques, Control e A, digite três ponto oitenta e seis e",
+      "palavras": [
+        {
+          "texto": "Por",
+          "inicio": 253.0,
+          "fim": 253.53
+        },
+        {
+          "texto": "último,",
+          "inicio": 253.53,
+          "fim": 254.24
+        },
+        {
+          "texto": "a",
+          "inicio": 254.24,
+          "fim": 254.72
+        },
+        {
+          "texto": "linha",
+          "inicio": 254.72,
+          "fim": 255.3
+        },
+        {
+          "texto": "Z.",
+          "inicio": 255.3,
+          "fim": 256.04
+        },
+        {
+          "texto": "Dois",
+          "inicio": 256.04,
+          "fim": 256.6
+        },
+        {
+          "texto": "cliques,",
+          "inicio": 256.6,
+          "fim": 257.33
+        },
+        {
+          "texto": "Control",
+          "inicio": 257.33,
+          "fim": 257.95
+        },
+        {
+          "texto": "e",
+          "inicio": 257.95,
+          "fim": 258.44
+        },
+        {
+          "texto": "A,",
+          "inicio": 258.44,
+          "fim": 259.03
+        },
+        {
+          "texto": "digite",
+          "inicio": 259.03,
+          "fim": 259.63
+        },
+        {
+          "texto": "três",
+          "inicio": 259.63,
+          "fim": 260.18
+        },
+        {
+          "texto": "ponto",
+          "inicio": 260.18,
+          "fim": 260.76
+        },
+        {
+          "texto": "oitenta",
+          "inicio": 260.76,
+          "fim": 261.39
+        },
+        {
+          "texto": "e",
+          "inicio": 261.39,
+          "fim": 261.87
+        },
+        {
+          "texto": "seis",
+          "inicio": 261.87,
+          "fim": 262.43
+        },
+        {
+          "texto": "e",
+          "inicio": 262.43,
+          "fim": 262.91
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 262.91,
+      "fim": 267.42,
+      "texto": "confirme com Enter. O bloco ganha altura.",
+      "palavras": [
+        {
+          "texto": "confirme",
+          "inicio": 262.91,
+          "fim": 263.56
+        },
+        {
+          "texto": "com",
+          "inicio": 263.56,
+          "fim": 264.09
+        },
+        {
+          "texto": "Enter.",
+          "inicio": 264.09,
+          "fim": 264.92
+        },
+        {
+          "texto": "O",
+          "inicio": 264.92,
+          "fim": 265.41
+        },
+        {
+          "texto": "bloco",
+          "inicio": 265.41,
+          "fim": 265.98
+        },
+        {
+          "texto": "ganha",
+          "inicio": 265.98,
+          "fim": 266.56
+        },
+        {
+          "texto": "altura.",
+          "inicio": 266.56,
+          "fim": 267.42
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 267.42,
+      "fim": 271.78,
+      "texto": "Pronto: você preparou o corpo do projeto.",
+      "palavras": [
+        {
+          "texto": "Pronto:",
+          "inicio": 267.42,
+          "fim": 268.12
+        },
+        {
+          "texto": "você",
+          "inicio": 268.12,
+          "fim": 268.68
+        },
+        {
+          "texto": "preparou",
+          "inicio": 268.68,
+          "fim": 269.33
+        },
+        {
+          "texto": "o",
+          "inicio": 269.33,
+          "fim": 269.81
+        },
+        {
+          "texto": "corpo",
+          "inicio": 269.81,
+          "fim": 270.39
+        },
+        {
+          "texto": "do",
+          "inicio": 270.39,
+          "fim": 270.9
+        },
+        {
+          "texto": "projeto.",
+          "inicio": 270.9,
+          "fim": 271.78
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 271.78,
+      "fim": 277.0,
+      "texto": "Olhe as três linhas e compare com o exemplo.",
+      "palavras": [
+        {
+          "texto": "Olhe",
+          "inicio": 271.78,
+          "fim": 272.33
+        },
+        {
+          "texto": "as",
+          "inicio": 272.33,
+          "fim": 272.84
+        },
+        {
+          "texto": "três",
+          "inicio": 272.84,
+          "fim": 273.39
+        },
+        {
+          "texto": "linhas",
+          "inicio": 273.39,
+          "fim": 274.0
+        },
+        {
+          "texto": "e",
+          "inicio": 274.0,
+          "fim": 274.48
+        },
+        {
+          "texto": "compare",
+          "inicio": 274.48,
+          "fim": 275.1
+        },
+        {
+          "texto": "com",
+          "inicio": 275.1,
+          "fim": 275.64
+        },
+        {
+          "texto": "o",
+          "inicio": 275.64,
+          "fim": 276.12
+        },
+        {
+          "texto": "exemplo.",
+          "inicio": 276.12,
+          "fim": 277.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 281.0,
+      "fim": 286.73,
+      "texto": "Se alguma ficou diferente, não precisa começar tudo de novo.",
+      "palavras": [
+        {
+          "texto": "Se",
+          "inicio": 281.0,
+          "fim": 281.48
+        },
+        {
+          "texto": "alguma",
+          "inicio": 281.48,
+          "fim": 282.04
+        },
+        {
+          "texto": "ficou",
+          "inicio": 282.04,
+          "fim": 282.58
+        },
+        {
+          "texto": "diferente,",
+          "inicio": 282.58,
+          "fim": 283.31
+        },
+        {
+          "texto": "não",
+          "inicio": 283.31,
+          "fim": 283.8
+        },
+        {
+          "texto": "precisa",
+          "inicio": 283.8,
+          "fim": 284.39
+        },
+        {
+          "texto": "começar",
+          "inicio": 284.39,
+          "fim": 284.97
+        },
+        {
+          "texto": "tudo",
+          "inicio": 284.97,
+          "fim": 285.49
+        },
+        {
+          "texto": "de",
+          "inicio": 285.49,
+          "fim": 285.97
+        },
+        {
+          "texto": "novo.",
+          "inicio": 285.97,
+          "fim": 286.73
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 286.73,
+      "fim": 294.53,
+      "texto": "Dê dois cliques só no valor daquela linha, selecione o texto e digite novamente.",
+      "palavras": [
+        {
+          "texto": "Dê",
+          "inicio": 286.73,
+          "fim": 287.2
+        },
+        {
+          "texto": "dois",
+          "inicio": 287.2,
+          "fim": 287.72
+        },
+        {
+          "texto": "cliques",
+          "inicio": 287.72,
+          "fim": 288.31
+        },
+        {
+          "texto": "só",
+          "inicio": 288.31,
+          "fim": 288.78
+        },
+        {
+          "texto": "no",
+          "inicio": 288.78,
+          "fim": 289.26
+        },
+        {
+          "texto": "valor",
+          "inicio": 289.26,
+          "fim": 289.8
+        },
+        {
+          "texto": "daquela",
+          "inicio": 289.8,
+          "fim": 290.38
+        },
+        {
+          "texto": "linha,",
+          "inicio": 290.38,
+          "fim": 291.02
+        },
+        {
+          "texto": "selecione",
+          "inicio": 291.02,
+          "fim": 291.65
+        },
+        {
+          "texto": "o",
+          "inicio": 291.65,
+          "fim": 292.11
+        },
+        {
+          "texto": "texto",
+          "inicio": 292.11,
+          "fim": 292.65
+        },
+        {
+          "texto": "e",
+          "inicio": 292.65,
+          "fim": 293.1
+        },
+        {
+          "texto": "digite",
+          "inicio": 293.1,
+          "fim": 293.66
+        },
+        {
+          "texto": "novamente.",
+          "inicio": 293.66,
+          "fim": 294.53
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 294.53,
+      "fim": 301.0,
+      "texto": "Esse é um jeito de corrigir o tamanho sem adivinhar no olho.",
+      "palavras": [
+        {
+          "texto": "Esse",
+          "inicio": 294.53,
+          "fim": 295.05
+        },
+        {
+          "texto": "é",
+          "inicio": 295.05,
+          "fim": 295.5
+        },
+        {
+          "texto": "um",
+          "inicio": 295.5,
+          "fim": 295.98
+        },
+        {
+          "texto": "jeito",
+          "inicio": 295.98,
+          "fim": 296.52
+        },
+        {
+          "texto": "de",
+          "inicio": 296.52,
+          "fim": 297.0
+        },
+        {
+          "texto": "corrigir",
+          "inicio": 297.0,
+          "fim": 297.6
+        },
+        {
+          "texto": "o",
+          "inicio": 297.6,
+          "fim": 298.06
+        },
+        {
+          "texto": "tamanho",
+          "inicio": 298.06,
+          "fim": 298.64
+        },
+        {
+          "texto": "sem",
+          "inicio": 298.64,
+          "fim": 299.14
+        },
+        {
+          "texto": "adivinhar",
+          "inicio": 299.14,
+          "fim": 299.77
+        },
+        {
+          "texto": "no",
+          "inicio": 299.77,
+          "fim": 300.24
+        },
+        {
+          "texto": "olho.",
+          "inicio": 300.24,
+          "fim": 301.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 301.0,
+      "fim": 308.88,
+      "texto": "Agora vamos guardar o trabalho. Abra Arquivo e escolha Salvar como.",
+      "palavras": [
+        {
+          "texto": "Agora",
+          "inicio": 301.0,
+          "fim": 301.66
+        },
+        {
+          "texto": "vamos",
+          "inicio": 301.66,
+          "fim": 302.33
+        },
+        {
+          "texto": "guardar",
+          "inicio": 302.33,
+          "fim": 303.04
+        },
+        {
+          "texto": "o",
+          "inicio": 303.04,
+          "fim": 303.6
+        },
+        {
+          "texto": "trabalho.",
+          "inicio": 303.6,
+          "fim": 304.64
+        },
+        {
+          "texto": "Abra",
+          "inicio": 304.64,
+          "fim": 305.27
+        },
+        {
+          "texto": "Arquivo",
+          "inicio": 305.27,
+          "fim": 305.99
+        },
+        {
+          "texto": "e",
+          "inicio": 305.99,
+          "fim": 306.55
+        },
+        {
+          "texto": "escolha",
+          "inicio": 306.55,
+          "fim": 307.27
+        },
+        {
+          "texto": "Salvar",
+          "inicio": 307.27,
+          "fim": 307.96
+        },
+        {
+          "texto": "como.",
+          "inicio": 307.96,
+          "fim": 308.88
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 308.88,
+      "fim": 317.22,
+      "texto": "Escolha uma pasta sua, dê um nome que você reconheça, como huge-cat-dia2-meu-corpo.blend,",
+      "palavras": [
+        {
+          "texto": "Escolha",
+          "inicio": 308.88,
+          "fim": 309.6
+        },
+        {
+          "texto": "uma",
+          "inicio": 309.6,
+          "fim": 310.21
+        },
+        {
+          "texto": "pasta",
+          "inicio": 310.21,
+          "fim": 310.88
+        },
+        {
+          "texto": "sua,",
+          "inicio": 310.88,
+          "fim": 311.61
+        },
+        {
+          "texto": "dê",
+          "inicio": 311.61,
+          "fim": 312.19
+        },
+        {
+          "texto": "um",
+          "inicio": 312.19,
+          "fim": 312.78
+        },
+        {
+          "texto": "nome",
+          "inicio": 312.78,
+          "fim": 313.41
+        },
+        {
+          "texto": "que",
+          "inicio": 313.41,
+          "fim": 314.02
+        },
+        {
+          "texto": "você",
+          "inicio": 314.02,
+          "fim": 314.66
+        },
+        {
+          "texto": "reconheça,",
+          "inicio": 314.66,
+          "fim": 315.55
+        },
+        {
+          "texto": "como",
+          "inicio": 315.55,
+          "fim": 316.19
+        },
+        {
+          "texto": "huge-cat-dia2-meu-corpo.blend,",
+          "inicio": 316.19,
+          "fim": 317.22
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 317.22,
+      "fim": 327.38,
+      "texto": "e confirme o salvamento. A demonstração usa Salvar porque já tem um arquivo de trabalho",
+      "palavras": [
+        {
+          "texto": "e",
+          "inicio": 317.22,
+          "fim": 317.77
+        },
+        {
+          "texto": "confirme",
+          "inicio": 317.77,
+          "fim": 318.52
+        },
+        {
+          "texto": "o",
+          "inicio": 318.52,
+          "fim": 319.07
+        },
+        {
+          "texto": "salvamento.",
+          "inicio": 319.07,
+          "fim": 320.16
+        },
+        {
+          "texto": "A",
+          "inicio": 320.16,
+          "fim": 320.72
+        },
+        {
+          "texto": "demonstração",
+          "inicio": 320.72,
+          "fim": 321.57
+        },
+        {
+          "texto": "usa",
+          "inicio": 321.57,
+          "fim": 322.18
+        },
+        {
+          "texto": "Salvar",
+          "inicio": 322.18,
+          "fim": 322.87
+        },
+        {
+          "texto": "porque",
+          "inicio": 322.87,
+          "fim": 323.56
+        },
+        {
+          "texto": "já",
+          "inicio": 323.56,
+          "fim": 324.15
+        },
+        {
+          "texto": "tem",
+          "inicio": 324.15,
+          "fim": 324.76
+        },
+        {
+          "texto": "um",
+          "inicio": 324.76,
+          "fim": 325.34
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 325.34,
+          "fim": 326.06
+        },
+        {
+          "texto": "de",
+          "inicio": 326.06,
+          "fim": 326.64
+        },
+        {
+          "texto": "trabalho",
+          "inicio": 326.64,
+          "fim": 327.38
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 327.38,
+      "fim": 337.74,
+      "texto": "aberto. No seu computador, a primeira cópia pode ser feita com Salvar como; depois você",
+      "palavras": [
+        {
+          "texto": "aberto.",
+          "inicio": 327.38,
+          "fim": 328.37
+        },
+        {
+          "texto": "No",
+          "inicio": 328.37,
+          "fim": 328.95
+        },
+        {
+          "texto": "seu",
+          "inicio": 328.95,
+          "fim": 329.56
+        },
+        {
+          "texto": "computador,",
+          "inicio": 329.56,
+          "fim": 330.48
+        },
+        {
+          "texto": "a",
+          "inicio": 330.48,
+          "fim": 331.04
+        },
+        {
+          "texto": "primeira",
+          "inicio": 331.04,
+          "fim": 331.78
+        },
+        {
+          "texto": "cópia",
+          "inicio": 331.78,
+          "fim": 332.44
+        },
+        {
+          "texto": "pode",
+          "inicio": 332.44,
+          "fim": 333.08
+        },
+        {
+          "texto": "ser",
+          "inicio": 333.08,
+          "fim": 333.69
+        },
+        {
+          "texto": "feita",
+          "inicio": 333.69,
+          "fim": 334.36
+        },
+        {
+          "texto": "com",
+          "inicio": 334.36,
+          "fim": 334.97
+        },
+        {
+          "texto": "Salvar",
+          "inicio": 334.97,
+          "fim": 335.66
+        },
+        {
+          "texto": "como;",
+          "inicio": 335.66,
+          "fim": 336.42
+        },
+        {
+          "texto": "depois",
+          "inicio": 336.42,
+          "fim": 337.11
+        },
+        {
+          "texto": "você",
+          "inicio": 337.11,
+          "fim": 337.74
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 337.74,
+      "fim": 340.0,
+      "texto": "pode usar Salvar.",
+      "palavras": [
+        {
+          "texto": "pode",
+          "inicio": 337.74,
+          "fim": 338.38
+        },
+        {
+          "texto": "usar",
+          "inicio": 338.38,
+          "fim": 339.02
+        },
+        {
+          "texto": "Salvar.",
+          "inicio": 339.02,
+          "fim": 340.0
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 340.0,
+      "fim": 345.02,
+      "texto": "Confira o nome do arquivo no topo e guarde essa pasta.",
+      "palavras": [
+        {
+          "texto": "Confira",
+          "inicio": 340.0,
+          "fim": 340.49
+        },
+        {
+          "texto": "o",
+          "inicio": 340.49,
+          "fim": 340.88
+        },
+        {
+          "texto": "nome",
+          "inicio": 340.88,
+          "fim": 341.32
+        },
+        {
+          "texto": "do",
+          "inicio": 341.32,
+          "fim": 341.72
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 341.72,
+          "fim": 342.22
+        },
+        {
+          "texto": "no",
+          "inicio": 342.22,
+          "fim": 342.62
+        },
+        {
+          "texto": "topo",
+          "inicio": 342.62,
+          "fim": 343.06
+        },
+        {
+          "texto": "e",
+          "inicio": 343.06,
+          "fim": 343.44
+        },
+        {
+          "texto": "guarde",
+          "inicio": 343.44,
+          "fim": 343.92
+        },
+        {
+          "texto": "essa",
+          "inicio": 343.92,
+          "fim": 344.36
+        },
+        {
+          "texto": "pasta.",
+          "inicio": 344.36,
+          "fim": 345.02
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 345.02,
+      "fim": 349.21,
+      "texto": "Esse é o arquivo que você vai continuar usando.",
+      "palavras": [
+        {
+          "texto": "Esse",
+          "inicio": 345.02,
+          "fim": 345.46
+        },
+        {
+          "texto": "é",
+          "inicio": 345.46,
+          "fim": 345.84
+        },
+        {
+          "texto": "o",
+          "inicio": 345.84,
+          "fim": 346.23
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 346.23,
+          "fim": 346.72
+        },
+        {
+          "texto": "que",
+          "inicio": 346.72,
+          "fim": 347.14
+        },
+        {
+          "texto": "você",
+          "inicio": 347.14,
+          "fim": 347.58
+        },
+        {
+          "texto": "vai",
+          "inicio": 347.58,
+          "fim": 348.0
+        },
+        {
+          "texto": "continuar",
+          "inicio": 348.0,
+          "fim": 348.53
+        },
+        {
+          "texto": "usando.",
+          "inicio": 348.53,
+          "fim": 349.21
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 349.21,
+      "fim": 354.43,
+      "texto": "Hoje você não precisa mudar material nem mostrar as outras peças.",
+      "palavras": [
+        {
+          "texto": "Hoje",
+          "inicio": 349.21,
+          "fim": 349.65
+        },
+        {
+          "texto": "você",
+          "inicio": 349.65,
+          "fim": 350.09
+        },
+        {
+          "texto": "não",
+          "inicio": 350.09,
+          "fim": 350.51
+        },
+        {
+          "texto": "precisa",
+          "inicio": 350.51,
+          "fim": 351.01
+        },
+        {
+          "texto": "mudar",
+          "inicio": 351.01,
+          "fim": 351.47
+        },
+        {
+          "texto": "material",
+          "inicio": 351.47,
+          "fim": 351.98
+        },
+        {
+          "texto": "nem",
+          "inicio": 351.98,
+          "fim": 352.4
+        },
+        {
+          "texto": "mostrar",
+          "inicio": 352.4,
+          "fim": 352.89
+        },
+        {
+          "texto": "as",
+          "inicio": 352.89,
+          "fim": 353.3
+        },
+        {
+          "texto": "outras",
+          "inicio": 353.3,
+          "fim": 353.77
+        },
+        {
+          "texto": "peças.",
+          "inicio": 353.77,
+          "fim": 354.43
+        }
+      ]
+    },
+    {
+      "bloco": 3,
+      "inicio": 354.43,
+      "fim": 360.0,
+      "texto": "O objetivo é terminar este corpo e conseguir voltar a ele amanhã.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 354.43,
+          "fim": 354.82
+        },
+        {
+          "texto": "objetivo",
+          "inicio": 354.82,
+          "fim": 355.33
+        },
+        {
+          "texto": "é",
+          "inicio": 355.33,
+          "fim": 355.71
+        },
+        {
+          "texto": "terminar",
+          "inicio": 355.71,
+          "fim": 356.23
+        },
+        {
+          "texto": "este",
+          "inicio": 356.23,
+          "fim": 356.67
+        },
+        {
+          "texto": "corpo",
+          "inicio": 356.67,
+          "fim": 357.12
+        },
+        {
+          "texto": "e",
+          "inicio": 357.12,
+          "fim": 357.51
+        },
+        {
+          "texto": "conseguir",
+          "inicio": 357.51,
+          "fim": 358.04
+        },
+        {
+          "texto": "voltar",
+          "inicio": 358.04,
+          "fim": 358.52
+        },
+        {
+          "texto": "a",
+          "inicio": 358.52,
+          "fim": 358.9
+        },
+        {
+          "texto": "ele",
+          "inicio": 358.9,
+          "fim": 359.32
+        },
+        {
+          "texto": "amanhã.",
+          "inicio": 359.32,
+          "fim": 360.0
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 360.0,
+      "fim": 364.27,
+      "texto": "Antes de seguir, eu quero que você confira o que fez.",
+      "palavras": [
+        {
+          "texto": "Antes",
+          "inicio": 360.0,
+          "fim": 360.39
+        },
+        {
+          "texto": "de",
+          "inicio": 360.39,
+          "fim": 360.72
+        },
+        {
+          "texto": "seguir,",
+          "inicio": 360.72,
+          "fim": 361.2
+        },
+        {
+          "texto": "eu",
+          "inicio": 361.2,
+          "fim": 361.54
+        },
+        {
+          "texto": "quero",
+          "inicio": 361.54,
+          "fim": 361.92
+        },
+        {
+          "texto": "que",
+          "inicio": 361.92,
+          "fim": 362.28
+        },
+        {
+          "texto": "você",
+          "inicio": 362.28,
+          "fim": 362.65
+        },
+        {
+          "texto": "confira",
+          "inicio": 362.65,
+          "fim": 363.06
+        },
+        {
+          "texto": "o",
+          "inicio": 363.06,
+          "fim": 363.39
+        },
+        {
+          "texto": "que",
+          "inicio": 363.39,
+          "fim": 363.74
+        },
+        {
+          "texto": "fez.",
+          "inicio": 363.74,
+          "fim": 364.27
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 364.27,
+      "fim": 370.84,
+      "texto": "Seu corpo está aparecendo na tela? Dimensões mostra X quatro, Y três ponto cinco e Z três",
+      "palavras": [
+        {
+          "texto": "Seu",
+          "inicio": 364.27,
+          "fim": 364.62
+        },
+        {
+          "texto": "corpo",
+          "inicio": 364.62,
+          "fim": 365.01
+        },
+        {
+          "texto": "está",
+          "inicio": 365.01,
+          "fim": 365.38
+        },
+        {
+          "texto": "aparecendo",
+          "inicio": 365.38,
+          "fim": 365.84
+        },
+        {
+          "texto": "na",
+          "inicio": 365.84,
+          "fim": 366.18
+        },
+        {
+          "texto": "tela?",
+          "inicio": 366.18,
+          "fim": 366.72
+        },
+        {
+          "texto": "Dimensões",
+          "inicio": 366.72,
+          "fim": 367.16
+        },
+        {
+          "texto": "mostra",
+          "inicio": 367.16,
+          "fim": 367.57
+        },
+        {
+          "texto": "X",
+          "inicio": 367.57,
+          "fim": 367.89
+        },
+        {
+          "texto": "quatro,",
+          "inicio": 367.89,
+          "fim": 368.36
+        },
+        {
+          "texto": "Y",
+          "inicio": 368.36,
+          "fim": 368.69
+        },
+        {
+          "texto": "três",
+          "inicio": 368.69,
+          "fim": 369.06
+        },
+        {
+          "texto": "ponto",
+          "inicio": 369.06,
+          "fim": 369.44
+        },
+        {
+          "texto": "cinco",
+          "inicio": 369.44,
+          "fim": 369.83
+        },
+        {
+          "texto": "e",
+          "inicio": 369.83,
+          "fim": 370.15
+        },
+        {
+          "texto": "Z",
+          "inicio": 370.15,
+          "fim": 370.47
+        },
+        {
+          "texto": "três",
+          "inicio": 370.47,
+          "fim": 370.84
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 370.84,
+      "fim": 376.18,
+      "texto": "ponto oitenta e seis? Você salvou o arquivo numa pasta que consegue encontrar?",
+      "palavras": [
+        {
+          "texto": "ponto",
+          "inicio": 370.84,
+          "fim": 371.23
+        },
+        {
+          "texto": "oitenta",
+          "inicio": 371.23,
+          "fim": 371.65
+        },
+        {
+          "texto": "e",
+          "inicio": 371.65,
+          "fim": 371.97
+        },
+        {
+          "texto": "seis?",
+          "inicio": 371.97,
+          "fim": 372.51
+        },
+        {
+          "texto": "Você",
+          "inicio": 372.51,
+          "fim": 372.88
+        },
+        {
+          "texto": "salvou",
+          "inicio": 372.88,
+          "fim": 373.28
+        },
+        {
+          "texto": "o",
+          "inicio": 373.28,
+          "fim": 373.6
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 373.6,
+          "fim": 374.02
+        },
+        {
+          "texto": "numa",
+          "inicio": 374.02,
+          "fim": 374.39
+        },
+        {
+          "texto": "pasta",
+          "inicio": 374.39,
+          "fim": 374.78
+        },
+        {
+          "texto": "que",
+          "inicio": 374.78,
+          "fim": 375.13
+        },
+        {
+          "texto": "consegue",
+          "inicio": 375.13,
+          "fim": 375.56
+        },
+        {
+          "texto": "encontrar?",
+          "inicio": 375.56,
+          "fim": 376.18
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 376.18,
+      "fim": 381.26,
+      "texto": "Se sim, tire um print da sua tela e guarde junto do projeto.",
+      "palavras": [
+        {
+          "texto": "Se",
+          "inicio": 376.18,
+          "fim": 376.53
+        },
+        {
+          "texto": "sim,",
+          "inicio": 376.53,
+          "fim": 376.96
+        },
+        {
+          "texto": "tire",
+          "inicio": 376.96,
+          "fim": 377.34
+        },
+        {
+          "texto": "um",
+          "inicio": 377.34,
+          "fim": 377.69
+        },
+        {
+          "texto": "print",
+          "inicio": 377.69,
+          "fim": 378.09
+        },
+        {
+          "texto": "da",
+          "inicio": 378.09,
+          "fim": 378.43
+        },
+        {
+          "texto": "sua",
+          "inicio": 378.43,
+          "fim": 378.8
+        },
+        {
+          "texto": "tela",
+          "inicio": 378.8,
+          "fim": 379.18
+        },
+        {
+          "texto": "e",
+          "inicio": 379.18,
+          "fim": 379.51
+        },
+        {
+          "texto": "guarde",
+          "inicio": 379.51,
+          "fim": 379.92
+        },
+        {
+          "texto": "junto",
+          "inicio": 379.92,
+          "fim": 380.32
+        },
+        {
+          "texto": "do",
+          "inicio": 380.32,
+          "fim": 380.66
+        },
+        {
+          "texto": "projeto.",
+          "inicio": 380.66,
+          "fim": 381.26
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 381.26,
+      "fim": 387.85,
+      "texto": "Essa imagem vai ajudar você a ver o progresso quando chegarem as orelhas, as patinhas e o",
+      "palavras": [
+        {
+          "texto": "Essa",
+          "inicio": 381.26,
+          "fim": 381.64
+        },
+        {
+          "texto": "imagem",
+          "inicio": 381.64,
+          "fim": 382.05
+        },
+        {
+          "texto": "vai",
+          "inicio": 382.05,
+          "fim": 382.42
+        },
+        {
+          "texto": "ajudar",
+          "inicio": 382.42,
+          "fim": 382.83
+        },
+        {
+          "texto": "você",
+          "inicio": 382.83,
+          "fim": 383.21
+        },
+        {
+          "texto": "a",
+          "inicio": 383.21,
+          "fim": 383.54
+        },
+        {
+          "texto": "ver",
+          "inicio": 383.54,
+          "fim": 383.9
+        },
+        {
+          "texto": "o",
+          "inicio": 383.9,
+          "fim": 384.24
+        },
+        {
+          "texto": "progresso",
+          "inicio": 384.24,
+          "fim": 384.7
+        },
+        {
+          "texto": "quando",
+          "inicio": 384.7,
+          "fim": 385.11
+        },
+        {
+          "texto": "chegarem",
+          "inicio": 385.11,
+          "fim": 385.55
+        },
+        {
+          "texto": "as",
+          "inicio": 385.55,
+          "fim": 385.9
+        },
+        {
+          "texto": "orelhas,",
+          "inicio": 385.9,
+          "fim": 386.4
+        },
+        {
+          "texto": "as",
+          "inicio": 386.4,
+          "fim": 386.74
+        },
+        {
+          "texto": "patinhas",
+          "inicio": 386.74,
+          "fim": 387.19
+        },
+        {
+          "texto": "e",
+          "inicio": 387.19,
+          "fim": 387.52
+        },
+        {
+          "texto": "o",
+          "inicio": 387.52,
+          "fim": 387.85
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 387.85,
+      "fim": 388.42,
+      "texto": "rosto.",
+      "palavras": [
+        {
+          "texto": "rosto.",
+          "inicio": 387.85,
+          "fim": 388.42
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 388.42,
+      "fim": 393.32,
+      "texto": "Agora comenta nesta aula: “Dia 2 concluído”, com o sinal de confirmação.",
+      "palavras": [
+        {
+          "texto": "Agora",
+          "inicio": 388.42,
+          "fim": 388.81
+        },
+        {
+          "texto": "comenta",
+          "inicio": 388.81,
+          "fim": 389.22
+        },
+        {
+          "texto": "nesta",
+          "inicio": 389.22,
+          "fim": 389.61
+        },
+        {
+          "texto": "aula:",
+          "inicio": 389.61,
+          "fim": 390.05
+        },
+        {
+          "texto": "“Dia",
+          "inicio": 390.05,
+          "fim": 390.42
+        },
+        {
+          "texto": "2",
+          "inicio": 390.42,
+          "fim": 390.74
+        },
+        {
+          "texto": "concluído”,",
+          "inicio": 390.74,
+          "fim": 391.27
+        },
+        {
+          "texto": "com",
+          "inicio": 391.27,
+          "fim": 391.63
+        },
+        {
+          "texto": "o",
+          "inicio": 391.63,
+          "fim": 391.95
+        },
+        {
+          "texto": "sinal",
+          "inicio": 391.95,
+          "fim": 392.34
+        },
+        {
+          "texto": "de",
+          "inicio": 392.34,
+          "fim": 392.68
+        },
+        {
+          "texto": "confirmação.",
+          "inicio": 392.68,
+          "fim": 393.32
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 393.32,
+      "fim": 399.91,
+      "texto": "O comentário é o nosso check-in. O print fica no seu computador; o campo desta aula recebe",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 393.32,
+          "fim": 393.65
+        },
+        {
+          "texto": "comentário",
+          "inicio": 393.65,
+          "fim": 394.11
+        },
+        {
+          "texto": "é",
+          "inicio": 394.11,
+          "fim": 394.43
+        },
+        {
+          "texto": "o",
+          "inicio": 394.43,
+          "fim": 394.76
+        },
+        {
+          "texto": "nosso",
+          "inicio": 394.76,
+          "fim": 395.14
+        },
+        {
+          "texto": "check-in.",
+          "inicio": 395.14,
+          "fim": 395.74
+        },
+        {
+          "texto": "O",
+          "inicio": 395.74,
+          "fim": 396.07
+        },
+        {
+          "texto": "print",
+          "inicio": 396.07,
+          "fim": 396.45
+        },
+        {
+          "texto": "fica",
+          "inicio": 396.45,
+          "fim": 396.82
+        },
+        {
+          "texto": "no",
+          "inicio": 396.82,
+          "fim": 397.16
+        },
+        {
+          "texto": "seu",
+          "inicio": 397.16,
+          "fim": 397.52
+        },
+        {
+          "texto": "computador;",
+          "inicio": 397.52,
+          "fim": 398.05
+        },
+        {
+          "texto": "o",
+          "inicio": 398.05,
+          "fim": 398.37
+        },
+        {
+          "texto": "campo",
+          "inicio": 398.37,
+          "fim": 398.76
+        },
+        {
+          "texto": "desta",
+          "inicio": 398.76,
+          "fim": 399.14
+        },
+        {
+          "texto": "aula",
+          "inicio": 399.14,
+          "fim": 399.51
+        },
+        {
+          "texto": "recebe",
+          "inicio": 399.51,
+          "fim": 399.91
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 399.91,
+      "fim": 406.18,
+      "texto": "texto. Se você travou em uma etapa, escreva qual foi e o que apareceu na tela.",
+      "palavras": [
+        {
+          "texto": "texto.",
+          "inicio": 399.91,
+          "fim": 400.47
+        },
+        {
+          "texto": "Se",
+          "inicio": 400.47,
+          "fim": 400.81
+        },
+        {
+          "texto": "você",
+          "inicio": 400.81,
+          "fim": 401.18
+        },
+        {
+          "texto": "travou",
+          "inicio": 401.18,
+          "fim": 401.58
+        },
+        {
+          "texto": "em",
+          "inicio": 401.58,
+          "fim": 401.92
+        },
+        {
+          "texto": "uma",
+          "inicio": 401.92,
+          "fim": 402.27
+        },
+        {
+          "texto": "etapa,",
+          "inicio": 402.27,
+          "fim": 402.73
+        },
+        {
+          "texto": "escreva",
+          "inicio": 402.73,
+          "fim": 403.14
+        },
+        {
+          "texto": "qual",
+          "inicio": 403.14,
+          "fim": 403.51
+        },
+        {
+          "texto": "foi",
+          "inicio": 403.51,
+          "fim": 403.87
+        },
+        {
+          "texto": "e",
+          "inicio": 403.87,
+          "fim": 404.19
+        },
+        {
+          "texto": "o",
+          "inicio": 404.19,
+          "fim": 404.52
+        },
+        {
+          "texto": "que",
+          "inicio": 404.52,
+          "fim": 404.87
+        },
+        {
+          "texto": "apareceu",
+          "inicio": 404.87,
+          "fim": 405.3
+        },
+        {
+          "texto": "na",
+          "inicio": 405.3,
+          "fim": 405.64
+        },
+        {
+          "texto": "tela.",
+          "inicio": 405.64,
+          "fim": 406.18
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 406.18,
+      "fim": 411.74,
+      "texto": "Depois de fazer a tarefa no seu computador, use o botão Concluir esta aula.",
+      "palavras": [
+        {
+          "texto": "Depois",
+          "inicio": 406.18,
+          "fim": 406.59
+        },
+        {
+          "texto": "de",
+          "inicio": 406.59,
+          "fim": 406.93
+        },
+        {
+          "texto": "fazer",
+          "inicio": 406.93,
+          "fim": 407.32
+        },
+        {
+          "texto": "a",
+          "inicio": 407.32,
+          "fim": 407.65
+        },
+        {
+          "texto": "tarefa",
+          "inicio": 407.65,
+          "fim": 408.05
+        },
+        {
+          "texto": "no",
+          "inicio": 408.05,
+          "fim": 408.4
+        },
+        {
+          "texto": "seu",
+          "inicio": 408.4,
+          "fim": 408.76
+        },
+        {
+          "texto": "computador,",
+          "inicio": 408.76,
+          "fim": 409.3
+        },
+        {
+          "texto": "use",
+          "inicio": 409.3,
+          "fim": 409.66
+        },
+        {
+          "texto": "o",
+          "inicio": 409.66,
+          "fim": 409.99
+        },
+        {
+          "texto": "botão",
+          "inicio": 409.99,
+          "fim": 410.38
+        },
+        {
+          "texto": "Concluir",
+          "inicio": 410.38,
+          "fim": 410.81
+        },
+        {
+          "texto": "esta",
+          "inicio": 410.81,
+          "fim": 411.19
+        },
+        {
+          "texto": "aula.",
+          "inicio": 411.19,
+          "fim": 411.74
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 411.74,
+      "fim": 415.36,
+      "texto": "Uma aula concluída soma ao seu progresso no curso.",
+      "palavras": [
+        {
+          "texto": "Uma",
+          "inicio": 411.74,
+          "fim": 412.09
+        },
+        {
+          "texto": "aula",
+          "inicio": 412.09,
+          "fim": 412.47
+        },
+        {
+          "texto": "concluída",
+          "inicio": 412.47,
+          "fim": 412.92
+        },
+        {
+          "texto": "soma",
+          "inicio": 412.92,
+          "fim": 413.3
+        },
+        {
+          "texto": "ao",
+          "inicio": 413.3,
+          "fim": 413.64
+        },
+        {
+          "texto": "seu",
+          "inicio": 413.64,
+          "fim": 414.0
+        },
+        {
+          "texto": "progresso",
+          "inicio": 414.0,
+          "fim": 414.45
+        },
+        {
+          "texto": "no",
+          "inicio": 414.45,
+          "fim": 414.8
+        },
+        {
+          "texto": "curso.",
+          "inicio": 414.8,
+          "fim": 415.36
+        }
+      ]
+    },
+    {
+      "bloco": 4,
+      "inicio": 415.36,
+      "fim": 420.0,
+      "texto": "A conquista de hoje é esse arquivo feito e salvo por você.",
+      "palavras": [
+        {
+          "texto": "A",
+          "inicio": 415.36,
+          "fim": 415.69
+        },
+        {
+          "texto": "conquista",
+          "inicio": 415.69,
+          "fim": 416.14
+        },
+        {
+          "texto": "de",
+          "inicio": 416.14,
+          "fim": 416.48
+        },
+        {
+          "texto": "hoje",
+          "inicio": 416.48,
+          "fim": 416.86
+        },
+        {
+          "texto": "é",
+          "inicio": 416.86,
+          "fim": 417.19
+        },
+        {
+          "texto": "esse",
+          "inicio": 417.19,
+          "fim": 417.56
+        },
+        {
+          "texto": "arquivo",
+          "inicio": 417.56,
+          "fim": 417.98
+        },
+        {
+          "texto": "feito",
+          "inicio": 417.98,
+          "fim": 418.38
+        },
+        {
+          "texto": "e",
+          "inicio": 418.38,
+          "fim": 418.7
+        },
+        {
+          "texto": "salvo",
+          "inicio": 418.7,
+          "fim": 419.09
+        },
+        {
+          "texto": "por",
+          "inicio": 419.09,
+          "fim": 419.45
+        },
+        {
+          "texto": "você.",
+          "inicio": 419.45,
+          "fim": 420.0
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 420.0,
+      "fim": 425.12,
+      "texto": "Você acabou de preparar sua primeira forma do nosso projeto.",
+      "palavras": [
+        {
+          "texto": "Você",
+          "inicio": 420.0,
+          "fim": 420.47
+        },
+        {
+          "texto": "acabou",
+          "inicio": 420.47,
+          "fim": 420.98
+        },
+        {
+          "texto": "de",
+          "inicio": 420.98,
+          "fim": 421.41
+        },
+        {
+          "texto": "preparar",
+          "inicio": 421.41,
+          "fim": 421.96
+        },
+        {
+          "texto": "sua",
+          "inicio": 421.96,
+          "fim": 422.41
+        },
+        {
+          "texto": "primeira",
+          "inicio": 422.41,
+          "fim": 422.96
+        },
+        {
+          "texto": "forma",
+          "inicio": 422.96,
+          "fim": 423.45
+        },
+        {
+          "texto": "do",
+          "inicio": 423.45,
+          "fim": 423.88
+        },
+        {
+          "texto": "nosso",
+          "inicio": 423.88,
+          "fim": 424.38
+        },
+        {
+          "texto": "projeto.",
+          "inicio": 424.38,
+          "fim": 425.12
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 425.12,
+      "fim": 432.89,
+      "texto": "Ela ainda é só o corpo. O que faz esse bloco começar a parecer um gato?",
+      "palavras": [
+        {
+          "texto": "Ela",
+          "inicio": 425.12,
+          "fim": 425.57
+        },
+        {
+          "texto": "ainda",
+          "inicio": 425.57,
+          "fim": 426.06
+        },
+        {
+          "texto": "é",
+          "inicio": 426.06,
+          "fim": 426.47
+        },
+        {
+          "texto": "só",
+          "inicio": 426.47,
+          "fim": 426.91
+        },
+        {
+          "texto": "o",
+          "inicio": 426.91,
+          "fim": 427.32
+        },
+        {
+          "texto": "corpo.",
+          "inicio": 427.32,
+          "fim": 428.02
+        },
+        {
+          "texto": "O",
+          "inicio": 428.02,
+          "fim": 428.44
+        },
+        {
+          "texto": "que",
+          "inicio": 428.44,
+          "fim": 428.89
+        },
+        {
+          "texto": "faz",
+          "inicio": 428.89,
+          "fim": 429.34
+        },
+        {
+          "texto": "esse",
+          "inicio": 429.34,
+          "fim": 429.81
+        },
+        {
+          "texto": "bloco",
+          "inicio": 429.81,
+          "fim": 430.3
+        },
+        {
+          "texto": "começar",
+          "inicio": 430.3,
+          "fim": 430.83
+        },
+        {
+          "texto": "a",
+          "inicio": 430.83,
+          "fim": 431.24
+        },
+        {
+          "texto": "parecer",
+          "inicio": 431.24,
+          "fim": 431.77
+        },
+        {
+          "texto": "um",
+          "inicio": 431.77,
+          "fim": 432.2
+        },
+        {
+          "texto": "gato?",
+          "inicio": 432.2,
+          "fim": 432.89
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 432.89,
+      "fim": 437.03,
+      "texto": "Na próxima etapa, vamos trabalhar orelhas e patinhas.",
+      "palavras": [
+        {
+          "texto": "Na",
+          "inicio": 432.89,
+          "fim": 433.3
+        },
+        {
+          "texto": "próxima",
+          "inicio": 433.3,
+          "fim": 433.81
+        },
+        {
+          "texto": "etapa,",
+          "inicio": 433.81,
+          "fim": 434.37
+        },
+        {
+          "texto": "vamos",
+          "inicio": 434.37,
+          "fim": 434.84
+        },
+        {
+          "texto": "trabalhar",
+          "inicio": 434.84,
+          "fim": 435.39
+        },
+        {
+          "texto": "orelhas",
+          "inicio": 435.39,
+          "fim": 435.9
+        },
+        {
+          "texto": "e",
+          "inicio": 435.9,
+          "fim": 436.3
+        },
+        {
+          "texto": "patinhas.",
+          "inicio": 436.3,
+          "fim": 437.03
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 437.03,
+      "fim": 444.09,
+      "texto": "Você vai ver como poucas formas, bem posicionadas, começam a dar identidade ao personagem.",
+      "palavras": [
+        {
+          "texto": "Você",
+          "inicio": 437.03,
+          "fim": 437.48
+        },
+        {
+          "texto": "vai",
+          "inicio": 437.48,
+          "fim": 437.92
+        },
+        {
+          "texto": "ver",
+          "inicio": 437.92,
+          "fim": 438.35
+        },
+        {
+          "texto": "como",
+          "inicio": 438.35,
+          "fim": 438.8
+        },
+        {
+          "texto": "poucas",
+          "inicio": 438.8,
+          "fim": 439.3
+        },
+        {
+          "texto": "formas,",
+          "inicio": 439.3,
+          "fim": 439.87
+        },
+        {
+          "texto": "bem",
+          "inicio": 439.87,
+          "fim": 440.31
+        },
+        {
+          "texto": "posicionadas,",
+          "inicio": 440.31,
+          "fim": 441.0
+        },
+        {
+          "texto": "começam",
+          "inicio": 441.0,
+          "fim": 441.51
+        },
+        {
+          "texto": "a",
+          "inicio": 441.51,
+          "fim": 441.9
+        },
+        {
+          "texto": "dar",
+          "inicio": 441.9,
+          "fim": 442.34
+        },
+        {
+          "texto": "identidade",
+          "inicio": 442.34,
+          "fim": 442.9
+        },
+        {
+          "texto": "ao",
+          "inicio": 442.9,
+          "fim": 443.32
+        },
+        {
+          "texto": "personagem.",
+          "inicio": 443.32,
+          "fim": 444.09
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 444.09,
+      "fim": 451.74,
+      "texto": "Não é uma ferramenta mágica: é comparar a referência e construir uma parte de cada vez.",
+      "palavras": [
+        {
+          "texto": "Não",
+          "inicio": 444.09,
+          "fim": 444.52
+        },
+        {
+          "texto": "é",
+          "inicio": 444.52,
+          "fim": 444.92
+        },
+        {
+          "texto": "uma",
+          "inicio": 444.92,
+          "fim": 445.35
+        },
+        {
+          "texto": "ferramenta",
+          "inicio": 445.35,
+          "fim": 445.92
+        },
+        {
+          "texto": "mágica:",
+          "inicio": 445.92,
+          "fim": 446.5
+        },
+        {
+          "texto": "é",
+          "inicio": 446.5,
+          "fim": 446.89
+        },
+        {
+          "texto": "comparar",
+          "inicio": 446.89,
+          "fim": 447.42
+        },
+        {
+          "texto": "a",
+          "inicio": 447.42,
+          "fim": 447.82
+        },
+        {
+          "texto": "referência",
+          "inicio": 447.82,
+          "fim": 448.38
+        },
+        {
+          "texto": "e",
+          "inicio": 448.38,
+          "fim": 448.78
+        },
+        {
+          "texto": "construir",
+          "inicio": 448.78,
+          "fim": 449.33
+        },
+        {
+          "texto": "uma",
+          "inicio": 449.33,
+          "fim": 449.76
+        },
+        {
+          "texto": "parte",
+          "inicio": 449.76,
+          "fim": 450.23
+        },
+        {
+          "texto": "de",
+          "inicio": 450.23,
+          "fim": 450.65
+        },
+        {
+          "texto": "cada",
+          "inicio": 450.65,
+          "fim": 451.1
+        },
+        {
+          "texto": "vez.",
+          "inicio": 451.1,
+          "fim": 451.74
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 451.74,
+      "fim": 459.87,
+      "texto": "E vamos retomar a diferença entre criar um pet para uma experiência e criar um item para",
+      "palavras": [
+        {
+          "texto": "E",
+          "inicio": 451.74,
+          "fim": 452.15
+        },
+        {
+          "texto": "vamos",
+          "inicio": 452.15,
+          "fim": 452.65
+        },
+        {
+          "texto": "retomar",
+          "inicio": 452.65,
+          "fim": 453.18
+        },
+        {
+          "texto": "a",
+          "inicio": 453.18,
+          "fim": 453.59
+        },
+        {
+          "texto": "diferença",
+          "inicio": 453.59,
+          "fim": 454.17
+        },
+        {
+          "texto": "entre",
+          "inicio": 454.17,
+          "fim": 454.66
+        },
+        {
+          "texto": "criar",
+          "inicio": 454.66,
+          "fim": 455.15
+        },
+        {
+          "texto": "um",
+          "inicio": 455.15,
+          "fim": 455.59
+        },
+        {
+          "texto": "pet",
+          "inicio": 455.59,
+          "fim": 456.04
+        },
+        {
+          "texto": "para",
+          "inicio": 456.04,
+          "fim": 456.51
+        },
+        {
+          "texto": "uma",
+          "inicio": 456.51,
+          "fim": 456.97
+        },
+        {
+          "texto": "experiência",
+          "inicio": 456.97,
+          "fim": 457.58
+        },
+        {
+          "texto": "e",
+          "inicio": 457.58,
+          "fim": 457.99
+        },
+        {
+          "texto": "criar",
+          "inicio": 457.99,
+          "fim": 458.49
+        },
+        {
+          "texto": "um",
+          "inicio": 458.49,
+          "fim": 458.92
+        },
+        {
+          "texto": "item",
+          "inicio": 458.92,
+          "fim": 459.39
+        },
+        {
+          "texto": "para",
+          "inicio": 459.39,
+          "fim": 459.87
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 459.87,
+      "fim": 465.69,
+      "texto": "avatar. Essa distinção vem antes de pensar em publicar ou vender.",
+      "palavras": [
+        {
+          "texto": "avatar.",
+          "inicio": 459.87,
+          "fim": 460.6
+        },
+        {
+          "texto": "Essa",
+          "inicio": 460.6,
+          "fim": 461.07
+        },
+        {
+          "texto": "distinção",
+          "inicio": 461.07,
+          "fim": 461.64
+        },
+        {
+          "texto": "vem",
+          "inicio": 461.64,
+          "fim": 462.1
+        },
+        {
+          "texto": "antes",
+          "inicio": 462.1,
+          "fim": 462.59
+        },
+        {
+          "texto": "de",
+          "inicio": 462.59,
+          "fim": 463.02
+        },
+        {
+          "texto": "pensar",
+          "inicio": 463.02,
+          "fim": 463.54
+        },
+        {
+          "texto": "em",
+          "inicio": 463.54,
+          "fim": 463.97
+        },
+        {
+          "texto": "publicar",
+          "inicio": 463.97,
+          "fim": 464.52
+        },
+        {
+          "texto": "ou",
+          "inicio": 464.52,
+          "fim": 464.96
+        },
+        {
+          "texto": "vender.",
+          "inicio": 464.96,
+          "fim": 465.69
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 465.69,
+      "fim": 471.07,
+      "texto": "O nosso modelo de estudo não é uma promessa de venda.",
+      "palavras": [
+        {
+          "texto": "O",
+          "inicio": 465.69,
+          "fim": 466.1
+        },
+        {
+          "texto": "nosso",
+          "inicio": 466.1,
+          "fim": 466.59
+        },
+        {
+          "texto": "modelo",
+          "inicio": 466.59,
+          "fim": 467.11
+        },
+        {
+          "texto": "de",
+          "inicio": 467.11,
+          "fim": 467.54
+        },
+        {
+          "texto": "estudo",
+          "inicio": 467.54,
+          "fim": 468.05
+        },
+        {
+          "texto": "não",
+          "inicio": 468.05,
+          "fim": 468.51
+        },
+        {
+          "texto": "é",
+          "inicio": 468.51,
+          "fim": 468.92
+        },
+        {
+          "texto": "uma",
+          "inicio": 468.92,
+          "fim": 469.37
+        },
+        {
+          "texto": "promessa",
+          "inicio": 469.37,
+          "fim": 469.93
+        },
+        {
+          "texto": "de",
+          "inicio": 469.93,
+          "fim": 470.36
+        },
+        {
+          "texto": "venda.",
+          "inicio": 470.36,
+          "fim": 471.07
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 471.07,
+      "fim": 475.48,
+      "texto": "Por hoje, faça o check-in e guarde o arquivo.",
+      "palavras": [
+        {
+          "texto": "Por",
+          "inicio": 471.07,
+          "fim": 471.51
+        },
+        {
+          "texto": "hoje,",
+          "inicio": 471.51,
+          "fim": 472.06
+        },
+        {
+          "texto": "faça",
+          "inicio": 472.06,
+          "fim": 472.52
+        },
+        {
+          "texto": "o",
+          "inicio": 472.52,
+          "fim": 472.92
+        },
+        {
+          "texto": "check-in",
+          "inicio": 472.92,
+          "fim": 473.45
+        },
+        {
+          "texto": "e",
+          "inicio": 473.45,
+          "fim": 473.86
+        },
+        {
+          "texto": "guarde",
+          "inicio": 473.86,
+          "fim": 474.35
+        },
+        {
+          "texto": "o",
+          "inicio": 474.35,
+          "fim": 474.76
+        },
+        {
+          "texto": "arquivo.",
+          "inicio": 474.76,
+          "fim": 475.48
+        }
+      ]
+    },
+    {
+      "bloco": 5,
+      "inicio": 475.48,
+      "fim": 480.0,
+      "texto": "Amanhã a gente continua exatamente de onde você parou.",
+      "palavras": [
+        {
+          "texto": "Amanhã",
+          "inicio": 475.48,
+          "fim": 475.98
+        },
+        {
+          "texto": "a",
+          "inicio": 475.98,
+          "fim": 476.38
+        },
+        {
+          "texto": "gente",
+          "inicio": 476.38,
+          "fim": 476.86
+        },
+        {
+          "texto": "continua",
+          "inicio": 476.86,
+          "fim": 477.4
+        },
+        {
+          "texto": "exatamente",
+          "inicio": 477.4,
+          "fim": 477.97
+        },
+        {
+          "texto": "de",
+          "inicio": 477.97,
+          "fim": 478.39
+        },
+        {
+          "texto": "onde",
+          "inicio": 478.39,
+          "fim": 478.85
+        },
+        {
+          "texto": "você",
+          "inicio": 478.85,
+          "fim": 479.31
+        },
+        {
+          "texto": "parou.",
+          "inicio": 479.31,
+          "fim": 480.0
+        }
+      ]
+    }
+  ],
+  "pausas": [
+    {
+      "inicio": 221,
+      "fim": 225,
+      "texto": "Pausa — deixe o aluno conferir."
+    },
+    {
+      "inicio": 249,
+      "fim": 253,
+      "texto": "Pausa — deixe o aluno conferir."
+    },
+    {
+      "inicio": 277,
+      "fim": 281,
+      "texto": "Pausa — deixe o aluno conferir."
+    }
+  ],
+  "visuais": [
+    {
+      "bloco": 1,
+      "paragrafo": 1,
+      "inicio": 0,
+      "fim": 14.89,
+      "texto": "Ontem eu deixei uma pergunta sobre o Programa UGC do Roblox. Vou começar fechando a parte que você precisa saber agora: você não precisa entrar nesse programa para fazer o exercício de hoje."
+    },
+    {
+      "bloco": 1,
+      "paragrafo": 2,
+      "inicio": 14.89,
+      "fim": 38.35,
+      "texto": "O Marketplace é voltado a itens de avatar e tem regras de publicação. O nosso Huge Cat é um projeto de estudo de um pet. Fazer uma forma no Blender e publicar um acessório de avatar são etapas diferentes. Vamos aprofundar isso nos próximos dias, antes de escolher um caminho de publicação."
+    },
+    {
+      "bloco": 1,
+      "paragrafo": 3,
+      "inicio": 38.35,
+      "fim": 60.0,
+      "texto": "Hoje é o Dia 2 de 7. Se você comentou sua meta ontem, chegou a hora de dar o primeiro passo. E, se não comentou ou ainda não começou, pode começar comigo agora. No fim desta etapa, você vai ter preparado e salvo o corpo do nosso projeto."
+    },
+    {
+      "bloco": 2,
+      "paragrafo": 1,
+      "inicio": 60,
+      "fim": 74.66,
+      "texto": "Depois da empolgação do primeiro dia, pode aparecer aquela vontade de deixar para depois. Se você está pensando “não sei mexer nesse programa”, fica comigo: hoje não vamos fazer o gato inteiro."
+    },
+    {
+      "bloco": 2,
+      "paragrafo": 2,
+      "inicio": 74.66,
+      "fim": 93.44,
+      "texto": "A meta que propus ontem foi terminar o modelo de estudo em até cinco dias e usar os dois seguintes para conferir e apresentar. O passo de hoje cabe nessa meta: ajustar o corpo e guardar o arquivo. Uma tarefa só."
+    },
+    {
+      "bloco": 2,
+      "paragrafo": 3,
+      "inicio": 93.44,
+      "fim": 106.72,
+      "texto": "Olha o resultado na tela. É um bloco cinza. Não precisa desenhar um rosto, criar orelha ou decorar nomes de ferramentas agora. Você vai mudar três valores e salvar."
+    },
+    {
+      "bloco": 2,
+      "paragrafo": 4,
+      "inicio": 106.72,
+      "fim": 120.0,
+      "texto": "Pode pausar quantas vezes precisar. Se um passo sair diferente, volte e compare com a tela. A sua sequência começa com uma tentativa feita por você, não com velocidade."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 1,
+      "inicio": 120,
+      "fim": 145,
+      "texto": "Esse é o destino de hoje: o corpo do projeto, com quatro metros na largura, três e meio na profundidade e três vírgula oitenta e seis na altura. Aqui os metros são a unidade da cena do Blender. Estamos preparando a proporção; o tamanho de uso no jogo será conferido em outra etapa."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 2,
+      "inicio": 145,
+      "fim": 170,
+      "texto": "Baixe o arquivo inicial que está nesta aula. No Blender, abra o menu Arquivo, escolha Abrir e selecione esse arquivo. O corpo já vem selecionado e as outras peças estão escondidas. Elas ficaram preservadas para o estudo, mas hoje você só precisa deste bloco."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 3,
+      "inicio": 170,
+      "fim": 197,
+      "texto": "Se o painel da direita não aparecer, no menu Visualizar procure Barra lateral. Abra a aba Item. Procure a palavra Dimensões. Não é a seção Escala. Se a parte de baixo ficou escondida, passe o mouse na borda do painel e role para baixo. Agora devem aparecer as linhas X, Y e Z."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 4,
+      "inicio": 197,
+      "fim": 225,
+      "texto": "Vamos fazer a primeira. Na linha X de Dimensões, dê dois cliques sobre o valor. Aperte Control e A para selecionar o texto. Digite quatro e confirme com Enter. O bloco fica mais largo. Pause aqui e faça no seu computador."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 5,
+      "inicio": 225,
+      "fim": 253,
+      "texto": "Agora a linha Y. Dois cliques sobre o valor, Control e A, digite três ponto cinco e Enter. Use ponto no decimal, como está na tela. Esse é o tamanho da frente para trás. Pause e confira: X quatro, Y três ponto cinco."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 6,
+      "inicio": 253,
+      "fim": 281,
+      "texto": "Por último, a linha Z. Dois cliques, Control e A, digite três ponto oitenta e seis e confirme com Enter. O bloco ganha altura. Pronto: você preparou o corpo do projeto. Olhe as três linhas e compare com o exemplo."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 7,
+      "inicio": 281,
+      "fim": 301,
+      "texto": "Se alguma ficou diferente, não precisa começar tudo de novo. Dê dois cliques só no valor daquela linha, selecione o texto e digite novamente. Esse é um jeito de corrigir o tamanho sem adivinhar no olho."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 8,
+      "inicio": 301,
+      "fim": 340,
+      "texto": "Agora vamos guardar o trabalho. Abra Arquivo e escolha Salvar como. Escolha uma pasta sua, dê um nome que você reconheça, como huge-cat-dia2-meu-corpo.blend, e confirme o salvamento. A demonstração usa Salvar porque já tem um arquivo de trabalho aberto. No seu computador, a primeira cópia pode ser feita com Salvar como; depois você pode usar Salvar."
+    },
+    {
+      "bloco": 3,
+      "paragrafo": 9,
+      "inicio": 340,
+      "fim": 360,
+      "texto": "Confira o nome do arquivo no topo e guarde essa pasta. Esse é o arquivo que você vai continuar usando. Hoje você não precisa mudar material nem mostrar as outras peças. O objetivo é terminar este corpo e conseguir voltar a ele amanhã."
+    },
+    {
+      "bloco": 4,
+      "paragrafo": 1,
+      "inicio": 360,
+      "fim": 376.18,
+      "texto": "Antes de seguir, eu quero que você confira o que fez. Seu corpo está aparecendo na tela? Dimensões mostra X quatro, Y três ponto cinco e Z três ponto oitenta e seis? Você salvou o arquivo numa pasta que consegue encontrar?"
+    },
+    {
+      "bloco": 4,
+      "paragrafo": 2,
+      "inicio": 376.18,
+      "fim": 388.42,
+      "texto": "Se sim, tire um print da sua tela e guarde junto do projeto. Essa imagem vai ajudar você a ver o progresso quando chegarem as orelhas, as patinhas e o rosto."
+    },
+    {
+      "bloco": 4,
+      "paragrafo": 3,
+      "inicio": 388.42,
+      "fim": 406.18,
+      "texto": "Agora comenta nesta aula: “Dia 2 concluído”, com o sinal de confirmação. O comentário é o nosso check-in. O print fica no seu computador; o campo desta aula recebe texto. Se você travou em uma etapa, escreva qual foi e o que apareceu na tela."
+    },
+    {
+      "bloco": 4,
+      "paragrafo": 4,
+      "inicio": 406.18,
+      "fim": 420.0,
+      "texto": "Depois de fazer a tarefa no seu computador, use o botão Concluir esta aula. Uma aula concluída soma ao seu progresso no curso. A conquista de hoje é esse arquivo feito e salvo por você."
+    },
+    {
+      "bloco": 5,
+      "paragrafo": 1,
+      "inicio": 420,
+      "fim": 432.89,
+      "texto": "Você acabou de preparar sua primeira forma do nosso projeto. Ela ainda é só o corpo. O que faz esse bloco começar a parecer um gato?"
+    },
+    {
+      "bloco": 5,
+      "paragrafo": 2,
+      "inicio": 432.89,
+      "fim": 451.74,
+      "texto": "Na próxima etapa, vamos trabalhar orelhas e patinhas. Você vai ver como poucas formas, bem posicionadas, começam a dar identidade ao personagem. Não é uma ferramenta mágica: é comparar a referência e construir uma parte de cada vez."
+    },
+    {
+      "bloco": 5,
+      "paragrafo": 3,
+      "inicio": 451.74,
+      "fim": 471.07,
+      "texto": "E vamos retomar a diferença entre criar um pet para uma experiência e criar um item para avatar. Essa distinção vem antes de pensar em publicar ou vender. O nosso modelo de estudo não é uma promessa de venda."
+    },
+    {
+      "bloco": 5,
+      "paragrafo": 4,
+      "inicio": 471.07,
+      "fim": 480.0,
+      "texto": "Por hoje, faça o check-in e guarde o arquivo. Amanhã a gente continua exatamente de onde você parou."
+    }
+  ]
+}

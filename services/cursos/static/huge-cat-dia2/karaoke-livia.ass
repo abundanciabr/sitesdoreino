@@ -1,0 +1,95 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1200
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Fala,Arial,48,&H0000FFAA,&H00FFFFFF,&H000C121B,&H000C121B,-1,0,0,0,100,100,0,0,3,12,0,2,60,60,32,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,00:00:00.00,00:00:04.95,Fala,,0,0,0,,{\kf44}Ontem {\kf39}eu {\kf46}deixei {\kf41}uma {\kf49}pergunta {\kf45}sobre {\kf37}o {\kf49}Programa {\kf41}UGC {\kf39}do {\kf65}Roblox.
+Dialogue: 0,00:00:04.95,00:00:11.63,Fala,,0,0,0,,{\kf41}Vou {\kf48}começar {\kf49}fechando {\kf38}a {\kf44}parte {\kf40}que {\kf43}você {\kf48}precisa {\kf44}saber {\kf52}agora: {\kf43}você {\kf40}não {\kf48}precisa {\kf46}entrar {\kf44}nesse
+Dialogue: 0,00:00:11.63,00:00:14.89,Fala,,0,0,0,,{\kf50}programa {\kf42}para {\kf45}fazer {\kf37}o {\kf51}exercício {\kf39}de {\kf62}hoje.
+Dialogue: 0,00:00:14.89,00:00:20.69,Fala,,0,0,0,,{\kf37}O {\kf55}Marketplace {\kf38}é {\kf48}voltado {\kf37}a {\kf44}itens {\kf39}de {\kf46}avatar {\kf38}e {\kf40}tem {\kf47}regras {\kf39}de {\kf72}publicação.
+Dialogue: 0,00:00:20.69,00:00:25.82,Fala,,0,0,0,,{\kf38}O {\kf44}nosso {\kf43}Huge {\kf41}Cat {\kf37}é {\kf39}um {\kf48}projeto {\kf39}de {\kf46}estudo {\kf39}de {\kf39}um {\kf60}pet.
+Dialogue: 0,00:00:25.82,00:00:32.22,Fala,,0,0,0,,{\kf45}Fazer {\kf41}uma {\kf44}forma {\kf39}no {\kf48}Blender {\kf37}e {\kf50}publicar {\kf39}um {\kf52}acessório {\kf39}de {\kf46}avatar {\kf41}são {\kf46}etapas {\kf73}diferentes.
+Dialogue: 0,00:00:32.22,00:00:38.35,Fala,,0,0,0,,{\kf44}Vamos {\kf53}aprofundar {\kf43}isso {\kf41}nos {\kf49}próximos {\kf51}dias, {\kf44}antes {\kf39}de {\kf50}escolher {\kf39}um {\kf48}caminho {\kf39}de {\kf73}publicação.
+Dialogue: 0,00:00:38.35,00:00:46.97,Fala,,0,0,0,,{\kf43}Hoje {\kf38}é {\kf38}o {\kf41}Dia {\kf38}2 {\kf39}de {\kf58}7. {\kf39}Se {\kf43}você {\kf51}comentou {\kf41}sua {\kf43}meta {\kf54}ontem, {\kf46}chegou {\kf38}a {\kf43}hora {\kf40}de {\kf41}dar {\kf38}o {\kf50}primeiro
+Dialogue: 0,00:00:46.97,00:00:53.25,Fala,,0,0,0,,{\kf65}passo. {\kf46}E, {\kf39}se {\kf42}não {\kf50}comentou {\kf40}ou {\kf45}ainda {\kf41}não {\kf57}começou, {\kf43}pode {\kf48}começar {\kf47}comigo {\kf65}agora.
+Dialogue: 0,00:00:53.25,00:01:00.00,Fala,,0,0,0,,{\kf39}No {\kf42}fim {\kf45}desta {\kf53}etapa, {\kf43}você {\kf41}vai {\kf42}ter {\kf52}preparado {\kf38}e {\kf45}salvo {\kf37}o {\kf45}corpo {\kf40}do {\kf45}nosso {\kf68}projeto.
+Dialogue: 0,00:01:00.00,00:01:06.51,Fala,,0,0,0,,{\kf46}Depois {\kf38}da {\kf53}empolgação {\kf39}do {\kf49}primeiro {\kf49}dia, {\kf42}pode {\kf49}aparecer {\kf46}aquela {\kf48}vontade {\kf38}de {\kf46}deixar {\kf42}para {\kf66}depois.
+Dialogue: 0,00:01:06.51,00:01:13.57,Fala,,0,0,0,,{\kf38}Se {\kf43}você {\kf42}está {\kf49}pensando {\kf42}“não {\kf41}sei {\kf44}mexer {\kf44}nesse {\kf59}programa”, {\kf42}fica {\kf54}comigo: {\kf42}hoje {\kf41}não {\kf44}vamos {\kf44}fazer {\kf37}o
+Dialogue: 0,00:01:13.57,00:01:14.66,Fala,,0,0,0,,{\kf42}gato {\kf67}inteiro.
+Dialogue: 0,00:01:14.66,00:01:22.91,Fala,,0,0,0,,{\kf38}A {\kf44}meta {\kf43}que {\kf47}propus {\kf46}ontem {\kf42}foi {\kf52}terminar {\kf38}o {\kf48}modelo {\kf40}de {\kf48}estudo {\kf40}em {\kf42}até {\kf46}cinco {\kf44}dias {\kf39}e {\kf43}usar {\kf41}os {\kf44}dois
+Dialogue: 0,00:01:22.91,00:01:25.53,Fala,,0,0,0,,{\kf53}seguintes {\kf44}para {\kf51}conferir {\kf39}e {\kf75}apresentar.
+Dialogue: 0,00:01:25.53,00:01:31.94,Fala,,0,0,0,,{\kf38}O {\kf46}passo {\kf41}de {\kf44}hoje {\kf44}cabe {\kf45}nessa {\kf53}meta: {\kf49}ajustar {\kf39}o {\kf46}corpo {\kf38}e {\kf50}guardar {\kf38}o {\kf70}arquivo.
+Dialogue: 0,00:01:31.94,00:01:33.44,Fala,,0,0,0,,{\kf42}Uma {\kf48}tarefa {\kf60}só.
+Dialogue: 0,00:01:33.44,00:01:37.55,Fala,,0,0,0,,{\kf42}Olha {\kf37}o {\kf50}resultado {\kf39}na {\kf61}tela. {\kf37}É {\kf38}um {\kf44}bloco {\kf63}cinza.
+Dialogue: 0,00:01:37.55,00:01:43.56,Fala,,0,0,0,,{\kf40}Não {\kf47}precisa {\kf49}desenhar {\kf39}um {\kf51}rosto, {\kf44}criar {\kf46}orelha {\kf38}ou {\kf47}decorar {\kf44}nomes {\kf38}de {\kf55}ferramentas {\kf63}agora.
+Dialogue: 0,00:01:43.56,00:01:46.72,Fala,,0,0,0,,{\kf42}Você {\kf40}vai {\kf43}mudar {\kf42}três {\kf48}valores {\kf36}e {\kf65}salvar.
+Dialogue: 0,00:01:46.72,00:01:53.47,Fala,,0,0,0,,{\kf42}Pode {\kf46}pausar {\kf47}quantas {\kf44}vezes {\kf68}precisar. {\kf39}Se {\kf38}um {\kf44}passo {\kf42}sair {\kf59}diferente, {\kf44}volte {\kf37}e {\kf47}compare {\kf41}com {\kf37}a
+Dialogue: 0,00:01:53.47,00:02:00.00,Fala,,0,0,0,,{\kf61}tela. {\kf37}A {\kf40}sua {\kf51}sequência {\kf46}começa {\kf40}com {\kf40}uma {\kf51}tentativa {\kf44}feita {\kf40}por {\kf50}você, {\kf41}não {\kf40}com {\kf72}velocidade.
+Dialogue: 0,00:02:00.00,00:02:08.68,Fala,,0,0,0,,{\kf45}Esse {\kf39}é {\kf40}o {\kf50}destino {\kf42}de {\kf53}hoje: {\kf40}o {\kf46}corpo {\kf42}do {\kf59}projeto, {\kf43}com {\kf49}quatro {\kf49}metros {\kf41}na {\kf59}largura, {\kf45}três {\kf39}e {\kf45}meio {\kf42}na
+Dialogue: 0,00:02:08.68,00:02:13.08,Fala,,0,0,0,,{\kf60}profundidade {\kf39}e {\kf45}três {\kf51}vírgula {\kf50}oitenta {\kf40}e {\kf45}seis {\kf41}na {\kf69}altura.
+Dialogue: 0,00:02:13.08,00:02:17.75,Fala,,0,0,0,,{\kf45}Aqui {\kf42}os {\kf48}metros {\kf43}são {\kf40}a {\kf50}unidade {\kf42}da {\kf45}cena {\kf41}do {\kf71}Blender.
+Dialogue: 0,00:02:17.75,00:02:25.00,Fala,,0,0,0,,{\kf51}Estamos {\kf56}preparando {\kf39}a {\kf63}proporção; {\kf40}o {\kf50}tamanho {\kf42}de {\kf43}uso {\kf41}no {\kf45}jogo {\kf45}será {\kf54}conferido {\kf42}em {\kf47}outra {\kf67}etapa.
+Dialogue: 0,00:02:25.00,00:02:29.52,Fala,,0,0,0,,{\kf55}Baixe {\kf45}o {\kf59}arquivo {\kf59}inicial {\kf50}que {\kf53}está {\kf54}nesta {\kf77}aula.
+Dialogue: 0,00:02:29.52,00:02:36.46,Fala,,0,0,0,,{\kf48}No {\kf69}Blender, {\kf52}abra {\kf46}o {\kf52}menu {\kf69}Arquivo, {\kf59}escolha {\kf55}Abrir {\kf45}e {\kf64}selecione {\kf52}esse {\kf83}arquivo.
+Dialogue: 0,00:02:36.46,00:02:42.61,Fala,,0,0,0,,{\kf46}O {\kf54}corpo {\kf48}já {\kf50}vem {\kf68}selecionado {\kf46}e {\kf48}as {\kf57}outras {\kf54}peças {\kf55}estão {\kf89}escondidas.
+Dialogue: 0,00:02:42.61,00:02:50.00,Fala,,0,0,0,,{\kf53}Elas {\kf58}ficaram {\kf68}preservadas {\kf52}para {\kf46}o {\kf67}estudo, {\kf50}mas {\kf53}hoje {\kf52}você {\kf48}só {\kf59}precisa {\kf54}deste {\kf79}bloco.
+Dialogue: 0,00:02:50.00,00:02:56.77,Fala,,0,0,0,,{\kf44}Se {\kf42}o {\kf52}painel {\kf43}da {\kf54}direita {\kf46}não {\kf65}aparecer, {\kf44}no {\kf48}menu {\kf59}Visualizar {\kf54}procure {\kf50}Barra {\kf76}lateral.
+Dialogue: 0,00:02:56.77,00:03:01.11,Fala,,0,0,0,,{\kf48}Abra {\kf41}a {\kf46}aba {\kf70}Item. {\kf54}Procure {\kf42}a {\kf54}palavra {\kf79}Dimensões.
+Dialogue: 0,00:03:01.11,00:03:09.89,Fala,,0,0,0,,{\kf46}Não {\kf42}é {\kf42}a {\kf50}seção {\kf73}Escala. {\kf44}Se {\kf42}a {\kf50}parte {\kf44}de {\kf50}baixo {\kf49}ficou {\kf67}escondida, {\kf50}passe {\kf42}o {\kf50}mouse {\kf44}na {\kf49}borda {\kf44}do
+Dialogue: 0,00:03:09.89,00:03:17.00,Fala,,0,0,0,,{\kf52}painel {\kf42}e {\kf48}role {\kf48}para {\kf71}baixo. {\kf50}Agora {\kf50}devem {\kf56}aparecer {\kf44}as {\kf52}linhas {\kf51}X, {\kf41}Y {\kf42}e {\kf64}Z.
+Dialogue: 0,00:03:17.00,00:03:25.76,Fala,,0,0,0,,{\kf56}Vamos {\kf57}fazer {\kf47}a {\kf88}primeira. {\kf50}Na {\kf56}linha {\kf47}X {\kf50}de {\kf76}Dimensões, {\kf49}dê {\kf54}dois {\kf61}cliques {\kf57}sobre {\kf47}o {\kf81}valor.
+Dialogue: 0,00:03:25.76,00:03:30.40,Fala,,0,0,0,,{\kf59}Aperte {\kf61}Control {\kf47}e {\kf47}A {\kf54}para {\kf68}selecionar {\kf47}o {\kf81}texto.
+Dialogue: 0,00:03:30.40,00:03:36.94,Fala,,0,0,0,,{\kf59}Digite {\kf59}quatro {\kf47}e {\kf63}confirme {\kf52}com {\kf81}Enter. {\kf47}O {\kf57}bloco {\kf54}fica {\kf54}mais {\kf81}largo.
+Dialogue: 0,00:03:36.94,00:03:41.00,Fala,,0,0,0,,{\kf57}Pause {\kf54}aqui {\kf47}e {\kf54}faça {\kf50}no {\kf52}seu {\kf92}computador.
+Dialogue: 0,00:03:45.00,00:03:55.02,Fala,,0,0,0,,{\kf54}Agora {\kf46}a {\kf55}linha {\kf69}Y. {\kf53}Dois {\kf58}cliques {\kf55}sobre {\kf46}o {\kf64}valor, {\kf59}Control {\kf46}e {\kf55}A, {\kf57}digite {\kf52}três {\kf55}ponto {\kf54}cinco {\kf46}e {\kf78}Enter.
+Dialogue: 0,00:03:55.02,00:03:59.52,Fala,,0,0,0,,{\kf50}Use {\kf55}ponto {\kf48}no {\kf69}decimal, {\kf52}como {\kf52}está {\kf48}na {\kf76}tela.
+Dialogue: 0,00:03:59.52,00:04:03.88,Fala,,0,0,0,,{\kf52}Esse {\kf46}é {\kf46}o {\kf59}tamanho {\kf48}da {\kf56}frente {\kf53}para {\kf76}trás.
+Dialogue: 0,00:04:03.88,00:04:09.00,Fala,,0,0,0,,{\kf54}Pause {\kf46}e {\kf69}confira: {\kf46}X {\kf66}quatro, {\kf46}Y {\kf52}três {\kf55}ponto {\kf78}cinco.
+Dialogue: 0,00:04:13.00,00:04:22.91,Fala,,0,0,0,,{\kf53}Por {\kf71}último, {\kf48}a {\kf58}linha {\kf74}Z. {\kf56}Dois {\kf73}cliques, {\kf62}Control {\kf49}e {\kf59}A, {\kf60}digite {\kf55}três {\kf58}ponto {\kf63}oitenta {\kf48}e {\kf56}seis {\kf48}e
+Dialogue: 0,00:04:22.91,00:04:27.42,Fala,,0,0,0,,{\kf65}confirme {\kf53}com {\kf83}Enter. {\kf49}O {\kf57}bloco {\kf58}ganha {\kf86}altura.
+Dialogue: 0,00:04:27.42,00:04:31.78,Fala,,0,0,0,,{\kf70}Pronto: {\kf56}você {\kf65}preparou {\kf48}o {\kf58}corpo {\kf51}do {\kf88}projeto.
+Dialogue: 0,00:04:31.78,00:04:37.00,Fala,,0,0,0,,{\kf55}Olhe {\kf51}as {\kf55}três {\kf61}linhas {\kf48}e {\kf62}compare {\kf54}com {\kf48}o {\kf88}exemplo.
+Dialogue: 0,00:04:41.00,00:04:46.73,Fala,,0,0,0,,{\kf48}Se {\kf56}alguma {\kf54}ficou {\kf73}diferente, {\kf49}não {\kf59}precisa {\kf58}começar {\kf52}tudo {\kf48}de {\kf76}novo.
+Dialogue: 0,00:04:46.73,00:04:54.53,Fala,,0,0,0,,{\kf47}Dê {\kf52}dois {\kf59}cliques {\kf47}só {\kf48}no {\kf54}valor {\kf58}daquela {\kf64}linha, {\kf63}selecione {\kf46}o {\kf54}texto {\kf45}e {\kf56}digite {\kf87}novamente.
+Dialogue: 0,00:04:54.53,00:05:01.00,Fala,,0,0,0,,{\kf52}Esse {\kf45}é {\kf48}um {\kf54}jeito {\kf48}de {\kf60}corrigir {\kf46}o {\kf58}tamanho {\kf50}sem {\kf63}adivinhar {\kf47}no {\kf76}olho.
+Dialogue: 0,00:05:01.00,00:05:08.88,Fala,,0,0,0,,{\kf66}Agora {\kf67}vamos {\kf71}guardar {\kf56}o {\kf104}trabalho. {\kf63}Abra {\kf72}Arquivo {\kf56}e {\kf72}escolha {\kf69}Salvar {\kf92}como.
+Dialogue: 0,00:05:08.88,00:05:17.22,Fala,,0,0,0,,{\kf72}Escolha {\kf61}uma {\kf67}pasta {\kf73}sua, {\kf58}dê {\kf59}um {\kf63}nome {\kf61}que {\kf64}você {\kf89}reconheça, {\kf64}como {\kf103}huge-cat-dia2-meu-corpo.blend,
+Dialogue: 0,00:05:17.22,00:05:27.38,Fala,,0,0,0,,{\kf55}e {\kf75}confirme {\kf55}o {\kf109}salvamento. {\kf56}A {\kf85}demonstração {\kf61}usa {\kf69}Salvar {\kf69}porque {\kf59}já {\kf61}tem {\kf58}um {\kf72}arquivo {\kf58}de {\kf74}trabalho
+Dialogue: 0,00:05:27.38,00:05:37.74,Fala,,0,0,0,,{\kf99}aberto. {\kf58}No {\kf61}seu {\kf92}computador, {\kf56}a {\kf74}primeira {\kf66}cópia {\kf64}pode {\kf61}ser {\kf67}feita {\kf61}com {\kf69}Salvar {\kf76}como; {\kf69}depois {\kf63}você
+Dialogue: 0,00:05:37.74,00:05:40.00,Fala,,0,0,0,,{\kf64}pode {\kf64}usar {\kf98}Salvar.
+Dialogue: 0,00:05:40.00,00:05:45.02,Fala,,0,0,0,,{\kf49}Confira {\kf39}o {\kf44}nome {\kf40}do {\kf50}arquivo {\kf40}no {\kf44}topo {\kf38}e {\kf48}guarde {\kf44}essa {\kf66}pasta.
+Dialogue: 0,00:05:45.02,00:05:49.21,Fala,,0,0,0,,{\kf44}Esse {\kf38}é {\kf39}o {\kf49}arquivo {\kf42}que {\kf44}você {\kf42}vai {\kf53}continuar {\kf68}usando.
+Dialogue: 0,00:05:49.21,00:05:54.43,Fala,,0,0,0,,{\kf44}Hoje {\kf44}você {\kf42}não {\kf50}precisa {\kf46}mudar {\kf51}material {\kf42}nem {\kf49}mostrar {\kf41}as {\kf47}outras {\kf66}peças.
+Dialogue: 0,00:05:54.43,00:06:00.00,Fala,,0,0,0,,{\kf39}O {\kf51}objetivo {\kf38}é {\kf52}terminar {\kf44}este {\kf45}corpo {\kf39}e {\kf53}conseguir {\kf48}voltar {\kf38}a {\kf42}ele {\kf68}amanhã.
+Dialogue: 0,00:06:00.00,00:06:04.27,Fala,,0,0,0,,{\kf39}Antes {\kf33}de {\kf48}seguir, {\kf34}eu {\kf38}quero {\kf36}que {\kf37}você {\kf41}confira {\kf33}o {\kf35}que {\kf53}fez.
+Dialogue: 0,00:06:04.27,00:06:10.84,Fala,,0,0,0,,{\kf35}Seu {\kf39}corpo {\kf37}está {\kf46}aparecendo {\kf34}na {\kf54}tela? {\kf44}Dimensões {\kf41}mostra {\kf32}X {\kf47}quatro, {\kf33}Y {\kf37}três {\kf38}ponto {\kf39}cinco {\kf32}e {\kf32}Z {\kf37}três
+Dialogue: 0,00:06:10.84,00:06:16.18,Fala,,0,0,0,,{\kf39}ponto {\kf42}oitenta {\kf32}e {\kf54}seis? {\kf37}Você {\kf40}salvou {\kf32}o {\kf42}arquivo {\kf37}numa {\kf39}pasta {\kf35}que {\kf43}consegue {\kf62}encontrar?
+Dialogue: 0,00:06:16.18,00:06:21.26,Fala,,0,0,0,,{\kf35}Se {\kf43}sim, {\kf38}tire {\kf35}um {\kf40}print {\kf34}da {\kf37}sua {\kf38}tela {\kf33}e {\kf41}guarde {\kf40}junto {\kf34}do {\kf60}projeto.
+Dialogue: 0,00:06:21.26,00:06:27.85,Fala,,0,0,0,,{\kf38}Essa {\kf41}imagem {\kf37}vai {\kf41}ajudar {\kf38}você {\kf33}a {\kf36}ver {\kf34}o {\kf46}progresso {\kf41}quando {\kf44}chegarem {\kf35}as {\kf50}orelhas, {\kf34}as {\kf45}patinhas {\kf33}e {\kf33}o
+Dialogue: 0,00:06:27.85,00:06:28.42,Fala,,0,0,0,,{\kf57}rosto.
+Dialogue: 0,00:06:28.42,00:06:33.32,Fala,,0,0,0,,{\kf39}Agora {\kf41}comenta {\kf39}nesta {\kf44}aula: {\kf37}“Dia {\kf32}2 {\kf53}concluído”, {\kf36}com {\kf32}o {\kf39}sinal {\kf34}de {\kf64}confirmação.
+Dialogue: 0,00:06:33.32,00:06:39.91,Fala,,0,0,0,,{\kf33}O {\kf46}comentário {\kf32}é {\kf33}o {\kf38}nosso {\kf60}check-in. {\kf33}O {\kf38}print {\kf37}fica {\kf34}no {\kf36}seu {\kf53}computador; {\kf32}o {\kf39}campo {\kf38}desta {\kf37}aula {\kf40}recebe
+Dialogue: 0,00:06:39.91,00:06:46.18,Fala,,0,0,0,,{\kf56}texto. {\kf34}Se {\kf37}você {\kf40}travou {\kf34}em {\kf35}uma {\kf46}etapa, {\kf41}escreva {\kf37}qual {\kf36}foi {\kf32}e {\kf33}o {\kf35}que {\kf43}apareceu {\kf34}na {\kf54}tela.
+Dialogue: 0,00:06:46.18,00:06:51.74,Fala,,0,0,0,,{\kf41}Depois {\kf34}de {\kf39}fazer {\kf33}a {\kf40}tarefa {\kf35}no {\kf36}seu {\kf54}computador, {\kf36}use {\kf33}o {\kf39}botão {\kf43}Concluir {\kf38}esta {\kf55}aula.
+Dialogue: 0,00:06:51.74,00:06:55.36,Fala,,0,0,0,,{\kf35}Uma {\kf38}aula {\kf45}concluída {\kf38}soma {\kf34}ao {\kf36}seu {\kf45}progresso {\kf35}no {\kf56}curso.
+Dialogue: 0,00:06:55.36,00:07:00.00,Fala,,0,0,0,,{\kf33}A {\kf45}conquista {\kf34}de {\kf38}hoje {\kf33}é {\kf37}esse {\kf42}arquivo {\kf40}feito {\kf32}e {\kf39}salvo {\kf36}por {\kf55}você.
+Dialogue: 0,00:07:00.00,00:07:05.12,Fala,,0,0,0,,{\kf47}Você {\kf51}acabou {\kf43}de {\kf55}preparar {\kf45}sua {\kf55}primeira {\kf49}forma {\kf43}do {\kf50}nosso {\kf74}projeto.
+Dialogue: 0,00:07:05.12,00:07:12.89,Fala,,0,0,0,,{\kf45}Ela {\kf49}ainda {\kf41}é {\kf44}só {\kf41}o {\kf70}corpo. {\kf42}O {\kf45}que {\kf45}faz {\kf47}esse {\kf49}bloco {\kf53}começar {\kf41}a {\kf53}parecer {\kf43}um {\kf69}gato?
+Dialogue: 0,00:07:12.89,00:07:17.03,Fala,,0,0,0,,{\kf41}Na {\kf51}próxima {\kf56}etapa, {\kf47}vamos {\kf55}trabalhar {\kf51}orelhas {\kf40}e {\kf73}patinhas.
+Dialogue: 0,00:07:17.03,00:07:24.09,Fala,,0,0,0,,{\kf45}Você {\kf44}vai {\kf43}ver {\kf45}como {\kf50}poucas {\kf57}formas, {\kf44}bem {\kf69}posicionadas, {\kf51}começam {\kf39}a {\kf44}dar {\kf56}identidade {\kf42}ao {\kf77}personagem.
+Dialogue: 0,00:07:24.09,00:07:31.74,Fala,,0,0,0,,{\kf43}Não {\kf40}é {\kf43}uma {\kf57}ferramenta {\kf58}mágica: {\kf39}é {\kf53}comparar {\kf40}a {\kf56}referência {\kf40}e {\kf55}construir {\kf43}uma {\kf47}parte {\kf42}de {\kf45}cada {\kf64}vez.
+Dialogue: 0,00:07:31.74,00:07:39.87,Fala,,0,0,0,,{\kf41}E {\kf50}vamos {\kf53}retomar {\kf41}a {\kf58}diferença {\kf49}entre {\kf49}criar {\kf44}um {\kf45}pet {\kf47}para {\kf46}uma {\kf61}experiência {\kf41}e {\kf50}criar {\kf43}um {\kf47}item {\kf48}para
+Dialogue: 0,00:07:39.87,00:07:45.69,Fala,,0,0,0,,{\kf73}avatar. {\kf47}Essa {\kf57}distinção {\kf46}vem {\kf49}antes {\kf43}de {\kf52}pensar {\kf43}em {\kf55}publicar {\kf44}ou {\kf73}vender.
+Dialogue: 0,00:07:45.69,00:07:51.07,Fala,,0,0,0,,{\kf41}O {\kf49}nosso {\kf52}modelo {\kf43}de {\kf51}estudo {\kf46}não {\kf41}é {\kf45}uma {\kf56}promessa {\kf43}de {\kf71}venda.
+Dialogue: 0,00:07:51.07,00:07:55.48,Fala,,0,0,0,,{\kf44}Por {\kf55}hoje, {\kf46}faça {\kf40}o {\kf53}check-in {\kf41}e {\kf49}guarde {\kf41}o {\kf72}arquivo.
+Dialogue: 0,00:07:55.48,00:08:00.00,Fala,,0,0,0,,{\kf50}Amanhã {\kf40}a {\kf48}gente {\kf54}continua {\kf57}exatamente {\kf42}de {\kf46}onde {\kf46}você {\kf69}parou.
+Dialogue: 0,00:03:41.00,00:03:45.00,Fala,,0,0,0,,Pausa — deixe o aluno conferir.
+Dialogue: 0,00:04:09.00,00:04:13.00,Fala,,0,0,0,,Pausa — deixe o aluno conferir.
+Dialogue: 0,00:04:37.00,00:04:41.00,Fala,,0,0,0,,Pausa — deixe o aluno conferir.
