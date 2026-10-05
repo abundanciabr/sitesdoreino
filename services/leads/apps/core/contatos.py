@@ -30,7 +30,9 @@ def contatos_dos_quizzes():
 
 
 def contatos_do_crm():
-    matriculas = TimelineEvent.objects.filter(event="aluno.matricula").values("lead_id")
+    matriculas = TimelineEvent.objects.filter(
+        event__in=("aluno.matricula", "cadastro.site")
+    ).values("lead_id")
     return Lead.objects.filter(
         Q(pk__in=contatos_dos_quizzes().values("pk")) | Q(pk__in=matriculas)
     )
