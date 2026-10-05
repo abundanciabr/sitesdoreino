@@ -116,6 +116,9 @@ REVERSAO_CAMPOS = {
     "provider_reference_id",
     "motivo",
 }
+REVERSAO_REFERENCIAS_OPCIONAIS = {
+    "order_id", "oportunidade_ref", "oferta_ref", "ambiente",
+}
 REVERSAO_PROVEDORES = {"mercadopago", "appmax"}
 REVERSAO_MOTIVOS = {"estorno", "contestacao"}
 
@@ -133,9 +136,11 @@ def validar_reversao_confirmada(dados: dict) -> None:
     no PEL e vai para a fila morta depois de MAX_ENTREGAS, onde alguém a lê.
     """
     campos_recebidos = set(dados)
-    # O pedido passou a acompanhar a reversão para o checkout localizar a
-    # compra. A matrícula continua identificada pelo site e pela cobrança.
-    if campos_recebidos not in (REVERSAO_CAMPOS, REVERSAO_CAMPOS | {"order_id"}):
+    # O checkout localiza a compra pelo pedido; o emissor também pode ecoar
+    # referências opacas do metadata. Nenhum valor financeiro entra aqui.
+    if not REVERSAO_CAMPOS <= campos_recebidos or not campos_recebidos <= (
+        REVERSAO_CAMPOS | REVERSAO_REFERENCIAS_OPCIONAIS
+    ):
         raise ValueError(
             "pagamento.reversao_confirmada exige identidade e motivo, sem "
             "campos financeiros adicionais"

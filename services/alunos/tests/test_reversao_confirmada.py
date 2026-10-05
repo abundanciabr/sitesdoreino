@@ -171,6 +171,48 @@ def test_estorno_com_pedido_do_checkout_reembolsa_uma_vez() -> None:
     assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).count() == 1
 
 
+@pytest.mark.parametrize(
+    "referencias",
+    [
+        {"ambiente": "sandbox"},
+        {"oferta_ref": "curso-fundamentos"},
+        {"oportunidade_ref": "oportunidade-123"},
+        {
+            "order_id": "pedido-do-checkout",
+            "ambiente": "sandbox",
+            "oferta_ref": "curso-fundamentos",
+            "oportunidade_ref": "oportunidade-123",
+        },
+    ],
+)
+def test_reversao_aceita_referencias_nao_financeiras_do_emissor(referencias: dict) -> None:
+    matricula = _matricula()
+    envelope = _reversao(motivo="estorno")
+    envelope["data"].update(referencias)
+
+    processar_envelope(envelope, HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_REEMBOLSADA
+    assert EventoProcessado.objects.filter(event_id=envelope["event_id"]).exists()
+
+
+def test_reversao_com_referencias_ainda_recusa_valor_financeiro() -> None:
+    matricula = _matricula()
+    envelope = _reversao(motivo="estorno")
+    envelope["data"].update({
+        "order_id": "pedido-do-checkout", "ambiente": "sandbox",
+        "oferta_ref": "curso-fundamentos", "amount_cents": 9900,
+    })
+
+    with pytest.raises(ValueError):
+        processar_envelope(envelope, HANDLERS)
+
+    matricula.refresh_from_db()
+    assert matricula.status == Matricula.STATUS_ATIVA
+    assert not EventoProcessado.objects.filter(event_id=envelope["event_id"]).exists()
+
+
 def test_reversao_de_um_site_nao_corta_matricula_de_outro() -> None:
     uma = _matricula(site=SITE)
     outra = _matricula(site=OUTRO_SITE)
