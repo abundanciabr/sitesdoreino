@@ -1,38 +1,7 @@
-"""`/admin/placar/ciclo/` — o calendário do ciclo, semana a semana.
+"""Dois calendários comerciais por produto, com metas e vendas confirmadas.
 
-Pedido do mantenedor em 04/09/2026, com o calendário dele nas mãos: *"quero
-criar no painel os ciclos evolutivos onde a cada semana tenhamos a meta de ir
-crescendo semana a semana até alcançar a escala"*, e a frase que define a
-curva: *"nas primeiras semanas as vendas fiquem na faixa de 0 enquanto nós
-vamos aprendendo e testando as campanhas, criativos, copys, landing pages,
-funis"*.
-
-## O que esta tela é, e o que ela NÃO é
-
-Ela é a **leitura** da curva. A curva mora no cartão `compras-no-ciclo` do
-banco, no campo `semanas`. A meta de cada semana é editada em
-`/admin/placar/editar/`, e esta tela lê o valor salvo. O JSON antigo foi a
-semente da importação e não participa da leitura corrente.
-
-Isso não é preciosismo de organização, é a única forma de a tela não mentir.
-Se a curva vivesse aqui, o placar (`/admin/placar/`) continuaria julgando
-ganhando/perdendo pela linha reta antiga enquanto esta tela mostrasse outra
-coisa, e as duas teriam ar de certeza. Com a curva no cartão, **o placar
-inteiro segue a mesma régua**: `placar.esperado_em` a lê, e com ela andam o
-veredito do ciclo, a meta do mês e a meta da semana da tela de direção.
-
-## De onde vêm os números REAIS
-
-Da mesma lista que o placar usa (`alunos`, `GET /matriculas`, campo
-`virou_aluno_em`), com os mesmos status que contam como compra. A contagem por
-semana é feita aqui porque nenhuma outra tela pergunta isso, mas as REGRAS
-(quais status contam, qual fuso decide o dia) são importadas de `placar.py` e
-não reescritas: um segundo conjunto de regras de contagem seria a duplicação
-que o `CLAUDE.md` proíbe.
-
-**`None` é "não consegui perguntar", e nunca vira zero.** Uma semana sem
-resposta da `alunos` mostrada como 0 diria "nesta semana ninguém comprou"
-quando a verdade é que a pergunta não chegou (`RETROSPECTIVA-FASE-D` §1).
+Os planos aprovados em 05/10/2026 ficam em ciclo_produtos. As funções
+de contagem históricas continuam disponíveis aos outros consumidores.
 """
 
 from __future__ import annotations
@@ -43,7 +12,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from .clients import AlunosClient
+from .clients import AlunosClient, CatalogoClient, LeadsClient
 from .placar import (
     CARTAO_DA_META,
     CAMPO_DA_DATA,
@@ -116,22 +85,51 @@ def montar_as_semanas(faixas: list[dict], reais: "list | None", hoje: dt.date) -
 
 @require_GET
 def ciclo(request):
-    """A tela. Fail-OPEN na rede: sem a `alunos`, o calendário abre e as
-    colunas do que houve dizem que não deu para perguntar."""
-    meta, recusas = ler_cartao(CARTAO_DA_META, diretorio_dos_cartoes())
-    faixas = semanas_do_ciclo(meta) if meta else []
+    """Dois planos comerciais na mesma página, com vendas por produto."""
+    from .ciclo_produtos import PAINEIS, INICIO, FIM, montar_painel
     from .vendas_do_crm import para_o_placar
-    reais = contar_por_semana(para_o_placar(AlunosClient().alunos()), faixas) if faixas else None
+    chave = request.GET.get("produto", "curso")
+    if chave not in PAINEIS:
+        chave = "curso"
+    perfil = PAINEIS[chave]
+    catalogo = CatalogoClient()
+    site = catalogo.site_por_host(request.get_host().split(":")[0])
+    produto = None
+    if site:
+        estado_oferta, oferta = catalogo.oferta_do_site(str(site["id"]), perfil["oferta"])
+        if estado_oferta == catalogo.OK and isinstance(oferta, dict):
+            produto = oferta.get("product")
+    alunos = None
+    if site and produto:
+        fichas = AlunosClient().alunos()
+        if fichas is not None:
+            # Filtrar ANTES da deduplicação: comprar o desafio não apaga a compra do curso.
+            alunos = para_o_placar([
+                a for a in fichas if str(a.get("product_id")) == str(produto["id"])
+                and str(a.get("site_id")) == str(site["id"])
+            ])
     hoje = timezone.localdate()
+    painel = montar_painel(chave, alunos, hoje)
+    receita = None
+    if chave == "desafio" and site and produto:
+        cliente = LeadsClient()
+        estado, fatos = cliente._pedir("/receita/fatos", {
+            "site_id": str(site["id"]), "desde": INICIO.isoformat(), "ate": FIM.isoformat(),
+        })
+        if estado == cliente.OK and isinstance(fatos, dict) and isinstance(fatos.get("por_oferta"), list):
+            itens = [i for i in fatos["por_oferta"] if i.get("oferta") in
+                     (perfil["oferta"], perfil["slug"], str(produto["id"]))]
+            if all(type(i.get("aprovado_centavos")) is int for i in itens):
+                centavos = sum(i["aprovado_centavos"] for i in itens)
+                receita = "R$ " + f"{centavos / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
     return render(
         request,
         "admin/ciclo.html",
         {
             "admin": request.admin,
-            "meta": meta,
-            "recusas": recusas,
-            "semanas": montar_as_semanas(faixas, reais, hoje),
-            "nao_consigo_contar": faixas and reais is None,
+            "painel": painel,
+            "botoes": [{"chave": k, "nome": p["botao"]} for k, p in PAINEIS.items()],
+            "receita": receita,
             "hoje": hoje,
         },
     )

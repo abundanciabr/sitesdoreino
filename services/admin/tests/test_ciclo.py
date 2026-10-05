@@ -54,6 +54,14 @@ CARTAO = {
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    monkeypatch.setattr(ciclo.CatalogoClient, "site_por_host", lambda self, host: {"id": "site-mesh"})
+    monkeypatch.setattr(ciclo.CatalogoClient, "oferta_do_site", lambda self, site, slug: (self.OK, {
+        "product": {"id": "produto-desafio" if slug.startswith("desafio") else "produto-curso"}
+    }))
+    monkeypatch.setattr(ciclo.CatalogoClient, "listar_produtos", lambda self: [
+        {"id": "produto-curso", "slug": "primeiros-dolares"},
+        {"id": "produto-desafio", "slug": "desafio-como-ganhar-em-dolar-com-roblox"},
+    ])
     # Estas fichas simulam contatos comerciais previamente conferidos.
     def contatos_confirmados(pessoas):
         for n, pessoa in enumerate(pessoas):
@@ -200,14 +208,19 @@ def test_semana_futura_e_marcada_como_futura():
 
 
 @respx.mock
-def test_a_tela_abre_com_as_quatorze_semanas():
+def test_a_tela_abre_com_doze_semanas_e_dois_botoes():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
     resposta = _dentro().get(reverse("ciclo"))
     assert resposta.status_code == 200
-    assert len(resposta.context["semanas"]) == 14
+    painel = resposta.context["painel"]
+    assert len(painel["semanas"]) == 9
+    assert len(painel["recuperacoes"]) == 2
+    assert painel["preparacao"]["meta"] == 0
+    assert painel["meta"] == 500
     html = resposta.content.decode()
-    assert "O calendário do ciclo" in html
-    assert "Preparação" in html and "Recuperação" in html
+    assert "Curso Primeiros Dólares com Roblox" in html
+    assert "Preparação" in html and "Duas semanas de recuperação" in html
+    assert "?produto=curso" in html and "?produto=desafio" in html
 
 
 @respx.mock
@@ -215,8 +228,8 @@ def test_a_tela_abre_mesmo_sem_a_alunos_e_diz_isso():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(503))
     resposta = _dentro().get(reverse("ciclo"))
     assert resposta.status_code == 200
-    assert resposta.context["nao_consigo_contar"]
-    assert "Não consegui perguntar" in resposta.content.decode()
+    assert resposta.context["painel"]["sem_contagem"]
+    assert "Não foi possível confirmar" in resposta.content.decode()
 
 
 @respx.mock
@@ -230,7 +243,7 @@ def test_o_placar_leva_ate_o_calendario():
 
 
 @respx.mock
-def test_a_tela_mostra_o_calendario_do_cartao_e_marca_a_faixa_de_hoje(monkeypatch):
+def test_a_tela_mostra_o_novo_calendario_e_marca_a_faixa_de_hoje(monkeypatch):
     """A prova que só a tela renderizada dá: as datas certas, no lugar certo.
 
     Em 17/09/2026 quem está andando é a PREPARAÇÃO (14 a 18/09), e a semana 1
@@ -238,17 +251,17 @@ def test_a_tela_mostra_o_calendario_do_cartao_e_marca_a_faixa_de_hoje(monkeypatc
     verde com a tela mostrando outra coisa, que foi exatamente o que aconteceu
     entre o ajuste da curva e este PR.
     """
-    monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 9, 17))
+    monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 10, 5))
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
     resposta = _dentro().get(reverse("ciclo"))
     assert resposta.status_code == 200
 
-    linhas = _linhas_da_tabela(resposta.content.decode())
-    assert "14/09" in linhas["Preparação"] and "18/09" in linhas["Preparação"]
-    assert "é esta" in linhas["Preparação"]
-    assert "21/09" in linhas["Semana 1"] and "25/09" in linhas["Semana 1"]
-    assert "é esta" not in linhas["Semana 1"]
-    assert "14/12" in linhas["Recuperação"] and "15/12" in linhas["Recuperação"]
+    painel = resposta.context["painel"]
+    assert painel["preparacao"]["atual"]
+    assert painel["semanas"][0]["de"] == dt.date(2026, 10, 12)
+    assert painel["semanas"][-1]["n"] == 10
+    assert [s["n"] for s in painel["recuperacoes"]] == [11, 12]
+    assert "Esta semana" in resposta.content.decode()
 
 
 @respx.mock

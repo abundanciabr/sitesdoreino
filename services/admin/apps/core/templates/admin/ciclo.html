@@ -1,103 +1,27 @@
 {% extends "admin/base.html" %}
-{% comment %}
-O calendário do ciclo (/admin/placar/ciclo/, 04/09/2026).
-
-Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
-tela (armadilhas/087). O estilo mora em admin/base.html.
-
-A tela NÃO guarda número nenhum: a curva vem do cartão compras-no-ciclo.json e
-o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
-{% endcomment %}
-{% block titulo %}Calendário do ciclo{% endblock %}
+{% block titulo %}Calendário de vendas{% endblock %}
 {% block corpo %}
-<div class="envolucro">
-  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
-  <h1>O calendário do ciclo</h1>
-  <p class="subtitulo">As 12 semanas do ciclo, mais a preparação e a recuperação.</p>
-
-  {% if meta %}{% include "admin/_avisos_do_cartao.html" with avisos=recusas %}{% endif %}
-  {% if not meta %}
-  <p class="aviso borda-vermelha">
-    <b>Não achei o cartão da meta.</b>
-    Sem ele não há ciclo para desenhar. Isso é coisa de bastidor, não sua, e o
-    abra a edição das metas para corrigir o cartão.
-  </p>
-  {% elif not semanas %}
-  <p class="aviso borda-amarela">
-    <b>A meta ainda não tem calendário de semanas.</b>
-    Enquanto não tiver, o placar reparte a meta em linha reta, em partes iguais
-    do começo ao fim. Foi assim até 4 de setembro de 2026.
-  </p>
-  {% else %}
-
-  <p class="lei">
-    Aqui está a régua que o placar usa para dizer se você está ganhando ou
-    perdendo.
-    As cinco primeiras semanas pedem zero venda de propósito: são as de aprender a campanha, o criativo, a copy e a página de venda.
-    Cobrar venda de quem ainda está aprendendo mede a coisa errada com
-    precisão. A conta sobe devagar, acelera no meio e concentra o peso no fim,
-    quando o que funciona já é conhecido.
-  </p>
-
-  {% if nao_consigo_contar %}
-  <p class="aviso borda-amarela espaco-20">
-    <b>Não consegui perguntar quantas pessoas compraram.</b>
-    O calendário e as metas abaixo continuam certos; o que está faltando é o
-    lado do que aconteceu de verdade. As colunas ficam em branco em vez de
-    mostrar zero, porque zero seria eu afirmando que ninguém comprou.
-  </p>
-  {% endif %}
-
-  <div class="rolagem-lateral espaco-20">
-    <table class="semanas-do-ciclo">
-      <thead>
-        <tr>
-          <th>Semana</th>
-          <th>De</th>
-          <th>Até</th>
-          <th class="numero">Meta da semana</th>
-          <th class="numero">Meta acumulada</th>
-          <th class="numero">Aconteceu</th>
-          <th class="numero">Acumulado real</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in semanas %}
-        <tr class="semana {{ s.estado }}">
-          <td>
-            <b>{% if s.rotulo %}{{ s.rotulo }}{% else %}Semana {{ s.n }}{% endif %}</b>
-            {% if s.estado == "andando" %}<span class="agora">é esta</span>{% endif %}
-          </td>
-          <td>{{ s.de|date:"d/m" }}</td>
-          <td>{{ s.ate|date:"d/m" }}</td>
-          <td class="numero">{{ s.alvo }}</td>
-          <td class="numero acumulada">{{ s.acumulado }}</td>
-          <td class="numero">
-            {% if s.real is None %}
-            <span class="nao-sei">não sei</span>
-            {% else %}
-            {{ s.real }}
-            {% if s.cumpriu is True %}<span class="selo-verde">na meta</span>
-            {% elif s.cumpriu is False %}<span class="selo-vermelho">abaixo</span>{% endif %}
-            {% endif %}
-          </td>
-          <td class="numero">
-            {% if s.acumulado_real is None %}
-            <span class="nao-sei">não sei</span>
-            {% else %}{{ s.acumulado_real }}{% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <p class="aviso espaco-28">
-    <b>A recuperação existe para o caso de a meta não cair no prazo.</b>
-    Ela não é uma semana inteira: são os dias úteis que sobram entre o fim da semana 12 e o prazo do ciclo.
-    Também não tem meta própria, porque o que ela carrega é o que faltar quando
-    a semana 12 fechar. Se nada faltar, são dias livres.
-  </p>
-  {% endif %}
-</div>
+<style>
+:root{--fundo:#f5f5f7;--painel:#fff;--linha:#e2e7ef;--texto:#151822;--texto-2:#637087;--texto-3:#8a95a5;--azul:#0066df}
+body{background:#f5f5f7}.ciclo{--ink:#151822;--muted:#637087;--blue:#0066df;color:var(--ink);max-width:1520px;margin:auto;padding:30px clamp(16px,3vw,48px) 48px;line-height:1.45}.ciclo a{color:var(--blue)}.voltar-ciclo{font-size:14px;text-decoration:none}.seletor-ciclo{display:flex;gap:5px;width:fit-content;padding:5px;background:#e8ebf0;border-radius:14px;margin:24px 0 28px}.seletor-ciclo a{padding:11px 20px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;color:var(--muted)}.seletor-ciclo a[aria-current]{background:white;color:var(--blue);box-shadow:0 2px 6px #18233812}.cabecalho-ciclo{display:flex;align-items:center;justify-content:space-between;gap:32px;margin-bottom:24px}.sobrancelha-ciclo{font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted);margin:0 0 9px}.ciclo h1{font-size:clamp(26px,3vw,43px);font-weight:700;letter-spacing:-.045em;line-height:1.12;margin:0}.subtitulo-ciclo{color:var(--muted);font-size:20px;margin:10px 0 0}.resumo-ciclo{display:flex;gap:24px;flex-shrink:0}.resumo-ciclo>div{border-left:1px solid #d9dfe9;padding-left:24px}.resumo-ciclo strong{display:block;font-size:clamp(32px,4vw,54px);letter-spacing:-.04em;line-height:1.15}.resumo-ciclo .meta-ciclo{color:var(--blue)}.resumo-ciclo span{display:block;color:var(--muted);font-size:13px;margin-top:4px}.progresso-ciclo{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 26px;color:var(--muted);font-size:13px}.progresso-ciclo progress{appearance:none;width:180px;height:5px;border:0;border-radius:5px;background:#dde4ee}.progresso-ciclo progress::-webkit-progress-bar{background:#dde4ee;border-radius:5px}.progresso-ciclo progress::-webkit-progress-value{background:var(--blue);border-radius:5px}.progresso-ciclo progress::-moz-progress-bar{background:var(--blue)}.preparo-ciclo{display:flex;align-items:center;flex-wrap:wrap;gap:15px;padding:18px 22px;border-radius:16px;border:1px solid #dce7f8;background:#edf5ff;margin-bottom:20px}.preparo-ciclo strong{font-size:18px}.preparo-ciclo p{color:var(--muted);margin:0}.selo-ciclo{font-size:11px;color:#fff;background:var(--blue);padding:5px 10px;border-radius:20px;white-space:nowrap}.grade-ciclo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.cartao-ciclo{background:#fff;padding:22px;border:1px solid #e4e8ef;border-radius:18px;box-shadow:0 4px 16px #17223804;min-width:0}.cartao-ciclo.atual{border-color:#8abbff;background:#f4f9ff}.cartao-ciclo header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.cartao-ciclo h2{font-size:18px;letter-spacing:-.02em;margin:0 0 4px}.data-ciclo{color:var(--muted);font-size:13px}.alvo-ciclo{font-size:35px;font-weight:700;letter-spacing:-.04em;line-height:1.1;white-space:nowrap;text-align:right}.alvo-ciclo small{display:block;font-size:11px;font-weight:400;letter-spacing:0;color:var(--muted);margin-top:4px}.aprender-ciclo{display:flex;flex-direction:column;justify-content:center;min-height:65px;font-size:12px;color:#355782;padding:10px 0}.aprender-ciclo span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:3px}.foco-ciclo{color:var(--muted);font-size:12px;padding:12px 0;min-height:65px;display:flex;align-items:center}.dias-ciclo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;border-top:1px solid #e8ebf1;padding-top:13px;margin:0}.dias-ciclo>div{text-align:center;min-width:0}.dias-ciclo dt{color:var(--muted);font-size:10px;text-transform:uppercase}.dias-ciclo time{display:block;font-size:10px;color:#8a95a5;margin-top:2px}.dias-ciclo dd{margin:5px 0 0;font-size:21px;font-weight:600;letter-spacing:-.03em}.resultado-ciclo{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;border-top:1px solid #edf0f5;margin-top:14px;padding-top:10px}.resultado-ciclo b{color:var(--ink)}.rec-dia-ciclo{font-size:11px;color:var(--muted);margin:10px 0 0}.nota-ciclo{font-size:12px;color:var(--muted);margin:18px 0}.financas-ciclo{display:flex;align-items:center;gap:25px;background:white;border:1px solid #e2e8f1;border-radius:16px;padding:22px;margin:20px 0}.financas-ciclo h2{font-size:18px;margin:0 0 5px}.financas-ciclo p{font-size:12px;color:var(--muted);margin:0}.financas-ciclo dl{display:grid;grid-template-columns:repeat(3,1fr);flex:1;gap:15px;margin:0}.financas-ciclo dl>div{border-left:1px solid #e3e8ef;padding-left:20px}.financas-ciclo dt{color:var(--muted);font-size:12px}.financas-ciclo dd{font-size:18px;font-weight:600;margin:5px 0 0}.financas-ciclo dd small{font-size:11px;font-weight:400}.recuperacao-ciclo{display:grid;grid-template-columns:1.5fr 1fr 1fr;align-items:start;gap:24px;padding:24px;border-radius:18px;background:#eaf3ff;border:1px solid #d6e6fc}.recuperacao-ciclo h2{font-size:21px;letter-spacing:-.03em;margin:0 0 7px}.recuperacao-ciclo p{font-size:13px;color:var(--muted);margin:0}.rec-semana-ciclo{border-left:1px solid #cadcf3;padding-left:24px}.rec-semana-ciclo h3{font-size:15px;margin:0 0 5px}.rec-semana-ciclo p{font-size:12px}.rec-semana-ciclo .dias-ciclo{margin-top:12px}.alerta-ciclo{border:1px solid #e7d399;background:#fff9e9;border-radius:12px;padding:14px 18px;font-size:13px;margin-bottom:20px}body>.rodape-do-admin{color:#626e83}.ciclo a:focus-visible{outline:3px solid #86b7ff;outline-offset:3px}
+@media(min-width:1200px){.cabecalho-ciclo>div:first-child{max-width:66%}}@media(max-width:1050px){.grade-ciclo{grid-template-columns:repeat(2,minmax(0,1fr))}.cabecalho-ciclo{align-items:flex-start;flex-direction:column;gap:20px}.resumo-ciclo>div:first-child{border:0;padding:0}}@media(max-width:650px){.grade-ciclo{grid-template-columns:1fr}.seletor-ciclo{width:100%}.seletor-ciclo a{flex:1;padding:10px 8px;text-align:center;font-size:12px}.recuperacao-ciclo{grid-template-columns:1fr;gap:18px}.rec-semana-ciclo{padding:16px 0 0;border-left:0;border-top:1px solid #cadcf3}.financas-ciclo{flex-direction:column;align-items:stretch}.financas-ciclo dl{grid-template-columns:1fr}.financas-ciclo dl>div{padding:12px 0 0;border-left:0;border-top:1px solid #edf0f5}.cartao-ciclo{padding:20px}}
+</style>
+<main class="ciclo">
+<a class="voltar-ciclo" href="{% url 'placar' %}">← Voltar para o placar</a>
+<nav class="seletor-ciclo" aria-label="Escolher painel de vendas">{% for botao in botoes %}<a href="{% url 'ciclo' %}?produto={{ botao.chave }}"{% if painel.chave == botao.chave %} aria-current="page"{% endif %}>{{ botao.nome }}</a>{% endfor %}</nav>
+<header class="cabecalho-ciclo"><div><p class="sobrancelha-ciclo">Painel de vendas · {% if painel.chave == 'desafio' %}Low ticket{% else %}Curso{% endif %} · Out–Dez 2026</p><h1>{{ painel.nome }}</h1><p class="subtitulo-ciclo">Valide a máquina. Depois, escale.</p></div><div class="resumo-ciclo"><div><strong class="meta-ciclo">{{ painel.meta_texto }}</strong><span>meta de vendas</span></div><div><strong>{{ painel.total_texto }}</strong><span>vendas realizadas</span></div></div></header>
+<div class="progresso-ciclo"><progress max="{{ painel.meta }}" value="{{ painel.total|default_if_none:0 }}" aria-label="Progresso das vendas"></progress><span>{% if painel.saldo is not None %}Faltam {{ painel.saldo }} vendas para completar a meta.{% else %}Contagem de vendas indisponível.{% endif %}</span><span>{{ painel.preco }} · {{ painel.preco_rotulo }}</span></div>
+{% if painel.sem_contagem %}<p class="alerta-ciclo">Não foi possível confirmar as vendas deste produto{% if painel.datas_ausentes %}: há compras sem data de confirmação{% endif %}. As metas continuam visíveis; os resultados aparecem como “—”.</p>{% endif %}
+<section class="preparo-ciclo" aria-label="Semana de preparação"><strong>Semana 1 · 5–11 out</strong>{% if painel.preparacao.atual %}<span class="selo-ciclo">Esta semana</span>{% endif %}<p>Preparação · Sem meta de vendas</p><p>Organizar, estruturar, criar e testar. Vendas a partir de 12 de outubro.</p></section>
+<section class="grade-ciclo" aria-label="Metas semanais de vendas">
+{% for s in painel.semanas %}<article class="cartao-ciclo{% if s.atual %} atual{% endif %}"><header><div><h2>Semana {{ s.n }}</h2><div class="data-ciclo">{{ s.de|date:"d/m" }} – {{ s.ate|date:"d/m" }}</div>{% if s.atual %}<span class="selo-ciclo">Esta semana</span>{% endif %}</div><div class="alvo-ciclo">{{ s.meta_texto }}<small>venda{{ s.meta|pluralize:"s" }} · meta da semana</small></div></header>
+{% if s.indicador %}<div class="aprender-ciclo"><span>Meta de aprendizado · {{ s.foco }}</span>{{ s.indicador }}</div>{% else %}<div class="foco-ciclo">Escalar as vendas</div>{% endif %}
+<dl class="dias-ciclo">{% for dia in s.dias %}<div><dt>{{ dia.nome }}<time datetime="{{ dia.data|date:'Y-m-d' }}">{{ dia.data|date:"d/m" }}</time></dt><dd>{{ dia.meta }}</dd></div>{% endfor %}</dl>
+<div class="resultado-ciclo"><span>Realizadas <b>{{ s.real_texto }}</b></span><span>Meta acumulada <b>{{ s.acumulado }}</b></span></div><p class="rec-dia-ciclo">{{ s.recuperacao }}</p></article>{% endfor %}
+</section>
+<p class="nota-ciclo">As metas diárias são de segunda a quinta. Os dias com “—” também ficam disponíveis para recuperar vendas pendentes. Os percentuais são metas de aprendizado, não resultados já medidos.</p>
+{% if painel.chave == 'desafio' %}<section class="financas-ciclo" aria-label="Receita e anúncios"><div><h2>O desafio paga o tráfego?</h2><p>Objetivo: a receita do desafio cobrir o gasto com anúncios.</p></div><dl><div><dt>Receita do desafio · CRM</dt><dd>{{ receita|default_if_none:"—" }}</dd></div><div><dt>Gasto com anúncios</dt><dd>— <small>Não informado</small></dd></div><div><dt>Saldo após anúncios</dt><dd>— <small>Aguardando gasto</small></dd></div></dl></section>{% endif %}
+<section class="recuperacao-ciclo" aria-label="Semanas de recuperação"><div><h2>Duas semanas de recuperação</h2><p>O saldo para chegar a {{ painel.meta_texto }} será distribuído nas semanas finais, de segunda a quinta. Sexta a domingo ficam para completar o que faltar.</p>{% if painel.total is not None and painel.saldo == '0' %}<p><strong>Meta concluída. As semanas de recuperação ficam livres.</strong></p>{% endif %}</div>
+{% for s in painel.recuperacoes %}<article class="rec-semana-ciclo"><h3>Semana {{ s.n }}{% if s.atual %} · Atual{% endif %}</h3><p>{{ s.de|date:"d/m" }} – {{ s.ate|date:"d/m" }}</p>{% if s.meta is not None %}<p><strong>{{ s.meta }} vendas a recuperar</strong></p><dl class="dias-ciclo">{% for dia in s.dias %}<div><dt>{{ dia.nome }}</dt><dd>{{ dia.meta }}</dd></div>{% endfor %}</dl>{% else %}<p>Meta definida pelo saldo ao começar a semana.</p>{% endif %}</article>{% endfor %}</section>
+</main>
 {% endblock %}
