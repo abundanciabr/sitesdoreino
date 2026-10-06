@@ -60,3 +60,28 @@ def test_recuperacao_de_rota_fica_restrita_a_funil(tmp_path):
     assert arquivo.read_text().count('http://aplicacao:8000') == 1
     modulo.apontar('aplicacao', arquivo)
     assert arquivo.read_text() == texto
+
+
+def test_recuperacao_recusa_codigo_anterior_alterado(tmp_path, monkeypatch):
+    modulo = carregar('execucao-celulas')
+    codigo = tmp_path / 'codigo'
+    codigo.mkdir()
+    (codigo / 'entrypoint.py').write_text('alterado')
+    anterior = {'codigo': str(codigo), 'pacote': {'codigo_sha256': 'incorreto'}}
+    monkeypatch.setattr(modulo, 'topologia', lambda: {'celulas': {'funil': {'anterior': anterior}}})
+    chamadas = []
+    monkeypatch.setattr(modulo, 'executar', lambda *args: chamadas.append(args))
+    with pytest.raises(RuntimeError, match='código anterior'):
+        modulo.recuperar_celula('funil')
+    assert chamadas == []
+
+
+def test_vigia_nao_reinicia_celula_saudavel(monkeypatch):
+    modulo = carregar('execucao-celulas')
+    monkeypatch.setattr(modulo, 'retomar_troca', lambda: None)
+    monkeypatch.setattr(modulo, 'topologia', lambda: {'celulas': {'funil': {'container': 'saudavel'}}})
+    monkeypatch.setattr(modulo, 'saudavel', lambda nome: True)
+    chamadas = []
+    monkeypatch.setattr(modulo, 'executar', lambda *args: chamadas.append(args))
+    modulo.vigiar_travado()
+    assert chamadas == []

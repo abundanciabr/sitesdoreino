@@ -267,12 +267,74 @@ def vigiar():
 def vigiar_travado():
     retomar_troca()
     for celula, estado in topologia()['celulas'].items():
-        p = subprocess.run(['docker', 'exec', estado['container'], 'python', '-c',
-            "import urllib.request;assert urllib.request.urlopen('http://localhost:8000/healthz',timeout=3).status==200"],
-            capture_output=True)
-        if p.returncode:
+        if saudavel(estado['container']):
+            continue
+        try:
             executar('docker', 'restart', estado['container'])
             time.sleep(5)
+        except RuntimeError:
+            pass
+        if not saudavel(estado['container']):
+            recuperar_celula(celula)
+
+
+def saudavel(nome):
+    # A página pode falhar mesmo quando o processo responde ao healthz.
+    prova = ("import urllib.request; "
+        "assert urllib.request.urlopen('http://localhost:8000/healthz',timeout=3).status==200; "
+        "r=urllib.request.Request('http://localhost:8000/',headers={'Host':'meshcraft.top','X-Forwarded-Proto':'https'}); "
+        "s=urllib.request.urlopen(r,timeout=15); assert s.status==200; assert b'<html' in s.read().lower()")
+    try:
+        return subprocess.run(['docker', 'exec', nome, 'python', '-c', prova],
+            capture_output=True, timeout=25).returncode == 0
+    except subprocess.TimeoutExpired:
+        return False
+
+
+def recuperar_celula(celula):
+    # Somente funil foi extraída e não possui banco nem trabalhador próprio.
+    # Células com banco exigem evidência de compatibilidade antes de entrar aqui.
+    if celula != 'funil':
+        raise ValueError('recuperação independente indisponível')
+    from protecao_publicacao import arvore
+    topo = topologia()
+    atual = topo['celulas'][celula]
+    anterior = atual.get('anterior')
+    if not anterior:
+        raise RuntimeError('célula sem versão anterior aprovada')
+    if arvore(Path(anterior['codigo'])) != anterior['pacote']['codigo_sha256']:
+        raise RuntimeError('código anterior foi alterado')
+    imagem = executar('docker', 'inspect', '--format', '{{.Image}}', anterior['container'])
+    if imagem != anterior['pacote']['imagem_id']:
+        raise RuntimeError('imagem anterior foi alterada')
+    executar('docker', 'start', anterior['container'])
+    for _ in range(10):
+        if saudavel(anterior['container']):
+            break
+        time.sleep(2)
+    else:
+        executar('docker', 'stop', anterior['container'])
+        raise RuntimeError('versão anterior não respondeu; rota preservada')
+    # A retomada de uma interrupção também aponta para a versão de recuperação.
+    topo['em_troca'] = {'celula': celula, 'container': atual['container'], 'anterior': anterior,
+                        'recuperacao': True}
+    salvar(TOPOLOGIA, topo)
+    apontar(anterior['container'])
+    time.sleep(3)
+    provar_site()
+    concluir_recuperacao(topo, atual, anterior)
+    executar('docker', 'stop', atual['container'])
+    return True
+
+
+def concluir_recuperacao(topo, atual, anterior):
+    recuperada = dict(anterior, recuperada_em=datetime.now(timezone.utc).isoformat(),
+                       substituiu=atual['sha'])
+    topo['celulas']['funil'] = recuperada
+    topo.pop('em_troca', None)
+    salvar(TOPOLOGIA, topo)
+    salvar(RAIZ / 'publicacoes/funil.json', {'celula': 'funil', 'atual': recuperada['sha'],
+                                          'aprovada': recuperada})
 
 
 def retomar_troca():
@@ -283,8 +345,13 @@ def retomar_troca():
         if anterior:
             executar('docker', 'start', anterior['container'])
         apontar(anterior['container'] if anterior else 'aplicacao')
-        topo.pop('em_troca')
-        salvar(TOPOLOGIA, topo)
+        if troca.get('recuperacao'):
+            time.sleep(3)
+            provar_site()
+            concluir_recuperacao(topo, topo['celulas'][troca['celula']], anterior)
+        else:
+            topo.pop('em_troca')
+            salvar(TOPOLOGIA, topo)
         executar('docker', 'stop', troca['container'])
 
 

@@ -534,6 +534,12 @@ def receber() -> int:
 
 
 def recuperar(celula: str) -> int:
+    celulas = carregar_celulas()
+    if celula in celulas.topologia()['celulas']:
+        with (LOTES / '.lote.lock').open('a') as trava:
+            fcntl.flock(trava, fcntl.LOCK_EX)
+            celulas.retomar_troca()
+            return 0 if celulas.recuperar_celula(celula) else 1
     LOGS.mkdir(parents=True, exist_ok=True)
     with (LOGS / f"recuperar-{celula}.log").open("a", encoding="utf-8") as registro:
         return 0 if recuperar_versao(celula, registro, "pedido de recuperação") else 1
@@ -577,9 +583,14 @@ def publicacao_em_andamento() -> bool:
 
 
 def journals_em_uso() -> list[dict]:
-    """A aplicação representa o site."""
+    """Inclui as versões que atendem em execução independente."""
     aplicacao = journal("aplicacao")
-    return [aplicacao] if aplicacao and aplicacao.get("atual") else []
+    estados = [aplicacao] if aplicacao and aplicacao.get("atual") else []
+    for celula in carregar_celulas().topologia()['celulas']:
+        dado = journal(celula)
+        if dado and dado.get('atual'):
+            estados.append(dado)
+    return estados
 
 
 def vigiar() -> int:
@@ -597,7 +608,11 @@ def vigiar_uma_vez() -> int:
     caminho = PUBLICACOES / "incidente.json"
     if publicacao_em_andamento():
         return 0
-    carregar_celulas().vigiar()
+    celulas = carregar_celulas()
+    try:
+        celulas.vigiar()
+    except (RuntimeError, ValueError) as erro:
+        dizer(f'CELULA-RECUPERACAO-PENDENTE: {erro}')
     aberto = site_abre()
     if not aberto:
         time.sleep(20)
@@ -609,6 +624,15 @@ def vigiar_uma_vez() -> int:
         return 0
     incidente = json.loads(caminho.read_text()) if caminho.exists() else {"desde": agora()}
     dizer(f"SITE-FORA: {ENDERECO} não respondeu 200 duas vezes, com 20 s entre elas")
+    if celulas.topologia()['celulas']:
+        processo = subprocess.run(['docker', 'exec', 'plataforma-aplicacao-1', 'python', '-c',
+            "import urllib.request; assert urllib.request.urlopen('http://localhost:8000/healthz',timeout=3).status==200"],
+            capture_output=True, timeout=10)
+        if processo.returncode == 0:
+            incidente['alcance'] = 'célula independente ou entrada pública; aplicação principal saudável'
+            caminho.write_text(json.dumps(incidente))
+            dizer('APLICACAO-PRESERVADA: falha pública não justifica reiniciar as demais células')
+            return 1
     try:
         religar_aplicacao()
     except RuntimeError as erro:
