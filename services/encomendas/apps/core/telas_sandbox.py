@@ -34,6 +34,25 @@ CATEGORIAS = (
 )
 
 
+ILUSTRACOES = {
+    'prop-espada', 'fuzil-assalto', 'pistola-estilizada', 'mascote-3d', 'pet-fantasia',
+    'cabelo-curto', 'cabelo-longo', 'bone-estilizado', 'chapeu-fantasia',
+    'personagem-conceito', 'personagem-robo',
+}
+
+
+@require_GET
+def ilustracao_projeto(request, slug):
+    if slug not in ILUSTRACOES:
+        raise Http404
+    caminho = Path(settings.BASE_DIR) / 'static' / 'sandbox' / 'ilustracoes' / (slug + '.png')
+    if not caminho.is_file():
+        raise Http404
+    resposta = FileResponse(caminho.open('rb'), content_type='image/png')
+    resposta['Cache-Control'] = 'public, max-age=604800'
+    return resposta
+
+
 @require_GET
 def arte_catalogo(request):
     caminho = Path(settings.BASE_DIR) / "static" / "sandbox" / "categorias-referencia.png"
@@ -153,6 +172,7 @@ def catalogo(request):
     selecionada = next(c for c in categorias if c["selecionada"])
     trabalho_ativo = next((trabalho for trabalho in trabalhos if trabalho.status != "aprovado"), None)
     for projeto in projetos:
+        projeto.tem_ilustracao = projeto.slug in ILUSTRACOES
         projeto.pronto = (projeto.prazo_dias is not None and projeto.ajustes_previstos is not None
                           and projeto.recompensa is not None and bool(projeto.briefing.strip())
                           and bool(projeto.criterios.strip()) and bool(projeto.entregaveis))
