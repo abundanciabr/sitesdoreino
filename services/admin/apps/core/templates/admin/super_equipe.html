@@ -21,7 +21,7 @@
   {% for trabalho in trabalhos %}
     <section class="cartao"><h3><a href="{% url 'super_equipe_trabalho' trabalho.pk %}">Trabalho nº {{ trabalho.pk }}</a></h3>
       <p>{{ trabalho.pedido|truncatechars:220 }}</p>
-      <p>{{ trabalho.get_situacao_display }} · {{ trabalho.etapa_atual|default:"Aguardando" }} · {{ trabalho.progresso }}% · {{ trabalho.tentativas }} tentativa(s) · US$ {{ trabalho.custo }}</p>
+      <p>{{ trabalho.get_situacao_display }} · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {{ trabalho.progresso }}% · {{ trabalho.tentativas }} tentativa(s) · US$ {{ trabalho.custo }}</p>
       <small>Pedido por {{ trabalho.pedido_por }} em {{ trabalho.criada_em|date:"d/m/Y H:i" }}</small>
     </section>
   {% empty %}<p>Ainda não há trabalhos da equipe técnica.</p>{% endfor %}
