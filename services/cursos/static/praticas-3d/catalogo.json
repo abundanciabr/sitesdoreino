@@ -12751,7 +12751,7 @@
     },
     "forma": {
       "parte": "copa",
-      "eixo": "z",
+      "eixo": "y",
       "nome": "Altura da copa"
     },
     "camadas": [

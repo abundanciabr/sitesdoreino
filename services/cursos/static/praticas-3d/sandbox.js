@@ -15,7 +15,8 @@ async function iniciar(){
   $('[data-title]').textContent=m.nome;$('[data-parts]').replaceChildren(...Object.entries(m.partes).map(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v.nome;return o;}));$('[data-color]').value=recipe.cores[$('[data-parts]').value];$('[data-scale]').value=recipe.proporcao;$('[data-scale-label]').textContent=m.forma.nome;
   $('[data-source]').href=base+`modelos/${m.id}/v${m.versao}/fonte.blend`;$('[data-original]').href=model.url;
   root.querySelectorAll('button,input').forEach(b=>b.disabled=false);$('[data-action="touch"]').textContent='Controlar por toque';status('Carregando modelo 3D…');
-  try{if(new URL(location.href).searchParams.get('vista')==='2d')throw Error('2d');const e=await criar($('[data-vista]'),model,recipe,v=>{if(turn===generation)recipe.vista=v;},()=>{if(turn===generation)illustrated();});if(turn!==generation){e.dispose();return;}engine=e;status('Gire o modelo e personalize suas partes. Baixe sua versão para continuar no Blender.');}catch{if(turn===generation)illustrated();}
+  const host=document.createElement('div');host.style.cssText='width:100%;height:100%';$('[data-vista]').replaceChildren(host);
+  try{if(new URL(location.href).searchParams.get('vista')==='2d')throw Error('2d');const e=await criar(host,model,recipe,v=>{if(turn===generation)recipe.vista=v;},()=>{if(turn===generation)illustrated();});if(turn!==generation){e.dispose();return;}engine=e;status('Gire o modelo e personalize suas partes. Baixe sua versão para continuar no Blender.');}catch{if(turn===generation)illustrated();}
  }
  function download(blob,ext){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=model.id+ext;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000);}
  $('[data-parts]').addEventListener('change',()=>{$('[data-color]').value=recipe.cores[$('[data-parts]').value];});
