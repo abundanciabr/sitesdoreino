@@ -50,6 +50,7 @@ from django.views.decorators.vary import vary_on_cookie
 from django.http import (
     FileResponse,
     Http404,
+    HttpResponse,
     HttpResponsePermanentRedirect,
     HttpResponseRedirect,
     JsonResponse,
@@ -161,9 +162,47 @@ def servir_estatico(request, caminho: str):
     if not str(alvo).startswith(str(raiz)) or not alvo.is_file():
         raise Http404("arquivo não encontrado")
     tipo, _ = mimetypes.guess_type(str(alvo))
-    return FileResponse(
+    if tipo == "video/mp4":
+        # Browsers must be able to seek to a phrase without replaying the file from zero.
+        from django.http import StreamingHttpResponse
+        tamanho = alvo.stat().st_size
+        faixa = request.headers.get("Range")
+        if faixa:
+            intervalo = re.fullmatch(r"bytes=(\d{0,20})-(\d{0,20})", faixa)
+            valido = intervalo and any(intervalo.groups())
+            if valido:
+                primeiro, ultimo = intervalo.groups()
+                inicio = int(primeiro) if primeiro else max(0, tamanho - int(ultimo))
+                fim = min(int(ultimo), tamanho - 1) if primeiro and ultimo else tamanho - 1
+                valido = 0 <= inicio <= fim < tamanho and (primeiro or int(ultimo) > 0)
+            if not valido:
+                response = HttpResponse(status=416)
+                response["Content-Range"] = f"bytes */{tamanho}"
+                response["Accept-Ranges"] = "bytes"
+                return response
+
+            def trecho():
+                with alvo.open("rb") as arquivo:
+                    arquivo.seek(inicio)
+                    restante = fim - inicio + 1
+                    while restante > 0:
+                        parte = arquivo.read(min(65536, restante))
+                        if not parte:
+                            break
+                        restante -= len(parte)
+                        yield parte
+
+            response = StreamingHttpResponse(trecho(), status=206, content_type=tipo)
+            response["Content-Range"] = f"bytes {inicio}-{fim}/{tamanho}"
+            response["Content-Length"] = str(fim - inicio + 1)
+            response["Accept-Ranges"] = "bytes"
+            return response
+    response = FileResponse(
         alvo.open("rb"), content_type=tipo or "application/octet-stream"
     )
+    if tipo == "video/mp4":
+        response["Accept-Ranges"] = "bytes"
+    return response
 
 
 # ---------------------------------------------------------------------------

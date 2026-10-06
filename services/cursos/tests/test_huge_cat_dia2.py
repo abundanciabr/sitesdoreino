@@ -65,3 +65,28 @@ def test_karaoke_preserva_verbatim_e_tempos_dos_cinco_blocos():
     assert '<iframe' not in html and 'karaoke-livia.js' in html
     for name in ['ensaio-livia-1920x1200.mp4','ensaio-karaoke-1920x1200.mp4','legendas-livia.srt','kit-gravacao-karaoke.zip']:
         assert name in html and (pasta/name).is_file()
+
+def test_video_permite_buscar_frases_e_rejeita_faixa_fora_do_arquivo():
+    from django.test import RequestFactory
+    from apps.core.views import servir_estatico
+    caminho='huge-cat-dia2/ensaio-livia-1920x1200.mp4'
+    arquivo=Path(settings.BASE_DIR)/'static'/caminho
+    tamanho=arquivo.stat().st_size
+    rf=RequestFactory()
+    for header,inicio,fim in [('bytes=100-199',100,199),('bytes=-20',tamanho-20,tamanho-1),('bytes=0-999999999',0,tamanho-1)]:
+        response=servir_estatico(rf.get('/video',HTTP_RANGE=header),caminho)
+        assert response.status_code==206
+        assert response['Accept-Ranges']=='bytes'
+        assert response['Content-Range']==f'bytes {inicio}-{fim}/{tamanho}'
+        assert int(response['Content-Length'])==fim-inicio+1
+        if fim-inicio<200:
+            with arquivo.open('rb') as f:
+                f.seek(inicio)
+                assert b''.join(response.streaming_content)==f.read(fim-inicio+1)
+        response.close()
+    for header in [f'bytes={tamanho}-','bytes=200-100','bytes=-0','bytes=0-10,20-30']:
+        response=servir_estatico(rf.get('/video',HTTP_RANGE=header),caminho)
+        assert response.status_code==416 and response['Content-Range']==f'bytes */{tamanho}'
+    response=servir_estatico(rf.get('/video'),caminho)
+    assert response.status_code==200 and response['Accept-Ranges']=='bytes'
+    response.close()

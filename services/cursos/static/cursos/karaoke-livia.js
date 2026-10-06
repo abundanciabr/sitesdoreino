@@ -58,7 +58,8 @@
         seguinte.textContent = next ? 'A seguir: ' + next.texto : '';
       }
       const b = data.blocos.find(b => t >= b.inicio && t < b.fim) || data.blocos.at(-1);
-      status.textContent = `Bloco ${b.numero} de 5 · ${video.paused ? 'Pausado' : 'Leia a palavra em verde'}${pause ? ' · Pausa da prática' : ''}`;
+      const state = `Bloco ${b.numero} de 5 · ${video.paused ? 'Pausado' : 'Leia a palavra em verde'}${pause ? ' · Pausa da prática' : ''}`;
+      if (status.textContent !== state) status.textContent = state;
       bloco.value = String(b.inicio);
       tempo.textContent = `${clock(t)} / ${clock(data.duracao)}`;
       if (document.activeElement !== range) range.value = t;
