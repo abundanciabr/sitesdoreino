@@ -6,7 +6,7 @@ import respx
 from django.test import RequestFactory
 
 from apps.core import ciclo
-from apps.core.ciclo_produtos import PAINEIS, montar_painel
+from apps.core.ciclo_produtos import PAINEIS, montar_painel, montar_visao_ciclo
 
 
 @pytest.mark.parametrize("chave,meta", [("curso", 500), ("desafio", 10000)])
@@ -32,6 +32,31 @@ def test_compra_sem_data_nao_vira_zero():
     painel = montar_painel("curso", [{"origem": "comprou", "status": "ativa"}], dt.date(2026, 10, 5))
     assert painel["total"] is None
     assert painel["datas_ausentes"] == 1
+
+
+@pytest.mark.parametrize("hoje,semana,etapa,proxima", [
+    (dt.date(2026, 10, 6), 1, "Preparar", 2),
+    (dt.date(2026, 10, 12), 2, "Validar", 3),
+    (dt.date(2026, 11, 9), 6, "Crescer", 7),
+    (dt.date(2026, 12, 13), 10, "Crescer", None),
+])
+def test_home_acompanha_a_semana_e_a_etapa(hoje, semana, etapa, proxima):
+    visao = montar_visao_ciclo(montar_painel("desafio", [], hoje), hoje)
+    assert visao["atual"]["n"] == semana
+    assert [e["nome"] for e in visao["etapas"] if e["atual"]] == [etapa]
+    assert (visao["proxima"]["n"] if visao["proxima"] else None) == proxima
+
+
+@pytest.mark.parametrize("hoje,estado", [
+    (dt.date(2026, 10, 4), "O ciclo ainda não começou"),
+    (dt.date(2026, 12, 14), "Semanas de recuperação"),
+    (dt.date(2026, 12, 28), "Ciclo encerrado"),
+])
+def test_home_fora_do_plano_nao_fica_presa_na_preparacao(hoje, estado):
+    visao = montar_visao_ciclo(montar_painel("desafio", None, hoje), hoje)
+    assert visao["atual"] is None
+    assert not any(e["atual"] for e in visao["etapas"])
+    assert visao["estado"] == estado
 
 
 @respx.mock

@@ -85,12 +85,12 @@ def montar_as_semanas(faixas: list[dict], reais: "list | None", hoje: dt.date) -
 
 @require_GET
 def ciclo(request):
-    """Dois planos comerciais na mesma página, com vendas por produto."""
-    from .ciclo_produtos import PAINEIS, INICIO, FIM, montar_painel
+    """Visão do ciclo e dois planos comerciais, com vendas por produto."""
+    from .ciclo_produtos import PAINEIS, INICIO, FIM, montar_painel, montar_visao_ciclo
     from .vendas_do_crm import para_o_placar
-    chave = request.GET.get("produto", "curso")
-    if chave not in PAINEIS:
-        chave = "curso"
+    produto_pedido = request.GET.get("produto")
+    visao_ciclo = produto_pedido not in PAINEIS
+    chave = "desafio" if visao_ciclo else produto_pedido
     perfil = PAINEIS[chave]
     catalogo = CatalogoClient()
     site = catalogo.site_por_host(request.get_host().split(":")[0])
@@ -111,7 +111,7 @@ def ciclo(request):
     hoje = timezone.localdate()
     painel = montar_painel(chave, alunos, hoje)
     receita = None
-    if chave == "desafio" and site and produto:
+    if not visao_ciclo and chave == "desafio" and site and produto:
         cliente = LeadsClient()
         estado, fatos = cliente._pedir("/receita/fatos", {
             "site_id": str(site["id"]), "desde": INICIO.isoformat(), "ate": FIM.isoformat(),
@@ -124,10 +124,12 @@ def ciclo(request):
                 receita = "R$ " + f"{centavos / 100:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
     return render(
         request,
-        "admin/ciclo.html",
+        "admin/ciclo_inicio.html" if visao_ciclo else "admin/ciclo.html",
         {
             "admin": request.admin,
             "painel": painel,
+            "visao_ciclo": visao_ciclo,
+            "visao": montar_visao_ciclo(painel, hoje) if visao_ciclo else None,
             "botoes": [{"chave": k, "nome": p["botao"]} for k, p in PAINEIS.items()],
             "receita": receita,
             "hoje": hoje,

@@ -208,9 +208,9 @@ def test_semana_futura_e_marcada_como_futura():
 
 
 @respx.mock
-def test_a_tela_abre_com_doze_semanas_e_dois_botoes():
+def test_o_curso_abre_com_doze_semanas_e_tres_botoes():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
-    resposta = _dentro().get(reverse("ciclo"))
+    resposta = _dentro().get(reverse("ciclo"), {"produto": "curso"})
     assert resposta.status_code == 200
     painel = resposta.context["painel"]
     assert len(painel["semanas"]) == 9
@@ -221,12 +221,13 @@ def test_a_tela_abre_com_doze_semanas_e_dois_botoes():
     assert "Curso Primeiros Dólares com Roblox" in html
     assert "Preparação" in html and "Duas semanas de recuperação" in html
     assert "?produto=curso" in html and "?produto=desafio" in html
+    assert '>Ciclo</a>' in html
 
 
 @respx.mock
 def test_a_tela_abre_mesmo_sem_a_alunos_e_diz_isso():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(503))
-    resposta = _dentro().get(reverse("ciclo"))
+    resposta = _dentro().get(reverse("ciclo"), {"produto": "curso"})
     assert resposta.status_code == 200
     assert resposta.context["painel"]["sem_contagem"]
     assert "Não foi possível confirmar" in resposta.content.decode()
@@ -253,7 +254,7 @@ def test_a_tela_mostra_o_novo_calendario_e_marca_a_faixa_de_hoje(monkeypatch):
     """
     monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 10, 5))
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
-    resposta = _dentro().get(reverse("ciclo"))
+    resposta = _dentro().get(reverse("ciclo"), {"produto": "curso"})
     assert resposta.status_code == 200
 
     painel = resposta.context["painel"]
@@ -270,3 +271,36 @@ def test_sem_cracha_a_tela_nao_abre():
         return_value=httpx.Response(200, json={"autenticado": False})
     )
     assert Client().get(reverse("ciclo")).status_code != 200
+
+
+@respx.mock
+def test_a_home_do_ciclo_mostra_o_placar_e_preserva_os_dois_produtos(monkeypatch):
+    monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 10, 6))
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
+    resposta = _dentro().get(reverse("ciclo"))
+    assert resposta.status_code == 200
+    assert resposta.context["visao_ciclo"] is True
+    assert resposta.context["painel"]["meta"] == 10000
+    html = resposta.content.decode()
+    assert f'href="{reverse("ciclo")}" aria-current="page">Ciclo</a>' in html
+    seletor = html.split('<nav class="seletor-ciclo"', 1)[1].split('</nav>', 1)[0]
+    assert seletor.count('aria-current="page"') == 1
+    assert 'Curso · 500 vendas' in html and 'Desafio · 10.000 vendas' in html
+    assert 'Nosso destino' in html and 'VOCÊ ESTÁ AQUI' in html
+    assert 'Deixar tudo pronto para começar a vender' in html
+    assert resposta.context["visao"]["proxima"]["meta"] == 5
+    assert 'vendas do desafio' in html and '13 de dezembro' in html
+    assert 'Total planejado' in html and 'Definir responsável' in html
+
+
+@respx.mock
+def test_a_home_sem_contagem_nao_afirma_zero_nem_progresso(monkeypatch):
+    monkeypatch.setattr(ciclo.timezone, "localdate", lambda: dt.date(2026, 10, 6))
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(503))
+    resposta = _dentro().get(reverse("ciclo"))
+    html = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert 'Não foi possível confirmar as vendas do desafio' in html
+    assert 'Progresso indisponível' in html
+    assert '<progress ' not in html
+    assert '<dt>vendas realizadas</dt><dd>—</dd>' in html

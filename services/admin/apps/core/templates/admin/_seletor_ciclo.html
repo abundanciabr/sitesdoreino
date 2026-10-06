@@ -1,0 +1,4 @@
+<nav class="seletor-ciclo" aria-label="Escolher visão do ciclo">
+  <a href="{% url 'ciclo' %}"{% if visao_ciclo %} aria-current="page"{% endif %}>Ciclo</a>
+  {% for botao in botoes %}<a href="{% url 'ciclo' %}?produto={{ botao.chave }}"{% if not visao_ciclo and painel.chave == botao.chave %} aria-current="page"{% endif %}>{{ botao.nome }}</a>{% endfor %}
+</nav>

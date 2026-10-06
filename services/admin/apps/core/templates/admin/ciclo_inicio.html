@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+{% block titulo %}Painel do ciclo{% endblock %}
+{% block corpo %}
+{% language "pt-br" %}
+<style>
+:root{--fundo:#f5f6f9;--painel:#fff;--linha:#e3e9f1;--texto:#131b2f;--texto-2:#61738c;--texto-3:#73839a;--azul:#0066df}
+body{background:var(--fundo)}
+.ciclo{max-width:1360px;margin:auto;padding:28px clamp(16px,3vw,48px) 48px;line-height:1.5;color:var(--texto)}
+.ciclo a{color:var(--azul)}.ciclo a:focus-visible,.ciclo summary:focus-visible{outline:3px solid #86b7ff;outline-offset:4px}
+.voltar-ciclo{font-size:14px;text-decoration:none}
+.seletor-ciclo{display:flex;gap:5px;width:fit-content;max-width:100%;padding:5px;background:#e8ebf0;border-radius:14px;margin:22px 0 30px}
+.seletor-ciclo a{padding:11px 20px;border-radius:10px;font-size:15px;font-weight:600;text-decoration:none;color:var(--texto-2);text-align:center}
+.seletor-ciclo a[aria-current]{background:#fff;color:var(--azul);box-shadow:0 2px 6px #18233812}
+.sobrancelha-ciclo{font-size:12px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--azul);margin:0 0 10px}
+.ciclo h1{font-size:clamp(28px,3.5vw,46px);font-weight:750;letter-spacing:-.045em;line-height:1.15;margin:0}
+.subtitulo-ciclo{color:var(--texto-2);font-size:clamp(16px,1.8vw,21px);margin:12px 0 26px}
+.ciclo h2{font-size:22px;line-height:1.25;letter-spacing:-.03em;margin:0 0 6px}.ciclo h3{margin:0;font-size:16px}
+.painel-ciclo{background:#fff;border:1px solid var(--linha);border-radius:18px;padding:24px;box-shadow:0 4px 16px #17223804}
+.destino-ciclo{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;align-items:center}
+.destino-ciclo p{margin:4px 0;font-size:16px}.destino-ciclo small{color:var(--texto-2);font-size:13px}
+.numeros-ciclo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:0;gap:14px}
+.numeros-ciclo>div{display:flex;flex-direction:column}.numeros-ciclo dt{order:2}.numeros-ciclo dd{order:1}.numeros-ciclo>div+div{border-left:1px solid var(--linha);padding-left:14px}
+.numeros-ciclo dt{font-size:12px;color:var(--texto-2)}.numeros-ciclo dd{font-size:clamp(26px,3vw,42px);font-weight:750;letter-spacing:-.04em;line-height:1.2;margin:0 0 6px}
+.numeros-ciclo .meta-ciclo{color:var(--azul)}.progresso-ciclo{grid-column:1/-1;font-size:13px;color:var(--texto-2)}
+.progresso-ciclo progress{display:block;width:100%;height:12px;margin-bottom:10px;appearance:none;border:0;border-radius:8px;background:#e3eaf3;overflow:hidden}
+.progresso-ciclo progress::-webkit-progress-bar{background:#e3eaf3;border-radius:8px}.progresso-ciclo progress::-webkit-progress-value{background:var(--azul);border-radius:8px}.progresso-ciclo progress::-moz-progress-bar{background:var(--azul)}
+.etapas-ciclo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin:22px 0;list-style:none;padding:0}
+.etapas-ciclo li{display:flex;gap:14px;align-items:center;padding:18px;background:#fff;border:1px solid #d6e0ed;border-radius:14px;min-width:0}
+.etapas-ciclo li.atual{border-color:var(--azul);background:#edf5ff}.numero-etapa{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border-radius:50%;background:#7b8ca4;color:#fff;font-size:22px;font-weight:700}
+.etapas-ciclo .atual .numero-etapa{background:var(--azul)}.etapas-ciclo p{font-size:13px;color:var(--texto-2);margin:3px 0 0}
+.selo-ciclo{display:inline-block;border-radius:20px;background:#c1f8e5;color:#125747;padding:4px 10px;font-size:11px;font-weight:700;white-space:nowrap;margin-top:5px}
+.agora-ciclo{display:grid;grid-template-columns:1.55fr 1fr;gap:20px;margin-bottom:20px}.foco-ciclo{background:#edf5ff;border-color:#d4e5fb}
+.semana-ciclo{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--texto-2);margin:12px 0}
+.situacao-ciclo{display:inline-block;border-radius:20px;background:#dce8f6;color:#354b69;font-size:12px;padding:4px 10px;margin-bottom:10px}
+.foco-ciclo h3{font-size:23px;letter-spacing:-.03em;line-height:1.3}.explicacao-ciclo{color:var(--texto-2);font-size:14px;margin:8px 0 20px}
+.acao-ciclo{border-top:1px solid #d5e3f5;padding-top:16px;margin-top:16px}.acao-ciclo strong{display:block;color:var(--azul);font-size:14px;margin-bottom:8px}.acao-ciclo p{font-size:15px;background:#dcecff;padding:12px;border-radius:10px;margin:0 0 16px}
+.botao-ciclo{display:inline-block;background:var(--azul);color:#fff!important;border-radius:10px;padding:12px 18px;text-decoration:none;font-size:14px;font-weight:600}
+.marco-numero{font-size:56px;font-weight:750;letter-spacing:-.04em;line-height:1.1;margin-top:18px}.marco-rotulo{color:var(--texto-2);font-size:16px;margin:0 0 18px}
+.marco-teste{border-top:1px solid var(--linha);padding-top:16px;font-size:14px}.marco-teste p{background:#f4f7fb;border-radius:10px;padding:12px;color:#455d7c;font-size:13px}
+.compromissos-ciclo{margin-bottom:20px;scroll-margin-top:24px}.compromissos-ciclo p,.caminho-ciclo>p{color:var(--texto-2);font-size:14px;margin:4px 0 18px}
+.compromissos-ciclo ul{list-style:none;padding:0;margin:0}.compromissos-ciclo li{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--linha);font-size:14px}
+.compromissos-ciclo li::before{content:'○';color:var(--texto-2);font-size:22px;line-height:1}.compromissos-ciclo li span{flex:1}.compromissos-ciclo li small{color:var(--texto-2);font-size:12px}
+.compromissos-ciclo .prazo-ciclo{font-size:12px;margin:16px 0 0}
+.tabela-ciclo{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}.tabela-ciclo th,.tabela-ciclo td{text-align:left;border-bottom:1px solid var(--linha);padding:12px 10px;vertical-align:middle}
+.tabela-ciclo th{color:#455d7c;font-size:12px;font-weight:650;background:#f5f8fc}.tabela-ciclo .semana-atual{background:#edf5ff}.tabela-ciclo .proxima-semana{background:#f4f8ff}.tabela-ciclo th:nth-child(n+3),.tabela-ciclo td:nth-child(n+3){text-align:right}
+.rolagem-ciclo{overflow-x:auto}.caminho-ciclo details{margin-top:18px;border-top:1px solid var(--linha);padding-top:16px}.caminho-ciclo summary{cursor:pointer;color:var(--azul);font-weight:600;font-size:14px}
+.detalhes-ciclo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.detalhes-ciclo article{border:1px solid var(--linha);border-radius:12px;padding:16px}.detalhes-ciclo p{font-size:13px;color:var(--texto-2);margin:6px 0}
+.dias-ciclo{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}.dias-ciclo div{text-align:center}.dias-ciclo dt{color:var(--texto-2);font-size:11px}.dias-ciclo dd{margin:4px 0 0;font-size:16px;font-weight:600}
+.nota-ciclo{font-size:12px;color:var(--texto-2);margin:20px 0 0}.alerta-ciclo{border:1px solid #e7d399;background:#fff9e9;border-radius:12px;padding:14px 18px;font-size:13px;margin:20px 0}.ligacao-ciclo{font-size:14px;text-decoration:none}
+@media(max-width:1050px){.destino-ciclo{grid-template-columns:1fr}.numeros-ciclo{max-width:620px}.etapas-ciclo{gap:12px}.etapas-ciclo li{padding:14px;gap:10px}.detalhes-ciclo{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.seletor-ciclo{width:100%;gap:3px}.seletor-ciclo a{padding:10px 8px;font-size:12px;flex:1}.seletor-ciclo a:first-child{flex:0.6}.agora-ciclo{grid-template-columns:1fr}.painel-ciclo{padding:20px}.etapas-ciclo{grid-template-columns:1fr;gap:10px}.etapas-ciclo li{padding:12px 16px}.etapas-ciclo .selo-ciclo{margin-left:8px}.compromissos-ciclo li{flex-wrap:wrap}.compromissos-ciclo li small{width:100%;padding-left:30px}.detalhes-ciclo{grid-template-columns:1fr}.tabela-ciclo{font-size:12px;min-width:520px}.numeros-ciclo{gap:10px}.numeros-ciclo>div+div{padding-left:10px}.numeros-ciclo dd{font-size:28px}}
+</style>
+<main class="ciclo">
+  <a class="voltar-ciclo" href="{% url 'placar' %}">← Voltar para o placar</a>
+  {% include "admin/_seletor_ciclo.html" %}
+  <header>
+    <p class="sobrancelha-ciclo">Painel do ciclo · Out–Dez 2026</p>
+    <h1>Como Ganhar em Dólar com Roblox</h1>
+    <p class="subtitulo-ciclo">Um passo de cada vez: preparar, validar e crescer.</p>
+  </header>
+  <section class="painel-ciclo destino-ciclo" aria-labelledby="destino-ciclo">
+    <div><h2 id="destino-ciclo">Nosso destino</h2><p>Chegar a <strong>{{ painel.meta_texto }} vendas do desafio</strong> até {{ visao.fim_planejado|date:"j \d\e F"|lower }}.</p><small>Produto de entrada · referência de preço: {{ painel.preco }}.</small></div>
+    <dl class="numeros-ciclo">
+      <div><dt>vendas realizadas</dt><dd>{{ painel.total_texto }}</dd></div>
+      <div><dt>meta final</dt><dd class="meta-ciclo">{{ painel.meta_texto }}</dd></div>
+      <div><dt>vendas que faltam</dt><dd>{{ painel.saldo|default_if_none:"—" }}</dd></div>
+    </dl>
+    <div class="progresso-ciclo">
+      {% if not painel.sem_contagem %}<progress max="{{ painel.meta }}" value="{{ painel.total }}" aria-label="Progresso das vendas do desafio"></progress><strong>{{ painel.progresso|floatformat:"-1" }}%</strong> da meta concluída{% else %}Progresso indisponível · aguardando confirmação das vendas.{% endif %}
+    </div>
+  </section>
+  {% if painel.sem_contagem %}<p class="alerta-ciclo">Não foi possível confirmar as vendas do desafio{% if painel.datas_ausentes %}: há compras sem data de confirmação{% endif %}. As metas continuam visíveis; os resultados aparecem como “—”.</p>{% endif %}
+  <ol class="etapas-ciclo" aria-label="Etapas do ciclo">
+    {% for etapa in visao.etapas %}<li{% if etapa.atual %} class="atual" aria-current="step"{% endif %}><span class="numero-etapa" aria-hidden="true">{{ etapa.n }}</span><div><h3>{{ etapa.nome }}</h3><p>{{ etapa.de|date:"j M" }} – {{ etapa.ate|date:"j M" }}</p>{% if etapa.atual %}<span class="selo-ciclo">VOCÊ ESTÁ AQUI</span>{% elif etapa.passou %}<p>Período encerrado</p>{% endif %}</div></li>{% endfor %}
+  </ol>
+  <div class="agora-ciclo">
+    <section class="painel-ciclo foco-ciclo" aria-labelledby="foco-ciclo">
+      <h2 id="foco-ciclo">{% if visao.atual %}O foco desta semana{% else %}O foco agora{% endif %}</h2>
+      {% if visao.atual %}<p class="semana-ciclo">Semana {{ visao.atual.n }} · {{ visao.atual.de|date:"j M" }} – {{ visao.atual.ate|date:"j M" }}</p>{% endif %}
+      <span class="situacao-ciclo">{{ visao.estado }}</span><h3>{{ visao.foco }}</h3>
+      {% if visao.em_preparacao %}<p class="explicacao-ciclo">Ainda não há meta de vendas. O início está previsto para {{ painel.semanas.0.de|date:"d/m" }}.</p>{% elif visao.atual %}<p class="explicacao-ciclo">Meta da semana: {{ visao.atual.meta_texto }} vendas · realizadas: {{ visao.atual.real_texto }}.</p>{% else %}<p class="explicacao-ciclo">Consulte os resultados e as duas semanas de recuperação na visão do desafio.</p>{% endif %}
+      <div class="acao-ciclo"><strong>Próxima ação sugerida</strong><p>{{ visao.acao }}</p><a class="botao-ciclo" href="#compromissos-ciclo">{% if visao.em_preparacao %}Organizar a preparação{% else %}Ver compromissos sugeridos{% endif %} →</a></div>
+    </section>
+    <section class="painel-ciclo" aria-labelledby="marco-ciclo">
+      <h2 id="marco-ciclo">{% if visao.proxima %}O próximo marco{% else %}Resultado do ciclo{% endif %}</h2>
+      {% if visao.proxima %}<p class="semana-ciclo">Semana {{ visao.proxima.n }} · {{ visao.proxima.de|date:"j M" }} – {{ visao.proxima.ate|date:"j M" }}</p><div class="marco-numero">{{ visao.proxima.meta_texto }}</div><p class="marco-rotulo">vendas na semana</p><div class="marco-teste">{{ visao.proxima.foco }}{% if visao.proxima.indicador %}<p>Objetivo do teste: {{ visao.proxima.indicador }}.</p>{% endif %}</div><a class="ligacao-ciclo" href="#semana-{{ visao.proxima.n }}">Ver plano da semana →</a>{% else %}<div class="marco-numero">{{ painel.total_texto }}</div><p class="marco-rotulo">vendas realizadas</p><p class="explicacao-ciclo">{% if painel.saldo == '0' %}Meta concluída.{% elif painel.saldo is not None %}Faltam {{ painel.saldo }} vendas para a meta.{% else %}Contagem indisponível.{% endif %}</p><a class="ligacao-ciclo" href="{% url 'ciclo' %}?produto=desafio">Ver resultados e recuperação →</a>{% endif %}
+    </section>
+  </div>
+  <section class="painel-ciclo compromissos-ciclo" id="compromissos-ciclo" aria-labelledby="compromissos-titulo">
+    <h2 id="compromissos-titulo">O que vamos fazer para avançar</h2><p>Compromissos sugeridos{% if visao.atual %} para esta semana{% endif %}. Defina os responsáveis e acompanhe a execução no <a href="{% url 'placar' %}">placar da equipe</a>.</p>
+    <ul>{% for compromisso in visao.compromissos %}<li><span>{{ compromisso }}</span><small>Definir responsável</small></li>{% endfor %}</ul>
+    {% if visao.prazo_compromissos %}<p class="prazo-ciclo">Até {{ visao.prazo_compromissos|date:"d/m" }} · Revise o que foi concluído antes de avançar.</p>{% endif %}
+  </section>
+  <section class="painel-ciclo caminho-ciclo" aria-labelledby="caminho-ciclo">
+    <h2 id="caminho-ciclo">O caminho até a meta</h2><p>Metas planejadas por semana — ajuste conforme os resultados. O total planejado é a soma das metas até cada semana.</p>
+    <div class="rolagem-ciclo" role="region" aria-label="Metas semanais do desafio" tabindex="0"><table class="tabela-ciclo"><thead><tr><th scope="col">Semana</th><th scope="col">Período</th><th scope="col">Meta da semana</th><th scope="col">Realizadas</th><th scope="col">Total planejado</th></tr></thead><tbody>
+      {% for s in painel.semanas %}<tr id="semana-{{ s.n }}"{% if s.atual %} class="semana-atual"{% elif s.n == visao.proxima.n %} class="proxima-semana"{% endif %}><th scope="row">{{ s.n }}{% if s.atual %} · Atual{% endif %}</th><td>{{ s.de|date:"j M" }} – {{ s.ate|date:"j M" }}</td><td>{{ s.meta_texto }} vendas</td><td>{% if s.de > hoje %}—{% else %}{{ s.real_texto }}{% endif %}</td><td>{% if forloop.last %}<strong>{{ s.acumulado }}</strong>{% else %}{{ s.acumulado }}{% endif %}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <details><summary>Ver metas diárias e indicadores de cada semana</summary><div class="detalhes-ciclo">
+      {% for s in painel.semanas %}<article><h3>Semana {{ s.n }} · {{ s.meta_texto }} vendas</h3><p>{{ s.foco }}</p>{% if s.indicador %}<p>Meta de aprendizado: {{ s.indicador }}.</p>{% endif %}<dl class="dias-ciclo">{% for dia in s.dias %}<div><dt>{{ dia.nome }} · {{ dia.data|date:"d/m" }}</dt><dd>{{ dia.meta }}</dd></div>{% endfor %}</dl><p>{{ s.recuperacao }}</p></article>{% endfor %}
+    </div><p class="nota-ciclo">As metas diárias são de segunda a quinta. Os percentuais são metas de aprendizado, não resultados já medidos.</p></details>
+    <p class="nota-ciclo">O plano principal termina em {{ visao.fim_planejado|date:"d/m" }}. As semanas 11 e 12 ficam para recuperação, até {{ painel.recuperacoes.1.ate|date:"d/m" }}. <a href="{% url 'ciclo' %}?produto=desafio">Ver recuperação do desafio →</a></p>
+  </section>
+</main>
+{% endlanguage %}
+{% endblock %}

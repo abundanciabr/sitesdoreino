@@ -8,7 +8,7 @@ body{background:#f5f5f7}.ciclo{--ink:#151822;--muted:#637087;--blue:#0066df;colo
 </style>
 <main class="ciclo">
 <a class="voltar-ciclo" href="{% url 'placar' %}">← Voltar para o placar</a>
-<nav class="seletor-ciclo" aria-label="Escolher painel de vendas">{% for botao in botoes %}<a href="{% url 'ciclo' %}?produto={{ botao.chave }}"{% if painel.chave == botao.chave %} aria-current="page"{% endif %}>{{ botao.nome }}</a>{% endfor %}</nav>
+{% include "admin/_seletor_ciclo.html" %}
 <header class="cabecalho-ciclo"><div><p class="sobrancelha-ciclo">Painel de vendas · {% if painel.chave == 'desafio' %}Low ticket{% else %}Curso{% endif %} · Out–Dez 2026</p><h1>{{ painel.nome }}</h1><p class="subtitulo-ciclo">Valide a máquina. Depois, escale.</p></div><div class="resumo-ciclo"><div><strong class="meta-ciclo">{{ painel.meta_texto }}</strong><span>meta de vendas</span></div><div><strong>{{ painel.total_texto }}</strong><span>vendas realizadas</span></div></div></header>
 <div class="progresso-ciclo"><progress max="{{ painel.meta }}" value="{{ painel.total|default_if_none:0 }}" aria-label="Progresso das vendas"></progress><span>{% if painel.saldo is not None %}Faltam {{ painel.saldo }} vendas para completar a meta.{% else %}Contagem de vendas indisponível.{% endif %}</span><span>{{ painel.preco }} · {{ painel.preco_rotulo }}</span></div>
 {% if painel.sem_contagem %}<p class="alerta-ciclo">Não foi possível confirmar as vendas deste produto{% if painel.datas_ausentes %}: há compras sem data de confirmação{% endif %}. As metas continuam visíveis; os resultados aparecem como “—”.</p>{% endif %}
