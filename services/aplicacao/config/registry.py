@@ -17,6 +17,7 @@ ACTIVE_SERVICES = (CELULA_EXECUCAO,) if CELULA_EXECUCAO else SERVICES
 # The public prefixes are deliberately distinct from the old internal paths.
 # A cell behind SCRIPT_NAME used a local URLconf; identidade and payments did not.
 PUBLIC_PREFIXES = (
+    ("/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1", "admin", ""),
     ("/comunidade", "admin", ""),
     ("/webhooks/whatsapp", "mensageria", ""),
     # Respostas de e-mail recebidas pelo provedor (inbound), com token próprio.

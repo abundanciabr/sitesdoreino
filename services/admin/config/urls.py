@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.urls import path, re_path
 from apps.core import galeria_comunidade as galeria_votacao
+from apps.core import galeria_aula1
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
@@ -259,6 +262,12 @@ from apps.assistente.views import assistente_do_site
 
 urlpatterns = [
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
+    path("previa-aula-1", never_cache(require_GET(galeria_aula1.pagina)), name="galeria_aula1"),
+    path("previa-aula-1/", never_cache(require_GET(galeria_aula1.pagina))),
+    path("previa-aula-1/voto", galeria_aula1.votar),
+    path("previa-aula-1/comentario", galeria_aula1.comentar),
+    path("previa-aula-1/imagens/<slug:slug>", galeria_aula1.imagem),
+    path("previa-aula-1/<str:nome>", galeria_votacao.recurso),
     path("galeria-publica/", galeria_votacao.galeria),
     path("galeria-publica/voto", galeria_votacao.votar),
     path("galeria-publica/comentario", galeria_votacao.comentar),

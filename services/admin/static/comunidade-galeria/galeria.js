@@ -7,6 +7,7 @@
   const grande = document.querySelector('#imagem-grande');
   const token = document.querySelector('#csrf-galeria').value;
   const pode = document.body.dataset.podeVotar === 'sim';
+  const base = document.body.dataset.galeriaBase || '/comunidade';
   let atual = '', zoom = 0, focoAnterior = null, avisoTimer;
   const cards = () => Array.from(grade.querySelectorAll('.modelo'));
   const cardAtual = () => cards().find(c => c.dataset.slug === atual);
@@ -51,7 +52,7 @@
     pendentes.add(slug); card.querySelector('.votar').disabled = true;
     if (atual === slug) document.querySelector('#votar-modal').disabled = true;
     const acao = card.dataset.votado === 'sim' ? 'retirar' : 'votar';
-    try { const dados = await enviar('/comunidade/voto', { imagem: slug, acao }); ordenar(dados.imagens); aviso(acao === 'votar' ? 'Voto registrado.' : 'Voto retirado.'); }
+    try { const dados = await enviar(base + '/voto', { imagem: slug, acao }); ordenar(dados.imagens); aviso(acao === 'votar' ? 'Voto registrado.' : 'Voto retirado.'); }
     catch (erro) { aviso(erro.message); }
     finally { pendentes.delete(slug); card.querySelector('.votar').disabled = false; document.querySelector('#votar-modal').disabled = false; }
   }
@@ -116,7 +117,7 @@
     const texto = form.querySelector('textarea').value.trim(); if (!texto) return;
     botao.disabled = true;
     try {
-      const dados = await enviar('/comunidade/comentario', { imagem: card.dataset.slug, texto, chave: form.dataset.chave });
+      const dados = await enviar(base + '/comentario', { imagem: card.dataset.slug, texto, chave: form.dataset.chave });
       form.reset(); form.dataset.chave = dados.chave; form.querySelector('.retorno-comentario').textContent = dados.mensagem;
     } catch (erro) { form.querySelector('.retorno-comentario').textContent = erro.message; }
     finally { botao.disabled = false; }

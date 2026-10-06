@@ -84,6 +84,33 @@ class RuntimeTest(unittest.TestCase):
                 self.assertEqual((await client.get('/admin/comunidade/votacao/')).status_code, 302)
         asyncio.run(check())
 
+    def test_previa_aula1_tem_endereco_do_curso_e_preserva_galeria_comunidade(self):
+        import httpx
+        from unittest.mock import patch
+        from config.registry import service_for_path
+        from modules.admin.apps.core.galeria_aula1 import BASE, IMAGENS
+
+        self.assertEqual(service_for_path(BASE), ("admin", ""))
+        self.assertEqual(service_for_path(BASE, "outro.exemplo"), ("funil", ""))
+        linhas = [{"slug": slug, "titulo": titulo, "descricao": descricao, "votos": 0,
+                   "votado": False, "url": BASE + "/imagens/" + slug}
+                  for slug, titulo, descricao in IMAGENS]
+
+        async def check():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=type(self).application),
+                                         base_url="https://meshcraft.top") as client:
+                with patch("modules.admin.apps.core.galeria_comunidade.classificacao", return_value=linhas):
+                    resposta = await client.get(BASE)
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(resposta.text.count('class="modelo"'), 6)
+                self.assertIn("Path=" + BASE, resposta.headers["set-cookie"])
+                self.assertEqual((await client.get(BASE + "/galeria.js")).status_code, 200)
+                self.assertEqual((await client.get(BASE + "/galeria.css")).status_code, 200)
+                self.assertEqual((await client.get(BASE + "/voto")).status_code, 405)
+                self.assertNotEqual((await client.get("/comunidade/aula-1")).status_code, 200)
+                self.assertEqual((await client.get("/cursos/healthz")).status_code, 200)
+        asyncio.run(check())
+
     def test_host_private_settings_templates_and_transaction(self):
         from django.conf import settings
         from django.db import connection, connections, transaction

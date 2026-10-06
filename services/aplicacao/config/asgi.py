@@ -67,6 +67,9 @@ async def application(scope, receive, send):
     # administrativo existente em /admin/comunidade/.
     if service == "admin" and (path == "/comunidade" or path.startswith("/comunidade/")):
         routed_scope["path"] = "/galeria-publica" + path[len("/comunidade"):]
+    previa_aula = "/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1"
+    if service == "admin" and (path == previa_aula or path.startswith(previa_aula + "/")):
+        routed_scope["path"] = "/previa-aula-1" + path[len(previa_aula):]
     # Django leaves both values in asgiref.local.Local after a response. An
     # in-process HTTP call can nest inside another module's rendering; restore
     # the outer request's URL state before its templates reverse links.
