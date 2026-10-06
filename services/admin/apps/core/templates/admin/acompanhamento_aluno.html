@@ -14,6 +14,7 @@
       <div class="rotulo">{{ matricula.curso_nome }}</div>
       <div class="nota">Matrícula {{ matricula.id }} · {{ matricula.status }}{% if matricula.turma %} · Turma {{ matricula.turma }}{% endif %}</div>
       {% if matricula.origem %}<div class="nota">Origem: {{ matricula.origem }}</div>{% endif %}
+      {% if matricula.whatsapp %}<div class="nota">WhatsApp registrado: {{ matricula.whatsapp }}</div>{% endif %}
     </div>{% endfor %}</div>
     <p class="subtitulo">Parte do estudo pode ocorrer na Hotmart ou Herospark. A falta de atividade visível aqui não indica abandono.</p>
     <h2>Novo registro</h2>
@@ -46,11 +47,15 @@
       <div class="nota">Registrado por {{ registro.registrado_por }}</div>
     </div>{% empty %}<p>Sem registros ainda.</p>{% endfor %}
     <h2>Contato e atendimentos existentes no CRM</h2>
-    {% if contatos %}{% for contato in contatos %}<div class="cartao"><div class="rotulo">{{ contato.nome|default:contato.email }}</div><div class="nota">{{ contato.email }}</div><a href="{% url 'contato' contato.id %}">Abrir contato no CRM</a></div>{% endfor %}
+    {% if contatos %}{% for contato in contatos %}<div class="cartao"><div class="rotulo">{{ contato.nome|default:contato.email }}</div><div class="nota">{{ contato.email }} · {{ contato.telefone|default:"Telefone não registrado" }}</div><p class="nota">Origem do contato: {{ contato.origem|default:"Sem informação" }}</p><a href="{% url 'contato' contato.id %}">Abrir contato e histórico completo no CRM</a>
+      <h3>Atendimentos e conversas</h3><p class="nota">Fonte: histórico de conversas do CRM</p>
+      {% if contato.conversa.estado == 'ok' %}{% if contato.conversa.atual %}<p>{{ contato.conversa.atual.canal }} · {{ contato.conversa.atual.quem_atende }} · {{ contato.conversa.atual.estado }}</p>{% for mensagem in contato.conversa.mensagens %}<p><b>{{ mensagem.quem }}</b> · {{ mensagem.quando|date:"d/m/Y H:i" }}<br>{{ mensagem.texto|linebreaksbr }}</p>{% endfor %}{% if contato.conversa.mensagens_indisponiveis %}<p>Mensagens indisponíveis nesta consulta.</p>{% endif %}{% else %}<p>Nenhuma conversa registrada nesta fonte.</p>{% endif %}{% else %}<p>Conversas indisponíveis nesta consulta.</p>{% endif %}
+    </div>{% endfor %}
     {% elif contato_estado == 'sem_vinculo' %}<p>Esta matrícula não tem contato vinculado no CRM.</p>
     {% else %}<p>Contato do CRM indisponível ou não confirmado para esta pessoa.</p>{% endif %}
-    {% if atendimentos %}{% for item in atendimentos %}<div class="cartao"><div class="rotulo">Atendimento {{ item.id }} · {{ item.etapa }}</div><div class="nota">{{ item.proximo_passo.descricao|default:"Sem próximo passo registrado" }}</div></div>{% endfor %}
-    {% elif atendimento_estado == 'ok' %}<p>Nenhum atendimento existente para este contato.</p>
+    <h3>Oportunidades comerciais já existentes</h3>
+    {% if atendimentos %}{% for item in atendimentos %}<div class="cartao"><div class="rotulo">Oportunidade comercial · {{ item.etapa }}</div><div class="nota">{{ item.proximo_passo.descricao|default:"Sem próximo passo registrado" }}</div><a href="{% url 'crm_oportunidade' item.id %}">Ver histórico comercial</a></div>{% endfor %}
+    {% elif atendimento_estado == 'ok' %}<p>Nenhuma oportunidade comercial existente para este contato.</p>
     {% elif atendimento_estado != 'sem_vinculo' %}<p>Atendimentos do CRM indisponíveis agora.</p>{% endif %}
     {% include "admin/acompanhamento_fontes.html" %}
   {% endif %}

@@ -159,6 +159,8 @@ def _fontes_externas(site_id, email, matriculas):
             contato.get("site_id") and _texto(contato.get("site_id"), 100) != site_id
         ):
             continue
+        from .ficha_do_contato import conversa_do_contato
+        contato = dict(contato, conversa=conversa_do_contato(site_id, lead_id))
         contatos.append(contato)
         estado_crm, quadro = CRMClient().quadro(lead_id=lead_id)
         atendimento_estado = estado_crm
