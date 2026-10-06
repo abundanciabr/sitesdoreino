@@ -9,6 +9,7 @@ import base64
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import quote
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -284,7 +285,13 @@ def alterar_fase(request, tipo):
 
 @require_GET
 def cliente(request):
-    site, pessoa = _cliente(request)
+    try:
+        site, pessoa = _cliente(request)
+    except Http404:
+        return render(request, "marketplace/cliente.html", _contexto(
+            request, "cliente", categorias=CATEGORIAS, pedidos=[], pode_operar=False,
+            visitante=not bool(sessao.quem_e(request)),
+        ))
     pedidos = [_formatar_valor(p) for p in PedidoMarketplace.objects.filter(site_id=site, cliente_id=pessoa).order_by("-criado_em")]
     from apps.core import carteira_marketplace
     carteira = None
@@ -301,7 +308,7 @@ def cliente(request):
     except (carteira_marketplace.PagamentoIndisponivel, carteira_marketplace.PagamentoDivergente):
         pass
     return render(request, "marketplace/cliente.html", _contexto(request, "cliente", pedidos=pedidos,
-        categorias=CATEGORIAS, carteira=carteira, recarga=recarga,
+        categorias=CATEGORIAS, pode_operar=True, carteira=carteira, recarga=recarga,
         cobranca_recarga=cobranca_recarga,
         recarga_chave=recarga.pk if recarga and not recarga.charge_id else uuid.uuid4(),
         pix_imagem_recarga=_imagem_pix((cobranca_recarga or {}).get("pix") or {}),
@@ -348,7 +355,16 @@ def recarregar(request):
 
 @require_GET
 def novo(request):
-    _cliente(request)
+    try:
+        _cliente(request)
+    except Http404:
+        if not sessao.quem_e(request):
+            return HttpResponseRedirect("https://meshcraft.top/entrar?proxima=" + quote(request.get_full_path(), safe=""))
+        return render(request, "marketplace/aviso.html", _contexto(
+            request, "cliente", titulo="Acesso para criar pedidos",
+            texto="Sua conta ainda não está autorizada para criar encomendas. A escola seleciona os clientes individualmente; o catálogo está disponível para consulta.",
+            acao_url=reverse("marketplace_cliente"), acao_texto="Ver categorias",
+        ), status=403)
     categoria = request.GET.get("categoria", "espadas_objetos")
     if categoria not in {x[0] for x in CATEGORIAS}:
         categoria = CATEGORIAS[0][0]

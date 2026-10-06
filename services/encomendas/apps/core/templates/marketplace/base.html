@@ -15,6 +15,6 @@
 <div class="shell"><aside aria-label="Navegação">
 {% if papel == 'equipe' %}<a href="{% url 'marketplace_escola' %}">Acompanhamento</a><a href="{% url 'sandbox_escola' %}">Prática · Meshcoin</a><a href="{% url 'plantao' %}">Plantão</a>
 {% elif papel == 'aluno' %}<a href="{% url 'marketplace_fila' %}">Minha fila</a><a href="{% url 'marketplace_fila' %}#trabalhos">Meus trabalhos</a><a href="{% url 'marketplace_fila' %}#recebimentos">Recebimentos</a>
-{% else %}<a href="{% url 'marketplace_cliente' %}#meus-pedidos">Meus pedidos</a><a class="active" href="{% url 'marketplace_cliente' %}">＋ Novo pedido</a><a href="{% url 'marketplace_cliente' %}#exemplos">Exemplos</a><a href="{% url 'marketplace_cliente' %}#ajuda">Ajuda</a><span class="nav-foot">Cliente autorizado</span>{% endif %}
+{% else %}<a href="{% url 'marketplace_cliente' %}#meus-pedidos">Meus pedidos</a><a class="active" href="{% url 'marketplace_cliente' %}">＋ Novo pedido</a><a href="{% url 'marketplace_cliente' %}#exemplos">Exemplos</a><a href="{% url 'marketplace_cliente' %}#ajuda">Ajuda</a><span class="nav-foot">{% if pode_operar %}Cliente autorizado{% else %}Fila do Dólar{% endif %}</span>{% endif %}
 </aside><main>{% if recado %}<div class="recado" role="status">{{ recado }}</div>{% endif %}{% block body %}{% endblock %}</main></div>
 </body></html>

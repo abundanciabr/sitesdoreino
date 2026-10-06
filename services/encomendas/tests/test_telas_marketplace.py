@@ -16,6 +16,57 @@ from apps.core import sessao
 from apps.encomendas.models import FaseMarketplace, PedidoMarketplace
 
 
+@pytest.mark.django_db
+def test_catalogo_publico_nao_consulta_carteira_nem_autoriza(client, pessoa, monkeypatch):
+    from apps.core import carteira_marketplace
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente, RecargaMarketplace
+    pessoa["id"] = None
+    monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: pytest.fail("visitante não consulta carteira"))
+    resposta = client.get(reverse("marketplace_cliente"))
+    html = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert html.count('class="category-choice') == 5
+    assert 'data-category="chapeus"' in html
+    assert 'name="cpf"' not in html and 'Gerar Pix' not in html
+    assert "Entre na sua conta" in html
+    assert AutorizacaoMarketplaceCliente.objects.count() == 0
+    assert RecargaMarketplace.objects.count() == 0
+    novo = client.get(reverse("marketplace_novo") + "?categoria=pets")
+    assert novo.status_code == 302
+    assert novo["Location"].startswith("https://meshcraft.top/entrar?proxima=")
+    assert "categoria%3Dpets" in novo["Location"]
+    assert client.post(reverse("marketplace_recarregar"), {}).status_code == 404
+
+
+@pytest.mark.django_db
+def test_catalogo_sem_autorizacao_nao_revela_pedidos(client, pessoa, monkeypatch):
+    from apps.core import carteira_marketplace
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente
+    PedidoMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"], titulo="Pedido privado invisível")
+    monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: pytest.fail("sem acesso não consulta carteira"))
+    resposta = client.get(reverse("marketplace_cliente"))
+    assert resposta.status_code == 200
+    assert "Pedido privado invisível" not in resposta.content.decode()
+    novo = client.get(reverse("marketplace_novo"))
+    assert novo.status_code == 403
+    assert "seleciona os clientes individualmente" in novo.content.decode()
+    assert AutorizacaoMarketplaceCliente.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_catalogo_autorizado_mostra_seus_pedidos(client, pessoa, monkeypatch):
+    from apps.core import carteira_marketplace
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente
+    FaseMarketplace.objects.create(site_id="escola-a", clientes_liberados=True)
+    AutorizacaoMarketplaceCliente.objects.create(site_id="escola-a", cliente_id=pessoa["id"], ativa=True)
+    PedidoMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"], titulo="Espada particular")
+    monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: {"balance_cents":0,"credits":0,"environment":"sandbox"})
+    resposta = client.get(reverse("marketplace_cliente"))
+    assert resposta.status_code == 200
+    assert "Espada particular" in resposta.content.decode()
+    assert 'name="cpf"' in resposta.content.decode()
+
+
 @pytest.fixture
 def pessoa(monkeypatch):
     atual = {"id": "aluno-do-cenario"}
