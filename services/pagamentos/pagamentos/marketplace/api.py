@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from pagamentos.core import gateway
 from pagamentos.core.webhook_signature import assinatura_valida
-from pagamentos.marketplace import service
+from pagamentos.marketplace import service, wallet
 from pagamentos.marketplace.models import Charge
 
 
@@ -19,6 +19,12 @@ def _auth(request):
     token = request.headers.get("Authorization", "")
     expected = "Bearer " + settings.MARKETPLACE_API_TOKEN
     return bool(settings.MARKETPLACE_API_TOKEN) and hmac.compare_digest(token, expected)
+
+
+def _admin_auth(request):
+    token = request.headers.get("Authorization", "")
+    expected = "Bearer " + settings.MARKETPLACE_WITHDRAWAL_ADMIN_TOKEN
+    return bool(settings.MARKETPLACE_WITHDRAWAL_ADMIN_TOKEN) and hmac.compare_digest(token, expected)
 
 
 def _error(message, status):
@@ -50,6 +56,8 @@ def charge_create(request):
             order_version=int(body["order_version"]), amount_cents=int(body["amount_cents"]),
             currency=str(body["currency"]), environment=str(body["environment"]),
             method=str(body["method"]), customer_email=str(body["customer_email"]),
+            customer_name=str(body.get("customer_name", "")),
+            customer_cpf=str(body.get("customer_cpf", "")),
         )
     except (ValueError, KeyError, TypeError, service.ConflitoDeCobranca):
         return _error("dados de cobrança inválidos ou divergentes", 422)
@@ -192,3 +200,134 @@ def pix_webhook(request):
         return _error("consulta pendente", 503)
     except service.ConflitoDeCobranca:
         return _error("resposta do provedor divergente", 409)
+
+
+def _wallet_body(request):
+    if not _auth(request):
+        return None, _error("não autorizado", 401)
+    if request.method != "POST":
+        return None, _error("use POST", 405)
+    try:
+        body = json.loads(request.body)
+        if not isinstance(body, dict):
+            raise ValueError()
+        return body, None
+    except (ValueError, TypeError):
+        return None, _error("dados inválidos", 422)
+
+
+@csrf_exempt
+def wallet_balance(request, owner_kind, owner_id):
+    if request.method != "GET":
+        return _error("use GET", 405)
+    if not _auth(request):
+        return _error("não autorizado", 401)
+    try:
+        return JsonResponse(wallet.balance(site_id=request.headers.get("X-Site-Id", ""),
+                                           owner_kind=owner_kind, owner_id=owner_id))
+    except wallet.WalletConflict:
+        return _error("carteira inválida", 422)
+
+
+@csrf_exempt
+def wallet_statement(request, owner_kind, owner_id):
+    if request.method != "GET":
+        return _error("use GET", 405)
+    if not _auth(request):
+        return _error("não autorizado", 401)
+    try:
+        return JsonResponse(wallet.statement(site_id=request.headers.get("X-Site-Id", ""),
+                                             owner_kind=owner_kind, owner_id=owner_id))
+    except wallet.WalletConflict:
+        return _error("carteira inválida", 422)
+
+
+@csrf_exempt
+def wallet_topup(request):
+    body, error = _wallet_body(request)
+    if error:
+        return error
+    try:
+        key = uuid.UUID(str(body["idempotency_key"]))
+        result = service.criar(
+            idempotency_key=key, site_id=str(body["site_id"]),
+            order_id=uuid.uuid5(uuid.NAMESPACE_URL, "marketplace:topup:" + str(body["site_id"]) + ":" + str(key)),
+            order_version=1, amount_cents=int(body["amount_cents"]), currency="BRL",
+            environment="sandbox", method="pix", customer_email=str(body["customer_email"]),
+            wallet_owner_id=str(body["client_id"]),
+            customer_name=str(body["customer_name"]), customer_cpf=str(body["customer_cpf"]),
+        )
+    except (ValueError, KeyError, TypeError, service.ConflitoDeCobranca):
+        return _error("recarga inválida ou divergente", 422)
+    except (service.CobrançaIndisponivel, gateway.FalhaNoProvedor):
+        return _error("recarga não confirmada; consulte a cobrança", 503)
+    return JsonResponse(result)
+
+
+@csrf_exempt
+def wallet_spend(request):
+    body, error = _wallet_body(request)
+    if error:
+        return error
+    try:
+        request_key = uuid.UUID(str(body["idempotency_key"]))
+        return JsonResponse(wallet.spend(
+            site_id=str(body["site_id"]), client_id=str(body["client_id"]),
+            order_id=uuid.UUID(str(body["order_id"])), order_version=int(body["order_version"]),
+            amount_cents=int(body["amount_cents"]), idempotency_key=request_key))
+    except (ValueError, KeyError, TypeError, wallet.WalletConflict):
+        return _error("saldo insuficiente ou débito divergente", 409)
+
+
+@csrf_exempt
+def wallet_student_credit(request):
+    body, error = _wallet_body(request)
+    if error:
+        return error
+    try:
+        request_key = uuid.UUID(str(body["idempotency_key"]))
+        return JsonResponse(wallet.earn(
+            site_id=str(body["site_id"]), aluno_id=str(body["aluno_id"]),
+            order_id=uuid.UUID(str(body["order_id"])), order_version=int(body["order_version"]),
+            amount_cents=int(body["amount_cents"]), idempotency_key=request_key))
+    except (ValueError, KeyError, TypeError, wallet.WalletConflict):
+        return _error("débito ausente ou crédito divergente", 409)
+
+
+@csrf_exempt
+def wallet_withdrawal(request):
+    if request.method == "GET":
+        if not _auth(request):
+            return _error("não autorizado", 401)
+        try:
+            return JsonResponse({"withdrawals": wallet.list_withdrawals(
+                site_id=request.headers.get("X-Site-Id", ""))})
+        except wallet.WalletConflict:
+            return _error("site inválido", 422)
+    body, error = _wallet_body(request)
+    if error:
+        return error
+    try:
+        return JsonResponse(wallet.request_withdrawal(
+            site_id=str(body["site_id"]), aluno_id=str(body["aluno_id"]),
+            request_id=uuid.UUID(str(body["idempotency_key"])),
+            amount_cents=int(body["amount_cents"])))
+    except (ValueError, KeyError, TypeError, wallet.WalletConflict):
+        return _error("saque inválido ou saldo insuficiente", 409)
+
+
+@csrf_exempt
+def wallet_withdrawal_confirm(request, request_id):
+    if request.method != "POST":
+        return _error("use POST", 405)
+    if not _admin_auth(request):
+        return _error("não autorizado", 401)
+    try:
+        body = json.loads(request.body)
+        return JsonResponse(wallet.confirm_withdrawal(
+            site_id=str(body["site_id"]), request_id=request_id,
+            authorization_reference=str(body["authorization_reference"]),
+            bank_reference=str(body["bank_reference"]),
+            proof_reference=str(body["proof_reference"])))
+    except (ValueError, KeyError, TypeError, wallet.WalletConflict):
+        return _error("comprovação bancária inválida ou divergente", 409)

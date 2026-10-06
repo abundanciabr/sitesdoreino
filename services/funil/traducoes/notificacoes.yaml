@@ -406,3 +406,23 @@ jornada_corpo:
   en: "We are glad to have you at the school."
   pt-br: "Que bom ter você na escola."
   es: "Qué bueno tenerte en la escuela."
+
+marketplace_recarga_titulo:
+  pt-br: 'Créditos confirmados'
+  en: 'Credits confirmed'
+  es: 'Créditos confirmados'
+
+marketplace_recarga_corpo:
+  pt-br: 'O provedor confirmou o Pix. Seus créditos estão disponíveis na carteira.'
+  en: 'The provider confirmed Pix. Your credits are available in your wallet.'
+  es: 'El proveedor confirmó Pix. Tus créditos están disponibles en la cartera.'
+
+marketplace_recarga_revertida_titulo:
+  pt-br: 'Recarga atualizada pelo provedor'
+  en: 'Top-up updated by provider'
+  es: 'Recarga actualizada por el proveedor'
+
+marketplace_recarga_revertida_corpo:
+  pt-br: 'O provedor informou uma reversão. Confira a situação dos créditos na carteira.'
+  en: 'The provider reported a reversal. Check your credit balance in the wallet.'
+  es: 'El proveedor informó una reversión. Consulta tus créditos en la cartera.'

@@ -4,7 +4,7 @@ from django.urls import path
 from config.api import api
 from pagamentos.api.appmax import instalacao_appmax
 from pagamentos.api.webhooks import simulate_webhook, webhook_appmax, webhook_mp_unificado
-from pagamentos.marketplace.api import charge_create, charge_detail, charge_by_order, charge_capture, receivable_register, marketplace_status, paypal_webhook, pix_webhook
+from pagamentos.marketplace.api import charge_create, charge_detail, charge_by_order, charge_capture, receivable_register, marketplace_status, paypal_webhook, pix_webhook, wallet_balance, wallet_statement, wallet_topup, wallet_spend, wallet_student_credit, wallet_withdrawal, wallet_withdrawal_confirm
 
 
 def healthz(request: HttpRequest) -> JsonResponse:
@@ -14,6 +14,15 @@ def healthz(request: HttpRequest) -> JsonResponse:
 urlpatterns = [
     path("healthz", healthz),
     path("api/pagamentos/marketplace/charges", charge_create),
+    path("api/pagamentos/marketplace/wallets/client/<str:owner_id>", wallet_balance, {"owner_kind": "client"}),
+    path("api/pagamentos/marketplace/wallets/client/<str:owner_id>/statement", wallet_statement, {"owner_kind": "client"}),
+    path("api/pagamentos/marketplace/wallets/students/<str:owner_id>", wallet_balance, {"owner_kind": "student"}),
+    path("api/pagamentos/marketplace/wallets/students/<str:owner_id>/statement", wallet_statement, {"owner_kind": "student"}),
+    path("api/pagamentos/marketplace/wallets/topups", wallet_topup),
+    path("api/pagamentos/marketplace/wallets/orders", wallet_spend),
+    path("api/pagamentos/marketplace/wallets/student-credits", wallet_student_credit),
+    path("api/pagamentos/marketplace/wallets/withdrawals", wallet_withdrawal),
+    path("api/pagamentos/marketplace/wallets/withdrawals/<uuid:request_id>/confirm", wallet_withdrawal_confirm),
     path("api/pagamentos/marketplace/orders/<uuid:order_id>/charge", charge_by_order),
     path("api/pagamentos/marketplace/receivables", receivable_register),
     path("api/pagamentos/marketplace/status", marketplace_status),

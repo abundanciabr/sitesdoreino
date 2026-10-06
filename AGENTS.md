@@ -5,3 +5,6 @@
 5. Não crie nem proponha regra, portão, processo ou validação. Só o mantenedor cria regra, e para entrar uma terceira coisa uma das duas primeiras sai.
 6. Todo trabalho é no site.
 7. Entregue funcionando no site.
+
+Orientação expressa do mantenedor em 06/10/2026 — pagamentos, Mercado Pago e Appmax:
+Em toda tarefa que envolva pagamento com cartão ou Pix, a identificação do pagador deve incluir nome completo, CPF e e-mail; somente e-mail não basta. Aplique essa orientação à coleta, conferência e envio dos dados ao provedor, inclusive à compra de créditos. Não invente dados pessoais nem exponha CPF, credenciais ou dados de cartão em documentos ou logs. A necessidade de endereço em compras com cartão ainda não foi definida pelo mantenedor: confira a integração e a documentação vigente do provedor para saber se e quando ele é exigido; não trate essa pendência como autorização para omitir nome completo, CPF ou e-mail.

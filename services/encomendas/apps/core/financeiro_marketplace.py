@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-import uuid
 
 import httpx
 
@@ -89,22 +88,8 @@ def _aplicar_confirmacao(pedido, data: dict) -> dict:
 
 def iniciar_cobranca(pedido, *, metodo: str, email: str, nome: str = "",
                      chave_idempotencia: str | None = None) -> dict:
-    """Chamado só depois de autenticar o cliente titular no servidor de encomendas."""
-    if pedido.status != "aguardando_pagamento" or metodo not in {"pix", "paypal"}:
-        raise PagamentoDivergente("pedido não está disponível para cobrança")
-    site, order_id, version, amount, currency, environment = _pedido(pedido)
-    if environment != "sandbox":
-        raise PagamentoIndisponivel("a Fila do Dólar só cobra em sandbox nesta fase")
-    key = str(uuid.uuid5(uuid.NAMESPACE_URL, f"fila-do-dolar:{site}:{order_id}:{version}"))
-    if chave_idempotencia and str(uuid.UUID(str(chave_idempotencia))) != key:
-        raise PagamentoDivergente("chave de idempotência divergente")
-    base, headers = _endpoint()
-    result = _pedir("POST", base + "/charges", headers=headers, body={
-        "idempotency_key": key, "site_id": site, "order_id": order_id,
-        "order_version": version, "amount_cents": amount, "currency": currency,
-        "environment": environment, "method": metodo, "customer_email": email,
-    })
-    return _aplicar_confirmacao(pedido, result)
+    """Cobrança direta antiga encerrada; pedidos novos usam créditos."""
+    raise PagamentoIndisponivel("compre créditos na carteira do cliente")
 
 
 def consultar_cobranca(pedido, *, capturar_paypal: bool = False) -> dict:
@@ -145,6 +130,15 @@ def registrar_recebivel_da_entrega(pedido) -> dict:
     """Registra o aluno destinatário depois da aprovação da entrega, sem repasse."""
     if pedido.status != "aprovado" or not pedido.aluno_id or not pedido.pagamento_referencia:
         raise PagamentoDivergente("entrega ainda não aprovada e paga")
+    if pedido.pagamento_referencia.startswith("wallet-spend:"):
+        from apps.core.carteira_marketplace import creditar_aluno
+        from apps.encomendas.models import RecebivelMarketplace
+        from django.utils import timezone
+        resultado = creditar_aluno(pedido)
+        RecebivelMarketplace.objects.filter(pedido=pedido, creditado_em__isnull=True).update(
+            creditado_em=timezone.now(),
+        )
+        return resultado
     aluno_id = str(pedido.aluno.pessoa_id)
     base, headers = _endpoint()
     site, order_id, version, _, _, _ = _pedido(pedido)

@@ -220,7 +220,7 @@ def _validar_publicacao(pedido: PedidoMarketplace):
     b = pedido.briefing
     if pedido.cartao not in Encomenda.NIVEL_DO_CARTAO:
         raise ErroMarketplace("cartão obrigatório")
-    if not pedido.categoria.strip() or not pedido.titulo.strip():
+    if pedido.categoria not in {"espadas_objetos", "pets", "cabelos", "chapeus", "personagens"} or not pedido.titulo.strip():
         raise ErroMarketplace("categoria e título obrigatórios")
     if not isinstance(b, dict) or not isinstance(b.get("quantidade"), int) or b["quantidade"] < 1:
         raise ErroMarketplace("quantidade obrigatória")
@@ -228,8 +228,10 @@ def _validar_publicacao(pedido: PedidoMarketplace):
         raise ErroMarketplace("modelos obrigatórios")
     if not isinstance(b.get("entregaveis"), list) or not b["entregaveis"]:
         raise ErroMarketplace("entregáveis obrigatórios")
-    if not isinstance(pedido.valor_cents, int) or pedido.valor_cents < 1:
-        raise ErroMarketplace("valor oferecido obrigatório")
+    if "animacao" in b["entregaveis"]:
+        raise ErroMarketplace("animação não está disponível nesta fila")
+    if not isinstance(pedido.valor_cents, int) or pedido.valor_cents < 100 or pedido.valor_cents % 100:
+        raise ErroMarketplace("valor oferecido deve ser em créditos inteiros de R$ 1")
     if pedido.moeda != "BRL" or pedido.ambiente != "sandbox":
         raise ErroMarketplace("moeda ou ambiente indisponível")
     if pedido.prazo_quantidade < 1 or pedido.prazo_unidade not in PedidoMarketplace.PrazoUnidade.values:
@@ -695,6 +697,11 @@ def pedir_ajuste(
         ).first()
         if entrega is None:
             raise ErroMarketplace("entrega não encontrada")
+        if entrega.versao != (
+            EntregaMarketplace.objects.filter(pedido=pedido).order_by("-versao")
+            .values_list("versao", flat=True).first()
+        ):
+            raise ErroMarketplace("escolha a entrega mais recente")
         existente = AjusteMarketplace.objects.filter(entrega=entrega).first()
         if existente:
             return existente

@@ -19,6 +19,7 @@ from django.utils import timezone
 from pagamentos.core import gateway, models as core_models
 from pagamentos.core.ambiente_mp import mp_em_teste
 from pagamentos.marketplace.models import Charge, Recebivel
+from pagamentos.marketplace import identity
 
 logger = logging.getLogger(__name__)
 PAYPAL_BASE = "https://api-m.sandbox.paypal.com"
@@ -214,6 +215,8 @@ def _paypal_capture(order: dict, charge: Charge) -> tuple[str, str]:
         raise ConflitoDeCobranca("captura PayPal divergente")
     if capture.get("status") == "COMPLETED" and capture.get("id"):
         return "approved", str(capture["id"])
+    if capture.get("status") in {"REFUNDED", "PARTIALLY_REFUNDED"}:
+        return ("refunded" if capture["status"] == "REFUNDED" else "partially_refunded"), str(capture.get("id") or "")
     if capture.get("status") in {"DECLINED", "FAILED"}:
         return "rejected", ""
     return "pending", ""
@@ -227,8 +230,15 @@ def _public(charge: Charge) -> dict:
         "method": charge.method, "status": charge.status,
         "reference": charge.provider_reference,
     }
+    if charge.wallet_owner_id:
+        result["wallet_owner_id"] = charge.wallet_owner_id
+        result["idempotency_key"] = str(charge.idempotency_key)
     if charge.method == "pix" and charge.pix_qr_code:
-        result["pix"] = {"qr_code": charge.pix_qr_code, "qr_code_base64": charge.pix_qr_code_base64}
+        result["pix"] = {
+            "qr_code": charge.pix_qr_code,
+            "qr_code_base64": charge.pix_qr_code_base64,
+            "expires_at": charge.pix_expires_at.isoformat() if charge.pix_expires_at else None,
+        }
     if charge.method == "paypal" and charge.approval_url:
         result["paypal"] = {"approve_url": charge.approval_url}
     return result
@@ -236,13 +246,24 @@ def _public(charge: Charge) -> dict:
 
 def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
           order_version: int, amount_cents: int, currency: str, environment: str,
-          method: str, customer_email: str) -> dict:
+          method: str, customer_email: str, wallet_owner_id: str = "",
+          customer_name: str = "", customer_cpf: str = "") -> dict:
     if not site_id or len(site_id) > 255 or order_version < 1 or amount_cents < 1:
         raise ConflitoDeCobranca("pedido inválido")
     if currency != "BRL" or environment != "sandbox" or method not in {"pix", "paypal"}:
         raise ConflitoDeCobranca("somente Pix e PayPal em BRL sandbox")
     if not customer_email or len(customer_email) > 254:
         raise ConflitoDeCobranca("email do cliente inválido")
+    if method == "pix":
+        try:
+            customer_name, customer_cpf, customer_email = identity.payer(
+                name=customer_name, cpf=customer_cpf, email=customer_email)
+        except identity.InvalidPayer as exc:
+            raise ConflitoDeCobranca(str(exc)) from exc
+    name_digest = identity.digest(customer_name) if customer_name else ""
+    cpf_digest = identity.digest(customer_cpf) if customer_cpf else ""
+    if wallet_owner_id and (len(wallet_owner_id) > 64 or method != "pix" or amount_cents % 100):
+        raise ConflitoDeCobranca("recarga de créditos inválida")
     if method == "pix" and not pix_marketplace_em_teste():
         raise CobrançaIndisponivel("Mercado Pago de teste não configurado")
     if method == "paypal" and (not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET):
@@ -258,6 +279,8 @@ def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
                 order_version=order_version, amount_cents=amount_cents,
                 currency=currency, environment=environment, method=method,
                 customer_email=customer_email,
+                customer_name_digest=name_digest, customer_cpf_digest=cpf_digest,
+                wallet_owner_id=wallet_owner_id,
                 paypal_return_base=paypal_return_base if method == "paypal" else "",
             )
     except IntegrityError:
@@ -265,8 +288,10 @@ def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
         if charge is None:
             raise ConflitoDeCobranca("já existe cobrança para esta versão do pedido")
         if (charge.site_id, charge.order_id, charge.order_version, charge.amount_cents,
-            charge.currency, charge.environment, charge.method, charge.customer_email) != (
-            site_id, order_id, order_version, amount_cents, currency, environment, method, customer_email):
+            charge.currency, charge.environment, charge.method, charge.customer_email,
+            charge.wallet_owner_id, charge.customer_name_digest, charge.customer_cpf_digest) != (
+            site_id, order_id, order_version, amount_cents, currency, environment, method,
+            customer_email, wallet_owner_id, name_digest, cpf_digest):
             raise ConflitoDeCobranca("chave de idempotência usada para outro pedido")
         if charge.method == "paypal" and not charge.provider_reference:
             return _recuperar_criacao_paypal(charge)
@@ -278,17 +303,21 @@ def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
             pix = gateway.criar_pagamento_pix(
                 idempotency_key=str(idempotency_key), amount_cents=amount_cents,
                 order_id=str(charge.id), payer_email=customer_email,
+                payer_first_name=customer_name.split(" ", 1)[0],
+                payer_last_name=customer_name.split(" ", 1)[1],
+                payer_identification={"type": "CPF", "number": customer_cpf},
                 notification_url=(settings.PAGAMENTOS_PUBLIC_BASE_URL + "/api/pagamentos/marketplace/webhooks/mp") if settings.PAGAMENTOS_PUBLIC_BASE_URL else None,
             )
             charge.provider_reference = pix.payment_id
             charge.pix_qr_code = pix.qr_code
             charge.pix_qr_code_base64 = pix.qr_code_base64
+            charge.pix_expires_at = pix.expires_at
         else:
             order = _paypal("POST", "/v2/checkout/orders", request_id=str(idempotency_key),
                             data=_paypal_create_body(charge))
             _save_paypal_order(charge, order)
         charge.status = "pending"
-        charge.save(update_fields=["provider_reference", "pix_qr_code", "pix_qr_code_base64", "approval_url", "status", "updated_at"])
+        charge.save(update_fields=["provider_reference", "pix_qr_code", "pix_qr_code_base64", "pix_expires_at", "approval_url", "status", "updated_at"])
     except (gateway.FalhaNoProvedor, CobrançaIndisponivel) as exc:
         # Uma resposta incompleta ainda pode ter criado recurso externo.
         # Preservar toda referência disponível torna a reconciliação possível.
@@ -302,34 +331,60 @@ def criar(*, idempotency_key: uuid.UUID, site_id: str, order_id: uuid.UUID,
 
 
 def _registrar_estado(charge: Charge, state: str, reference: str = "") -> dict:
-    if state not in {"approved", "rejected", "pending"}:
+    reversals = {"refunded", "partially_refunded", "charged_back", "cancelled"}
+    if state not in {"approved", "rejected", "pending", *reversals}:
         raise ConflitoDeCobranca("estado do provedor inválido")
     with transaction.atomic():
         locked = Charge.objects.select_for_update().get(pk=charge.pk)
-        if locked.status == "approved" or locked.status == state:
+        if locked.status == state:
             return _public(locked)
         if state == "pending":
+            return _public(locked)
+        # Uma reversão só altera cobrança já aprovada. Respostas atrasadas de
+        # pendência ou recusa não desfazem a confirmação financeira.
+        if locked.status == "approved" and state == "rejected":
+            return _public(locked)
+        if state in reversals and locked.status not in {"approved", "partially_refunded"}:
+            return _public(locked)
+        if locked.status in reversals and not (locked.status == "partially_refunded" and state in reversals):
             return _public(locked)
         locked.status = state
         if reference:
             locked.capture_reference = reference
         locked.save(update_fields=["status", "capture_reference", "updated_at"])
         if state == "approved":
-            Recebivel.objects.get_or_create(charge=locked, defaults={"site_id": locked.site_id, "order_id": locked.order_id})
-        core_models.emitir("marketplace.pagamento." + ("aprovado" if state == "approved" else "negado"), {
+            if locked.wallet_owner_id:
+                from pagamentos.marketplace import wallet
+                wallet.creditar_recarga(locked)
+            else:
+                Recebivel.objects.get_or_create(charge=locked, defaults={"site_id": locked.site_id, "order_id": locked.order_id})
+        if state in reversals:
+            Recebivel.objects.filter(charge=locked, status="pendente_definicao").update(
+                status="revertido", updated_at=timezone.now())
+            if locked.wallet_owner_id:
+                from pagamentos.marketplace import wallet
+                wallet.reverter_recarga(locked)
+        if locked.wallet_owner_id:
+            event = ("marketplace.recarga.revertida" if state in reversals else
+                     "marketplace.recarga." + ("aprovada" if state == "approved" else "negada"))
+        else:
+            event = ("marketplace.pagamento.revertido" if state in reversals else
+                     "marketplace.pagamento." + ("aprovado" if state == "approved" else "negado"))
+        core_models.emitir(event, {
             "charge_id": str(locked.id), "site_id": locked.site_id, "order_id": str(locked.order_id),
             "order_version": locked.order_version, "amount_cents": locked.amount_cents,
             "currency": locked.currency, "environment": locked.environment,
             "method": locked.method, "provider_reference": locked.provider_reference,
-            "capture_reference": locked.capture_reference,
+            "capture_reference": locked.capture_reference, "status": locked.status,
+            "context": "wallet_topup" if locked.wallet_owner_id else "order",
+            "wallet_owner_id": locked.wallet_owner_id,
+            "idempotency_key": str(locked.idempotency_key),
         })
     transaction.on_commit(core_models.relay_apos_commit)
     return _public(locked)
 
 
 def reconciliar(charge: Charge) -> dict:
-    if charge.status == "approved":
-        return _public(charge)
     if not charge.provider_reference and charge.method == "pix" and charge.status == "reconciliation_required":
         candidates = gateway.buscar_por_referencia(external_reference=str(charge.id))
         references = {str(item.get("id")) for item in candidates if item.get("id")}
@@ -353,7 +408,11 @@ def reconciliar(charge: Charge) -> dict:
             raise ConflitoDeCobranca("valor Pix divergente")
         if status.status == "approved":
             return _registrar_estado(charge, "approved", status.payment_id)
-        if status.status in {"rejected", "cancelled"}:
+        if status.status in {"refunded", "charged_back", "partially_refunded"}:
+            return _registrar_estado(charge, status.status, status.payment_id)
+        if status.status == "cancelled" and charge.status == "approved":
+            return _registrar_estado(charge, "cancelled", status.payment_id)
+        if status.status in {"rejected", "cancelled", "expired"}:
             return _registrar_estado(charge, "rejected")
         return _public(charge)
     order = _paypal_order(charge)
@@ -371,14 +430,14 @@ def capturar_paypal(charge: Charge) -> dict:
     if charge.method != "paypal":
         raise ConflitoDeCobranca("cobrança não é PayPal")
     current = reconciliar(charge)
-    if current["status"] == "approved":
+    if current["status"] in {"approved", "refunded", "partially_refunded", "charged_back", "cancelled"}:
         return current
     order = _paypal_order(charge)
     if order.get("status") != "APPROVED":
         return current
     with transaction.atomic():
         locked = Charge.objects.select_for_update().get(pk=charge.pk)
-        if locked.status == "approved":
+        if locked.status in {"approved", "refunded", "partially_refunded", "charged_back", "cancelled"}:
             return _public(locked)
         now = timezone.now()
         started = locked.capture_started_at or locked.updated_at

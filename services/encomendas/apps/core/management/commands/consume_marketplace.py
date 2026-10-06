@@ -16,7 +16,10 @@ from apps.encomendas.models import OutboxMarketplace
 logger = logging.getLogger(__name__)
 GRUPO = "encomendas"
 CONSUMIDOR = "worker-1"
-STREAMS = [f"eventos.{evento}" for evento in (*ASSUNTOS, "marketplace.pagamento.aprovado")]
+STREAMS = [f"eventos.{evento}" for evento in (
+    *ASSUNTOS, "marketplace.pagamento.aprovado",
+    "marketplace.recarga.aprovada", "marketplace.recarga.revertida",
+)]
 IDLE_MS_REENTREGA = 60_000
 MAX_ENTREGAS = 5
 LOTE_REENTREGA = 10

@@ -19,7 +19,7 @@ from apps.encomendas.models import (
 def dados_pedido():
     return {
         "cartao": Encomenda.Cartao.ITEM_SIMPLES,
-        "categoria": "Objeto de jogo",
+        "categoria": "espadas_objetos",
         "titulo": "Espada para jogo",
         "briefing": {
             "quantidade": 1,
@@ -35,6 +35,20 @@ def dados_pedido():
         "ajustes_inclusos": 1,
         "ambiente": "sandbox",
     }
+
+
+@pytest.mark.django_db
+def test_publicacao_recusa_animacao_mas_preserva_rascunho():
+    mp.autorizar_cliente(site_id="escola-a", cliente_id="cliente-a", ativa=True, quem="equipe")
+    mp.configurar_fase(site_id="escola-a", quem="equipe", clientes_liberados=True)
+    dados = dados_pedido()
+    dados["briefing"]["entregaveis"].append("animacao")
+    pedido = mp.salvar_rascunho(site_id="escola-a", cliente_id="cliente-a", dados=dados)
+    with pytest.raises(mp.ErroMarketplace, match="animação"):
+        mp.publicar_pedido(site_id="escola-a", cliente_id="cliente-a",
+                           pedido_id=pedido.pk, versao=pedido.versao)
+    pedido.refresh_from_db()
+    assert pedido.status == PedidoMarketplace.Status.RASCUNHO
 
 
 @pytest.mark.django_db
@@ -162,6 +176,11 @@ def test_fila_passagem_aceite_direto_entrega_ajuste_e_recebivel(
         site_id=semeado, pedido_id=pedido.pk, pessoa_id=segundo.pessoa_id,
         arquivos_ids=[novo_arquivo.pk],
     )
+    with pytest.raises(mp.ErroMarketplace, match="mais recente"):
+        mp.pedir_ajuste(
+            site_id=semeado, pedido_id=pedido.pk, cliente_id="cliente-a",
+            entrega_id=entrega1.pk, texto="Outra mudança na versão antiga",
+        )
     recebivel = mp.aprovar_entrega(
         site_id=semeado, pedido_id=pedido.pk, cliente_id="cliente-a",
         entrega_id=entrega2.pk,

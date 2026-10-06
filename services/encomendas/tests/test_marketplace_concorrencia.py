@@ -72,7 +72,7 @@ def pedido_pago_com_oferta(site_id="site-concorrencia"):
         site_id=site_id, cliente_id="cliente-concorrencia",
         dados={
             "cartao": Encomenda.Cartao.ITEM_SIMPLES,
-            "categoria": "Objeto",
+            "categoria": "espadas_objetos",
             "titulo": "Objeto 3D",
             "briefing": {
                 "quantidade": 1, "modelos": [{"nome": "Objeto"}],

@@ -6,13 +6,13 @@ import pytest
 
 from apps.core import eventos_marketplace as eventos
 from apps.encomendas import marketplace as mp
-from apps.encomendas.models import Encomenda, OutboxMarketplace
+from apps.encomendas.models import Encomenda, OutboxMarketplace, RecargaMarketplace
 
 def _pedido():
     mp.autorizar_cliente(site_id="escola-a", cliente_id="cliente-a", ativa=True, quem="equipe")
     mp.configurar_fase(site_id="escola-a", quem="equipe", clientes_liberados=True)
     return mp.salvar_rascunho(site_id="escola-a", cliente_id="cliente-a", dados={
-        "cartao": Encomenda.Cartao.ITEM_SIMPLES, "categoria": "Objeto de jogo",
+        "cartao": Encomenda.Cartao.ITEM_SIMPLES, "categoria": "espadas_objetos",
         "titulo": "Espada", "briefing": {"quantidade": 1, "modelos": [{"nome": "Espada"}],
         "variacoes": [], "destino": "jogo", "entregaveis": ["modelo_3d"]},
         "valor_cents": 18000, "moeda": "BRL", "prazo_quantidade": 2,
@@ -51,3 +51,29 @@ def test_pagamento_do_fio_reconsulta_servico_financeiro(monkeypatch):
     eventos.processar({"event": "marketplace.pagamento.aprovado", "version": 1,
                        "event_id": str(uuid.uuid4()), "data": dados})
     assert chamado == [dados]
+
+
+@pytest.mark.django_db
+def test_recarga_confirmada_recupera_charge_e_avisa_so_titular_uma_vez(monkeypatch):
+    mp.autorizar_cliente(site_id="escola-a", cliente_id="cliente-a", ativa=True, quem="equipe")
+    mp.configurar_fase(site_id="escola-a", quem="equipe", clientes_liberados=True)
+    recarga = RecargaMarketplace.objects.create(site_id="escola-a", cliente_id="cliente-a",
+                                                 valor_cents=5000)
+    monkeypatch.setattr("apps.core.carteira_marketplace.consultar_recarga", lambda **kwargs: {
+        "id": "charge-uma", "site_id": "escola-a", "wallet_owner_id": "cliente-a",
+        "amount_cents": 5000, "currency": "BRL", "environment": "sandbox",
+        "idempotency_key": str(recarga.pk), "status": "approved",
+    })
+    envelope = {"event": "marketplace.recarga.aprovada", "version": 1,
+                "event_id": str(uuid.uuid4()), "data": {
+                    "site_id": "escola-a", "wallet_owner_id": "cliente-a",
+                    "charge_id": "charge-uma", "idempotency_key": str(recarga.pk),
+                }}
+    eventos.processar(envelope)
+    eventos.processar(envelope)
+    recarga.refresh_from_db()
+    assert recarga.charge_id == "charge-uma"
+    cartas = OutboxMarketplace.objects.filter(event="notificacao.devida")
+    assert cartas.count() == 1
+    assert cartas.first().payload["destinatario_id"] == "cliente-a"
+    assert cartas.first().payload["assunto"] == "marketplace.recarga"

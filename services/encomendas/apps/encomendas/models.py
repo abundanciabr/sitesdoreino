@@ -1951,13 +1951,43 @@ class RecebivelMarketplace(models.Model):
     valor_liquido_cents = models.PositiveIntegerField(null=True, blank=True)
     referencia_repasse = models.CharField(max_length=160, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+    creditado_em = models.DateTimeField(null=True, blank=True)
     recebido_em = models.DateTimeField(null=True, blank=True)
+
+
+class RecargaMarketplace(models.Model):
+    """Referência local da recarga; o saldo e o crédito pertencem a pagamentos."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    cliente_id = models.CharField(max_length=64)
+    valor_cents = models.PositiveIntegerField()
+    charge_id = models.CharField(max_length=160, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "cliente_id", "-criada_em"], name="mp_recarga_cliente")]
+
+
+class SaqueMarketplace(models.Model):
+    """Chave estável de uma solicitação; o dinheiro não é enviado por esta célula."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = id_do_site()
+    aluno_id = models.CharField(max_length=64)
+    valor_cents = models.PositiveIntegerField()
+    solicitado_em = models.DateTimeField(auto_now_add=True)
+    registrado_no_ledger = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "aluno_id", "-solicitado_em"], name="mp_saque_aluno")]
 
 
 class EventoMarketplace(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site_id = id_do_site()
-    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT, related_name="eventos")
+    pedido = models.ForeignKey(PedidoMarketplace, on_delete=models.PROTECT,
+                               related_name="eventos", null=True, blank=True)
     chave = models.CharField(max_length=160, unique=True)
     tipo = models.CharField(max_length=80)
     dados = models.JSONField(default=dict)

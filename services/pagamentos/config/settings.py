@@ -143,6 +143,7 @@ INSTALLED_APPS = [
 # A Fila do Dólar só cria cobranças de teste nesta fase. A ausência de qualquer
 # credencial ou token do par encomendas deixa suas rotas financeiras fechadas.
 MARKETPLACE_API_TOKEN = os.environ.get("TOKENS_ACEITOS_ENCOMENDAS", "")
+MARKETPLACE_WITHDRAWAL_ADMIN_TOKEN = os.environ.get("MARKETPLACE_WITHDRAWAL_ADMIN_TOKEN", "")
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")

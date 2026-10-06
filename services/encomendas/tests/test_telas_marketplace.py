@@ -2,6 +2,8 @@
 
 import pytest
 import json
+import base64
+import uuid
 from tempfile import TemporaryDirectory
 from datetime import timedelta
 from types import SimpleNamespace
@@ -47,6 +49,84 @@ def test_cliente_nao_le_pedido_de_outra_pessoa(client, pessoa, monkeypatch):
     pedido = PedidoMarketplace.objects.create(site_id="escola-a", cliente_id="cliente-dois")
     resposta = client.get(reverse("marketplace_pedido", args=[pedido.pk]))
     assert resposta.status_code == 404
+
+
+@pytest.mark.django_db
+def test_cinco_categorias_novas_sem_apagar_leitura_de_pedido_antigo(client, pessoa):
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente
+
+    pessoa["id"] = "cliente-legado"
+    FaseMarketplace.objects.create(site_id="escola-a", clientes_liberados=True)
+    AutorizacaoMarketplaceCliente.objects.create(site_id="escola-a", cliente_id=pessoa["id"], ativa=True)
+    pagina = client.get(reverse("marketplace_novo")).content.decode()
+    assert "Chapéus" in pagina
+    assert "Animações" not in pagina
+    antigo = PedidoMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"],
+                                               categoria="animacoes", titulo="Pedido antigo")
+    assert "Animações" in client.get(reverse("marketplace_pedido", args=[antigo.pk])).content.decode()
+    assert client.post(reverse("marketplace_salvar"), {
+        "categoria": "animacoes", "titulo": "Pedido novo",
+    }).status_code == 400
+
+
+@pytest.mark.django_db
+def test_pix_mostra_qr_e_codigo_sem_criar_segunda_cobranca(client, pessoa, monkeypatch):
+    from apps.core import carteira_marketplace
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente, RecargaMarketplace
+
+    pessoa["id"] = "cliente-pix"
+    FaseMarketplace.objects.create(site_id="escola-a", clientes_liberados=True)
+    AutorizacaoMarketplaceCliente.objects.create(site_id="escola-a", cliente_id=pessoa["id"], ativa=True)
+    recarga = RecargaMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"],
+                                                 valor_cents=18000, charge_id="charge-pix")
+    qr_png = base64.b64encode(b"\x89PNG\r\n\x1a\nexemplo").decode("ascii")
+    monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kwargs: {
+        "site_id": "escola-a", "owner_id": pessoa["id"], "balance_cents": 0, "credits": 0,
+    })
+    monkeypatch.setattr(carteira_marketplace, "consultar_recarga", lambda **kwargs: {
+        "status": "pending", "method": "pix", "pix": {
+            "qr_code": "pix-copia-e-cola-do-teste", "qr_code_base64": qr_png,
+            "expires_at": "2026-10-06T17:00:00-03:00",
+        },
+    })
+    resposta = client.get(reverse("marketplace_cliente"))
+    pagina = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert "data:image/png;base64," in pagina
+    assert "pix-copia-e-cola-do-teste" in pagina
+    assert "Válido até" in pagina
+    assert "Gerar Pix para comprar créditos" not in pagina
+
+    monkeypatch.setattr(carteira_marketplace, "consultar_recarga", lambda **kwargs: {
+        "status": "rejected", "method": "pix",
+    })
+    pagina = client.get(reverse("marketplace_cliente")).content.decode()
+    assert "Não confirmado" in pagina
+    assert "Gerar Pix para comprar créditos" in pagina
+
+
+@pytest.mark.django_db
+def test_recarga_exige_pagador_completo_e_repeticao_usa_mesma_chave(client, pessoa, monkeypatch):
+    from apps.core import carteira_marketplace
+    from apps.encomendas.models import AutorizacaoMarketplaceCliente, RecargaMarketplace
+
+    pessoa["id"] = "cliente-pix"
+    FaseMarketplace.objects.create(site_id="escola-a", clientes_liberados=True)
+    AutorizacaoMarketplaceCliente.objects.create(site_id="escola-a", cliente_id=pessoa["id"], ativa=True)
+    chamadas = []
+    monkeypatch.setattr(carteira_marketplace, "iniciar_recarga", lambda **kwargs: (
+        chamadas.append(kwargs) or {"id": "charge-uma", "status": "pending"}
+    ))
+    monkeypatch.setattr(carteira_marketplace, "consultar_recarga", lambda **kwargs: {"status": "pending"})
+    chave = str(uuid.uuid4())
+    dados = {"chave": chave, "creditos": "50", "nome": "Cliente Completo",
+             "cpf": "52998224725", "email": "cliente@example.com"}
+    assert client.post(reverse("marketplace_recarregar"), dados).status_code == 302
+    assert client.post(reverse("marketplace_recarregar"), dados).status_code == 302
+    assert RecargaMarketplace.objects.count() == 1
+    assert len(chamadas) == 1
+    assert chamadas[0]["chave_idempotencia"] == chave
+    assert chamadas[0]["valor_cents"] == 5000
 
 
 @pytest.mark.django_db
@@ -159,9 +239,10 @@ def test_referencia_tem_download_privado_para_dono(client, pessoa):
 
 @pytest.mark.django_db
 def test_percurso_http_completo_sem_provedor_real(
-    client, pessoa, semeado, criar_perfil,
+    client, pessoa, semeado, criar_perfil, monkeypatch,
 ):
     from apps.encomendas import marketplace
+    from apps.core import carteira_marketplace, financeiro_marketplace
     from apps.encomendas.models import (
         ArquivoMarketplace, AutorizacaoMarketplaceAluno,
         PedidoMarketplace, RecebivelMarketplace,
@@ -208,12 +289,25 @@ def test_percurso_http_completo_sem_provedor_real(
         assert pedido.status == "aguardando_pagamento"
         assert marketplace.distribuir_pedido(site_id=semeado, pedido_id=pedido.pk) is None
 
-        # Cobrança simulada somente na porta interna: a UI nunca fabrica pago.
-        marketplace.confirmar_pagamento(
-            site_id=semeado, pedido_id=pedido.pk, versao=pedido.versao,
-            valor_cents=pedido.valor_cents, moeda="BRL", ambiente="sandbox",
-            referencia="pagamento-sandbox-do-cenario",
-        )
+        # O saldo é debitado na célula financeira antes de liberar a fila.
+        monkeypatch.setenv("PAGAMENTOS_API_TOKEN", "token-local-do-teste")
+        monkeypatch.setattr(financeiro_marketplace, "consultar_cobranca", lambda *args, **kwargs: {"status": "absent"})
+        gastos = []
+        def resposta_carteira(metodo, url, **kwargs):
+            if url.endswith("/wallets/orders"):
+                gastos.append(kwargs["body"])
+                return {"order_id": str(pedido.pk), "status": "debited",
+                        "amount_cents": pedido.valor_cents, "balance_cents": 0}
+            return {"site_id": semeado, "environment": "sandbox",
+                    "owner_id": pessoa["id"], "balance_cents": 18000,
+                    "credits": 180, "entries": [], "withdrawals": []}
+        monkeypatch.setattr(carteira_marketplace, "_pedir", resposta_carteira)
+        comprar = reverse("marketplace_comprar_creditos", args=[pedido.pk])
+        assert client.post(comprar).status_code == 302
+        assert client.post(comprar).status_code == 302
+        assert len(gastos) == 1
+        pedido.refresh_from_db()
+        assert pedido.status == "na_fila"
         oferta = marketplace.distribuir_pedido(site_id=semeado, pedido_id=pedido.pk)
         assert oferta is not None and oferta.aluno_id == perfil.pk
 
