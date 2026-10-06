@@ -182,8 +182,8 @@
     <a class="cartao porta" href="{% url 'placar' %}">
       <div class="rotulo">Ver o placar &rarr;</div>
       <div class="nota">
-        A Meta Crucialmente Importante nº 1, o número de alunos na plataforma,
-        medido ao vivo, e a resposta em uma palavra: ganhando ou perdendo.
+        Metas, responsáveis, receita confirmada de produção, alunos, cursos,
+        atividade de venda e trabalhos técnicos, com a fonte de cada indicador.
       </div>
     </a>
     {% comment %}
@@ -214,18 +214,12 @@
     </a>
   </div>
 
-  {% comment %}
-  Estado vazio HONESTO, e ele e deliberado: no dia 1 tudo aqui seria zero, e
-  uma parede de zeros sem explicacao e lida como "esta tudo quebrado". A
-  cadeira de produto apontou isso na auditoria. Todo numero desta area nasce
-  com a frase que diz o que ele significa.
-  {% endcomment %}
+  <a class="cartao porta" href="{% url 'super_equipe' %}"><div class="rotulo">Abrir a super equipe &rarr;</div><div class="nota">Especialistas técnicos com contexto compartilhado, trabalho executado no servidor, resultados e consumo consultáveis.</div></a>
   <p class="aviso espaco-28">
-    <b>Ainda não há métricas aqui, e isso é o esperado.</b>
-    Esta página é o primeiro degrau: ela existe para provar que a porta funciona
-    (quem não está na lista não chega até aqui). Os painéis de números vêm na
-    próxima fase, um por vez, e cada um só aparece depois que a parte do sistema
-    que fornece aquele dado souber respondê-lo.
+    <b>Os indicadores estão no placar.</b>
+    Cada fonte informa o que foi medido, o que está sem dados e o que não respondeu.
+    Pagamentos e estudos na Hotmart ou Herospark dependem dos dados dessas plataformas;
+    atividades e vendas de teste deste site não comprovam esses resultados externos.
   </p>
 </div>
 {% endblock %}

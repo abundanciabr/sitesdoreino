@@ -138,7 +138,25 @@ def _probes(host: str) -> dict:
 def coletar_fontes(site_id: str, host: str) -> dict:
     """Fotografia atual compartilhada; cada falha mantém seu estado explícito."""
     fontes = {"consultado_em": timezone.now().isoformat(), "site_id": site_id,
-              "referencia_historica": REFERENCIA}
+              "referencia_historica": REFERENCIA,
+              "referencia_historica_resumo": (
+                  "Núcleo técnico: fontes de verdade, fluxos completos e conferência dos limites; "
+                  "o documento é referência anterior, não uma medição atual."),
+              "trabalhos_anteriores": []}
+    anteriores = (Execucao.objects.filter(tipo=Execucao.Tipo.SUPER_EQUIPE,
+                    estado__site_id=str(site_id),
+                    situacao__in=[Execucao.Situacao.CONCLUIDA,
+                                  Execucao.Situacao.AGUARDANDO_INFORMACAO])
+                  .prefetch_related("entregas")[:3])
+    for anterior in anteriores:
+        entrega = anterior.entregas.first()
+        fontes["trabalhos_anteriores"].append({
+            "id": anterior.pk, "situacao": anterior.situacao,
+            "especialidades": anterior.estado.get("especialidades", []),
+            "fontes_em": anterior.estado.get("fontes", {}).get("consultado_em"),
+            "entrega_id": entrega.pk if entrega else None,
+            "entrega_parcial": entrega.parcial if entrega else None,
+        })
     for nome, consulta in (("negocio", lambda: _painel(site_id)),
                            ("experimentos", lambda: _experimentos(site_id)),
                            ("paginas_publicas", lambda: _probes(host))):

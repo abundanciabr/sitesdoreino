@@ -17,6 +17,9 @@
     <p>Negócio: {{ fontes.negocio.estado|default:"consultado" }} · Experimentos: {{ fontes.experimentos.estado|default:"aguardando" }}</p>
     {% for pagina in fontes.paginas_publicas.itens %}<p>{{ pagina.url }} — {% if pagina.estado == 'medido' %}HTTP {{ pagina.http }}, {{ pagina.duracao_ms }} ms, {{ pagina.bytes }} bytes{% else %}indisponível: {{ pagina.motivo }}{% endif %}</p>{% endfor %}
     <p>Referência anterior: <a href="{{ fontes.referencia_historica }}">{{ fontes.referencia_historica }}</a>. Os achados atuais vêm das fontes consultadas acima.</p>
+    {% if fontes.trabalhos_anteriores %}<h3>Trabalhos anteriores usados como contexto</h3>
+      {% for anterior in fontes.trabalhos_anteriores %}<p><a href="{% url 'super_equipe_trabalho' anterior.id %}">Trabalho nº {{ anterior.id }}</a> — {{ anterior.situacao }}; fontes de {{ anterior.fontes_em|default:"data não registrada" }}{% if anterior.entrega_parcial %}; entrega parcial{% endif %}</p>{% endfor %}
+    {% endif %}
   </section>
   {% for nome, resultado in resultados %}<section class="cartao"><h2>{{ nome }}</h2>
     {% if resultado %}<p style="white-space:pre-wrap">{{ resultado.texto }}</p><small>Concluído em {{ resultado.concluido_em }}</small>{% else %}<p>Aguardando esta etapa.</p>{% endif %}
