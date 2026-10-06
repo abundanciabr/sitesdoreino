@@ -105,8 +105,8 @@ def pesquisa(request, slug=None):
             _, atual = pedir("GET", f"tentativas/{tid}", dono)
             if isinstance(atual, dict) and atual.get("id"):
                 dados = atual
-    contexto["tentativa"] = dados
-    if dados:
+    contexto["tentativa"] = dados if isinstance(dados, dict) and dados.get("id") else None
+    if contexto["tentativa"]:
         pergunta = dados.get("proxima_pergunta") or {}
         contexto["pergunta"] = pergunta
         contexto["nota_opcoes"] = range(11)

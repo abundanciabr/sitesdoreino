@@ -1,6 +1,7 @@
 """Satisfação no CRM: acesso, leitura honesta e escritas protegidas."""
 
 import httpx
+import json
 import pytest
 import respx
 from django.test import Client
@@ -95,3 +96,82 @@ def test_atendimento_envia_prazo_com_fuso():
     assert resposta.status_code == 302
     assert chamada.called
     assert chamada.calls[0].request.read().decode().find('2026-10-07T15:30:00-03:00') >= 0
+
+
+@respx.mock
+def test_editor_simples_preserva_identificadores_valores_e_calculo():
+    cliente = entrar()
+    documento = {"perguntas": {
+        "gargalo": {"texto": "Gargalo antigo", "tipo": "escolha", "opcoes": [
+            {"valor": "pedagogico", "texto": "Pedagógico"}, {"valor": "tecnologico", "texto": "Tecnológico"}], "obrigatoria": True},
+        "concorrente": {"texto": "Concorrente antigo", "tipo": "texto", "opcoes": [], "obrigatoria": True},
+        "comentario": {"texto": "Comentário antigo", "tipo": "texto", "opcoes": [], "obrigatoria": False},
+    }, "caminhos": {"7-8": ["gargalo", "concorrente", "comentario"]},
+        "calculo": {"evangelismo": {"mais_3": 2, "1_2": 1, "nenhuma": 0}}}
+    respx.get(QUIZ + "/interno/nps/config").mock(return_value=httpx.Response(200, json={
+        "site_id": "principal", "versao": 4, "documento": documento,
+    }))
+    chamada = respx.post(QUIZ + "/interno/nps/config").mock(return_value=httpx.Response(200, json={
+        "site_id": "principal", "versao": 5, "documento": documento,
+    }))
+    resposta = cliente.post(reverse("crm_satisfacao_config_salvar"), {
+        "site_id": "principal", "modo": "perguntas",
+        "pergunta__gargalo": "Qual gargalo novo?", "opcao__gargalo__pedagogico": "Ensino",
+        "opcao__gargalo__tecnologico": "Tecnologia", "pergunta__concorrente": "Concorrente novo?",
+        "pergunta__comentario": "Comentário novo?", "caminho__7-8__0": "concorrente",
+        "caminho__7-8__1": "gargalo", "caminho__7-8__2": "comentario",
+    })
+    assert resposta.status_code == 302
+    assert chamada.called
+    enviado = json.loads(chamada.calls[0].request.read())["documento"]
+    assert enviado["perguntas"]["gargalo"]["texto"] == "Qual gargalo novo?"
+    assert enviado["perguntas"]["gargalo"]["tipo"] == "escolha"
+    assert [opcao["valor"] for opcao in enviado["perguntas"]["gargalo"]["opcoes"]] == ["pedagogico", "tecnologico"]
+    assert [opcao["texto"] for opcao in enviado["perguntas"]["gargalo"]["opcoes"]] == ["Ensino", "Tecnologia"]
+    assert enviado["caminhos"]["7-8"] == ["concorrente", "gargalo", "comentario"]
+    assert enviado["calculo"] == documento["calculo"]
+    assert documento["perguntas"]["gargalo"]["texto"] == "Gargalo antigo"
+
+
+@respx.mock
+def test_editar_atendimento_preenche_formulario_sem_expor_id():
+    cliente = entrar()
+    respx.get(QUIZ + "/interno/nps/config").mock(return_value=httpx.Response(200, json={
+        "site_id": "principal", "versao": 1, "documento": {"perguntas": {}, "caminhos": {}},
+    }))
+    respx.get(QUIZ + "/interno/nps/historico").mock(return_value=httpx.Response(200, json={
+        "site_id": "principal", "aluno_id": "aluno-1",
+        "avaliacoes": [{"id": "tentativa-1", "aluno_id": "aluno-1", "curso": {"nome": "Desenho"}}],
+        "atendimentos": [{"id": "atendimento-1", "aluno_id": "aluno-1", "tentativa_id": "tentativa-1",
+                          "responsavel": "Ana", "proximo_passo": "Ligar amanhã", "prazo": "2026-10-07T18:30:00+00:00",
+                          "solucao": "Aguardando", "status": "em_andamento"}],
+    }))
+    resposta = cliente.get(reverse("crm_satisfacao"), {
+        "site_id": "principal", "email": "aluna@exemplo.com", "atendimento": "atendimento-1",
+    })
+    assert resposta.status_code == 200
+    texto = resposta.content.decode()
+    assert 'name="responsavel" value="Ana"' in texto
+    assert 'name="prazo" type="datetime-local" value="2026-10-07T15:30"' in texto
+    assert '<textarea name="proximo_passo" required maxlength="2000">Ligar amanhã</textarea>' in texto
+    assert '<input type="hidden" name="atendimento_id" value="atendimento-1">' in texto
+    assert 'name="site_id" value="principal" required' not in texto
+
+
+@respx.mock
+def test_editor_simples_exibe_recusa_da_api_sem_erro_interno():
+    cliente = entrar()
+    documento = {"perguntas": {"comentario": {"texto": "Conte mais", "tipo": "texto", "opcoes": []}},
+                 "caminhos": {"7-8": ["comentario"]}}
+    respx.get(QUIZ + "/interno/nps/config").mock(return_value=httpx.Response(200, json={
+        "site_id": "principal", "versao": 1, "documento": documento,
+    }))
+    respx.post(QUIZ + "/interno/nps/config").mock(return_value=httpx.Response(400, json={
+        "detail": "Documento NPS inválido.",
+    }))
+    resposta = cliente.post(reverse("crm_satisfacao_config_salvar"), {
+        "site_id": "principal", "modo": "perguntas", "pergunta__comentario": "Conte ainda mais",
+        "caminho__7-8__0": "comentario",
+    })
+    assert resposta.status_code == 400
+    assert "Documento NPS inválido." in resposta.content.decode()

@@ -47,7 +47,7 @@
     {% if satisfacao_estado == 'ok' %}
       {% for avaliacao in satisfacao.avaliacoes %}
       <p><b>{{ avaliacao.curso_nome }}</b> · NPS original: {{ avaliacao.resultado.nps|default_if_none:"não respondido" }} · {{ avaliacao.resultado.classificacao|default:"classificação não disponível" }}{% if avaliacao.concluida_em %} · {{ avaliacao.concluida_em }}{% endif %}</p>
-      <p class="nota">Repercussão: {{ avaliacao.resultado.repercussao_pontos|default_if_none:"indefinida" }} · qualidade: {{ avaliacao.qualidade.estado|default:"indefinida" }} · participação externa: {{ avaliacao.resultado.participacao_externa|default:"não disponível" }}. Perguntas v{{ avaliacao.config_versao }} · cálculo v{{ avaliacao.calculo_versao }}.</p>
+      <p class="nota">Repercussão: {{ avaliacao.resultado.repercussao_pontos|default_if_none:"indefinida" }} · qualidade: {{ avaliacao.qualidade.estado|default:"indefinida" }} · participação não disponível na Hotmart/Herospark. Perguntas v{{ avaliacao.config_versao }} · cálculo v{{ avaliacao.calculo_versao }}.</p>
       {% if avaliacao.motivos_tela %}<p class="nota"><b>Motivos:</b> {{ avaliacao.motivos_tela|join:"; " }}</p>{% endif %}
       {% for item in avaliacao.respostas_tela %}<p class="nota"><b>{{ item.pergunta }}:</b> {{ item.resposta }}</p>{% endfor %}
       {% if avaliacao.evidencias_tela %}<p class="nota"><b>Evidências:</b> {% for item in avaliacao.evidencias_tela %}{{ item.rotulo }}: {{ item.valor }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}

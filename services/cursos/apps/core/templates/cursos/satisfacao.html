@@ -34,7 +34,7 @@
   <h2>Concluir avaliação</h2><p>Você pode voltar para conferir ou alterar respostas antes de enviar.</p>
   <form method="post">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="concluir"><button type="submit">Enviar avaliação</button></form>
   {% endif %}
-  <form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="voltar"><button class="secundario" type="submit">Voltar e alterar resposta</button></form>
+  {% if pergunta.id != 'nota' %}<form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="voltar"><button class="secundario" type="submit">Voltar e alterar resposta</button></form>{% endif %}
   {% endif %}
 {% else %}
   {% for item in cursos %}<p><a class="botao" href="{% url 'satisfacao-curso' item.slug %}">{{ item.nome }} · avaliar</a></p>{% empty %}{% if not erro %}<p>Não encontramos um curso vinculado à sua matrícula. Fale com a equipe para conferir o cadastro da escola.</p>{% endif %}{% endfor %}

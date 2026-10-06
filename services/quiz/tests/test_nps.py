@@ -5,7 +5,7 @@ import pytest
 from django.utils import timezone
 
 from apps.quiz.models import NPSTentativa, Site
-from apps.quiz.nps import _classify
+from apps.quiz.nps import _classify, _default, _valid_document
 
 
 AUTH = {"HTTP_AUTHORIZATION": "Bearer editor-token"}
@@ -108,3 +108,17 @@ def test_tempo_suficiente_e_nova_tentativa(client, site, settings):
 ])
 def test_regras_explicitas(answers, expected):
     assert _classify(answers)["classificacao"] == expected
+
+
+def test_tres_pessoas_sem_peso_e_config_anterior_valida():
+    document = _default()
+    assert {option["valor"] for option in document["perguntas"]["repercussao"]["opcoes"]} == {"mais_3", "3", "1_2", "nenhuma"}
+    assert _valid_document(document)
+    old_document = _default()
+    old_document["perguntas"]["repercussao"]["opcoes"] = [option for option in old_document["perguntas"]["repercussao"]["opcoes"] if option["valor"] != "3"]
+    assert _valid_document(old_document)
+    result = _classify({"nota": 10, "repercussao": "3", "orcamento": "ultimo", "indicacao": "sim"})
+    assert result["repercussao_pontos"] is None
+    assert result["evangelismo"] is None
+    assert result["classificacao"] == "Classificação ainda não confirmada"
+    assert "peso definido" in result["motivos"][0]

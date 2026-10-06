@@ -1,6 +1,7 @@
 """Consulta e configuração da satisfação, separada das oportunidades de venda."""
 
 import json
+import copy
 from urllib.parse import urlencode
 
 from django.http import HttpResponseRedirect
@@ -116,6 +117,49 @@ def preparar_avaliacoes(historico):
     return historico
 
 
+def _editor_do_documento(documento):
+    perguntas = documento.get("perguntas", {}) if isinstance(documento, dict) else {}
+    caminhos = documento.get("caminhos", {}) if isinstance(documento, dict) else {}
+    itens = []
+    for chave, pergunta in perguntas.items():
+        if not isinstance(pergunta, dict):
+            continue
+        itens.append({"id": chave, "texto": pergunta.get("texto", ""), "opcoes": [
+            {"valor": opcao.get("valor"), "texto": opcao.get("texto", "")}
+            for opcao in pergunta.get("opcoes", []) if isinstance(opcao, dict)
+        ]})
+    faixas = []
+    titulos = {"9-10": "Notas 9 e 10", "7-8": "Notas 7 e 8", "0-6": "Notas de 0 a 6"}
+    for faixa in ("9-10", "7-8", "0-6"):
+        sequencia = caminhos.get(faixa, [])
+        if not isinstance(sequencia, list):
+            continue
+        posicoes = []
+        for indice, selecionada in enumerate(sequencia):
+            posicoes.append({"indice": indice, "fixa": indice == len(sequencia) - 1 or (faixa == "9-10" and indice == 0), "selecionada": perguntas.get(selecionada, {}).get("texto", selecionada), "id_selecionada": selecionada, "opcoes": [
+                {"id": chave, "texto": perguntas.get(chave, {}).get("texto", chave), "selecionada": chave == selecionada}
+                for chave in sequencia if isinstance(perguntas.get(chave), dict)
+            ]})
+        faixas.append({"id": faixa, "titulo": titulos[faixa], "posicoes": posicoes})
+    return itens, faixas
+
+
+def _atendimento_selecionado(historico, identificador):
+    if not identificador:
+        return {}
+    for atendimento in historico.get("atendimentos", []):
+        if atendimento.get("id") != identificador:
+            continue
+        selecionado = dict(atendimento)
+        prazo = parse_datetime(atendimento.get("prazo") or "")
+        selecionado["prazo_form"] = (
+            timezone.localtime(prazo).strftime("%Y-%m-%dT%H:%M")
+            if prazo and timezone.is_aware(prazo) else ""
+        )
+        return selecionado
+    return {}
+
+
 @require_GET
 def crm_satisfacao(request):
     site_id = _site(request)
@@ -140,6 +184,16 @@ def crm_satisfacao(request):
         if not aluno_id and historico.get("avaliacoes"):
             aluno_id = _texto(historico["avaliacoes"][0].get("aluno_id"))
     config_json = json.dumps(documento, ensure_ascii=False, indent=2) if isinstance(documento, dict) else ""
+    perguntas_editor, caminhos_editor = _editor_do_documento(documento)
+    atendimento_edicao = _atendimento_selecionado(historico or {}, _texto(request.GET.get("atendimento"), 100))
+    if historico:
+        for atendimento in historico.get("atendimentos", []):
+            params = {"site_id": site_id, "atendimento": atendimento.get("id", "")}
+            if email:
+                params["email"] = email
+            elif aluno_id:
+                params["aluno_id"] = aluno_id
+            atendimento["editar_url"] = reverse("crm_satisfacao") + "?" + urlencode(params)
     return render(request, "admin/crm_satisfacao.html", {
         "admin": request.admin,
         "site_id": site_id,
@@ -148,6 +202,9 @@ def crm_satisfacao(request):
         "estado_config": estado_config,
         "config": config or {},
         "config_json": config_json,
+        "perguntas_editor": perguntas_editor,
+        "caminhos_editor": caminhos_editor,
+        "atendimento_edicao": atendimento_edicao,
         "estado_historico": estado_historico,
         "historico": historico or {},
         "salvo": request.GET.get("salvo") == "1",
@@ -160,13 +217,40 @@ def crm_satisfacao_config_salvar(request):
     site_id = _texto(request.POST.get("site_id"), 100)
     if not site_id:
         return _erro(request, "Informe o site antes de salvar a configuração.")
-    texto = request.POST.get("documento") or ""
-    try:
-        documento = json.loads(texto)
-    except (ValueError, TypeError):
-        return _erro(request, "O documento precisa ser JSON válido.", site_id=site_id, documento=texto)
-    if not isinstance(documento, dict):
-        return _erro(request, "O documento precisa ser um objeto JSON.", site_id=site_id, documento=texto)
+    modo = request.POST.get("modo")
+    texto = ""
+    if modo == "perguntas":
+        estado_config, config = NPSClient().configuracao(site_id)
+        if estado_config != NPSClient.OK or not isinstance(config.get("documento"), dict):
+            return _erro(request, "Não foi possível ler a configuração atual para salvar as perguntas.", site_id=site_id)
+        documento = copy.deepcopy(config["documento"])
+        for chave, pergunta in documento.get("perguntas", {}).items():
+            campo = "pergunta__" + chave
+            texto = _texto(request.POST.get(campo), 1000)
+            if not texto:
+                return _erro(request, "Todas as perguntas precisam de texto.", site_id=site_id)
+            pergunta["texto"] = texto
+            for opcao in pergunta.get("opcoes", []):
+                campo_opcao = "opcao__" + chave + "__" + str(opcao["valor"])
+                texto_opcao = _texto(request.POST.get(campo_opcao), 500)
+                if not texto_opcao:
+                    return _erro(request, "Todas as alternativas precisam de texto.", site_id=site_id)
+                opcao["texto"] = texto_opcao
+        for faixa, sequencia in documento.get("caminhos", {}).items():
+            novas = [_texto(request.POST.get(f"caminho__{faixa}__{indice}"), 100) for indice in range(len(sequencia))]
+            if len(novas) != len(sequencia) or set(novas) != set(sequencia):
+                return _erro(request, "Escolha cada pergunta uma vez em cada caminho.", site_id=site_id)
+            if novas[-1] != "comentario" or (faixa == "9-10" and novas[0] != "repercussao"):
+                return _erro(request, "Mantenha o comentário no final e a repercussão no início das notas 9 e 10.", site_id=site_id)
+            documento["caminhos"][faixa] = novas
+    else:
+        texto = request.POST.get("documento") or ""
+        try:
+            documento = json.loads(texto)
+        except (ValueError, TypeError):
+            return _erro(request, "O documento precisa ser JSON válido.", site_id=site_id, documento=texto)
+        if not isinstance(documento, dict):
+            return _erro(request, "O documento precisa ser um objeto JSON.", site_id=site_id, documento=texto)
     estado, detalhe = NPSClient().salvar_configuracao(site_id, documento)
     if estado != NPSClient.OK:
         return _erro(request, detalhe if isinstance(detalhe, str) else "Não foi possível salvar a configuração.", site_id=site_id, documento=texto)
@@ -203,7 +287,10 @@ def crm_satisfacao_atendimento_salvar(request):
     estado, detalhe = NPSClient().salvar_atendimento(corpo)
     if estado != NPSClient.OK:
         return _erro(request, detalhe if isinstance(detalhe, str) else "Não foi possível registrar o atendimento.", site_id=site_id, aluno_id=aluno_id)
-    return HttpResponseRedirect(reverse("crm_satisfacao") + "?" + urlencode({"site_id": site_id, "aluno_id": aluno_id, "atendido": "1"}))
+    email = _texto(request.POST.get("email"), 254).lower()
+    params = {"site_id": site_id, "atendido": "1"}
+    params["email" if email else "aluno_id"] = email or aluno_id
+    return HttpResponseRedirect(reverse("crm_satisfacao") + "?" + urlencode(params))
 
 
 def _erro(request, mensagem, *, site_id="", aluno_id="", documento=""):

@@ -16,7 +16,7 @@ from .models import NPSAtendimento, NPSConfig, NPSTentativa, Site
 CALCULO_VERSAO = 1
 PERGUNTAS = {
     "nota": ("De 0 a 10, quanto você recomendaria sua experiência?", "nota", []),
-    "repercussao": ("Quantas pessoas demonstraram interesse no seu progresso desde que você entrou no curso?", "escolha", [("mais_3", "Mais de três pessoas"), ("1_2", "Uma ou duas pessoas"), ("nenhuma", "Nenhuma pessoa")]),
+    "repercussao": ("Quantas pessoas demonstraram interesse no seu progresso desde que você entrou no curso?", "escolha", [("mais_3", "Mais de três pessoas"), ("3", "Três pessoas"), ("1_2", "Uma ou duas pessoas"), ("nenhuma", "Nenhuma pessoa")]),
     "nome_indicado": ("Quer registrar o nome de alguém? É opcional e não implica desconto ou promessa.", "texto", []),
     "indicacao": ("Você indicou o curso?", "escolha", [("sim", "Sim"), ("nao", "Não"), ("sem_oportunidade", "Ainda não tive oportunidade")]),
     "orcamento": ("Se o orçamento apertasse e você precisasse cortar gastos, o curso seria...", "escolha", [("ultimo", "O último item que eu cogitaria cortar"), ("pausar", "Algo que eu tentaria renegociar ou pausar temporariamente")]),
@@ -60,8 +60,13 @@ def _valid_document(document):
         question = document["perguntas"].get(key)
         if not isinstance(question, dict) or not isinstance(question.get("texto"), str) or not question["texto"].strip() or question.get("tipo") != kind:
             return False
-        if kind == "escolha" and {o.get("valor") for o in question.get("opcoes", []) if isinstance(o, dict)} != {v for v, _ in options}:
-            return False
+        if kind == "escolha":
+            values = [o.get("valor") for o in question.get("opcoes", []) if isinstance(o, dict)]
+            expected = {v for v, _ in options}
+            # A versão publicada antes da inclusão da resposta exata "3" segue válida.
+            permitted = (expected, expected - {"3"}) if key == "repercussao" else (expected,)
+            if not all(isinstance(value, str) for value in values) or len(values) != len(set(values)) or set(values) not in permitted:
+                return False
         if kind == "escolha" and not all(isinstance(o.get("texto"), str) and o["texto"].strip() for o in question["opcoes"]):
             return False
     paths = document.get("caminhos")
@@ -148,9 +153,11 @@ def _classify(a):
     note = a["nota"]
     result = {"nps": note, "classificacao": None, "motivos": [], "indicacao_declarada": a.get("indicacao") == "sim", "repercussao_pontos": None, "evangelismo": None, "neutralidade": None, "detracao": None, "participacao_externa": "não disponível"}
     if note >= 9:
-        result["repercussao_pontos"] = {"mais_3": 2, "1_2": 1, "nenhuma": 0}[a["repercussao"]]
+        result["repercussao_pontos"] = {"mais_3": 2, "3": None, "1_2": 1, "nenhuma": 0}[a["repercussao"]]
         result["evangelismo"] = result["repercussao_pontos"]
-        if a["repercussao"] in ("mais_3", "1_2") and a["orcamento"] == "ultimo":
+        if a["repercussao"] == "3":
+            result["motivos"].append("A repercussão de três pessoas ainda não tem peso definido; classificação pendente.")
+        elif a["repercussao"] in ("mais_3", "1_2") and a["orcamento"] == "ultimo":
             result["classificacao"] = "Promotor confirmado"
             result["motivos"].append("Nota alta, repercussão positiva e curso como último gasto a cortar.")
         elif a["repercussao"] == "nenhuma" and a["orcamento"] == "pausar":
