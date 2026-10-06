@@ -1,6 +1,7 @@
 {% extends 'sandbox/base.html' %}{% load sandbox_moeda %}
 {% block title %}Confirme seu projeto{% endblock %}
 {% block body %}
+<style>.prazo-opcoes label{display:flex;align-items:center;gap:10px;border:1px solid #cbdfe5;border-radius:10px;padding:14px;margin-top:10px;cursor:pointer}.prazo-opcoes input[type=radio]{display:inline-block;width:auto;padding:0;margin:0;accent-color:#009c9f}.prazo-opcoes label:has(input:checked){background:#e5f7f6;border-color:#009c9f}input[type=checkbox]{accent-color:#009c9f}</style>
 <h1>É este o projeto que você quer fazer?</h1>
 <p class="lead">Confira o combinado, escolha seu prazo e aceite os termos para começar.</p>
 <div class="split"><section class="card"><h2>{{ projeto.titulo }}</h2><p class="preserve">{{ projeto.briefing }}</p>
@@ -14,7 +15,7 @@
 {% if trabalho_ativo %}<p>Você já tem um projeto em andamento.</p><a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho</a>
 {% elif aluno_atual and projeto.recompensa != None %}
 <form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}
-<fieldset style="border:0;padding:0"><legend><strong>Escolha seu prazo de entrega</strong></legend>
+<fieldset class="prazo-opcoes" style="border:0;padding:0"><legend><strong>Escolha seu prazo de entrega</strong></legend>
 <label><input type="radio" name="prazo_horas" value="24" required> 24 horas</label>
 <label><input type="radio" name="prazo_horas" value="48" required> 48 horas</label>
 <label><input type="radio" name="prazo_horas" value="72" required> 72 horas · prazo máximo</label></fieldset>
