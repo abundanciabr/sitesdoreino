@@ -1,0 +1,2 @@
+{% extends 'cursos/moldura.html' %}
+{% block conteudo %}<h1>Seu próximo dia abre em {{ data|date:'d/m/Y' }} às {{ data|date:'H:i' }}</h1><p>A liberação acompanha o início da sua jornada. Concluir uma aula registra seu avanço; a próxima data continua a mesma.</p><a href="{% url 'curso' curso.slug %}">Voltar ao curso</a> · <a href="{% url 'meus-itens-3d' %}">Meus itens</a>{% endblock %}

@@ -51,6 +51,7 @@ Nunca um `save()`.
 
 import uuid
 import re
+from .praticas_models import Base3D, Atividade3D, Projeto3D, Tentativa3D, Jornada3D, Evento3D
 from datetime import timedelta
 
 from django.db import models

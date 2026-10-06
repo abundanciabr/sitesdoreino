@@ -30,7 +30,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
 {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
 
-{% if aula.pedido or aula.cliente %}<div class="encomenda-da-aula">
+{% if not pratica3d or pratica3d.pitch %}{% if aula.pedido or aula.cliente %}<div class="encomenda-da-aula">
   {% if aula.pedido %}<p class="pedido">{{ aula.pedido }}</p>{% endif %}
   {% if aula.cliente %}<p class="cliente">Cliente: {{ aula.cliente }}</p>{% endif %}
 </div>{% endif %}
@@ -41,8 +41,9 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {{ peca.html|safe }}
 </section>
 {% endfor %}
+{% endif %}
 
-{% if videoaula.html %}
+{% if videoaula.html and not pratica3d %}
 <p class="abrir-videoaula"><a class="botao" id="abrir-videoaula" href="#videoaula">{{ videoaula.rotulo }}</a></p>
 
 <dialog class="videoaula" id="videoaula" aria-labelledby="titulo-da-videoaula">
@@ -89,8 +90,10 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 <div class="aula-layout">
 <section class="video" id="video">
   <div class="atalho-conteudo"><button type="button" class="abrir-conteudo" aria-controls="conteudo-do-curso" aria-expanded="false" hidden><span aria-hidden="true">☰</span> Conteúdo do curso</button></div>
-  {% if video.interativa %}<h2>Prática guiada: {{ video.pratica_titulo }}</h2>{% elif not video.youtube_id %}<h2>O vídeo da aula</h2>{% endif %}
-  {% if video.interativa %}
+  {% if pratica3d %}{% include 'cursos/_pratica_3d.html' %}{% endif %}
+  {% if pratica3d and not pratica3d.pitch %}
+  {% elif video.interativa %}
+  <h2>Prática guiada: {{ video.pratica_titulo }}</h2>
   <div class="conteudo-pratica-nativa">
     {% include video.pratica_template %}
   </div>

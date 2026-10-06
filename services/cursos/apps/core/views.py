@@ -88,6 +88,7 @@ from apps.cursos.models import (
 from .markdown import para_html
 from . import arquivos_privados
 from .sessao import quem_e, site_atual
+from . import praticas_3d
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
 # não frases: o texto vive aqui, e uma frase pronta viajando na barra de
@@ -347,6 +348,7 @@ def _sala(request, slug: str | None = None):
                     cursos=_cursos_para_escolher(ator, site),
                 ),
             )
+        praticas_3d.preparar_jornada(ator.pessoa, curso)
         return ator.pessoa, curso, None
     if not enderecos.cursos_do_site(site):
         return None, None, _recusar(request, "sem-curso", status=200)
@@ -436,11 +438,16 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
     """Uma porta pronta para o template, com a conta feita aqui e não em `{{ }}`."""
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
+    data_3d = praticas_3d.liberacao(aula, progresso.pessoa) if progresso else None
     trancada = estado == Progresso.Estado.TRANCADA
     if not publicada:
         estado_visual = "em-preparo"
         rotulo = "Em preparo"
         explicacao = "A escola está preparando esta aula."
+    elif data_3d:
+        estado_visual = Progresso.Estado.TRANCADA
+        rotulo = 'Liberação por tempo'
+        explicacao = 'Abre em ' + timezone.localtime(data_3d).strftime('%d/%m às %H:%M') + '. Concluir uma aula não antecipa essa data.'
     elif trancada:
         estado_visual = Progresso.Estado.TRANCADA
         rotulo = Progresso.Estado.TRANCADA.label
@@ -467,7 +474,7 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
         # uma promessa quebrada no mapa.
-        "abre": (not trancada) and publicada,
+        "abre": (not trancada) and publicada and not data_3d,
     }
 
 
@@ -1040,6 +1047,9 @@ def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
             ),
         )
     progresso = portas.progresso_de(pessoa, aula)
+    data_3d = praticas_3d.liberacao(aula, pessoa)
+    if data_3d:
+        return None, None, None, None, render(request, 'cursos/aguardar_pratica_3d.html', {**_de_fora(curso), 'data': data_3d, 'curso': curso}, status=403)
     if progresso is None or progresso.estado == Progresso.Estado.TRANCADA:
         # Aula trancada mostra o mapa, não o conteúdo.
         return None, None, None, None, _voltar_ao_mapa(curso, recado="trancada")
@@ -1174,6 +1184,7 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "pecas": _pecas(aula),
             "videoaula": _videoaula(aula),
             "video": _video(aula),
+            "pratica3d": praticas_3d.contexto(aula, pessoa, request),
             "navegacao": _navegacao_aulas(curso, aula, pessoa),
             "conteudo": _conteudo_do_curso(curso, aula, pessoa),
             "comentarios": Paginator(

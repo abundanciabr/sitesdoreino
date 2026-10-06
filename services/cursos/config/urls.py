@@ -24,6 +24,7 @@ from apps.core.views import (
     servir_estatico,
 )
 from config.api import api
+from apps.core import praticas_3d
 from apps.core.satisfacao import pesquisa as satisfacao
 
 # O urlconf da célula NÃO conhece o prefixo público (`/cursos`): quem o aplica
@@ -48,6 +49,11 @@ from apps.core.satisfacao import pesquisa as satisfacao
 # número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
 # pela qual `healthz` e `static/` já vêm antes dele.
 urlpatterns = [
+    path('meus-itens/', praticas_3d.meus_itens, name='meus-itens-3d'),
+    path('meus-itens/<uuid:projeto>/imagem', praticas_3d.imagem, name='imagem-item-3d'),
+    path('praticas-3d/<uuid:atividade>/salvar', praticas_3d.salvar, name='salvar-item-3d'),
+    path('praticas-3d/<uuid:atividade>/evento', praticas_3d.evento, name='evento-item-3d'),
+    path('producao/praticas-3d/', praticas_3d.producao, name='producao-praticas-3d'),
     path("satisfacao/", satisfacao, name="satisfacao"),
     path("satisfacao/<slug:slug>/", satisfacao, name="satisfacao-curso"),
     path("healthz", healthz),

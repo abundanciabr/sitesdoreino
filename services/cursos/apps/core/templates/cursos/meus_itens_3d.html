@@ -1,0 +1,3 @@
+{% extends 'cursos/moldura.html' %}
+{% block titulo %}Meus itens privados{% endblock %}
+{% block conteudo %}<h1>Meus itens</h1><p>Sua coleção privada. Salvar aqui não publica seu trabalho.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px">{% for item in itens %}<article><img src="{{ item.imagem }}" alt="{{ item.titulo }}" width="320" height="200" style="width:100%;height:auto;border-radius:12px"><h2>{{ item.titulo }}</h2><p>Salvo em {{ item.data|date:'d/m/Y H:i' }}</p>{% if item.url %}<a class="botao" href="{{ item.url }}">Reabrir na aula</a>{% endif %}</article>{% empty %}<p>Você ainda não salvou um item. Comece pela primeira prática do seu curso.</p>{% endfor %}</div>{% endblock %}

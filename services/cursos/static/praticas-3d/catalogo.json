@@ -1,0 +1,149 @@
+[
+  {
+    "id": "espada-aurora",
+    "versao": 1,
+    "nome": "Espada Aurora",
+    "partes": {
+      "lamina": {
+        "nome": "Lâmina",
+        "cor": "#c8e4f2"
+      },
+      "guarda": {
+        "nome": "Guarda",
+        "cor": "#e8b44d"
+      },
+      "cabo": {
+        "nome": "Cabo",
+        "cor": "#33465d"
+      },
+      "joia": {
+        "nome": "Joia",
+        "cor": "#36c8ad"
+      }
+    },
+    "forma": {
+      "parte": "lamina",
+      "eixo": "x",
+      "nome": "Largura da lâmina"
+    },
+    "autoria": "Base original criada para Meshcraft Academy em Blender; personalização pelo aluno.",
+    "licenca": "Uso educacional e exportação da personalização pelos alunos.",
+    "dimensoes": "Unidades de referência do modelo; sem tamanho físico obrigatório.",
+    "camadas": [
+      {
+        "parte": "cabo",
+        "svg": "<rect x=\"463\" y=\"370\" width=\"34\" height=\"130\" rx=\"9\"/>"
+      },
+      {
+        "parte": "lamina",
+        "svg": "<path d=\"M448 358V130L480 54L512 130V358Z\"/><path d=\"M480 54V358H512V130Z\" fill=\"#fff\" opacity=\".16\"/>"
+      },
+      {
+        "parte": "guarda",
+        "svg": "<path d=\"M355 350L372 330L588 330L605 350L588 377L500 362L460 362L372 377Z\"/><path d=\"M459 405H501M459 435H501M459 465H501\" fill=\"none\" stroke=\"#d6bb77\" stroke-width=\"8\"/>"
+      },
+      {
+        "parte": "joia",
+        "svg": "<path d=\"M480 327L503 347L480 371L457 347Z\"/><path d=\"M480 495L505 517L480 544L455 517Z\"/>"
+      }
+    ]
+  },
+  {
+    "id": "raposa-lume",
+    "versao": 1,
+    "nome": "Pet Raposa Lume",
+    "partes": {
+      "corpo": {
+        "nome": "Corpo e orelhas",
+        "cor": "#e79545"
+      },
+      "focinho": {
+        "nome": "Focinho e peito",
+        "cor": "#f5e8ce"
+      },
+      "olhos": {
+        "nome": "Olhos e nariz",
+        "cor": "#273449"
+      },
+      "colar": {
+        "nome": "Colar",
+        "cor": "#36c8ad"
+      }
+    },
+    "forma": {
+      "parte": "corpo",
+      "eixo": "x",
+      "nome": "Largura do pet"
+    },
+    "autoria": "Base original criada para Meshcraft Academy em Blender; personalização pelo aluno.",
+    "licenca": "Uso educacional e exportação da personalização pelos alunos.",
+    "dimensoes": "Unidades de referência do modelo; sem tamanho físico obrigatório.",
+    "camadas": [
+      {
+        "parte": "corpo",
+        "svg": "<ellipse cx=\"567\" cy=\"416\" rx=\"75\" ry=\"53\"/><ellipse cx=\"480\" cy=\"376\" rx=\"100\" ry=\"117\"/><ellipse cx=\"420\" cy=\"487\" rx=\"37\" ry=\"24\"/><ellipse cx=\"540\" cy=\"487\" rx=\"37\" ry=\"24\"/><path d=\"M388 223L398 88L455 173M505 173L565 88L573 223Z\"/><ellipse cx=\"480\" cy=\"238\" rx=\"107\" ry=\"85\"/>"
+      },
+      {
+        "parte": "focinho",
+        "svg": "<ellipse cx=\"480\" cy=\"383\" rx=\"48\" ry=\"67\"/><ellipse cx=\"480\" cy=\"271\" rx=\"59\" ry=\"37\"/>"
+      },
+      {
+        "parte": "colar",
+        "svg": "<path d=\"M409 307Q480 334 551 307L544 330Q480 354 416 330Z\"/>"
+      },
+      {
+        "parte": "olhos",
+        "svg": "<ellipse cx=\"438\" cy=\"229\" rx=\"12\" ry=\"15\"/><ellipse cx=\"522\" cy=\"229\" rx=\"12\" ry=\"15\"/><path d=\"M466 262Q480 253 494 262L480 276Z\"/>"
+      }
+    ]
+  },
+  {
+    "id": "bone-orbita",
+    "versao": 1,
+    "nome": "Boné Órbita",
+    "partes": {
+      "copa": {
+        "nome": "Copa",
+        "cor": "#6e78ce"
+      },
+      "aba": {
+        "nome": "Aba",
+        "cor": "#33465d"
+      },
+      "faixa": {
+        "nome": "Faixa",
+        "cor": "#e8b44d"
+      },
+      "emblema": {
+        "nome": "Emblema",
+        "cor": "#36c8ad"
+      }
+    },
+    "forma": {
+      "parte": "aba",
+      "eixo": "z",
+      "nome": "Comprimento da aba"
+    },
+    "autoria": "Base original criada para Meshcraft Academy em Blender; personalização pelo aluno.",
+    "licenca": "Uso educacional e exportação da personalização pelos alunos.",
+    "dimensoes": "Unidades de referência do modelo; sem tamanho físico obrigatório.",
+    "camadas": [
+      {
+        "parte": "copa",
+        "svg": "<path d=\"M310 361Q300 139 480 139Q660 139 650 361Z\"/><path d=\"M480 141Q420 260 438 354\" fill=\"none\" stroke=\"#fff\" stroke-opacity=\".17\" stroke-width=\"7\"/>"
+      },
+      {
+        "parte": "aba",
+        "svg": "<path d=\"M313 357Q280 489 505 488Q665 484 695 412L649 356Z\"/><path d=\"M327 370Q350 453 680 418\" fill=\"none\" stroke=\"#fff\" stroke-opacity=\".15\" stroke-width=\"7\"/>"
+      },
+      {
+        "parte": "faixa",
+        "svg": "<path d=\"M310 346Q480 376 650 346V366Q480 394 310 366Z\"/><ellipse cx=\"480\" cy=\"138\" rx=\"17\" ry=\"9\"/>"
+      },
+      {
+        "parte": "emblema",
+        "svg": "<path d=\"M480 236L510 267L480 298L450 267Z\"/>"
+      }
+    ]
+  }
+]
