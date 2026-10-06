@@ -39,6 +39,10 @@
       </article>
     {% endfor %}
   </div>
+  <h3><a href="{% url 'super_equipe' %}">Super equipe: trabalhos técnicos</a></h3>
+  <p>{{ super_equipe.total }} trabalho{{ super_equipe.total|pluralize }} · {{ super_equipe.concluidos }} concluído{{ super_equipe.concluidos|pluralize }} · {{ super_equipe.em_andamento }} em andamento · consumo registrado: US$ {{ super_equipe.custo|floatformat:4 }}.</p>
+  <p class="nota">Fonte: fila de execução, entregas e consumo de IA deste site. Equipe compartilhada de especialistas; vendedores do CRM e robôs pessoais têm suas próprias telas.</p>
+  <ul>{% for trabalho in super_equipe.recentes %}<li><a href="{% url 'super_equipe_trabalho' trabalho.id %}">Trabalho {{ trabalho.id }}: {{ trabalho.pedido|truncatechars:100 }}</a> · {{ trabalho.get_situacao_display }} · {{ trabalho.progresso }}%{% if trabalho.entregas.all %} · resultado salvo{% endif %}</li>{% empty %}<li>Nenhum trabalho técnico executado neste site.</li>{% endfor %}</ul>
   <h3>Metas e responsáveis</h3>
   {% if negocio.objetivos %}
     <div class="objetivos">

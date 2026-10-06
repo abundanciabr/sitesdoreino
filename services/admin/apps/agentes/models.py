@@ -77,6 +77,7 @@ class Execucao(models.Model):
         CONFERENCIA_QUIZ = "conferencia_quiz", "Conferência dos links do quiz"
         LEITURA_QUIZ = "leitura_quiz", "Leitura dos números do quiz"
         CONHECIMENTO = "conhecimento", "Leitura dos documentos para o mapa de conhecimento"
+        SUPER_EQUIPE = "super_equipe", "Equipe de especialistas técnicos"
 
     class Situacao(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"

@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Equipe de especialistas | Meshcraft{% endblock %}
+{% block corpo %}
+<main class="envolucro copy">
+  <h1>Equipe de especialistas técnicos</h1>
+  <p class="subtitulo">Peça uma análise do site. O servidor consulta as fontes atuais, chama as especialidades escolhidas e guarda os resultados. Você pode fechar esta página.</p>
+  {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
+  <section class="cartao">
+    <h2>Novo trabalho</h2>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="chave" value="{{ chave }}">
+      <p><label for="pedido">O que precisa ser examinado?</label><br><textarea id="pedido" name="pedido" rows="5" maxlength="4000" required style="width:100%">{{ request.POST.pedido }}</textarea></p>
+      <fieldset><legend>Especialidades</legend>
+        {% for codigo, nome in especialidades %}<label style="display:block"><input type="checkbox" name="especialidades" value="{{ codigo }}" {% if codigo == 'arquitetura' %}checked{% endif %}> {{ nome }}</label>{% endfor %}
+      </fieldset>
+      <p><label for="tarefa_id">Número de uma tarefa já existente (opcional)</label><br><input id="tarefa_id" name="tarefa_id" type="number" min="1" value="{{ request.POST.tarefa_id }}"></p>
+      <button class="botao" type="submit">Pedir trabalho</button>
+    </form>
+  </section>
+  <h2>Trabalhos</h2>
+  {% for trabalho in trabalhos %}
+    <section class="cartao"><h3><a href="{% url 'super_equipe_trabalho' trabalho.pk %}">Trabalho nº {{ trabalho.pk }}</a></h3>
+      <p>{{ trabalho.pedido|truncatechars:220 }}</p>
+      <p>{{ trabalho.get_situacao_display }} · {{ trabalho.etapa_atual|default:"Aguardando" }} · {{ trabalho.progresso }}% · {{ trabalho.tentativas }} tentativa(s) · US$ {{ trabalho.custo }}</p>
+      <small>Pedido por {{ trabalho.pedido_por }} em {{ trabalho.criada_em|date:"d/m/Y H:i" }}</small>
+    </section>
+  {% empty %}<p>Ainda não há trabalhos da equipe técnica.</p>{% endfor %}
+</main>
+{% endblock %}

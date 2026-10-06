@@ -727,4 +727,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     from .painel_negocio import atualizar_explicacoes, montar_painel_negocio
 
     contexto.update(montar_painel_negocio(site_id, hoje))
+    from .super_equipe_placar import resumo_da_super_equipe
+    contexto["super_equipe"] = resumo_da_super_equipe(site_id)
     return atualizar_explicacoes(contexto)

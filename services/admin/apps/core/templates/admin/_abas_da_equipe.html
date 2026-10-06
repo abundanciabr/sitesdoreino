@@ -10,5 +10,6 @@ visões ofereçam sempre as mesmas portas na mesma ordem. `visao` diz qual acend
   <a class="aba{% if visao == 'objetivos' %} ativa{% endif %}" href="{% url 'objetivos_da_equipe' %}">Objetivos</a>
   <a class="aba{% if visao == 'placar' %} ativa{% endif %}" href="{% url 'placar_da_equipe' %}">Placar</a>
   <a class="aba{% if visao == 'robo' %} ativa{% endif %}" href="{% url 'robo_da_pessoa' %}">Meu robô</a>
+  {% if not admin.equipe_apenas %}<a class="aba" href="{% url 'super_equipe' %}">Super equipe</a>{% endif %}
   <a class="aba{% if visao == 'avisos' %} ativa{% endif %}" href="{% url 'avisos_da_equipe' %}">Avisos{% if avisos_novos_n %} ({{ avisos_novos_n }}){% endif %}</a>
 </nav>

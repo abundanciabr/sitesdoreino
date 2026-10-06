@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Trabalho da equipe técnica | Meshcraft{% endblock %}
+{% block corpo %}
+<main class="envolucro copy">
+  <a class="volta" href="{% url 'super_equipe' %}">Voltar à equipe técnica</a>
+  <h1>Trabalho nº {{ trabalho.pk }}</h1>
+  <p class="subtitulo">{{ trabalho.pedido }}</p>
+  <p><a class="botao" href="{{ request.path }}">Atualizar andamento</a></p>
+  <section class="cartao"><h2>Acompanhamento</h2>
+    <p><b>{{ trabalho.get_situacao_display }}</b> · {{ trabalho.etapa_atual|default:"Aguardando" }} · {{ trabalho.progresso }}%</p>
+    <p>{{ trabalho.motivo }}</p>
+    <p>Pedido por {{ trabalho.pedido_por }} · {{ trabalho.tentativas }} tentativa(s) · Modelo {{ trabalho.modelo|default:"configurado na conexão" }} · custo registrado US$ {{ custo }}</p>
+    {% if trabalho.tarefa_id %}<p>Tarefa da equipe nº {{ trabalho.tarefa_id }}</p>{% endif %}
+  </section>
+  <section class="cartao"><h2>Fontes compartilhadas</h2>
+    <p>Consultadas em {{ fontes.consultado_em|default:"ainda não consultadas" }}. Painel do negócio, resultados dos experimentos e duas páginas públicas do próprio site.</p>
+    <p>Negócio: {{ fontes.negocio.estado|default:"consultado" }} · Experimentos: {{ fontes.experimentos.estado|default:"aguardando" }}</p>
+    {% for pagina in fontes.paginas_publicas.itens %}<p>{{ pagina.url }} — {% if pagina.estado == 'medido' %}HTTP {{ pagina.http }}, {{ pagina.duracao_ms }} ms, {{ pagina.bytes }} bytes{% else %}indisponível: {{ pagina.motivo }}{% endif %}</p>{% endfor %}
+    <p>Referência anterior: <a href="{{ fontes.referencia_historica }}">{{ fontes.referencia_historica }}</a>. Os achados atuais vêm das fontes consultadas acima.</p>
+  </section>
+  {% for nome, resultado in resultados %}<section class="cartao"><h2>{{ nome }}</h2>
+    {% if resultado %}<p style="white-space:pre-wrap">{{ resultado.texto }}</p><small>Concluído em {{ resultado.concluido_em }}</small>{% else %}<p>Aguardando esta etapa.</p>{% endif %}
+  </section>{% endfor %}
+  {% if entrega %}<section class="cartao"><h2>Entrega {% if entrega.parcial %}parcial{% else %}concluída{% endif %} · versão {{ entrega.versao }}</h2>
+    <p style="white-space:pre-wrap">{{ entrega.conteudo }}</p>
+    {% for pendencia in entrega.pendencias %}<p>{{ pendencia }}</p>{% endfor %}
+  </section>{% endif %}
+  <section class="cartao"><h2>Histórico</h2>{% for registro in trabalho.registros.all %}<p>{{ registro.momento|date:"d/m/Y H:i:s" }} — {{ registro.texto }}</p>{% endfor %}</section>
+</main>
+{% endblock %}
