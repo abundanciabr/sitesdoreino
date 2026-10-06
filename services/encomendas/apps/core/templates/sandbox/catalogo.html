@@ -16,7 +16,7 @@
 </div>
 <section id="projetos">
 <h2>Projetos de {{ selecionada.titulo|lower }}</h2>
-{% if trabalho_ativo %}<div class="notice">Você já tem um projeto em andamento: <a href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">abrir {{ trabalho_ativo.termos.titulo }}</a>.</div>{% endif %}
+{% if trabalho_ativo %}<div class="notice">Você já tem um projeto em andamento: <a href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">continuar {{ trabalho_ativo.termos.titulo }}</a>.</div>{% endif %}
 <div class="project-list">
 {% for projeto in projetos %}
 <article class="card" data-projeto="{{ projeto.slug }}">
@@ -27,12 +27,13 @@
 <details><summary>Briefing, referências e condições</summary>
 <h3 style="margin-top:18px">Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% empty %}<p>A escola ainda vai acrescentar referências.</p>{% endfor %}
 <h3>Critérios de aprovação</h3><p class="preserve">{{ projeto.criterios|default:'A definir pela escola.' }}</p>
-<p><strong>Prazo após o aceite:</strong> {{ projeto.prazo_dias|default_if_none:'A definir' }}{% if projeto.prazo_dias != None %} dias{% endif %}</p>
+</details>
+<div class="project-terms"><p><strong>Prazo após o aceite:</strong> {{ projeto.prazo_dias|default_if_none:'A definir' }}{% if projeto.prazo_dias != None %} dias{% endif %}</p>
 <p><strong>Ajustes previstos:</strong> {{ projeto.ajustes_previstos|default_if_none:'A definir' }}</p>
 <p><strong>Recompensa após aprovação:</strong> {{ projeto.recompensa|default_if_none:'A definir' }}{% if projeto.recompensa != None %} Meshcoins{% endif %}</p>
-</details>
+</div>
 {% if aluno_atual and projeto.pronto and not trabalho_ativo %}
-<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}<label><input type="checkbox" name="aceito_termos" value="sim" required> Li e aceito o escopo, prazo, ajustes e recompensa.</label><div class="actions"><button>Começar projeto</button></div></form>
+<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}<input type="hidden" name="aceito_termos" value="sim"><p class="tiny">Ao começar, você aceita o briefing, os entregáveis e as condições acima. O prazo começa agora.</p><div class="actions"><button>Aceitar e começar este projeto</button></div></form>
 {% elif not projeto.pronto %}<p class="tiny" style="margin-top:16px">Prazo, ajustes e recompensa aguardam configuração da escola.</p>{% endif %}
 </article>
 {% empty %}<div class="card"><p>A escola está preparando os projetos desta categoria.</p></div>{% endfor %}
