@@ -1,0 +1,58 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Acompanhamento do aluno{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'acompanhamento_alunos' %}">&larr; Acompanhamento</a>
+  <h1>{{ nome|default:email }}</h1>
+  <p class="subtitulo">{{ email }} · {{ site_id }}</p>
+  {% if fonte_indisponivel %}<p class="aviso">Não foi possível consultar as matrículas agora. Tente novamente.</p>
+  {% else %}
+    {% if salvo %}<p class="recado">Registro acrescentado ao histórico.</p>{% endif %}
+    {% if erro %}<p class="aviso">{{ erro }}</p>{% endif %}
+    <h2>Matrículas e cursos</h2>
+    <div class="cartoes">{% for matricula in matriculas %}<div class="cartao">
+      <div class="rotulo">{{ matricula.curso_nome }}</div>
+      <div class="nota">Matrícula {{ matricula.id }} · {{ matricula.status }}{% if matricula.turma %} · Turma {{ matricula.turma }}{% endif %}</div>
+      {% if matricula.origem %}<div class="nota">Origem: {{ matricula.origem }}</div>{% endif %}
+    </div>{% endfor %}</div>
+    <p class="subtitulo">Parte do estudo pode ocorrer na Hotmart ou Herospark. A falta de atividade visível aqui não indica abandono.</p>
+    <h2>Novo registro</h2>
+    <form method="post" action="{% url 'acompanhamento_aluno' %}">
+      {% csrf_token %}
+      <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="email" value="{{ email }}">
+      <div class="campo"><label for="acom-product">Curso</label><select id="acom-product" name="product_id"><option value="">Acompanhamento geral</option>{% for matricula in matriculas %}<option value="{{ matricula.product_id }}" {% if dados.product_id == matricula.product_id %}selected{% endif %}>{{ matricula.curso_nome }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="acom-status">Situação do acompanhamento</label><select id="acom-status" name="status" required><option value="">Escolha</option>{% for valor, rotulo in status_opcoes %}<option value="{{ valor }}" {% if dados.status == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="acom-situacao">Situação do curso</label><select id="acom-situacao" name="situacao_curso" required><option value="">Escolha</option>{% for valor, rotulo in situacao_opcoes %}<option value="{{ valor }}" {% if dados.situacao_curso == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="acom-progresso">Progresso informado de plataforma externa</label><input id="acom-progresso" name="progresso_externo" maxlength="300" value="{{ dados.progresso_externo }}" placeholder="Ex.: concluiu módulo 2 na Hotmart"></div>
+      <div class="campo"><label for="acom-fonte">Fonte da informação</label><input id="acom-fonte" name="fonte" maxlength="300" value="{{ dados.fonte }}" placeholder="Ex.: aluno por WhatsApp, Hotmart, Herospark"></div>
+      <div class="campo"><label for="acom-dificuldade">Dificuldade</label><textarea id="acom-dificuldade" name="dificuldade" maxlength="3000">{{ dados.dificuldade }}</textarea></div>
+      <div class="campo"><label for="acom-responsavel">Responsável</label><input id="acom-responsavel" name="responsavel" maxlength="200" value="{{ dados.responsavel }}"></div>
+      <div class="campo"><label for="acom-proximo">Próximo contato</label><textarea id="acom-proximo" name="proximo_contato" maxlength="3000">{{ dados.proximo_contato }}</textarea></div>
+      <div class="campo"><label for="acom-prazo">Prazo</label><input id="acom-prazo" type="date" name="prazo" value="{{ dados.prazo }}"></div>
+      <div class="campo"><label for="acom-resultado">Resultado</label><textarea id="acom-resultado" name="resultado" maxlength="3000">{{ dados.resultado }}</textarea></div>
+      <button class="sim" type="submit">Acrescentar ao histórico</button>
+    </form>
+    <h2>Histórico do acompanhamento</h2>
+    {% for registro in historico %}<div class="cartao">
+      <div class="rotulo">{{ registro.criado_em|date:"d/m/Y H:i" }} · {{ registro.get_status_display }}</div>
+      <div class="nota">{{ registro.get_situacao_curso_display }}{% if registro.product_id %} · Curso {{ registro.product_id }}{% endif %}</div>
+      {% if registro.progresso_externo %}<p>Progresso externo informado: {{ registro.progresso_externo }}</p>{% endif %}
+      {% if registro.fonte %}<p>Fonte: {{ registro.fonte }}</p>{% endif %}
+      {% if registro.dificuldade %}<p>Dificuldade: {{ registro.dificuldade }}</p>{% endif %}
+      {% if registro.responsavel %}<p>Responsável: {{ registro.responsavel }}</p>{% endif %}
+      {% if registro.proximo_contato %}<p>Próximo contato: {{ registro.proximo_contato }}</p>{% endif %}
+      {% if registro.prazo %}<p>Prazo: {{ registro.prazo|date:"d/m/Y" }}</p>{% endif %}
+      {% if registro.resultado %}<p>Resultado: {{ registro.resultado }}</p>{% endif %}
+      <div class="nota">Registrado por {{ registro.registrado_por }}</div>
+    </div>{% empty %}<p>Sem registros ainda.</p>{% endfor %}
+    <h2>Contato e atendimentos existentes no CRM</h2>
+    {% if contatos %}{% for contato in contatos %}<div class="cartao"><div class="rotulo">{{ contato.nome|default:contato.email }}</div><div class="nota">{{ contato.email }}</div><a href="{% url 'contato' contato.id %}">Abrir contato no CRM</a></div>{% endfor %}
+    {% elif contato_estado == 'sem_vinculo' %}<p>Esta matrícula não tem contato vinculado no CRM.</p>
+    {% else %}<p>Contato do CRM indisponível ou não confirmado para esta pessoa.</p>{% endif %}
+    {% if atendimentos %}{% for item in atendimentos %}<div class="cartao"><div class="rotulo">Atendimento {{ item.id }} · {{ item.etapa }}</div><div class="nota">{{ item.proximo_passo.descricao|default:"Sem próximo passo registrado" }}</div></div>{% endfor %}
+    {% elif atendimento_estado == 'ok' %}<p>Nenhum atendimento existente para este contato.</p>
+    {% elif atendimento_estado != 'sem_vinculo' %}<p>Atendimentos do CRM indisponíveis agora.</p>{% endif %}
+    {% include "admin/acompanhamento_fontes.html" %}
+  {% endif %}
+</div>
+{% endblock %}

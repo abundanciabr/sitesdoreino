@@ -833,3 +833,5 @@ class AvisoDaEquipe(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return f"{self.get_tipo_display()}: {self.titulo}"
+
+from .acompanhamento_modelo import RegistroAcompanhamentoAluno  # noqa: E402,F401

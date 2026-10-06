@@ -43,6 +43,7 @@
   {% if tela.id %}<p class="espaco-20"><a class="botao" href="{% url 'crm' %}?lead_id={{ tela.id|urlencode }}">Ver oportunidades no CRM</a></p>{% endif %}
 
   {% if tela.matriculas %}
+  <p><a href="{% url 'acompanhamento_aluno' %}?email={{ tela.email|urlencode }}&amp;site_id={{ tela.site_id|urlencode }}">Abrir ficha de acompanhamento do aluno →</a></p>
   <section class="cartao espaco-20">
     <h2 class="titulo-de-bloco">Escola</h2>
     {% for matricula in tela.matriculas %}

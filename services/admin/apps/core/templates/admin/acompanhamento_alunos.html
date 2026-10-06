@@ -1,0 +1,35 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Acompanhamento dos alunos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos da escola</a>
+  <h1>Acompanhamento dos alunos</h1>
+  <p class="subtitulo">Uma ficha por pessoa e escola. A situação aparece somente quando alguém a registrou. Estudar pela Hotmart ou Herospark não aparece necessariamente na atividade deste site; ausência de atividade aqui não indica abandono.</p>
+  {% if not fonte_indisponivel %}<p class="subtitulo">{{ resumo.pessoas }} pessoas · {{ resumo.sem_registro }} sem registro · {{ resumo.atrasados }} com prazo vencido · {{ resumo.esperando_resposta }} esperando resposta · {{ resumo.em_andamento }} em andamento · {{ resumo.resolvido }} resolvidos</p>{% endif %}
+  <form class="peneira" method="get">
+    <div class="campo"><label for="acom-q">Nome, e-mail ou turma</label><input id="acom-q" type="search" name="q" value="{{ q }}" maxlength="120"></div>
+    {% if sites|length > 1 %}<div class="campo"><label for="acom-site">Escola</label><select id="acom-site" name="site_id"><option value="">Todas</option>{% for sitio in sites %}<option value="{{ sitio }}" {% if site_id == sitio %}selected{% endif %}>{{ sitio }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="campo"><label for="acom-status">Acompanhamento</label><select id="acom-status" name="status"><option value="">Todos</option>{% for valor, rotulo in status_opcoes %}<option value="{{ valor }}" {% if status == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+    <div class="campo"><label for="acom-situacao">Curso</label><select id="acom-situacao" name="situacao_curso"><option value="">Todas as situações</option>{% for valor, rotulo in situacao_opcoes %}<option value="{{ valor }}" {% if situacao == valor %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}</select></div>
+    <div class="campo"><label for="acom-atraso"><input id="acom-atraso" type="checkbox" name="atraso" value="sim" {% if atraso %}checked{% endif %}> Prazo vencido</label></div>
+    <div class="campo"><label for="acom-sem"><input id="acom-sem" type="checkbox" name="sem_registro" value="sim" {% if sem_registro %}checked{% endif %}> Sem acompanhamento</label></div>
+    <button class="sim" type="submit">Buscar</button>
+  </form>
+  {% if fonte_indisponivel %}
+    <p class="aviso">Não foi possível consultar as matrículas agora. Nenhuma conclusão sobre alunos foi feita.</p>
+  {% elif itens %}
+    <p class="subtitulo">{{ itens|length }} pessoa{{ itens|length|pluralize }} nesta busca.</p>
+    <div class="cartoes">
+      {% for pessoa in itens %}
+        <div class="cartao">
+          <div class="rotulo"><a href="{{ pessoa.url }}">{{ pessoa.nome|default:pessoa.email }}</a></div>
+          <div class="nota">{{ pessoa.email }} · {{ pessoa.site_id }}</div>
+          <div class="nota">{{ pessoa.matriculas|length }} matrícula{{ pessoa.matriculas|length|pluralize }}{% if pessoa.turmas %} · {{ pessoa.turmas }}{% endif %}</div>
+          {% for caso in pessoa.acompanhamentos %}<div class="nota"><b>{% if caso.product_id %}Curso {{ caso.product_id }}{% else %}Geral{% endif %}: {{ caso.get_status_display }}</b> · {{ caso.get_situacao_curso_display }} · {{ caso.criado_em|date:"d/m/Y H:i" }}{% if caso.prazo %} · Prazo {{ caso.prazo|date:"d/m/Y" }}{% endif %}</div>{% if caso.dificuldade %}<div class="nota">Dificuldade: {{ caso.dificuldade|truncatechars:160 }}</div>{% endif %}{% if caso.responsavel %}<div class="nota">Responsável: {{ caso.responsavel }}</div>{% endif %}{% if caso.proximo_contato %}<div class="nota">Próximo contato: {{ caso.proximo_contato|truncatechars:160 }}</div>{% endif %}{% empty %}<div class="nota">Sem acompanhamento registrado</div>{% endfor %}
+          {% if pessoa.atrasado %}<div class="nota">Prazo vencido</div>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}<p>Nenhuma pessoa corresponde aos filtros.</p>{% endif %}
+</div>
+{% endblock %}

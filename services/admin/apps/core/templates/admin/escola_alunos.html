@@ -4,6 +4,7 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
   <h1>Alunos</h1>
+  <p><a class="botao" href="{% url 'acompanhamento_alunos' %}">Acompanhamento dos alunos →</a></p>
   <p class="subtitulo">Os tipos de aluno da escola, e quem está esperando você.</p>
 
   {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}

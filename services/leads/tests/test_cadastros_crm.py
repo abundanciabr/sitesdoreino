@@ -26,3 +26,22 @@ def test_cadastro_sem_matricula_e_pedido_pendente_nao_viram_aluno():
     assert Lead.objects.get().tags == []
     assert Lead.objects.get().source == ''
     assert contatos_do_crm().count() == 1
+
+
+def test_matricula_sozinha_nao_abre_venda_e_cadastro_posterior_preserva_interesse():
+    dados = {'id': 'm1', 'status': 'ativa'}
+    for _ in range(2):
+        resultado = incluir(site_id='s', email='aluna@dominio.com', origem='escola',
+                           evento='aluno.matricula', dados=dados)
+        assert resultado['oportunidade_criada'] is False
+    lead = Lead.objects.get()
+    assert lead.tags == ['aluno']
+    assert lead.timeline.filter(event='aluno.matricula').count() == 1
+    assert contatos_do_crm().get() == lead
+    assert Oportunidade.objects.count() == 0
+
+    resultado = incluir(site_id='s', email='aluna@dominio.com',
+                       dados={'id': 'cadastro-interessada'})
+    assert resultado['oportunidade_criada'] is True
+    assert Oportunidade.objects.get().lead == lead
+    assert lead.timeline.count() == 2

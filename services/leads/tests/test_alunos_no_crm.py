@@ -3,7 +3,7 @@ import json
 import pytest
 
 from apps.core.alunos import sincronizar_matricula
-from apps.core.models import Lead, Oportunidade, TimelineEvent
+from apps.core.models import Lead, Oportunidade, RegistroHistoricoOportunidade, TimelineEvent
 
 pytestmark = pytest.mark.django_db
 
@@ -31,18 +31,17 @@ def painel(settings, monkeypatch):
     return {"HTTP_AUTHORIZATION": "Bearer admin-alunos"}
 
 
-def test_duas_matriculas_e_repeticao_preservam_um_contato_e_uma_oportunidade():
-    sincronizar_matricula(matricula())
+def test_duas_matriculas_e_repeticao_preservam_contato_sem_criar_venda():
+    primeiro = sincronizar_matricula(matricula())
     sincronizar_matricula(matricula(id="mat-2", product_id="curso-2"))
     sincronizar_matricula(matricula())
     sincronizar_matricula(matricula(id="mat-2", product_id="curso-2"))
-    assert Lead.objects.count() == Oportunidade.objects.count() == 1
+    assert Lead.objects.count() == 1
+    assert Oportunidade.objects.count() == 0
+    assert primeiro["oportunidade_criada"] is False
+    assert primeiro["oportunidade_id"] is None
     assert TimelineEvent.objects.count() == 2
-    oportunidade = Oportunidade.objects.get()
-    assert oportunidade.fonte_referencia_id == "proximo-curso"
-    assert oportunidade.historico.count() == 1
-    assert oportunidade.etapa == "nova"
-    assert oportunidade.compras.count() == 0
+    assert Lead.objects.get().tags == ["aluno"]
 
 
 def test_quiz_existente_mantem_id_origem_consentimento_e_historico():
@@ -65,7 +64,8 @@ def test_quiz_existente_mantem_id_origem_consentimento_e_historico():
 def test_mesma_pessoa_em_escolas_distintas_tem_contatos_distintos():
     sincronizar_matricula(matricula())
     sincronizar_matricula(matricula(site_id="escola-b"))
-    assert Lead.objects.count() == Oportunidade.objects.count() == 2
+    assert Lead.objects.count() == 2
+    assert Oportunidade.objects.count() == 0
 
 
 @pytest.mark.parametrize("status", ["aguardando", "recusada"])
@@ -74,18 +74,43 @@ def test_pedido_de_entrada_sem_matricula_nao_vira_aluno(status):
     assert Lead.objects.count() == Oportunidade.objects.count() == 0
 
 
-def test_situacao_nova_nao_reabre_oportunidade_encerrada():
-    sincronizar_matricula(matricula())
-    oportunidade = Oportunidade.objects.get()
+def test_matricula_preserva_todas_oportunidades_comerciais_preexistentes():
     from django.utils import timezone
 
-    oportunidade.etapa = "desqualificada"
-    oportunidade.desfecho_encerrada_em = timezone.now()
-    oportunidade.save()
+    lead = Lead.objects.create(site_id="escola-a", email="marina@dominio.com", source="quiz:crivo")
+    abertas = [
+        Oportunidade.objects.create(
+            lead=lead, etapa="qualificada", titular_id="comercial",
+            fonte_tipo=fonte, fonte_referencia_id=referencia,
+            passo_descricao="Conversar", passo_executar_ate=timezone.now(),
+            passo_evidencia_esperada="Resposta",
+        )
+        for fonte, referencia in (
+            ("quiz", "oferta:curso-2"),
+            ("timeline_lead", "proximo-curso"),
+        )
+    ]
+    encerrada = Oportunidade.objects.create(
+        lead=lead, etapa="desqualificada", titular_id="comercial",
+        fonte_tipo="timeline_lead", fonte_referencia_id="interesse-antigo",
+        passo_descricao="Encerrada", passo_executar_ate=timezone.now(),
+        passo_evidencia_esperada="Resposta", desfecho_encerrada_em=timezone.now(),
+    )
+    registro = RegistroHistoricoOportunidade.objects.create(
+        oportunidade=abertas[0], autor_id="comercial", tipo="nota",
+        descricao="Interesse comercial confirmado.",
+    )
+    resultado = sincronizar_matricula(matricula())
     sincronizar_matricula(matricula(status="encerrada"))
-    oportunidade.refresh_from_db()
-    assert oportunidade.encerrada and oportunidade.etapa == "desqualificada"
-    assert Oportunidade.objects.count() == 1
+    assert resultado["contato_id"] == str(lead.pk)
+    assert resultado["oportunidade_criada"] is False
+    assert set(Oportunidade.objects.values_list("pk", flat=True)) == {
+        abertas[0].pk, abertas[1].pk, encerrada.pk,
+    }
+    assert Oportunidade.objects.filter(etapa="qualificada").count() == 2
+    encerrada.refresh_from_db()
+    assert encerrada.encerrada and encerrada.etapa == "desqualificada"
+    assert RegistroHistoricoOportunidade.objects.get(pk=registro.pk).descricao == "Interesse comercial confirmado."
 
 
 def test_aluno_aparece_na_lista_ficha_quadro_e_busca_do_crm(client, painel):
@@ -109,13 +134,9 @@ def test_aluno_aparece_na_lista_ficha_quadro_e_busca_do_crm(client, painel):
         == 404
     )
     quadro = client.get("/api/leads/crm", {"q": "Marina"}, **painel).json()
-    assert quadro["total"] == 1 and quadro["resumo"]["contatos"] == 1
-    assert (
-        client.get(
-            "/api/leads/crm/" + resultado["oportunidade_id"], **painel
-        ).status_code
-        == 200
-    )
+    assert quadro["total"] == 0
+    assert quadro["resumo"]["contatos"] == 1
+    assert quadro["resumo"]["sem_oportunidade"] == 1
     assert (
         client.get("/api/leads/leads", {"origem": "quiz"}, **painel).json()["total"]
         == 0
@@ -132,7 +153,7 @@ def test_importacao_pelo_painel_repetida_nao_duplica(client, painel):
         )
         assert resposta.status_code == 200
         assert resposta.json()["contatos_criados"] == (1 if i == 0 else 0)
-        assert resposta.json()["oportunidades_criadas"] == (1 if i == 0 else 0)
+        assert resposta.json()["oportunidades_criadas"] == 0
 
 
 def test_importacao_recusa_token_de_outro_consumidor(client, settings, monkeypatch):
@@ -161,7 +182,7 @@ def test_aluno_de_teste_segue_fora_dos_totais_habituais(client, painel):
     assert client.get("/api/leads/crm", **painel).json()["total"] == 0
 
 
-def test_compra_do_curso_atual_nao_fecha_proximo_curso():
+def test_compra_do_curso_atual_nao_cria_proximo_curso():
     from apps.core.handlers import ao_pagamento_aprovado
     import uuid
 
@@ -177,6 +198,4 @@ def test_compra_do_curso_atual_nao_fecha_proximo_curso():
             "product_id": "curso-atual",
         },
     )
-    oportunidade = Oportunidade.objects.get(fonte_referencia_id="proximo-curso")
-    assert oportunidade.etapa == "nova" and not oportunidade.encerrada
-    assert oportunidade.compras.count() == 0
+    assert not Oportunidade.objects.filter(fonte_referencia_id="proximo-curso").exists()

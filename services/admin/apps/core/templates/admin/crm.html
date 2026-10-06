@@ -9,6 +9,7 @@
 <main class="envolucro crm">
   <div class="crm-cabecalho"><div><h1>CRM</h1><p class="subtitulo">Alunos e contatos dos quizzes, sua história e o próximo passo.</p></div><span><a class="botao" href="{% url 'assistente_do_site' %}">Assistente</a> <a class="botao" href="{% url 'crm_condicoes' %}">Condições do agente</a> <a class="botao" href="{% url 'contatos' %}">Ver contatos →</a> <a class="botao" href="{% url 'crm_ofertas_dos_quizzes' %}">Ofertas dos quizzes →</a> <a class="botao" href="{% url 'crm_atendimento_geral' %}">Atendimento geral →</a></span></div>
   {% menu_do_crm %}
+  <p class="nota">O acompanhamento de estudo fica em <a href="{% url 'acompanhamento_alunos' %}">Alunos</a>. Matrícula não abre oportunidade de venda. Uma pessoa pode ser aluna e ter interesse comercial registrado. Oportunidades anteriores permanecem com seu histórico.</p>
   {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
   <p><a href="{% url 'crm_resultados' %}">Resultados comerciais: conversão, receita e custos →</a></p>
   <div class="crm-abertura"><div class="rotulo">Oportunidades de venda</div><h2>Cada pessoa que responde um quiz vira uma oportunidade de venda.</h2><p>Responder o quiz abre a oferta do produto indicado. Fazer o pedido leva a oferta para Negociação. Pagar fecha como venda feita. Pagamento recusado ou Pix vencido abre uma recuperação.</p></div>

@@ -40,7 +40,7 @@ def incluir(*, site_id, email, nome="", telefone="", origem="", evento="cadastro
     historico_criado = anterior is None or anterior.payload != dados
     if historico_criado:
         TimelineEvent.objects.create(lead=lead, event=evento, payload=dados)
-    oportunidade_criada = not lead.oportunidades.exists()
+    oportunidade_criada = evento != "aluno.matricula" and not lead.oportunidades.exists()
     if oportunidade_criada:
         oportunidade = Oportunidade.objects.create(
             lead=lead, etapa="nova", titular_id=_responsavel(site_id),

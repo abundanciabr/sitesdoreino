@@ -1,15 +1,10 @@
-"""Matrículas passam a compor o contato comercial, com uma oportunidade inicial."""
-
-from datetime import timedelta
+"""Matrículas compõem o histórico do contato sem presumir interesse comercial."""
 
 from django.db import transaction
-from django.utils import timezone
 
-from .models import Lead, Oportunidade, RegistroHistoricoOportunidade, TimelineEvent
-from .recuperacao import _responsavel
+from .models import Lead, TimelineEvent
 
 ESTADOS_DE_ALUNO = {"ativa", "suspensa", "encerrada", "reembolsada"}
-REFERENCIA_PROXIMO_CURSO = "proximo-curso"
 
 
 @transaction.atomic
@@ -75,34 +70,12 @@ def sincronizar_matricula(matricula):
     )
     if anterior is None or anterior.payload != dados:
         TimelineEvent.objects.create(lead=lead, event="aluno.matricula", payload=dados)
-    oportunidade = lead.oportunidades.filter(
-        fonte_tipo="timeline_lead", fonte_referencia_id=REFERENCIA_PROXIMO_CURSO
-    ).first()
-    oportunidade_criada = oportunidade is None
-    if oportunidade is None:
-        oportunidade = Oportunidade.objects.create(
-            lead=lead,
-            etapa="nova",
-            titular_id=_responsavel(site),
-            fonte_tipo="timeline_lead",
-            fonte_referencia_id=REFERENCIA_PROXIMO_CURSO,
-            passo_descricao="Próximo curso: conversar sobre os objetivos do aluno e identificar o curso adequado",
-            passo_executar_ate=timezone.now() + timedelta(days=1),
-            passo_evidencia_esperada="Interesse e curso indicado registrados no acompanhamento",
-        )
-        RegistroHistoricoOportunidade.objects.create(
-            oportunidade=oportunidade,
-            autor_id="sistema",
-            tipo="etapa_alterada",
-            descricao="Aluno incluído no CRM; oportunidade de próximo curso aberta.",
-            evidencia=f"matricula:{identificador}",
-        )
     return {
         "ignorada": False,
         "contato_criado": criado,
-        "oportunidade_criada": oportunidade_criada,
+        "oportunidade_criada": False,
         "contato_id": str(lead.pk),
-        "oportunidade_id": str(oportunidade.pk),
+        "oportunidade_id": None,
     }
 
 

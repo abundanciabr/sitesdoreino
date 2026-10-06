@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.urls import path, re_path
+from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
 from apps.core.modelos_de_paginas import (
@@ -1101,6 +1102,8 @@ urlpatterns = [
         name="escola_instrumento_salvar",
     ),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
+    path("escola/alunos/acompanhamento/", acompanhamento_alunos, name="acompanhamento_alunos"),
+    path("escola/alunos/acompanhamento/ficha/", acompanhamento_aluno, name="acompanhamento_aluno"),
     # A lista de nomes para colar no grupo, pedida pelo mantenedor em
     # 31/08/2026 — vizinha da lista de gestão, e não dentro dela: uma pergunta
     # sobre o cartão da pessoa ("qual a turma dela?") e uma sobre quem avisar

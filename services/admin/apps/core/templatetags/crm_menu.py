@@ -14,6 +14,7 @@ from django.urls import NoReverseMatch, reverse
 register = template.Library()
 
 AREAS = (
+    ("Alunos", ("acompanhamento_alunos",)),
     ("Oportunidades", ("crm",)),
     ("Conversas", ("crm_conversas",)),
     ("Agentes", ("crm_agentes", "agentes_comerciais")),
