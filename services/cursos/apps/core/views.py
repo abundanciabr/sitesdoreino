@@ -1548,7 +1548,7 @@ def laudo_recebido(request, numero: str, curso: str | None = None, parte: int | 
                 aula__bloco__parte=parte,
             )
         # O endereço legado sem curso só é inequívoco com uma aula no histórico.
-        aulas = list(historico.values_list("aula_id", flat=True).distinct()[:2])
+        aulas = list(historico.order_by().values_list("aula_id", flat=True).distinct()[:2])
         if len(aulas) != 1:
             if aula_inexistente:
                 raise Http404

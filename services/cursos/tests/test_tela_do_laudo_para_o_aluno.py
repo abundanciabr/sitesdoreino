@@ -142,11 +142,12 @@ def test_historico_expirado_isola_cursos_com_a_mesma_aula(
             curso=curso, bloco=bloco, ordem=0, numero="D02",
             titulo_exibido=titulo, estado=Aula.Estado.PUBLICADA,
         )
-        Envio.objects.create(
-            pessoa=pessoa, aula=aula, numero=1,
-            links=[{"rotulo": "Arquivo", "url": "https://exemplo.test/arquivo"}],
-            readme=titulo, laudo_do_aluno={"texto": titulo},
-        )
+        for numero in range(1, 4 if slug == "comunidade" else 2):
+            Envio.objects.create(
+                pessoa=pessoa, aula=aula, numero=numero,
+                links=[{"rotulo": "Arquivo", "url": "https://exemplo.test/arquivo"}],
+                readme=titulo, laudo_do_aluno={"texto": titulo},
+            )
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], "cadastrado")
     for slug, presente, ausente in [
@@ -161,6 +162,9 @@ def test_historico_expirado_isola_cursos_com_a_mesma_aula(
         corpo = resposta.content.decode()
         assert presente in corpo
         assert ausente not in corpo
+        if slug == "comunidade":
+            assert "Envio 3" in corpo
+            assert "Envios anteriores" in corpo
     assert client.get(
         reverse("laudo-recebido", args=["D02"]), HTTP_COOKIE=COOKIE
     ).status_code == 403
