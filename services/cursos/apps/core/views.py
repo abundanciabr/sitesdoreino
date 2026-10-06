@@ -1561,6 +1561,12 @@ def producao_huge_cat_dia2(request):
     })
 
 
+@require_GET
+@never_cache
+def analise_desafio_roblox(request):
+    return render(request, "cursos/analise_desafio_roblox.html", _de_fora())
+
+
 def _envio_do_plantao(site_id: str | None, envio_id: int) -> Envio:
     return get_object_or_404(
         Envio.objects.select_related("aula__curso", "aula__instrumento", "pessoa"),

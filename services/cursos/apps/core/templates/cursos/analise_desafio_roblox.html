@@ -1,0 +1,122 @@
+{% extends "cursos/moldura.html" %}
+{% block titulo %}Como melhorar o ensino do desafio Roblox{% endblock %}
+{% block faixa %}<a href="{% url 'curso' 'desafio-como-ganhar-em-dolar-com-roblox' %}">Desafio Como Ganhar em Dólar com Roblox</a><span class="onde">Produção · Análise didática</span>{% endblock %}
+{% block conteudo %}
+<style>
+  .analise-aulas { line-height: 1.7; }
+  .analise-aulas h2 { line-height: 1.25; }
+  .analise-aulas h3 { margin-top: 24px; }
+  .analise-aulas code { overflow-wrap: anywhere; font-size: .85em; }
+  .analise-aulas .comparacao { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .analise-aulas figure { margin: 0; min-width: 0; }
+  .analise-aulas figure img { width: 100%; height: auto; aspect-ratio: 8 / 5; object-fit: contain; background: #242424; border-radius: 10px; }
+  .analise-aulas figcaption { font-size: 14px; line-height: 1.5; margin-top: 8px; }
+  .analise-aulas .rolagem { overflow-x: auto; }
+  .analise-aulas table { width: 100%; border-collapse: collapse; }
+  .analise-aulas th, .analise-aulas td { text-align: left; vertical-align: top; padding: 12px; border-bottom: 1px solid var(--borda); }
+  .analise-aulas blockquote { margin: 18px 0; padding: 16px 20px; border-left: 4px solid var(--marca); background: var(--marca-fraca); }
+  .analise-aulas .prioridade { color: var(--marca); font-weight: 700; }
+  @media (max-width: 640px) { .analise-aulas .comparacao { grid-template-columns: 1fr; } }
+</style>
+<article class="analise-aulas conteudo-pratica-nativa">
+  <section class="abertura">
+    <p class="rotulo">Produção · Diagnóstico de 6 de outubro de 2026</p>
+    <h1>O aluno precisa entender o objetivo e conseguir agir sozinho</h1>
+    <p class="recado">A principal mudança é reconstruir a explicação: mostrar o que será feito, explicar por que cada ação importa e dar ao aluno uma tarefa que consiga repetir no próprio Blender.</p>
+    <p>Este diagnóstico reúne a revisão das páginas publicadas, dos roteiros, da sequência interativa, de quadros das demonstrações e das transcrições automáticas dos três vídeos antigos. As transcrições ajudam a localizar assuntos; não foram usadas como citações literais da apresentadora. Não houve observação direta de alunos nesta análise.</p>
+    <p><strong>“10x” é a ambição de melhoria.</strong> Ainda não temos evidência para prometer uma multiplicação da aprendizagem. O sinal que interessa é o aluno explicar o objetivo e completar uma pequena tarefa sem copiar cada clique.</p>
+    <nav class="links" aria-label="Partes da análise"><a href="#diagnostico">Problemas encontrados</a><a href="#dia2">Exemplo do Dia 2</a><a href="#prioridades">O que fazer primeiro</a><a href="#sequencia">Sequência dos sete dias</a><a href="#evidencias">Páginas analisadas</a></nav>
+  </section>
+
+  <section class="bloco-da-pratica" id="diagnostico">
+    <h2>O que está dificultando o ensino</h2>
+    <h3>1. O destino aparece, mas o sentido da ação fica fraco</h3>
+    <p>No Dia 2, a tarefa pede X = 4, Y = 3.5 e Z = 3.86. O aluno pode copiar esses números sem entender largura, profundidade e altura, nem perceber por que está preparando apenas o corpo. Precisamos apontar essa parte no gato completo e mostrar a mudança de uma medida por vez. Esses valores são uma referência deste arquivo de estudo, não uma fórmula universal para modelar gatos.</p>
+    <div class="comparacao">
+      <figure><img src="{% url 'estatico' 'huge-cat-dia2/01-inicio.webp' %}" width="1920" height="1200" loading="lazy" alt="Captura real do Blender com o bloco inicial do Dia 2"><figcaption>Ponto de partida real: bloco inicial. O aluno precisa saber qual peça está selecionada e o que fará com ela.</figcaption></figure>
+      <figure><img src="{% url 'estatico' 'huge-cat-dia2/02-largura.webp' %}" width="1920" height="1200" loading="lazy" alt="Captura real do Blender depois da alteração da largura do corpo"><figcaption>Primeira mudança: largura. A explicação deve relacionar o campo alterado à transformação visível.</figcaption></figure>
+    </div>
+    <h3>2. Há conhecimentos anteriores escondidos dentro das instruções</h3>
+    <p>Selecionar o objeto correto, reconhecer seu contorno, abrir a barra lateral, substituir um valor e confirmar parecem pequenas ações para quem já usa Blender. Para um leigo, cada uma pode interromper a aula. A gravação deve começar no mesmo estado que o aluno consegue obter, explicar somente os controles necessários e mostrar o resultado esperado depois de cada ação. Teclado sem numérico e uso de notebook precisam de alternativas visuais.</p>
+    <h3>3. As demonstrações ainda não têm a explicação falada da Lívia</h3>
+    <p>As demonstrações atuais dos Dias 1 e 2 são sem áudio. O aluno divide a atenção entre ler a instrução, encontrar o controle e observar a mudança. No Dia 1, a demonstração de 2min17s passa por corpo, modo de edição, peças, materiais, cor, vistas e arquivo. Essa apresentação precisa de explicação e pausas; não equivale a ensinar todos esses procedimentos.</p>
+    <p>A Lívia deve narrar a intenção, a ação e a conferência. Os takes reais precisam determinar o tempo final da edição. O karaokê de oito minutos é um apoio de ensaio com tempos planejados; ainda não comprova sincronia com uma fala gravada.</p>
+    <h3>4. O vídeo e a tarefa de salvar não mostram exatamente o mesmo caminho</h3>
+    <p>O texto do Dia 2 orienta “Salvar como…” em uma pasta do aluno. A sequência de gravação destaca “Salvar”, sem mostrar o percurso completo de primeira gravação com pasta e nome próprios. Também há uma passagem de um corpo já ajustado para o bloco inicial. Precisamos identificar “resultado de hoje” e “agora começamos”, e gravar a primeira gravação do arquivo até reabri-lo.</p>
+    <h3>5. Reconhecer um alvo ainda não demonstra compreensão</h3>
+    <p>As setas e os círculos ajudam a orientar o primeiro contato. Porém, o botão “Avançar” permite percorrer a prática sem escolher os alvos. A mensagem final descreve a conclusão do percurso na página, não a execução no Blender. Podemos preservar Voltar, Avançar e Recomeçar, distinguir revisão de resposta e acrescentar escolhas com retorno explicativo. Depois do exemplo guiado, uma pergunta sem seta e uma pequena alteração no próprio PC mostram melhor o que foi entendido.</p>
+    <h3>6. A página do aluno mistura estudo e produção</h3>
+    <p>O Dia 2 apresenta a demonstração, o ensaio de karaokê e a montagem-base, além de falas e instruções para a apresentadora. A preparação da Lívia está aberta na página do aluno. Precisamos concentrar esses materiais nas páginas de produção e deixar a aula com um objetivo, um caminho de estudo e uma tarefa claros.</p>
+    <h3>7. A sequência do curso não acompanha o projeto anunciado</h3>
+    <p>Depois do Dia 2 do Huge Cat, a navegação leva ao episódio da árvore. As três aulas antigas seguintes tratam sobretudo de mercado, objeções e apresentação do método, com uma demonstração de oferta no Fiverr. Elas não continuam a construção do pet. Seus campos de apoio textual estão vazios. Os vídeos podem continuar disponíveis como contexto, com títulos e função claros, enquanto a trilha prática acompanha o mesmo projeto.</p>
+    <h3>8. Resolução de gravação e tamanho de leitura são coisas diferentes</h3>
+    <p>Os vídeos novos têm 1920×1200, mas o vídeo do Dia 2 ocupou aproximadamente 823 pixels de largura no navegador revisado. Um texto de 34 px dentro da gravação passa a ocupar cerca de 15 px nessa exibição. Precisamos aproximar a região trabalhada, deixar uma referência de onde ela fica na interface e aproveitar os controles existentes para ampliar o vídeo. Aumentar toda a interface pode cortar nomes e reduzir o espaço do objeto.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="dia2">
+    <p class="rotulo">Exemplo de reescrita · proposta, ainda não aplicada à aula</p>
+    <h2>Dia 2: transformar um bloco no corpo do gato</h2>
+    <p><strong>Objetivo na primeira tela:</strong> “Hoje você vai ajustar o corpo do nosso gato e salvar um arquivo seu. Ao terminar, conseguirá mostrar qual medida muda a largura e reabrir o trabalho para continuar amanhã.”</p>
+    <p>Mostrar o gato completo, destacar somente o corpo e apresentar o resultado desta aula. Orelhas, olhos e patas aparecem como próximas partes. Responder ao gancho anterior em uma frase: a prática de modelagem começa no Blender; requisitos de publicação serão tratados no momento adequado. Em seguida, começar a tarefa.</p>
+    <div class="rolagem"><table>
+      <thead><tr><th>Momento</th><th>Fala proposta para a Lívia</th><th>O que mostrar</th></tr></thead>
+      <tbody>
+        <tr><td>Dar sentido</td><td>“Este bloco vai virar o corpo do gato. Hoje vamos mudar seu tamanho; os detalhes vêm depois.”</td><td>Gato completo → corpo destacado → bloco inicial, com nomes visíveis para distinguir as três vistas.</td></tr>
+        <tr><td>Preparar</td><td>“Clique uma vez no corpo. Veja o contorno: ele mostra qual peça vai receber a mudança.”</td><td>Seleção real, contorno e nome do objeto. Se outra peça estiver selecionada, mostrar a correção.</td></tr>
+        <tr><td>Explicar uma medida</td><td>“Queremos um corpo mais largo. Neste arquivo, X controla essa largura. Veja o bloco antes; agora vamos aumentar só essa medida.”</td><td>Seta de largura no corpo e aproximação do campo X. Manter câmera e orientação da cena para comparar antes e depois.</td></tr>
+        <tr><td>Executar e conferir</td><td>“Digite 4 e confirme. O bloco ficou mais largo. A altura e a profundidade ainda não mudaram. Pause e faça essa mudança no seu Blender.”</td><td>Valor digitado, confirmação e transformação real. Não cortar a digitação nem passar ao próximo campo enquanto explica este.</td></tr>
+        <tr><td>Repetir com compreensão</td><td>“Agora vamos cuidar da profundidade e da altura. Esses números nos aproximam da referência; você verá o efeito de cada um.”</td><td>Uma medida por vez, referência e comparação. Explicar X/Y/Z nesta orientação sem apresentar eixos como regra de toda cena.</td></tr>
+        <tr><td>Dar autonomia</td><td>“Sem seguir minha seta: qual campo você mudaria para deixar o corpo mais alto? Faça uma pequena mudança, observe e depois volte ao tamanho da referência.”</td><td>Pausa com pergunta, seguida de resposta explicada. Pequena variação no arquivo do aluno, sem perda do trabalho.</td></tr>
+        <tr><td>Guardar o resultado</td><td>“Vamos salvar sua cópia. Escolha uma pasta que você encontre depois e dê um nome ao arquivo. Agora abra essa cópia e confira se o corpo continua ajustado.”</td><td>Salvar como…, pasta, nome, confirmação e reabertura do arquivo salvo. Print é apoio; o arquivo é o trabalho que continua.</td></tr>
+      </tbody>
+    </table></div>
+    <p>Quando houver erro, explicar o que aconteceu e como recuperar: objeto errado, painel fechado, mudança ainda não confirmada ou medida inesperada. Usar a mesma captura da etapa para situar a correção. O resultado da prática permanece no mesmo quadro, com as próximas imagens previamente carregadas e decodificadas.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="prioridades">
+    <h2>O que fazer primeiro</h2>
+    <ol>
+      <li><strong>Reescrever objetivos e falas dos Dias 1 e 2.</strong> Trocar objetivos vagos por ações observáveis. No Dia 1, reconhecer o projeto, abrir o ambiente e guardar uma primeira cópia. No Dia 2, ajustar o corpo, explicar uma medida e salvar/reabrir o arquivo. A história e a motivação da Lívia podem continuar, sem ocupar o lugar da explicação.</li>
+      <li><strong>Refazer o Dia 2 completo como exemplo do novo ensino.</strong> Captura real em 1920×1200, início reproduzível, intenção → ação → resultado, aproximações legíveis, pausas e primeira gravação do arquivo. Dividir por objetivos para permitir repetir um trecho sem procurar dentro do vídeo inteiro.</li>
+      <li><strong>Simplificar o material inicial.</strong> Um arquivo com o corpo necessário para este exercício e referência clara. O arquivo completo continua disponível para comparar, com identificação de resultado pronto. Explicar o que veio preparado e o que foi feito pelo aluno; depois ensinar a criar o bloco por conta própria.</li>
+      <li><strong>Melhorar a prática dentro da aula.</strong> Primeiro com indicação; depois com menos ajuda; por fim uma tarefa pequena no PC. Feedback deve explicar a escolha, e o check-in pode incluir o que mudou e onde houve dificuldade. Manter a conclusão livre e o funcionamento atual do curso.</li>
+      <li><strong>Organizar o caminho do aluno.</strong> Objetivo → demonstração → prática → tarefa no Blender → conferência → continuação. Preparação da Lívia nas páginas de produção. Preservar navegação, identificadores, endereços e progresso; ajustar posição pelos controles existentes.</li>
+      <li><strong>Ouvir iniciantes usando esse exemplo e aplicar os achados às próximas aulas.</strong> Convidar alguns alunos a explicar o objetivo e executar a tarefa sem condução. Anotar em qual passo pedem ajuda e qual explicação resolve. Essa observação orienta a melhoria; não é uma nova trava de acesso ou de publicação.</li>
+    </ol>
+    <p>Conseguir repetir uma variação, explicar o que mudou e reabrir o próprio arquivo são sinais melhores de aprendizagem do que assistir até o fim ou comentar “concluído”. A gravação final com a apresentadora depende dos takes reais da Lívia. Provas pessoais ou financeiras usadas na história precisam vir do material autêntico fornecido por ela, sem telas ou resultados inventados.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="sequencia">
+    <h2>Uma sequência possível para os sete dias</h2>
+    <p>Proposta de organização, preservando o Huge Cat como referência de estudo escolhida. Os conteúdos atuais continuam disponíveis; posição e títulos podem ser ajustados sem trocar seus identificadores.</p>
+    <div class="rolagem"><table>
+      <thead><tr><th>Dia</th><th>Resultado do aluno</th><th>Ideia que precisa entender</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Reconhecer as partes, abrir o Blender e salvar/reabrir uma primeira cópia.</td><td>O projeto é formado por peças; cada aula constrói uma parte.</td></tr>
+        <tr><td>2</td><td>Ajustar e guardar o corpo.</td><td>Largura, profundidade e altura produzem mudanças diferentes.</td></tr>
+        <tr><td>3</td><td>Criar e posicionar orelhas e patas, em trechos separados.</td><td>Criar, duplicar e posicionar peças com propósito.</td></tr>
+        <tr><td>4</td><td>Construir o rosto simples.</td><td>Pequenas formas e posições tornam o personagem reconhecível.</td></tr>
+        <tr><td>5</td><td>Aplicar cores e realizar uma pequena variação própria.</td><td>Material, cor e forma têm funções diferentes.</td></tr>
+        <tr><td>6</td><td>Conferir o modelo e acompanhar um teste real no Roblox Studio.</td><td>Um modelo que aparece no Blender ainda precisa de conferência no ambiente de uso. A demonstração no Studio depende de preparar esse ambiente e executar o teste real.</td></tr>
+        <tr><td>7</td><td>Organizar o arquivo e apresentar o que criou.</td><td>Apresentação, pedido e entrega. Encomendas fictícias devem ser identificadas como simulação; concluir o modelo não comprova venda.</td></tr>
+      </tbody>
+    </table></div>
+    <p>O episódio da árvore e as aulas de mercado podem ser complementos com sua função explícita. A sequência prática deve continuar o gato. Pet de uma experiência e item de avatar precisam de explicações distintas quando essa diferença fizer parte da tarefa.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="evidencias">
+    <h2>Material analisado e limites do diagnóstico</h2>
+    <p>As observações sobre as demonstrações vieram dos roteiros, da sequência de ações e de quadros amostrados dos vídeos, não de uma avaliação direta da aprendizagem de cada aluno. Nos vídeos antigos, foram lidas as transcrições automáticas completas; a revisão não equivale a assistir integralmente a todos os movimentos da tela.</p>
+    <ul>
+      <li>Mapa e sequência atual: <a href="{% url 'curso' 'desafio-como-ganhar-em-dolar-com-roblox' %}">abrir o curso</a><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/</code></li>
+      <li>Dia 1: <a href="{% url 'aula-do-curso' 'desafio-como-ganhar-em-dolar-com-roblox' 1 'PET' %}">abrir a aula</a><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/PET</code></li>
+      <li>Dia 2: <a href="{% url 'aula-do-curso' 'desafio-como-ganhar-em-dolar-com-roblox' 1 'D02' %}">abrir a aula</a><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/D02</code></li>
+      <li>Árvore, atual próxima aula: <a href="{% url 'aula-do-curso' 'desafio-como-ganhar-em-dolar-com-roblox' 1 'J01' %}">abrir o episódio</a><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/J01</code></li>
+      <li>Vídeos antigos: apresentação do mercado (30min), resposta a objeções (23min49s) e oferta/método (20min30s).<br><code>https://www.youtube.com/watch?v=3DqQzY2-uOw</code><br><code>https://www.youtube.com/watch?v=ryJ4utK4G60</code><br><code>https://www.youtube.com/watch?v=4lF0RQ_XfMc</code></li>
+    </ul>
+    <p>O uso de segmentos no ritmo do aluno e de uma apresentação prévia dos conceitos necessários tem apoio no capítulo de Mayer e Pilegard sobre aprendizagem multimídia. Isso fundamenta a direção pedagógica, sem comprovar um ganho específico neste curso. <a href="https://www.cambridge.org/core/books/abs/cambridge-handbook-of-multimedia-learning/principles-for-managing-essential-processing-in-multimedia-learning-segmenting-pretraining-and-modality-principles/DD24C2F48B9B1277CE59F78276110258">Consultar o capítulo na Cambridge</a>.<br><code>https://www.cambridge.org/core/books/abs/cambridge-handbook-of-multimedia-learning/principles-for-managing-essential-processing-in-multimedia-learning-segmenting-pretraining-and-modality-principles/DD24C2F48B9B1277CE59F78276110258</code></p>
+    <p>As alternativas de entrada para mouse e teclado devem respeitar o equipamento do aluno. <a href="https://docs.blender.org/manual/en/4.4/editors/preferences/input.html">Consultar o manual oficial do Blender</a>.<br><code>https://docs.blender.org/manual/en/4.4/editors/preferences/input.html</code></p>
+    <p class="miudo">Publicado como diagnóstico e proposta na área de produção. Esta página não modifica aulas, arquivos dos alunos, comentários, matrículas ou registros de conclusão.</p>
+  </section>
+</article>
+{% endblock %}
