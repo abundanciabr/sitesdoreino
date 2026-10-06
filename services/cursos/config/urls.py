@@ -3,6 +3,8 @@ from django.urls import path, re_path
 from apps.core.views import (
     aula,
     aula_avulsa,
+    arquivo_privado,
+    pratica_da_comunidade,
     aulas_avulsas,
     catalogo,
     concluir_aula,
@@ -49,6 +51,8 @@ urlpatterns = [
     path("satisfacao/", satisfacao, name="satisfacao"),
     path("satisfacao/<slug:slug>/", satisfacao, name="satisfacao-curso"),
     path("healthz", healthz),
+    path("arquivo/<str:token>", arquivo_privado, name="arquivo-privado"),
+    path("comunidade/pratica", pratica_da_comunidade, name="pratica-da-comunidade"),
     path("api/cursos/", api.urls),
     # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em
     # produção e SÓ lá: com DEBUG=0 o Django não serve
@@ -96,6 +100,7 @@ urlpatterns = [
     # de um curso tem dois segmentos, a aula antiga tem um.
     path("<slug:curso>/", mapa, name="curso"),
     path("<slug:curso>/parte-<int:parte>/<str:numero>", aula, name="aula-do-curso"),
+    path("<slug:curso>/parte-<int:parte>/<str:numero>/laudo", laudo_recebido, name="laudo-recebido-do-curso"),
     path(
         "<slug:curso>/parte-<int:parte>/<str:numero>/comentarios",
         enviar_comentario,

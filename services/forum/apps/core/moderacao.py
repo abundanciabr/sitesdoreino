@@ -62,7 +62,7 @@ from apps.forum.tasks import relay_apos_commit
 
 from . import agente, galeria
 from .menu import site_id_do_host
-from .permissoes import pode_moderar
+from .permissoes import pode_escrever, pode_moderar
 from .sessao import email_da_equipe, quem_e
 from .views import (
     TITULO_MAXIMO,
@@ -787,9 +787,14 @@ def moderar_topico(request, topico_id: int):
     acao = (request.POST.get("acao") or "").strip()
     ator = quem_e(request)
     dono_da_pergunta = (
-        ator.pessoa is not None and ator.pessoa.id_da_plataforma == topico.autor_id
+        ator.pessoa is not None and ator.pessoa.pk == topico.autor_id
     )
-    if not (dono_da_pergunta and acao in ACOES_DO_AUTOR_DA_PERGUNTA):
+    if not (
+        dono_da_pergunta
+        and acao in ACOES_DO_AUTOR_DA_PERGUNTA
+        and topico.estado == Topico.Estado.PUBLICADO
+        and pode_escrever(topico.area, ator)
+    ):
         # A porta de sempre, para todo o resto: 404 e não 403 (regra 2 do
         # cabeçalho deste arquivo).
         ator = _so_quem_modera(request)
@@ -969,7 +974,7 @@ def _papel_de_quem_marcou(ator, topico) -> str:
     cega. Quem é da equipe entra como `professor`; o dono da pergunta, como
     `autor`; qualquer outro caminho é `monitor`.
     """
-    if ator.pessoa and ator.pessoa.id_da_plataforma == topico.autor_id:
+    if ator.pessoa and ator.pessoa.pk == topico.autor_id:
         return "autor"
     if ator.eh_equipe:
         return "professor"

@@ -187,13 +187,12 @@ def test_matricula_suspensa_ou_encerrada_fecha_o_desafio_e_ativa_de_novo_reabre_
     assert resposta_envio_recusado.status_code == 403, categoria
     assert A_FRASE_DE_SEM_MATRICULA in resposta_envio_recusado.content.decode()
 
-    # O laudo antigo: some da TELA (a mesma porta que fecha o desafio fecha
-    # a tela do laudo), mas continua intacto no banco, e a prova disso segue.
+    # O histórico continua legível para quem enviou, mesmo sem novos gestos.
     resposta_laudo = client.get(
         reverse("laudo-recebido", args=[e00.numero]), HTTP_COOKIE=COOKIE
     )
-    assert resposta_laudo.status_code == 403, categoria
-    assert A_FRASE_DE_SEM_MATRICULA in resposta_laudo.content.decode()
+    assert resposta_laudo.status_code == 200, categoria
+    assert MUDANCA_DO_LAUDO in resposta_laudo.content.decode()
 
     envio.refresh_from_db()
     laudo.refresh_from_db()
@@ -268,8 +267,8 @@ def test_alunos_fora_do_ar_fecha_o_desafio_com_historico_ja_existente_e_reabre_d
     resposta_laudo = client.get(
         reverse("laudo-recebido", args=[e00.numero]), HTTP_COOKIE=COOKIE
     )
-    assert resposta_laudo.status_code == 403
-    assert A_FRASE_DE_SEM_RESPOSTA in resposta_laudo.content.decode()
+    assert resposta_laudo.status_code == 200
+    assert MUDANCA_DO_LAUDO in resposta_laudo.content.decode()
 
     envio.refresh_from_db()
     laudo.refresh_from_db()

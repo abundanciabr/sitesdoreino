@@ -9,6 +9,13 @@
   {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
   {% if topico.estado != "publicado" %}<span class="etiqueta">fora do ar</span>{% endif %}
 </p>
+{% if pode_aceitar_resposta and topico.resposta_aceita_id %}
+  <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="acao" value="desmarcar">
+    <button class="mini" type="submit">Reabrir minha dúvida</button>
+  </form>
+{% endif %}
 
 {% comment %}
 AS FERRAMENTAS DA ESCOLA nesta conversa. Mandato de 30/08/2026, e o professor
@@ -130,6 +137,14 @@ trabalho nunca encontra.
     {% if topico.resposta_aceita_id == mensagem.pk %}<span class="etiqueta">resposta aceita</span>{% endif %}
     {% if mensagem.removida_em %}<span class="etiqueta">fora do ar</span>{% endif %}
     <div class="texto">{{ mensagem.texto }}</div>
+    {% if pode_aceitar_resposta and not mensagem.removida_em and mensagem.autor_id != ator.pessoa.pk and topico.resposta_aceita_id != mensagem.pk %}
+      <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="aceitar">
+        <input type="hidden" name="mensagem_id" value="{{ mensagem.pk }}">
+        <button class="mini" type="submit">Esta resposta resolveu minha dúvida</button>
+      </form>
+    {% endif %}
 
     {% if pode_moderar %}
       <details class="ferramentas-mini">

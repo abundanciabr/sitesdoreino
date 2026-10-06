@@ -156,6 +156,10 @@ def publicar(
         raise ContribuicaoRecusada(
             "O título e o nome de quem responde cabem em até 120 caracteres cada."
         )
+    if not e_da_equipe(autor_id):
+        raise ContribuicaoRecusada(
+            "Só alguém da equipe da escola pode publicar uma tarefa."
+        )
     if not e_da_equipe(responsavel_id):
         raise ContribuicaoRecusada(
             "Quem responde pela aceitação precisa ser alguém da equipe da escola."
@@ -366,6 +370,10 @@ def _travar_para_decidir(
         raise ContribuicaoRecusada(
             "Toda decisão tem nome. Sem o id de quem decidiu, ninguém saberia "
             "depois quem disse sim."
+        )
+    if not e_da_equipe(validador_id):
+        raise ContribuicaoRecusada(
+            "Só alguém da equipe da escola pode avaliar uma contribuição."
         )
     if validador_id == compromisso.pessoa_id:
         raise ContribuicaoRecusada(

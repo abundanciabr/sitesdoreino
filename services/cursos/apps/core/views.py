@@ -43,7 +43,9 @@ from urllib.parse import quote, urlsplit
 from .praticas import PRATICAS
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q
 from django.views.decorators.cache import never_cache
 from django.views.decorators.vary import vary_on_cookie
@@ -84,6 +86,7 @@ from apps.cursos.models import (
 )
 
 from .markdown import para_html
+from . import arquivos_privados
 from .sessao import quem_e, site_atual
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
@@ -257,6 +260,8 @@ def _recusa_de_curso(ator, curso: Curso) -> str:
     `manage.py apontar_o_produto_do_curso`; curso aberto por falta de
     apontamento é o defeito invisível que esta mudança existe para matar.
     """
+    if curso.slug == "comunidade":
+        return "" if ator.matricula_ativa_deste_site else "outro-curso"
     if not curso.produto_id:
         return "curso-sem-produto"
     if curso.produto_id not in ator.produtos_matriculados:
@@ -677,6 +682,18 @@ def mapa(request, curso: str):
             **_de_fora(curso),
         },
     )
+
+
+@require_GET
+def pratica_da_comunidade(request):
+    """Entrada direta para a prática, sem depender da sequência de outro curso."""
+    pessoa, curso, recusa = _sala(request, "comunidade")
+    if recusa is not None:
+        return recusa
+    aula = curso.aulas.filter(estado=Aula.Estado.PUBLICADA).order_by("ordem").first()
+    if aula is None:
+        return _recusar(request, "sem-curso", status=200, curso=curso)
+    return HttpResponseRedirect(_url_da_aula(curso, aula))
 
 
 # ---------------------------------------------------------------------------
@@ -1313,10 +1330,27 @@ def entregar_checkpoint(
         return _voltar_a_aula(
             curso, aula, erro=portas.SO_NO_CURSO_LIVRE, ancora="concluir"
         )
+    arquivo_enviado = request.FILES.get("arquivo_privado")
+    token_privado = None
+    if arquivo_enviado is not None:
+        if arquivo_enviado.size > arquivos_privados.limite_bytes():
+            return _voltar_a_aula(
+                curso, aula, erro="O arquivo excede o limite desta entrega.", ancora="checkpoint"
+            )
+        try:
+            arquivos_privados.raiz()
+        except ImproperlyConfigured as motivo:
+            return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="checkpoint")
+        token_privado = arquivos_privados.novo_token()
+    arquivo_url = (
+        request.build_absolute_uri(reverse("arquivo-privado", args=[token_privado]))
+        + "?nome=" + quote(Path(arquivo_enviado.name).name)
+        if token_privado else request.POST.get("arquivo", "")
+    )
     links = [
         {
             "rotulo": checkpoint.ROTULO_DO_ARQUIVO,
-            "url": request.POST.get("arquivo", ""),
+            "url": arquivo_url,
         }
     ]
     for indice in range(len(PREVIAS_SUGERIDAS)):
@@ -1340,15 +1374,59 @@ def entregar_checkpoint(
     else:
         laudo = {"texto": request.POST.get("autoavaliacao", "")}
     try:
-        checkpoint.entregar(
-            progresso,
-            links=links,
-            readme=request.POST.get("readme", ""),
-            laudo_do_aluno=laudo,
-        )
+        with transaction.atomic():
+            checkpoint.entregar(
+                progresso,
+                links=links,
+                readme=request.POST.get("readme", ""),
+                laudo_do_aluno=laudo,
+            )
+            if token_privado:
+                arquivos_privados.gravar(token_privado, arquivo_enviado)
     except checkpoint.EnvioRecusado as motivo:
         return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="checkpoint")
+    except OSError:
+        return _voltar_a_aula(
+            curso, aula, erro="Não foi possível guardar o arquivo agora.", ancora="checkpoint"
+        )
     return _voltar_a_aula(curso, aula, recado="entregue", ancora="checkpoint")
+
+
+@require_GET
+@never_cache
+def arquivo_privado(request, token: str):
+    """Só a pessoa que enviou ou a professora abre o arquivo da tentativa."""
+    if not re.fullmatch(r"[0-9a-f]{32}", token):
+        raise Http404
+    ator = quem_e(request)
+    site = site_atual()
+    if not ator.autenticado or not site:
+        raise Http404
+    candidatos = Envio.objects.filter(
+        aula__curso__site_id=site, links__icontains=token
+    ).select_related("aula__curso")
+    envio = next(
+        (
+            item for item in candidatos
+            if any(urlsplit(link.get("url", "")).path.endswith(
+                reverse("arquivo-privado", args=[token])
+            ) for link in item.links)
+        ),
+        None,
+    )
+    if envio is None or not (
+        envio.pessoa_id == ator.pessoa.pk
+        or ator.pode_assinar_laudo
+    ):
+        raise Http404
+    try:
+        arquivo = arquivos_privados.caminho(token).open("rb")
+    except (OSError, ImproperlyConfigured, ValueError):
+        raise Http404
+    nome = request.GET.get("nome", "").replace("\\", "/").split("/")[-1]
+    return FileResponse(
+        arquivo, as_attachment=True, filename=nome or f"entrega-{envio.numero}"
+    )
 
 
 @require_POST
@@ -1425,7 +1503,7 @@ def _criterios_da_regua(copia: VersaoDoInstrumento | None) -> list[dict]:
 
 
 @require_GET
-def laudo_recebido(request, numero: str):
+def laudo_recebido(request, numero: str, curso: str | None = None, parte: int | None = None):
     """O laudo do envio mais recente desta aula, para a PESSOA DA SESSÃO.
     Sem envio ainda, ou envio ainda sem laudo: a tela diz isso,
     nunca um erro. A data aparece ANTES do texto quando devolvido (lei §6).
@@ -1439,10 +1517,46 @@ def laudo_recebido(request, numero: str):
     `laudo.mudanca`, `laudo.data_de_retorno` e a régua do laudo
     (`laudo.versao_do_instrumento`): nunca `laudo.avaliador`.
     """
-    pessoa, curso, aula_da_porta, progresso, recusa = _porta_aberta(request, numero)
-    if recusa is not None:
-        return recusa
-    envio = checkpoint.ultimo_envio(progresso)
+    try:
+        pessoa, curso, aula_da_porta, progresso, recusa = _porta_aberta(
+            request, numero, slug=curso, parte=parte
+        )
+        aula_inexistente = False
+    except Http404:
+        aula_inexistente = True
+        recusa = None
+    if recusa is None and not aula_inexistente:
+        envio = checkpoint.ultimo_envio(progresso)
+    else:
+        # A matrícula encerra novos gestos, mas os envios e laudos anteriores
+        # pertencem a quem os fez. A identidade e o site ainda são exigidos.
+        ator = quem_e(request)
+        site = site_atual()
+        if not ator.autenticado or not site:
+            if aula_inexistente:
+                raise Http404
+            return recusa
+        historico = Envio.objects.filter(
+            pessoa=ator.pessoa,
+            aula__curso__site_id=site,
+            aula__numero=numero,
+        ).select_related("aula__curso", "aula__bloco")
+        if curso is not None:
+            historico = historico.filter(aula__curso__slug=curso, aula__bloco__parte=parte)
+        # O endereço legado sem curso só é inequívoco com uma aula no histórico.
+        aulas = list(historico.values_list("aula_id", flat=True).distinct()[:2])
+        if len(aulas) != 1:
+            if aula_inexistente:
+                raise Http404
+            return recusa
+        envio = historico.filter(aula_id=aulas[0]).order_by("-numero").first()
+        aula_da_porta = envio.aula
+        curso = aula_da_porta.curso
+    historico_anterior = (
+        Envio.objects.filter(pessoa=envio.pessoa, aula=aula_da_porta, numero__lt=envio.numero)
+        .order_by("-numero")
+        if envio is not None else []
+    )
     laudo_do_envio = (
         Laudo.objects.select_related("versao_do_instrumento__instrumento")
         .filter(envio=envio)
@@ -1467,6 +1581,7 @@ def laudo_recebido(request, numero: str):
             # a MESMA regra de [INV-CUR-S2]: o template lê só `mudanca.texto`,
             # nunca `avaliador`.
             "laudo_anterior": _laudo_anterior_de(envio) if envio is not None else None,
+            "historico_anterior": historico_anterior,
             **_de_fora(curso),
         },
     )
@@ -1659,6 +1774,7 @@ def plantao_fila(request):
         "cursos/plantao_fila.html",
         {
             "itens": itens,
+            "pode_assinar_laudo": ator.pode_assinar_laudo,
             "recado": RECADOS_DO_PLANTAO.get(request.GET.get("recado", "")),
             **_de_fora(),
         },
@@ -1704,6 +1820,7 @@ def _formulario_do_laudo(
     status: int = 200,
     sugestao: assistente.Sugestao | None = None,
     rascunho_id: str = "",
+    pode_assinar_laudo: bool = True,
 ):
     enviado = enviado or {}
     return render(
@@ -1722,6 +1839,7 @@ def _formulario_do_laudo(
             "sugestao": sugestao,
             "avisos_da_ia": assistente.avisos_de(sugestao) if sugestao else [],
             "rascunho_id": rascunho_id,
+            "pode_assinar_laudo": pode_assinar_laudo,
             **_de_fora(),
         },
         status=status,
@@ -1922,7 +2040,11 @@ def plantao_ficha(request, envio_id: int):
         endereco = reverse("plantao")
         return HttpResponseRedirect(f"{endereco}?recado=ja-tem-laudo")
     if request.method == "POST":
+        if not ator.pode_assinar_laudo:
+            return _negar_plantao(request)
         if request.POST.get("gesto") == GESTO_DE_RASCUNHAR:
             return _rascunhar_o_laudo(request, envio)
         return _gravar_laudo(request, envio, ator.pessoa)
-    return _formulario_do_laudo(request, envio)
+    return _formulario_do_laudo(
+        request, envio, pode_assinar_laudo=ator.pode_assinar_laudo
+    )

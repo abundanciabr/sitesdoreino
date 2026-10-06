@@ -8,6 +8,7 @@
       <p class="subtitulo">O trabalho das pessoas da casa, por situação. Hoje é {{ hoje|date:"d/m/Y" }}.</p>
     </div>
     <div class="equipe-gestos">
+      <a class="botao" href="{% url 'comunidade_da_equipe' %}">Comunidade</a>
       <a class="botao" href="{% url 'tarefa_nova' %}">Nova tarefa</a>
       {% if membro %}
       <form method="post" action="{% url 'conectar_meu_celular' %}">

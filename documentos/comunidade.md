@@ -1,6 +1,6 @@
 ---
 titulo: A Comunidade Meshcraft: o que é, o que fazer agora e como pedir ajuda
-publico: false
+publico: true
 ordem: 12
 ---
 
@@ -16,10 +16,12 @@ participação termina. Sem letra miúda.
 
 A Comunidade é para adultos com matrícula ativa na escola. Não existe cadastro
 separado nem cobrança própria: **o acesso é o da sua matrícula vigente**. Quem
-já entra na sala de aula entra na Comunidade pela mesma porta.
+já tem matrícula legítima na escola entra na Comunidade pela mesma conta.
+Você pode continuar estudando na Hotmart ou Herospark. Não é necessário
+migrar o curso para participar: a escola confere seus registros de acesso.
 
 Se você ainda não é aluno, o caminho começa em
-[Como funciona a entrada na escola](/docs/como-funciona-a-entrada).
+[Como funciona a entrada na escola](https://meshcraft.top/docs/como-funciona-a-entrada).
 
 ## O que você ganha participando
 
@@ -40,7 +42,7 @@ Se você ainda não é aluno, o caminho começa em
 
 ## O que fazer agora
 
-1. **Entre no fórum da escola** em [/forum/](/forum/). Quem tem matrícula ativa
+1. **Comece pela comunidade** em https://meshcraft.top/forum/comunidade. Quem tem matrícula ativa
    vê ali a área da Comunidade e, quando já estiver num grupo, a área do grupo.
 2. **Ainda sem grupo?** A escola coloca cada pessoa num grupo do seu estágio.
    Enquanto isso não acontece, a área da Comunidade diz como pedir a entrada e
@@ -48,20 +50,23 @@ Se você ainda não é aluno, o caminho começa em
 3. **Apresente-se no grupo.** Uma mensagem curta: em que aula você está e o que
    quer fazer com modelagem 3D. É a primeira coisa que o responsável do grupo
    espera ver.
-4. **Faça o desafio do estágio.** Ele é a aula em destaque no mapa do seu curso.
-   Entre pelo catálogo em [/cursos](/cursos), abra o seu curso e, antes de
-   enviar, confira a lista "aceito quando" da própria aula.
-5. **Envie a primeira versão** pelo botão de envio da aula, com o link da peça.
+4. **Abra a prática da comunidade** em https://meshcraft.top/cursos/comunidade/pratica.
+   Confira o pedido e a lista "aceito quando" antes de começar. Você continua
+   acompanhando suas aulas na plataforma em que já estuda.
+5. **Envie a primeira versão** pelo botão de envio da prática, com o arquivo privado ou o link da peça.
    O retorno chega na página de laudo do envio e o fórum é o lugar de conversar
    sobre ele.
 6. **Melhore e reenvie.** Se a peça voltar, a data do novo envio vem escrita no
    laudo. O reenvio ganha o número seguinte e a versão anterior continua
-   visível.
+   visível. Acompanhe o estado e os retornos na própria prática. O arquivo
+   privado só pode ser aberto por você e pela professora autorizada; colegas
+   não recebem esse acesso. Para um link externo, confira também as permissões
+   no serviço onde o arquivo está hospedado.
 
 ## Como funcionam as contribuições
 
 Além do desafio do seu estágio, a escola publica pedidos de trabalho no
-[quadro de contribuições](/conquistas/contribuicoes). Cada tarefa mostra, antes
+[quadro de contribuições](https://meshcraft.top/conquistas/contribuicoes). Cada tarefa mostra, antes
 de você assumir, o que entregar, quem pode participar, como a qualidade é
 avaliada, o reconhecimento que ela vale e quem aceita o resultado.
 
@@ -103,7 +108,7 @@ a escola enxerga e pode intervir.
 - **Status não dá autoridade.** Moderar, avaliar e criar grupo são funções da
   equipe da escola, separadas de qualquer reconhecimento.
 
-O que você já conquistou aparece em [/conquistas/marcos](/conquistas/marcos).
+O que você já conquistou aparece em [/conquistas/marcos](https://meshcraft.top/conquistas/marcos).
 
 ## O que a escola registra
 
@@ -147,8 +152,16 @@ estágio em que você estiver.
 ## Onde ver o estado da sua participação
 
 Esta página não traz números nem listas de pessoas. O que é seu está nas telas
-do site: o seu curso, aberto pelo catálogo em [/cursos](/cursos), mostra a aula
-em destaque e cada envio; o fórum em [/forum/](/forum/) mostra o seu grupo e as dúvidas que esperam
-por alguém; a trilha em [/conquistas/marcos](/conquistas/marcos) mostra o que já
-foi concedido e o que falta provar; o [quadro de contribuições](/conquistas/contribuicoes)
+do site: a prática em https://meshcraft.top/cursos/comunidade/pratica mostra
+cada envio e retorno; a comunidade em https://meshcraft.top/forum/comunidade mostra o seu grupo e as dúvidas que esperam
+por alguém; a trilha em [/conquistas/marcos](https://meshcraft.top/conquistas/marcos) mostra o que já
+foi concedido e o que falta provar; o [quadro de contribuições](https://meshcraft.top/conquistas/contribuicoes)
 mostra as tarefas que você assumiu e o estado de cada uma.
+
+## Configurações que ainda dependem da escola
+
+Seu grupo e a professora responsável são organizados pela equipe. Quando não
+houver grupo ou prática publicada, a tela indica essa situação e o caminho
+para pedir orientação. Benefícios adicionais, incentivos materiais e catálogo
+de resgate ainda não foram definidos; esta comunidade não promete nenhum deles.
+Reconhecimento não habilita moderação nem assinatura de laudo.

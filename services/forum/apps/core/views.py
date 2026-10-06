@@ -8,7 +8,7 @@ dia em que alguém mexer num deles.
 import mimetypes
 import os
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.db import transaction
@@ -352,6 +352,12 @@ def contexto_do_topico(
         "erro": erro,
         "texto_digitado": texto,
         "pode_moderar": modera,
+        "pode_aceitar_resposta": (
+            pode_escrever(topico.area, ator)
+            and topico.estado == Topico.Estado.PUBLICADO
+            and ator.pessoa is not None
+            and ator.pessoa.pk == topico.autor_id
+        ),
         "erro_admin": erro_admin,
         # O destino possível de uma mudança de área. Só é montado para quem
         # modera: para o resto é consulta ao banco que ninguém vai olhar.
@@ -618,7 +624,7 @@ def responder(request, topico_id: int):
 
 # O endereço do desafio mora na célula `cursos`, fora do prefixo `/forum`, e
 # por isso é caminho do SITE e não `reverse()` deste urlconf.
-DESAFIO_DO_CURSO = "/cursos/{}/"
+PRATICA_DA_COMUNIDADE = "/cursos/comunidade/pratica"
 # O bastante para uma tarde de ajuda. A lista existe para ser atendida, e a
 # mais antiga vem primeiro, então o corte nunca esconde quem espera há mais
 # tempo.
@@ -631,8 +637,17 @@ CONTRIBUICOES_URL = "/conquistas/contribuicoes"
 
 
 def endereco_do_desafio(grupo: Area) -> str:
-    """O link do desafio atual de um grupo: o curso dele, na célula `cursos`."""
-    return DESAFIO_DO_CURSO.format(quote(grupo.curso_id, safe=""))
+    """Entrada na prática, independente de curso antigo ou produto migrado."""
+    return PRATICA_DA_COMUNIDADE
+
+
+def endereco_para_pedir_grupo(ator) -> tuple[str, str]:
+    """A conversa começa numa área geral ativa que o aluno pode usar."""
+    for slug in ("sala-dos-alunos", "duvidas"):
+        area = Area.objects.filter(slug=slug).first()
+        if area and pode_escrever(area, ator):
+            return f"{reverse('area', args=[slug])}#abrir", area.nome
+    return reverse("abrir_conversa"), "fórum"
 
 
 def ha_quanto_tempo(momento, agora) -> str:
@@ -689,6 +704,7 @@ def contexto_da_comunidade(request, ator) -> dict:
         "grupos": [],
         "dependem": [],
         "contribuicoes_url": CONTRIBUICOES_URL,
+        "pratica_url": PRATICA_DA_COMUNIDADE,
     }
     if not ator.autenticado:
         contexto["estado"] = "entrar"
@@ -700,6 +716,11 @@ def contexto_da_comunidade(request, ator) -> dict:
     grupos = grupos_de(ator)
     if not grupos:
         contexto["estado"] = "sem_grupo"
+        if ator.eh_aluno and not ator.eh_equipe:
+            (
+                contexto["pedido_de_grupo_url"],
+                contexto["pedido_de_grupo_area"],
+            ) = endereco_para_pedir_grupo(ator)
         return contexto
 
     for grupo in grupos:

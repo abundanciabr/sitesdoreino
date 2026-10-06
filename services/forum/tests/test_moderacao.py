@@ -491,6 +491,44 @@ def test_apontar_a_resposta_certa_e_tirar_o_selo(client, env, monkeypatch, conve
     assert conversa.resposta_aceita_id is None
 
 
+def test_autora_matriculada_marca_resposta_pela_tela_e_reabre_a_duvida(
+    client, env, monkeypatch, conversa
+):
+    colega = Pessoa.objects.create(
+        id_da_plataforma="p_bia", email="bia@exemplo.com", nome_exibido="Bia"
+    )
+    resposta = Mensagem.objects.create(
+        topico=conversa, autor=colega, texto="Confira a escala do UV."
+    )
+    como_aluna(monkeypatch)
+    pagina = ver(client, "topico", conversa.pk).content.decode()
+    assert "Esta resposta resolveu minha dúvida" in pagina
+    assert "Ferramentas da escola" not in pagina
+
+    assert moderar_topico(
+        client, conversa, acao="aceitar", mensagem_id=resposta.pk
+    ).status_code == 302
+    conversa.refresh_from_db()
+    assert conversa.resposta_aceita_id == resposta.pk
+    assert "Reabrir minha dúvida" in ver(client, "topico", conversa.pk).content.decode()
+
+    assert moderar_topico(client, conversa, acao="desmarcar").status_code == 302
+    conversa.refresh_from_db()
+    assert conversa.resposta_aceita_id is None
+
+
+def test_autora_sem_matricula_nao_pode_marcar_resposta(
+    client, env, monkeypatch, conversa
+):
+    resposta = conversa.mensagens.last()
+    dublar(monkeypatch, sessao=SESSAO_DA_ANA, categoria="ex_aluno")
+    assert moderar_topico(
+        client, conversa, acao="aceitar", mensagem_id=resposta.pk
+    ).status_code == 404
+    conversa.refresh_from_db()
+    assert conversa.resposta_aceita_id is None
+
+
 def test_nao_aceita_resposta_de_outra_conversa(
     client, env, monkeypatch, conversa, sala
 ):

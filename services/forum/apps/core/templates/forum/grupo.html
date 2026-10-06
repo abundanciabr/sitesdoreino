@@ -13,7 +13,7 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
 <h1>Membros de {{ grupo.nome }}</h1>
 <p class="sub">Só a escola enxerga esta página. Vagas ocupadas: {{ membros|length }} de {{ grupo.vagas }}.
   Responsável: {{ grupo.responsavel.nome_exibido|default:"ninguém definido" }}.
-  Desafio atual: <a href="{{ desafio }}">{{ grupo.curso_id }}</a>.</p>
+  <a href="{{ desafio }}">Prática da comunidade, envios e laudos</a>.</p>
 {% if erro %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
 
 {% for membro in membros %}

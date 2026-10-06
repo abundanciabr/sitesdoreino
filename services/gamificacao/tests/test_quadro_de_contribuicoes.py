@@ -308,6 +308,27 @@ def test_ninguem_devolve_a_propria_contribuicao():
         )
 
 
+def test_pessoa_fora_da_equipe_nao_publica_nem_avalia_pela_funcao():
+    with pytest.raises(ContribuicaoRecusada, match="Só alguém da equipe"):
+        _tarefa(autor_id=COLEGA)
+
+    tarefa = _tarefa()
+    _assumir(tarefa)
+    compromisso = _enviar(tarefa)
+    with pytest.raises(ContribuicaoRecusada, match="Só alguém da equipe"):
+        _aceitar(compromisso, quem=COLEGA)
+    with pytest.raises(ContribuicaoRecusada, match="Só alguém da equipe"):
+        contribuicoes.devolver(
+            compromisso=compromisso,
+            validador_id=COLEGA,
+            motivo=CompromissoDeContribuicao.MotivoDaDevolucao.FORA_DO_CRITERIO,
+            orientacao="Refaça a parte dois.",
+        )
+    compromisso.refresh_from_db()
+    assert compromisso.estado == CompromissoDeContribuicao.Estado.ENVIADA
+    assert not ContribuicaoAceita.objects.exists()
+
+
 def test_aceitar_registra_o_fato_e_concede_a_medalha_com_quem_aceitou():
     _semear_e_ligar()
     tarefa = _tarefa()

@@ -304,6 +304,8 @@ def test_o_ciclo_do_desafio_da_comunidade_de_ponta_a_ponta(
     assert "As bordas ficaram consistentes." not in corpo  # sem rubrica aqui
     assert "Praticar UV na próxima entrega." in corpo
     assert "O envio anterior" in corpo
+    assert "Envios anteriores" in corpo
+    assert "Envio 1" in corpo
 
     resposta = get("curso", CURSO)
     corpo = resposta.content.decode()

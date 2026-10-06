@@ -85,6 +85,7 @@ SECOES = (
     # "Fila" ou "Caixa de entrada", que já significam outra coisa nesta casa.
     ("pendencias", "Pendências"),
     ("painel_da_equipe", "Equipe"),
+    ("comunidade_admin", "Comunidade"),
     ("escola", "Escola"),
     ("crm", "CRM"),
     # "Contatos", e não "Clientes" nem "CRM" (03/10/2026): a lista traz quem

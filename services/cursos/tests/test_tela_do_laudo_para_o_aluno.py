@@ -50,6 +50,24 @@ def test_sem_envio_ainda_a_tela_diz_isso(aluna, aula_publicada, client):
     assert "ainda não entregou o checkpoint" in resposta.content.decode()
 
 
+def test_link_do_laudo_carrega_curso_e_parte(aluna, aula_publicada, client):
+    aula = aula_publicada
+    endereco = reverse(
+        "laudo-recebido-do-curso",
+        args=[aula.curso.slug, aula.bloco.parte, aula.numero],
+    )
+    resposta = client.get(endereco, HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 200
+    assert reverse(
+        "aula-do-curso", args=[aula.curso.slug, aula.bloco.parte, aula.numero]
+    ) in resposta.content.decode()
+    parte_errada = client.get(
+        reverse("laudo-recebido-do-curso", args=[aula.curso.slug, 3, aula.numero]),
+        HTTP_COOKIE=COOKIE,
+    )
+    assert parte_errada.status_code == 404
+
+
 def test_envio_sem_laudo_a_tela_diz_que_esta_na_fila(aluna, envio_na_fila, client):
     resposta = client.get(reverse("laudo-recebido", args=["E00"]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 200

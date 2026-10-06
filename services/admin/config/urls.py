@@ -66,6 +66,7 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.comunidade import comunidade_da_equipe
 from apps.core.comentarios_aulas import (
     escola_comentarios_aulas,
     escola_comentario_visibilidade,
@@ -350,6 +351,8 @@ urlpatterns = [
     # não é administrador: a porta deixa quem é da equipe passar SÓ aqui
     # (`porta.py::PREFIXO_DO_PAINEL_DA_EQUIPE`).
     path("equipe/", painel_da_equipe, name="painel_da_equipe"),
+    path("equipe/comunidade", comunidade_da_equipe, name="comunidade_da_equipe"),
+    path("comunidade/", comunidade_da_equipe, name="comunidade_admin"),
     path("equipe/nova", tarefa_nova, name="tarefa_nova"),
     path("equipe/<int:id>/ver", tarefa_ver, name="tarefa_ver"),
     path("equipe/<int:id>/editar", tarefa_editar, name="tarefa_editar"),

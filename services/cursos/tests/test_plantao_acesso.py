@@ -15,6 +15,7 @@ from __future__ import annotations
 import httpx
 import pytest
 from django.urls import reverse
+from apps.cursos.models import Laudo
 
 from tests.conftest import (
     ANA,
@@ -102,6 +103,29 @@ def test_admin_do_site_fora_de_cursos_professores_entra(
     resposta = _acessar_plantao(client)
     assert resposta.status_code == 200
     assert "Fila de revisão" in resposta.content.decode()
+
+
+def test_admin_pode_ver_envio_mas_nao_assinar_laudo(
+    env_dos_pares, rede, envio_na_fila, client, monkeypatch
+):
+    monkeypatch.setenv("CURSOS_PROFESSORES", "")
+    monkeypatch.setenv("ADMIN_EMAILS", ANA["email"])
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"], "cadastrado")
+    fila = _acessar_plantao(client)
+    assert fila.status_code == 200
+    assert "Ver o envio" in fila.content.decode()
+    ficha = _acessar_ficha(client, envio_na_fila.id)
+    assert ficha.status_code == 200
+    assert "O que a pessoa entregou" in ficha.content.decode()
+    assert "Emitir laudo" not in ficha.content.decode()
+    resposta = client.post(
+        reverse("plantao-ficha", args=[envio_na_fila.id]),
+        {"gesto": "emitir", "decisao": "aberto"},
+        HTTP_COOKIE=COOKIE,
+    )
+    assert resposta.status_code == 403
+    assert not Laudo.objects.filter(envio=envio_na_fila).exists()
 
 
 # --------------------------------------------- e-mail fora da lista = 403

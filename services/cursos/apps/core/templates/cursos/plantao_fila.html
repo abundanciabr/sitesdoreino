@@ -41,7 +41,7 @@ progressiva: cada linha é um link para `plantao_ficha`, sem script nenhum.
     {% for mudanca in item.laudo_anterior.mudancas %}<p class="mudanca">{{ mudanca.texto }}</p>{% endfor %}
   </div>
   {% endif %}
-  <p><a class="botao" href="{% url 'plantao-ficha' item.envio.id %}">Dar o laudo</a></p>
+  <p><a class="botao" href="{% url 'plantao-ficha' item.envio.id %}">{% if pode_assinar_laudo %}Dar o laudo{% else %}Ver o envio{% endif %}</a></p>
 </section>
 {% endfor %}
 {% endblock %}

@@ -10,7 +10,7 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
 {% block titulo %}Laudo · {{ aula.titulo_exibido }}{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'aula' aula.numero %}">{{ aula.titulo_exibido }}</a>
+  <a href="{% url 'aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">{{ aula.titulo_exibido }}</a>
   <span class="onde">Laudo</span>
 {% endblock %}
 
@@ -31,7 +31,7 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
 {% if not envio %}
 <section class="laudo-vazio">
   <p>Você ainda não entregou o checkpoint desta aula. Volte para
-  <a href="{% url 'aula' aula.numero %}">a aula</a> e entregue por link quando estiver pronto.</p>
+  <a href="{% url 'aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">a aula</a> e entregue por link quando estiver pronto.</p>
 </section>
 {% elif not laudo %}
 <section class="laudo-vazio">
@@ -114,6 +114,23 @@ esta tela não lê `laudo.avaliador` em lugar nenhum.
       <li>O que você já tentou.</li>
     </ul>
   </div>{% endif %}
+</section>
+{% endif %}
+{% if historico_anterior %}
+<section class="historico-de-envios">
+  <h2>Envios anteriores</h2>
+  {% for anterior in historico_anterior %}
+  <article>
+    <h3>Envio {{ anterior.numero }}</h3>
+    <p>Enviado em {{ anterior.enviado_em|date:"d/m/Y" }}.</p>
+    {% if anterior.laudo %}
+      <p>Decisão: {{ anterior.laudo.get_decisao_display }}.</p>
+      {% for forca in anterior.laudo.forcas %}<p>{{ forca }}</p>{% endfor %}
+      {% for mudanca in anterior.laudo.mudancas %}<p>{{ mudanca.texto }}</p>{% endfor %}
+    {% else %}<p>Aguardou revisão.</p>{% endif %}
+    {% for link in anterior.links %}<p><a href="{{ link.url }}">{{ link.rotulo }}</a></p>{% endfor %}
+  </article>
+  {% endfor %}
 </section>
 {% endif %}
 {% endblock %}

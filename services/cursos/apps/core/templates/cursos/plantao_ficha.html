@@ -52,7 +52,7 @@ pedindo um rascunho em que a IA tentou responder as três.
 </section>
 {% endif %}
 
-<form method="post" action="{% url 'plantao-ficha' envio.id %}">
+{% if pode_assinar_laudo %}<form method="post" action="{% url 'plantao-ficha' envio.id %}">
   {% csrf_token %}
   <input type="hidden" name="rascunho_id" value="{{ rascunho_id }}">
 
@@ -163,4 +163,5 @@ pedindo um rascunho em que a IA tentou responder as três.
   <button type="submit" name="gesto" value="emitir">Emitir laudo</button>
   {% if ia_ligada %}<button type="submit" name="gesto" value="rascunhar" formnovalidate>Rascunhar laudo</button>{% endif %}
 </form>
+{% else %}<p class="miudo">A avaliação e o laudo aguardam uma professora do curso.</p>{% endif %}
 {% endblock %}

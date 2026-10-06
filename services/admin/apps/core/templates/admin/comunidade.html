@@ -1,0 +1,38 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Comunidade da equipe{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Comunidade da equipe</h1>
+  <p class="subtitulo">Acompanhe grupos, dúvidas, laudos e contribuições nas telas que guardam cada trabalho.</p>
+
+  <section class="cartao">
+    <h2>Grupos e dúvidas</h2>
+    <p>A vista do fórum mostra cada grupo, seu responsável, as dúvidas esperando resposta e quem ainda precisa de acolhimento.</p>
+    <p><a class="botao" href="/forum/comunidade/equipe">Abrir grupos e dúvidas no fórum</a></p>
+  </section>
+
+  <section class="cartao">
+    <h2>Entregas dos cursos</h2>
+    {% if laudos.quantidade == None %}
+      <p>Não foi possível consultar a fila de laudos agora{% if laudos.acesso_negado %}: o acesso entre os serviços foi recusado{% endif %}.</p>
+    {% elif laudos.quantidade == 0 %}
+      <p>Não há entregas esperando laudo nesta escola.</p>
+    {% else %}
+      <p>{{ laudos.quantidade }} entrega{{ laudos.quantidade|pluralize }} esperando laudo{% if laudos.espera_ha_dias != None %}; a mais antiga espera há {{ laudos.espera_ha_dias }} dia{{ laudos.espera_ha_dias|pluralize }}{% endif %}.</p>
+    {% endif %}
+    <p><a class="botao" href="/cursos/plantao">Abrir plantão de laudos</a></p>
+  </section>
+
+  <section class="cartao">
+    <h2>Contribuições e reconhecimentos</h2>
+    <p>A fila de contribuições mostra os envios a avaliar e as tarefas publicadas. Cada aceite fica registrado na própria contribuição.</p>
+    <p><a class="botao" href="/conquistas/interno/contribuicoes">Abrir contribuições da equipe</a></p>
+    <p><a href="/conquistas/interno/reconhecimentos">Conferir reconhecimentos e correções</a></p>
+  </section>
+
+  <section class="cartao">
+    <h2>Escolhas ainda não definidas</h2>
+    <p>Benefício além do reconhecimento, condição de participação espiritual, incentivo material para responsáveis e catálogo de Cristais com consentimento público ainda dependem de decisão do mantenedor. Esta tela não aplica nenhuma dessas condições.</p>
+  </section>
+</div>
+{% endblock %}

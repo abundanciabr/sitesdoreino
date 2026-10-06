@@ -75,8 +75,10 @@ class Ator:
     eh_aluno: bool = False
     matricula_conferida: bool = False
     produtos_matriculados: frozenset[str] = frozenset()
+    matricula_ativa_deste_site: bool = False
     papel_do_site: str = ""
     eh_professor: bool = False
+    pode_assinar_laudo: bool = False
 
     @property
     def autenticado(self) -> bool:
@@ -206,10 +208,14 @@ def _resolver(request) -> Ator:
         eh_aluno=bool(matriculas),
         matricula_conferida=conferida,
         produtos_matriculados=_produtos_deste_site(matriculas),
+        matricula_ativa_deste_site=bool(site_atual()) and any(
+            matricula.get("site_id") == site_atual() for matricula in matriculas
+        ),
         papel_do_site=(corpo.get("papel") or "").strip(),
         # AS DUAS LISTAS, lidas no PONTO DE USO e no mesmo lugar de propósito:
         # se um dia uma delas mudar de nome, as duas leituras quebram juntas.
         # Molde: `services/forum/apps/core/sessao.py::email_da_equipe`.
         eh_professor=email
         in (_lista_de_emails("CURSOS_PROFESSORES") | _lista_de_emails("ADMIN_EMAILS")),
+        pode_assinar_laudo=email in _lista_de_emails("CURSOS_PROFESSORES"),
     )

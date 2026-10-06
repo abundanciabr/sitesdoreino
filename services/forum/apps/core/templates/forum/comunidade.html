@@ -10,7 +10,7 @@ contribuições dela, sem pedir nada a mais que o caminho.
 {% endcomment %}
 <p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
 <h1>Comunidade</h1>
-<p class="sub">O seu grupo de prática: o desafio da vez e os colegas que esperam uma resposta.</p>
+<p class="sub">Comece pela prática, acompanhe seus envios e laudos e converse com colegas no fórum.</p>
 
 {% if estado == "entrar" %}
   <div class="cartao recado">
@@ -37,9 +37,8 @@ contribuições dela, sem pedir nada a mais que o caminho.
   {% else %}
     <div class="vazio">
       <strong>Você ainda não está em um grupo de prática.</strong>
-      <p style="margin:8px 0 0">Para entrar, abra uma conversa no fórum pedindo a vaga e diga qual curso você está fazendo.
-        Quem responde é a equipe da escola (professor ou administrador), e é ela que coloca você no grupo.</p>
-      <a class="botao" href="{% url 'abrir_conversa' %}">Pedir a entrada</a>
+      <p style="margin:8px 0 0">Primeiro, peça a entrada na área {{ pedido_de_grupo_area }}. Diga em qual curso você estuda e em que etapa está. A equipe da escola organiza os grupos e responde ao pedido.</p>
+      <a class="botao" href="{{ pedido_de_grupo_url }}">Pedir a entrada</a>
     </div>
   {% endif %}
 {% else %}
@@ -48,8 +47,8 @@ contribuições dela, sem pedir nada a mais que o caminho.
       <h2 id="grupo-{{ grupo.pk }}"><a href="{% url 'area' grupo.slug %}">{{ grupo.nome }}</a></h2>
       {% if grupo.responsavel %}<p class="sub" style="margin:4px 0 0">Responsável: {{ grupo.responsavel.nome_exibido|default:"a escola" }}</p>{% endif %}
       <ul>
-        <li><a href="{% url 'area' grupo.slug %}#abrir">Apresente-se ao grupo ou peça ajuda</a></li>
-        <li><a href="{{ grupo.desafio }}">Abrir o desafio atual</a></li>
+        <li><a href="{% url 'area' grupo.slug %}#abrir">Primeiro passo: apresente-se ao grupo</a>. Diga em qual etapa está e o que quer criar.</li>
+        <li><a href="{{ grupo.desafio }}">Abrir a prática da comunidade</a></li>
       </ul>
     </section>
   {% endfor %}
@@ -69,6 +68,15 @@ contribuições dela, sem pedir nada a mais que o caminho.
       <p style="margin:8px 0 0">Quando um colega pedir ajuda, a dúvida aparece aqui.</p>
     </div>
   {% endfor %}
+{% endif %}
+
+{% if estado == "sem_grupo" or estado == "com_grupo" %}
+  <div class="cartao recado">
+    <strong>Sua prática e seu histórico</strong>
+    <p>Na prática da comunidade, veja o desafio, envie sua peça, acompanhe cada versão e leia o laudo da professora. Se ela pedir um ajuste, faça um novo envio pela mesma página.</p>
+    <p>Se você estuda pela Hotmart ou pela Herospark, continue suas aulas por lá. A prática e os laudos da comunidade ficam aqui.</p>
+    <a class="botao" href="{{ pratica_url }}">Ver prática, envios e laudos</a>
+  </div>
 {% endif %}
 
 {% if estado == "sem_grupo" or estado == "com_grupo" %}

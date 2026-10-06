@@ -224,7 +224,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
     <ul class="links">
       {% for link in checkpoint.envio.links %}<li>{{ link.rotulo }}: <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></li>{% endfor %}
     </ul>
-    <p class="miudo"><a href="{% url 'laudo-recebido' aula.numero %}">Ver o laudo desta entrega</a></p>
+    <p class="miudo"><a href="{% url 'laudo-recebido-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">Ver o laudo desta entrega</a></p>
   </div>
   {% endif %}
   {% if checkpoint.aberto %}
@@ -234,11 +234,14 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% else %}
   <p>Entregue por link: a plataforma não recebe arquivo. Suba o arquivo e as prévias onde você quiser e cole os endereços aqui.</p>
   {% endif %}
-  <form method="post" action="{% url 'entregar-checkpoint-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
+  <form method="post" enctype="multipart/form-data" action="{% url 'entregar-checkpoint-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
     <h3>Os links</h3>
-    <label>Arquivo (obrigatório)
-      <input type="url" name="arquivo" required placeholder="https://">
+    <label>Arquivo privado
+      <input type="file" name="arquivo_privado">
+    </label>
+    <label>Ou link do arquivo
+      <input type="url" name="arquivo" placeholder="https://">
     </label>
     <p class="miudo">As prévias são opcionais: sólido, wireframe, silhueta, e o que a encomenda pedir. Troque o rótulo se precisar.</p>
     {% for previa in checkpoint.previas %}

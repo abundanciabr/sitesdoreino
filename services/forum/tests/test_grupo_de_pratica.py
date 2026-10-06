@@ -476,9 +476,26 @@ def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatc
     como(monkeypatch, ana)
     corpo = pedir(client, "comunidade").content.decode()
     assert "Você ainda não está em um grupo de prática" in corpo
-    assert "Quem responde é a equipe da escola" in corpo
+    assert "A equipe da escola organiza os grupos" in corpo
     assert reverse("abrir_conversa") in corpo
+    assert f'href="{views.PRATICA_DA_COMUNIDADE}"' in corpo
     assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
+
+
+def test_pedido_de_grupo_abre_a_area_geral_existente(
+    client, env, monkeypatch, ana
+):
+    Area.objects.create(
+        slug="sala-dos-alunos",
+        nome="Sala dos alunos",
+        visibilidade=Area.Visibilidade.ALUNOS,
+        quem_escreve=Area.QuemEscreve.ALUNO,
+    )
+    como(monkeypatch, ana)
+    corpo = pedir(client, "comunidade").content.decode()
+    assert f'href="{reverse("area", args=["sala-dos-alunos"])}#abrir"' in corpo
+    assert "Diga em qual curso você estuda" in corpo
+    assert "área Sala dos alunos" in corpo
 
 
 def test_a_comunidade_sem_grupo_da_equipe_tambem_aponta_as_contribuicoes(
@@ -509,8 +526,10 @@ def test_a_comunidade_com_grupo_mostra_o_desafio_e_quem_depende_de_voce(
     corpo = pedir(client, "comunidade").content.decode()
 
     assert grupo.nome in corpo
-    assert 'href="/cursos/modelagem-1/"' in corpo
+    assert f'href="{views.PRATICA_DA_COMUNIDADE}"' in corpo
     assert f'{reverse("area", args=[grupo.slug])}#abrir' in corpo
+    assert "Primeiro passo: apresente-se ao grupo" in corpo
+    assert "Hotmart ou pela Herospark" in corpo
     assert "Profa. Lia" in corpo
     assert "Quem depende de você" in corpo
     assert corpo.index("Duvida antiga da Bia") < corpo.index("Duvida nova da Bia")
