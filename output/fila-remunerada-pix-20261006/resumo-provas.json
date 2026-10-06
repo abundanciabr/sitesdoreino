@@ -1,0 +1,29 @@
+{
+  "data": "2026-10-06",
+  "codigo_publicado_candidato": "c5258c82501f9702aa6a90b5d426747face2fdf2",
+  "encomendas_pratica_testes_postgres": 34,
+  "pagamentos_testes_postgres": 57,
+  "migracoes": "sem diferenças",
+  "visual": "cinco categorias; selecionar pets atualiza criar pedido; desktop1536 e celular390 sem overflow",
+  "integrada": {
+    "ambiente": "PostgreSQL isolado, provedor simulado",
+    "recarga_cents": 18000,
+    "gasto_cents": 18000,
+    "credito_aluno_cents": 18000,
+    "saque_solicitado_cents": 5000,
+    "saldo_aluno_cents": 13000,
+    "charges": 1,
+    "entregas": 2,
+    "aprovacoes": 1,
+    "repasse_bancario": false
+  },
+  "categorias": [
+    "espadas_objetos",
+    "pets",
+    "cabelos",
+    "chapeus",
+    "personagens"
+  ],
+  "animacoes": false,
+  "dinheiro_real_movimentado": false
+}

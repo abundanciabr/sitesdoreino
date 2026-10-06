@@ -1,0 +1,1 @@
+PROVA_SITE {"rendered_http": 200, "categorias": 5, "animacoes_disponiveis": false, "pedidos": 0, "alunos_autorizados": 0, "clientes_autorizados": 0, "fase_alunos": false, "fase_clientes": false, "auth_simulada_somente_na_requisicao_de_render": true}

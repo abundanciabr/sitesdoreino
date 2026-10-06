@@ -1,0 +1,1 @@
+{"prova": "API carteira + provedor TEST + GET provedor", "charge_id": "a2323c63-de6d-47bf-bb5b-cda898d868ba", "provider_reference": "1353200487", "status": "pending", "environment": "sandbox", "qr_present": true, "expires_at": "2026-10-07T15:27:52.812000+00:00", "charges": 1, "creditos_disponiveis": 0, "dinheiro_real_movimentado": false}
