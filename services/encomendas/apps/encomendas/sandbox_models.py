@@ -11,10 +11,18 @@ def site():
 
 
 class ProjetoSandbox(models.Model):
+    class Categoria(models.TextChoices):
+        ESPADAS_OBJETOS = "espadas_objetos", "Espadas e objetos"
+        PETS = "pets", "Pets"
+        CABELOS = "cabelos", "Cabelos"
+        CHAPEUS = "chapeus", "Chapéus"
+        PERSONAGENS = "personagens", "Personagens"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site_id = site()
     slug = models.SlugField(max_length=100)
     titulo = models.CharField(max_length=200)
+    categoria = models.CharField(max_length=24, choices=Categoria.choices, blank=True, default="")
     briefing = models.TextField()
     referencias = models.JSONField(default=list)
     entregaveis = models.JSONField(default=list)

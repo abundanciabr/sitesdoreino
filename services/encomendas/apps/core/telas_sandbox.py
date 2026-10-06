@@ -10,6 +10,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from django.http import FileResponse, Http404, HttpResponseRedirect
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.shortcuts import render
 from django.urls import reverse
@@ -23,6 +24,20 @@ from apps.encomendas.models import (ArquivoSandbox, EntregaSandbox, MensagemSand
                                     ProjetoSandbox)
 
 logger = logging.getLogger(__name__)
+
+CATEGORIAS = (
+    ("espadas_objetos", "Espadas e objetos", "Espadas, armas e outros itens", "espadas"),
+    ("pets", "Pets", "Animais e criaturas", "pets"),
+    ("cabelos", "Cabelos", "Cabelos e estilos", "cabelos"),
+    ("chapeus", "Chapéus", "Bonés e chapéus", "chapeus"),
+    ("personagens", "Personagens", "Avatares e personagens", "personagens"),
+)
+
+
+@require_GET
+def arte_catalogo(request):
+    caminho = Path(settings.BASE_DIR) / "static" / "sandbox" / "categorias-referencia.png"
+    return FileResponse(caminho.open("rb"), content_type="image/png")
 
 
 def _login(request):
@@ -127,7 +142,15 @@ def catalogo(request):
             raise Http404
     else:
         aluno_atual = False
-    projetos = list(ProjetoSandbox.objects.filter(site_id=site, ativo=True).order_by("titulo"))
+    categoria = request.GET.get("categoria", "espadas_objetos")
+    if categoria not in ProjetoSandbox.Categoria.values:
+        raise Http404
+    projetos = list(ProjetoSandbox.objects.filter(site_id=site, ativo=True,
+                    categoria=categoria).order_by("titulo"))
+    categorias = [{"chave": chave, "titulo": titulo, "descricao": descricao,
+                   "arte": arte, "selecionada": chave == categoria}
+                  for chave, titulo, descricao, arte in CATEGORIAS]
+    selecionada = next(c for c in categorias if c["selecionada"])
     trabalho_ativo = next((trabalho for trabalho in trabalhos if trabalho.status != "aprovado"), None)
     for projeto in projetos:
         projeto.pronto = (projeto.prazo_dias is not None and projeto.ajustes_previstos is not None
@@ -135,6 +158,7 @@ def catalogo(request):
                           and bool(projeto.criterios.strip()) and bool(projeto.entregaveis))
     return render(request, "sandbox/catalogo.html", {
         "papel": papel, "projetos": projetos, "trabalhos": trabalhos,
+        "categorias": categorias, "selecionada": selecionada,
         "trabalho_ativo": trabalho_ativo,
         "aluno_atual": aluno_atual, "saldo": sandbox.saldo(site_id=site, pessoa_id=pessoa),
         "historico": sandbox.historico(site_id=site, pessoa_id=pessoa),
@@ -300,6 +324,7 @@ def escola(request):
     sandbox.registrar_atrasos(site_id=site)
     return render(request, "sandbox/escola.html", {
         "papel": "equipe", "projetos": ProjetoSandbox.objects.filter(site_id=site).order_by("titulo"),
+        "categorias": ProjetoSandbox.Categoria.choices,
         "trabalhos": ParticipacaoSandbox.objects.filter(site_id=site).select_related("projeto").order_by("-aceite_em"),
         "movimentos": MovimentoMeshcoin.objects.filter(site_id=site).select_related("participacao__projeto").order_by("-criado_em"),
         "recado": request.GET.get("recado", ""),
@@ -338,6 +363,10 @@ def salvar_projeto(request, projeto_id=None):
         if recompensa is not None and (not recompensa.is_finite() or recompensa < 0):
             raise ValueError("Confira a recompensa em Meshcoins.")
         projeto.titulo = titulo
+        categoria = request.POST.get("categoria", "")
+        if categoria not in ProjetoSandbox.Categoria.values:
+            raise ValueError("Escolha uma das cinco categorias de prática.")
+        projeto.categoria = categoria
         projeto.slug = slug
         projeto.briefing = request.POST.get("briefing", "").strip()
         projeto.referencias = _lista(request.POST.get("referencias", ""))

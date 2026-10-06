@@ -1,1 +1,49 @@
-{% extends 'sandbox/base.html' %}{% block title %}Projetos de prática{% endblock %}{% block body %}<div class="eyebrow">Prática criativa</div><h1>Projetos da escola</h1><p class="lead">Escolha um desafio, acompanhe seu trabalho e converse com a escola no mesmo lugar.</p>{% if papel == 'aluno' %}<div class="card"><div class="row"><div><h2>Seu saldo de Meshcoins</h2><p>Créditos recebidos após aprovação da escola.</p></div><div class="money">{{ saldo }}</div></div>{% if historico %}<details><summary>Ver histórico</summary>{% for movimento in historico %}<div class="file"><span>{{ movimento.participacao.projeto.titulo }}<br><span class="tiny">{{ movimento.criado_em|date:'d/m/Y H:i' }}</span></span><strong>+{{ movimento.valor }}</strong></div>{% endfor %}</details>{% endif %}</div>{% endif %}{% if trabalho_ativo %}<div class="notice">Você já tem um projeto em andamento: <a href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">abrir {{ trabalho_ativo.termos.titulo }}</a>.</div>{% endif %}<h2 style="margin-top:26px">Desafios disponíveis</h2><div class="grid">{% for projeto in projetos %}<article class="card"><span class="eyebrow">Projeto de prática</span><h2>{{ projeto.titulo }}</h2><p class="preserve">{{ projeto.briefing }}</p><div>{% for item in projeto.entregaveis %}<span class="pill">{{ item }}</span>{% endfor %}</div><details><summary>Ver referências, critérios e termos</summary><h3>Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% empty %}<p>A escola ainda vai acrescentar referências.</p>{% endfor %}<h3>Critérios</h3><p class="preserve">{{ projeto.criterios|default:'A escola ainda vai definir.' }}</p><p><strong>Prazo:</strong> {{ projeto.prazo_dias|default_if_none:'A definir' }}{% if projeto.prazo_dias != None %} dias{% endif %}</p><p><strong>Ajustes previstos:</strong> {{ projeto.ajustes_previstos|default_if_none:'A definir' }}</p><p><strong>Recompensa:</strong> {{ projeto.recompensa|default_if_none:'A definir' }}{% if projeto.recompensa != None %} Meshcoins{% endif %}</p></details>{% if aluno_atual and projeto.pronto and not trabalho_ativo %}<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}<label><input type="checkbox" name="aceito_termos" value="sim" required> Li e aceito o escopo, prazo, ajustes e recompensa acima.</label><button>Começar projeto</button></form>{% elif not projeto.pronto %}<div class="notice warn">A escola ainda está configurando os termos deste projeto.</div>{% endif %}</article>{% empty %}<div class="card"><p>Os projetos serão publicados aqui pela escola.</p></div>{% endfor %}</div><h2 id="trabalhos" style="margin-top:30px">Meus trabalhos</h2><div class="grid">{% for trabalho in trabalhos %}<div class="card"><div class="row"><h3>{{ trabalho.termos.titulo }}</h3><span class="badge">{{ trabalho.get_status_display }}</span></div><p>Aceito em {{ trabalho.aceite_em|date:'d/m/Y' }} · Prazo {{ trabalho.prazo_ate|date:'d/m/Y' }}</p><a class="btn secondary" href="{% url 'sandbox_trabalho' trabalho.pk %}">Abrir trabalho</a></div>{% empty %}<div class="card"><p>Você ainda não iniciou um trabalho.</p></div>{% endfor %}</div>{% endblock %}
+{% extends 'sandbox/base.html' %}
+{% block title %}Escolha seu projeto de prática{% endblock %}
+{% block body %}
+<div class="catalog-layout">
+<div class="catalog-content">
+<h1>O que você quer criar?</h1>
+<p class="lead">Escolha uma categoria e encontre seu próximo projeto de prática.</p>
+<div class="category-grid" aria-label="Categorias de prática">
+{% for categoria in categorias %}
+<a class="category-card {% if categoria.selecionada %}selected{% endif %}" href="{% url 'sandbox_catalogo' %}?categoria={{ categoria.chave }}" {% if categoria.selecionada %}aria-current="true"{% endif %}>
+{% if categoria.selecionada %}<span class="selected-mark" aria-hidden="true">✓</span>{% endif %}
+<div class="category-art art-{{ categoria.arte }}" aria-hidden="true"></div>
+<strong>{{ categoria.titulo }}</strong><small>{{ categoria.descricao }}</small>
+</a>
+{% endfor %}
+</div>
+<section id="projetos">
+<h2>Projetos de {{ selecionada.titulo|lower }}</h2>
+{% if trabalho_ativo %}<div class="notice">Você já tem um projeto em andamento: <a href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">abrir {{ trabalho_ativo.termos.titulo }}</a>.</div>{% endif %}
+<div class="project-list">
+{% for projeto in projetos %}
+<article class="card"><h3>{{ projeto.titulo }}</h3><p class="preserve">{{ projeto.briefing }}</p>
+<div>{% for item in projeto.entregaveis %}<span class="pill">{{ item }}</span>{% endfor %}</div>
+<details><summary>Briefing, referências e condições</summary>
+<h3 style="margin-top:18px">Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% empty %}<p>A escola ainda vai acrescentar referências.</p>{% endfor %}
+<h3>Critérios de aprovação</h3><p class="preserve">{{ projeto.criterios|default:'A definir pela escola.' }}</p>
+<p><strong>Prazo após o aceite:</strong> {{ projeto.prazo_dias|default_if_none:'A definir' }}{% if projeto.prazo_dias != None %} dias{% endif %}</p>
+<p><strong>Ajustes previstos:</strong> {{ projeto.ajustes_previstos|default_if_none:'A definir' }}</p>
+<p><strong>Recompensa após aprovação:</strong> {{ projeto.recompensa|default_if_none:'A definir' }}{% if projeto.recompensa != None %} Meshcoins{% endif %}</p>
+</details>
+{% if aluno_atual and projeto.pronto and not trabalho_ativo %}
+<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}<label><input type="checkbox" name="aceito_termos" value="sim" required> Li e aceito o escopo, prazo, ajustes e recompensa.</label><div class="actions"><button>Começar projeto</button></div></form>
+{% elif not projeto.pronto %}<p class="tiny" style="margin-top:16px">Prazo, ajustes e recompensa aguardam configuração da escola.</p>{% endif %}
+</article>
+{% empty %}<div class="card"><p>A escola está preparando os projetos desta categoria.</p></div>{% endfor %}
+</div>
+</section>
+<section id="exemplos" style="margin-top:30px"><h2>Referências visuais</h2><p class="tiny">Ilustrações para inspirar a prática.</p>
+<div class="examples-grid"><div><div class="example-art"><span>Referência ilustrativa</span></div><p class="example-caption">Espadas com materiais e cores</p></div><div><div class="example-art wire"><span>Referência ilustrativa</span></div><p class="example-caption">Detalhes de construção do modelo</p></div></div>
+</section>
+<section id="trabalhos"><h2>Meus trabalhos</h2><div class="project-list">{% for trabalho in trabalhos %}<div class="card"><div class="row"><h3>{{ trabalho.termos.titulo }}</h3><span class="badge">{{ trabalho.get_status_display }}</span></div><p>Aceito em {{ trabalho.aceite_em|date:'d/m/Y' }} · Prazo {{ trabalho.prazo_ate|date:'d/m/Y' }}</p><div class="actions"><a class="btn secondary" href="{% url 'sandbox_trabalho' trabalho.pk %}">Abrir trabalho</a></div></div>{% empty %}<p class="tiny">Seu primeiro trabalho aparecerá aqui.</p>{% endfor %}</div></section>
+</div>
+<aside class="choice-panel" aria-label="Próximo projeto"><h2>Seu próximo projeto</h2>
+<div class="choice-summary"><div class="summary-icon"><div class="category-art art-{{ selecionada.arte }}" aria-hidden="true"></div></div><div><strong>{{ selecionada.titulo }}</strong><p>{{ selecionada.descricao }}</p></div></div>
+<a class="btn" href="#projetos">Escolher projeto &nbsp; →</a><p class="hint">ⓘ &nbsp; Confira briefing, entregáveis e condições antes de aceitar. Você mantém um projeto ativo por vez.</p>
+{% if papel == 'aluno' %}<div class="balance-line"><p class="tiny">Seu saldo de Meshcoins</p><div class="money">{{ saldo }}</div>{% if historico %}<details><summary>Histórico de recompensas</summary>{% for movimento in historico %}<div class="file"><span>{{ movimento.participacao.termos.titulo }}<br><span class="tiny">{{ movimento.criado_em|date:'d/m/Y H:i' }}</span></span><strong>+{{ movimento.valor }}</strong></div>{% endfor %}</details>{% endif %}</div>{% else %}<div class="actions"><a class="btn secondary" href="{% url 'sandbox_escola' %}">Configurar projetos</a></div>{% endif %}
+</aside>
+</div>
+{% endblock %}
