@@ -5,6 +5,7 @@ from apps.core.views import (
     entrar_google_retorno,
     entrar_senha,
     healthz,
+    pagina_de_entrada,
     sair,
 )
 from config.api import api
@@ -30,6 +31,7 @@ from config.api import api
 urlpatterns = [
     path("healthz", healthz),
     path("interno/", api.urls),
+    path("entrar", pagina_de_entrada, name="pagina_de_entrada"),
     path("entrar/google", entrar_google, name="entrar_google"),
     path("entrar/google/retorno", entrar_google_retorno, name="entrar_google_retorno"),
     path("entrar/senha", entrar_senha, name="entrar_senha"),

@@ -29,12 +29,12 @@ só que quem explica é a página que tem i18n e a marca do site.
 
 import re
 import secrets
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 from django.http import HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_safe
 
 from . import limite_de_tentativas as limites
 from . import sessao as ses
@@ -73,6 +73,14 @@ def _prefixo_de_idioma(destino: str) -> str:
     """`/es/cadastro` vira `/es`; `/cadastro` vira vazio: a raiz não tem prefixo."""
     primeiro = destino.strip("/").split("/", 1)[0]
     return f"/{primeiro}" if _FORMA_DE_IDIOMA.fullmatch(primeiro) else ""
+
+
+@require_safe
+def pagina_de_entrada(request):
+    """Encaminha links antigos de entrada para a tela de login do site."""
+    destino = destino_seguro(request.GET.get("next") or request.GET.get("proxima"))
+    query = urlencode({"next": destino})
+    return HttpResponseRedirect(f"{_prefixo_de_idioma(destino)}/login?{query}")
 
 
 def _recusar(destino: str, chave: str) -> HttpResponseRedirect:

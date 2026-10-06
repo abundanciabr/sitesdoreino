@@ -62,7 +62,7 @@ def arte_catalogo(request):
 
 def _login(request):
     destino = request.get_full_path()
-    return HttpResponseRedirect("https://meshcraft.top/entrar?proxima=" + quote(destino, safe=""))
+    return HttpResponseRedirect("/login?next=" + quote(destino, safe=""))
 
 
 def _entrada(request):

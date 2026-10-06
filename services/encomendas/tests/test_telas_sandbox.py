@@ -20,6 +20,18 @@ def contexto(monkeypatch):
     return atual
 
 
+def test_visitante_volta_ao_sandbox_apos_login(client, contexto):
+    from urllib.parse import parse_qs, urlsplit
+
+    contexto["id"] = None
+    caminho = reverse("sandbox_catalogo") + "?categoria=pets"
+    resposta = client.get(caminho)
+    assert resposta.status_code == 302
+    destino = urlsplit(resposta["Location"])
+    assert destino.path == "/login"
+    assert parse_qs(destino.query)["next"] == [caminho]
+
+
 @pytest.fixture
 def projeto(db):
     projeto = sandbox.semear_projetos(site_id="escola-a")[0]
