@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from protecao_publicacao import identificar, conferir_relatorio
 import sys
 import time
 from datetime import datetime, timezone
@@ -71,6 +72,28 @@ def versao_pedida(tag):
         if not codigo.startswith("/") or ".." in pasta.parts or not pasta.is_dir():
             raise ValueError("pasta de código ausente ou fora do lugar")
     return {"imagem": imagem, "codigo": codigo}
+
+
+def conferir_pacote(tag, versao):
+    caminho = os.environ.get("PACOTE_ENSAIADO")
+    if not caminho:
+        raise ValueError("identificação do ensaio ausente")
+    prova = Path(caminho).resolve()
+    raiz_provas = (PASTA / "provas").resolve()
+    if raiz_provas not in prova.parents:
+        raise ValueError("prova fora do armazenamento do publicador")
+    documento = json.loads(prova.read_text(encoding="utf-8"))
+    if documento.get("sha") != tag or documento.get("resultado", {}).get("estado") != "comprovado":
+        raise ValueError("prova não corresponde à candidata")
+    if conferir_relatorio(prova.parent / 'comercial.xml', registrar_falha_conhecida=True) != documento['resultado']:
+        raise ValueError("resultado da prova alterado")
+    codigo = Path(versao.get("codigo") or "")
+    if (RAIZ / "versoes" / CELULA).resolve() not in codigo.resolve().parents:
+        raise ValueError("código fora das versões do publicador")
+    pacote = identificar(codigo, versao["imagem"], RAIZ / "docker-compose.yml")
+    if documento.get("pacote") != pacote:
+        raise ValueError("pacote substituído ou combinação diferente da ensaiada")
+    return pacote
 
 
 def versao_de(estado, sha):
@@ -145,6 +168,7 @@ def executar(acao):
         estado["servicos"] = servicos
         estado["candidata"] = tag
         estado["candidata_versao"] = versao_pedida(tag)
+        estado["candidata_pacote"] = conferir_pacote(tag, estado["candidata_versao"])
         estado["pedido_em"] = os.environ.get("PEDIDO_EM") or agora()
         estado["endereco"] = os.environ.get("ENDERECO_PROVA") or estado.get("endereco")
         print("ALVO-APROVADO: " + ((estado.get("aprovada") or {}).get("sha") or "nenhum, primeira publicação"))
@@ -164,6 +188,7 @@ def executar(acao):
         if estado["candidata"] != tag:
             raise ValueError("candidata não corresponde ao pedido")
         versao = estado.get("candidata_versao") or versao_pedida(tag)
+        conferir_pacote(tag, versao)
         pin(estado, tag, versao)
         estado["atual"] = tag
         estado["atual_versao"] = versao
@@ -175,6 +200,7 @@ def executar(acao):
         if estado["candidata"] != tag or estado["atual"] != tag:
             raise ValueError("imagem não é a candidata aplicada")
         versao = versao_de(estado, tag)
+        pacote = conferir_pacote(tag, versao)
         try:
             provar(estado, tag, versao)
         except Exception:
@@ -184,7 +210,7 @@ def executar(acao):
         if estado.get("aprovada") and estado["aprovada"]["sha"] != tag:
             estado["antes_da_anterior"] = estado.get("anterior_aprovada")
             estado["anterior_aprovada"] = estado["aprovada"]
-        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), **versao)
+        estado["aprovada"] = dict(sha=tag, verificada_em=agora(), pacote=pacote, **versao)
         estado["candidata"] = None
         estado.pop("candidata_versao", None)
         salvar(caminho, estado)

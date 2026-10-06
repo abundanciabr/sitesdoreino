@@ -7,7 +7,7 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
-from .registry import SERVICES, app_configs
+from .registry import ACTIVE_SERVICES as SERVICES, app_configs
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ def _value(service: str, key: str) -> str:
 
 
 # The identity key must remain the signer of the existing site-wide session.
-SECRET_KEY = _value("identidade", "DJANGO_SECRET_KEY")
+SECRET_KEY = _value("identidade" if "identidade" in SERVICES else SERVICES[0], "DJANGO_SECRET_KEY")
 DEBUG = os.environ.get("DEBUG", "0") == "1"
 ALLOWED_HOSTS = ["*"]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -69,7 +69,7 @@ for service in SERVICES:
     if service != "funil":
         DATABASES[service] = dj_database_url.parse(_value(service, "DATABASE_URL"))
 # Django needs a default alias even though every platform model is routed.
-DATABASES["default"] = dict(DATABASES["identidade"])
+DATABASES["default"] = dict(DATABASES.get("identidade") or next(iter(DATABASES.values()))) if DATABASES else {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}
 DATABASE_ROUTERS = ["config.registry.ServiceDatabaseRouter"]
 
 INSTALLED_APPS = [

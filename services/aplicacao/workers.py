@@ -106,8 +106,11 @@ class Workers:
             self._thread(f"eventos-{servico}", self._consumir, servico, app)
         for servico in self.hueys:
             self._thread(f"huey-{servico}", self._huey, servico)
-        self._thread("pagamentos-appmax", self._processar_appmax)
-        self._thread("robos-admin", self._robos_admin)
+        from config.registry import ACTIVE_SERVICES
+        if "pagamentos" in ACTIVE_SERVICES:
+            self._thread("pagamentos-appmax", self._processar_appmax)
+        if "admin" in ACTIVE_SERVICES:
+            self._thread("robos-admin", self._robos_admin)
         return self
 
     def _thread(self, nome: str, funcao, *args) -> None:
@@ -191,4 +194,6 @@ class Workers:
 
 def iniciar() -> Workers:
     """Entrada pequena para o lifespan ASGI do servidor unificado."""
-    return Workers().iniciar()
+    from config.registry import ACTIVE_SERVICES
+    return Workers(consumidores={s: a for s, a in CONSUMIDORES.items() if s in ACTIVE_SERVICES},
+                   hueys=tuple(s for s in HUEYS if s in ACTIVE_SERVICES)).iniciar()

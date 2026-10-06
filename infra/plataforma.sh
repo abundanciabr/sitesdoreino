@@ -1,24 +1,14 @@
 #!/bin/sh
-# Atalho estável na VPS (/opt/plataforma/bin/plataforma): roda infra/publicar.py da main recebida.
-# Uso: plataforma receber | publicar CELULA SHA | recuperar CELULA | vigiar | estado | operar ...
+# A instalação de manutenção fixa as ferramentas fora da candidata.
 set -eu
-RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
-REPO="$RAIZ/codigo/repo.git"
-FERRAMENTAS="$RAIZ/codigo/ferramentas"
-mkdir -p "$FERRAMENTAS"
-if [ ! -d "$REPO" ]; then
-  git clone --quiet --bare https://github.com/abundanciabr/sitesdoreino.git "$REPO"
+export PLATAFORMA_DIR=/opt/plataforma
+PUBLICADOR=/usr/local/lib/meshcraft-publicador/atual/infra/publicar.py
+if [ ! -f "$PUBLICADOR" ]; then
+  echo "Publicador protegido ainda não instalado pela manutenção." >&2
+  exit 1
 fi
 case "${1:-}" in
   receber|publicar)
-    git -C "$REPO" fetch --quiet origin +refs/heads/main:refs/heads/main ;;
+    git -C /opt/plataforma/codigo/repo.git fetch --quiet origin +refs/heads/main:refs/heads/main ;;
 esac
-SHA=$(git -C "$REPO" rev-parse refs/heads/main)
-if [ ! -d "$FERRAMENTAS/$SHA" ]; then
-  NOVA=$(mktemp -d "$FERRAMENTAS/.nova.XXXXXX")
-  git -C "$REPO" archive "$SHA" infra ci e2e | tar -x -C "$NOVA"
-  mv -T "$NOVA" "$FERRAMENTAS/$SHA" 2>/dev/null || rm -rf "$NOVA"
-  ln -sfn "$SHA" "$FERRAMENTAS/.atual.$$" && mv -T "$FERRAMENTAS/.atual.$$" "$FERRAMENTAS/atual"
-  find "$FERRAMENTAS" -mindepth 1 -maxdepth 1 -name '[0-9a-f]*' -mmin +1440 ! -name "$SHA" -exec rm -rf {} +
-fi
-exec python3 "$FERRAMENTAS/$SHA/infra/publicar.py" "$@"
+exec python3 "$PUBLICADOR" "$@"

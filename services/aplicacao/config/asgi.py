@@ -12,7 +12,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 # Configure the single model registry before constructing per-cell handlers.
 _base_application = get_asgi_application()
 
-from .registry import SERVICES, service_for_path  # noqa: E402
+from .registry import ACTIVE_SERVICES as SERVICES, service_for_path  # noqa: E402
 from .runtime import (  # noqa: E402
     install_contextual_settings,
     install_default_database_alias,
@@ -50,11 +50,17 @@ async def application(scope, receive, send):
         key.lower() == b"x-plataforma-entrada" and value.lower() == b"privada"
         for key, value in scope.get("headers", [])
     )
+    # Nomes Docker internos mantêm o contrato usado pelo transporte HTTP.
+    # O gateway público só encaminha os hosts públicos configurados.
     service = scope.get("site_servico")
+    if service is None and host.split(":", 1)[0] in SERVICES:
+        service = host.split(":", 1)[0]
     if service not in _handlers:
         service, script_name = service_for_path(path, host, private)
     else:
         script_name = ""
+    if len(SERVICES) == 1:
+        service = SERVICES[0]
     routed_scope = dict(scope)
     routed_scope["root_path"] = script_name
     # Django leaves both values in asgiref.local.Local after a response. An

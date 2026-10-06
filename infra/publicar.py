@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import time
+from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -125,6 +126,15 @@ def imagem_existe(imagem: str) -> bool:
 def garantir_base(celula: str, sha: str, contexto: Path, registro) -> tuple[str, bool, float]:
     """Imagem da base pedida: existente, reaproveitada da aprovada, ou construída aqui."""
     marca = hash_da_base(celula, sha)
+    bases = FERRAMENTAS / "bases-aprovadas.json"
+    if bases.is_file():
+        permitidas = json.loads(bases.read_text(encoding="utf-8"))
+        if marca not in permitidas:
+            raise RuntimeError("dependências novas exigem montagem isolada pela autoridade de manutenção")
+        imagem = permitidas[marca]
+        if not imagem_existe(imagem):
+            raise RuntimeError("imagem aprovada ausente; manutenção necessária")
+        return imagem, False, 0.0
     imagem = f"plataforma-{celula}:base-{marca}"
     if imagem_existe(imagem):
         return imagem, False, 0.0
@@ -171,17 +181,16 @@ def preparar_codigo(celula: str, sha: str, fonte: Path, registro) -> tuple[Path,
     shutil.rmtree(temporaria, ignore_errors=True)
     shutil.copytree(fonte / "services" / celula, temporaria, symlinks=True)
     try:
-        processo = subprocess.run(
-            [sys.executable, str(temporaria / "preparar.py"), "--origem", str(fonte / "services"),
-             "--destino", str(temporaria / "modules")], stdout=registro, stderr=subprocess.STDOUT)
-        if processo.returncode != 0:
-            raise RuntimeError("montagem dos módulos da aplicação falhou")
-        shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=True)
+        arvore(fonte)  # ligações simbólicas não atravessam a montagem
         imagem, construida, build_s = garantir_base(celula, sha, fonte, registro)
+        montar(temporaria, fonte / "services", imagem, FERRAMENTAS / "preparar-aplicacao.py", registro)
+        shutil.copytree(fonte / "documentos", temporaria / "documentos_embutidos", symlinks=False)
         estaticos = comando_de_estaticos(celula, temporaria)
         if estaticos:
             processo = subprocess.run(
-                ["docker", "run", "--rm", "--network", "none", "--user", f"{os.getuid()}:{os.getgid()}",
+                ["docker", "run", "--rm", "--network", "none", "--cap-drop", "ALL",
+                 "--security-opt", "no-new-privileges", "--memory", "1024m", "--cpus", "1", "--pids-limit", "96",
+                 "--user", f"{os.getuid()}:{os.getgid()}",
                  "-e", "HOME=/tmp", "-v", f"{temporaria}:/app", "-w", "/app", "--entrypoint", "sh",
                  imagem, "-c", estaticos], stdout=registro, stderr=subprocess.STDOUT)
             if processo.returncode != 0:
@@ -288,6 +297,14 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
             fonte = trabalho / "fonte"
             extrair(sha, fonte)
             codigo, imagem, construida, build_s = preparar_codigo(celula, sha, fonte, registro)
+            imagem = imagem_id(imagem)
+            pacote = identificar(codigo, imagem, RAIZ / "docker-compose.yml")
+            provas = PUBLICACOES / "provas" / pacote["id"]
+            resultado = ensaiar(codigo, imagem, FERRAMENTAS, provas, registro)
+            if identificar(codigo, imagem, RAIZ / "docker-compose.yml") != pacote:
+                raise RuntimeError("pacote ou configuração mudou durante o ensaio")
+            (provas / "pacote.json").write_text(json.dumps({"sha": sha, "pacote": pacote,
+                "resultado": resultado, "conferido_em": agora()}, sort_keys=True), encoding="utf-8")
             medidas.update(build_segundos=build_s, base_reconstruida=construida)
             dizer(f"VERSAO: {celula} {sha[:9]} imagem={imagem} codigo={codigo}")
             medidas["espera_segundos"] = 0.0
@@ -301,6 +318,7 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
                 "CELULA": celula, "TAG": sha, "IMAGEM": imagem, "CODIGO": str(codigo),
                 "PEDIDO_EM": pedido_em, "ENDERECO_PROVA": estado.get("endereco") or ENDERECO,
                 "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py"),
+                "PACOTE_ENSAIADO": str(provas / "pacote.json"),
                 "MEDICAO_EXTRA": json.dumps(medidas)}
             retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh",
                                              ambiente, registro)
@@ -328,11 +346,13 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
 
 def sincronizar_infra_aplicacao(sha: str, registro) -> bool:
     """Depois do corte, atualiza Compose e rotas com snapshot e volta própria."""
+    # Infra executável não é recebida da candidata. A instalação independente
+    # fixa esta fonte, conservando a manutenção em autoridade separada.
     if sha != git("rev-parse", "refs/heads/main"):
         return True
     fonte = TRABALHO / f"infra-aplicacao-{sha[:12]}-{os.getpid()}"
     try:
-        extrair(sha, fonte, "infra")
+        shutil.copytree(FERRAMENTAS / "infra", fonte / "infra")
         processo = subprocess.Popen(
             [sys.executable, str(FERRAMENTAS / "infra/ativar-aplicacao.py"), "--sincronizar-infra", sha],
             cwd=RAIZ, env=ambiente_base() | {"FONTE_INFRA": str(fonte / "infra")},

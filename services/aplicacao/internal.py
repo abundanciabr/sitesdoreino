@@ -41,8 +41,9 @@ _installed = False
 
 
 def _destino(request: httpx.Request) -> str | None:
+    from config.registry import ACTIVE_SERVICES
     url = request.url
-    if url.scheme == "http" and url.host in SERVICOS and url.port == 8000:
+    if url.scheme == "http" and url.host in ACTIVE_SERVICES and url.port == 8000:
         return url.host
     return None
 

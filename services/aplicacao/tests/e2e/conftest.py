@@ -173,6 +173,10 @@ def _subir_aplicacao() -> None:
 
     django.setup()
     load_original_settings()
+    # A mesma exceção de fixtures usada pelos testes da célula leads. Este
+    # processo só existe nos bancos de ensaio confirmados pela fixture mundo.
+    from config.runtime import _service_settings
+    _service_settings["leads"]["CRM_REJEITAR_TESTES"] = False
     install_contextual_settings()
     preparar_migracoes()
     import time

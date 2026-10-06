@@ -10,7 +10,7 @@ from django.conf import settings
 from django.conf import LazySettings
 from django.utils.module_loading import import_string
 
-from .registry import SERVICES
+from .registry import ACTIVE_SERVICES as SERVICES
 
 _current_service = contextvars.ContextVar("site_service", default=None)
 _service_settings = {}

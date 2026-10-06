@@ -74,7 +74,7 @@ def preparar_migracoes():
     import django
     from django.apps import apps
     from django.db import connections, transaction
-    from .registry import SERVICES
+    from .registry import ACTIVE_SERVICES as SERVICES
 
     django.setup()
     adopted = {}

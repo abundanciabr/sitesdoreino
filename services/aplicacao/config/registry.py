@@ -1,12 +1,18 @@
 """Inventory of the existing cells inside the unified Django process."""
 
 from pathlib import Path
+import os
 
 SERVICES = (
     "admin", "alunos", "catalogo", "checkout", "cursos", "encomendas",
     "forum", "funil", "gamificacao", "identidade", "leads", "mensageria",
     "metricas", "notificacoes", "pagamentos", "pages", "quiz", "sugestoes",
 )
+
+CELULA_EXECUCAO = os.environ.get("CELULA_EXECUCAO", "")
+if CELULA_EXECUCAO and CELULA_EXECUCAO not in SERVICES:
+    raise ValueError("célula de execução desconhecida")
+ACTIVE_SERVICES = (CELULA_EXECUCAO,) if CELULA_EXECUCAO else SERVICES
 
 # The public prefixes are deliberately distinct from the old internal paths.
 # A cell behind SCRIPT_NAME used a local URLconf; identidade and payments did not.
@@ -37,7 +43,7 @@ PUBLIC_PREFIXES = (
 
 def app_configs(modules_root: Path) -> list[str]:
     result = []
-    for service in SERVICES:
+    for service in ACTIVE_SERVICES:
         if service == "pagamentos":
             roots = [modules_root / service / "pagamentos"]
         else:
