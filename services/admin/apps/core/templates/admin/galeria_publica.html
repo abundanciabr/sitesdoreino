@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Escolha nossa comunidade · Meshcraft</title>
+  <meta name="description" content="Conheça os nove visuais da comunidade Meshcraft e vote nos seus favoritos.">
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/comunidade/galeria.css">
+  <script src="/comunidade/galeria.js" defer></script>
+</head>
+<body data-pode-votar="{% if aluno %}sim{% else %}nao{% endif %}">
+  <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/forum/comunidade">Minha comunidade</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome }}</span>{% else %}<a class="entrar" href="/login?next=/comunidade">Entrar</a>{% endif %}</nav></header>
+  <main>
+    <section class="introducao"><p class="sobretitulo">A PRÓXIMA CARA DA MESHCRAFT</p><h1>Uma comunidade.<br>Nove possibilidades.</h1><p class="descricao">Explore os modelos e vote nos que você gostaria de usar.<br>Seu olhar ajuda a dar forma à nossa comunidade.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>↕ Mais votadas primeiro</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/comunidade">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
+    <div class="cabecalho-grade"><h2>Os nove modelos</h2><span id="ordem-votos">Ordenados por votos</span></div>
+    <div id="grade" class="grade">
+      {% for imagem in imagens %}
+      <article class="modelo" data-slug="{{ imagem.slug }}" data-titulo="{{ imagem.titulo }}" data-url="{{ imagem.url }}" data-votos="{{ imagem.votos }}" data-votado="{% if imagem.votado %}sim{% else %}nao{% endif %}">
+        <button class="abrir-imagem" aria-label="Ampliar {{ imagem.titulo }}"><img src="{{ imagem.url }}?mini=1" alt="Proposta {{ imagem.titulo }} para a comunidade Meshcraft" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" width="1536" height="1024"><span class="ampliar">↗ Ampliar</span></button>
+        <div class="modelo-corpo"><div class="modelo-titulo"><span class="posicao">{{ forloop.counter|stringformat:"02d" }}</span><h3>{{ imagem.titulo }}</h3></div><p>{{ imagem.descricao }}</p>
+          <div class="acoes"><span class="total-votos">{{ imagem.votos }} voto{{ imagem.votos|pluralize }}</span><button class="votar{% if imagem.votado %} votado{% endif %}" aria-pressed="{% if imagem.votado %}true{% else %}false{% endif %}">{% if imagem.votado %}♥ Retirar voto{% else %}♡ Votar{% endif %}</button></div>
+          <details class="comentario"><summary>Deixar um comentário</summary><form class="form-comentario"><label for="texto-{{ imagem.slug }}">O que você achou deste modelo?</label><textarea id="texto-{{ imagem.slug }}" name="texto" rows="3" maxlength="4000" required placeholder="Conte o que gostou e o que mudaria..."></textarea><button type="submit">Enviar comentário</button><p class="retorno-comentario" role="status"></p></form></details>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    <p class="nota">Imagens conceituais. Pessoas, projetos e valores apresentados nos modelos são demonstrativos.</p>
+    <noscript><p>Ative o JavaScript para votar, comentar e ampliar as imagens.</p></noscript>
+  </main>
+  <footer><span>MESHCRAFT</span><span>Construída com a nossa comunidade.</span></footer>
+  <input type="hidden" id="csrf-galeria" value="{{ csrf }}">
+  <p id="aviso" class="aviso" role="status" hidden></p>
+  <dialog id="visualizador" aria-labelledby="titulo-visualizador">
+    <div class="barra-visualizador"><div><span class="contador-imagem"></span><strong id="titulo-visualizador"></strong></div><div class="controles"><button id="anterior" aria-label="Imagem anterior">←</button><button id="proxima" aria-label="Próxima imagem">→</button><span class="separador"></span><button id="menos" aria-label="Diminuir zoom">−</button><span id="zoom-texto">Ajustar</span><button id="mais" aria-label="Aumentar zoom">+</button><button id="ajustar">Ajustar</button><button id="tela-cheia" aria-label="Tela cheia">⛶</button><button id="fechar" aria-label="Fechar visualização">✕</button></div></div>
+    <div id="palco" class="palco fit"><img id="imagem-grande" alt=""></div>
+    <div class="rodape-visualizador"><span id="votos-modal"></span><button id="votar-modal" class="votar">♡ Votar</button><button id="comentar-modal">Comentar</button><span class="dica-zoom">Use + e − para ampliar. Arraste a imagem ampliada.</span></div>
+    <form id="comentario-modal" class="form-comentario" hidden><label for="texto-modal">O que você achou deste modelo?</label><div class="linha-comentario"><textarea id="texto-modal" name="texto" rows="2" maxlength="4000" required placeholder="Conte o que gostou e o que mudaria..."></textarea><button type="submit">Enviar</button></div><p class="retorno-comentario" role="status"></p></form>
+  </dialog>
+</body>
+</html>

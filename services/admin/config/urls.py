@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.urls import path, re_path
+from apps.core import galeria_comunidade as galeria_votacao
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
@@ -257,6 +258,13 @@ from apps.comercial.views import agentes_comerciais
 from apps.assistente.views import assistente_do_site
 
 urlpatterns = [
+    path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
+    path("galeria-publica/", galeria_votacao.galeria),
+    path("galeria-publica/voto", galeria_votacao.votar),
+    path("galeria-publica/comentario", galeria_votacao.comentar),
+    path("galeria-publica/imagens/<slug:slug>", galeria_votacao.imagem),
+    path("galeria-publica/<str:nome>", galeria_votacao.recurso),
+    path("comunidade/votacao/", galeria_votacao.comentarios_admin, name="galeria_comentarios_admin"),
     path("crm/", crm, name="crm"),
     path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
     path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),

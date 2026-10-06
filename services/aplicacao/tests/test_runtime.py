@@ -64,6 +64,26 @@ class RuntimeTest(unittest.TestCase):
                 self.assertEqual(response.status_code, 200, service)
         asyncio.run(check())
 
+    def test_galeria_publica_na_raiz_preserva_painel_admin(self):
+        import httpx
+        from unittest.mock import patch
+        from config.registry import service_for_path
+        from modules.admin.apps.core.galeria_comunidade import IMAGENS
+        self.assertEqual(service_for_path('/comunidade'), ('admin', ''))
+        self.assertEqual(service_for_path('/comunidade', 'outro.exemplo'), ('funil', ''))
+        linhas = [{'slug':slug,'titulo':titulo,'descricao':descricao,'votos':0,'votado':False,'url':'/comunidade/imagens/'+slug} for slug,titulo,descricao in IMAGENS]
+        async def check():
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=type(self).application), base_url='https://meshcraft.top') as client:
+                with patch('modules.admin.apps.core.galeria_comunidade.classificacao', return_value=linhas):
+                    resposta = await client.get('/comunidade')
+                self.assertEqual(resposta.status_code, 200)
+                self.assertEqual(resposta.text.count('class="modelo"'), 9)
+                self.assertIn('Path=/comunidade', resposta.headers['set-cookie'])
+                self.assertEqual((await client.get('/comunidade/galeria.js')).status_code, 200)
+                self.assertEqual((await client.get('/admin/comunidade/')).status_code, 302)
+                self.assertEqual((await client.get('/admin/comunidade/votacao/')).status_code, 302)
+        asyncio.run(check())
+
     def test_host_private_settings_templates_and_transaction(self):
         from django.conf import settings
         from django.db import connection, connections, transaction

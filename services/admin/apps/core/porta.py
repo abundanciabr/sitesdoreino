@@ -244,6 +244,9 @@ class PortaAdministrativa:
         return self._responder(request)
 
     def _responder(self, request):
+        from .galeria_comunidade import caminho_publico
+        if caminho_publico(request.path_info):
+            return self._com_seguranca(self.get_response(request))
         if _sob_a_porta_de_maquina(request.path_info):
             # A porta de MAQUINA tem cadeado proprio (o Bearer) e nao usa a
             # moldura de navegador: sai sem CSP e sem `Cache-Control` de tela,

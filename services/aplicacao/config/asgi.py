@@ -63,6 +63,10 @@ async def application(scope, receive, send):
         service = SERVICES[0]
     routed_scope = dict(scope)
     routed_scope["root_path"] = script_name
+    # A galeria pública tem URL raiz própria, sem colidir com o painel
+    # administrativo existente em /admin/comunidade/.
+    if service == "admin" and (path == "/comunidade" or path.startswith("/comunidade/")):
+        routed_scope["path"] = "/galeria-publica" + path[len("/comunidade"):]
     # Django leaves both values in asgiref.local.Local after a response. An
     # in-process HTTP call can nest inside another module's rendering; restore
     # the outer request's URL state before its templates reverse links.
