@@ -1517,6 +1517,7 @@ def laudo_recebido(request, numero: str, curso: str | None = None, parte: int | 
     `laudo.mudanca`, `laudo.data_de_retorno` e a régua do laudo
     (`laudo.versao_do_instrumento`): nunca `laudo.avaliador`.
     """
+    slug_solicitado = curso
     try:
         pessoa, curso, aula_da_porta, progresso, recusa = _porta_aberta(
             request, numero, slug=curso, parte=parte
@@ -1541,8 +1542,11 @@ def laudo_recebido(request, numero: str, curso: str | None = None, parte: int | 
             aula__curso__site_id=site,
             aula__numero=numero,
         ).select_related("aula__curso", "aula__bloco")
-        if curso is not None:
-            historico = historico.filter(aula__curso__slug=curso, aula__bloco__parte=parte)
+        if slug_solicitado is not None:
+            historico = historico.filter(
+                aula__curso__slug=slug_solicitado,
+                aula__bloco__parte=parte,
+            )
         # O endereço legado sem curso só é inequívoco com uma aula no histórico.
         aulas = list(historico.values_list("aula_id", flat=True).distinct()[:2])
         if len(aulas) != 1:

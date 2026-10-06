@@ -16,7 +16,7 @@ import pytest
 from django.urls import reverse
 
 from apps.cursos import laudo as parecer
-from apps.cursos.models import Laudo
+from apps.cursos.models import Aula, Bloco, Curso, Envio, Laudo, Pessoa
 from tests.conftest import (
     ANA,
     COOKIE,
@@ -126,3 +126,45 @@ def test_a_matricula_tambem_fecha_esta_tela(
     dublar_matricula(rede, ANA["email"], "cadastrado")
     resposta = client.get(reverse("laudo-recebido", args=["E00"]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 403
+
+
+def test_historico_expirado_isola_cursos_com_a_mesma_aula(
+    env_dos_pares, rede, client
+):
+    pessoa = Pessoa.objects.create(id_da_plataforma=ANA["id"], nome_exibido="Ana")
+    for slug, titulo in [
+        ("comunidade", "Prática da Comunidade"),
+        ("desafio-roblox", "Prática do curso Roblox"),
+    ]:
+        curso = Curso.objects.create(site_id="escola-a", slug=slug, nome=titulo)
+        bloco = Bloco.objects.create(curso=curso, ordem=1, letra="A", parte=1)
+        aula = Aula.objects.create(
+            curso=curso, bloco=bloco, ordem=0, numero="D02",
+            titulo_exibido=titulo, estado=Aula.Estado.PUBLICADA,
+        )
+        Envio.objects.create(
+            pessoa=pessoa, aula=aula, numero=1,
+            links=[{"rotulo": "Arquivo", "url": "https://exemplo.test/arquivo"}],
+            readme=titulo, laudo_do_aluno={"texto": titulo},
+        )
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"], "cadastrado")
+    for slug, presente, ausente in [
+        ("comunidade", "Prática da Comunidade", "Prática do curso Roblox"),
+        ("desafio-roblox", "Prática do curso Roblox", "Prática da Comunidade"),
+    ]:
+        resposta = client.get(
+            reverse("laudo-recebido-do-curso", args=[slug, 1, "D02"]),
+            HTTP_COOKIE=COOKIE,
+        )
+        assert resposta.status_code == 200
+        corpo = resposta.content.decode()
+        assert presente in corpo
+        assert ausente not in corpo
+    assert client.get(
+        reverse("laudo-recebido", args=["D02"]), HTTP_COOKIE=COOKIE
+    ).status_code == 403
+    assert client.get(
+        reverse("laudo-recebido-do-curso", args=["comunidade", 2, "D02"]),
+        HTTP_COOKIE=COOKIE,
+    ).status_code != 200
