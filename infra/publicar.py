@@ -451,6 +451,8 @@ def lote_travado(base: str, head: str) -> int:
         # Aplicações separadas publicam em sequência, mantendo os processos
         # das células que não foram tocadas.
         for celula in celulas:
+            if head != git('rev-parse', 'refs/heads/main'):
+                break
             processo = subprocess.run([sys.executable, __file__, "publicar", celula, head, "--pedido-em", pedido_em])
             situacao["resultado"][celula] = processo.returncode
             falhas += situacao["resultado"][celula] != 0
@@ -678,6 +680,10 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
     acao, resto = argv[0], argv[1:]
+    if acao in ('lote', 'publicar'):
+        # A interrupção precisa atravessar os finally que encerram os ensaios.
+        # SIGTERM padrão matava o Python e deixava PostgreSQL/Redis ligados.
+        signal.signal(signal.SIGTERM, interromper_publicacao)
     if acao == "receber":
         return receber()
     if acao == "publicar" and len(resto) in (2, 4):
@@ -698,6 +704,10 @@ def main(argv: list[str]) -> int:
         os.execv(sys.executable, [sys.executable, str(FERRAMENTAS / "infra/operar.py"), *resto])
     print(__doc__)
     return 2
+
+
+def interromper_publicacao(*_):
+    raise InterruptedError('publicação superada; encerrando o ensaio')
 
 
 if __name__ == "__main__":
