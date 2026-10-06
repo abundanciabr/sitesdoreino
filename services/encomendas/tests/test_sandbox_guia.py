@@ -28,13 +28,13 @@ def test_guia_aceita_projeto_configurado_e_preserva_um_ativo(client, monkeypatch
     assert 'Aceitar e começar' in html
     assert 'type="checkbox"' not in html
     aceitar = reverse('sandbox_aceitar', args=[projeto.pk])
-    assert aceitar in html
-    resposta = client.post(aceitar, {'aceito_termos': 'sim'})
+    assert reverse('sandbox_confirmar', args=[projeto.pk]) in html
+    resposta = client.post(aceitar, {'aceito_termos': 'sim', 'prazo_horas': '48'})
     assert resposta.status_code == 302
     trabalho = ParticipacaoSandbox.objects.get(site_id=site, pessoa_id='aluno-guia')
     assert reverse('sandbox_trabalho', args=[trabalho.pk]) in resposta.url
     assert trabalho.termos['recompensa'] == '0.00'
-    assert client.post(aceitar, {'aceito_termos': 'sim'}).status_code == 400
+    assert client.post(aceitar, {'aceito_termos': 'sim', 'prazo_horas': '48'}).status_code == 400
     pagina = client.get(reverse('sandbox_catalogo'))
     assert 'Continuar meu trabalho' in pagina.content.decode()
     assert 'class="start-button">Aceitar' not in pagina.content.decode()

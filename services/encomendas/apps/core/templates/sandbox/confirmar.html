@@ -1,0 +1,27 @@
+{% extends 'sandbox/base.html' %}{% load sandbox_moeda %}
+{% block title %}Confirme seu projeto{% endblock %}
+{% block body %}
+<h1>É este o projeto que você quer fazer?</h1>
+<p class="lead">Confira o combinado, escolha seu prazo e aceite os termos para começar.</p>
+<div class="split"><section class="card"><h2>{{ projeto.titulo }}</h2><p class="preserve">{{ projeto.briefing }}</p>
+<h3>O que você deverá entregar</h3><ul>{% for item in projeto.entregaveis %}<li>{{ item }}</li>{% endfor %}</ul>
+<h3>Critérios de aprovação</h3><p class="preserve">{{ projeto.criterios }}</p>
+<h3>Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% endfor %}
+<p><strong>Ajustes:</strong> {% if projeto.ajustes_previstos != None %}{{ projeto.ajustes_previstos }} pedidos previstos{% else %}A escola pode orientar correções na avaliação, sem quantidade definida.{% endif %}</p>
+<p><strong>Experiência após aprovação:</strong> {{ projeto.recompensa|mesh }}</p>
+<p class="tiny">MESH é um registro virtual de experiência, sem valor financeiro.</p></section>
+<section class="card"><h2>Simulação para aprender</h2><div class="notice"><strong>Sem dinheiro, cobrança ou pagamento.</strong><p class="preserve">{{ termos_simulacao }}</p></div>
+{% if trabalho_ativo %}<p>Você já tem um projeto em andamento.</p><a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho</a>
+{% elif aluno_atual and projeto.recompensa != None %}
+<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}
+<fieldset style="border:0;padding:0"><legend><strong>Escolha seu prazo de entrega</strong></legend>
+<label><input type="radio" name="prazo_horas" value="24" required> 24 horas</label>
+<label><input type="radio" name="prazo_horas" value="48" required> 48 horas</label>
+<label><input type="radio" name="prazo_horas" value="72" required> 72 horas · prazo máximo</label></fieldset>
+<p class="tiny">A contagem começa ao confirmar abaixo. Voltar agora não inicia o trabalho nem o prazo.</p>
+<label style="margin-top:20px"><input type="checkbox" name="aceito_termos" value="sim" required> Li e aceito os termos desta simulação exclusivamente educacional, sem qualquer pagamento ou envolvimento financeiro, o briefing e o prazo escolhido.</label>
+<div class="actions"><button>Confirmar e iniciar minha tarefa</button></div></form>
+{% elif papel == 'equipe' %}<p>Esta é a confirmação exibida ao aluno. Para iniciar, ele precisa entrar com a própria conta.</p>
+{% else %}<p>A escola precisa configurar a recompensa deste projeto antes do início.</p>{% endif %}
+<p style="margin-top:20px"><a class="btn secondary" href="{% url 'sandbox_catalogo' %}?categoria={{ projeto.categoria }}">Voltar e escolher outro item</a></p></section></div>
+{% endblock %}

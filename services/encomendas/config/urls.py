@@ -37,6 +37,7 @@ from config.api import api
 # que alguém escreveria por instinto. Quem registra "pago pela escola" é o
 # plantão, com autor e data (lei §3.4).
 urlpatterns = [
+    path("sandbox/projetos/<uuid:projeto_id>/confirmar/", telas_sandbox.confirmar_projeto, name="sandbox_confirmar"),
     path("sandbox/ilustracoes/<slug:slug>.png", telas_sandbox.ilustracao_projeto, name="sandbox_ilustracao"),
     path("sandbox/arte-categorias.png", telas_sandbox.arte_catalogo, name="sandbox_arte"),
     path("sandbox/", telas_sandbox.catalogo, name="sandbox_catalogo"),

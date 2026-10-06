@@ -13,6 +13,15 @@ from .sandbox_models import (
 )
 
 
+TERMOS_SIMULACAO = (
+    "Esta atividade é exclusivamente uma simulação educacional de trabalho real, destinada ao aprendizado e à experiência. "
+    "Não há contratação remunerada, cobrança, compra, investimento, pagamento, saque ou conversão em dinheiro. "
+    "A recompensa em MESH é um registro virtual de experiência da escola, sem valor financeiro. "
+    "Eu aceito realizar os entregáveis do briefing no prazo que escolhi e enviar minha entrega para avaliação. "
+    "A recompensa de experiência é concedida uma única vez após aprovação registrada; participar não autoriza a fila remunerada."
+)
+
+
 class ErroSandbox(ValueError):
     """Gesto inválido no estado atual ou fora do site."""
 
@@ -108,7 +117,7 @@ def semear_projetos(*, site_id):
     for slug, titulo, categoria, briefing, referencias, entregaveis, criterios in _PROJETOS:
         projeto, _ = ProjetoSandbox.objects.get_or_create(
             site_id=site_id, slug=slug,
-            defaults=dict(titulo=titulo, categoria=categoria, briefing=briefing, referencias=referencias,
+            defaults=dict(recompensa=Decimal("10000.00"), titulo=titulo, categoria=categoria, briefing=briefing, referencias=referencias,
                           entregaveis=entregaveis, criterios=criterios),
         )
         projetos.append(projeto)
@@ -116,24 +125,30 @@ def semear_projetos(*, site_id):
 
 
 @transaction.atomic
-def aceitar(*, site_id, pessoa_id, projeto_id):
+def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None):
     projeto = ProjetoSandbox.objects.select_for_update().filter(pk=projeto_id, site_id=site_id, ativo=True, categoria__in=ProjetoSandbox.Categoria.values).first()
     if projeto is None:
         raise ErroSandbox("Projeto indisponível neste site.")
-    if projeto.prazo_dias is None or projeto.ajustes_previstos is None or projeto.recompensa is None:
-        raise ErroSandbox("A escola ainda precisa configurar prazo, ajustes e recompensa.")
+    if prazo_horas is not None and (type(prazo_horas) is not int or prazo_horas not in (24, 48, 72)):
+        raise ErroSandbox("Escolha um prazo de 24h, 48h ou 72h.")
+    if projeto.recompensa is None or (prazo_horas is None and projeto.prazo_dias is None):
+        raise ErroSandbox("A escola ainda precisa configurar prazo e recompensa.")
+    duracao = timedelta(hours=prazo_horas) if prazo_horas is not None else timedelta(days=projeto.prazo_dias)
     if ParticipacaoSandbox.objects.filter(site_id=site_id, pessoa_id=pessoa_id,
                                           status__in=["em_producao", "entregue", "em_ajuste"]).exists():
         raise ErroSandbox("Esta pessoa já tem um projeto em andamento.")
     agora = timezone.now()
     termos = dict(projeto_id=str(projeto.pk), titulo=projeto.titulo, categoria=projeto.categoria, briefing=projeto.briefing,
                   referencias=projeto.referencias, entregaveis=projeto.entregaveis,
-                  criterios=projeto.criterios, prazo_dias=projeto.prazo_dias,
+                  criterios=projeto.criterios, prazo_dias=duracao.total_seconds() / 86400,
+                  prazo_horas=int(duracao.total_seconds() / 3600),
+                  natureza="simulacao_educacional", sem_pagamento=True,
+                  termos_simulacao=TERMOS_SIMULACAO, termos_simulacao_versao="20261006",
                   ajustes_previstos=projeto.ajustes_previstos, recompensa=str(projeto.recompensa))
     try:
         return ParticipacaoSandbox.objects.create(
             site_id=site_id, pessoa_id=pessoa_id, projeto=projeto, termos=termos,
-            aceite_em=agora, prazo_ate=agora + timedelta(days=projeto.prazo_dias),
+            aceite_em=agora, prazo_ate=agora + duracao,
         )
     except IntegrityError as exc:
         raise ErroSandbox("Esta pessoa já tem um projeto em andamento.") from exc

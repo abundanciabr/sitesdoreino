@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.core import sessao, telas_marketplace
@@ -173,8 +174,7 @@ def catalogo(request):
     trabalho_ativo = next((trabalho for trabalho in trabalhos if trabalho.status != "aprovado"), None)
     for projeto in projetos:
         projeto.tem_ilustracao = projeto.slug in ILUSTRACOES
-        projeto.pronto = (projeto.prazo_dias is not None and projeto.ajustes_previstos is not None
-                          and projeto.recompensa is not None and bool(projeto.briefing.strip())
+        projeto.pronto = (projeto.recompensa is not None and bool(projeto.briefing.strip())
                           and bool(projeto.criterios.strip()) and bool(projeto.entregaveis))
     return render(request, "sandbox/catalogo.html", {
         "papel": papel, "projetos": projetos, "trabalhos": trabalhos,
@@ -183,6 +183,30 @@ def catalogo(request):
         "aluno_atual": aluno_atual, "saldo": sandbox.saldo(site_id=site, pessoa_id=pessoa),
         "historico": sandbox.historico(site_id=site, pessoa_id=pessoa),
         "recado": request.GET.get("recado", ""),
+    })
+
+
+@require_GET
+def confirmar_projeto(request, projeto_id):
+    site, pessoa = _entrada(request)
+    if not pessoa:
+        return _login(request)
+    projeto = ProjetoSandbox.objects.filter(pk=projeto_id, site_id=site, ativo=True,
+                                            categoria__in=ProjetoSandbox.Categoria.values).first()
+    if projeto is None:
+        raise Http404
+    try:
+        aluno = _aluno_atual(request, pessoa, site)
+        if not aluno:
+            _equipe(request)
+    except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
+        return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
+    ativo = ParticipacaoSandbox.objects.filter(site_id=site, pessoa_id=pessoa,
+                    status__in=['em_producao', 'em_ajuste', 'entregue']).first()
+    return render(request, 'sandbox/confirmar.html', {
+        'projeto': projeto, 'termos_simulacao': sandbox.TERMOS_SIMULACAO,
+        'aluno_atual': aluno, 'trabalho_ativo': ativo,
+        'papel': 'aluno' if aluno else 'equipe',
     })
 
 
@@ -201,7 +225,11 @@ def aceitar(request, projeto_id):
     if request.POST.get("aceito_termos") != "sim":
         return _falha(request, "Leia os termos e marque o aceite para começar.")
     try:
-        participacao = sandbox.aceitar(site_id=site, pessoa_id=pessoa, projeto_id=projeto_id)
+        prazo_horas = int(request.POST.get('prazo_horas', '0'))
+        if prazo_horas not in (24, 48, 72):
+            raise sandbox.ErroSandbox("Escolha um prazo de 24h, 48h ou 72h na confirmação.")
+        participacao = sandbox.aceitar(site_id=site, pessoa_id=pessoa, projeto_id=projeto_id,
+                                       prazo_horas=prazo_horas)
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro))
     return _voltar("sandbox_trabalho", participacao.pk, recado="Trabalho iniciado.")
@@ -215,7 +243,7 @@ def trabalho(request, participacao_id):
     sandbox.registrar_atrasos(site_id=participacao.site_id)
     participacao.refresh_from_db()
     return render(request, "sandbox/trabalho.html", {
-        "papel": papel, "trabalho": participacao,
+        "papel": papel, "trabalho": participacao, "agora": timezone.now(),
         "mensagens": MensagemSandbox.objects.filter(participacao=participacao).order_by("criada_em"),
         "arquivos": ArquivoSandbox.objects.filter(participacao=participacao).select_related("entrega").order_by("-criado_em"),
         "entregas": EntregaSandbox.objects.filter(participacao=participacao).order_by("-versao"),
