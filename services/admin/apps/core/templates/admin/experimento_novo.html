@@ -4,6 +4,7 @@
 <div class="envolucro copy">
   <a class="volta" href="{% url 'experimentos' %}">Voltar aos experimentos da página</a>
   <h1>Novo experimento</h1>
+  {% if primeiro_ab %}<p class="recado"><b>Primeiro A/B: falta somente a headline B.</b> O braço A será a headline da oferta publicada, mostrada abaixo. Os valores de 50/50, taxa base de planejamento, efeito mínimo e duração podem ser ajustados aqui antes de salvar. A taxa base sugerida não é uma medição de entradas no checkout. Salvar cria um rascunho e mantém a oferta vigente.</p>{% endif %}
   <p class="subtitulo">
     Uma parte das visitas vê um texto novo (o braço b) no lugar do texto que
     está no ar (o braço a), num espaço só da página de oferta. Salvar guarda o
@@ -81,6 +82,7 @@
 
   <form method="post" action="{% url 'experimento_novo' %}">
     {% csrf_token %}
+    {% if primeiro_ab %}<input type="hidden" name="primeiro" value="1">{% endif %}
     <input type="hidden" name="espaco" value="{{ escrito.espaco }}">
 
     <div class="espaco">
@@ -117,7 +119,7 @@
     <div class="espaco">
       <label class="nome" for="c-taxa_base">Taxa base, em %</label>
       <p class="explica">De cada 100 visitas que veem o espaço hoje, quantas fazem
-        o que a métrica mede. O placar do funil mostra esse número.</p>
+        o que a métrica mede. Para o primeiro A/B, 3% é hipótese de planejamento, não taxa já medida. O placar do funil ajuda a substituir essa hipótese quando houver dados.</p>
       <input type="text" inputmode="decimal" id="c-taxa_base" name="taxa_base" value="{{ escrito.taxa_base }}">
     </div>
 

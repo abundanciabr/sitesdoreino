@@ -184,6 +184,9 @@ def test_a_lista_mostra_cada_experimento_com_o_estado_e_o_gesto_que_cabe():
     assert reverse("experimento_iniciar", args=[ID_ENCERRADO]) not in corpo
     assert reverse("decisao_do_experimento", args=[ID_ENCERRADO]) not in corpo
     assert reverse("experimento_novo") in corpo
+    assert reverse("resultado_do_experimento", args=[ID_RASCUNHO]) in corpo
+    assert reverse("resultado_do_experimento", args=[ID_ENCERRADO]) in corpo
+    assert "amostra planejada" in corpo
 
 
 @respx.mock

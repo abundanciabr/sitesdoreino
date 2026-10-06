@@ -62,6 +62,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from apps.auditoria.models import Registro
 
 from .clients import CatalogoClient
+from .models import RascunhoDeConfiguracao
 from .paginas import SECOES, SLUG_DA_PAGINA, _site
 from .resultado_do_experimento import n_por_braco_planejado
 from .views import _auditar
@@ -94,6 +95,44 @@ CAMPOS = (
     "mde",
     "dias_planejados",
 )
+
+TIPO_PRIMEIRO_AB = "primeiro_ab"
+ALVO_PRIMEIRO_AB = ESPACO_PADRAO
+
+
+def preparar_primeiro_ab(site_id: str, *, taxa_base="3", mde="1", dias_planejados="21") -> RascunhoDeConfiguracao:
+    """Prepara explicitamente a pendência no banco do admin, sem criar experimento.
+
+    Os números são hipóteses de PLANEJAMENTO, editáveis antes de salvar no
+    catálogo: 3% não é uma taxa observada de `checkout_iniciado`.
+    Repetir preserva eventual plano já revisado pelo mantenedor.
+    """
+    if not str(site_id).strip():
+        raise ValueError("site_id obrigatório")
+    conteudo = {
+        "espaco": ESPACO_PADRAO,
+        "hipotese": "Uma nova headline aumenta as entradas confirmadas no checkout.",
+        "texto_b": "",
+        "parte_b": "50",
+        "metrica_principal": "checkout_iniciado",
+        "taxa_base": str(taxa_base),
+        "mde": str(mde),
+        "dias_planejados": str(dias_planejados),
+    }
+    erros = recusas_do_plano({**conteudo, "texto_b": "pendente"})
+    if erros:
+        raise ValueError(f"plano inválido: {erros}")
+    rascunho, _ = RascunhoDeConfiguracao.objects.get_or_create(
+        tipo=TIPO_PRIMEIRO_AB, site_id=str(site_id), alvo=ALVO_PRIMEIRO_AB,
+        defaults={"conteudo": conteudo, "base": {"situacao": "aguardando_headline_b"}},
+    )
+    return rascunho
+
+
+def _primeiro_ab(site_id: str) -> RascunhoDeConfiguracao | None:
+    return RascunhoDeConfiguracao.objects.filter(
+        tipo=TIPO_PRIMEIRO_AB, site_id=str(site_id), alvo=ALVO_PRIMEIRO_AB
+    ).first()
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +298,7 @@ def _formulario(request, site, escrito, *, erros=None, motivo="", erro="", statu
             "erros": list(erros.values()),
             "motivo": motivo,
             "erro": erro,
+            "primeiro_ab": request.GET.get("primeiro") == "1" or request.POST.get("primeiro") == "1",
         },
         status=status,
     )
@@ -353,6 +393,12 @@ def experimento_novo(request):
             parte_b="50",
             metrica_principal=next(iter(METRICAS)),
         )
+        if request.GET.get("primeiro") == "1":
+            pendente = _primeiro_ab(site["id"])
+            if pendente:
+                escrito.update({campo: str(pendente.conteudo.get(campo) or "") for campo in CAMPOS})
+                # O B é decisão nova do mantenedor, nunca material de fixture.
+                escrito["texto_b"] = ""
         if request.GET.get("copiar"):
             situacao, texto_a = texto_no_ar(site, escrito["espaco"])
             if situacao == CatalogoClient.OK:
@@ -365,11 +411,25 @@ def experimento_novo(request):
         return _formulario(request, site, escrito, erros=erros)
 
     erros = recusas_do_plano(escrito)
+    if request.POST.get("primeiro") == "1":
+        situacao_a, texto_a = texto_no_ar(site, ESPACO_PADRAO)
+        if escrito["espaco"] != ESPACO_PADRAO:
+            erros["espaco"] = "O primeiro A/B preparado é da headline da oferta."
+        if situacao_a != CatalogoClient.OK or not texto_a.strip():
+            erros["texto_a"] = "Não consegui conferir a headline publicada do braço A."
+        elif escrito["texto_b"] == texto_a.strip():
+            erros["texto_b"] = "A headline B precisa ser diferente da headline A neste teste de conteúdo."
     if erros:
         return _formulario(request, site, escrito, erros=erros, status=422)
 
     situacao, resposta = criar_rascunho(request, site, escrito)
     if situacao == CatalogoClient.OK:
+        if request.POST.get("primeiro") == "1":
+            pendente = _primeiro_ab(site["id"])
+            if pendente:
+                pendente.base = {**pendente.base, "situacao": "rascunho_no_catalogo",
+                                 "experimento_id": str(resposta.get("id") or "")}
+                pendente.save(update_fields=["base", "atualizado_em"])
         return HttpResponseRedirect(f"{reverse('experimentos')}?recado=criado")
 
     recusado = situacao in (CatalogoClient.RECUSADO, CatalogoClient.SEM_PAGINA)
@@ -422,6 +482,8 @@ def _lista(request, site, *, recado="", recusado_id="", erro="", status=200):
         site["id"], SLUG_DA_PAGINA
     )
     contexto = {"admin": request.admin, "recado": recado, "erro": erro}
+    pendente = _primeiro_ab(site["id"])
+    contexto["primeiro_ab_pendente"] = bool(pendente and not pendente.base.get("experimento_id"))
     if situacao != CatalogoClient.OK:
         contexto.update(sem_leitura=True, erro_da_leitura=lista)
     else:

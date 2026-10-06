@@ -55,6 +55,7 @@
   {% endif %}
 
   <p><a class="botao" href="{% url 'experimento_novo' %}">Novo experimento</a></p>
+  {% if primeiro_ab_pendente %}<p class="recado"><b>Primeiro A/B de conteúdo: headline B pendente.</b> O texto A vem da oferta publicada. <a href="{% url 'experimento_novo' %}?primeiro=1">Escrever a headline B e preparar o rascunho</a>. Salvar não inicia o sorteio.</p>{% endif %}
 
   {% if sem_leitura %}
   <p class="aviso borda-vermelha">
@@ -81,10 +82,11 @@
     {% endfor %}
     <p class="nota">
       Métrica: {{ e.metrica }}. Taxa base {{ e.taxa_base }}%, efeito mínimo de
-      {{ e.mde }} pontos, {{ e.amostra }} visitas por braço em {{ e.dias }} dias.
+      {{ e.mde }} pontos, amostra planejada de {{ e.amostra }} visitas por braço em {{ e.dias }} dias.
       {% if e.iniciado_em %}No ar desde {{ e.iniciado_em|date:"d/m/Y H:i" }}.{% endif %}
       {% if e.fim_planejado %}Prazo planejado até {{ e.fim_planejado|date:"d/m/Y H:i" }}.{% endif %}
     </p>
+    <p><a class="botao" href="{% url 'resultado_do_experimento' e.id %}">Ver amostra e resultado</a></p>
 
     {% if e.estado == "rascunho" %}
     <div class="decidir">
