@@ -147,4 +147,3 @@ def comentarios_admin(request):
         comentario.modelo = nomes.get(comentario.imagem, comentario.imagem)
         comentario.crm = '/admin/contatos/?q=' + quote(comentario.email, safe='')
     return render(request, 'admin/galeria_comentarios.html', {'admin': request.admin, 'pagina': pagina, 'imagens': IMAGENS, 'filtro': filtro, 'ranking': classificacao()})
-

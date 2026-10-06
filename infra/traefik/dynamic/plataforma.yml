@@ -261,6 +261,14 @@ http:
       service: admin
       tls: {}
 
+    comunidade-galeria:
+      rule: "Host(`meshcraft.top`) && (Path(`/comunidade`) || PathPrefix(`/comunidade/`))"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin]
+      service: admin
+      tls: {}
+
     docs:
       # A área PÚBLICA de documentos (`DECISAO-a-area-de-documentos.md`,
       # 29/08/2026). MESMO backend da área administrativa — a pasta
