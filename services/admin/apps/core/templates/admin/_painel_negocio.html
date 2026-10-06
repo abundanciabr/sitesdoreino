@@ -1,0 +1,56 @@
+{% if negocio %}
+<section class="painel-negocio" aria-label="Gestão do negócio">
+  <h2>Negócio: resultados e prioridades</h2>
+  <p class="nota">Leitura atual das fontes do site. Hotmart e Herospark são plataformas externas: vendas, taxas e atividades de estudo nelas dependem de integração e não são inferidas das matrículas.</p>
+  <div class="cartoes">
+    <article class="cartao">
+      <h3>Receita confirmada pelo site</h3>
+      {% with dado=negocio.financeiro %}
+        {% if dado.estado == 'medido' or dado.estado == 'zero' %}<p class="valor">{{ dado.reais }}</p>{% else %}<p class="aviso borda-amarela">{{ dado.motivo }}</p>{% endif %}
+        <p class="nota">{{ dado.fonte }} · {{ dado.periodo }}. Somente cobranças aprovadas de produção, sem estornos; testes ficam fora.</p>
+      {% endwith %}
+    </article>
+    <article class="cartao">
+      <h3>Alunos ativos {% if negocio.alunos.escopo == 'site' %}deste site{% else %}da plataforma{% endif %}</h3>
+      {% with dado=negocio.alunos %}
+        {% if dado.estado == 'medido' or dado.estado == 'zero' %}<p class="valor">{{ dado.valor }}</p>{% else %}<p class="aviso borda-amarela">{{ dado.motivo }}</p>{% endif %}
+        <p class="nota">{{ dado.fonte }} · {{ dado.periodo }}. {{ dado.limite }}</p>
+      {% endwith %}
+    </article>
+    <article class="cartao">
+      <h3>Cursos do site</h3>
+      {% with dado=negocio.cursos %}
+        {% if dado.estado == 'medido' or dado.estado == 'zero' %}<p class="valor">{{ dado.valor }}</p>{% else %}<p class="aviso borda-amarela">{{ dado.motivo }}</p>{% endif %}
+        <p class="nota">{{ dado.fonte }} · {{ dado.periodo }}. Cursos em Hotmart/Herospark não entram.</p>
+      {% endwith %}
+    </article>
+  </div>
+  <h3>Atividade de venda no site</h3>
+  <div class="cartoes">
+    {% for janela in negocio.funis %}
+      <article class="cartao">
+        <h4>{{ janela.periodo }}</h4>
+        {% if janela.estado == 'medido' %}
+          <p>Páginas vistas: <b>{{ janela.passos.pagina_vista }}</b> · Cliques para checkout: <b>{{ janela.passos.cta_checkout }}</b> · Entradas confirmadas no checkout: <b>{% if janela.passos.checkout_iniciado is not None %}{{ janela.passos.checkout_iniciado }}{% else %}sem dados{% endif %}</b> · Pedidos pagos registrados: <b>{{ janela.passos.pedido_pago }}</b></p>
+          <p class="nota">{{ janela.limite }}</p>
+        {% elif janela.estado == 'sem_dados' %}<p class="nota">Sem dados nesta janela: {{ janela.motivo }}</p>
+        {% else %}<p class="aviso borda-amarela">{{ janela.motivo }}</p>{% endif %}
+        <p class="nota">{{ janela.fonte }}</p>
+      </article>
+    {% endfor %}
+  </div>
+  <h3>Metas e responsáveis</h3>
+  {% if negocio.objetivos %}
+    <div class="objetivos">
+      {% for objetivo in negocio.objetivos %}
+        <article class="objetivo">
+          <h4><a href="{% url 'painel_da_equipe' %}?visao=equipe&amp;objetivo={% if objetivo.id %}{{ objetivo.id }}{% else %}sem{% endif %}">{{ objetivo.titulo }}</a></h4>
+          <p class="meta">{{ objetivo.prioridade }} · {{ objetivo.abertas }} tarefa{{ objetivo.abertas|pluralize }} aberta{{ objetivo.abertas|pluralize }} · {{ objetivo.bloqueadas }} bloqueada{{ objetivo.bloqueadas|pluralize }} · {{ objetivo.atrasadas }} atrasada{{ objetivo.atrasadas|pluralize }}{% if objetivo.prazo %} · prazo {{ objetivo.prazo|date:'d/m/Y' }}{% endif %}</p>
+          <p class="nota">Responsáveis: {% for pessoa in objetivo.responsaveis %}{{ pessoa }}{% if not forloop.last %}, {% endif %}{% empty %}nenhum definido{% endfor %}. {% if objetivo.move %}{{ objetivo.move }}.{% endif %}</p>
+          {% if objetivo.tarefas %}<ul>{% for tarefa in objetivo.tarefas %}<li><a href="{% url 'tarefa_ver' tarefa.id %}">{{ tarefa.titulo }}</a> · {{ tarefa.responsavel }} · {{ tarefa.situacao }}{% if tarefa.prazo %} · {{ tarefa.prazo|date:'d/m' }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}<p class="nota">Nenhum objetivo ativo cadastrado. <a href="{% url 'objetivos_da_equipe' %}">Ver objetivos</a>.</p>{% endif %}
+</section>
+{% endif %}

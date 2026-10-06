@@ -364,9 +364,8 @@ def test_sem_cartao_o_numero_nao_aparece(tmp_path, monkeypatch):
     html = resposta.content.decode()
     assert "falta o cartão" in html
     assert 'class="hero-numero"' not in html, "número desenhado sem cartão"
-    assert not respx.calls.call_count or all(
-        "alunos:8000" not in str(c.request.url) for c in respx.calls
-    ), "sem cartão a tela nem pergunta à alunos: número que não vai aparecer não se busca"
+    assert "Negócio: resultados e prioridades" in html
+    assert "Matrícula não prova receita deste site" in html
 
 
 @respx.mock

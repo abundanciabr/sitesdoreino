@@ -695,7 +695,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     # justamente o tipo de coisa que ninguém descobre olhando um número.
     from . import medicao as med_
 
-    return {
+    contexto = {
         "medicao": med_.a_memoria(site_id, timezone.now()),
         "registros": registros,
         "mudancas": mudancas,
@@ -724,3 +724,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         "direcao": direcao,
         "compromissos": compromissos,
     }
+    from .painel_negocio import atualizar_explicacoes, montar_painel_negocio
+
+    contexto.update(montar_painel_negocio(site_id, hoje))
+    return atualizar_explicacoes(contexto)

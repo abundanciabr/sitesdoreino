@@ -19,6 +19,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
 {% block corpo %}
 <div class="envolucro">
   <h1>O placar</h1>
+  {% include "admin/_painel_negocio.html" %}
   <p class="recado-fraco"><a href="{% url 'funil' %}">Ver o funil de vendas</a> · <a href="{% url 'experimentos' %}">Experimentos da oferta</a></p>
   <p class="recado-fraco"><a href="{% url 'gestao_do_placar' %}">Editar metas, medições e compromissos</a></p>
   <p class="subtitulo">Quantas pessoas compraram pelo nosso site neste mês, e a meta grande por cima: estamos ganhando ou perdendo? Quem foi liberado pela sala de espera comprou em outro site e não entra nesta conta.</p>
@@ -245,7 +246,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
   {% else %}
     {% include "admin/_avisos_do_cartao.html" with avisos=recusas_da_direcao %}
-    <p class="recado">O que a casa move nesta semana. Duas medidas acesas, nunca dez, e ao lado o caminho da venda, ainda desenhado.</p>
+    <p class="recado">A confirmação das compras externas nesta semana, acompanhada separadamente da atividade de venda no site.</p>
 
     <p class="recado">
       <b>{{ cartao_pedidos.pergunta }}</b>
@@ -290,17 +291,17 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     {% endif %}
   {% endif %}
 
-  <h3 class="titulo-da-conta">O caminho da venda, ainda apagado</h3>
+  <h3 class="titulo-da-conta">O caminho da venda no site</h3>
   {% if recusas_do_caminho_da_venda %}
     <ul class="notas">
       {% for recusa in recusas_do_caminho_da_venda %}<li>{{ recusa }}</li>{% endfor %}
     </ul>
   {% endif %}
   {% if caminho_da_venda %}
-    <p class="recado">Ninguém pede entrada na escola: quem chega na sala de espera já comprou fora do site. Estas são as duas medidas do caminho da venda dentro do site, desenhadas agora e sem número até o checkout abrir.</p>
+    <p class="recado">As visitas e as entradas no checkout vêm da medição do site. Compra confirmada depende do pagamento real. Matrículas liberadas após compra na Hotmart ou Herospark pertencem a outra fonte.</p>
     <ul class="notas">
       {% for c in caminho_da_venda %}
-        <li><b>{{ c.pergunta }}</b> <span class="rotulo">sem dados</span> {{ c.sem_fonte_porque }}</li>
+        <li><b>{{ c.pergunta }}</b> {% if c.valor is not None %}<b>{{ c.valor }}</b>{% else %}<span class="rotulo">{{ c.estado|default:"sem dados" }}</span> {{ c.sem_fonte_porque }}{% endif %}{% if c.fonte %} <span class="nota">Fonte: {{ c.fonte }}.</span>{% endif %}</li>
       {% endfor %}
     </ul>
   {% endif %}
@@ -331,7 +332,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
         {{ restricao.medida.esperando }} pessoa{{ restricao.medida.esperando|pluralize:"s" }} esperando na fila,
         {{ restricao.medida.esperando_ha_muito }} há 2 dias ou mais.
         {% if restricao.medida.mediana_dias is not None %}Tempo típico de liberação nos últimos 28 dias: {{ restricao.medida.mediana_dias }} dia{{ restricao.medida.mediana_dias|pluralize:"s" }}.{% endif %}
-        Impacto na meta: até <b>+{{ restricao.impacto }}</b> hoje. Confiança: alta (medido ao vivo).
+        Até <b>{{ restricao.impacto }}</b> acessos externos podem ser liberados hoje. Essa liberação não aumenta as vendas do site. Confiança: alta (medido ao vivo).
       </div>
       <p class="recado"><b>O gesto:</b> {{ restricao.gesto }}</p>
     {% elif restricao.veredito == "entrada" %}
@@ -477,10 +478,9 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
   {% endif %}
 
   <p class="recado-fraco espaco-20">
-    Por que um par: uma meta de "mais compras" se cumpre liberando contas que
-    nunca entram. O par diz quantos desses alunos estão vivos na escola, e
-    "ganhando" só vale quando os dois sobem. A data que conta é a da liberação
-    ou a da confirmação do pagamento, nunca a que a pessoa digitou. Cartão da meta: versão
+    O par acompanha a atividade no site; não comprova estudo na Hotmart ou Herospark.
+    A meta de vendas usa compras reais do site e não aumenta com liberações administrativas.
+    A data da venda é a confirmação do pagamento, nunca a que a pessoa digitou. Cartão da meta: versão
     {{ meta.versao }}, desde {{ meta.desde }}.
   </p>
   {% endif %}
