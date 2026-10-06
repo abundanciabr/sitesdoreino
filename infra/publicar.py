@@ -658,7 +658,7 @@ def vigiar_uma_vez() -> int:
 
 def estado() -> int:
     for dado in sorted(journals_em_uso(), key=lambda estado: estado["celula"]):
-        versao = dado.get("atual_versao") or {}
+        versao = dado.get("atual_versao") or dado.get('aprovada') or {}
         print(f"{dado['celula']:<14} no ar {dado['atual'][:9]} aprovada {(dado.get('aprovada') or {}).get('sha', '-')[:9]} "
               f"{'código montado' if versao.get('codigo') else 'código da imagem'}")
     linhas = (PUBLICACOES / "medicoes.jsonl").read_text().splitlines()[-5:] if (PUBLICACOES / "medicoes.jsonl").exists() else []

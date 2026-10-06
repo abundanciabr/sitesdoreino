@@ -85,3 +85,21 @@ def test_vigia_nao_reinicia_celula_saudavel(monkeypatch):
     monkeypatch.setattr(modulo, 'executar', lambda *args: chamadas.append(args))
     modulo.vigiar_travado()
     assert chamadas == []
+
+
+def test_vigia_preserva_aplicacao_saudavel_quando_entrada_falha(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    modulo = carregar('publicar')
+    monkeypatch.setattr(modulo, 'PUBLICACOES', tmp_path)
+    monkeypatch.setattr(modulo, 'publicacao_em_andamento', lambda: False)
+    monkeypatch.setattr(modulo, 'carregar_celulas', lambda: SimpleNamespace(
+        vigiar=lambda: None, topologia=lambda: {'celulas': {'funil': {}}}))
+    monkeypatch.setattr(modulo, 'site_abre', lambda: False)
+    monkeypatch.setattr(modulo.time, 'sleep', lambda segundos: None)
+    monkeypatch.setattr(modulo.subprocess, 'run', lambda *a, **k: SimpleNamespace(returncode=0))
+    chamadas = []
+    monkeypatch.setattr(modulo, 'religar_aplicacao', lambda: chamadas.append('reiniciar'))
+    monkeypatch.setattr(modulo, 'recuperar', lambda celula: chamadas.append('recuperar'))
+    assert modulo.vigiar_uma_vez() == 1
+    assert chamadas == []
+    assert 'principal saudável' in json.loads((tmp_path / 'incidente.json').read_text())['alcance']

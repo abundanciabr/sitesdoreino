@@ -332,9 +332,9 @@ def concluir_recuperacao(topo, atual, anterior):
                        substituiu=atual['sha'])
     topo['celulas']['funil'] = recuperada
     topo.pop('em_troca', None)
-    salvar(TOPOLOGIA, topo)
     salvar(RAIZ / 'publicacoes/funil.json', {'celula': 'funil', 'atual': recuperada['sha'],
                                           'aprovada': recuperada})
+    salvar(TOPOLOGIA, topo)
 
 
 def retomar_troca():
