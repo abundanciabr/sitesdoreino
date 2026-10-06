@@ -109,7 +109,7 @@ def _marca_de_andamento(robo: RoboPessoal) -> str:
     """Muda sempre que algo que a página mostra muda: é o que a página
     pergunta a cada poucos segundos para saber se recarrega."""
     delegados = (
-        robo.execucoes.exclude(tipo=Execucao.Tipo.CONVERSA).aggregate(m=Max("atualizada_em"))["m"]
+        robo.execucoes.exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SUPER_EQUIPE]).aggregate(m=Max("atualizada_em"))["m"]
     )
     # Da conversa em andamento conta só a troca de situação, não cada batida:
     # a página não pisca a cada segundo enquanto a pessoa espera a resposta.
@@ -119,7 +119,7 @@ def _marca_de_andamento(robo: RoboPessoal) -> str:
         .values_list("id", "situacao")
     )
     mensagens = Mensagem.objects.filter(conversa__robo=robo).aggregate(m=Max("id"))["m"]
-    entregas = robo.entregas.aggregate(m=Max("atualizada_em"))["m"]
+    entregas = robo.entregas.exclude(tipo="super_equipe").aggregate(m=Max("atualizada_em"))["m"]
     return f"{delegados}|{conversas}|{mensagens}|{entregas}"
 
 
@@ -145,7 +145,7 @@ PLANEJADO = (
     "Missões com várias etapas e dependências entre trabalhos",
     "Trabalhos por horário (todo dia, toda segunda) e lembretes",
     "Avisos fora do painel: notificação, e-mail e celular",
-    "Conversa com os robôs das outras pessoas e com especialistas",
+    "Conversa pessoal com os robôs das outras pessoas; a equipe técnica tem sua própria tela",
     "Arquivos (planilha, apresentação) e operação das células de negócio",
     "Integrações externas e missões contínuas",
 )
@@ -165,7 +165,7 @@ def robo_da_pessoa(request):
     for mensagem in mensagens:
         if mensagem.papel == Mensagem.Papel.ROBO:
             mensagem.html = para_html(mensagem.texto)
-    execucoes = list(robo.execucoes.exclude(tipo=Execucao.Tipo.CONVERSA)[:15])
+    execucoes = list(robo.execucoes.exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SUPER_EQUIPE])[:15])
     respondendo = robo.execucoes.filter(
         tipo=Execucao.Tipo.CONVERSA, situacao__in=Execucao.ABERTAS
     ).first()
@@ -192,7 +192,7 @@ def robo_da_pessoa(request):
             "mensagens": mensagens,
             "respondendo": respondendo,
             "execucoes": execucoes,
-            "entregas": list(robo.entregas.all()[:15]),
+            "entregas": list(robo.entregas.exclude(tipo="super_equipe")[:15]),
             "consumo": _consumo_do_mes(),
             "planejado": PLANEJADO,
             "chave_de_envio": uuid.uuid4().hex,
@@ -401,6 +401,8 @@ def _execucao_visivel(request, id: int) -> Execucao | None:
         return None
     if _e_admin(request):
         return execucao
+    if execucao.tipo == Execucao.Tipo.SUPER_EQUIPE:
+        return None
     membro = _membro_da_sessao(request)
     if membro is not None and execucao.robo.membro_id == membro.id:
         return execucao
@@ -482,6 +484,8 @@ def execucao_retomar(request, id: int):
 @require_GET
 def entrega_detalhe(request, id: int):
     entrega = get_object_or_404(Entrega.objects.select_related("robo", "robo__membro"), pk=id)
+    if entrega.tipo == "super_equipe" and not _e_admin(request):
+        return _nao_existe(request)
     membro = _membro_da_sessao(request)
     dono = membro is not None and entrega.robo.membro_id == membro.id
     if not (_e_admin(request) or dono or entrega.tarefa_id):
