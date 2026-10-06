@@ -25,7 +25,7 @@ async function iniciar(){
   root.querySelectorAll('.p3d-modelos button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.modelo===m.id+'@'+m.versao)));
   $('.p3d-carregando').hidden=false;$('.p3d-carregando').textContent='Carregando somente o item escolhido…';root.querySelectorAll('[data-camera]').forEach(b=>b.disabled=false);
   guia();selected();
-  try{if(new URL(location.href).searchParams.get('vista')==='2d')throw Error('2d');const {criar}=await import('./visualizador.js');const e=await criar($('.p3d-vista'),m,receita,v=>{receita.vista=v;dirty=true;status('Enquadramento alterado. Clique em Salvar para guardar.');},()=>fallback());if(generation!==geracao){e.dispose();return;}engine=e;$('[data-acao=glb]').disabled=false;$('.p3d-carregando').hidden=true;}
+  try{if(new URL(location.href).searchParams.get('vista')==='2d')throw Error('2d');const {criar}=await import('./estudio.js?v=2');const e=await criar($('.p3d-vista'),m,receita,v=>{receita.vista=v;dirty=true;status('Enquadramento alterado. Clique em Salvar para guardar.');},()=>fallback());if(generation!==geracao){e.dispose();return;}engine=e;$('[data-acao=glb]').disabled=false;$('.p3d-carregando').hidden=true;}
   catch{if(generation===geracao)fallback();}
  }
  for(const m of cfg.modelos){const b=document.createElement('button');b.type='button';b.dataset.modelo=m.id+'@'+m.versao;const img=document.createElement('img');img.src=m.miniatura;img.alt='';img.loading='lazy';img.decoding='async';b.append(img,document.createTextNode(m.nome));b.addEventListener('click',async()=>{if(saving)return;if(dirty){retorno('Salve suas escolhas antes de escolher outra base. Use Recomeçar se quiser iniciar outra personalização.');return;}await carregar(m);evento('escolha');});$('.p3d-modelos').append(b);}
