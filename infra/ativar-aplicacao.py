@@ -181,6 +181,11 @@ def sincronizar_infra(sha: str) -> None:
         compose("up", "-d", "--wait", "--wait-timeout", "180", "aplicacao", ambiente=ambiente)
         sincronizar_sites(fonte, ambiente)
         compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('execucao_celulas', Path(__file__).parent / 'execucao-celulas.py')
+        modulo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(modulo)
+        modulo.preservar_rotas()
         provar_site()
         print(f"INFRA-APLICACAO-SINCRONIZADA: {sha}", flush=True)
     except BaseException:

@@ -1,0 +1,62 @@
+import importlib.util
+import json
+from pathlib import Path
+import uuid
+
+import pytest
+
+
+def carregar(nome):
+    spec = importlib.util.spec_from_file_location(nome.replace('-', '_'), Path(__file__).parent / (nome + '.py'))
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+def test_projecao_recusa_codigo_de_outro_modulo_e_troca_de_arquivo(tmp_path):
+    modulo = carregar('execucao-celulas')
+    bundle = tmp_path / 'bundle'
+    (bundle / 'config').mkdir(parents=True)
+    (bundle / 'config/settings.py').write_text('configuracao original')
+    for nome in ('entrypoint.py', 'workers.py', 'internal.py'):
+        (bundle / nome).write_text('codigo original')
+    (bundle / 'modules/funil').mkdir(parents=True)
+    (bundle / 'modules/admin').mkdir()
+    (bundle / 'modules/__init__.py').touch()
+    (bundle / 'modules/funil/views.py').write_text('pagina original')
+    destino = tmp_path / 'funil'
+    modulo.projetar(bundle, destino, 'funil')
+    assert not (destino / 'modules/admin').exists()
+    modulo.conferir_projecao(bundle, destino, 'funil')
+    (destino / 'modules/funil/views.py').write_text('pagina substituida')
+    with pytest.raises(ValueError, match='diferente'):
+        modulo.conferir_projecao(bundle, destino, 'funil')
+    (destino / 'modules/funil/views.py').write_text('pagina original')
+    (destino / 'modules/admin').mkdir()
+    with pytest.raises(ValueError, match='outra célula'):
+        modulo.conferir_projecao(bundle, destino, 'funil')
+
+
+@pytest.mark.parametrize('alteracao', [
+    {'event': 'pagamento.confirmado'}, {'version': True}, {'version': 2},
+    {'event_id': 'identificador-invalido'}, {'data': {}},
+])
+def test_ponte_recusa_evento_incompativel(alteracao):
+    ponte = carregar('ponte-celula')
+    evento = {'event': 'funil.pagina-vista', 'version': 1, 'event_id': str(uuid.uuid4()),
+              'occurred_at': '2026-10-06T00:00:00+00:00', 'data': {'site_id': 'ensaio'}}
+    evento.update(alteracao)
+    with pytest.raises(ValueError):
+        ponte.conferir_evento('eventos.funil.pagina-vista', {'json': json.dumps(evento)})
+
+
+def test_recuperacao_de_rota_fica_restrita_a_funil(tmp_path):
+    modulo = carregar('execucao-celulas')
+    arquivo = tmp_path / 'plataforma.yml'
+    texto = '\n  services:\n    funil:\n      loadBalancer:\n        servers: [ { url: "http://aplicacao:8000" } ]\n    identidade:\n      loadBalancer:\n        servers: [ { url: "http://aplicacao:8000" } ]\n'
+    arquivo.write_text(texto)
+    modulo.apontar('candidata', arquivo)
+    assert 'http://candidata:8000' in arquivo.read_text()
+    assert arquivo.read_text().count('http://aplicacao:8000') == 1
+    modulo.apontar('aplicacao', arquivo)
+    assert arquivo.read_text() == texto

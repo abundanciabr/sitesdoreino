@@ -76,7 +76,7 @@ services:
     environment:
       ALUNOS_API_TOKEN: ${ALUNOS_API_TOKEN:-}
       TOKEN_CATALOGO: ${TOKEN_CATALOGO:-}
-    networks: [edge]
+    networks: [edge, funil-isolada]
 
   postgres:
     image: postgres:17
@@ -109,6 +109,9 @@ volumes:
   letsencrypt: {}
 
 networks:
+  funil-isolada:
+    external: true
+    name: meshcraft-funil
   edge:
     external: true
   interna:

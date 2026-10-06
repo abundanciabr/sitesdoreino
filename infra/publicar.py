@@ -83,6 +83,17 @@ def journal(celula: str) -> dict | None:
     return json.loads(caminho.read_text()) if caminho.exists() else None
 
 
+def carregar_celulas():
+    import importlib.util
+    nome = 'execucao_celulas'
+    if nome not in sys.modules:
+        spec = importlib.util.spec_from_file_location(nome, FERRAMENTAS / 'infra/execucao-celulas.py')
+        modulo = importlib.util.module_from_spec(spec)
+        sys.modules[nome] = modulo
+        spec.loader.exec_module(modulo)
+    return sys.modules[nome]
+
+
 def executar_roteiro(roteiro: Path, ambiente: dict, registro) -> tuple[int, str]:
     processo = subprocess.Popen(["bash", str(roteiro)], cwd=RAIZ, env=ambiente, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
@@ -281,6 +292,19 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
     if not CELULA.fullmatch(celula) or not SHA.fullmatch(sha):
         raise SystemExit("célula ou SHA inválido")
     git("cat-file", "-e", f"{sha}^{{commit}}")
+    if celula == 'funil':
+        modulo = carregar_celulas()
+        if celula not in modulo.topologia()['celulas']:
+            raise RuntimeError('célula ainda não extraída pela manutenção')
+        LOGS.mkdir(parents=True, exist_ok=True)
+        with (LOGS / f'funil-{sha[:12]}-{os.getpid()}.log').open('a') as registro:
+            try:
+                if (journal(celula) or {}).get('atual') != sha:
+                    modulo.publicar(sys.modules[__name__], sha, registro)
+                return 0
+            except Exception as erro:
+                dizer(f'PAROU: funil {sha[:9]}: {erro}')
+                return 1
     situacao = ordem(celula, sha)
     if situacao != "nova":
         dizer(f"{situacao.upper()}: {celula} {sha[:9]}; nada a fazer")
@@ -402,10 +426,19 @@ def lote_travado(base: str, head: str) -> int:
     if head != git("rev-parse", "refs/heads/main"):
         dizer(f"SUPERADO: lote {head[:9]} não inicia; a versão mais nova publica o que ele trazia")
         return 0
+    carregar_celulas().retomar_troca()
     arquivo_lote = LOTES / f"{head}.json"
     arquivos = arquivos_do_lote(base, head)
     # A aplicação publica quando muda código, pacote ou conteúdo do site.
-    celulas = ["aplicacao"] if any(a.startswith(("services/", "packages/", "documentos/")) for a in arquivos) else []
+    separadas = carregar_celulas().topologia()['celulas']
+    celulas = []
+    if any(a.startswith(("services/", "packages/", "documentos/"))
+           and not any(a.startswith('services/' + c + '/') for c in separadas)
+           for a in arquivos):
+        celulas.append('aplicacao')
+    for c in separadas:
+        if any(a.startswith(('services/' + c + '/', 'services/aplicacao/', 'packages/')) for a in arquivos):
+            celulas.append(c)
     infra = any(a.startswith(GATILHOS_DA_INFRA) for a in arquivos)
     pedido_em = git("log", "-1", "--format=%cI", head)
     situacao = {"base": base, "head": head, "infra": infra, "celulas": celulas, "inicio": agora(),
@@ -414,10 +447,12 @@ def lote_travado(base: str, head: str) -> int:
     dizer(f"LOTE {base[:9]}..{head[:9]}: infra={infra} celulas={celulas}")
     falhas = 0
     if head == git("rev-parse", "refs/heads/main"):
-        processos = {c: subprocess.Popen([sys.executable, __file__, "publicar", c, head, "--pedido-em", pedido_em])
-                     for c in celulas}
-        for celula, processo in processos.items():
-            situacao["resultado"][celula] = processo.wait()
+        # A combinação/configuração de uma troca pode invalidar outra prova.
+        # Aplicações separadas publicam em sequência, mantendo os processos
+        # das células que não foram tocadas.
+        for celula in celulas:
+            processo = subprocess.run([sys.executable, __file__, "publicar", celula, head, "--pedido-em", pedido_em])
+            situacao["resultado"][celula] = processo.returncode
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
     # A infra sincroniza com a versão que ficou no ar; a sincronização volta sozinha se o endereço não abrir.
@@ -562,6 +597,7 @@ def vigiar_uma_vez() -> int:
     caminho = PUBLICACOES / "incidente.json"
     if publicacao_em_andamento():
         return 0
+    carregar_celulas().vigiar()
     aberto = site_abre()
     if not aberto:
         time.sleep(20)

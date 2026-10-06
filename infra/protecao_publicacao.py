@@ -35,11 +35,11 @@ def imagem_id(imagem: str) -> str:
 
 def identificar(codigo: Path, imagem: str, configuracao: Path) -> dict:
     config = hashlib.sha256(configuracao.read_bytes())
-    for nome in ('env', 'traefik'):
+    for nome in ('env', 'env-celulas', 'traefik'):
         pasta = configuracao.parent / nome
         if pasta.is_dir():
             config.update(nome.encode())
-            if nome == 'env':
+            if nome in ('env', 'env-celulas'):
                 for arquivo_env in sorted(pasta.glob('*.env')):
                     if arquivo_env.is_symlink():
                         raise ValueError('ambiente ativo contém ligação simbólica')
@@ -51,6 +51,9 @@ def identificar(codigo: Path, imagem: str, configuracao: Path) -> dict:
     ambiente_compose = configuracao.parent / '.env'
     if ambiente_compose.is_file():
         config.update(hashlib.sha256(ambiente_compose.read_bytes()).digest())
+    politica = configuracao.parent / 'protecao-celulas/politica.json'
+    if politica.is_file():
+        config.update(hashlib.sha256(politica.read_bytes()).digest())
     pacote = {'codigo_sha256': arvore(codigo), 'imagem_id': imagem_id(imagem),
               'configuracao_sha256': config.hexdigest()}
     pacote['id'] = hashlib.sha256(json.dumps(pacote, sort_keys=True).encode()).hexdigest()

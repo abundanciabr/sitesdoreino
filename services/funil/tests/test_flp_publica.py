@@ -107,7 +107,9 @@ def test_flp_respeita_caminho_localizado_do_site(client, rede):
     publicar(rede, pagina(), site_id=SITE_MESH["id"])
 
     resposta = client.get(
-        caminho_mesh("pt-br", "/primeiros-dolares-com-roblox"),
+        # A edição encerrada vive no arquivo /modelo. O endereço sem
+        # sufixo apresenta a oferta atual, conferida em test_ofertas_roblox.
+        caminho_mesh("pt-br", "/primeiros-dolares-com-roblox/modelo"),
         HTTP_HOST=HOST_MESH,
     )
 
