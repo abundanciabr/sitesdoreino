@@ -1,7 +1,7 @@
 .plano-3d {line-height:1.65}
 .plano-3d h1,.plano-3d h2 {line-height:1.2}
 .plano-3d code {overflow-wrap:anywhere;font-size:.84em}
-.plano-3d .links {gap:10px;flex-wrap:wrap}
+.plano-3d .links {display:flex;gap:10px 16px;flex-wrap:wrap}
 .plano-resumo {display:flex;align-items:center;gap:28px;padding:20px;border:1px solid var(--borda);border-radius:12px;margin:24px 0;background:var(--marca-fraca)}
 .plano-resumo strong {font-size:28px;display:block}
 .plano-resumo span {display:block;font-size:14px}
