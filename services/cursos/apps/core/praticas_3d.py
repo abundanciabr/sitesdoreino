@@ -45,8 +45,8 @@ def liberacao(aula,pessoa):
 def personalizacao(p):
     return {'id':str(p.id),'revisao':p.revisao,'titulo':p.titulo,'modelo':p.base.chave,'versao':p.base.versao,'receita':p.receita,'imagem':reverse('imagem-item-3d',args=[p.id]),'atualizado':p.atualizado_em.isoformat()}
 
-def contexto(aula,pessoa,request):
-    a=atividade_de(aula)
+def contexto(aula,pessoa,request,atividade=None):
+    a=atividade or atividade_de(aula)
     if not a:return None
     bases=[b for b in Base3D.objects.all() if f'{b.chave}@{b.versao}' in a.configuracao.get('modelos',[])]
     modelos=[]
@@ -170,7 +170,7 @@ def producao(request):
     from .views import _professor,_de_fora
     _,recusa=_professor(request)
     if recusa is not None:return recusa
-    erro=''
+    erro='';previa=None
     if request.method=='POST':
         a=get_object_or_404(Atividade3D,pk=request.POST.get('atividade'),aula__curso__site_id=site_atual())
         try:
@@ -178,9 +178,13 @@ def producao(request):
             if not isinstance(config,dict) or not config.get('modelos'):raise ValueError('Informe os modelos e as instruções.')
             validos={f'{b.chave}@{b.versao}' for b in Base3D.objects.all()}
             if any(k not in validos for k in config['modelos']):raise ValueError('Modelo não encontrado no catálogo.')
-            a.configuracao=config;a.save(update_fields=['configuracao'])
+            a.configuracao=config
+            if request.POST.get('acao')=='previa':
+                previa=contexto(a.aula,quem_e(request).pessoa,request,atividade=a)
+                previa['preview']=True;previa['projeto']=None
+            else:a.save(update_fields=['configuracao'])
         except (ValueError,TypeError):erro='Confira a configuração e tente novamente.'
     atividades=Atividade3D.objects.filter(aula__curso__site_id=site_atual()).select_related('aula__curso')
     lista=[{'atividade':a,'configuracao':json.dumps(a.configuracao,ensure_ascii=False,indent=2)} for a in atividades]
     indicadores=list(Evento3D.objects.filter(atividade__aula__curso__site_id=site_atual()).values('atividade__aula__numero','tipo','etapa').annotate(eventos=Count('id'),alunos=Count('pessoa',distinct=True)))
-    return render(request,'cursos/producao_praticas_3d.html',{**_de_fora(),'atividades':lista,'indicadores':indicadores,'erro':erro})
+    return render(request,'cursos/producao_praticas_3d.html',{**_de_fora(),'atividades':lista,'indicadores':indicadores,'erro':erro,'pratica3d':previa})

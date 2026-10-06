@@ -75,6 +75,20 @@ def test_legado_sem_data_inventada(pratica):
     Jornada3D.objects.create(pessoa=p,curso=curso,legado=True,inicio=None)
     j=praticas_3d.preparar_jornada(p,curso);assert j.inicio is None;assert praticas_3d.liberacao(a.aula,p) is None
 
+def test_gesto_no_endereco_antigo_tambem_respeita_calendario(pratica,client):
+    a,_=pratica;curso=a.aula.curso;curso.slug=praticas_3d.DESAFIO;curso.save();a.dia=2;a.save()
+    r=client.post(reverse('concluir-aula',args=[a.aula.numero]),HTTP_COOKIE=COOKIE)
+    assert r.status_code==403
+    assert Jornada3D.objects.filter(curso=curso,legado=False,inicio__isnull=False).exists()
+
 def test_dados_fora_do_catalogo_nao_gravam(pratica,client):
     a,_=pratica;assert enviar(client,a,cor='not-a-color').status_code==400
+    assert Projeto3D.objects.count()==0
+
+def test_previa_da_equipe_nao_publica_configuracao_nem_projeto(pratica,client,monkeypatch):
+    a,_=pratica;monkeypatch.setenv('ADMIN_EMAILS',ANA['email'])
+    config={**a.configuracao,'titulo':'Prévia sem publicação'}
+    r=client.post(reverse('producao-praticas-3d'),{'atividade':str(a.pk),'acao':'previa','configuracao':json.dumps(config)},HTTP_COOKIE=COOKIE)
+    assert r.status_code==200 and 'Prévia sem publicação' in r.content.decode()
+    a.refresh_from_db();assert 'titulo' not in a.configuracao
     assert Projeto3D.objects.count()==0

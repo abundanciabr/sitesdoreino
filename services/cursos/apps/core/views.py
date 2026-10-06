@@ -354,6 +354,7 @@ def _sala(request, slug: str | None = None):
         return None, None, _recusar(request, "sem-curso", status=200)
     meus = _meus_cursos(ator, site)
     if len(meus) == 1:
+        praticas_3d.preparar_jornada(ator.pessoa, meus[0])
         return ator.pessoa, meus[0], None
     if not meus:
         # Ela é aluna de alguma coisa, e de nenhum curso DESTA escola. A tela
