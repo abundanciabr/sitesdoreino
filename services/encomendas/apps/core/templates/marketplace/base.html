@@ -11,7 +11,7 @@
 <body>
 <header class="top"><a class="brand" href="{% if papel == 'equipe' %}{% url 'marketplace_escola' %}{% elif papel == 'aluno' %}{% url 'marketplace_fila' %}{% else %}{% url 'marketplace_cliente' %}{% endif %}">meshcraft<small>ACADEMY</small></a><span class="tiny">Fila do Dólar</span></header>
 <div class="shell"><aside aria-label="Navegação">
-{% if papel == 'equipe' %}<a href="{% url 'marketplace_escola' %}">Acompanhamento</a><a href="{% url 'plantao' %}">Plantão</a>
+{% if papel == 'equipe' %}<a href="{% url 'marketplace_escola' %}">Acompanhamento</a><a href="{% url 'sandbox_escola' %}">Prática · Meshcoin</a><a href="{% url 'plantao' %}">Plantão</a>
 {% elif papel == 'aluno' %}<a href="{% url 'marketplace_fila' %}">Minha fila</a><a href="{% url 'marketplace_fila' %}#trabalhos">Meus trabalhos</a><a href="{% url 'marketplace_fila' %}#recebimentos">Recebimentos</a>
 {% else %}<a href="{% url 'marketplace_cliente' %}">Meus pedidos</a><a href="{% url 'marketplace_novo' %}">Novo pedido</a>{% endif %}
 </aside><main>{% if recado %}<div class="recado" role="status">{{ recado }}</div>{% endif %}{% block body %}{% endblock %}</main></div>

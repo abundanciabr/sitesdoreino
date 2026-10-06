@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core import telas_do_cliente, telas_marketplace
+from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -37,6 +37,17 @@ from config.api import api
 # que alguém escreveria por instinto. Quem registra "pago pela escola" é o
 # plantão, com autor e data (lei §3.4).
 urlpatterns = [
+    path("sandbox/", telas_sandbox.catalogo, name="sandbox_catalogo"),
+    path("sandbox/escola/", telas_sandbox.escola, name="sandbox_escola"),
+    path("sandbox/escola/projetos/novo/", telas_sandbox.salvar_projeto, name="sandbox_criar_projeto"),
+    path("sandbox/escola/projetos/<uuid:projeto_id>/salvar/", telas_sandbox.salvar_projeto, name="sandbox_salvar_projeto"),
+    path("sandbox/projetos/<uuid:projeto_id>/aceitar/", telas_sandbox.aceitar, name="sandbox_aceitar"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/", telas_sandbox.trabalho, name="sandbox_trabalho"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/mensagem/", telas_sandbox.mensagem, name="sandbox_mensagem"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/arquivo/", telas_sandbox.enviar_arquivo, name="sandbox_arquivo"),
+    path("sandbox/arquivos/<uuid:arquivo_id>/", telas_sandbox.baixar_arquivo, name="sandbox_baixar"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/entregar/", telas_sandbox.entregar, name="sandbox_entregar"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/<str:acao>/", telas_sandbox.avaliar, name="sandbox_avaliar"),
     path("escola/", telas_marketplace.escola, name="marketplace_escola"),
     path("escola/autorizar/<str:tipo>/", telas_marketplace.autorizar, name="marketplace_autorizar"),
     path("escola/fase/<str:tipo>/", telas_marketplace.alterar_fase, name="marketplace_alterar_fase"),

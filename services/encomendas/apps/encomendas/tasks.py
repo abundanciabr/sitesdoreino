@@ -29,7 +29,8 @@ from huey import crontab
 
 from config.huey import huey
 
-from . import marketplace, tique
+from . import marketplace, sandbox, tique
+from .sandbox_models import ParticipacaoSandbox
 from .models import FaseMarketplace
 
 logger = logging.getLogger(__name__)
@@ -58,8 +59,12 @@ def bater_o_tique() -> dict[str, tique.Tique]:
     resultados: dict[str, tique.Tique] = {}
     sites = set(tique.sites_com_parametros()) | set(
         FaseMarketplace.objects.values_list("site_id", flat=True)
-    )
+    ) | set(ParticipacaoSandbox.objects.values_list("site_id", flat=True))
     for site_id in sorted(sites):
+        try:
+            sandbox.registrar_atrasos(site_id=site_id)
+        except Exception:
+            logger.exception("não foi possível registrar atrasos do sandbox no site %s", site_id)
         try:
             resultados[site_id] = tique.rodar(agora, site_id=site_id)
             marketplace.rodar_marketplace(site_id=site_id, agora=agora)

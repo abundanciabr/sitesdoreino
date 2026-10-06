@@ -1980,3 +1980,9 @@ class OutboxMarketplace(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["published_at"], name="mp_outbox_pendente")]
+
+
+from .sandbox_models import (  # noqa: E402,F401
+    AjusteSandbox, ArquivoSandbox, EntregaSandbox, MensagemSandbox,
+    MovimentoMeshcoin, ParticipacaoSandbox, ProjetoSandbox,
+)
