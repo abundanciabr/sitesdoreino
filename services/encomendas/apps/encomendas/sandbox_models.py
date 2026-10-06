@@ -12,7 +12,7 @@ def site():
 
 class ProjetoSandbox(models.Model):
     class Categoria(models.TextChoices):
-        ESPADAS_OBJETOS = "espadas_objetos", "Espadas e objetos"
+        ESPADAS_OBJETOS = "espadas_objetos", "Espadas e armas"
         PETS = "pets", "Pets"
         CABELOS = "cabelos", "Cabelos"
         CHAPEUS = "chapeus", "Chapéus"

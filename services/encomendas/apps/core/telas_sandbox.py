@@ -26,7 +26,7 @@ from apps.encomendas.models import (ArquivoSandbox, EntregaSandbox, MensagemSand
 logger = logging.getLogger(__name__)
 
 CATEGORIAS = (
-    ("espadas_objetos", "Espadas e objetos", "Espadas, armas e outros itens", "espadas"),
+    ("espadas_objetos", "Espadas e armas", "Espadas, pistolas e fuzis", "espadas"),
     ("pets", "Pets", "Animais e criaturas", "pets"),
     ("cabelos", "Cabelos", "Cabelos e estilos", "cabelos"),
     ("chapeus", "Chapéus", "Bonés e chapéus", "chapeus"),
