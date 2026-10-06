@@ -43,7 +43,7 @@ ILUSTRACOES = {
 
 @require_GET
 def ilustracao_projeto(request, slug):
-    if slug not in ILUSTRACOES:
+    if slug not in ILUSTRACOES and slug != 'guia-visual':
         raise Http404
     caminho = Path(settings.BASE_DIR) / 'static' / 'sandbox' / 'ilustracoes' / (slug + '.png')
     if not caminho.is_file():
