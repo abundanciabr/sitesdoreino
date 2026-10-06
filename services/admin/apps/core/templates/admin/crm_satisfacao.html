@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% load crm_menu %}
+{% block titulo %}Satisfação | CRM{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
+  <h1>Satisfação dos alunos</h1>
+  <p class="subtitulo">Avaliações por aluno e curso, reclamações e acompanhamento da equipe.</p>
+  {% menu_do_crm %}
+  {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
+  {% if salvo %}<p class="recado" role="status">Nova versão da configuração salva.</p>{% endif %}
+  {% if atendido %}<p class="recado" role="status">Atendimento registrado.</p>{% endif %}
+
+  <form class="peneira espaco-20" method="get" action="{% url 'crm_satisfacao' %}">
+    <label class="campo">Site<input name="site_id" value="{{ site_id }}" required></label>
+    <label class="campo">E-mail do aluno<input name="email" type="email" value="{{ email }}" placeholder="aluno@exemplo.com"></label>
+    <label class="campo">Ou ID do aluno<input name="aluno_id" value="{{ aluno_id }}" placeholder="ID da identidade"></label>
+    <button type="submit">Consultar</button>
+  </form>
+  <p class="nota">O e-mail precisa ser o da identidade do aluno. O histórico usa a identidade registrada em cada avaliação.</p>
+
+  <h2 class="titulo-de-bloco espaco-28">Histórico de satisfação</h2>
+  {% if estado_historico == 'sem-aluno' %}
+    <p class="aviso">Informe o e-mail ou ID de um aluno para consultar avaliações.</p>
+  {% elif estado_historico != 'ok' %}
+    <p class="aviso borda-amarela">O histórico de satisfação está indisponível agora. Isto não significa que não houve avaliações.</p>
+  {% elif not historico.avaliacoes %}
+    <p class="aviso">Nenhuma avaliação registrada para esta pessoa neste site.</p>
+  {% else %}
+    {% for avaliacao in historico.avaliacoes %}
+    <section class="cartao espaco-20">
+      <h3>Curso: {{ avaliacao.curso_nome }}</h3>
+      <p class="nota">Avaliação {{ forloop.counter }} · {{ avaliacao.status }} · aberta em {{ avaliacao.criada_em|default:"data indisponível" }}{% if avaliacao.concluida_em %} · concluída em {{ avaliacao.concluida_em }}{% endif %} · perguntas v{{ avaliacao.config_versao }} · cálculo v{{ avaliacao.calculo_versao }}</p>
+      {% if avaliacao.resultado %}
+      <p><b>NPS original:</b> {{ avaliacao.resultado.nps|default_if_none:"Não respondido" }}{% if avaliacao.resultado.classificacao %} · {{ avaliacao.resultado.classificacao }}{% endif %}</p>
+      <p><b>Comportamento de indicação:</b> {% if avaliacao.resultado.indicacao_declarada == True %}Declarou indicação{% elif avaliacao.resultado.indicacao_declarada == False %}Não declarou indicação{% else %}Não informado{% endif %}{% if avaliacao.resultado.repercussao_pontos != None %} · repercussão {{ avaliacao.resultado.repercussao_pontos }}{% endif %}</p>
+      <p><b>Evangelismo:</b> {{ avaliacao.resultado.evangelismo|default_if_none:"Indefinido" }} · <b>Neutralidade:</b> {{ avaliacao.resultado.neutralidade|default_if_none:"Indefinida" }} · <b>Detração:</b> {{ avaliacao.resultado.detracao|default_if_none:"Indefinida" }}</p>
+      <p class="nota">Participação externa: {{ avaliacao.resultado.participacao_externa|default:"não disponível" }}.</p>
+      {% if avaliacao.motivos_tela %}<p><b>Motivos:</b> {{ avaliacao.motivos_tela|join:"; " }}</p>{% endif %}
+      {% if avaliacao.resultado.explicacao %}<p class="nota">{{ avaliacao.resultado.explicacao }}</p>{% endif %}
+      {% endif %}
+      {% if avaliacao.respostas_tela %}<details><summary>Respostas, pontos e reclamações</summary><dl>{% for item in avaliacao.respostas_tela %}<dt>{{ item.pergunta }}</dt><dd>{{ item.resposta|default_if_none:"Não respondido" }}</dd>{% endfor %}</dl></details>{% endif %}
+      {% if avaliacao.registros_tela %}<details><summary>Histórico de respostas editadas ou abandonadas</summary><ol>{% for item in avaliacao.registros_tela %}<li>{{ item.quando }} · {{ item.pergunta }}: {{ item.resposta }}{% if item.editada %} · resposta editada{% endif %}</li>{% endfor %}</ol></details>{% endif %}
+      {% if avaliacao.qualidade %}<details><summary>Qualidade da resposta e evidências</summary><p>Estado: {{ avaliacao.qualidade.estado|default:"indefinido" }}{% if avaliacao.qualidade.duracao_segundos != None %} · duração: {{ avaliacao.qualidade.duracao_segundos }} s{% endif %}{% if avaliacao.qualidade.perguntas_exibidas_unicas != None %} · perguntas exibidas: {{ avaliacao.qualidade.perguntas_exibidas_unicas }}{% endif %}</p><dl>{% for item in avaliacao.evidencias_tela %}<dt>{{ item.rotulo }}</dt><dd>{{ item.valor }}</dd>{% endfor %}</dl>{% if avaliacao.evidencias_observacao %}<p>{{ avaliacao.evidencias_observacao }}</p>{% endif %}<p>Participação externa: {{ avaliacao.qualidade.participacao_externa|default:"não disponível" }}</p>{% if avaliacao.eventos_tela %}<ol>{% for evento in avaliacao.eventos_tela %}<li>{{ evento.quando }} · {{ evento.acao }}{% if evento.pergunta %} · {{ evento.pergunta }}{% endif %}</li>{% endfor %}</ol>{% endif %}</details>{% endif %}
+      {% if aluno_id %}<p><a href="https://meshcraft.top/cursos/satisfacao/">Nova avaliação no site</a></p>{% endif %}
+    </section>
+    {% endfor %}
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-28">Atendimentos de satisfação</h2>
+  {% if estado_historico == 'ok' %}
+    {% for atendimento in historico.atendimentos %}
+    <section class="cartao"><p><b>{{ atendimento.status|default:"Em acompanhamento" }}</b> · responsável: {{ atendimento.responsavel|default:"não definido" }}</p><p>Próximo passo: {{ atendimento.proximo_passo|default:"não definido" }}{% if atendimento.prazo %} · prazo: {{ atendimento.prazo }}{% endif %}</p>{% if atendimento.solucao %}<p>Solução: {{ atendimento.solucao }}</p>{% endif %}<p class="nota">{% if atendimento.tentativa_id %}Vinculado a uma avaliação{% else %}Acompanhamento geral do aluno{% endif %} · {{ atendimento.criado_em|default:"data indisponível" }}{% if atendimento.atualizado_em %} · atualizado em {{ atendimento.atualizado_em }}{% endif %}</p>{% if atendimento.historico %}<details><summary>Histórico de alterações</summary><ol>{% for mudanca in atendimento.historico %}<li>{{ mudanca.registrado_em }} · {{ mudanca.status }} · {{ mudanca.responsavel }} · próximo passo: {{ mudanca.proximo_passo }}{% if mudanca.solucao %} · solução: {{ mudanca.solucao }}{% endif %}</li>{% endfor %}</ol></details>{% endif %}</section>
+    {% empty %}<p class="nota">Nenhum atendimento de satisfação registrado.</p>{% endfor %}
+  {% endif %}
+  {% if aluno_id and estado_historico == 'ok' %}
+  <section class="cartao espaco-20">
+    <h3>Registrar ou atualizar atendimento</h3>
+    <form method="post" action="{% url 'crm_satisfacao_atendimento_salvar' %}">{% csrf_token %}
+      <input type="hidden" name="site_id" value="{{ site_id }}">
+      <label class="campo">Aluno avaliado<select name="aluno_id">{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.aluno_id }}">{{ avaliacao.aluno_nome }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>
+      <label class="campo">Avaliação<select name="tentativa_id"><option value="">Aluno em geral</option>{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.id }}">Avaliação {{ forloop.counter }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>
+      <label class="campo">Atendimento<select name="atendimento_id"><option value="">Criar novo</option>{% for atendimento in historico.atendimentos %}<option value="{{ atendimento.id }}">{{ atendimento.status|default:"Aberto" }} · {{ atendimento.responsavel|default:"sem responsável" }}{% if atendimento.proximo_passo %} · {{ atendimento.proximo_passo|truncatechars:70 }}{% endif %}</option>{% endfor %}</select></label>
+      <label class="campo">Responsável<input name="responsavel" required maxlength="120"></label>
+      <label class="campo">Próximo passo<textarea name="proximo_passo" required maxlength="2000"></textarea></label>
+      <label class="campo">Prazo<input name="prazo" type="datetime-local"></label>
+      <label class="campo">Status<select name="status"><option value="aberto">Aberto</option><option value="em_andamento">Em andamento</option><option value="resolvido">Resolvido</option></select></label>
+      <label class="campo">Solução<textarea name="solucao" maxlength="2000"></textarea></label>
+      <button type="submit">Salvar atendimento</button>
+    </form>
+  </section>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-28">Perguntas e caminhos</h2>
+  <p class="nota">Edite o texto das perguntas e opções no JSON. Os IDs, tipos e valores das escolhas identificam respostas antigas e devem continuar iguais. O campo <code>caminhos</code> define a sequência apresentada para as faixas de nota 9–10, 7–8 e 0–6. Salvar cria uma nova versão; avaliações antigas mantêm a versão usada.</p>
+  {% if estado_config == 'ok' %}<p class="nota">Versão atual: {{ config.versao }}</p>{% elif estado_config == 'sem-site' %}<p class="aviso">Informe o site para abrir a configuração.</p>{% else %}<p class="aviso borda-amarela">A configuração está indisponível agora. Não é seguro editar sem ler a versão atual.</p>{% endif %}
+  {% if estado_config == 'ok' %}
+  <form method="post" action="{% url 'crm_satisfacao_config_salvar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><label class="campo" for="documento">Documento JSON da próxima versão</label><textarea id="documento" name="documento" rows="30" spellcheck="false" style="width:100%;font-family:monospace">{{ config_json }}</textarea><button type="submit">Salvar nova versão</button></form>
+  {% endif %}
+</main>
+{% endblock %}

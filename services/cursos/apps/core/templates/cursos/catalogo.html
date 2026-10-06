@@ -18,6 +18,7 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
 
 {% block conteudo %}
 <section class="abertura">
+  {% if not visitante %}<p><a href="{% url 'satisfacao' %}">Avaliar meu curso · satisfação</a></p>{% endif %}
   <p class="rotulo">Meshcraft Academy</p>
   <h1>Os cursos da Meshcraft Academy</h1>
   <p class="passo">Escolha sua próxima entrega. Cada curso é uma sala com um caminho claro para construir, entregar e avançar.</p>

@@ -19,6 +19,7 @@ AREAS = (
     ("Conversas", ("crm_conversas",)),
     ("Agentes", ("crm_agentes", "agentes_comerciais")),
     ("Resultados", ("crm_resultados",)),
+    ("Satisfação", ("crm_satisfacao",)),
 )
 
 

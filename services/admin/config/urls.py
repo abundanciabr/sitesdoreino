@@ -94,6 +94,7 @@ from apps.core.crm_agentes import (
 from apps.core.crm import crm, crm_oportunidade, crm_salvar
 from apps.core.crm_condicoes import crm_condicoes, crm_condicoes_salvar
 from apps.core.crm_resultados import crm_resultados
+from apps.core.nps import crm_satisfacao, crm_satisfacao_config_salvar, crm_satisfacao_atendimento_salvar
 from apps.core.atendimento_geral import atendimento_geral
 from apps.core.crm_modelos import crm_modelos
 from apps.core.ofertas_dos_quizzes import ofertas_dos_quizzes, ofertas_dos_quizzes_salvar
@@ -258,6 +259,9 @@ urlpatterns = [
     path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
     path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),
     path("crm/resultados/", crm_resultados, name="crm_resultados"),
+    path("crm/satisfacao/", crm_satisfacao, name="crm_satisfacao"),
+    path("crm/satisfacao/config/salvar/", crm_satisfacao_config_salvar, name="crm_satisfacao_config_salvar"),
+    path("crm/satisfacao/atendimentos/salvar/", crm_satisfacao_atendimento_salvar, name="crm_satisfacao_atendimento_salvar"),
     # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,
     # decisões e estratégias dos quatro papéis. Só do administrador.
     path("crm/agentes/equipe/", agentes_comerciais, name="agentes_comerciais"),

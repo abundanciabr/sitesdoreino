@@ -1,0 +1,14 @@
+import uuid
+
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+    dependencies = [("quiz", "0014_marcar_capturas_ja_publicadas")]
+
+    operations = [
+        migrations.CreateModel(name="NPSConfig", fields=[("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")), ("site_id", models.CharField(max_length=64)), ("versao", models.PositiveIntegerField()), ("documento", models.JSONField()), ("criada_em", models.DateTimeField(auto_now_add=True))], options={"constraints": [models.UniqueConstraint(fields=("site_id", "versao"), name="nps_config_site_versao")]}),
+        migrations.CreateModel(name="NPSTentativa", fields=[("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)), ("site_id", models.CharField(db_index=True, max_length=64)), ("aluno_id", models.CharField(db_index=True, max_length=128)), ("site", models.JSONField(default=dict)), ("aluno", models.JSONField(default=dict)), ("produto", models.JSONField(default=dict)), ("curso", models.JSONField(default=dict)), ("matricula", models.JSONField(default=dict)), ("config_versao", models.PositiveIntegerField()), ("config_documento", models.JSONField()), ("calculo_versao", models.PositiveIntegerField(default=1)), ("respostas", models.JSONField(blank=True, default=dict)), ("respostas_registro", models.JSONField(blank=True, default=list)), ("perguntas_exibidas", models.JSONField(blank=True, default=list)), ("resultado", models.JSONField(blank=True, default=dict)), ("qualidade", models.JSONField(blank=True, default=dict)), ("status", models.CharField(default="em_andamento", max_length=20)), ("criada_em", models.DateTimeField(auto_now_add=True)), ("concluida_em", models.DateTimeField(blank=True, null=True))], options={"indexes": [models.Index(fields=["site_id", "aluno_id", "-criada_em"], name="nps_historico_aluno")]}),
+        migrations.CreateModel(name="NPSAtendimento", fields=[("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)), ("site_id", models.CharField(db_index=True, max_length=64)), ("aluno_id", models.CharField(db_index=True, max_length=128)), ("responsavel", models.CharField(blank=True, default="", max_length=200)), ("proximo_passo", models.TextField(blank=True, default="")), ("prazo", models.DateTimeField(blank=True, null=True)), ("solucao", models.TextField(blank=True, default="")), ("status", models.CharField(default="aberto", max_length=32)), ("historico", models.JSONField(blank=True, default=list)), ("criada_em", models.DateTimeField(auto_now_add=True)), ("atualizada_em", models.DateTimeField(auto_now=True)), ("tentativa", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to="quiz.npstentativa"))]),
+    ]

@@ -22,6 +22,7 @@ from apps.core.views import (
     servir_estatico,
 )
 from config.api import api
+from apps.core.satisfacao import pesquisa as satisfacao
 
 # O urlconf da célula NÃO conhece o prefixo público (`/cursos`): quem o aplica
 # é `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a célula
@@ -45,6 +46,8 @@ from config.api import api
 # número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
 # pela qual `healthz` e `static/` já vêm antes dele.
 urlpatterns = [
+    path("satisfacao/", satisfacao, name="satisfacao"),
+    path("satisfacao/<slug:slug>/", satisfacao, name="satisfacao-curso"),
     path("healthz", healthz),
     path("api/cursos/", api.urls),
     # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em

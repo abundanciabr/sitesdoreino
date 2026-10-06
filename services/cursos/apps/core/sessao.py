@@ -199,6 +199,8 @@ def _resolver(request) -> Ator:
         logger.warning("não deu para conferir a matrícula de %s: %s", pessoa.pk, erro)
         matriculas, conferida = [], False
 
+    request._matriculas_nps = matriculas
+    request._identidade_nps = {"id": id_da_plataforma, "email": email, "nome": pessoa.nome_exibido}
     return Ator(
         pessoa=pessoa,
         eh_aluno=bool(matriculas),

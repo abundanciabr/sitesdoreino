@@ -12,9 +12,16 @@ from apps.quiz import conversa as quiz_conversa
 from apps.quiz import evolucao
 from apps.quiz import comprador
 from apps.quiz import crm as quiz_crm
+from apps.quiz import nps
 from apps.quiz.previa import previa as previa_editor
 
 urlpatterns = [
+    path("interno/nps/config", nps.config),
+    path("interno/nps/tentativas", nps.tentativas),
+    path("interno/nps/tentativas/<uuid:tentativa_id>", nps.tentativa),
+    path("interno/nps/tentativas/<uuid:tentativa_id>/respostas", nps.respostas),
+    path("interno/nps/historico", nps.historico),
+    path("interno/nps/atendimentos", nps.atendimentos),
     path("interno/comprador", comprador.comprador),
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),

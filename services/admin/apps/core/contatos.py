@@ -50,6 +50,8 @@ from apps.auditoria.models import Registro
 
 from . import ficha_do_contato as ficha_completa
 from .clients import LeadsClient
+from .nps_client import NPSClient
+from .nps import preparar_avaliacoes
 
 #: Quantos contatos por página. Cinquenta cabem em uma rolagem de celular sem
 #: a tela virar um muro, e é o padrão que a própria `leads` usa.
@@ -368,6 +370,15 @@ def contato(request, lead_id):
         tela = ficha_completa.completar_ficha(
             montar_ficha(resposta), resposta, host=request.get_host().split(":")[0].lower()
         )
+    satisfacao_estado, satisfacao = ("sem-aluno", None)
+    if tela.get("veredito") == "ok" and tela.get("site_id") and tela.get("email"):
+        satisfacao_estado, satisfacao = NPSClient().historico(
+            tela["site_id"], email=tela["email"]
+        )
+        if satisfacao_estado == NPSClient.OK and isinstance(satisfacao, dict) and isinstance(satisfacao.get("avaliacoes"), list):
+            satisfacao = preparar_avaliacoes(satisfacao)
+        else:
+            satisfacao_estado, satisfacao = NPSClient.INDISPONIVEL, None
     recados = {
         "assumida": "Você assumiu a conversa. O assistente parou de responder.",
         "devolvida": "Conversa devolvida ao assistente da equipe. "
@@ -379,6 +390,8 @@ def contato(request, lead_id):
         {
             "admin": request.admin,
             "tela": tela,
+            "satisfacao_estado": satisfacao_estado,
+            "satisfacao": satisfacao or {},
             "recado": recados.get(request.GET.get("atendimento", ""), ""),
             "aviso": _AVISO_DO_ESPELHO if request.GET.get("espelho") == "falhou" else "",
             "erro": _ERROS_DO_ATENDIMENTO.get(request.GET.get("erro", ""), ""),

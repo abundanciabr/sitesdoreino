@@ -42,6 +42,23 @@
 
   {% if tela.id %}<p class="espaco-20"><a class="botao" href="{% url 'crm' %}?lead_id={{ tela.id|urlencode }}">Ver oportunidades no CRM</a></p>{% endif %}
 
+  <section class="cartao espaco-20" id="satisfacao">
+    <h2 class="titulo-de-bloco">Satisfação</h2>
+    {% if satisfacao_estado == 'ok' %}
+      {% for avaliacao in satisfacao.avaliacoes %}
+      <p><b>{{ avaliacao.curso_nome }}</b> · NPS original: {{ avaliacao.resultado.nps|default_if_none:"não respondido" }} · {{ avaliacao.resultado.classificacao|default:"classificação não disponível" }}{% if avaliacao.concluida_em %} · {{ avaliacao.concluida_em }}{% endif %}</p>
+      <p class="nota">Repercussão: {{ avaliacao.resultado.repercussao_pontos|default_if_none:"indefinida" }} · qualidade: {{ avaliacao.qualidade.estado|default:"indefinida" }} · participação externa: {{ avaliacao.resultado.participacao_externa|default:"não disponível" }}. Perguntas v{{ avaliacao.config_versao }} · cálculo v{{ avaliacao.calculo_versao }}.</p>
+      {% if avaliacao.motivos_tela %}<p class="nota"><b>Motivos:</b> {{ avaliacao.motivos_tela|join:"; " }}</p>{% endif %}
+      {% for item in avaliacao.respostas_tela %}<p class="nota"><b>{{ item.pergunta }}:</b> {{ item.resposta }}</p>{% endfor %}
+      {% if avaliacao.evidencias_tela %}<p class="nota"><b>Evidências:</b> {% for item in avaliacao.evidencias_tela %}{{ item.rotulo }}: {{ item.valor }}{% if not forloop.last %}; {% endif %}{% endfor %}</p>{% endif %}
+      {% if avaliacao.evidencias_observacao %}<p class="nota">{{ avaliacao.evidencias_observacao }}</p>{% endif %}
+      {% empty %}<p class="nota">Nenhuma avaliação de satisfação registrada para este aluno neste site.</p>{% endfor %}
+      {% if satisfacao.atendimentos %}<p class="nota">{{ satisfacao.atendimentos|length }} atendimento{{ satisfacao.atendimentos|length|pluralize }} de satisfação.</p>{% endif %}
+    {% else %}<p class="nota">Histórico de satisfação indisponível agora; isso não indica ausência de avaliações.</p>{% endif %}
+    {% if tela.site_id and tela.email %}<p><a href="{% url 'crm_satisfacao' %}?site_id={{ tela.site_id|urlencode }}&amp;email={{ tela.email|urlencode }}">Ver respostas, evidências, reclamações e atendimentos →</a></p>{% endif %}
+    <p><a href="https://meshcraft.top/cursos/satisfacao/">Nova avaliação no site →</a></p>
+  </section>
+
   {% if tela.matriculas %}
   <p><a href="{% url 'acompanhamento_aluno' %}?email={{ tela.email|urlencode }}&amp;site_id={{ tela.site_id|urlencode }}">Abrir ficha de acompanhamento do aluno →</a></p>
   <section class="cartao espaco-20">

@@ -20,6 +20,56 @@ class Site(models.Model):
     active = models.BooleanField(default=True)
 
 
+class NPSConfig(models.Model):
+    site_id = models.CharField(max_length=64)
+    versao = models.PositiveIntegerField()
+    documento = models.JSONField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id", "versao"], name="nps_config_site_versao")]
+
+
+class NPSTentativa(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=64, db_index=True)
+    aluno_id = models.CharField(max_length=128, db_index=True)
+    site = models.JSONField(default=dict)
+    aluno = models.JSONField(default=dict)
+    produto = models.JSONField(default=dict)
+    curso = models.JSONField(default=dict)
+    matricula = models.JSONField(default=dict)
+    config_versao = models.PositiveIntegerField()
+    config_documento = models.JSONField()
+    calculo_versao = models.PositiveIntegerField(default=1)
+    respostas = models.JSONField(default=dict, blank=True)
+    respostas_registro = models.JSONField(default=list, blank=True)
+    perguntas_exibidas = models.JSONField(default=list, blank=True)
+    resultado = models.JSONField(default=dict, blank=True)
+    qualidade = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=20, default="em_andamento")
+    criada_em = models.DateTimeField(auto_now_add=True)
+    concluida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "aluno_id", "-criada_em"], name="nps_historico_aluno")]
+
+
+class NPSAtendimento(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=64, db_index=True)
+    aluno_id = models.CharField(max_length=128, db_index=True)
+    tentativa = models.ForeignKey(NPSTentativa, null=True, blank=True, on_delete=models.PROTECT)
+    responsavel = models.CharField(max_length=200, blank=True, default="")
+    proximo_passo = models.TextField(blank=True, default="")
+    prazo = models.DateTimeField(null=True, blank=True)
+    solucao = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=32, default="aberto")
+    historico = models.JSONField(default=list, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+
 class Quiz(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="quizzes")
     slug = models.SlugField(max_length=100)

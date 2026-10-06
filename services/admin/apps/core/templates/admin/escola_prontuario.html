@@ -18,6 +18,12 @@ aconteceu.
   <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
   <h1>Prontuário</h1>
   <p class="subtitulo">Tudo o que a escola sabe sobre esta pessoa, em ordem.</p>
+  <section class="cartao">
+    <h2 class="titulo-de-bloco">Satisfação</h2>
+    <p>As avaliações acompanham a identidade do aluno e o curso. Consulte respostas, qualidade, reclamações e o atendimento da equipe.</p>
+    {% for p in passagens %}{% if p.site_id %}<p><a href="{% url 'crm_satisfacao' %}?site_id={{ p.site_id|urlencode }}&amp;email={{ email|urlencode }}">Ver satisfação em {{ p.site_id }} →</a></p>{% endif %}{% endfor %}
+    <p><a href="https://meshcraft.top/cursos/satisfacao/">Nova avaliação no site →</a></p>
+  </section>
 
   <div class="cartao">
     <div class="valor"><b>{% if ficha.nome_completo %}{{ ficha.nome_completo }}{% else %}{{ email }}{% endif %}</b></div>
