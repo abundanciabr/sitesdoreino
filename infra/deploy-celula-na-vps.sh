@@ -33,7 +33,7 @@ parar_o_deploy() {
 
 # Cópia de segurança de todas as bases antes de qualquer migração. Ver infra/backup-do-banco.sh.
 unset BASES
-bash "$(dirname "$0")/backup-do-banco.sh" "${TAG:0:12}-$$" \
+PRESERVAR_COPIAS=1 bash "$(dirname "$0")/backup-do-banco.sh" "${TAG:0:12}-$$" \
   || parar_o_deploy "a cópia de segurança do banco não saiu (motivo nas linhas acima)."
 echo "BACKUP-ANTES-DA-MIGRACAO: o caminho de volta é infra/restaurar-backup.sh (guia em infra/COMO-RESTAURAR.md)"
 

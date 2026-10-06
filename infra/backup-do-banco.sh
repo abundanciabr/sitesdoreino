@@ -141,6 +141,7 @@ echo "BACKUP-CONCLUIDO: $CARIMBO $FEITAS bases em $PASTA (o carimbo é UTC; em B
 
 # Só os últimos 7 dias ficam: sai todo arquivo cujo carimbo é de antes de hoje menos 7 dias (UTC).
 # Só depois de uma cópia de todas as bases, para nunca sobrar apenas cópia parcial.
+[ "${PRESERVAR_COPIAS:-0}" != "1" ] || exit 0
 [ -z "${BASES:-}" ] || exit 0
 LIMITE="$(date -u -d '7 days ago' +%Y%m%d)"
 SAIRAM=0

@@ -131,11 +131,11 @@ def montar(codigo: Path, fontes: Path, imagem: str, preparar: Path, registro) ->
                '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
                '--user', '65532:65532', '--memory', '1024m', '--cpus', '1',
                '--pids-limit', '96', '--tmpfs', '/tmp:rw,nosuid,nodev,size=256m',
-               '-v', f'{fontes}:/fontes:ro', '-v', f'{preparar}:/preparar.py:ro',
+               '-v', f'{fontes}:/fontes:ro', '-v', f'{preparar}:/ferramentas/preparar.py:ro',
                '--entrypoint', 'python', imagem]
     # A saída é copiada enquanto o processo permanece vivo. O comando fixo
     # escreve apenas os módulos transformados; nunca importa os fontes.
-    comando += ['-c', "import runpy,sys,time; sys.argv=['/preparar.py','--origem','/fontes','--destino','/tmp/modules']; runpy.run_path('/preparar.py',run_name='__main__'); print('MONTAGEM-CONCLUIDA',flush=True); time.sleep(300)"]
+    comando += ['-c', "import runpy,sys,time; sys.argv=['/ferramentas/preparar.py','--origem','/fontes','--destino','/tmp/modules']; runpy.run_path('/ferramentas/preparar.py',run_name='__main__'); print('MONTAGEM-CONCLUIDA',flush=True); time.sleep(300)"]
     try:
         subprocess.run(comando, check=True, stdout=registro, stderr=subprocess.STDOUT)
         subprocess.run(['docker', 'start', nome], check=True, stdout=registro)
@@ -152,6 +152,8 @@ def montar(codigo: Path, fontes: Path, imagem: str, preparar: Path, registro) ->
                 return
             running = subprocess.check_output(['docker', 'inspect', '--format', '{{.State.Running}}', nome])
             if running.strip() != b'true':
+                registro.write(logs.decode('utf-8', errors='replace')[-2000:])
+                registro.flush()
                 raise ValueError('montagem isolada falhou')
             time.sleep(1)
         raise ValueError('montagem isolada excedeu o prazo')
