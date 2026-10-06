@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('encomendas', '0014_saque_marketplace'),
+        ('encomendas', '0016_saque_marketplace'),
     ]
 
     operations = [

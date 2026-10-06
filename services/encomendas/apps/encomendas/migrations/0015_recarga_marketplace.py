@@ -7,22 +7,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('encomendas', '0013_recarga_marketplace'),
+        ('encomendas', '0014_categorias_sandbox'),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SaqueMarketplace',
+            name='RecargaMarketplace',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
                 ('site_id', models.CharField(db_index=True, max_length=64)),
-                ('aluno_id', models.CharField(max_length=64)),
+                ('cliente_id', models.CharField(max_length=64)),
                 ('valor_cents', models.PositiveIntegerField()),
-                ('solicitado_em', models.DateTimeField(auto_now_add=True)),
-                ('registrado_no_ledger', models.BooleanField(default=False)),
+                ('charge_id', models.CharField(blank=True, max_length=160)),
+                ('criada_em', models.DateTimeField(auto_now_add=True)),
             ],
             options={
-                'indexes': [models.Index(fields=['site_id', 'aluno_id', '-solicitado_em'], name='mp_saque_aluno')],
+                'indexes': [models.Index(fields=['site_id', 'cliente_id', '-criada_em'], name='mp_recarga_cliente')],
             },
         ),
     ]

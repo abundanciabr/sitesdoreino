@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('encomendas', '0015_evento_recarga_sem_pedido'),
+        ('encomendas', '0017_evento_recarga_sem_pedido'),
     ]
 
     operations = [
