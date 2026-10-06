@@ -7,16 +7,17 @@
   <p class="subtitulo">{{ trabalho.pedido }}</p>
   <p><a class="botao" href="{{ request.path }}">Atualizar andamento</a></p>
   <section class="cartao"><h2>Acompanhamento</h2>
-    <p><b>{{ trabalho.get_situacao_display }}</b> · {{ trabalho.etapa_atual|default:"Aguardando" }} · {{ trabalho.progresso }}%</p>
+    <p><b>{{ trabalho.get_situacao_display }}</b> · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {{ trabalho.progresso }}%</p>
     <p>{{ trabalho.motivo }}</p>
     <p>Pedido por {{ trabalho.pedido_por }} · {{ trabalho.tentativas }} tentativa(s) · Modelo {{ trabalho.modelo|default:"configurado na conexão" }} · custo registrado US$ {{ custo }}</p>
     {% if trabalho.tarefa_id %}<p>Tarefa da equipe nº {{ trabalho.tarefa_id }}</p>{% endif %}
   </section>
   <section class="cartao"><h2>Fontes compartilhadas</h2>
     <p>Consultadas em {{ fontes.consultado_em|default:"ainda não consultadas" }}. Painel do negócio, resultados dos experimentos e duas páginas públicas do próprio site.</p>
-    <p>Negócio: {{ fontes.negocio.estado|default:"consultado" }} · Experimentos: {{ fontes.experimentos.estado|default:"aguardando" }}</p>
+    <p>Negócio: {% if fontes.negocio %}{{ fontes.negocio.estado|default:"fontes consultadas" }}{% else %}aguardando{% endif %} · Experimentos: {{ fontes.experimentos.estado|default:"aguardando" }}</p>
+    {% if fontes.robos_ia %}<p>IA: {{ fontes.robos_ia.respostas_registradas }} respostas registradas · US$ {{ fontes.robos_ia.custo_tecnico_registrado_usd }} em trabalhos técnicos · gasto mensal da equipe US$ {{ fontes.robos_ia.gasto_mensal_equipe_usd }} de US$ {{ fontes.robos_ia.teto_mensal_equipe_usd }} autorizados. {{ fontes.robos_ia.limite }}</p>{% endif %}
     {% for pagina in fontes.paginas_publicas.itens %}<p>{{ pagina.url }} — {% if pagina.estado == 'medido' %}HTTP {{ pagina.http }}, {{ pagina.duracao_ms }} ms, {{ pagina.bytes }} bytes{% else %}indisponível: {{ pagina.motivo }}{% endif %}</p>{% endfor %}
-    <p>Referência anterior: <a href="{{ fontes.referencia_historica }}">{{ fontes.referencia_historica }}</a>. Os achados atuais vêm das fontes consultadas acima.</p>
+    {% if fontes.referencia_historica %}<p>Referência anterior: <a href="{{ fontes.referencia_historica }}">{{ fontes.referencia_historica }}</a>. Os achados atuais vêm das fontes consultadas acima.</p>{% endif %}
     {% if fontes.trabalhos_anteriores %}<h3>Trabalhos anteriores usados como contexto</h3>
       {% for anterior in fontes.trabalhos_anteriores %}<p><a href="{% url 'super_equipe_trabalho' anterior.id %}">Trabalho nº {{ anterior.id }}</a> — {{ anterior.situacao }}; fontes de {{ anterior.fontes_em|default:"data não registrada" }}{% if anterior.entrega_parcial %}; entrega parcial{% endif %}</p>{% endfor %}
     {% endif %}

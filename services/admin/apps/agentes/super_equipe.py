@@ -8,6 +8,7 @@ import uuid
 
 import httpx
 from django.db import IntegrityError, transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.clients import CatalogoClient
@@ -159,12 +160,33 @@ def coletar_fontes(site_id: str, host: str) -> dict:
         })
     for nome, consulta in (("negocio", lambda: _painel(site_id)),
                            ("experimentos", lambda: _experimentos(site_id)),
+                           ("robos_ia", lambda: _robos_ia(site_id)),
                            ("paginas_publicas", lambda: _probes(host))):
         try:
             fontes[nome] = consulta()
         except Exception as erro:  # cada porta pode falhar separadamente
             fontes[nome] = {"estado": "indisponivel", "motivo": type(erro).__name__}
     return json.loads(json.dumps(fontes, ensure_ascii=False, default=str))
+
+
+def _robos_ia(site_id: str) -> dict:
+    conexao = modelo.conexao()
+    autorizacao = modelo.autorizacao_ativa()
+    tecnicos = Execucao.objects.filter(tipo=Execucao.Tipo.SUPER_EQUIPE,
+                                       estado__site_id=str(site_id))
+    consumos = Consumo.objects.filter(execucao__in=tecnicos)
+    totais = consumos.aggregate(custo=Sum("custo_estimado_usd"),
+                               entrada=Sum("tokens_entrada"), saida=Sum("tokens_saida"))
+    return {"estado": "medido", "fonte": "Fila, entregas, consumo e autorização de IA do site",
+            "modelo_tecnico": conexao.modelo_forte,
+            "trabalhos_tecnicos": tecnicos.count(),
+            "concluidos": tecnicos.filter(situacao=Execucao.Situacao.CONCLUIDA).count(),
+            "respostas_registradas": consumos.count(),
+            "custo_tecnico_registrado_usd": totais["custo"] or 0,
+            "tokens_entrada": totais["entrada"] or 0, "tokens_saida": totais["saida"] or 0,
+            "gasto_mensal_equipe_usd": modelo.gasto_do_mes(autorizacao.pk) if autorizacao else None,
+            "teto_mensal_equipe_usd": autorizacao.teto_mensal_usd if autorizacao else None,
+            "limite": "Consumo registrado, não auditoria de qualidade ou conformidade das respostas."}
 
 
 def _pendencias(fontes: dict) -> list[str]:
