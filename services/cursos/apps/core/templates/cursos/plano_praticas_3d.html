@@ -8,7 +8,9 @@
     <p class="rotulo">Plano de implementação · Versão 1 · 6 de outubro de 2026</p>
     <h1>Práticas 3D: escolher, personalizar e guardar o próprio resultado</h1>
     <p class="recado"><strong>Entrega pretendida:</strong> uma ferramenta nativa das aulas para vários cursos. O aluno escolhe uma base preparada no Blender, muda suas cores, explora o objeto e salva sua personalização na própria conta. Começaremos pela espada na Aula 1 do Desafio; depois ampliaremos o catálogo e a jornada.</p>
-    <p><strong>Estado atual:</strong> este plano e seu checklist estão publicados. O visualizador 3D, o salvamento de receitas e as novas práticas ainda são entregas pendentes, registradas abaixo. As aulas e os progressos atuais não foram reorganizados por esta publicação.</p>
+    <p><strong>Estado atual:</strong> o motor nativo, as três bases originais, a coleção privada e as práticas dos Dias 1, 2, 3 e 7 estão publicados. Os três pitches continuam com seus vídeos e retomam o item salvo. O calendário é individual para novos participantes; direitos e progressos anteriores foram preservados. O checklist abaixo distingue implementação conferida, provas e pendências reais.</p>
+    <p><a href="{% url 'meus-itens-3d' %}">Meus itens privados</a> · <a href="{% url 'producao-praticas-3d' %}">Configuração e guia de gravação da equipe</a><br><code>https://meshcraft.top/cursos/meus-itens/</code><br><code>https://meshcraft.top/cursos/producao/praticas-3d/</code></p>
+    <figure><img src="{% url 'estatico' 'praticas-3d/provas/espada-publicada.png' %}" alt="Espada personalizada em uma conta sintética de teste no site publicado" loading="lazy" style="max-width:100%;height:auto"><figcaption>Captura real da ferramenta publicada, com conta TESTE. <code>https://meshcraft.top/cursos/static/praticas-3d/provas/espada-publicada.png</code></figcaption></figure>
     <div class="plano-resumo"><div><strong>{{ concluidas }} de {{ total }}</strong><span>tarefas concluídas · {{ percentual }}%</span></div><progress value="{{ concluidas }}" max="{{ total }}" aria-label="Andamento da implementação">{{ percentual }}%</progress></div>
     <p class="plano-explica">Os quatro itens iniciais registram a análise já feita, e não a implementação do simulador. As marcações seguintes ficam guardadas no banco do site por item, sem depender deste navegador. A equipe que já tem autorização no plantão pode editar cada item e registrar sua evidência. As anotações ficam visíveis nesta página de produção.</p>
     {% if salvo %}<p class="recado" role="status">Item salvo no site. O restante do checklist foi preservado.</p>{% endif %}
@@ -104,7 +106,7 @@
     <h2>Fases de execução e checklist vivo</h2>
     <p><strong>Ordem de trabalho:</strong> espada funcional → salvar e reabrir → motor reutilizável → Aula 1 → catálogo e celular → demais aulas → calendário individual. Observar a compreensão dos alunos desde a primeira aplicação. As fases descrevem entregas e dependências; não acrescentam etapas de aprovação ao funcionamento da plataforma.</p>
     <nav class="links" aria-label="Fases do checklist">{% for fase in fases %}<a href="#{{ fase.id }}">{{ fase.titulo }}</a>{% endfor %}</nav>
-    <p><strong>Próxima ação concreta:</strong> criar a espada no Blender com quatro materiais e colocá-la no quadro nativo da aula, com troca de cores e controles de vista. Depois ligar a receita e a imagem à conta do aluno e demonstrar a recuperação. Não gravar a demonstração definitiva de um fluxo que ainda não funciona.</p>
+    <p><strong>Continuidade:</strong> a personalização já pode ser feita no site. Faltam os takes reais da Lívia e a montagem narrada, demonstrações da interface do Blender em português a 1920 × 1200 e observação com iniciantes e aparelhos físicos. O guia de fala está na área de produção; as instruções completas continuam na tela.</p>
   </section>
 
   {% for fase in fases %}

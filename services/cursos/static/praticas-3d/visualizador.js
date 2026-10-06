@@ -24,7 +24,6 @@ export async function criar(host,modelo,receita,onVista,onFalha){
  const defaultVista={posicao:[3.5,1.8,7],alvo:[0,0,0]};
  function vista(v){camera.position.fromArray(v.posicao);controls.target.fromArray(v.alvo);controls.update();render();}
  const currentVista=()=>({posicao:camera.position.toArray(),alvo:controls.target.toArray()});
- controls.addEventListener('change',()=>{render();onVista(currentVista());});
  function aplicar(r){item.traverse(o=>{if(!o.isMesh)return;const k=o.userData.parte;if(r.cores[k])o.material.color.set(r.cores[k]);o.scale.copy(o.userData.baseScale);if(k===modelo.forma.parte)o.scale[modelo.forma.eixo]*=r.proporcao;});render();}
  function mover(acao){
   if(acao==='reset'){vista(defaultVista);return;}
@@ -35,6 +34,7 @@ export async function criar(host,modelo,receita,onVista,onFalha){
   controls.update();render();onVista(currentVista());
  }
  vista(receita.vista||defaultVista);aplicar(receita);resize();
+ controls.addEventListener('change',()=>{render();onVista(currentVista());});
  renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();onVista(currentVista());onFalha();});
  return {aplicar,mover,vista:currentVista,toque(){controls.enabled=!controls.enabled;renderer.domElement.style.touchAction=controls.enabled?'none':'pan-y';return controls.enabled;},async imagem(){render();return new Promise((res,rej)=>renderer.domElement.toBlob(b=>b?res(b):rej(new Error('Captura indisponível.')),'image/png'));},async glb(){const {GLTFExporter}=await import('./bibliotecas/three-0.170.0/GLTFExporter.js');const result=await new GLTFExporter().parseAsync(item,{binary:true});return new Blob([result],{type:'model/gltf-binary'});},dispose(){observer.disconnect();controls.dispose();item.traverse(o=>{if(o.isMesh){o.geometry.dispose();o.material.dispose();}});renderer.dispose();renderer.domElement.remove();}};
 }
