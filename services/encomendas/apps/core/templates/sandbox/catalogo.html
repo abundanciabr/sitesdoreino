@@ -15,6 +15,7 @@
 <button class="brief-button" type="button" data-brief="{{ projeto.slug }}">Ver briefing →</button>
 </article>{% empty %}<p>A escola está preparando os projetos desta categoria.</p>{% endfor %}
 </div></section></div>
+{% include 'sandbox/_modelos_3d.html' %}
 <section class="selection-dock" aria-label="Projeto selecionado" aria-live="polite">
 {% for projeto in projetos %}<div class="selection-row" data-summary="{{ projeto.slug }}" {% if not forloop.first %}hidden{% endif %}>
 <div class="selected-project"><div class="summary-art tile-art {% if projeto.slug == 'prop-espada' or projeto.slug == 'fuzil-assalto' or projeto.slug == 'pistola-estilizada' %}weapon weapon-{{ projeto.slug }}{% endif %}">{% if projeto.tem_ilustracao %}<img class="summary-image" src="{% url 'sandbox_ilustracao' projeto.slug %}" alt="" decoding="async">{% endif %}</div><div><h3>{{ projeto.titulo }}</h3><p class="tiny">Modelo 3D · Texturas · Prévia</p></div></div>
