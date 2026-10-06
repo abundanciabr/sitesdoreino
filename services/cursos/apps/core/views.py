@@ -72,6 +72,7 @@ from apps.cursos.models import (
     ComentarioDeAula,
     Curso,
     Envio,
+    ItemDePlanoDeProducao,
     Laudo,
     Pausa,
     Peca,
@@ -1565,6 +1566,47 @@ def producao_huge_cat_dia2(request):
 @never_cache
 def analise_desafio_roblox(request):
     return render(request, "cursos/analise_desafio_roblox.html", _de_fora())
+
+
+@require_http_methods(["GET", "POST"])
+@never_cache
+def plano_praticas_3d(request):
+    from .plano_praticas_3d import FASES, PLANO, TAREFAS
+
+    site = site_atual()
+    ator = quem_e(request)
+    if request.method == "POST":
+        _, recusa = _professor(request)
+        if recusa is not None:
+            return recusa
+        chave = request.POST.get("item", "")
+        if chave not in TAREFAS or not site:
+            raise Http404
+        ItemDePlanoDeProducao.objects.update_or_create(
+            site_id=site, plano=PLANO, chave=chave,
+            defaults={"feito": request.POST.get("feito") == "sim", "nota": request.POST.get("nota", "")},
+        )
+        fase = next(f for f in FASES if any(t["chave"] == chave for t in f["tarefas"]))
+        return HttpResponseRedirect(reverse("plano-praticas-3d") + f"?salvo=1#{fase['id']}")
+
+    estados = {
+        item.chave: item for item in ItemDePlanoDeProducao.objects.filter(site_id=site, plano=PLANO)
+    } if site else {}
+    fases = []
+    for fase in FASES:
+        itens = []
+        for tarefa in fase["tarefas"]:
+            estado = estados.get(tarefa["chave"])
+            itens.append({**tarefa, "feito": estado.feito if estado else tarefa["feito"],
+                          "nota": estado.nota if estado else "", "atualizado_em": estado.atualizado_em if estado else None})
+        fases.append({**fase, "tarefas": itens, "concluidas": sum(t["feito"] for t in itens)})
+    total = sum(len(f["tarefas"]) for f in fases)
+    concluidas = sum(f["concluidas"] for f in fases)
+    return render(request, "cursos/plano_praticas_3d.html", {
+        **_de_fora(), "fases": fases, "total": total, "concluidas": concluidas,
+        "percentual": round(100 * concluidas / total), "pode_editar": ator.eh_professor and bool(site),
+        "salvo": request.GET.get("salvo") == "1",
+    })
 
 
 def _envio_do_plantao(site_id: str | None, envio_id: int) -> Envio:

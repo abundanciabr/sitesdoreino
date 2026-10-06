@@ -1,0 +1,33 @@
+.plano-3d {line-height:1.65}
+.plano-3d h1,.plano-3d h2 {line-height:1.2}
+.plano-3d code {overflow-wrap:anywhere;font-size:.84em}
+.plano-3d .links {gap:10px;flex-wrap:wrap}
+.plano-resumo {display:flex;align-items:center;gap:28px;padding:20px;border:1px solid var(--borda);border-radius:12px;margin:24px 0;background:var(--marca-fraca)}
+.plano-resumo strong {font-size:28px;display:block}
+.plano-resumo span {display:block;font-size:14px}
+.plano-resumo progress {flex:1;max-width:400px;min-width:80px;height:18px;accent-color:var(--marca)}
+.plano-explica {font-size:15px;color:var(--tinta-fraca)}
+.plano-fluxo {display:flex;align-items:center;gap:12px;margin:24px 0;flex-wrap:wrap}
+.plano-fluxo span {padding:14px;background:var(--marca-fraca);border:1px solid var(--borda);border-radius:10px;text-align:center;flex:1;min-width:130px}
+.plano-fluxo small {font-size:13px}
+.plano-tabela {overflow-x:auto}
+.plano-tabela table {width:100%;border-collapse:collapse;min-width:600px}
+.plano-tabela th,.plano-tabela td {text-align:left;vertical-align:top;padding:12px;border-bottom:1px solid var(--borda)}
+.plano-fase {scroll-margin-top:18px}
+.plano-fase-titulo {display:flex;align-items:center;justify-content:space-between;gap:16px}
+.plano-contagem {padding:4px 12px;border-radius:20px;white-space:nowrap;background:var(--marca-fraca);font-weight:700}
+.plano-checklist {list-style:none;padding:0;margin:20px 0}
+.plano-checklist>li {padding:18px 0;border-top:1px solid var(--borda)}
+.plano-item {display:flex;align-items:flex-start;gap:12px;cursor:default}
+.plano-item input {width:22px;height:22px;flex:0 0 22px;margin-top:3px;accent-color:var(--marca)}
+.plano-prova {margin:8px 0 12px 34px;font-size:15px}
+.plano-checklist details {margin-left:34px}
+.plano-3d summary {cursor:pointer;font-weight:600;padding:8px 0}
+.plano-checklist label[for] {display:block;font-size:14px;margin-top:12px}
+.plano-checklist textarea {display:block;box-sizing:border-box;width:100%;padding:10px;font:inherit;border:1px solid var(--borda);border-radius:8px;margin:8px 0 12px;background:var(--papel);color:inherit}
+.plano-checklist button {padding:10px 16px;border:0;border-radius:8px;background:var(--marca);color:white;font:inherit;cursor:pointer}
+.plano-item-rodape {display:flex;gap:16px;flex-wrap:wrap;margin:12px 0 0 34px;font-size:13px;color:var(--tinta-fraca)}
+.plano-checklist button {margin:8px 0 0 34px}
+.plano-nota {white-space:pre-wrap;overflow-wrap:anywhere;margin-left:34px}
+.plano-feito .plano-item strong {color:var(--marca)}
+@media(max-width:640px) {.plano-resumo{align-items:flex-start;flex-direction:column;gap:12px}.plano-resumo progress{width:100%;flex:auto}.plano-fase-titulo h2{font-size:22px}.plano-tabela table{font-size:15px}.plano-fluxo b{display:none}.plano-fluxo span{min-width:40%}}

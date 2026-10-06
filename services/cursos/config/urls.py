@@ -17,6 +17,7 @@ from apps.core.views import (
     producao_huge_cat,
     producao_huge_cat_dia2,
     analise_desafio_roblox,
+    plano_praticas_3d,
     registrar_pausa,
     servir_estatico,
 )
@@ -60,6 +61,7 @@ urlpatterns = [
     path("producao/huge-cat-dia1/", producao_huge_cat, name="producao-huge-cat-dia1"),
     path("producao/huge-cat-dia2/", producao_huge_cat_dia2, name="producao-huge-cat-dia2"),
     path("producao/analise-desafio-roblox/", analise_desafio_roblox, name="analise-desafio-roblox"),
+    path("producao/plano-mestre-praticas-3d/", plano_praticas_3d, name="plano-praticas-3d"),
     path("aulas", aulas_avulsas, name="aulas-avulsas"),
     path("aulas/<slug:slug>", aula_avulsa, name="aula-avulsa"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da

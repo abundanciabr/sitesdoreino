@@ -1,0 +1,161 @@
+{% extends "cursos/moldura.html" %}
+{% block titulo %}Plano mestre · Práticas 3D nos cursos{% endblock %}
+{% block faixa %}<a href="{% url 'curso' 'desafio-como-ganhar-em-dolar-com-roblox' %}">Desafio Como Ganhar em Dólar com Roblox</a><span class="onde">Produção · Plano mestre</span>{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="{% url 'estatico' 'cursos/plano_praticas_3d.css' %}">
+<article class="plano-3d">
+  <header class="abertura">
+    <p class="rotulo">Plano de implementação · Versão 1 · 6 de outubro de 2026</p>
+    <h1>Práticas 3D: escolher, personalizar e guardar o próprio resultado</h1>
+    <p class="recado"><strong>Entrega pretendida:</strong> uma ferramenta nativa das aulas para vários cursos. O aluno escolhe uma base preparada no Blender, muda suas cores, explora o objeto e salva sua personalização na própria conta. Começaremos pela espada na Aula 1 do Desafio; depois ampliaremos o catálogo e a jornada.</p>
+    <p><strong>Estado atual:</strong> este plano e seu checklist estão publicados. O visualizador 3D, o salvamento de receitas e as novas práticas ainda são entregas pendentes, registradas abaixo. As aulas e os progressos atuais não foram reorganizados por esta publicação.</p>
+    <div class="plano-resumo"><div><strong>{{ concluidas }} de {{ total }}</strong><span>tarefas concluídas · {{ percentual }}%</span></div><progress value="{{ concluidas }}" max="{{ total }}" aria-label="Andamento da implementação">{{ percentual }}%</progress></div>
+    <p class="plano-explica">Os quatro itens iniciais registram a análise já feita, e não a implementação do simulador. As marcações seguintes ficam guardadas no banco do site por item, sem depender deste navegador. A equipe que já tem autorização no plantão pode editar cada item e registrar sua evidência. As anotações ficam visíveis nesta página de produção.</p>
+    {% if salvo %}<p class="recado" role="status">Item salvo no site. O restante do checklist foi preservado.</p>{% endif %}
+    {% if not pode_editar %}<p>Você está vendo o andamento em modo de leitura. Entre com a conta da equipe para atualizar o checklist. <a href="{{ url_de_entrada }}">Entrar no site</a>.</p>{% endif %}
+    <nav class="links" aria-label="Partes do plano"><a href="#resultado">Resultado e escopo</a><a href="#arquitetura">Ferramenta reutilizável</a><a href="#dados">O que fica salvo</a><a href="#aula1">Experiência da Aula 1</a><a href="#sete-dias">Continuidade nos sete dias</a><a href="#execucao">Fases e checklist vivo</a><a href="#publicacao">Publicação e recuperação</a><a href="#referencias">Endereços e referências</a></nav>
+  </header>
+
+  <section class="bloco-da-pratica" id="resultado">
+    <h2>O resultado que queremos entregar</h2>
+    <ol>
+      <li><strong>Escolher:</strong> ver exemplos e escolher um item que desperte interesse. A espada será o primeiro piloto; pet e boné entram com os mesmos recursos quando estiverem prontos.</li>
+      <li><strong>Entender:</strong> reconhecer as partes e saber qual mudança fará, por que e como perceber o efeito.</li>
+      <li><strong>Personalizar:</strong> mudar cores de verdade, parte por parte, com liberdade para comparar e corrigir.</li>
+      <li><strong>Explorar:</strong> girar a visualização, dar zoom e deslocar a vista. Um botão recupera o enquadramento.</li>
+      <li><strong>Guardar:</strong> salvar imagem e projeto editável na conta; baixar uma imagem e, no modo 3D compatível, o GLB personalizado.</li>
+      <li><strong>Continuar:</strong> voltar em outra aula e reconhecer seu item, suas cores e suas escolhas.</li>
+    </ol>
+    <p><strong>Propósito pedagógico:</strong> responder à dificuldade “não entendem a explicação ou o objetivo” com uma tarefa pequena e compreensível, uma escolha própria e uma consequência visível. O aluno termina com “eu personalizei e guardei este item”. A base preparada continua claramente identificada.</p>
+    <p><strong>Propósito comercial:</strong> apresentar o trabalho com 3D e a forma de ensinar da Lívia. O Curso Primeiros Dólares com Roblox desenvolve o trabalho no programa real, incluindo a aula de instalação e configuração descrita pelo mantenedor. A experiência guiada não demonstra renda, autonomia profissional ou autorização de venda.</p>
+    <p><strong>Recorte inicial:</strong> cores de objetos estáticos e visualização. Cabelos, personagens, animação, edição livre de malha e uploads de modelos de alunos são expansões possíveis. Não precisamos construí-los para entregar a primeira vitória. Compartilhamento público é uma etapa opcional posterior; salvar é privado.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="arquitetura">
+    <h2>Uma ferramenta que serve a várias aulas e cursos</h2>
+    <div class="plano-fluxo" aria-label="Fluxo do sistema"><span>Aula nativa<br><small>objetivo e instrução</small></span><b aria-hidden="true">→</b><span>Motor 3D<br><small>interação e imagem</small></span><b aria-hidden="true">→</b><span>Projeto do aluno<br><small>receita e recuperação</small></span><b aria-hidden="true">→</b><span>Meus itens<br><small>continuidade nas aulas</small></span></div>
+    <div class="plano-tabela"><table><thead><tr><th>Peça</th><th>Responsabilidade</th><th>Como reaproveitar</th></tr></thead><tbody>
+      <tr><td>Catálogo de bases</td><td>Modelo, versão, autoria, miniatura, partes e cores iniciais.</td><td>A mesma base pode participar de atividades diferentes sem mudar projetos salvos.</td></tr>
+      <tr><td>Motor de interação</td><td>Carregar GLB, iluminar, selecionar partes, mudar materiais, controlar a vista e exportar.</td><td>Componente único, sem regras específicas do Desafio ou de um personagem.</td></tr>
+      <tr><td>Configuração da atividade</td><td>Objetivo, itens disponíveis, controles, sequência, mensagens e pedido didático.</td><td>Associada ao ID de curso e aula. A posição da aula não identifica a atividade.</td></tr>
+      <tr><td>Projeto personalizado</td><td>Base e versão, escolhas, imagem e estado recuperável do aluno.</td><td>Continua entre aulas quando a configuração indica continuidade; pode ser usado em nova atividade sem apagar o anterior.</td></tr>
+      <tr><td>Área Meus itens</td><td>Lista de projetos da própria conta, com miniatura e reabertura.</td><td>Coleção lógica no site, acessível nos cursos pertinentes; não exige uma pasta física para cada aluno.</td></tr>
+      <tr><td>Progresso da atividade</td><td>Etapa alcançada, retomada e entrega prática.</td><td>Separado do conteúdo do projeto e da conclusão da aula já existente.</td></tr>
+    </tbody></table></div>
+    <p><strong>Escolha técnica proposta:</strong> Three.js com carregador GLB, OrbitControls para a câmera e GLTFExporter para o download. A biblioteca será hospedada no próprio site. Cores usam materiais simples preparados no Blender; materiais exclusivos por parte e por instância evitam que uma mudança altere outra peça ou outro projeto.</p>
+    <p><strong>Visual:</strong> painel e controles em português, reconhecíveis para quem depois vai aprender Blender. A tela identifica “Simulação didática — base preparada”. Menus familiares podem ajudar, mas o visualizador não será apresentado como uma cópia completa do Blender.</p>
+    <p><strong>Mover e girar:</strong> no primeiro piloto, esses gestos controlam a vista. Alterações reais de posição, rotação, tamanho ou geometria entram como controles da atividade quando tiverem um objetivo de ensino. Esses valores também deverão fazer parte da receita quando usados.</p>
+    <p><strong>Administração:</strong> ampliar os controles existentes para escolher a atividade, os modelos e os textos. Prévia da equipe e conteúdo do aluno ficam separados. Para adicionar um curso, configurar uma atividade e vinculá-la à aula; evitar duplicar o motor ou editar manualmente seus arquivos em cada aplicação.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="dados">
+    <h2>O que fica salvo — e como recuperar</h2>
+    <div class="plano-tabela"><table><thead><tr><th>Registro proposto</th><th>Conteúdo</th><th>Onde fica</th></tr></thead><tbody>
+      <tr><td>Base preparada</td><td>ID estável, versão, GLB, miniatura, partes e materiais; arquivo .blend preservado para as aulas.</td><td>Acervo versionado do próprio site e projeto fonte.</td></tr>
+      <tr><td>Receita do aluno</td><td>ID do projeto, base e versão, cores por chave de parte, vista, transformações usadas, título e revisão.</td><td>Banco do site, com dono identificado pela sessão e site/curso de origem.</td></tr>
+      <tr><td>Continuação na aula</td><td>Atividade, projeto escolhido, etapa e estado da entrega.</td><td>Banco; não substituir o registro de conclusão da aula.</td></tr>
+      <tr><td>Imagem final</td><td>Imagem da personalização, vinculada à revisão salva do projeto.</td><td>Serviço de imagens do portfólio já existente, com os controles de acesso e armazenamento atuais.</td></tr>
+      <tr><td>Download do modelo</td><td>GLB produzido a partir da base confiável e das escolhas do aluno.</td><td>Gerado sob demanda no navegador. A receita no site permite gerar novamente.</td></tr>
+    </tbody></table></div>
+    <p><strong>Caminho de gravação:</strong> personalização na tela → botão Salvar → gravação da receita e associação da imagem → confirmação com a revisão salva. Se uma parte da gravação falhar, o aluno recebe a informação e pode tentar novamente. Uma imagem antiga não deve aparecer como prova de que a receita nova foi salva por completo.</p>
+    <p><strong>Reabrir:</strong> consultar os projetos do aluno → carregar a versão exata da base → aplicar suas cores e transformações → recuperar a vista e a etapa. Apenas memória do navegador ou armazenamento local não entregam a recuperação entre dispositivos.</p>
+    <p><strong>Separação entre alunos:</strong> reaproveitar identidade, matrícula e acesso privado atuais. O navegador manda escolhas; o servidor identifica o dono. A receita trabalha com as partes do catálogo preparado e cores/transformações suportadas. A imagem gerada passa pelo tratamento já usado no portfólio. Isso reduz a superfície de upload, mas não elimina o trabalho de proteger acesso e persistência.</p>
+    <p><strong>Compatibilidade a conferir:</strong> a área de portfólio atual exige a categoria de aluno. Precisamos verificar a conta de quem comprou apenas o Desafio e ligar a atividade à matrícula correspondente, sem liberar conteúdos do curso completo por consequência.</p>
+    <p><strong>Versões e tentativas:</strong> IDs permanecem estáveis; salvar novamente atualiza o mesmo projeto. Uma segunda aba não pode apagar silenciosamente uma alteração mais recente. Novas versões da base conservam a anterior para os projetos que a utilizam. Recomeçar a prática restaura o exercício na tela e não apaga automaticamente projetos salvos.</p>
+    <p><strong>Compartilhar:</strong> o aluno pode baixar sua imagem desde a primeira entrega. Link público ou publicação no portfólio entram depois, com escolha explícita; o salvamento privado não publica automaticamente. Não há necessidade de armazenar uma cópia completa do modelo por aluno.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="aula1">
+    <h2>Aula 1 · Primeira vitória em aproximadamente seis minutos</h2>
+    <p>Os tempos abaixo são uma proposta para a prática, não a duração obrigatória do vídeo da Lívia. O aluno pode repetir, comparar e demorar mais sem perder o trabalho. Primeiro mostrar o destino; depois explicar e fazer uma alteração por vez.</p>
+    <div class="plano-tabela"><table><thead><tr><th>Momento</th><th>Ação do aluno</th><th>Instrução e resposta esperadas</th></tr></thead><tbody>
+      <tr><td>0:00–0:45 · Escolher</td><td>Escolher um item de base preparada.</td><td>“Clique no item que você quer personalizar.” O item escolhido aparece no quadro. No piloto há a espada; a galeria cresce com itens utilizáveis.</td></tr>
+      <tr><td>0:45–1:30 · Entender</td><td>Selecionar a primeira parte.</td><td>“Clique em Lâmina para mudar a cor dessa parte.” A parte ganha destaque e seu nome aparece. Exibir a cor atual antes da mudança.</td></tr>
+      <tr><td>1:30–3:30 · Personalizar</td><td>Escolher cores para lâmina, cabo, guarda e joia.</td><td>“Clique na cor que você quer usar.” Resultado imediato; texto “A lâmina agora está azul”, por exemplo. Próxima parte só é apresentada quando a pessoa estiver pronta.</td></tr>
+      <tr><td>3:30–4:30 · Explorar</td><td>Girar e aproximar a vista.</td><td>Mostrar o gesto no computador e no celular; oferecer botões de giro, zoom e reposicionar. A cor escolhida permanece.</td></tr>
+      <tr><td>4:30–5:30 · Guardar</td><td>Escolher enquadramento e clicar em Salvar.</td><td>“Clique em Salvar para guardar sua personalização na sua conta.” Esperar a confirmação real do site.</td></tr>
+      <tr><td>5:30–6:00 · Reconhecer</td><td>Ver sua imagem e o caminho para continuar.</td><td>“Você escolheu as cores deste item. Sua personalização está salva.” Resultado no mesmo quadro, com download e reabertura.</td></tr>
+    </tbody></table></div>
+    <p><strong>Guiar sem decidir pelo aluno:</strong> seta grande e círculo indicam o controle na primeira demonstração. Na escolha de cor, a indicação aponta para a paleta, e não para uma única resposta. Em telas com imagem, deixar explícito “Clique na imagem…”. No 3D, indicar diretamente a parte ou o botão verdadeiro.</p>
+    <p><strong>Navegação:</strong> Voltar e Avançar retomam a explicação conservando as escolhas. Recomeçar recupera o estado inicial do exercício. O resultado final ocupa o mesmo quadro, sem mudar de seção, abrir outra página ou mover a tela automaticamente.</p>
+    <p><strong>Parte da Lívia:</strong> roteiro de fala com objetivo → demonstração → escolha do aluno → conferência. Capturas reais do Blender em português, vídeo com resolução exata de 1920 × 1200 e interface ajustada para leitura. Os tamanhos de letra já aprovados servem de referência visual, sem duplicá-los automaticamente. O guia de fala sincronizado fica na área de produção; a aula recebe somente a montagem e instruções destinadas ao aluno.</p>
+    <p><strong>Fala de abertura sugerida:</strong> “Hoje você vai escolher um item, mudar suas cores e guardar a sua personalização aqui no site. A base já está preparada. Você não precisa instalar nada para fazer esta primeira experiência.”</p>
+    <p><strong>Fala final sugerida:</strong> “Olha o que você mudou: estas cores foram escolhas suas. No curso completo, eu te acompanho desde a instalação do Blender até o trabalho nos projetos. No próximo dia, vamos continuar com o item que você escolheu.”</p>
+    <p>Áudio e imagem da Lívia são reais, quando fornecidos. Provas de comissões e história pessoal entram com o material autêntico prometido pelo mantenedor. Sem áudio, a versão inicial ainda precisa explicar completamente a tarefa na tela.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="sete-dias">
+    <h2>Como a escolha do Dia 1 continua nos outros dias</h2>
+    <div class="plano-tabela"><table><thead><tr><th>Dia</th><th>Experiência</th><th>O que continua salvo</th></tr></thead><tbody>
+      <tr><td>1 · Escolha</td><td>Personalizar as cores e explorar um modelo preparado.</td><td>Item escolhido, cores e primeira imagem.</td></tr>
+      <tr><td>2 · Forma</td><td>Uma alteração de proporção ou montagem simples no próprio item. Exemplo: largura da lâmina, corpo do pet ou proporção da aba do boné.</td><td>Cores anteriores e a mudança de forma. Cada base precisa suportar essa alteração antes de ser oferecida nessa aula.</td></tr>
+      <tr><td>3 · Pedido e conferência</td><td>Atender um pequeno pedido fictício, comparar e corrigir uma decisão. Entender pedido → criação → teste → apresentação.</td><td>Resultado conferido e explicação do que mudou. Nenhuma aprovação técnica simulada é tratada como aprovação oficial.</td></tr>
+      <tr><td>4 · Pitch 1</td><td>Retomar o projeto por 20–30 segundos e explicar quem contrata esse trabalho, com caso profissional real.</td><td>Prévia do próprio item e acesso às práticas liberadas.</td></tr>
+      <tr><td>5 · Pitch 2</td><td>Ligar a vitória guiada à forma de aprender e à orientação da Lívia.</td><td>Continuidade do projeto e caminho de formação compreensível.</td></tr>
+      <tr><td>6 · Pitch 3</td><td>Mostrar o percurso do curso completo e a oferta atual. Gravação de lançamento será adaptada pelo mantenedor.</td><td>Resultado do Desafio preservado, independente da decisão de compra.</td></tr>
+      <tr><td>7 · Entrega</td><td>Escolher nome e imagem final, rever as alterações, salvar e compartilhar se quiser.</td><td>Projeto editável e imagem final próprios da personalização. Conclusão disponível sem comprar o curso completo.</td></tr>
+    </tbody></table></div>
+    <p>O desafio é permanente e começa para cada aluno no primeiro acesso autorizado. A proposta técnica usa intervalos de 24 horas. Frases como “até domingo”, turma ao vivo ou prazo de carrinho precisam corresponder à experiência real; este plano não cria um prazo comercial.</p>
+    <p>O primeiro catálogo mantém coerência entre as aulas. Se o aluno escolher a espada, as práticas seguintes continuam com ela. Não trocar sua escolha pelo Huge Cat no meio da jornada. A referência Huge Cat pode continuar como estudo demonstrado, distinguindo reprodução de referência e modelo original.</p>
+    <p>Instalar Blender continua reservado ao Curso Primeiros Dólares com Roblox, com a aula de duas horas informada pelo mantenedor. O Desafio entrega experiências guiadas no navegador; não promete publicar um item no Roblox nem gerar renda ao final dos sete dias.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="execucao">
+    <h2>Fases de execução e checklist vivo</h2>
+    <p><strong>Ordem de trabalho:</strong> espada funcional → salvar e reabrir → motor reutilizável → Aula 1 → catálogo e celular → demais aulas → calendário individual. Observar a compreensão dos alunos desde a primeira aplicação. As fases descrevem entregas e dependências; não acrescentam etapas de aprovação ao funcionamento da plataforma.</p>
+    <nav class="links" aria-label="Fases do checklist">{% for fase in fases %}<a href="#{{ fase.id }}">{{ fase.titulo }}</a>{% endfor %}</nav>
+    <p><strong>Próxima ação concreta:</strong> criar a espada no Blender com quatro materiais e colocá-la no quadro nativo da aula, com troca de cores e controles de vista. Depois ligar a receita e a imagem à conta do aluno e demonstrar a recuperação. Não gravar a demonstração definitiva de um fluxo que ainda não funciona.</p>
+  </section>
+
+  {% for fase in fases %}
+  <section class="bloco-da-pratica plano-fase" id="{{ fase.id }}">
+    <div class="plano-fase-titulo"><h2>{{ fase.titulo }}</h2><span class="plano-contagem">{{ fase.concluidas }}/{{ fase.tarefas|length }}</span></div>
+    <p><strong>Entrega:</strong> {{ fase.entrega }}</p><p class="plano-explica">{{ fase.depende }}</p>
+    <ul class="plano-checklist">
+    {% for item in fase.tarefas %}
+      <li id="{{ item.chave }}" class="{% if item.feito %}plano-feito{% endif %}">
+        {% if pode_editar %}
+        <form action="{% url 'plano-praticas-3d' %}" method="post">
+          {% csrf_token %}<input type="hidden" name="item" value="{{ item.chave }}">
+          <label class="plano-item"><input type="checkbox" name="feito" value="sim" {% if item.feito %}checked{% endif %}><strong>{{ item.texto }}</strong></label>
+          <p class="plano-prova">Como conferir: {{ item.prova }}</p>
+          <details><summary>Andamento, evidência e atualização</summary><label for="nota-{{ item.chave }}">O que foi feito e onde conferir — use URLs completas</label><textarea id="nota-{{ item.chave }}" name="nota" rows="3">{{ item.nota }}</textarea></details><button type="submit">Salvar este item</button>
+        </form>
+        {% else %}
+        <div class="plano-item"><input type="checkbox" disabled {% if item.feito %}checked{% endif %} aria-label="{% if item.feito %}Concluído{% else %}Pendente{% endif %}"><strong>{{ item.texto }}</strong></div><p class="plano-prova">Como conferir: {{ item.prova }}</p>{% if item.nota %}<p class="plano-nota">{{ item.nota }}</p>{% endif %}
+        {% endif %}
+        <div class="plano-item-rodape"><code>{{ item.chave }}</code><span>{% if item.feito %}Concluído{% else %}Pendente{% endif %}{% if item.atualizado_em %} · Atualizado em {{ item.atualizado_em|date:"d/m/Y H:i" }}{% endif %}</span></div>
+      </li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  <section class="bloco-da-pratica" id="publicacao">
+    <h2>Publicar usando a recuperação que já existe</h2>
+    <p>Usar o backup da plataforma antes de publicar. A recuperação automática de código continua sendo o caminho existente se a prova falhar; o banco não é restaurado automaticamente. Acrescentar os novos registros sem apagar tabelas, aulas ou progressos. Conservar a base anterior para reabrir projetos salvos caso o código precise voltar.</p>
+    <p><strong>Conferência da primeira entrega:</strong> escolher parte → mudar cor → girar e dar zoom → recuperar a vista → salvar → fechar e reabrir → baixar imagem → abrir GLB → conferir isolamento entre contas. Repetir o fluxo em celular e na alternativa sem 3D. Testar também falha de rede, gravação repetida e perda do contexto gráfico, preservando a receita disponível.</p>
+    <p><strong>Na sala:</strong> conferir acesso por matrícula, navegação, comentários e conclusão atuais. A prática e seu resultado ficam no mesmo quadro nativo. A proteção do site, inclusive a defesa contra incorporação externa, permanece. Conferir as políticas efetivas da página ao integrar biblioteca e exportação, sem afrouxar a segurança para fazer funcionar.</p>
+    <p><strong>Entrega registrada no checklist:</strong> URL completa da aula, imagem do resultado, comportamento confirmado e pendências reais. “Tem roteiro” não significa “funciona no site”. O andamento do plano é compartilhado entre sessões e não altera o progresso de nenhum aluno.</p>
+    <p><strong>Riscos técnicos e respostas:</strong> base incompatível → manter versões; celular sem WebGL → prática por camadas; cor alterando várias partes → materiais separados; captura preta → renderizar no momento da exportação; salvamento parcial → informar a etapa pendente e permitir retentar; acesso ao portfólio incompatível com Desafio → usar a matrícula correta na integração.</p>
+    <p><strong>Estimativa:</strong> o esforço maior está na gravação/recuperação, na integração de acesso e no comportamento em celular. Prazos em dias serão registrados depois do primeiro protótipo, com base no trabalho real. Repetir o motor para cada curso aumentaria esse esforço; a configuração por atividade evita essa repetição.</p>
+  </section>
+
+  <section class="bloco-da-pratica" id="referencias">
+    <h2>Endereços completos para continuar este trabalho</h2>
+    <p>Este plano: <a href="{% url 'plano-praticas-3d' %}">abrir o checklist</a><br><code>https://meshcraft.top/cursos/producao/plano-mestre-praticas-3d/</code></p>
+    <p>Revisão anterior dos pitches e da jornada:<br><code>https://meshcraft.top/cursos/producao/analise-desafio-roblox/</code></p>
+    <p>Curso e primeiro destino da ferramenta:<br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/</code><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/PET</code></p>
+    <p>Dia 2 atual e aula da árvore que será preservada:<br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/D02</code><br><code>https://meshcraft.top/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/J01</code></p>
+    <p>Oferta e checkout existentes:<br><code>https://meshcraft.top/primeiros-dolares-com-roblox</code><br><code>https://meshcraft.top/checkout/primeiros-dolares-com-roblox/</code></p>
+    <details><summary>Fontes no projeto e documentação técnica</summary>
+      <p>Raiz do projeto no PC:<br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923</code></p>
+      <p>Conteúdo deste plano e checklist:<br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\cursos\apps\core\plano_praticas_3d.py</code><br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\cursos\apps\core\templates\cursos\plano_praticas_3d.html</code></p>
+      <p>Práticas nativas existentes:<br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\cursos\apps\core\praticas.py</code><br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\cursos\static\cursos\pratica_guiada.js</code></p>
+      <p>Persistência e acesso atuais:<br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\cursos\apps\core\sessao.py</code><br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\pages\apps\portfolio\models.py</code><br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\services\pages\apps\portfolio\imagens.py</code></p>
+      <p>Rotina de backup e recuperação existentes:<br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\infra\publicar.py</code><br><code>C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\infra\restaurar-backup.sh</code></p>
+      <p>Three.js: OrbitControls controla giro, zoom e deslocamento da câmera. GLTFExporter exporta glTF/GLB; não produz um arquivo nativo do Blender.<br><a href="https://threejs.org/docs/pages/OrbitControls.html">Controles de câmera</a> · <a href="https://threejs.org/docs/pages/GLTFExporter.html">Exportação GLB</a><br><code>https://threejs.org/docs/pages/OrbitControls.html</code><br><code>https://threejs.org/docs/pages/GLTFExporter.html</code><br><code>https://threejs.org/docs/pages/WebGLRenderer.html</code></p>
+    </details>
+  </section>
+</article>
+{% endblock %}

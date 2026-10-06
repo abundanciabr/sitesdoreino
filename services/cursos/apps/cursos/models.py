@@ -1109,6 +1109,24 @@ class Laudo(models.Model):
         return f"laudo de {self.envio_id} ({self.decisao})"
 
 
+class ItemDePlanoDeProducao(models.Model):
+    """Andamento compartilhado da produção; não é progresso de aluno."""
+
+    site_id = models.CharField(max_length=160)
+    plano = models.CharField(max_length=100)
+    chave = models.CharField(max_length=100)
+    feito = models.BooleanField(default=False)
+    nota = models.TextField(blank=True, default="")
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "plano", "chave"], name="item_de_plano_por_site_e_chave"
+            )
+        ]
+
+
 class ComentarioDeAula(models.Model):
     aula = models.ForeignKey(Aula, on_delete=models.PROTECT, related_name="comentarios")
     autor = models.ForeignKey(
