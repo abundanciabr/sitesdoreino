@@ -6,13 +6,12 @@
 </style>
 <section class="nps">
 <p class="rotulo">Experiência do aluno</p><h1>{% if curso %}Avaliar {{ curso.nome }}{% else %}Satisfação com meu curso{% endif %}</h1>
-<p>Sua opinião ajuda a escola a cuidar da sua experiência. Você pode avaliar mesmo estudando na Hotmart ou Herospark.</p>
+<p>Sua opinião ajuda a escola a cuidar da sua experiência.</p>
 {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 {% if entrar %}<p><a class="botao" href="/entrar?next=/cursos/satisfacao/">Entrar com meu cadastro da escola</a></p>
 {% elif curso %}
   {% if not tentativa %}
   <p>Queremos saber como está o curso para você. São poucas perguntas. Não existe resposta certa nem errada.</p>
-  <p>Suas respostas ficam ligadas ao cadastro, para a equipe poder ajudar se algo não estiver bom. Nada do que você responder muda o acesso ao curso.</p>
   <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><button type="submit">Começar avaliação</button></form>
   {% elif tentativa.status == 'concluida' %}
   <h2>Avaliação recebida</h2><p>Obrigado por compartilhar sua experiência. Suas respostas e comentários ficaram registrados para a equipe.</p>

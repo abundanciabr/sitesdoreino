@@ -24,7 +24,9 @@ def site(db, settings):
 
 @pytest.fixture
 def revised(client, site):
-    response = post(client, "/config", {"site_id": site.id, "documento": default_document()})
+    document = default_document()
+    document["settings"]["nota_primeiro"] = False
+    response = post(client, "/config", {"site_id": site.id, "documento": document})
     assert response.status_code == 200, response.content
     return response.json()
 
@@ -39,6 +41,27 @@ def answer(client, attempt, key, value, **extra):
     response = post(client, f"/tentativas/{attempt['id']}/respostas", {**OWNER, "pergunta_id": key, "valor": value, **extra})
     assert response.status_code == 200, response.content
     return response.json()
+
+
+@pytest.mark.django_db
+def test_nota_primeiro_preservada_sem_concluir_e_sem_repeticao(client, site):
+    document = default_document()
+    assert document["perguntas"]["R6"]["texto"] == "Você pediu ajuda no fórum do curso para resolver isso?"
+    assert document["textos"]["aviso_aluno_pagante"] == ""
+    post(client, "/config", {"site_id": site.id, "documento": document})
+    attempt = start(client)
+    assert attempt["proxima_pergunta"]["id"] == "R12"
+    attempt = answer(client, attempt, "R12", 2)
+    assert attempt["proxima_pergunta"]["id"] == "A1"
+    stored = NPSTentativa.objects.get(pk=attempt["id"])
+    assert stored.status != "concluida" and stored.respostas["R12"] == 2
+    from apps.quiz.nps_revisado import path
+    assert path(stored).count("R12") == 1
+    attempt = answer(client, attempt, "A1", "recente")
+    returned = post(client, f"/tentativas/{attempt['id']}/respostas", {**OWNER, "acao": "corrigir", "pergunta_id": "A1"})
+    assert returned.status_code == 200
+    stored.refresh_from_db()
+    assert stored.respostas["R12"] == 2
 
 
 @pytest.mark.django_db

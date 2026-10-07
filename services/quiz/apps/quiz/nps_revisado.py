@@ -57,7 +57,7 @@ def _base_default_document():
         "R4": ("Qual das situações da escola que você marcou foi a mais grave?", "escolha", []),
         "R5": ("Você marcou: “{situacao_principal}”. E hoje, como está isso?", "escolha", [("resolvido", "Foi resolvido"), ("acabou", "Acabou sem ninguém resolver"), ("continua", "Continua igual"), ("desistiu", "Não foi resolvido, e desisti de tentar"), ("nao_sei", "Não sei dizer")]),
         "R5b": ("Você também marcou: “{outras_situacoes}”. E essas?", "escolha", [("acabaram", "Também acabaram"), ("alguma_continua", "Alguma continua"), ("nao_sei", "Não sei dizer")]),
-        "R6": ("Você ou alguém da sua casa pediu ajuda no fórum do curso para resolver isso?", "escolha", [("esperando", "Sim, e estamos esperando resposta"), ("sem_solucao", "Sim, responderam, mas não resolveu"), ("nao", "Não, ninguém pediu ajuda"), ("nao_sei", "Não sei")]),
+        "R6": ("Você pediu ajuda no fórum do curso para resolver isso?", "escolha", [("esperando", "Sim, e estamos esperando resposta"), ("sem_solucao", "Sim, responderam, mas não resolveu"), ("nao", "Não, ninguém pediu ajuda"), ("nao_sei", "Não sei")]),
         "R7": ("Antes das situações da escola que você marcou acontecerem, como você estava com o curso?", "escolha", [("satisfeito", "Satisfeito(a)"), ("morno", "Mais ou menos"), ("insatisfeito", "Insatisfeito(a)"), ("comeco", "Aconteceu logo no começo: não deu tempo de formar opinião")]),
         "A8": ("Você quer continuar as aulas ou prefere parar?", "escolha", [("sim", "Quero continuar"), ("duvida", "Ainda não sei"), ("nao", "Prefiro parar")]),
         "R10": ("Qual o principal motivo?", "escolha", [("situacao", "Por causa da situação da escola que marquei antes"), ("aprendeu", "Já aprendi o que queria"), ("sem_interesse", "Perdi o interesse por modelagem 3D"), ("aulas_abaixo", "As aulas ficaram abaixo do que eu esperava"), ("nao_valeu", "O curso não valeu o que custou"), ("preco", "O preço pesou no orçamento"), ("outro", "Outro motivo (escreva)")]),
@@ -66,7 +66,7 @@ def _base_default_document():
         "R13": ("Quer contar mais alguma coisa? Se não quiser escrever, é só pular.", "texto", []),
         "R14": ("Podemos entrar em contato para resolver?", "escolha", [("whatsapp", "Sim, por WhatsApp"), ("email", "Sim, por e-mail"), ("nao_precisa", "Não precisa")]),
     }
-    return {"roteiro": ROTEIRO, "settings": {"publico": "adultos", "compra": "unica", "ajuda": "forum"}, "textos": {"abertura": "Queremos saber como está o curso para você. São poucas perguntas. Não existe resposta certa nem errada.", "aviso_aluno_pagante": "Suas respostas ficam ligadas ao cadastro, para a equipe poder ajudar se algo não estiver bom. Nada do que você responder muda o acesso ao curso.", "ajuda_nao_entendi": "Você pode dizer que não entendeu. A equipe poderá conversar com você sobre a pergunta."}, "perguntas": {key: {"texto": text, "tipo": kind, "opcoes": _options(options), "obrigatoria": key != "R13"} for key, (text, kind, options) in questions.items()}, "situacoes": {"aluno_pagante": [{"id": key, "texto": text, "tipo": kind, "bloco": group} for key, text, kind, group in SITUACOES]}}
+    return {"roteiro": ROTEIRO, "settings": {"publico": "adultos", "compra": "unica", "ajuda": "forum", "nota_primeiro": True}, "textos": {"abertura": "Queremos saber como está o curso para você. São poucas perguntas. Não existe resposta certa nem errada.", "aviso_aluno_pagante": "", "ajuda_nao_entendi": "Você pode dizer que não entendeu. A equipe poderá conversar com você sobre a pergunta."}, "perguntas": {key: {"texto": text, "tipo": kind, "opcoes": _options(options), "obrigatoria": key != "R13"} for key, (text, kind, options) in questions.items()}, "situacoes": {"aluno_pagante": [{"id": key, "texto": text, "tipo": kind, "bloco": group} for key, text, kind, group in SITUACOES]}}
 
 
 def default_document():
@@ -86,11 +86,12 @@ def valid_document(document):
     if not isinstance(document, dict) or document.get("roteiro") != ROTEIRO:
         return False
     reference = default_document()
-    if document.get("settings") != reference["settings"]:
+    settings = document.get("settings")
+    if not isinstance(settings, dict) or {key: value for key, value in settings.items() if key != "nota_primeiro"} != {key: value for key, value in reference["settings"].items() if key != "nota_primeiro"} or type(settings.get("nota_primeiro", False)) is not bool:
         return False
     if not isinstance(document.get("textos"), dict) or not isinstance(document.get("perguntas"), dict):
         return False
-    if not all(isinstance(document["textos"].get(key), str) and document["textos"][key].strip() for key in reference["textos"]):
+    if not all(isinstance(document["textos"].get(key), str) and (key == "aviso_aluno_pagante" or document["textos"][key].strip()) for key in reference["textos"]):
         return False
     for key, original in reference["perguntas"].items():
         question = document["perguntas"].get(key)
@@ -175,7 +176,8 @@ def path(attempt, overrides=None):
     answers = attempt.respostas
     watched = _value(answers, "A1")
     selected = _school(attempt, overrides)
-    sequence = ["P1", "A1", "R2", "A3"]
+    note_first = attempt.config_documento.get("settings", {}).get("nota_primeiro", False)
+    sequence = ["P1"] + (["R12"] if note_first else []) + ["A1", "R2", "A3"]
     if len(selected) > 1:
         sequence.append("R4")
     if selected:
@@ -190,7 +192,7 @@ def path(attempt, overrides=None):
     sequence.append("A8")
     if watched != "todas" and _value(answers, "A8") in ("duvida", "nao"):
         sequence.append("R10")
-    sequence += ["R11", "R12", "R13"]
+    sequence += ["R11"] + ([] if note_first else ["R12"]) + ["R13"]
     if _open(attempt, overrides):
         sequence.append("R14")
     return sequence

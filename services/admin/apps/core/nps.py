@@ -193,6 +193,8 @@ def preparar_avaliacoes(historico):
                 })
             resultado_original = avaliacao.get("resultado") or {}
             resultado = avaliacao.get("resultado_atual") or resultado_original
+            if not resultado and type(respostas.get("R12")) is int:
+                resultado = {"nps": respostas["R12"], "pessoa_respondente": "aluno_pagante"}
             avaliacao["resultado_exibido"] = resultado
             avaliacao["retrato_original"] = resultado_original.get("retrato") if isinstance(resultado_original, dict) else ""
             if isinstance(resultado, dict):
