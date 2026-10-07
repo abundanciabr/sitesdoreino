@@ -43,4 +43,10 @@ def test_pagina_usa_rota_cursos_e_roteiro(media,client):
     html=response.content.decode()
     assert 'video-aula2' in html and 'Não é uma gravação nem clonagem da Lívia' in html
     assert 'data-video-inicio="15.50"' in html
-    assert html.count('A fala do roteiro.')==18 and 'transcricao.txt?download=1' in html
+    assert html.count('A fala do roteiro.')==18 and 'transcricao.txt?v=' in html
+    import os,re
+    original=re.search(r'aula-2-previa-legendada.mp4\?v=([0-9a-f]+)',html).group(1)
+    arquivo=media/'aula-2-previa-legendada.mp4'
+    os.utime(arquivo,ns=(arquivo.stat().st_atime_ns,arquivo.stat().st_mtime_ns+1_000_000_000))
+    updated=client.get('/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-2').content.decode()
+    assert re.search(r'aula-2-previa-legendada.mp4\?v=([0-9a-f]+)',updated).group(1)!=original

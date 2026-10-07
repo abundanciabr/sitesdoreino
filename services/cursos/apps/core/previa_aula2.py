@@ -22,8 +22,9 @@ def pagina(request):
         raise Http404
     for c in caps:c['tempo']=f"{int(c['inicio'])//60:02d}:{int(c['inicio'])%60:02d}"
     duracao=f"{int(plano['duracao'])//60}:{int(plano['duracao'])%60:02d}"
-    galeria=[dict(id=n,titulo=plano['shots'][n]['titulo'],modo=plano['shots'][n]['modo'],url=BASE+f'/midia/prova-{n:02d}.jpg') for n in [0,2,9,12,14,16]]
-    return render(request,'cursos/previa_aula2.html',dict(base=BASE,duracao=duracao,capitulos=caps,cenas=plano['shots'],galeria=galeria))
+    versao=format((pasta_video()/'aula-2-previa-legendada.mp4').stat().st_mtime_ns,'x')
+    galeria=[dict(id=n,titulo=plano['shots'][n]['titulo'],modo=plano['shots'][n]['modo'],url=BASE+f'/midia/prova-{n:02d}.jpg?v={versao}') for n in [0,2,9,12,14,16]]
+    return render(request,'cursos/previa_aula2.html',dict(base=BASE,versao=versao,duracao=duracao,capitulos=caps,cenas=plano['shots'],galeria=galeria))
 
 def midia(request, nome):
     """Serve only the produced lesson assets, including seekable video ranges."""
