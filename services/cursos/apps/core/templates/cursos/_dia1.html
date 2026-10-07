@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{% url 'estatico' 'dia1/dia1.css' %}?v=2">
+<link rel="stylesheet" href="{% url 'estatico' 'dia1/dia1.css' %}?v=3">
 {{ dia1|json_script:'dia1-config' }}
 <section class="d1" id="dia1" aria-label="Dia 1 — O pedido chega">
   <div hidden>{% csrf_token %}</div>
@@ -7,13 +7,13 @@
     <aside class="d1-teacher" aria-label="Acompanhe a professora">
       <h2>Veja o trabalho na tela</h2>
       <p class="d1-caption">Prévia com apresentadora ilustrada e voz sintética.</p>
-      <video id="d1-video" controls playsinline preload="metadata" poster="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/poster.jpg" aria-label="Trecho da prévia da Aula 1">
+      <video id="d1-video" controls playsinline preload="metadata" poster="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/poster.jpg" aria-label="Vídeo completo da Aula 1">
         <source src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/aula-1-previa-legendada.mp4" type="video/mp4">
         <track kind="captions" src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/legendas.vtt" srclang="pt-BR" label="Português">
       </video>
-      <div class="d1-video-controls"><button type="button" id="d1-watch">Assistir este trecho</button><p id="d1-video-status" role="status">Assista, pause e faça no seu ritmo.</p></div>
+      <div class="d1-video-controls"><button type="button" id="d1-watch">Assistir do início</button><p id="d1-video-status">Vídeo completo. Assista, pause ou avance para qualquer momento.</p></div>
       <blockquote id="d1-fala"></blockquote>
-      <details><summary>Como acompanhar</summary><p>A explicação para no fim do trecho. Faça a ação abaixo e aperte Continuar quando terminar. Pode rever quantas vezes quiser.</p></details>
+      <details><summary>Como acompanhar</summary><p>Você pode assistir ao vídeo inteiro e fazer a prática abaixo no seu ritmo. As etapas da prática não interrompem nem mudam a posição do vídeo.</p></details>
     </aside>
     <div class="d1-work">
       <div class="d1-stepbar"><span id="d1-counter"></span><progress id="d1-progress" max="11" value="0" aria-label="Andamento da prática"></progress></div>
@@ -25,13 +25,24 @@
         <p>Você não vai instalar nada. Aqui é um ambiente de prática do curso, com os poucos controles usados nesta aula. O Blender de verdade é instalado junto na Formação, numa aula só para isso.</p>
       </section>
       <section data-d1-panel="conversation" hidden>
-        <details class="d1-listing" open><summary>Seu anúncio · 0 avaliações</summary><h3>Criação de acessórios 3D para Roblox</h3><p>Guarde este título. No Dia 6, a Lívia conta de onde ele veio.</p></details>
-        <div class="d1-chat-grid">
-          <div class="d1-chat"><p class="d1-chat-title">Alex <span>Cliente simulado</span></p><p class="d1-bubble" id="d1-request">{{ dia1.pedido }}</p><button type="button" id="d1-copy">Copiar recado</button><div id="d1-sent" hidden><p class="d1-chat-title">Você</p><p class="d1-bubble d1-mine" id="d1-my-message"></p><p class="d1-chat-title">Alex</p><p class="d1-bubble">Great! Let’s do it.<br><span>Ótimo! Vamos fazer.</span></p><p id="d1-price-confirmed"></p></div></div>
-          <div class="d1-translator"><h3>Tradutor da conversa</h3><label for="d1-input">Inglês → português</label><textarea id="d1-input" rows="3" maxlength="1500" placeholder="Cole aqui o recado do Alex"></textarea><button type="button" id="d1-paste">Colar recado copiado</button><button type="button" id="d1-translate-request">Traduzir recado</button><p id="d1-pt" class="d1-translated"></p>
-            <div id="d1-reply"><label for="d1-response">Sua resposta em português</label><textarea id="d1-response" rows="3" maxlength="1500" placeholder="Olá, Alex! Posso fazer as orelhas. Vou começar hoje."></textarea><button type="button" id="d1-example">Usar resposta de exemplo</button><label for="d1-price">Preço fictício em US$</label><input id="d1-price" type="number" min="0.01" max="99999" step="0.01" value="10"><p class="d1-caption">US$ 10 é só um valor ilustrativo. Não existe oferta, saldo nem cobrança real.</p><button type="button" id="d1-translate-response">Traduzir minha resposta</button><label for="d1-en">Sua resposta em inglês</label><textarea id="d1-en" rows="3" readonly></textarea><button type="button" id="d1-send">Enviar para Alex</button></div>
-          </div>
+        <details class="d1-listing"><summary>Seu anúncio · 0 avaliações</summary><h3>Criação de acessórios 3D para Roblox</h3><p>Guarde este título. No Dia 6, a Lívia conta de onde ele veio.</p></details>
+        <div class="d1-order" id="d1-order">
+          <h3>Pedido do Alex <span class="d1-caption">· cliente simulado</span></h3>
+          <details id="d1-original" open><summary>Mensagem original em inglês</summary><p class="d1-bubble" id="d1-request">{{ dia1.pedido }}</p></details>
+          <button type="button" id="d1-translate-request">Traduzir pedido para português</button>
+          <div id="d1-pt-result" class="d1-translation" hidden><p class="d1-caption">Em português</p><p id="d1-pt"></p></div>
+          <p id="d1-request-status" class="d1-inline-status" role="status" aria-live="polite"></p>
         </div>
+        <div class="d1-compose" id="d1-reply" hidden>
+          <h3>Escreva sua resposta</h3>
+          <label for="d1-response">O que você quer dizer ao Alex, em português?</label><textarea id="d1-response" rows="3" maxlength="1400" placeholder="Olá, Alex! Posso fazer as orelhas. Vou começar hoje."></textarea>
+          <button type="button" id="d1-example" class="d1-secondary">Usar uma resposta de exemplo</button>
+          <details class="d1-price-details"><summary>Preço da simulação: <span id="d1-price-summary">US$ 10</span></summary><p class="d1-caption">É só um valor fictício para praticar a conversa.</p><label for="d1-price">Valor fictício em US$</label><input id="d1-price" type="number" min="0.01" max="99999" step="0.01" value="10"></details>
+          <button type="button" id="d1-translate-response">Traduzir minha resposta</button>
+          <p id="d1-reply-status" class="d1-inline-status" role="status" aria-live="polite"></p>
+          <div class="d1-response-preview" id="d1-preview" hidden><h3>Confira antes de enviar</h3><p class="d1-caption">Alex vai receber esta mensagem em inglês:</p><p class="d1-bubble" id="d1-en"></p><button type="button" id="d1-send">Enviar resposta para Alex</button></div>
+        </div>
+        <div class="d1-sent" id="d1-sent" hidden><h3>Sua conversa com Alex</h3><p class="d1-chat-title">Você</p><p class="d1-bubble d1-mine" id="d1-my-message"></p><p class="d1-chat-title">Alex</p><p class="d1-bubble">Great! Let’s do it.<br><span>Ótimo! Vamos fazer.</span></p><p id="d1-price-confirmed"></p><button type="button" class="d1-secondary" id="d1-edit">Editar minha resposta</button></div>
       </section>
       <section data-d1-panel="model" hidden>
         <div class="d1-reference"><svg viewBox="0 0 150 95" role="img" aria-label="Referência: duas orelhas de gato numa tiara"><path d="M25 85 A50 50 0 0 1 125 85" fill="none" stroke="#d59dce" stroke-width="8"/><path d="M32 53 L35 6 L66 38 Z M84 38 L115 6 L118 53 Z" fill="#a885b5" stroke="#f1c7e6" stroke-width="3"/><path d="M42 39 L42 18 L56 35 Z M94 35 L108 18 L109 39 Z" fill="#f4bdd7"/></svg><p><b>O destino: duas orelhinhas numa tiara.</b><br>Hoje você faz só a primeira, à esquerda na vista de frente. A segunda fica para amanhã.</p></div>
@@ -48,4 +59,4 @@
   </div>
   <noscript>Ative o JavaScript do navegador para atender o cliente e modelar nesta prática.</noscript>
 </section>
-<script type="module" src="{% url 'estatico' 'dia1/dia1.js' %}?v=1"></script>
+<script type="module" src="{% url 'estatico' 'dia1/dia1.js' %}?v=3"></script>

@@ -32,8 +32,18 @@
 .d1-week li{padding:10px 14px;background:var(--caixa);border:1px solid var(--borda);border-radius:8px;display:flex;align-items:center;gap:14px}
 .d1-week b{color:var(--marca)}
 .d1-listing{padding:16px;background:var(--caixa);border:1px solid var(--borda);border-radius:10px;margin:18px 0}
-.d1-chat-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.d1-chat,.d1-translator{padding:16px;border:1px solid var(--borda);background:var(--caixa);border-radius:10px;min-width:0}
+.d1-order,.d1-compose,.d1-sent{padding:20px;border:1px solid var(--borda);background:var(--caixa);border-radius:10px;min-width:0;margin:16px 0}
+.d1-order h3,.d1-compose h3,.d1-sent h3{margin-top:0}
+.d1-order>button{margin-top:14px}
+.d1-translation{background:var(--verde-fraco);border-radius:8px;padding:12px 16px;margin-top:14px}
+.d1-translation p:first-child{margin-top:0}.d1-translation p:last-child{margin-bottom:0}
+.d1 .d1-secondary{color:var(--marca);background:var(--caixa);border-color:var(--borda)}
+.d1 #d1-example{font-size:14px;margin:10px 0 4px}
+.d1-price-details{margin:14px 0 20px;padding:12px 0;border-top:1px solid var(--borda);border-bottom:1px solid var(--borda);color:var(--muted)}
+.d1-price-details input{max-width:160px}
+.d1-inline-status:empty{display:none}.d1-inline-status{font-size:14px;color:var(--muted)}
+.d1-response-preview{border-top:1px solid var(--borda);margin-top:20px;padding-top:20px}
+.d1-response-preview .d1-bubble{margin:12px 0 16px}
 .d1-chat-title{font-weight:700}
 .d1-chat-title span{display:block;font-size:14px;font-weight:400;color:var(--muted)}
 .d1-bubble{padding:14px;background:var(--marca-fraca);border-radius:4px 12px 12px;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -42,8 +52,6 @@
 .d1 label{display:block;font-size:14px;font-weight:600;margin:16px 0 5px}
 .d1 textarea,.d1 input[type=number]{width:100%;padding:10px;background:var(--caixa);color:var(--ink);border:1px solid var(--borda);border-radius:8px;font:inherit;resize:vertical}
 .d1 textarea[readonly]{background:var(--papel)}
-.d1-translator button{margin:5px 0}
-.d1-translated{color:var(--verde)}
 .d1-reference{display:flex;gap:15px;align-items:center;background:var(--marca-fraca);padding:10px 14px;border-radius:10px;font-size:14px}
 .d1-reference svg{width:100px;flex-shrink:0}
 /* O espaço 3D conserva as cores do Blender e o destaque da seleção. */
@@ -68,7 +76,7 @@
 .d1 #d1-save-now{margin-left:auto;background:var(--caixa);border-color:var(--borda);color:var(--ink)}
 .d1 .d1-warning{color:var(--amarelo)}
 @media(max-width:760px){
- .d1-chat-grid{grid-template-columns:1fr}
+ .d1-order,.d1-compose,.d1-sent{padding:16px}
  .d1-work{padding:16px}
  .d1-viewport{height:310px}
  .d1-reference svg{width:75px}
