@@ -140,8 +140,14 @@ def provar(estado, sha, versao=None):
     endereco = estado["endereco"]
     if not re.fullmatch(r"https://[^\s/@?#]+(?:/[^\s?#]*)?", endereco):
         raise ValueError("endereço da prova precisa ser HTTPS sem credenciais ou query")
-    codigo = comando("curl", "--silent", "--show-error", "--max-time", "30", "--output", "/dev/null",
-                     "--write-out", "%{http_code}", endereco)
+    # O funil guarda por 60 s a ausência temporária do catálogo durante a troca.
+    for tentativa in range(4):
+        codigo = comando("curl", "--silent", "--show-error", "--max-time", "30", "--output", "/dev/null",
+                         "--write-out", "%{http_code}", endereco)
+        if codigo == "200":
+            break
+        if tentativa < 3:
+            time.sleep(20)
     if codigo != "200":
         raise ValueError("prova do endereço recusada: HTTP " + codigo)
 
