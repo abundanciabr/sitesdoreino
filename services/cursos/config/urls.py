@@ -27,6 +27,7 @@ from apps.core.views import (
 )
 from config.api import api
 from apps.core import praticas_3d
+from apps.core import dia1
 from apps.core.satisfacao import pesquisa as satisfacao
 
 # O urlconf da célula NÃO conhece o prefixo público (`/cursos`): quem o aplica
@@ -51,6 +52,8 @@ from apps.core.satisfacao import pesquisa as satisfacao
 # número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
 # pela qual `healthz` e `static/` já vêm antes dele.
 urlpatterns = [
+    path('<slug:curso>/parte-<int:parte>/<str:numero>/dia1/salvar', dia1.salvar, name='dia1-salvar'),
+    path('<slug:curso>/parte-<int:parte>/<str:numero>/dia1/tradutor', dia1.tradutor, name='dia1-tradutor'),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3", previa_aula3.pagina, name="previa-aula3"),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3/", previa_aula3.pagina),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3/midia/<str:nome>", previa_aula3.midia),

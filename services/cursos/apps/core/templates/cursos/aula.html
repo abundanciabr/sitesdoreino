@@ -30,7 +30,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
 {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
 
-{% if not pratica3d or pratica3d.pitch %}{% if aula.pedido or aula.cliente %}<div class="encomenda-da-aula">
+{% if not dia1 %}{% if not pratica3d or pratica3d.pitch %}{% if aula.pedido or aula.cliente %}<div class="encomenda-da-aula">
   {% if aula.pedido %}<p class="pedido">{{ aula.pedido }}</p>{% endif %}
   {% if aula.cliente %}<p class="cliente">Cliente: {{ aula.cliente }}</p>{% endif %}
 </div>{% endif %}
@@ -42,8 +42,9 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 </section>
 {% endfor %}
 {% endif %}
+{% endif %}
 
-{% if videoaula.html and not pratica3d %}
+{% if videoaula.html and not pratica3d and not dia1 %}
 <p class="abrir-videoaula"><a class="botao" id="abrir-videoaula" href="#videoaula">{{ videoaula.rotulo }}</a></p>
 
 <dialog class="videoaula" id="videoaula" aria-labelledby="titulo-da-videoaula">
@@ -90,8 +91,10 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
 <div class="aula-layout">
 <section class="video" id="video">
   <div class="atalho-conteudo"><button type="button" class="abrir-conteudo" aria-controls="conteudo-do-curso" aria-expanded="false" hidden><span aria-hidden="true">☰</span> Conteúdo do curso</button></div>
-  {% if pratica3d %}{% include 'cursos/_pratica_3d.html' %}{% endif %}
-  {% if pratica3d and not pratica3d.pitch %}
+  {% if dia1 %}{% include 'cursos/_dia1.html' %}
+  {% elif pratica3d %}{% include 'cursos/_pratica_3d.html' %}{% endif %}
+  {% if dia1 %}
+  {% elif pratica3d and not pratica3d.pitch %}
   {% elif video.interativa %}
   <h2>Prática guiada: {{ video.pratica_titulo }}</h2>
   <div class="conteudo-pratica-nativa">
@@ -195,7 +198,8 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   {% else %}
   <form method="post" action="{% url 'concluir-aula-do-curso' aula.curso.slug aula.bloco.parte aula.numero %}">
     {% csrf_token %}
-    <button type="submit">Concluir esta aula</button>
+    <button type="submit" {% if dia1 %}disabled{% endif %}>Concluir esta aula</button>
+    {% if dia1 %}<p>Conclua a prática do Dia 1 acima para registrar esta aula.</p>{% endif %}
   </form>
   {% endif %}
 </section>{% endif %}{% if checkpoint %}<section class="checkpoint" id="checkpoint">

@@ -1,0 +1,51 @@
+<link rel="stylesheet" href="{% url 'estatico' 'dia1/dia1.css' %}?v=1">
+{{ dia1|json_script:'dia1-config' }}
+<section class="d1" id="dia1" aria-label="Dia 1 — O pedido chega">
+  <div hidden>{% csrf_token %}</div>
+  <header class="d1-header"><p class="d1-kicker">DIA 1 DE 7 · PRÁTICA COM A LÍVIA</p><h1>O pedido chega</h1><p>Um cliente. Um cubo. Sua primeira forma em 3D.</p><div class="d1-save" role="status" aria-live="polite">Seu andamento fica na sua conta.</div></header>
+  <div class="d1-layout">
+    <aside class="d1-teacher" aria-label="Acompanhe a professora">
+      <video id="d1-video" controls playsinline preload="metadata" poster="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/poster.jpg" aria-label="Trecho da prévia da Aula 1">
+        <source src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/aula-1-previa-legendada.mp4" type="video/mp4">
+        <track kind="captions" src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/legendas.vtt" srclang="pt-BR" label="Português">
+      </video>
+      <p class="d1-caption">Prévia com apresentadora ilustrada e voz sintética.</p>
+      <button type="button" id="d1-watch">Assistir este trecho</button>
+      <p id="d1-video-status" role="status">Assista, pause e faça no seu ritmo.</p>
+      <blockquote id="d1-fala"></blockquote>
+      <details><summary>Como acompanhar</summary><p>A explicação para no fim do trecho. Faça a ação ao lado e aperte Continuar quando terminar. Pode rever quantas vezes quiser.</p></details>
+    </aside>
+    <div class="d1-work">
+      <div class="d1-stepbar"><span id="d1-counter"></span><progress id="d1-progress" max="11" value="0" aria-label="Andamento da prática"></progress></div>
+      <h2 id="d1-title" tabindex="-1"></h2><p id="d1-instruction"></p>
+      <section data-d1-panel="welcome">
+        <p>Hoje, amanhã e depois, você atende um pedido do começo ao fim. O cliente é de mentira; você executa os passos da prática.</p>
+        <ol class="d1-week"><li><b>1</b> O pedido e a primeira orelha</li><li><b>2</b> O item completo</li><li><b>3</b> A entrega</li><li><b>4</b> Quanto dá</li><li><b>5</b> Por que você consegue</li><li><b>6</b> Qual é o caminho</li><li><b>7</b> Sua decisão</li></ol>
+        <p>Nos Dias 4, 5 e 6, a Lívia abre o computador para mostrar o trabalho real. São aulas maiores: separe um tempo para elas.</p>
+        <p>Você não vai instalar nada. Aqui é um ambiente de prática do curso, com os poucos controles usados nesta aula. O Blender de verdade é instalado junto na Formação, numa aula só para isso.</p>
+      </section>
+      <section data-d1-panel="conversation" hidden>
+        <details class="d1-listing" open><summary>Seu anúncio · 0 avaliações</summary><h3>Criação de acessórios 3D para Roblox</h3><p>Guarde este título. No Dia 6, a Lívia conta de onde ele veio.</p></details>
+        <div class="d1-chat-grid">
+          <div class="d1-chat"><p class="d1-chat-title">Alex <span>Cliente simulado</span></p><p class="d1-bubble" id="d1-request">{{ dia1.pedido }}</p><button type="button" id="d1-copy">Copiar recado</button><div id="d1-sent" hidden><p class="d1-chat-title">Você</p><p class="d1-bubble d1-mine" id="d1-my-message"></p><p class="d1-chat-title">Alex</p><p class="d1-bubble">Great! Let’s do it.<br><span>Ótimo! Vamos fazer.</span></p><p id="d1-price-confirmed"></p></div></div>
+          <div class="d1-translator"><h3>Tradutor da conversa</h3><label for="d1-input">Inglês → português</label><textarea id="d1-input" rows="3" maxlength="1500" placeholder="Cole aqui o recado do Alex"></textarea><button type="button" id="d1-paste">Colar recado copiado</button><button type="button" id="d1-translate-request">Traduzir recado</button><p id="d1-pt" class="d1-translated"></p>
+            <div id="d1-reply"><label for="d1-response">Sua resposta em português</label><textarea id="d1-response" rows="3" maxlength="1500" placeholder="Olá, Alex! Posso fazer as orelhas. Vou começar hoje."></textarea><button type="button" id="d1-example">Usar resposta de exemplo</button><label for="d1-price">Preço fictício em US$</label><input id="d1-price" type="number" min="0.01" max="99999" step="0.01" value="10"><p class="d1-caption">US$ 10 é só um valor ilustrativo. Não existe oferta, saldo nem cobrança real.</p><button type="button" id="d1-translate-response">Traduzir minha resposta</button><label for="d1-en">Sua resposta em inglês</label><textarea id="d1-en" rows="3" readonly></textarea><button type="button" id="d1-send">Enviar para Alex</button></div>
+          </div>
+        </div>
+      </section>
+      <section data-d1-panel="model" hidden>
+        <div class="d1-reference"><svg viewBox="0 0 150 95" role="img" aria-label="Referência: duas orelhas de gato numa tiara"><path d="M25 85 A50 50 0 0 1 125 85" fill="none" stroke="#d59dce" stroke-width="8"/><path d="M32 53 L35 6 L66 38 Z M84 38 L115 6 L118 53 Z" fill="#a885b5" stroke="#f1c7e6" stroke-width="3"/><path d="M42 39 L42 18 L56 35 Z M94 35 L108 18 L109 39 Z" fill="#f4bdd7"/></svg><p><b>O destino: duas orelhinhas numa tiara.</b><br>Hoje você faz só a primeira, à esquerda na vista de frente. A segunda fica para amanhã.</p></div>
+        <div class="d1-blender"><div class="d1-blender-top"><span>Ambiente de prática · Blender simplificado</span><span>Perspectiva · Objeto</span></div><div class="d1-tools" role="group" aria-label="Ferramentas de modelagem"><button type="button" data-tool="girar" aria-pressed="true">⟳ Girar</button><button type="button" data-tool="esticar" aria-pressed="false">↕ Esticar</button><button type="button" data-tool="afinar" aria-pressed="false">△ Afinar</button><button type="button" data-tool="mover" aria-pressed="false">✥ Mover</button><button type="button" id="d1-undo">↶ Desfazer</button></div><div class="d1-viewport" tabindex="0" role="img" aria-label="Editor 3D: cubo e tiara, use os controles para modelar"></div><div class="d1-blender-bottom"><button type="button" id="d1-select">Selecionar cubo / orelha</button><button type="button" id="d1-front">Vista de frente</button><span id="d1-object-info">Cubo selecionado</span></div></div>
+        <div class="d1-adjust"><p id="d1-tool-hint"></p><label id="d1-range-label" for="d1-range">Altura</label><input id="d1-range" type="range" min="0.5" max="3" step="0.01"><div class="d1-adjust-buttons"><button type="button" id="d1-less">Diminuir</button><button type="button" id="d1-more">Aumentar</button></div></div>
+        <details class="d1-help"><summary>Preciso de uma dica</summary><p id="d1-help-text"></p><p>Desfazer recupera a alteração anterior. Vista de frente recupera a referência da tiara sem alterar a sua orelha.</p></details>
+      </section>
+      <section data-d1-panel="blender" hidden><p>Girar. Esticar. Afinar a ponta. Mover. Mesmos passos, mesma ordem.</p><p>A prévia indica o trecho a gravar no Blender de verdade. A demonstração real da Lívia ainda não está disponível.</p><button type="button" id="d1-review-model">Voltar à minha orelha</button></section>
+      <section data-d1-panel="promise" hidden><p class="d1-bubble"><b>Alex · cliente simulado</b><br>When can you deliver the cat ears?<br><span>Quando você pode entregar as orelhas de gato?</span></p><p class="d1-promise" id="d1-promise-text"></p><p>O prazo é o Dia 3 da sua semana. A entrega do cliente é simulada; o compromisso de voltar é seu.</p><label class="d1-check"><input type="checkbox" id="d1-public">Quero marcar minha promessa no mural, sem meu nome nem minha conversa.</label><button type="button" id="d1-promise">Marcar meu dia e prometer</button><p id="d1-promise-status" role="status"></p><h3>Mural de quem passou por aqui</h3><div class="d1-mural" id="d1-mural">{% for item in dia1.mural %}<p>Uma pessoa marcou sua entrega para <time datetime="{{ item.prazo }}">{{ item.prazo }}</time>.</p>{% empty %}<p>Ainda não há promessas compartilhadas. Você pode marcar a primeira.</p>{% endfor %}</div></section>
+      <section data-d1-panel="finish" hidden><p>Você entendeu um cliente em inglês, fechou o pedido e fez a sua primeira forma em 3D. Sem instalar nada.</p><p id="d1-summary"></p><p>Amanhã essa orelha vira o item completo. A Lívia mostra o botão que faz metade do trabalho sozinho.</p><button type="button" id="d1-complete">Concluir minha prática do Dia 1</button><p id="d1-complete-status" role="status"></p></section>
+      <p class="d1-feedback" role="status" aria-live="polite"></p>
+      <div class="d1-navigation"><button type="button" id="d1-back">← Voltar</button><button type="button" id="d1-next">Continuar →</button><button type="button" id="d1-save-now">Guardar agora</button></div>
+    </div>
+  </div>
+  <noscript>Ative o JavaScript do navegador para atender o cliente e modelar nesta prática.</noscript>
+</section>
+<script type="module" src="{% url 'estatico' 'dia1/dia1.js' %}?v=1"></script>

@@ -1197,6 +1197,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
     portas.abrir(progresso)
     pausas_ok = portas.pausas_registradas(progresso)
     livre = _e_livre(curso)
+    from . import dia1 as pratica_dia1
+    dia1 = pratica_dia1.contexto(aula, progresso)
     return render(
         request,
         "cursos/aula.html",
@@ -1206,7 +1208,8 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "pecas": _pecas(aula),
             "videoaula": _videoaula(aula),
             "video": _video(aula),
-            "pratica3d": praticas_3d.contexto(aula, pessoa, request),
+            "dia1": dia1,
+            "pratica3d": None if dia1 else praticas_3d.contexto(aula, pessoa, request),
             "navegacao": _navegacao_aulas(curso, aula, pessoa),
             "conteudo": _conteudo_do_curso(curso, aula, pessoa),
             "comentarios": Paginator(
@@ -1477,6 +1480,9 @@ def concluir_aula(
         return recusa
     portas.abrir(progresso)
     try:
+        from . import dia1
+        if dia1.ativa(aula) and not progresso.concluida_em and not dia1.pronta(dia1.estado(progresso)):
+            return _voltar_a_aula(curso, aula, erro="Termine a prática do pedido, da primeira orelha e da promessa acima.", ancora="dia1")
         portas.concluir_por_gesto(progresso)
     except portas.PortaRecusada as motivo:
         return _voltar_a_aula(curso, aula, erro=str(motivo), ancora="concluir")
