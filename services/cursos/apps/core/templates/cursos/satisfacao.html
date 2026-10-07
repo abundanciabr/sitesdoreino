@@ -20,6 +20,7 @@
   {% if tentativa.qualidade.audit_failed %}<p class="aviso">O preenchimento foi rápido. A qualidade desta tentativa ficou inconclusiva; suas respostas e reclamações continuam registradas.</p>{% endif %}
   <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><button type="submit">Fazer nova avaliação</button></form>
   {% else %}
+  {% if not revisado %}<p class="aviso">Esta avaliação foi iniciada com o roteiro anterior. Suas respostas continuam guardadas. Para responder ao roteiro revisado, comece uma nova avaliação.</p><form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><button type="submit">Começar avaliação revisada</button></form>{% endif %}
   {% if pergunta %}
   <h2>{{ pergunta.texto }}</h2>
   {% if pergunta.aviso %}<p>{{ pergunta.aviso }}</p>{% endif %}
