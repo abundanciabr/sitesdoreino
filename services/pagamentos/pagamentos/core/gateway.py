@@ -185,7 +185,7 @@ def criar_pagamento_card(
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoCard:
     try:
-        resposta = MercadoPagoClient().criar_pagamento_cartao(
+        resposta = _cliente_mp(operation_id=order_id).criar_pagamento_cartao(
             idempotency_key=idempotency_key, amount_cents=amount_cents,
             order_id=order_id, card_token=card_token,
             installments=installments, payment_method_id=payment_method_id,

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Teste de compra com cartão</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js" integrity="sha256-IyUZOUxsj9um82Kx2doWEG21E82/iZAR8A2qtAUd8xw=" crossorigin="anonymous" defer></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
+    .wrap { max-width: 30rem; margin: 0 auto; padding: 1rem; }
+    .card { background: #fff; border-radius: .75rem; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { font-size: 1.6rem; margin: 0 0 .75rem; }
+    label { display: block; margin-top: 1rem; }
+    input, .campo { width: 100%; height: 3rem; margin-top: .4rem; padding: .75rem; border: 1px solid #c9c9cf; border-radius: .5rem; font: inherit; background: #fff; }
+    .campo iframe { width: 100%; height: 100%; border: 0; }
+    .linha { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+    .acao { width: 100%; margin-top: 1rem; padding: .9rem; border: 0; border-radius: .5rem; background: #008f3a; color: #fff; font: inherit; font-weight: 700; }
+    .acao[disabled] { opacity: .55; }
+    .erro { color: #9f1239; }
+    .link { display: block; margin-top: 1rem; color: #1a1a1a; }
+  </style>
+</head>
+<body>
+  {{ order_id|json_script:"order-id" }}
+  {{ total_cents|json_script:"total-cents" }}
+  {{ api_token|json_script:"api-token" }}
+  {{ api_base|json_script:"api-base" }}
+  {{ mp_public_key|json_script:"mp-public-key" }}
+  <div class="wrap" x-data="cartaoMpIsland()">
+    <div class="card">
+      <h1>Teste de compra com cartão</h1>
+      <p>Mercado Pago em produção. Esta compra movimenta dinheiro real.</p>
+      <p><strong x-text="`Pagamento à vista: ${reais()}`"></strong></p>
+      <form id="mp-form" x-show="podePagar()" x-cloak>
+        <label for="mp-card-number">Número do cartão</label>
+        <div id="mp-card-number" class="campo"></div>
+        <label for="mp-holder-name">Nome impresso no cartão</label>
+        <input id="mp-holder-name" autocomplete="cc-name" required>
+        <label for="mp-holder-cpf">CPF do titular</label>
+        <input id="mp-holder-cpf" inputmode="numeric" autocomplete="off" required>
+        <div class="linha">
+          <div><label for="mp-expiration">Validade</label><div id="mp-expiration" class="campo"></div></div>
+          <div><label for="mp-security">CVV</label><div id="mp-security" class="campo"></div></div>
+        </div>
+        <select id="mp-issuer" hidden aria-label="Banco emissor"></select>
+        <select id="mp-installments" hidden aria-label="Parcelas"></select>
+        <select id="mp-document-type" hidden aria-label="Tipo de documento"><option value="CPF">CPF</option></select>
+        <input id="mp-email" type="email" value="{{ payer_email }}" hidden readonly>
+        <button type="submit" class="acao" :disabled="!pronto || enviando || !podePagar()" x-text="enviando ? 'Confirmando…' : `Pagar ${reais()}`"></button>
+      </form>
+      <p role="status" aria-live="polite" x-text="statusLabel()"></p>
+      <p class="erro" role="alert" x-cloak x-show="erro" x-text="erro"></p>
+      <a class="link" href="{{ offer_url }}" x-show="!emAnalise && status !== 'pago' && status !== 'reembolsado'">Voltar à escolha do pagamento</a>
+    </div>
+  </div>
+  <script>window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);</script>
+  <script src="{{ static_base }}/api.js"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
+  <script src="{{ static_base }}/cartao_mp.js"></script>
+</body>
+</html>

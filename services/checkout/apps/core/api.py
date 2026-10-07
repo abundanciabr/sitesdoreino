@@ -520,7 +520,7 @@ def _nova_sessao_do_link(link, anterior, oferta: dict, lead_id: str, visitante):
 def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool, product_id: str = "") -> bool:
     """O pedido nasce contra o sandbox do provedor que vai cobrar? Então o
     dinheiro não é real e o pedido fica fora dos totais de receita."""
-    if (method == "pix" and not pix_appmax
+    if (method in {"pix", "card"} and (method == "card" or not pix_appmax)
             and site_id in settings.MP_PRODUCTION_ENABLED_SITES
             and product_id in settings.MP_PRODUCTION_PRODUCT_IDS):
         return False

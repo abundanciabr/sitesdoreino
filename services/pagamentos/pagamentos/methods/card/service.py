@@ -14,7 +14,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from pagamentos.core import gateway, ledger
-from pagamentos.core.ambiente_mp import mp_em_teste
+from pagamentos.core.ambiente_mp import mp_em_teste, produto_mp_em_producao
+from pagamentos.marketplace.identity import InvalidPayer, payer
 from pagamentos.core.models import (
     ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO,
     Intent,
@@ -126,6 +127,12 @@ def criar_intent_card(
     provider aqui, só reserva a intent no estado 'created'. [INV-P4] `.create()`
     dentro de `transaction.atomic()` pelo mesmo motivo do Pix: numa corrida, a 2ª
     tentativa recebe IntegrityError isolada num savepoint."""
+    metadata = dict(metadata)
+    metadata.pop("mp_card_provider", None)
+    metadata.pop("mp_ambiente", None)
+    if produto_mp_em_producao(site_id, str(metadata.get("product_id") or "")):
+        metadata.update(mp_card_provider="mercadopago", mp_ambiente="producao")
+        metadata.pop("ambiente", None)
     with transaction.atomic():
         return Intent.objects.create(
             idempotency_key=idempotency_key,
@@ -361,7 +368,17 @@ def confirmar_segunda_opcao_card(
 ) -> Intent:
     fechar_segundas_opcoes_vencidas(intent)
     intent.refresh_from_db()
-    if intent.site_id not in settings.MP_CARD_FALLBACK_SITES:
+    direto = intent.metadata.get("mp_card_provider") == "mercadopago"
+    if direto:
+        if not produto_mp_em_producao(intent.site_id, str(intent.metadata.get("product_id") or "")):
+            raise SegundaOpcaoIndisponivel("oferta indisponível")
+        if intent.method != "card" or intent.status not in {"created", "rejected", "pending"}:
+            raise IntentNaoConfirmavel(intent.status)
+        if PaymentAttempt.objects.filter(intent=intent, state__in=ESTADOS_QUE_BLOQUEIAM_NOVO_ENVIO).exists():
+            return reconciliar_intent_card(intent)
+        if installments != 1:
+            raise DadosCartaoInvalidos("esta compra de teste é à vista")
+    elif intent.site_id not in settings.MP_CARD_FALLBACK_SITES:
         raise SegundaOpcaoIndisponivel("site sem segunda opção")
     anterior = PaymentAttempt.objects.filter(intent=intent, provider="appmax").order_by("-created_at").first()
     if anterior is not None and anterior.installments != installments:
@@ -373,6 +390,18 @@ def confirmar_segunda_opcao_card(
         or isinstance(installments, bool) or not 1 <= installments <= 12):
         raise DadosCartaoInvalidos("dados da segunda opção incompletos")
     identificacao = {"type": "CPF" if len(documento) == 11 else "CNPJ", "number": documento}
+    email = str(intent.customer.get("email") or "")
+    if direto:
+        try:
+            nome_pagador, cpf_pagador, email = payer(
+                name=str(intent.customer.get("name") or ""),
+                cpf=str(intent.customer.get("cpf") or ""), email=email,
+            )
+            payer(name=holder_name, cpf=documento, email=email)
+        except InvalidPayer as exc:
+            raise DadosCartaoInvalidos(str(exc)) from None
+        nome = nome_pagador.split()
+        identificacao = {"type": "CPF", "number": cpf_pagador}
     corpo_hash = {
         "card_token": mp_token, "payment_method_id": mp_payment_method_id,
         "issuer_id": mp_issuer_id, "device_id": mp_device_id,
@@ -390,7 +419,7 @@ def confirmar_segunda_opcao_card(
                 amount_cents=intent.amount_cents, card_token=mp_token,
                 installments=installments, payment_method_id=mp_payment_method_id,
                 issuer_id=mp_issuer_id or None, device_id=mp_device_id,
-                payer_email=str(intent.customer.get("email") or ""),
+                payer_email=email,
                 payer_first_name=nome[0], payer_last_name=" ".join(nome[1:]),
                 payer_identification=identificacao,
                 itens_do_pedido=_itens_informados(intent),
@@ -431,10 +460,12 @@ def confirmar_segunda_opcao_card(
             enviar=enviar, installments=installments,
             effective_amount_cents=intent.amount_cents,
             registrar_resultado=_registrar_resultado_v2,
-            consumir_segunda_opcao=True,
+            consumir_segunda_opcao=not direto,
         )
         for pagamento in duplicados_encontrados:
             _registrar_mp_duplicado(principal, pagamento)
+    except TentativaBloqueada as exc:
+        raise IntentNaoConfirmavel(exc.estado) from None
     except EnvioNaoChegou:
         tentativa = PaymentAttempt.objects.filter(intent=intent, provider="mercadopago").order_by("-created_at").first()
         if tentativa is not None:

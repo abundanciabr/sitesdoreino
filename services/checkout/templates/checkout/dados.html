@@ -37,7 +37,7 @@
   {{ appmax_card_enabled|json_script:"appmax-card-enabled" }}
   {{ appmax_external_id|json_script:"appmax-external-id" }}
   <div class="wrap" x-data="dadosIsland()">
-    {% if mp_production_test %}<section class="card"><strong>Teste do Mercado Pago em produção</strong><p>Este Pix movimenta dinheiro real. Preencha os dados reais do pagador. Depois da confirmação, a compra pode ser devolvida no painel da equipe.</p></section>{% endif %}
+    {% if mp_production_test %}<section class="card"><strong>Teste do Mercado Pago em produção</strong><p>Este pagamento movimenta dinheiro real. Preencha os dados reais do pagador. Depois da confirmação, a compra pode ser devolvida no painel da equipe.</p></section>{% endif %}
     {% if appmax_pix_enabled %}<form data-appmax-customer hidden></form>{% endif %}
     <p x-show="carregando">Carregando a oferta…</p>
     <p class="card" role="status" x-cloak x-show="linkUsado" x-text="linkUsado"></p>

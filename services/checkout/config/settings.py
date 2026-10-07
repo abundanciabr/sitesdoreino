@@ -49,6 +49,7 @@ APPMAX_CARD_ENABLED_SITES = frozenset(
     if site.strip()
 )
 MP_PUBLIC_KEY = os.environ.get("MP_PUBLIC_KEY", "")
+MP_PRODUCTION_PUBLIC_KEY = os.environ.get("MP_PRODUCTION_PUBLIC_KEY", "")
 MP_PRODUCTION_ENABLED_SITES = frozenset(filter(None, os.environ.get("MP_PRODUCTION_ENABLED_SITES", "").split(",")))
 MP_PRODUCTION_PRODUCT_IDS = frozenset(filter(None, os.environ.get("MP_PRODUCTION_PRODUCT_IDS", "").split(",")))
 MP_CARD_FALLBACK_SITES = frozenset(

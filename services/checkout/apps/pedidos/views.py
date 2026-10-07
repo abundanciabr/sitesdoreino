@@ -27,15 +27,16 @@ def _static_base(request) -> str:
 
 
 def dados(request, offer_slug: str):
+    mp_test = (
+        offer_slug == "teste-mercado-pago"
+        and request.site["id"] in settings.MP_PRODUCTION_ENABLED_SITES
+    )
     return render(
         request,
         "checkout/dados.html",
         {
             "offer_slug": offer_slug,
-            "mp_production_test": (
-                offer_slug == "teste-mercado-pago"
-                and request.site["id"] in settings.MP_PRODUCTION_ENABLED_SITES
-            ),
+            "mp_production_test": mp_test,
             "atribuicao": atribuicao_da_consulta(request.GET),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),
@@ -43,8 +44,10 @@ def dados(request, offer_slug: str):
             "appmax_pix_provider": request.site["id"] in settings.APPMAX_PIX_ENABLED_SITES,
             "appmax_pix_enabled": request.site["id"]
             in (settings.APPMAX_PIX_ENABLED_SITES | settings.APPMAX_PIX_FALLBACK_SITES),
-            "appmax_card_enabled": request.site["id"]
-            in settings.APPMAX_CARD_ENABLED_SITES,
+            "appmax_card_enabled": (
+                request.site["id"] in settings.APPMAX_CARD_ENABLED_SITES
+                or (mp_test and bool(settings.MP_PRODUCTION_PUBLIC_KEY))
+            ),
             "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
             "appmax_script_url": (
                 "https://scripts.sandboxappmax.com.br/appmax.min.js"
@@ -94,12 +97,17 @@ def pix(request, order_id: uuid.UUID):
 
 def cartao(request, order_id: uuid.UUID):
     pedido = _pedido_do_site(request, order_id, "card")
+    mp_production = (
+        pedido.site_id in settings.MP_PRODUCTION_ENABLED_SITES
+        and bool(pedido.items)
+        and str(pedido.items[0].get("product_id") or "") in settings.MP_PRODUCTION_PRODUCT_IDS
+    )
     script_appmax = "https://scripts.sandboxappmax.com.br/appmax.min.js"
     if settings.APPMAX_API_URL != "https://api.sandboxappmax.com.br":
         script_appmax = "https://scripts.appmax.com.br/appmax.min.js"
     return render(
         request,
-        "checkout/cartao.html",
+        "checkout/cartao_mp.html" if mp_production else "checkout/cartao.html",
         {
             "order_id": str(pedido.id),
             "total_cents": pedido.total_cents,
@@ -109,7 +117,11 @@ def cartao(request, order_id: uuid.UUID):
             "static_base": _static_base(request),
             "appmax_external_id": settings.APPMAX_EXTERNAL_ID,
             "appmax_script_url": script_appmax,
-            "mp_public_key": settings.MP_PUBLIC_KEY if pedido.site_id in settings.MP_CARD_FALLBACK_SITES else "",
+            "mp_public_key": (
+                settings.MP_PRODUCTION_PUBLIC_KEY if mp_production
+                else settings.MP_PUBLIC_KEY if pedido.site_id in settings.MP_CARD_FALLBACK_SITES else ""
+            ),
+            "payer_email": pedido.customer.get("email", ""),
             "parcelas_sugeridas": _parcelas_do_link(pedido),
         },
     )
