@@ -38,7 +38,7 @@ def test_pagina_usa_sdk_publico_de_producao_e_campos_seguros(client, rede, produ
     html = page.content.decode()
     assert "APP_USR-publica-simulada" in html and "TEST-simulada" not in html
     assert "scripts.appmax" not in html and "appmax-form-element" not in html
-    assert 'src="/checkout/static/checkout/cartao_mp.js"' in html
+    assert 'src="/checkout/static/checkout/cartao_mp.js?v=20261007-2"' in html
     assert 'src="https://sdk.mercadopago.com/js/v2"' in html
     assert 'id="mp-card-number" class="campo"' in html and 'id="mp-security" class="campo"' in html
     assert "Pagamento à vista" in html

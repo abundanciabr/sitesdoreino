@@ -13,7 +13,11 @@ function page(api) {
     "mp-holder-name": { value: "Titular de Teste" },
     "mp-document-type": { value: "" },
   };
-  let setup;
+  let setup, sdk;
+  class SecureCardForm {
+    #data = { token: "token-simulado", paymentMethodId: "visa", identificationType: "CPF", identificationNumber: "52998224725" };
+    getCardFormData() { return this.#data; }
+  }
   const context = {
     document: { getElementById: (id) => fields[id] }, window: {}, api,
     setTimeout: () => 1, clearTimeout: () => {},
@@ -21,14 +25,21 @@ function page(api) {
       this.cardForm = (options) => {
         setup = options;
         options.callbacks.onReady();
-        return { getCardFormData: () => ({ token: "token-simulado", paymentMethodId: "visa", identificationType: "CPF", identificationNumber: "52998224725" }) };
+        sdk = new SecureCardForm();
+        return sdk;
       };
     },
   };
   context.window.MercadoPago = context.MercadoPago;
   vm.createContext(context);
   vm.runInContext(source, context);
-  return { island: context.cartaoMpIsland(), setup: () => setup };
+  const island = new Proxy(context.cartaoMpIsland(), {
+    get(target, key) {
+      const value = Reflect.get(target, key);
+      return value && typeof value === "object" ? new Proxy(value, {}) : value;
+    },
+  });
+  return { island, setup: () => setup, sdk: () => sdk };
 }
 
 test("SDK protege os campos e o servidor recebe somente token e identificação", async () => {
@@ -68,4 +79,39 @@ test("recusa confirmada permite tentar outro cartão", async () => {
   await p.island.init();
   await p.island.confirmar();
   assert.equal(p.island.podePagar(), true);
+});
+
+test("erro na leitura segura do SDK mostra retorno sem enviar cobrança", async () => {
+  let sent = 0;
+  const p = page({ get: async () => ({ status: "aguardando_pagamento" }), post: async () => { sent++; } });
+  await p.island.init();
+  p.sdk().getCardFormData = () => { throw Error("erro simulado"); };
+  await p.island.confirmar();
+  assert.equal(sent, 0);
+  assert.match(p.island.erro, /ler o cartão com segurança/);
+  assert.equal(p.island.podePagar(), true);
+});
+
+test("tokenização pendente e inválida têm retorno visível sem iniciar cobrança", async () => {
+  let sent = 0;
+  const p = page({ get: async () => ({ status: "aguardando_pagamento" }), post: async () => { sent++; } });
+  await p.island.init();
+  const end = p.setup().callbacks.onFetching("cardToken");
+  assert.equal(p.island.verificando, true);
+  p.setup().callbacks.onCardTokenReceived([{ message: "dado privado simulado" }]);
+  assert.equal(p.island.verificando, false);
+  assert.match(p.island.erro, /não foi enviado para cobrança/);
+  assert.doesNotMatch(p.island.erro, /dado privado/);
+  end();
+  assert.equal(p.island.emAnalise, false);
+  assert.equal(sent, 0);
+});
+
+test("campos obrigatórios e validação do iframe informam o campo sem expor valores", async () => {
+  const p = page({ get: async () => ({ status: "aguardando_pagamento" }) });
+  await p.island.init();
+  p.island.campoObrigatorio({ target: { id: "mp-holder-cpf" } });
+  assert.match(p.island.erro, /CPF do titular/);
+  p.setup().callbacks.onValidityChange([{ message: "dado privado simulado" }], "cardNumber");
+  assert.equal(p.island.erro, "Confira o número do cartão.");
 });

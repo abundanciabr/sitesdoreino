@@ -33,10 +33,10 @@
       <h1>Teste de compra com cartão</h1>
       <p>Mercado Pago em produção. Esta compra movimenta dinheiro real.</p>
       <p><strong x-text="`Pagamento à vista: ${reais()}`"></strong></p>
-      <form id="mp-form" x-show="podePagar()" x-cloak>
+      <form id="mp-form" x-show="podePagar()" @invalid.capture="campoObrigatorio($event)" x-cloak>
         <label for="mp-card-number">Número do cartão</label>
         <div id="mp-card-number" class="campo"></div>
-        <label for="mp-holder-name">Nome impresso no cartão</label>
+        <label for="mp-holder-name">Nome completo do titular do cartão</label>
         <input id="mp-holder-name" autocomplete="cc-name" required>
         <label for="mp-holder-cpf">CPF do titular</label>
         <input id="mp-holder-cpf" inputmode="numeric" autocomplete="off" required>
@@ -48,7 +48,7 @@
         <select id="mp-installments" hidden aria-label="Parcelas"></select>
         <select id="mp-document-type" hidden aria-label="Tipo de documento"><option value="CPF">CPF</option></select>
         <input id="mp-email" type="email" value="{{ payer_email }}" hidden readonly>
-        <button type="submit" class="acao" :disabled="!pronto || enviando || !podePagar()" x-text="enviando ? 'Confirmando…' : `Pagar ${reais()}`"></button>
+        <button type="submit" class="acao" :disabled="!pronto || verificando || enviando || !podePagar()" x-text="enviando ? 'Confirmando…' : verificando ? 'Verificando o cartão…' : `Pagar ${reais()}`"></button>
       </form>
       <p role="status" aria-live="polite" x-text="statusLabel()"></p>
       <p class="erro" role="alert" x-cloak x-show="erro" x-text="erro"></p>
@@ -59,6 +59,6 @@
   <script src="{{ static_base }}/api.js"></script>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
   <script src="https://www.mercadopago.com/v2/security.js" view="checkout"></script>
-  <script src="{{ static_base }}/cartao_mp.js"></script>
+  <script src="{{ static_base }}/cartao_mp.js?v=20261007-2"></script>
 </body>
 </html>

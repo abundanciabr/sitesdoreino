@@ -1,4 +1,7 @@
 function cartaoMpIsland() {
+  // O SDK usa campos privados: a instância precisa manter sua identidade,
+  // sem ser transformada no Proxy reativo do Alpine.
+  let cardForm = null;
   return {
     orderId: JSON.parse(document.getElementById("order-id").textContent),
     publicKey: JSON.parse(document.getElementById("mp-public-key").textContent),
@@ -6,10 +9,10 @@ function cartaoMpIsland() {
     status: "carregando",
     pronto: false,
     enviando: false,
+    verificando: false,
     emAnalise: false,
     aprovacaoRecebida: false,
     erro: "",
-    cardForm: null,
     proximaConsulta: null,
 
     async init() {
@@ -20,7 +23,7 @@ function cartaoMpIsland() {
       }
       try {
         const mp = new MercadoPago(this.publicKey, { locale: "pt-BR" });
-        this.cardForm = mp.cardForm({
+        cardForm = mp.cardForm({
           amount: (this.totalCents / 100).toFixed(2),
           iframe: true,
           form: {
@@ -44,7 +47,22 @@ function cartaoMpIsland() {
               this.pronto = true;
             },
             onError: () => {
+              this.verificando = false;
               this.erro = "Confira os dados do cartão e tente novamente.";
+            },
+            onCardTokenReceived: (error) => {
+              this.verificando = false;
+              if (error) this.erro = "Confira número, validade, CVV, nome e CPF do titular. O cartão não foi enviado para cobrança.";
+            },
+            onValidityChange: (error, field) => {
+              const campos = { cardNumber: "número do cartão", expirationDate: "validade do cartão", securityCode: "CVV" };
+              if (error && error.length && campos[field]) this.erro = `Confira o ${campos[field]}.`;
+            },
+            onFetching: (resource) => {
+              if (resource !== "cardToken") return;
+              this.erro = "";
+              this.verificando = true;
+              return () => { this.verificando = false; };
             },
             onSubmit: (event) => { event.preventDefault(); this.confirmar(); },
           },
@@ -56,7 +74,14 @@ function cartaoMpIsland() {
 
     async confirmar() {
       if (this.enviando || !this.podePagar()) return;
-      const dados = this.cardForm.getCardFormData();
+      let dados;
+      try {
+        dados = cardForm.getCardFormData();
+      } catch (_) {
+        this.verificando = false;
+        this.erro = "Não foi possível ler o cartão com segurança. Recarregue a página e preencha os campos novamente.";
+        return;
+      }
       if (!dados.token || !dados.paymentMethodId || dados.identificationType !== "CPF") {
         this.erro = "Confira os dados do cartão e o CPF do titular.";
         return;
@@ -84,6 +109,11 @@ function cartaoMpIsland() {
       } finally {
         this.enviando = false;
       }
+    },
+
+    campoObrigatorio(event) {
+      const campos = { "mp-holder-name": "nome completo do titular", "mp-holder-cpf": "CPF do titular" };
+      this.erro = `Preencha o ${campos[event.target.id] || "campo indicado"} antes de pagar.`;
     },
 
     async poll() {
