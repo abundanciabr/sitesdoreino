@@ -329,10 +329,30 @@ def portrait_from_readings(sat, complaint, continuity, word, previously):
     return "Neutro", "Sinais restantes sem reclamação em aberto."
 
 
+def _effective_context(attempt, facts=None, clarifications=None):
+    """Use facts to choose the right question variant, keeping stored answers intact."""
+    facts, clarifications = facts or {}, clarifications or {}
+    original = attempt.respostas
+    answers = {**original, **clarifications}
+    point = facts.get("ponto_curso", {}).get("valor")
+    point_changed = bool(point and point != _value(original, "A1"))
+    if point:
+        answers["A1"] = point
+    if point_changed and point != "todas":
+        # A8 answered for another stage (including a hypothetical next course)
+        # cannot describe the factual stage of this course.
+        if "A8" not in clarifications:
+            answers.pop("A8", None)
+        if "R10" not in clarifications:
+            answers.pop("R10", None)
+    context = copy.copy(attempt)
+    context.respostas = answers
+    return context, point_changed and point != "todas"
+
+
 def calculate(attempt, overrides=None, facts=None, clarifications=None):
-    if clarifications:
-        attempt = copy.copy(attempt)
-        attempt.respostas = {**attempt.respostas, **clarifications}
+    original_answers = attempt.respostas
+    attempt, point_needs_a8 = _effective_context(attempt, facts, clarifications)
     answers = attempt.respostas
     watched = _value(answers, "A1")
     satisfaction = _value(answers, "R2")
@@ -374,7 +394,10 @@ def calculate(attempt, overrides=None, facts=None, clarifications=None):
     else:
         word = "Nenhum"
 
-    readings = {"satisfacao": _reading(sat), "reclamacao": _reading(complaint), "continuidade": _reading(continuity), "boca_a_boca": _reading(word), "ponto_curso": _reading(watched)}
+    declared_point = _value({"A1": (clarifications or {}).get("A1", original_answers.get("A1"))}, "A1")
+    readings = {"satisfacao": _reading(sat), "reclamacao": _reading(complaint), "continuidade": _reading(continuity), "boca_a_boca": _reading(word), "ponto_curso": _reading(declared_point)}
+    if clarifications and "A1" in clarifications:
+        readings["ponto_curso"]["valor_original"] = _value(original_answers, "A1")
     for key, proof in (facts or {}).items():
         if key not in FACT_VALUES:
             continue
@@ -396,7 +419,7 @@ def calculate(attempt, overrides=None, facts=None, clarifications=None):
     portrait, reason = portrait_from_readings(sat, complaint, continuity, word, previously)
 
     signals = []
-    unclear = [key for key in PERGUNTAS_RETRATO if key in answers and _value(answers, key) == NAO_ENTENDI]
+    unclear = [key for key in PERGUNTAS_RETRATO if _value(original_answers, key) == NAO_ENTENDI and key not in (clarifications or {})]
     if unclear:
         signals.append({"codigo": "nao_entendi", "motivo": "Pergunta não entendida que alimenta o retrato: " + ", ".join(sorted(unclear))})
     if "outra" in (_value(answers, "A3") or []) and not (overrides or {}).get("outra"):
@@ -411,9 +434,9 @@ def calculate(attempt, overrides=None, facts=None, clarifications=None):
     if attempt.qualidade.get("confirmacao_recusada"):
         signals.append({"codigo": "conferencia_pendente", "motivo": "A pessoa pediu correção na conferência e ainda não confirmou o resumo."})
     missing_after_clarification = [key for key in path(attempt, overrides) if key not in attempt.respostas]
-    if clarifications and missing_after_clarification:
-        signals.append({"codigo": "revisao_incompleta", "motivo": "Esclarecimento abriu perguntas ainda sem resposta: " + ", ".join(missing_after_clarification)})
-    suspended = bool(unclear or attempt.qualidade.get("confirmacao_recusada") or (clarifications and missing_after_clarification))
+    if (clarifications or point_needs_a8) and missing_after_clarification:
+        signals.append({"codigo": "revisao_incompleta", "motivo": "Revisão abriu perguntas ainda sem resposta: " + ", ".join(missing_after_clarification)})
+    suspended = bool(unclear or attempt.qualidade.get("confirmacao_recusada") or ((clarifications or point_needs_a8) and missing_after_clarification))
     if suspended:
         affected = set()
         for key in unclear:
@@ -430,8 +453,12 @@ def calculate(attempt, overrides=None, facts=None, clarifications=None):
         for key in affected:
             if readings[key]["estado"] == "declarada":
                 readings[key]["estado"] = "sem_valor"
+    if point_needs_a8 and "A8" in missing_after_clarification:
+        readings["continuidade"]["valor"] = None
+        readings["continuidade"]["estado"] = "sem_valor"
     confirmed = [key for key, reading in readings.items() if reading["estado"] == "confirmada"]
-    return {"nps": note if isinstance(note, int) else None, "classificacao": "A conferir" if suspended else portrait, "retrato": "A conferir" if suspended else portrait, "retrato_calculado": portrait, "motivos": [reason], "leituras": readings, "pessoa_respondente": "aluno_pagante", "sinais": signals, "suspenso": suspended, "provisorio": any(item["codigo"] == "outra_situacao" for item in signals), "confirmado": bool(confirmed), "fatos_confirmados": confirmed, "participacao_externa": "não disponível"}
+    pending_stage = point_needs_a8 and "A8" in missing_after_clarification
+    return {"nps": note if isinstance(note, int) else None, "classificacao": "A conferir" if suspended else portrait, "retrato": "A conferir" if suspended else portrait, "retrato_calculado": None if pending_stage else portrait, "motivos": ["O ponto real do curso exige perguntar novamente sobre a continuidade."] if pending_stage else [reason], "leituras": readings, "pessoa_respondente": "aluno_pagante", "sinais": signals, "suspenso": suspended, "provisorio": any(item["codigo"] == "outra_situacao" for item in signals), "confirmado": bool(confirmed), "fatos_confirmados": confirmed, "participacao_externa": "não disponível"}
 
 
 def review_context(attempt, revisions):
@@ -442,8 +469,7 @@ def review_context(attempt, revisions):
         if item.tipo == "esclarecimento":
             proof = item.prova
             clarifications[item.situacao_id] = {"valor": proof["valor"], "complemento": proof["complemento"]} if proof.get("complemento") else proof["valor"]
-    context = copy.copy(attempt)
-    context.respostas = {**attempt.respostas, **clarifications}
+    context, _point_needs_a8 = _effective_context(attempt, facts, clarifications)
     missing = [key for key in path(context, overrides) if key not in context.respostas]
     questions = [question(context, key, overrides) for key in missing]
     return overrides, facts, clarifications, context, questions

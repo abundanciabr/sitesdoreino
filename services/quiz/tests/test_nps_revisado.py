@@ -147,9 +147,13 @@ def test_nao_entendi_fato_e_esclarecimento_sem_mudar_snapshot(client, revised):
     clarification = post(client, "/revisao", {**OWNER, "tentativa_id": attempt["id"], "situacao_id": "A1", "tipo": "esclarecimento", "prova": {"fonte": "entrevista", "referencia": "atendimento-1", "valor": "recente"}})
     assert clarification.status_code == 201, clarification.content
     assert clarification.json()["avaliacao"]["respostas"]["A1"] == "__nao_entendi__"
-    assert clarification.json()["avaliacao"]["resultado_atual"]["suspenso"] is False
-    assert clarification.json()["avaliacao"]["resultado_atual"]["leituras"]["ponto_curso"]["estado"] == "confirmada"
-    assert clarification.json()["avaliacao"]["resultado_atual"]["fatos_confirmados"] == ["ponto_curso"]
+    assert [q["id"] for q in clarification.json()["avaliacao"]["perguntas_pendentes_revisao"]] == ["A8"]
+    assert clarification.json()["avaliacao"]["resultado_atual"]["suspenso"] is True
+    later = post(client, "/revisao", {**OWNER, "tentativa_id": attempt["id"], "situacao_id": "A8", "tipo": "esclarecimento", "prova": {"fonte": "entrevista", "referencia": "atendimento-1", "valor": "sim"}})
+    assert later.status_code == 201, later.content
+    assert later.json()["avaliacao"]["resultado_atual"]["suspenso"] is False
+    assert later.json()["avaliacao"]["resultado_atual"]["leituras"]["ponto_curso"]["estado"] == "confirmada"
+    assert later.json()["avaliacao"]["resultado_atual"]["fatos_confirmados"] == ["ponto_curso"]
 
 
 def test_nove_retratos_cobrem_512_combinacoes_com_precedencia():
@@ -203,3 +207,39 @@ def test_entrevista_abre_ramo_e_permita_completar_perguntas_pendentes(client, re
     assert evaluation["perguntas_pendentes_revisao"] == []
     assert evaluation["resultado_atual"]["suspenso"] is False
     assert evaluation["respostas"]["A3"] == "__nao_entendi__"
+
+
+@pytest.mark.django_db
+def test_fato_desfaz_conclusao_sem_reutilizar_a8_de_outro_curso(client, revised):
+    attempt = start(client)
+    attempt = answer(client, attempt, "A1", "todas")
+    attempt = answer(client, attempt, "R2", "satisfeito")
+    attempt = answer(client, attempt, "A3", ["nenhuma"])
+    assert "outro curso" in attempt["proxima_pergunta"]["texto"].lower()
+    attempt = answer(client, attempt, "A8", "sim")
+    attempt = answer(client, attempt, "R11", ["nao_falou"])
+    attempt = answer(client, attempt, "R12", 6)
+    attempt = answer(client, attempt, "R13", "")
+    path = f"/tentativas/{attempt['id']}/respostas"
+    done = post(client, path, {**OWNER, "acao": "concluir", "confirmado": True}).json()
+    assert done["resultado"]["leituras"]["continuidade"]["valor"] == "Concluiu"
+
+    factual = post(client, "/revisao", {**OWNER, "tentativa_id": attempt["id"], "situacao_id": "ponto_curso", "tipo": "fato", "prova": {"fonte": "plataforma", "referencia": "progresso-1", "valor": "recente"}})
+    assert factual.status_code == 201, factual.content
+    evaluation = factual.json()["avaliacao"]
+    assert [q["id"] for q in evaluation["perguntas_pendentes_revisao"]] == ["A8"]
+    assert "continuar" in evaluation["perguntas_pendentes_revisao"][0]["texto"].lower()
+    assert evaluation["resultado_atual"]["classificacao"] == "A conferir"
+    assert evaluation["resultado_atual"]["leituras"]["continuidade"]["valor"] is None
+    assert evaluation["resultado_atual"]["leituras"]["continuidade"]["estado"] == "sem_valor"
+    assert evaluation["resultado_atual"]["leituras"]["ponto_curso"]["valor_declarado"] == "todas"
+    assert evaluation["resultado_atual"]["leituras"]["ponto_curso"]["valor"] == "recente"
+    assert evaluation["respostas"]["A1"] == "todas" and evaluation["respostas"]["A8"] == "sim"
+
+    clarified = post(client, "/revisao", {**OWNER, "tentativa_id": attempt["id"], "situacao_id": "A8", "tipo": "esclarecimento", "prova": {"fonte": "entrevista", "referencia": "atendimento-3", "valor": "sim"}})
+    assert clarified.status_code == 201, clarified.content
+    current = clarified.json()["avaliacao"]
+    assert current["perguntas_pendentes_revisao"] == []
+    assert current["resultado_atual"]["leituras"]["continuidade"]["valor"] == "Fica"
+    assert current["resultado_atual"]["suspenso"] is False
+    assert NPSTentativa.objects.get(pk=attempt["id"]).respostas["A1"] == "todas"
