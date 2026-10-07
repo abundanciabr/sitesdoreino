@@ -7,7 +7,7 @@ export async function criar(host,modelo,receita,onVista,onFalha){
  renderer.setPixelRatio(Math.min(2,Math.max(1.5,devicePixelRatio)));renderer.outputColorSpace=THREE.SRGBColorSpace;
  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.10;
  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
- const scene=new THREE.Scene();scene.background=new THREE.Color('#e5ebef');
+ const scene=new THREE.Scene();scene.background=new THREE.Color(modelo.apresentacao?.fundo||'#e5ebef');
  const camera=new THREE.PerspectiveCamera(36,1,.01,100),controls=new OrbitControls(camera,renderer.domElement);
  controls.enableDamping=false;controls.minDistance=1.1;controls.maxDistance=16;controls.maxPolarAngle=Math.PI*.92;
  renderer.domElement.style.touchAction='pan-y';controls.enabled=!matchMedia('(pointer:coarse)').matches;
