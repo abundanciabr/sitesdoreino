@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 from uuid import uuid4
+from mercadopago_congelado import conferir_ambiente, conferir_arvore, conferir_rotas, conferir_pacote as conferir_mp_pacote
 
 
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
@@ -28,6 +29,13 @@ ARQUIVOS_AUXILIARES = (
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 CURL_RETRY = ("--retry", "5", "--retry-delay", "1", "--retry-all-errors",
               "--retry-max-time", "45", "--connect-timeout", "3")
+
+
+def politica_mercadopago():
+    caminho = Path(__file__).resolve().parents[1] / "mercadopago/politica.json"
+    if caminho.is_symlink() or not caminho.is_file():
+        raise ValueError("proteção Mercado Pago ausente; publicação impedida")
+    return json.loads(caminho.read_text(encoding="utf-8"))
 
 
 def executar(*comando: str, saida: bool = False, ambiente: dict | None = None) -> str:
@@ -156,6 +164,11 @@ def sincronizar_infra(sha: str) -> None:
         raise RuntimeError("infra de origem incompleta")
     estado = json.loads(JOURNAL.read_text(encoding="utf-8"))
     versao = estado["atual_versao"]
+    politica_mp = politica_mercadopago()
+    conferir_ambiente(RAIZ, politica_mp)
+    conferir_arvore(fonte, politica_mp, "infra")
+    conferir_rotas(fonte, politica_mp)
+    conferir_mp_pacote(Path(versao["codigo"]), versao["imagem"], politica_mp)
     ambiente = ambiente_da_aplicacao(versao["imagem"], Path(versao["codigo"]))
     compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
     snapshot = PUBLICACOES / "topologias" / ("infra-" + id_tentativa(sha))
@@ -178,6 +191,7 @@ def sincronizar_infra(sha: str) -> None:
         for nome in ARQUIVOS_AUXILIARES:
             if (fonte / nome).is_file():
                 shutil.copy2(fonte / nome, RAIZ / nome)
+        conferir_ambiente(RAIZ, politica_mp)
         compose("up", "-d", "--wait", "--wait-timeout", "180", "aplicacao", ambiente=ambiente)
         sincronizar_sites(fonte, ambiente)
         compose("up", "-d", "--force-recreate", "traefik", ambiente=ambiente)
@@ -186,6 +200,7 @@ def sincronizar_infra(sha: str) -> None:
         modulo = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(modulo)
         modulo.preservar_rotas()
+        conferir_ambiente(RAIZ, politica_mp)
         provar_site()
         print(f"INFRA-APLICACAO-SINCRONIZADA: {sha}", flush=True)
     except BaseException:

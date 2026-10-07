@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import subprocess
 from protecao_publicacao import identificar, conferir_relatorio
+from mercadopago_congelado import conferir_ambiente, conferir_pacote as conferir_mp_pacote
 import sys
 import time
 from datetime import datetime, timezone
@@ -19,6 +20,13 @@ from datetime import datetime, timezone
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 PASTA = RAIZ / "publicacoes"
 CELULA = os.environ.get("CELULA", "")
+
+
+def politica_mercadopago():
+    caminho = Path(__file__).resolve().parents[1] / "mercadopago/politica.json"
+    if caminho.is_symlink() or not caminho.is_file():
+        raise ValueError("proteção Mercado Pago ausente; publicação impedida")
+    return json.loads(caminho.read_text(encoding="utf-8"))
 
 
 def agora():
@@ -90,6 +98,10 @@ def conferir_pacote(tag, versao):
     codigo = Path(versao.get("codigo") or "")
     if (RAIZ / "versoes" / CELULA).resolve() not in codigo.resolve().parents:
         raise ValueError("código fora das versões do publicador")
+    if CELULA == "aplicacao":
+        politica_mp = politica_mercadopago()
+        conferir_ambiente(RAIZ, politica_mp)
+        conferir_mp_pacote(codigo, versao["imagem"], politica_mp)
     pacote = identificar(codigo, versao["imagem"], RAIZ / "docker-compose.yml")
     if documento.get("pacote") != pacote:
         raise ValueError("pacote substituído ou combinação diferente da ensaiada")
@@ -224,12 +236,18 @@ def executar(acao):
                  if a and a["sha"] == tag and tag != estado["atual"]), None)
     if alvo is None:
         raise ValueError("destino aprovado distinto do que está no ar ausente")
+    versao = {"imagem": alvo.get("imagem") or imagem_padrao(tag), "codigo": alvo.get("codigo")}
+    if CELULA == "aplicacao":
+        politica_mp = politica_mercadopago()
+        conferir_ambiente(RAIZ, politica_mp)
+        if not versao["codigo"]:
+            raise ValueError("recuperação sem código protegido do Mercado Pago")
+        conferir_mp_pacote(Path(versao["codigo"]), versao["imagem"], politica_mp)
     origem = estado["atual"]
     estado["recuperacao"] = {"origem": origem, "alvo": tag, "estado": "tentando"}
     salvar(caminho, estado)
     inicio = time.monotonic()
     try:
-        versao = {"imagem": alvo.get("imagem") or imagem_padrao(tag), "codigo": alvo.get("codigo")}
         if versao["codigo"] and not Path(versao["codigo"]).is_dir():
             raise ValueError("pasta de código da aprovada ausente")
         garantir_imagem(versao["imagem"])

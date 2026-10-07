@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id
+from mercadopago_congelado import conferir_fontes, conferir_ambiente, conferir_pacote as conferir_mp_pacote
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,6 +56,14 @@ CELULA = re.compile(r"[a-z][a-z0-9_]*")
 ENDERECO = "https://meshcraft.top/"
 
 sys.path.insert(0, str(FERRAMENTAS / "ci"))
+
+
+def politica_mercadopago() -> dict:
+    # A referência pertence ao servidor, nunca à versão que pede publicação.
+    caminho = FERRAMENTAS / "mercadopago/politica.json"
+    if caminho.is_symlink() or not caminho.is_file():
+        raise RuntimeError("proteção Mercado Pago ausente; publicação impedida")
+    return json.loads(caminho.read_text(encoding="utf-8"))
 
 
 def agora() -> str:
@@ -320,13 +329,22 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
         try:
             fonte = trabalho / "fonte"
             extrair(sha, fonte)
+            politica_mp = politica_mercadopago() if celula == "aplicacao" else None
+            if politica_mp is not None:
+                conferir_fontes(fonte, politica_mp)
+                conferir_ambiente(RAIZ, politica_mp)
             codigo, imagem, construida, build_s = preparar_codigo(celula, sha, fonte, registro)
             imagem = imagem_id(imagem)
+            if politica_mp is not None:
+                conferir_mp_pacote(codigo, imagem, politica_mp)
             pacote = identificar(codigo, imagem, RAIZ / "docker-compose.yml")
             provas = PUBLICACOES / "provas" / pacote["id"]
             resultado = ensaiar(codigo, imagem, FERRAMENTAS, provas, registro)
             if identificar(codigo, imagem, RAIZ / "docker-compose.yml") != pacote:
                 raise RuntimeError("pacote ou configuração mudou durante o ensaio")
+            if politica_mp is not None:
+                conferir_ambiente(RAIZ, politica_mp)
+                conferir_mp_pacote(codigo, imagem, politica_mp)
             (provas / "pacote.json").write_text(json.dumps({"sha": sha, "pacote": pacote,
                 "resultado": resultado, "conferido_em": agora()}, sort_keys=True), encoding="utf-8")
             medidas.update(build_segundos=build_s, base_reconstruida=construida)
@@ -458,7 +476,8 @@ def lote_travado(base: str, head: str) -> int:
             falhas += situacao["resultado"][celula] != 0
             arquivo_lote.write_text(json.dumps(situacao))
     # A infra sincroniza com a versão que ficou no ar; a sincronização volta sozinha se o endereço não abrir.
-    if infra and journal("aplicacao") and head == git("rev-parse", "refs/heads/main"):
+    if (infra and not falhas and journal("aplicacao")
+            and head == git("rev-parse", "refs/heads/main")):
         with (LOGS / f"lote-{head[:12]}.log").open("a", encoding="utf-8") as registro:
             if not sincronizar_infra_aplicacao(head, registro):
                 falhas += 1
