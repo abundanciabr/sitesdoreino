@@ -1,3 +1,4 @@
+from apps.core import previa_aula3
 from apps.core import previa_aula2
 from django.urls import path, re_path
 
@@ -50,6 +51,9 @@ from apps.core.satisfacao import pesquisa as satisfacao
 # número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
 # pela qual `healthz` e `static/` já vêm antes dele.
 urlpatterns = [
+    path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3", previa_aula3.pagina, name="previa-aula3"),
+    path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3/", previa_aula3.pagina),
+    path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3/midia/<str:nome>", previa_aula3.midia),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-2", previa_aula2.pagina, name="previa-aula2"),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-2/", previa_aula2.pagina),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-2/midia/<str:nome>", previa_aula2.midia),
