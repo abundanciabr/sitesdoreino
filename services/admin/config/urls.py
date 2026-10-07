@@ -1,3 +1,4 @@
+from apps.core.nps import crm_satisfacao_revisao_salvar
 from django.conf import settings
 from django.urls import path, re_path
 from apps.core import galeria_comunidade as galeria_votacao
@@ -261,6 +262,7 @@ from apps.comercial.views import agentes_comerciais
 from apps.assistente.views import assistente_do_site
 
 urlpatterns = [
+    path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
     path("previa-aula-1", never_cache(require_GET(galeria_aula1.pagina)), name="galeria_aula1"),
     path("previa-aula-1/", never_cache(require_GET(galeria_aula1.pagina))),

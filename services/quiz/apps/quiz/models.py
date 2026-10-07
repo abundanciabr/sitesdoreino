@@ -70,6 +70,17 @@ class NPSAtendimento(models.Model):
     atualizada_em = models.DateTimeField(auto_now=True)
 
 
+class NPSRevisao(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tentativa = models.ForeignKey(NPSTentativa, on_delete=models.PROTECT, related_name="revisoes")
+    site_id = models.CharField(max_length=64)
+    aluno_id = models.CharField(max_length=128)
+    situacao_id = models.CharField(max_length=64)
+    tipo = models.CharField(max_length=20)
+    prova = models.JSONField(default=dict, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+
 class Quiz(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="quizzes")
     slug = models.SlugField(max_length=100)

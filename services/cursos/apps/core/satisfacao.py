@@ -90,7 +90,14 @@ def pesquisa(request, slug=None):
             if status == 200:
                 corpo = {"acao": request.POST.get("acao", "responder")}
                 if corpo["acao"] == "responder":
-                    corpo.update(pergunta_id=request.POST.get("pergunta_id", ""), valor=request.POST.get("valor", ""))
+                    pergunta = dados.get("proxima_pergunta") or {}
+                    valor = request.POST.getlist("valor") if pergunta.get("tipo") == "multipla" else request.POST.get("valor", "")
+                    corpo.update(pergunta_id=request.POST.get("pergunta_id", ""), valor=valor,
+                        complemento=request.POST.get("complemento", ""))
+                elif corpo["acao"] in ("nao_entendi", "corrigir"):
+                    corpo["pergunta_id"] = request.POST.get("pergunta_id", "")
+                elif corpo["acao"] == "concluir":
+                    corpo["confirmado"] = request.POST.get("confirmado") == "sim"
                 status, dados = pedir("POST", f"tentativas/{tid}/respostas", dono, corpo)
                 if status == 200:
                     return HttpResponseRedirect(reverse("satisfacao-curso", args=[slug]) + "?" + urlencode({"tentativa": tid}))
@@ -110,5 +117,9 @@ def pesquisa(request, slug=None):
         pergunta = dados.get("proxima_pergunta") or {}
         contexto["pergunta"] = pergunta
         contexto["nota_opcoes"] = range(11)
-        contexto["valor_atual"] = (dados.get("respostas") or {}).get(pergunta.get("id"), "")
+        atual = (dados.get("respostas") or {}).get(pergunta.get("id"), "")
+        contexto["valor_atual"] = atual.get("valor", "") if isinstance(atual, dict) else atual
+        contexto["complemento_atual"] = atual.get("complemento", "") if isinstance(atual, dict) else ""
+        contexto["revisado"] = (dados.get("config_documento") or {}).get("roteiro") == "revisado"
+        contexto["primeira_pergunta"] = pergunta.get("id") in ("nota", "P1", "A1")
     return render(request, "cursos/satisfacao.html", contexto, status=status if status not in (200, 201) else 200)

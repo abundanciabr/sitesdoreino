@@ -10,6 +10,7 @@
   {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
   {% if salvo %}<p class="recado" role="status">Nova versão da configuração salva.</p>{% endif %}
   {% if atendido %}<p class="recado" role="status">Atendimento registrado.</p>{% endif %}
+  {% if request.GET.revisado %}<p class="recado" role="status">Revisão registrada; o retrato foi atualizado pela área da pesquisa.</p>{% endif %}
 
   <form class="peneira espaco-20" method="get" action="{% url 'crm_satisfacao' %}">
     <input type="hidden" name="site_id" value="{{ site_id }}">
@@ -30,20 +31,80 @@
     <section class="cartao espaco-20">
       <h3>Curso: {{ avaliacao.curso_nome }}</h3>
       <p class="nota">Avaliação {{ forloop.counter }} · {{ avaliacao.status }} · aberta em {{ avaliacao.criada_em|default:"data indisponível" }}{% if avaliacao.concluida_em %} · concluída em {{ avaliacao.concluida_em }}{% endif %} · perguntas v{{ avaliacao.config_versao }} · cálculo v{{ avaliacao.calculo_versao }}</p>
-      {% if avaliacao.resultado %}
+      {% if avaliacao.resultado_exibido %}
+      {% if avaliacao.roteiro_revisado %}
+      <p><b>Quem respondeu:</b> {{ avaliacao.respondente_tela }}</p>
+      <p><b>Retrato atual:</b> {{ avaliacao.retrato_tela }}{% if avaliacao.resultado_exibido.suspenso %} · suspenso{% endif %}{% if avaliacao.resultado_exibido.provisorio %} · provisório{% endif %}</p>
+      {% if avaliacao.revisoes %}<p class="nota">Retrato na resposta original: {{ avaliacao.retrato_original }}. As revisões posteriores ficam datadas separadamente.</p>{% endif %}
+      {% if avaliacao.nps_disponivel %}<p><b>Nota de recomendação do adulto:</b> {{ avaliacao.resultado_exibido.nps }}. Esta nota fica separada do retrato.</p>{% endif %}
+      {% if avaliacao.leituras_tela %}<div class="cartoes">{% for leitura in avaliacao.leituras_tela %}<div class="cartao"><b>{{ leitura.nome }}:</b> {{ leitura.valor }}<p class="nota">{{ leitura.estado }}{% if leitura.valor_declarado %} · declarado pelo aluno: {{ leitura.valor_declarado }}{% endif %}{% if leitura.fonte %} · {{ leitura.fonte }}{% endif %}</p></div>{% endfor %}</div>{% endif %}
+      {% if avaliacao.sinais_tela %}<p><b>Sinais a conferir:</b></p><ul>{% for sinal in avaliacao.sinais_tela %}<li>{{ sinal.motivo }}{% if sinal.tipo %} · {{ sinal.tipo }}{% endif %}</li>{% endfor %}</ul>{% endif %}
+      <p class="nota">As leituras declaradas vêm das respostas. Registros desta escola aparecem nas evidências; participação na Hotmart/Herospark não está disponível.</p>
+      {% else %}
+      <p class="nota">Roteiro anterior: classificação e respostas preservadas como foram registradas; sem conversão para os retratos novos.</p>
       <p><b>NPS original:</b> {{ avaliacao.resultado.nps|default_if_none:"Não respondido" }}{% if avaliacao.resultado.classificacao %} · {{ avaliacao.resultado.classificacao }}{% endif %}</p>
       <p><b>Comportamento de indicação:</b> {% if avaliacao.resultado.indicacao_declarada == True %}Declarou indicação{% elif avaliacao.resultado.indicacao_declarada == False %}Não declarou indicação{% else %}Não informado{% endif %}{% if avaliacao.resultado.repercussao_pontos != None %} · repercussão {{ avaliacao.resultado.repercussao_pontos }}{% endif %}</p>
       <p><b>Evangelismo:</b> {{ avaliacao.resultado.evangelismo|default_if_none:"Indefinido" }} · <b>Neutralidade:</b> {{ avaliacao.resultado.neutralidade|default_if_none:"Indefinida" }} · <b>Detração:</b> {{ avaliacao.resultado.detracao|default_if_none:"Indefinida" }}</p>
       <p class="nota">Participação não disponível na Hotmart/Herospark.</p>
+      {% endif %}
       {% if avaliacao.motivos_tela %}<p><b>Motivos:</b> {{ avaliacao.motivos_tela|join:"; " }}</p>{% endif %}
-      {% if avaliacao.resultado.explicacao %}<p class="nota">{{ avaliacao.resultado.explicacao }}</p>{% endif %}
+      {% if avaliacao.resultado_exibido.explicacao %}<p class="nota">{{ avaliacao.resultado_exibido.explicacao }}</p>{% endif %}
       {% endif %}
       {% if avaliacao.respostas_tela %}<details><summary>Respostas, pontos e reclamações</summary><dl>{% for item in avaliacao.respostas_tela %}<dt>{{ item.pergunta }}</dt><dd>{{ item.resposta|default_if_none:"Não respondido" }}</dd>{% endfor %}</dl></details>{% endif %}
+      {% if avaliacao.roteiro_revisado %}<p><a href="{{ avaliacao.revisao_url }}">Conferir retrato, fatos e perguntas →</a></p>{% endif %}
       {% if avaliacao.registros_tela %}<details><summary>Histórico de respostas editadas ou abandonadas</summary><ol>{% for item in avaliacao.registros_tela %}<li>{{ item.quando }} · {{ item.pergunta }}: {{ item.resposta }}{% if item.editada %} · resposta editada{% endif %}</li>{% endfor %}</ol></details>{% endif %}
-      {% if avaliacao.qualidade %}<details><summary>Qualidade da resposta e evidências</summary><p>Estado: {{ avaliacao.qualidade.estado|default:"indefinido" }}{% if avaliacao.qualidade.duracao_segundos != None %} · duração: {{ avaliacao.qualidade.duracao_segundos }} s{% endif %}{% if avaliacao.qualidade.perguntas_exibidas_unicas != None %} · perguntas exibidas: {{ avaliacao.qualidade.perguntas_exibidas_unicas }}{% endif %}</p><dl>{% for item in avaliacao.evidencias_tela %}<dt>{{ item.rotulo }}</dt><dd>{{ item.valor }}</dd>{% endfor %}</dl>{% if avaliacao.evidencias_observacao %}<p>{{ avaliacao.evidencias_observacao }}</p>{% endif %}<p>Participação não disponível na Hotmart/Herospark.</p>{% if avaliacao.eventos_tela %}<ol>{% for evento in avaliacao.eventos_tela %}<li>{{ evento.quando }} · {{ evento.acao }}{% if evento.pergunta %} · {{ evento.pergunta }}{% endif %}</li>{% endfor %}</ol>{% endif %}</details>{% endif %}
+      {% if avaliacao.qualidade %}<details><summary>Qualidade da resposta e evidências</summary>{% if avaliacao.roteiro_revisado %}<p>Tempos por pergunta: somente medição, sem reprovar resposta automaticamente.</p>{% else %}<p>Estado: {{ avaliacao.qualidade.estado|default:"indefinido" }}{% if avaliacao.qualidade.duracao_segundos != None %} · duração: {{ avaliacao.qualidade.duracao_segundos }} s{% endif %}{% if avaliacao.qualidade.perguntas_exibidas_unicas != None %} · perguntas exibidas: {{ avaliacao.qualidade.perguntas_exibidas_unicas }}{% endif %}</p>{% endif %}<dl>{% for item in avaliacao.evidencias_tela %}<dt>{{ item.rotulo }}</dt><dd>{{ item.valor }}</dd>{% endfor %}</dl>{% if avaliacao.evidencias_observacao %}<p>{{ avaliacao.evidencias_observacao }}</p>{% endif %}<p>Participação não disponível na Hotmart/Herospark.</p>{% if avaliacao.tempos_tela %}<ul>{% for tempo in avaliacao.tempos_tela %}<li>{{ tempo.pergunta }}: {{ tempo.segundos|default_if_none:"Não medido" }} s{% if tempo.quando %} · {{ tempo.quando }}{% endif %}</li>{% endfor %}</ul>{% endif %}{% if avaliacao.eventos_tela %}<ol>{% for evento in avaliacao.eventos_tela %}<li>{{ evento.quando }} · {{ evento.acao }}{% if evento.pergunta %} · {{ evento.pergunta }}{% endif %}</li>{% endfor %}</ol>{% endif %}</details>{% endif %}
+      {% if avaliacao.evidencias_externas_tela %}<details><summary>Progresso externo informado manualmente</summary><p class="nota">Registros feitos pela equipe com fonte e data. Não são leitura automática da Hotmart ou Herospark nem confirmação isolada do retrato.</p><ul>{% for registro in avaliacao.evidencias_externas_tela %}<li>{{ registro.progresso }} · fonte: {{ registro.fonte }} · registrado em {{ registro.criado_em|date:"d/m/Y H:i" }}</li>{% endfor %}</ul></details>{% endif %}
       {% if aluno_id %}<p><a href="https://meshcraft.top/cursos/satisfacao/">Nova avaliação no site</a></p>{% endif %}
     </section>
     {% endfor %}
+  {% endif %}
+
+  {% if revisao_selecionada %}
+  <section class="cartao espaco-28" id="revisao">
+    <h2 class="titulo-de-bloco">Conferir esta avaliação</h2>
+    <p class="nota">{{ revisao_selecionada.curso_nome }} · {{ revisao_selecionada.respondente_tela }}. A resposta original permanece guardada; cada conferência tem sua própria data.</p>
+    {% if revisao_estado != 'ok' %}<p class="aviso borda-amarela">Não foi possível consultar os fatos e as revisões desta avaliação agora. Tente novamente.</p>{% else %}
+      <h3>Fatos disponíveis nesta escola</h3>
+      <dl>{% for item in revisao_dados.fatos_tela %}<dt>{{ item.rotulo }}</dt><dd>{{ item.valor }}</dd>{% endfor %}</dl>
+      {% if revisao_selecionada.evidencias_externas_tela %}<h4>Progresso externo informado manualmente</h4><ul>{% for registro in revisao_selecionada.evidencias_externas_tela %}<li>{{ registro.progresso }} · fonte: {{ registro.fonte }} · registrado em {{ registro.criado_em|date:"d/m/Y H:i" }}</li>{% endfor %}</ul>{% endif %}
+      {% if revisao_dados.fatos_observacao %}<p class="nota">{{ revisao_dados.fatos_observacao }}</p>{% endif %}
+      <p class="nota">Participação na Hotmart/Herospark não está disponível aqui. Nenhuma ausência de registro local prova abandono.</p>
+      {% if revisao_dados.revisoes %}<h3>Revisões anteriores</h3><ol>{% for revisao in revisao_dados.revisoes %}<li>{% if revisao.criada_em %}{{ revisao.criada_em }}{% elif revisao.registrada_em %}{{ revisao.registrada_em }}{% endif %} · {{ revisao.tipo }}{% if revisao.prova.fonte %} · fonte: {{ revisao.prova.fonte }}{% endif %}{% if revisao.prova.referencia %} · referência: {{ revisao.prova.referencia }}{% endif %}</li>{% endfor %}</ol>{% endif %}
+      {% if revisao_selecionada.outras_situacoes %}<h3>Classificar “Outra situação”</h3><form method="post" action="{% url 'crm_satisfacao_revisao_salvar' %}">{% csrf_token %}
+        <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="aluno_id" value="{{ revisao_selecionada.aluno_id }}"><input type="hidden" name="tentativa_id" value="{{ revisao_selecionada.id }}"><input type="hidden" name="email" value="{{ email }}">
+        <label class="campo">Situação para revisar<select name="situacao_id">{% for situacao in revisao_selecionada.outras_situacoes %}<option value="{{ situacao.id }}">{{ situacao.texto }}</option>{% endfor %}</select></label>
+        <label class="campo">Tipo da situação<select name="tipo"><option value="escola">Da escola</option><option value="opiniao">Opinião sobre o curso</option><option value="pessoal">Situação pessoal</option><option value="nenhum">Nenhuma dessas situações</option></select></label>
+        <p class="nota">Se houver um fato que ajude na revisão, registre de onde veio e como encontrá-lo. Sem referência, a leitura continua declarada.</p>
+        <label class="campo">Fonte do fato, se houver<input name="fonte" maxlength="300" placeholder="Ex.: atendimento da escola"></label>
+        <label class="campo">Referência da prova, se houver<input name="referencia" maxlength="1000" placeholder="Ex.: número do chamado ou endereço completo"></label>
+        <button type="submit">Registrar revisão</button>
+      </form>
+      {% endif %}
+      <details class="espaco-20"><summary>Conferir uma leitura com um fato</summary>
+        <p class="nota">Use um registro real com fonte e referência. Uma declaração pode ser confirmada ou entrar em conflito; satisfação é opinião e fica fora desta conferência.</p>
+        {% for fato in fatos_editor %}<form class="cartao espaco-20" method="post" action="{% url 'crm_satisfacao_revisao_salvar' %}">{% csrf_token %}
+          <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="aluno_id" value="{{ revisao_selecionada.aluno_id }}"><input type="hidden" name="tentativa_id" value="{{ revisao_selecionada.id }}"><input type="hidden" name="email" value="{{ email }}"><input type="hidden" name="situacao_id" value="{{ fato.id }}"><input type="hidden" name="tipo" value="fato">
+          <h4>{{ fato.titulo }}</h4><label class="campo">O que o fato mostra<select name="valor">{% for opcao in fato.opcoes %}<option value="{{ opcao.valor }}">{{ opcao.rotulo }}</option>{% endfor %}</select></label>
+          <label class="campo">Fonte do fato<input name="fonte" maxlength="300" required placeholder="Ex.: plataforma, pedido, conversa"></label>
+          <label class="campo">Referência para encontrar o registro<input name="referencia" maxlength="1000" required placeholder="Ex.: endereço completo ou número do registro"></label>
+          <button type="submit">Registrar fato de {{ fato.titulo|lower }}</button>
+        </form>{% endfor %}
+      </details>
+      {% if revisao_selecionada.perguntas_a_esclarecer %}<details class="espaco-20"><summary>Registrar esclarecimento de viva voz</summary>
+        <p class="nota">Use a resposta dada em conversa e uma referência que permita encontrá-la. O questionário original permanece intacto.</p>
+        {% for pergunta in revisao_selecionada.perguntas_a_esclarecer %}<form class="cartao espaco-20" method="post" action="{% url 'crm_satisfacao_revisao_salvar' %}">{% csrf_token %}
+          <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="aluno_id" value="{{ revisao_selecionada.aluno_id }}"><input type="hidden" name="tentativa_id" value="{{ revisao_selecionada.id }}"><input type="hidden" name="email" value="{{ email }}"><input type="hidden" name="situacao_id" value="{{ pergunta.id }}"><input type="hidden" name="tipo" value="esclarecimento">
+          <h4>{{ pergunta.texto }}</h4>
+          {% if pergunta.texto_livre %}<label class="campo">Resposta esclarecida<input name="valor" required></label>
+          {% elif pergunta.multipla %}<label class="campo">Respostas esclarecidas<select name="valor" multiple required size="6">{% for opcao in pergunta.opcoes %}<option value="{{ opcao.valor }}">{{ opcao.texto }}</option>{% endfor %}</select></label>
+          {% else %}<label class="campo">Resposta esclarecida<select name="valor" required>{% for opcao in pergunta.opcoes %}<option value="{{ opcao.valor }}">{{ opcao.texto }}</option>{% endfor %}</select></label>{% endif %}
+          <label class="campo">Complemento, se escolheu “Outra situação” ou “Outro motivo”<textarea name="complemento" maxlength="3000" rows="2"></textarea></label>
+          <label class="campo">Referência da conversa<input name="referencia" required maxlength="1000" placeholder="Ex.: data e registro do atendimento"></label><button type="submit">Registrar esclarecimento</button>
+        </form>{% endfor %}
+      </details>{% endif %}
+    {% endif %}
+  </section>
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-28">Atendimentos de satisfação</h2>
@@ -71,11 +132,13 @@
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-28">Perguntas e caminhos</h2>
-  <p class="nota">Ajuste os textos e a ordem das perguntas em cada faixa de nota. Salvar cria uma nova versão; avaliações antigas preservam a versão que receberam.</p>
+  <p class="nota">Ajuste os textos da pesquisa. O curso é pago uma única vez e o roteiro atual é para alunos adultos que pagaram. Salvar cria uma nova versão; avaliações antigas preservam a versão que receberam.</p>
   {% if estado_config == 'ok' %}<p class="nota">Versão atual: {{ config.versao }}</p>{% elif estado_config == 'sem-site' %}<p class="aviso">Informe o site para abrir a configuração.</p>{% else %}<p class="aviso borda-amarela">A configuração está indisponível agora. Não é seguro editar sem ler a versão atual.</p>{% endif %}
   {% if estado_config == 'ok' %}
   <form method="post" action="{% url 'crm_satisfacao_config_salvar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="modo" value="perguntas">
-    {% for pergunta in perguntas_editor %}<section class="cartao espaco-20"><label class="campo">Pergunta {{ forloop.counter }}<textarea name="pergunta__{{ pergunta.id }}" rows="2" required>{{ pergunta.texto }}</textarea></label>{% for opcao in pergunta.opcoes %}<label class="campo">Alternativa {{ forloop.counter }}<input name="opcao__{{ pergunta.id }}__{{ opcao.valor }}" value="{{ opcao.texto }}" required></label>{% endfor %}</section>{% endfor %}
+    {% for pergunta in perguntas_editor %}<section class="cartao espaco-20"><label class="campo">Pergunta {{ forloop.counter }}<textarea name="pergunta__{{ pergunta.id }}" rows="2" required>{{ pergunta.texto }}</textarea></label>{% for opcao in pergunta.opcoes %}<label class="campo">Alternativa {{ forloop.counter }}<input name="opcao__{{ pergunta.id }}__{{ opcao.valor }}" value="{{ opcao.texto }}" required></label>{% endfor %}{% for variante in pergunta.variantes %}<h4>Texto para quem {{ variante.rotulo|lower }}</h4><label class="campo">Pergunta nesta situação<textarea name="pergunta_variante__{{ pergunta.id }}__{{ variante.id }}" rows="2" required>{{ variante.texto }}</textarea></label>{% for opcao in variante.opcoes %}<label class="campo">Alternativa {{ forloop.counter }}<input name="opcao_variante__{{ pergunta.id }}__{{ variante.id }}__{{ opcao.valor }}" value="{{ opcao.texto }}" required></label>{% endfor %}{% endfor %}</section>{% endfor %}
+    {% for grupo in situacoes_editor %}<section class="cartao espaco-20"><h3>Situações apresentadas ao aluno</h3>{% for situacao in grupo.itens %}<label class="campo">{{ situacao.bloco|default:"Situação" }} {{ forloop.counter }}<input name="situacao__{{ grupo.grupo }}__{{ situacao.id }}" value="{{ situacao.texto }}" required></label>{% endfor %}</section>{% endfor %}
+    {% if settings_editor %}<section class="cartao espaco-20"><h3>Textos e ajustes da pesquisa</h3>{% for ajuste in settings_editor %}<label class="campo">{{ ajuste.chave }}{% if ajuste.booleano %}<select name="ajuste__{{ ajuste.bloco }}__{{ ajuste.chave }}"><option value="sim"{% if ajuste.valor %} selected{% endif %}>Sim</option><option value="nao"{% if not ajuste.valor %} selected{% endif %}>Não</option></select>{% else %}<textarea name="ajuste__{{ ajuste.bloco }}__{{ ajuste.chave }}" rows="2">{{ ajuste.valor }}</textarea>{% endif %}</label>{% endfor %}</section>{% endif %}
     {% for faixa in caminhos_editor %}<section class="cartao espaco-20"><h3>{{ faixa.titulo }}</h3>{% for posicao in faixa.posicoes %}<label class="campo">Passo {{ forloop.counter }}{% if posicao.fixa %}<input value="{{ posicao.selecionada }}" readonly><input type="hidden" name="caminho__{{ faixa.id }}__{{ posicao.indice }}" value="{{ posicao.id_selecionada }}">{% else %}<select name="caminho__{{ faixa.id }}__{{ posicao.indice }}">{% for escolha in posicao.opcoes %}<option value="{{ escolha.id }}"{% if escolha.selecionada %} selected{% endif %}>{{ escolha.texto }}</option>{% endfor %}</select>{% endif %}</label>{% endfor %}</section>{% endfor %}
     <button type="submit">Salvar nova versão</button>
   </form>

@@ -55,3 +55,11 @@ class NPSClient:
 
     def salvar_atendimento(self, corpo):
         return self.pedir("POST", "atendimentos", corpo=corpo)
+
+    def revisao(self, site_id, aluno_id, tentativa_id):
+        return self.pedir("GET", "revisao", params={
+            "site_id": site_id, "aluno_id": aluno_id, "tentativa_id": tentativa_id,
+        })
+
+    def salvar_revisao(self, corpo):
+        return self.pedir("POST", "revisao", corpo=corpo)

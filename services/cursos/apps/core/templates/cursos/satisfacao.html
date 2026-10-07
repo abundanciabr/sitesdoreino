@@ -11,33 +11,50 @@
 {% if entrar %}<p><a class="botao" href="/entrar?next=/cursos/satisfacao/">Entrar com meu cadastro da escola</a></p>
 {% elif curso %}
   {% if not tentativa %}
-  <p>A avaliação fica vinculada a você e a este curso. Comentários e dificuldades serão preservados para a equipe atender. Não é necessário ter assistido aulas neste site.</p>
+  <p>Queremos saber como está o curso para você. São poucas perguntas. Não existe resposta certa nem errada.</p>
+  <p>Suas respostas ficam ligadas ao cadastro, para a equipe poder ajudar se algo não estiver bom. Nada do que você responder muda o acesso ao curso.</p>
   <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><button type="submit">Começar avaliação</button></form>
   {% elif tentativa.status == 'concluida' %}
   <h2>Avaliação recebida</h2><p>Obrigado por compartilhar sua experiência. Suas respostas e comentários ficaram registrados para a equipe.</p>
-  <p>Nota informada: <strong>{{ tentativa.resultado.nps }}</strong></p>
+  {% if tentativa.resultado.nps != None %}<p>Nota informada: <strong>{{ tentativa.resultado.nps }}</strong></p>{% endif %}
   {% if tentativa.qualidade.audit_failed %}<p class="aviso">O preenchimento foi rápido. A qualidade desta tentativa ficou inconclusiva; suas respostas e reclamações continuam registradas.</p>{% endif %}
   <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="iniciar"><button type="submit">Fazer nova avaliação</button></form>
   {% else %}
   {% if pergunta %}
   <h2>{{ pergunta.texto }}</h2>
+  {% if pergunta.aviso %}<p>{{ pergunta.aviso }}</p>{% endif %}
   {% if pergunta.ajuda %}<p>{{ pergunta.ajuda }}</p>{% endif %}
   <form method="post">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="pergunta_id" value="{{ pergunta.id }}"><input type="hidden" name="acao" value="responder">
     {% if pergunta.tipo == 'nota' %}
     <div class="notas">{% for nota in nota_opcoes %}<label><input type="radio" name="valor" value="{{ nota }}" required>{{ nota }}</label>{% endfor %}</div><small>0 = não recomendaria · 10 = recomendaria com certeza</small>
+    {% elif pergunta.tipo == 'multipla' %}
+    <p>Marque todas as situações que aconteceram.</p>
+    {% for opcao in pergunta.opcoes %}{% ifchanged opcao.bloco %}{% if opcao.bloco %}<h3>{{ opcao.bloco }}</h3>{% endif %}{% endifchanged %}<label><input type="checkbox" name="valor" value="{{ opcao.valor }}" data-exclusiva="{{ opcao.exclusiva|yesno:'sim,nao' }}" {% if opcao.valor in valor_atual %}checked{% endif %}>{{ opcao.texto }}</label>{% endfor %}
+    {% if pergunta.id == 'A3' %}<label for="nps-complemento">Se marcou outra situação, conte aqui:</label><textarea id="nps-complemento" name="complemento" maxlength="3000">{{ complemento_atual }}</textarea>{% endif %}
     {% elif pergunta.opcoes %}
     {% for opcao in pergunta.opcoes %}<label><input type="radio" name="valor" value="{{ opcao.valor }}" {% if pergunta.obrigatoria %}required{% endif %} {% if valor_atual == opcao.valor %}checked{% endif %}>{{ opcao.texto }}</label>{% endfor %}
     {% else %}<textarea name="valor" maxlength="3000" {% if pergunta.obrigatoria %}required{% endif %} aria-label="{{ pergunta.texto }}">{{ valor_atual }}</textarea>{% endif %}
+    {% if pergunta.id == 'R10' or pergunta.id == 'A9' %}<label for="nps-motivo">Se marcou outro motivo, escreva aqui:</label><textarea id="nps-motivo" name="complemento" maxlength="3000">{{ complemento_atual }}</textarea>{% endif %}
     <button type="submit">Continuar</button>
   </form>
+  {% if revisado %}<form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="pergunta_id" value="{{ pergunta.id }}"><input type="hidden" name="acao" value="nao_entendi"><button class="secundario" type="submit">Não entendi a pergunta</button></form>{% endif %}
   {% else %}
-  <h2>Concluir avaliação</h2><p>Você pode voltar para conferir ou alterar respostas antes de enviar.</p>
-  <form method="post">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="concluir"><button type="submit">Enviar avaliação</button></form>
+  {% if revisado %}
+  <h2>Veja se entendemos direito</h2>
+  {% for frase in tentativa.conferencia.resumo %}<p>{{ frase }}</p>{% endfor %}
+  {% if tentativa.conferencia.corrigir %}<p>Escolha a resposta que deseja corrigir. As perguntas que dependem dela serão refeitas.</p>{% for resposta in tentativa.respostas_legiveis %}<form method="post" style="margin-top:12px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="corrigir"><input type="hidden" name="pergunta_id" value="{{ resposta.pergunta_id }}"><button class="secundario" type="submit">{{ resposta.pergunta }}</button></form>{% endfor %}
+  {% else %}<form method="post">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="concluir"><input type="hidden" name="confirmado" value="sim"><button type="submit">Sim, é isso</button></form>
+  <form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="revisar_conferencia"><button class="secundario" type="submit">Não, quero corrigir</button></form>{% endif %}
+  {% else %}<h2>Concluir avaliação</h2><p>Você pode voltar para conferir ou alterar respostas antes de enviar.</p>
+  <form method="post">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="concluir"><button type="submit">Enviar avaliação</button></form>{% endif %}
   {% endif %}
-  {% if pergunta.id != 'nota' %}<form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="voltar"><button class="secundario" type="submit">Voltar e alterar resposta</button></form>{% endif %}
+  {% if not primeira_pergunta %}<form method="post" style="margin-top:16px">{% csrf_token %}<input type="hidden" name="tentativa_id" value="{{ tentativa.id }}"><input type="hidden" name="acao" value="voltar"><button class="secundario" type="submit">Voltar e alterar resposta</button></form>{% endif %}
   {% endif %}
 {% else %}
   {% for item in cursos %}<p><a class="botao" href="{% url 'satisfacao-curso' item.slug %}">{{ item.nome }} · avaliar</a></p>{% empty %}{% if not erro %}<p>Não encontramos um curso vinculado à sua matrícula. Fale com a equipe para conferir o cadastro da escola.</p>{% endif %}{% endfor %}
 {% endif %}
 </section>
+<script>
+document.querySelectorAll('.nps input[type="checkbox"][name="valor"]').forEach(function(input){input.addEventListener('change',function(){if(!input.checked)return;document.querySelectorAll('.nps input[type="checkbox"][name="valor"]').forEach(function(other){if(other!==input&&(input.dataset.exclusiva==='sim'||other.dataset.exclusiva==='sim'))other.checked=false;});});});
+</script>
 {% endblock %}

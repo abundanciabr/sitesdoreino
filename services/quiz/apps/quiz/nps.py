@@ -4,13 +4,15 @@ import copy
 import json
 
 from django.db import transaction
+from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 
 from .editor import _authorized
-from .models import NPSAtendimento, NPSConfig, NPSTentativa, Site
+from .models import NPSAtendimento, NPSConfig, NPSTentativa, NPSRevisao, Site
+from . import nps_revisado
 
 
 CALCULO_VERSAO = 1
@@ -54,6 +56,8 @@ def _config(site_id):
 
 
 def _valid_document(document):
+    if isinstance(document, dict) and document.get("roteiro") == nps_revisado.ROTEIRO:
+        return nps_revisado.valid_document(document)
     if not isinstance(document, dict) or not isinstance(document.get("perguntas"), dict):
         return False
     for key, (original, kind, options) in PERGUNTAS.items():
@@ -103,6 +107,8 @@ def config(request):
             current = _config(site_id)
             current = NPSConfig.objects.create(site_id=site_id, versao=current.versao + 1, documento=document)
     else:
+        if request.GET.get("modelo") == nps_revisado.ROTEIRO:
+            return JsonResponse({"site_id": site_id, "versao": 0, "documento": nps_revisado.default_document()})
         current = _config(site_id)
     return JsonResponse({"site_id": site_id, "versao": current.versao, "documento": current.documento})
 
@@ -187,6 +193,15 @@ def _classify(a):
 
 
 def _serialize(attempt, include_question=True):
+    if attempt.config_documento.get("roteiro") == nps_revisado.ROTEIRO:
+        data = nps_revisado.serialize(attempt, include_question)
+        revisions = list(attempt.revisoes.order_by("criada_em"))
+        data["revisoes"] = [_revision(item) for item in revisions]
+        if attempt.status == "concluida":
+            overrides, facts, clarifications, context, pending = nps_revisado.review_context(attempt, revisions)
+            data["resultado_atual"] = nps_revisado.calculate(attempt, overrides, facts, clarifications) if revisions else attempt.resultado
+            data["perguntas_pendentes_revisao"] = pending
+        return data
     readable = []
     for key, value in attempt.respostas.items():
         question = attempt.config_documento["perguntas"].get(key, {})
@@ -222,7 +237,11 @@ def tentativas(request):
             return _error(f"{key} deve ser objeto.")
     config_row = _config(site_id)
     with transaction.atomic():
-        attempt = NPSTentativa.objects.create(site_id=site_id, aluno_id=aluno_id, site={"id": site.id, "nome": site.name, "host": site.host}, aluno=data.get("aluno", {}), produto=data.get("produto", {}), curso=data.get("curso", {}), matricula=data.get("matricula", {}), config_versao=config_row.versao, config_documento=config_row.documento, qualidade={"evidencias": data.get("evidencias", {}), "participacao_externa": "não disponível"})
+        revised = config_row.documento.get("roteiro") == nps_revisado.ROTEIRO
+        quality = {"evidencias": data.get("evidencias", {}), "participacao_externa": "não disponível"}
+        if revised:
+            quality.update({"ordem": nps_revisado.new_order(config_row.documento), "tempos_perguntas": [], "identidade_respondente": {"valor": "aluno_pagante", "fonte": "publico_adulto_confirmado_pelo_mantenedor"}})
+        attempt = NPSTentativa.objects.create(site_id=site_id, aluno_id=aluno_id, site={"id": site.id, "nome": site.name, "host": site.host}, aluno=data.get("aluno", {}), produto=data.get("produto", {}), curso=data.get("curso", {}), matricula=data.get("matricula", {}), config_versao=config_row.versao, config_documento=config_row.documento, calculo_versao=nps_revisado.CALCULO_VERSAO if revised else CALCULO_VERSAO, respostas={"P1": "aluno_pagante"} if revised else {}, respostas_registro=[{"pergunta_id": "P1", "valor": "aluno_pagante", "fonte": "publico_adulto_confirmado_pelo_mantenedor", "registrado_em": timezone.now().isoformat()}] if revised else [], qualidade=quality)
         result = _serialize(attempt)
     return JsonResponse(result, status=201)
 
@@ -256,6 +275,11 @@ def respostas(request, tentativa_id):
             return _error("Tentativa não encontrada.", 404)
         if attempt.status == "concluida":
             return _error("Histórico concluído é imutável.", 409)
+        if attempt.config_documento.get("roteiro") == nps_revisado.ROTEIRO:
+            error = nps_revisado.process(attempt, data)
+            if error:
+                return _error(error)
+            return JsonResponse(_serialize(attempt))
         action = data.get("acao", "responder")
         if action == "voltar":
             path = _flow(attempt.respostas, attempt.config_documento)
@@ -331,7 +355,7 @@ def historico(request):
     email = request.GET.get("email", "").strip()
     if not site_id or not (aluno_id or email):
         return _error("site_id e aluno_id ou email obrigatórios.")
-    evaluations = NPSTentativa.objects.filter(site_id=site_id, status="concluida")
+    evaluations = NPSTentativa.objects.filter(site_id=site_id).filter(Q(status="concluida") | Q(status="em_andamento", qualidade__confirmacao_recusada=True))
     if aluno_id:
         evaluations = evaluations.filter(aluno_id=aluno_id)
         cases = NPSAtendimento.objects.filter(site_id=site_id, aluno_id=aluno_id)
@@ -344,6 +368,61 @@ def historico(request):
 
 def _case(case):
     return {"id": str(case.id), "site_id": case.site_id, "aluno_id": case.aluno_id, "tentativa_id": str(case.tentativa_id) if case.tentativa_id else None, "responsavel": case.responsavel, "proximo_passo": case.proximo_passo, "prazo": case.prazo.isoformat() if case.prazo else None, "solucao": case.solucao, "status": case.status, "historico": case.historico, "criada_em": case.criada_em.isoformat(), "atualizada_em": case.atualizada_em.isoformat()}
+
+
+def _revision(item):
+    return {"id": str(item.id), "tentativa_id": str(item.tentativa_id), "site_id": item.site_id, "aluno_id": item.aluno_id, "situacao_id": item.situacao_id, "tipo": item.tipo, "prova": item.prova, "criada_em": item.criada_em.isoformat()}
+
+
+@csrf_exempt
+def revisao(request):
+    if not _authorized(request):
+        return _error("Não autorizado.", 401)
+    if request.method not in ("GET", "POST"):
+        return _error("Método inválido.", 405)
+    data = request.GET if request.method == "GET" else _body(request)
+    if data is None:
+        return _error("JSON inválido.")
+    site_id, aluno_id, attempt_id = data.get("site_id"), data.get("aluno_id"), data.get("tentativa_id")
+    if not site_id or not aluno_id or not attempt_id:
+        return _error("site_id, aluno_id e tentativa_id obrigatórios.")
+    attempt = NPSTentativa.objects.filter(pk=attempt_id, site_id=site_id, aluno_id=aluno_id, status="concluida").first()
+    if not attempt or attempt.config_documento.get("roteiro") != nps_revisado.ROTEIRO:
+        return _error("Avaliação revisada não encontrada.", 404)
+    if request.method == "GET":
+        evaluation = _serialize(attempt, False)
+        return JsonResponse({"fatos_disponiveis": attempt.qualidade.get("evidencias", {}), "revisoes": evaluation.get("revisoes", []), "perguntas_pendentes_revisao": evaluation.get("perguntas_pendentes_revisao", []), "avaliacao": evaluation})
+    situation = data.get("situacao_id")
+    kind = data.get("tipo")
+    proof = data.get("prova", {})
+    if not isinstance(proof, dict):
+        return _error("Prova deve ser um objeto.")
+    if kind in ("escola", "opiniao", "pessoal", "nenhum"):
+        if situation != "outra" or "outra" not in (nps_revisado._value(attempt.respostas, "A3") or []):
+            return _error("Outra situação não consta desta avaliação.")
+    elif kind == "fato":
+        if situation not in nps_revisado.FACT_VALUES or not isinstance(proof.get("valor"), str) or proof["valor"] not in nps_revisado.FACT_VALUES[situation]:
+            return _error("Fato ou valor inválido.")
+        if not all(isinstance(proof.get(key), str) and proof[key].strip() for key in ("fonte", "referencia")):
+            return _error("Fato exige fonte e referência.")
+    elif kind == "esclarecimento":
+        revisions = list(attempt.revisoes.order_by("criada_em"))
+        overrides, facts, clarifications, context, pending = nps_revisado.review_context(attempt, revisions)
+        is_unclear = situation in attempt.respostas and nps_revisado._value(attempt.respostas, situation) == nps_revisado.NAO_ENTENDI
+        is_new_pending = any(item["id"] == situation for item in pending)
+        if not is_unclear and not is_new_pending:
+            return _error("Pergunta não está pendente de esclarecimento.")
+        if proof.get("fonte") != "entrevista" or not isinstance(proof.get("referencia"), str) or not proof["referencia"].strip():
+            return _error("Esclarecimento exige entrevista e referência.")
+        error = nps_revisado._validate_answer(context, situation, proof.get("valor"), proof.get("complemento", ""), overrides)
+        if error:
+            return _error(error)
+        if context.config_documento["perguntas"][situation]["tipo"] == "nota" and isinstance(proof.get("valor"), str):
+            proof = {**proof, "valor": int(proof["valor"])}
+    else:
+        return _error("Tipo inválido.")
+    item = NPSRevisao.objects.create(tentativa=attempt, site_id=site_id, aluno_id=aluno_id, situacao_id=situation, tipo=kind, prova=proof)
+    return JsonResponse({"revisao": _revision(item), "avaliacao": _serialize(attempt, False)}, status=201)
 
 
 @csrf_exempt

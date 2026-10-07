@@ -22,6 +22,7 @@ urlpatterns = [
     path("interno/nps/tentativas/<uuid:tentativa_id>/respostas", nps.respostas),
     path("interno/nps/historico", nps.historico),
     path("interno/nps/atendimentos", nps.atendimentos),
+    path("interno/nps/revisao", nps.revisao),
     path("interno/comprador", comprador.comprador),
     path("healthz", healthz),
     path("interno/editor/quizzes", quizzes),
