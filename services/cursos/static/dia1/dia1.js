@@ -33,12 +33,13 @@ async function saveState(concluir=false){
  await saving;if(dirty&&!conflict){clearTimeout(timer);timer=setTimeout(()=>saveState().catch(()=>{}),600);}
 }
 function update(){
+ const translated=Boolean(state.ingles.trim()&&state.resposta.trim());
  $('next').disabled=!ready();$('back').disabled=state.etapa===0;$('next').hidden=state.etapa===11||(state.etapa===2&&!state.enviado);
- $('undo').disabled=state.historico.length===0;$('send').disabled=!state.ingles.trim()||!state.traduzido||state.enviado||sending||translating;
+ $('undo').disabled=state.historico.length===0;$('send').disabled=!translated||!state.traduzido||state.enviado||sending||translating;
  $('translate-response').disabled=!state.resposta.trim()||translating||sending;
- $('translate-response').textContent=translating?'Traduzindo…':state.ingles.trim()?'Traduzir novamente':'Traduzir minha resposta';
- $('translate-response').classList.toggle('d1-secondary',Boolean(state.ingles.trim()));
- $('preview').hidden=!state.ingles.trim();$('en').textContent=state.ingles;
+ $('translate-response').textContent=translating?'Traduzindo…':translated?'Traduzir novamente':'Traduzir minha resposta';
+ $('translate-response').classList.toggle('d1-secondary',translated);
+ $('preview').hidden=!translated;$('en').textContent=state.ingles;
  $('reply').hidden=state.etapa!==2||state.enviado||!state.traduzido;$('pt-result').hidden=!state.traduzido;
  $('translate-request').hidden=state.traduzido;
  $('price-summary').textContent=state.preco?'US$ '+state.preco:'não informado';
@@ -88,7 +89,7 @@ $('response').oninput=editReply;$('price').oninput=editReply;
 $('example').onclick=()=>{$('response').value='Olá, Alex! Posso fazer as orelhas. Vou começar hoje.';editReply();};
 $('edit').onclick=()=>{state.etapa=2;state.enviado=false;touch();show(true);};
 $('translate-response').onclick=async()=>{if(!state.resposta.trim()||translating)return;const response=state.resposta,price=state.preco;translating=true;update();$('reply-status').textContent='';try{const proposal=response+(price?' O preço é US$ '+price+'.':'');const out=await post(config.tradutor,{texto:proposal,direcao:'en'});if(state.resposta!==response||state.preco!==price){$('reply-status').textContent='Você mudou a resposta. Traduza a nova versão antes de enviar.';return;}state.ingles=out.texto;touch();$('reply-status').textContent='Tradução pronta. Confira a mensagem abaixo e envie quando estiver pronto.';}catch(e){$('reply-status').textContent=e.message;}finally{translating=false;update();}};
-$('send').onclick=async()=>{if(!state.ingles||!state.traduzido||sending||translating)return;sending=true;state.enviado=true;const previous=state.etapa;state.etapa=3;touch(false);try{await saveState();show(true);}catch(e){state.enviado=false;state.etapa=previous;dirty=true;$('reply-status').textContent=e.message;}finally{sending=false;update();}};
+$('send').onclick=async()=>{if(!state.ingles||!state.resposta.trim()||!state.traduzido||sending||translating)return;sending=true;state.enviado=true;const previous=state.etapa;state.etapa=3;touch(false);try{await saveState();show(true);}catch(e){state.enviado=false;state.etapa=previous;dirty=true;$('reply-status').textContent=e.message;}finally{sending=false;update();}};
 $('promise').onclick=async()=>{state.promessa=true;state.mural=$('public').checked;touch(false);try{await saveState();update();renderMural();feedback('Sua promessa foi registrada.');}catch(e){feedback(e.message);}};
 $('complete').onclick=async()=>{try{touch(false);await saveState(true);update();feedback('Prática concluída. Seu pedido, orelha e promessa estão guardados.');location.reload();}catch(e){feedback(e.message);}};
 $('save-now').onclick=()=>{dirty=true;saveState().catch(e=>feedback(e.message));};
