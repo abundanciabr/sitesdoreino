@@ -85,6 +85,10 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 # apenas o hash do token previamente confirmado como test_user habilita sandbox.
 MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN", "")
 MP_TEST_ACCOUNT_TOKEN_SHA256 = os.environ.get("MP_TEST_ACCOUNT_TOKEN_SHA256", "")
+MP_PRODUCTION_ACCESS_TOKEN = os.environ.get("MP_PRODUCTION_ACCESS_TOKEN", "")
+MP_PRODUCTION_WEBHOOK_SECRET = os.environ.get("MP_PRODUCTION_WEBHOOK_SECRET", "")
+MP_PRODUCTION_ENABLED_SITES = frozenset(filter(None, os.environ.get("MP_PRODUCTION_ENABLED_SITES", "").split(",")))
+MP_PRODUCTION_PRODUCT_IDS = frozenset(filter(None, os.environ.get("MP_PRODUCTION_PRODUCT_IDS", "").split(",")))
 # Nome na fatura do cartão (até 13 caracteres) e categoria dos itens enviados ao
 # MP. O cartão pelo MP só roda em meshcraft.top, que vende cursos ("learnings"
 # na lista pública GET https://api.mercadopago.com/item_categories).

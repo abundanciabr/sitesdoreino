@@ -22,6 +22,11 @@
       ],
       "ofertas": [
         {
+          "slug": "teste-mercado-pago",
+          "price_cents": 990,
+          "produto": { "slug": "teste-mercado-pago", "name": "Teste do Mercado Pago em produção" }
+        },
+        {
           "slug": "curso-teste",
           "price_cents": 990,
           "produto": { "slug": "curso-teste", "name": "Curso de Teste" }

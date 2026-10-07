@@ -10,6 +10,17 @@ from conftest import HOST_A, SITE_A
 AMBIENTE = "/api/checkout/interno/ambiente"
 
 
+def test_pix_do_produto_de_producao_e_os_demais_continuam_em_teste(settings):
+    from apps.core.api import _ambiente_de_teste
+
+    settings.MP_PUBLIC_KEY = "TEST-simulada"
+    settings.MP_PRODUCTION_ENABLED_SITES = frozenset({SITE_A["id"]})
+    settings.MP_PRODUCTION_PRODUCT_IDS = frozenset({"produto-producao"})
+    assert not _ambiente_de_teste(SITE_A["id"], "pix", False, "produto-producao")
+    assert _ambiente_de_teste(SITE_A["id"], "pix", False, "outro-produto")
+    assert _ambiente_de_teste("outro-site", "pix", False, "produto-producao")
+
+
 @pytest.fixture
 def sem_provedor_de_producao(settings):
     settings.MP_PUBLIC_KEY = "TEST-aaaa-bbbb"

@@ -67,7 +67,8 @@ def com_referencias_do_pedido(dados: dict[str, Any], intent: Intent) -> dict[str
 
     provider = dados.get("provider")
     if ((provider == "appmax" and "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower())
-            or (provider == "mercadopago" and mp_em_teste())):
+            or (provider == "mercadopago" and mp_em_teste()
+                and metadata.get("mp_ambiente") != "producao")):
         extras["ambiente"] = "sandbox"
     return {**dados, **extras} if extras else dados
 

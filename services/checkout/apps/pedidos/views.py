@@ -32,6 +32,10 @@ def dados(request, offer_slug: str):
         "checkout/dados.html",
         {
             "offer_slug": offer_slug,
+            "mp_production_test": (
+                offer_slug == "teste-mercado-pago"
+                and request.site["id"] in settings.MP_PRODUCTION_ENABLED_SITES
+            ),
             "atribuicao": atribuicao_da_consulta(request.GET),
             "api_token": settings.TOKEN_DA_PAGINA,
             "api_base": _api_base(request),

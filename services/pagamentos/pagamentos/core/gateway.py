@@ -12,12 +12,45 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 from decimal import Decimal, InvalidOperation
 from typing import Any, TypeVar
+from uuid import UUID
+
+from django.conf import settings
+from django.db.models import Q
 
 from pagamentos.providers.appmax.client import AppmaxClient, AppmaxError
 from pagamentos.providers.mercadopago.client import MercadoPagoClient, MercadoPagoError
 
 
 T = TypeVar("T")
+
+
+def _cliente_mp(*, operation_id: str = "", payment_id: str = "") -> MercadoPagoClient:
+    # O ambiente fica na intenção persistida: consulta e devolução usam a
+    # mesma conta que criou a cobrança, inclusive depois de mudar a oferta.
+    if not (settings.MP_PRODUCTION_ACCESS_TOKEN or settings.MP_PRODUCTION_PRODUCT_IDS):
+        return MercadoPagoClient()
+    from pagamentos.core.models import PaymentAttempt
+
+    tentativa = None
+    if operation_id:
+        try:
+            operation_uuid = UUID(operation_id)
+        except (ValueError, TypeError, AttributeError):
+            operation_uuid = None
+        if operation_uuid is not None:
+            tentativa = PaymentAttempt.objects.filter(
+                Q(operation_id=operation_uuid) | Q(operacoes__operation_id=operation_uuid),
+                provider="mercadopago",
+            ).select_related("intent").first()
+    elif payment_id:
+        tentativa = PaymentAttempt.objects.filter(
+            provider="mercadopago", provider_reference_id=payment_id,
+        ).select_related("intent").first()
+    if tentativa and tentativa.intent.metadata.get("mp_ambiente") == "producao":
+        if not settings.MP_PRODUCTION_ACCESS_TOKEN:
+            raise FalhaNoProvedor("credencial de produção do Mercado Pago ausente")
+        return MercadoPagoClient(access_token=settings.MP_PRODUCTION_ACCESS_TOKEN)
+    return MercadoPagoClient()
 
 
 class FalhaNoProvedor(Exception):
@@ -119,7 +152,7 @@ def criar_pagamento_pix(
     envio_ambiguo_anterior: bool = False,
 ) -> ResultadoPix:
     try:
-        resposta = MercadoPagoClient().criar_pagamento_pix(
+        resposta = _cliente_mp(operation_id=order_id).criar_pagamento_pix(
             idempotency_key=idempotency_key,
             amount_cents=amount_cents,
             order_id=order_id,
@@ -183,14 +216,14 @@ def traduzir_pagamento_card(resposta: dict[str, Any]) -> ResultadoCard:
 
 def buscar_por_referencia(*, external_reference: str) -> list[dict[str, Any]]:
     try:
-        return MercadoPagoClient().buscar_por_referencia(external_reference)
+        return _cliente_mp(operation_id=external_reference).buscar_por_referencia(external_reference)
     except MercadoPagoError as exc:
         raise FalhaNoProvedor(str(exc), ambiguo=exc.ambiguo) from exc
 
 
 def estornar_pagamento(*, payment_id: str, idempotency_key: str) -> dict[str, Any]:
     try:
-        return MercadoPagoClient().estornar_pagamento(
+        return _cliente_mp(payment_id=payment_id).estornar_pagamento(
             payment_id=payment_id, idempotency_key=idempotency_key
         )
     except MercadoPagoError as exc:
@@ -252,7 +285,7 @@ def consultar_status_do_pagamento(*, payment_id: str) -> StatusDoPagamento:
     corpo ilegível ou resposta sem `status` levantam FalhaNoProvedor (o webhook
     responde 5xx e o MP reentrega; nunca se decide sem a fonte de verdade)."""
     try:
-        resposta = MercadoPagoClient().obter_pagamento(payment_id)
+        resposta = _cliente_mp(payment_id=payment_id).obter_pagamento(payment_id)
     except MercadoPagoError as exc:
         raise FalhaNoProvedor(str(exc), ambiguo=exc.ambiguo) from exc
     payment_id_confirmado = _exigir_id(resposta)

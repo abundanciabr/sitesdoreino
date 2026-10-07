@@ -517,9 +517,13 @@ def _nova_sessao_do_link(link, anterior, oferta: dict, lead_id: str, visitante):
     return nova
 
 
-def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool) -> bool:
+def _ambiente_de_teste(site_id: str, method: str, pix_appmax: bool, product_id: str = "") -> bool:
     """O pedido nasce contra o sandbox do provedor que vai cobrar? Então o
     dinheiro não é real e o pedido fica fora dos totais de receita."""
+    if (method == "pix" and not pix_appmax
+            and site_id in settings.MP_PRODUCTION_ENABLED_SITES
+            and product_id in settings.MP_PRODUCTION_PRODUCT_IDS):
+        return False
     usa_appmax = pix_appmax if method == "pix" else site_id in settings.APPMAX_CARD_ENABLED_SITES
     if usa_appmax:
         return "sandboxappmax.com.br" in settings.APPMAX_API_URL.lower()
@@ -755,7 +759,7 @@ def _fechar_pedido(
     # Pedido contra o sandbox do provedor: o aviso `pedido.criado` e os avisos
     # do pagamento levam `ambiente: sandbox` (o leads lê esse campo), e o CRM
     # não conta a compra de teste como venda.
-    em_teste = _ambiente_de_teste(site["id"], method, pix_appmax)
+    em_teste = _ambiente_de_teste(site["id"], method, pix_appmax, str(itens[0]["product_id"]))
     sinal_de_teste = {"ambiente": "sandbox"} if em_teste else {}
     comprador = {
         "email": email,

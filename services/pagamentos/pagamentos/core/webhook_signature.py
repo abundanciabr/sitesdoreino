@@ -56,7 +56,10 @@ def assinatura_valida(request: HttpRequest) -> bool:
 
     Segredo vazio ⇒ False sempre: com chave vazia qualquer um calcularia o
     HMAC e forjaria um "pago". O site sobe; o webhook responde 403."""
-    if not settings.MP_WEBHOOK_SECRET:
+    segredos = tuple(filter(None, (
+        settings.MP_WEBHOOK_SECRET, settings.MP_PRODUCTION_WEBHOOK_SECRET,
+    )))
+    if not segredos:
         return False
     cabecalho = request.headers.get("x-signature", "")
     partes = dict(p.split("=", 1) for p in cabecalho.split(",") if "=" in p)
@@ -69,10 +72,9 @@ def assinatura_valida(request: HttpRequest) -> bool:
     if not data_id or not request_id:
         return False
     manifest = _manifest(data_id=data_id, request_id=request_id, ts=ts)
-    esperado = hmac.new(
-        settings.MP_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256
-    ).hexdigest()
-    if not hmac.compare_digest(esperado, v1):
+    if not any(hmac.compare_digest(hmac.new(
+        segredo.encode(), manifest.encode(), hashlib.sha256,
+    ).hexdigest(), v1) for segredo in segredos):
         return False
     try:
         ts_segundos = int(ts)

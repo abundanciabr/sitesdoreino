@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from pagamentos.core import gateway, ledger
-from pagamentos.core.ambiente_mp import mp_em_teste
+from pagamentos.core.ambiente_mp import mp_em_teste, produto_mp_em_producao
 from pagamentos.core.models import Intent, PaymentAttempt
 from pagamentos.core.observacoes import observar_mp
 from pagamentos.core.tentativas import (
@@ -93,6 +93,11 @@ def criar_intent_pix(
     e NUNCA chega a chamar o Mercado Pago. `transaction.atomic()` isola essa
     tentativa num savepoint: se falhar, quem chamou (api/intents.py) ainda
     consegue consultar o banco normalmente para devolver a intent vencedora."""
+    metadata = dict(metadata)
+    metadata.pop("mp_ambiente", None)
+    if produto_mp_em_producao(site_id, str(metadata.get("product_id") or "")):
+        metadata["mp_ambiente"] = "producao"
+        metadata.pop("ambiente", None)
     if site_id in settings.APPMAX_PIX_FALLBACK_SITES:
         candidato = Intent(
             site_id=site_id,
