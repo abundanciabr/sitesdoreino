@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fone colorido com orelhas de gato · Meshcraft Academy</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font:16px/1.5 system-ui,sans-serif;color:#272531;background:#faf9f6}main{max-width:1120px;margin:auto;padding:24px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}h1{font-size:24px;margin:0}p{margin:8px 0;color:#686572}a{color:#7954ed}button,.download{font:inherit;font-weight:600;border-radius:9px;padding:10px 16px;border:1px solid #dedbe4;cursor:pointer;background:white;color:#6241ce;text-decoration:none;display:inline-block}.download{background:#7954ed;color:white;border-color:#7954ed}.layout{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:24px;margin-top:24px}.model{background:white;border:1px solid #e5e2e9;border-radius:14px;overflow:hidden}#viewport{height:560px;touch-action:none;position:relative}canvas{display:block;width:100%;height:100%}.controls{padding:14px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #e5e2e9}aside{background:white;border:1px solid #e5e2e9;border-radius:14px;padding:16px;align-self:start}aside img{width:100%;height:auto;border-radius:8px}h2{font-size:16px;margin:0 0 12px}.hint{padding:0 16px 12px;font-size:14px}button:focus-visible,a:focus-visible{outline:3px solid #7954ed;outline-offset:3px}@media(max-width:700px){main{padding:16px}h1{font-size:20px}.layout{grid-template-columns:1fr;gap:16px}#viewport{height:400px}aside img{max-width:220px}aside{display:flex;gap:16px;align-items:center}aside img{width:110px}aside h2{margin:0}}
+</style>
+<main>
+ <header><div><h1>Fone colorido com orelhas de gato</h1><p>Modelo low poly · Dia 1 do desafio</p></div><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/parte-1/PET">Voltar à aula</a></header>
+ <div class="layout"><section class="model" aria-label="Modelo 3D do fone"><div id="viewport" role="img" aria-label="Fone magenta com duas orelhas de gato, almofadas brancas e detalhes amarelos. Arraste para girar."></div><div class="controls"><button id="angle">Vista da referência</button><button id="front">Vista de frente</button><a class="download" href="fone-gato-low-poly.glb" download>Baixar modelo 3D</a></div><p class="hint" id="status" role="status">Arraste para girar. Use a roda do mouse ou dois dedos para aproximar.</p></section><aside><img src="fone-gato-referencia.png" width="420" height="420" alt="Imagem de referência enviada para o fone"><h2>Imagem de referência</h2></aside></div>
+</main>
+<script type="module">
+import * as THREE from '../praticas-3d/bibliotecas/three-0.170.0/three.module.js';
+import {OrbitControls} from '../praticas-3d/bibliotecas/three-0.170.0/OrbitControls.js';
+import {GLTFLoader} from '../praticas-3d/bibliotecas/three-0.170.0/GLTFLoader.js';
+const host=document.querySelector('#viewport'),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(35,1,.1,100),renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setClearColor(0xffffff);renderer.outputColorSpace=THREE.SRGBColorSpace;host.append(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0xb4a5bb,2));const light=new THREE.DirectionalLight(0xffffff,2.3);light.position.set(-3,6,5);scene.add(light);
+const fill=new THREE.DirectionalLight(0xffffff,.7);fill.position.set(4,2,-3);scene.add(fill);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.8,0);controls.enablePan=false;controls.minDistance=4;controls.maxDistance=12;controls.minPolarAngle=.25;controls.maxPolarAngle=Math.PI*.85;
+const render=()=>renderer.render(scene,camera);controls.addEventListener('change',render);
+function vista(frente=false){camera.position.set(frente?0:4.5,frente?2:3.2,frente?7.3:6.5);controls.update();render();}
+document.querySelector('#front').onclick=()=>vista(true);document.querySelector('#angle').onclick=()=>vista();
+new ResizeObserver(()=>{renderer.setSize(host.clientWidth,host.clientHeight,false);camera.aspect=host.clientWidth/host.clientHeight;camera.updateProjectionMatrix();render();}).observe(host);
+new GLTFLoader().load('fone-gato-low-poly.glb?v=1',gltf=>{scene.add(gltf.scene);vista();},undefined,()=>{document.querySelector('#status').textContent='Não foi possível abrir a vista 3D. Recarregue a página ou baixe o modelo.';});
+vista();
+</script>
+</html>

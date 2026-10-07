@@ -1,17 +1,17 @@
-import {criar} from './editor.js';
+import {criar} from './editor.js?v=2';
 const config=JSON.parse(document.getElementById('dia1-config').textContent),root=document.getElementById('dia1');
 const $=id=>root.querySelector('#d1-'+id),state=config.estado,csrf=root.querySelector('[name=csrfmiddlewaretoken]').value;
 const resumeVideo=state.video;
-let revision=state.revisao,engine=null,tool='girar',timer=null,saving=null,dirty=false,conflict=false,finished=config.legado,translating=false,sending=false,videoCheckpoint=state.video;
+let revision=state.revisao,engine=null,tool='girar',referenceMode=false,timer=null,saving=null,dirty=false,conflict=false,finished=config.legado,translating=false,sending=false,videoCheckpoint=state.video;
 const steps=[
  ['Boas-vindas e trato da semana','Hoje você começa um pedido. Veja como a semana funciona e continue quando estiver pronto.','welcome','Dia 1 de 7. Eu sou a Lívia, e essa semana eu não vou te dar aula. Eu vou te dar um cliente.'],
  ['O pedido chega','Alex mandou uma mensagem em inglês. Traduza o pedido para entender o que ele precisa.','conversation','Relaxa: eu também não sabia quando comecei.'],
- ['Responda ao Alex','Escreva em português, traduza e confira o inglês antes de enviar na conversa simulada.','conversation','Leu? Ele tem uma loja e quer orelhas de gato. Agora a gente responde.'],
+ ['Responda ao Alex','Escreva em português, traduza e confira o inglês antes de enviar na conversa simulada.','conversation','Leu? Ele tem uma loja e quer um fone colorido com orelhas de gato. Agora a gente responde.'],
  ['Pedido fechado','Veja sua resposta na conversa e a confirmação do Alex. O pedido é simulado. Agora vamos atender.','conversation','Fechado. Você acabou de fechar um pedido com um cliente de outro país sem falar uma palavra de inglês. Copiar e colar. É isso.'],
  ['Girar · conheça o seu cubo','Arraste em volta do cubo para girar a vista, com o mouse ou com o dedo.','model','Esse cubo é o seu material de trabalho. Quase tudo que eu faço começa com um cubo.'],
  ['Esticar · a primeira forma','Escolha Esticar e arraste o cubo para cima até ele ficar mais alto do que largo.','model','Não tem medida certa, é no olho.'],
  ['Afinar · o pulo do gato','Escolha Afinar e arraste a ponta de cima para dentro. Veja o cubo virar orelha.','model','Agora o pulo do gato, literalmente. Olha o cubo virando orelha.'],
- ['Mover · a orelha à esquerda','Volte à vista de frente. Escolha Mover e arraste a orelha para o lado esquerdo da tiara.','model','Ficou torta? Tem o Desfazer ali. Você não estraga nada aqui.'],
+ ['Mover · a orelha à esquerda','Volte à vista de frente. Escolha Mover e arraste a orelha para o lado esquerdo do arco do fone.','model','Ficou torta? Tem o Desfazer ali. Você não estraga nada aqui.'],
  ['Olhar · confira todos os lados','Escolha Girar novamente. Observe sua orelha por outros ângulos.','model','Isso que tá na sua tela é um objeto 3D feito por você. Agora há pouco você nunca tinha feito um.'],
  ['No Blender de verdade','Acompanhe a sequência indicada na prévia. Sua orelha continua guardada aqui.','blender','Girar. Esticar. Afinar a ponta. Mover. Mesmos passos, mesma ordem.'],
  ['Promessa ao cliente','Marque o seu dia. Se quiser, compartilhe só a data da promessa no mural.','promise','Prometeu. Agora tem alguém te esperando. Com cliente esperando, a gente dá um jeito de aparecer.'],
@@ -46,15 +46,15 @@ function update(){
  $('next').textContent=state.etapa===1?'Responder ao Alex →':state.etapa===2?'Ver pedido confirmado →':state.etapa===3?'Começar a modelar →':'Continuar →';
  $('sent').hidden=!state.enviado;$('my-message').textContent=state.ingles;
  $('price-confirmed').textContent=state.enviado&&state.preco?'Preço combinado: US$ '+state.preco+' · somente na simulação.':'';
- $('object-info').textContent=(state.objeto.ponta<.5?'Orelha selecionada':'Cubo selecionado')+' · '+(state.objeto.x<-.4?'lado esquerdo':'centro');
+ $('object-info').textContent=referenceMode?'Modelo completo · referência':(state.objeto.ponta<.5?'Orelha selecionada':'Cubo selecionado')+' · '+(state.objeto.x<-.4?'lado esquerdo':'centro');
  $('promise-status').textContent=state.promessa?'Dia marcado. Sua promessa está guardada'+(state.mural?' e sua data participa do mural.':'.'):'';
  $('complete').disabled=finished;$('complete-status').textContent=finished?'Sua aula está concluída. Você pode voltar à prática sempre que quiser.':'';
  const regular=document.querySelector('#concluir button[type=submit]');if(regular&&!config.legado){regular.disabled=!finished;regular.title='Conclua a prática acima para registrar esta aula.';}
- const summary='Primeira orelha à esquerda da tiara. Promessa para '+dateText(state.prazo||config.prazo)+'.'+(state.preco?' Preço fictício combinado: US$ '+state.preco+'.':'');$('summary').textContent=summary;
+ const summary='Primeira orelha à esquerda do fone colorido. Promessa para '+dateText(state.prazo||config.prazo)+'.'+(state.preco?' Preço fictício combinado: US$ '+state.preco+'.':'');$('summary').textContent=summary;
  if(engine&&tool!=='girar'){const k=tool==='esticar'?'altura':tool==='afinar'?'ponta':'x';$('range').value=state.objeto[k];}
 }
-function selectTool(t){tool=t;root.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));engine?.setTool(t);
- const labels={girar:['Girar a vista','Arraste em volta do objeto. As formas não mudam.','Arraste para olhar de cima e dos lados. Também pode usar os botões Girar ← e Girar →.'],esticar:['Altura','Arraste o cubo para cima. O controle Altura também estica a forma.','Estique até a altura superar a largura. Não há uma medida exata.'],afinar:['Largura da ponta','Arraste a ponta superior para a esquerda, para dentro.','A base mantém a largura. Só os vértices de cima se aproximam, formando a ponta.'],mover:['Posição à esquerda / direita','Na vista de frente, arraste o objeto para a esquerda e para baixo, até tocar a tiara.','A esquerda é a da vista de frente. Para comparar com a referência, use Vista de frente. O controle de posição também move a peça.']};
+function selectTool(t){referenceMode=false;root.querySelector('.d1-adjust').hidden=false;$('reference-model').textContent='Ver fone completo';$('reference-model').setAttribute('aria-pressed','false');$('viewport-caption').textContent='Sua prática · modele a primeira orelha';tool=t;root.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));engine?.setTool(t);
+ const labels={girar:['Girar a vista','Arraste em volta do objeto. As formas não mudam.','Arraste para olhar de cima e dos lados. Também pode usar os botões Girar ← e Girar →.'],esticar:['Altura','Arraste o cubo para cima. O controle Altura também estica a forma.','Estique até a altura superar a largura. Não há uma medida exata.'],afinar:['Largura da ponta','Arraste a ponta superior para a esquerda, para dentro.','A base mantém a largura. Os vértices de cima se aproximam, formando a ponta. O interior amarelo aparece na orelha.'],mover:['Posição à esquerda / direita','Na vista de frente, arraste o objeto para a esquerda e para baixo, até tocar o arco do fone.','A esquerda é a da vista de frente. Para comparar com a referência, use Vista de frente. O controle de posição também move a peça.']};
  $('range-label').textContent=labels[t][0];$('tool-hint').textContent=labels[t][1];$('help-text').textContent=labels[t][2];$('range').hidden=t==='girar';$('range-label').hidden=t==='girar';
  $('range').min=t==='esticar'?.5:t==='afinar'?.03:-2.5;$('range').max=t==='esticar'?3:t==='afinar'?1.5:2.5;
  $('less').textContent=t==='girar'?'Girar ←':t==='mover'?'Mover à esquerda':'Diminuir';$('more').textContent=t==='girar'?'Girar →':t==='mover'?'Mover à direita':'Aumentar';update();
@@ -65,8 +65,8 @@ function show(focus=false){
  root.querySelectorAll('[data-d1-panel]').forEach(p=>p.hidden=p.dataset.d1Panel!==panel&&!(panel==='finish'&&p.dataset.d1Panel==='model'));
  $('response').value=state.resposta;$('price').value=state.preco;
  $('original').open=!state.traduzido;$('order').hidden=state.etapa===3;
- $('pt').textContent=state.traduzido?'Oi! Tenho uma loja no Roblox. Você pode fazer orelhas de gato numa tiara?':'';
- $('public').checked=state.mural;$('promise-text').textContent='Eu entrego as orelhas do Alex até '+dateText(state.prazo||config.prazo)+'.';renderMural();
+ $('pt').textContent=state.traduzido?config.pedido_pt:'';
+ $('public').checked=state.mural;$('promise-text').textContent='Eu entrego o fone com orelhas de gato do Alex até '+dateText(state.prazo||config.prazo)+'.';renderMural();
  $('request-status').textContent='';$('reply-status').textContent='';feedback('');
  if(panel==='model'||panel==='finish'){
   if(!engine){try{engine=criar(root.querySelector('.d1-viewport'),state,touch,action);}catch{feedback('A vista 3D não abriu neste navegador. Guarde o andamento e tente com a aceleração gráfica ativada.');}}
@@ -77,7 +77,8 @@ function show(focus=false){
 function undo(){const o=state.historico.pop();if(!o)return;state.objeto=o;engine?.aplicar(o);touch();feedback('Alteração desfeita. A conversa e a promessa continuam guardadas.');}
 function changeObject(key,value){state.historico.push(structuredClone(state.objeto));state.historico=state.historico.slice(-30);state.objeto[key]=value;if(tool==='mover')state.objeto.y=Math.sqrt(Math.max(.09,2.25-value*value));engine?.aplicar(state.objeto);action(tool);}
 root.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>selectTool(b.dataset.tool));
-$('undo').onclick=undo;$('front').onclick=()=>engine?.front();$('select').onclick=()=>engine?.select();
+$('undo').onclick=()=>{selectTool(tool);undo();};$('front').onclick=()=>engine?.front();$('select').onclick=()=>{selectTool(tool);engine?.select();};
+$('reference-model').onclick=()=>{if(!engine)return;referenceMode=!referenceMode;engine.setReference(referenceMode);root.querySelector('.d1-adjust').hidden=referenceMode;$('reference-model').textContent=referenceMode?'Voltar à minha orelha':'Ver fone completo';$('reference-model').setAttribute('aria-pressed',String(referenceMode));$('viewport-caption').textContent=referenceMode?'Referência 3D · fone completo':'Sua prática · modele a primeira orelha';update();};
 let rangeStart=null;$('range').addEventListener('pointerdown',()=>rangeStart=structuredClone(state.objeto));
 $('range').oninput=()=>{const k=tool==='esticar'?'altura':tool==='afinar'?'ponta':'x';if(rangeStart){state.objeto[k]=Number($('range').value);if(tool==='mover')state.objeto.y=Math.sqrt(Math.max(.09,2.25-state.objeto.x**2));engine?.aplicar(state.objeto);touch(false);}else changeObject(k,Number($('range').value));};
 $('range').onchange=()=>{if(rangeStart){state.historico.push(rangeStart);state.historico=state.historico.slice(-30);rangeStart=null;action(tool);}};
@@ -86,7 +87,7 @@ root.querySelector('.d1-viewport').addEventListener('keydown',e=>{if(e.ctrlKey&&
 $('translate-request').onclick=async()=>{const b=$('translate-request');b.disabled=true;b.textContent='Traduzindo…';$('request-status').textContent='';try{const out=await post(config.tradutor,{texto:config.pedido,direcao:'pt'});state.entrada=config.pedido;state.copiado=true;state.traduzido=true;$('pt').textContent=out.texto;$('original').open=false;touch();$('request-status').textContent='Pedido entendido. Agora você pode responder ao Alex.';}catch(e){$('request-status').textContent=e.message;}finally{b.disabled=false;b.textContent='Traduzir pedido para português';}};
 function editReply(){state.resposta=$('response').value;state.preco=$('price').value;state.ingles='';state.enviado=false;$('reply-status').textContent='';touch();}
 $('response').oninput=editReply;$('price').oninput=editReply;
-$('example').onclick=()=>{$('response').value='Olá, Alex! Posso fazer as orelhas. Vou começar hoje.';editReply();};
+$('example').onclick=()=>{$('response').value=config.exemplo;editReply();};
 $('edit').onclick=()=>{state.etapa=2;state.enviado=false;touch();show(true);};
 $('translate-response').onclick=async()=>{if(!state.resposta.trim()||translating)return;const response=state.resposta,price=state.preco;translating=true;update();$('reply-status').textContent='';try{const proposal=response+(price?' O preço é US$ '+price+'.':'');const out=await post(config.tradutor,{texto:proposal,direcao:'en'});if(state.resposta!==response||state.preco!==price){$('reply-status').textContent='Você mudou a resposta. Traduza a nova versão antes de enviar.';return;}state.ingles=out.texto;touch();$('reply-status').textContent='Tradução pronta. Confira a mensagem abaixo e envie quando estiver pronto.';}catch(e){$('reply-status').textContent=e.message;}finally{translating=false;update();}};
 $('send').onclick=async()=>{if(!state.ingles||!state.resposta.trim()||!state.traduzido||sending||translating)return;sending=true;state.enviado=true;const previous=state.etapa;state.etapa=3;touch(false);try{await saveState();show(true);}catch(e){state.enviado=false;state.etapa=previous;dirty=true;$('reply-status').textContent=e.message;}finally{sending=false;update();}};

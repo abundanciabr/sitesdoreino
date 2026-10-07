@@ -53,7 +53,10 @@
 .d1 textarea,.d1 input[type=number]{width:100%;padding:10px;background:var(--caixa);color:var(--ink);border:1px solid var(--borda);border-radius:8px;font:inherit;resize:vertical}
 .d1 textarea[readonly]{background:var(--papel)}
 .d1-reference{display:flex;gap:15px;align-items:center;background:var(--marca-fraca);padding:10px 14px;border-radius:10px;font-size:14px}
-.d1-reference svg{width:100px;flex-shrink:0}
+.d1-reference img{width:130px;height:auto;flex-shrink:0;border-radius:8px}
+.d1-reference a{color:var(--marca)}
+.d1-order-reference{display:flex;align-items:center;gap:16px;margin:12px 0 20px;font-size:14px;color:var(--muted)}
+.d1-order-reference img{width:110px;height:auto;border-radius:8px}
 /* O espaço 3D conserva as cores do Blender e o destaque da seleção. */
 .d1-blender{background:#303030;border:1px solid #606060;border-radius:10px;overflow:hidden;margin-top:15px}
 .d1-blender-top,.d1-blender-bottom{font-size:12px;color:#ddd;padding:8px 10px;display:flex;gap:10px;justify-content:space-between;align-items:center;background:#262626;flex-wrap:wrap}
@@ -79,7 +82,10 @@
  .d1-order,.d1-compose,.d1-sent{padding:16px}
  .d1-work{padding:16px}
  .d1-viewport{height:310px}
- .d1-reference svg{width:75px}
+ .d1-reference{align-items:flex-start;flex-direction:column}
+ .d1-reference img{width:110px}
+ .d1-order-reference{align-items:flex-start}
+ .d1-order-reference img{width:85px}
  .d1-blender-top span:last-child{display:none}
  .d1 #d1-save-now{margin-left:0}
  .d1-navigation button{flex:1}

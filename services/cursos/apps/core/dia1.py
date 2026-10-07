@@ -15,9 +15,9 @@ from apps.cursos.models import Progresso, Jornada3D
 
 CHAVE = 'dia1_alex_v1'
 CURSO = 'desafio-como-ganhar-em-dolar-com-roblox'
-PEDIDO = 'Hi! I have a Roblox store. Can you make cat ears on a headband?'
-PEDIDO_PT = 'Oi! Tenho uma loja no Roblox. Você pode fazer orelhas de gato numa tiara?'
-EXEMPLO = 'Olá, Alex! Posso fazer as orelhas. Vou começar hoje.'
+PEDIDO = 'Hi! I have a Roblox store. Can you make colorful low-poly headphones with cat ears? Magenta headphones, white ear cushions and yellow details, like the reference.'
+PEDIDO_PT = 'Oi! Tenho uma loja no Roblox. Você pode fazer um fone de ouvido colorido low poly com orelhas de gato? Fone magenta, almofadas brancas e detalhes amarelos, como na referência.'
+EXEMPLO = 'Olá, Alex! Posso fazer o fone colorido com orelhas de gato como na referência. Vou começar hoje.'
 
 
 def ativa(aula):
@@ -52,7 +52,7 @@ def contexto(aula, progresso):
         if dado.get('promessa') and dado.get('prazo'):
             mural.append({'prazo': dado['prazo']})
     return {'estado': e, 'prazo': e.get('prazo') or prazo(progresso), 'mural': mural,
-            'legado': progresso.concluida_em is not None, 'pedido': PEDIDO,
+            'legado': progresso.concluida_em is not None, 'pedido': PEDIDO, 'pedido_pt': PEDIDO_PT, 'exemplo': EXEMPLO,
             'salvar': reverse('dia1-salvar', args=[aula.curso.slug, aula.bloco.parte, aula.numero]),
             'tradutor': reverse('dia1-tradutor', args=[aula.curso.slug, aula.bloco.parte, aula.numero])}
 
@@ -144,11 +144,11 @@ def salvar(request, curso, parte, numero):
 
 def _traduzir(texto):
     if texto.strip() == EXEMPLO:
-        return 'Hi, Alex! I can make the ears. I will start today.'
+        return 'Hi, Alex! I can make the colorful headphones with cat ears like the reference. I will start today.'
     import re
     exemplo_preco = re.fullmatch(re.escape(EXEMPLO) + r' O preço é US\$ ([0-9]+(?:[.,][0-9]{1,2})?)\.', texto.strip())
     if exemplo_preco:
-        return 'Hi, Alex! I can make the ears. I will start today. The price is US$ ' + exemplo_preco[1].replace(',', '.') + '.'
+        return 'Hi, Alex! I can make the colorful headphones with cat ears like the reference. I will start today. The price is US$ ' + exemplo_preco[1].replace(',', '.') + '.'
     runtime = importlib.import_module('config.runtime')
     with runtime.serving('admin'):
         modelo = importlib.import_module('modules.admin.apps.agentes.modelo')
