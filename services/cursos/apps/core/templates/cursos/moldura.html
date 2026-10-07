@@ -34,7 +34,6 @@ cada tag põe uma linha em branco a mais na página de quem NÃO tem menu.
   <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
   <nav class="links" aria-label="Links úteis">
     <a href="{{ rodape.url_do_site }}">Início do site</a>
-    <a href="{% url 'catalogo' %}">Cursos</a>
     <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
   </nav>{% endif %}{% if rodape.mostra_direitos %}
   <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}

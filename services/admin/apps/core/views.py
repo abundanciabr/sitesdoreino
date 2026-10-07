@@ -143,7 +143,8 @@ def doc_publico(request, nome):
     só por `publico` deixaria o arquivado no ar.
     """
     documento = documentos.ler(nome)
-    if documento is None or not documento.no_ar:
+    acesso_admin = nome == "comunidade" and bool(getattr(request, "admin", None))
+    if documento is None or (not documento.no_ar and not acesso_admin):
         raise Http404("documento não encontrado")
     pagina_visual = documento.formato == Documento.Formato.PAGINA
     resposta = render(

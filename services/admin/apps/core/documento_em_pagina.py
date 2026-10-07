@@ -197,7 +197,9 @@ def doc_publico_moldura(request, nome):
     documento = documentos.ler(nome)
     if (
         documento is None
-        or not documento.no_ar
+        or (not documento.no_ar and not (
+            nome == "comunidade" and bool(getattr(request, "admin", None))
+        ))
         or documento.formato != Documento.Formato.PAGINA
     ):
         raise Http404("documento não encontrado")

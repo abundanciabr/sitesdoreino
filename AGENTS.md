@@ -23,3 +23,9 @@ O escopo inclui as árvores completas de `C:\Users\davia\abundanciabr\sitesdorei
 Backup completo anterior às alterações, privado no servidor: `/opt/plataforma/backups-de-codigo/mercadopago-100-imutavel-20261007T154611Z`. As duas bases foram recuperadas e conferidas num PostgreSQL isolado. A cópia do código-fonte, sem credenciais nem dados dos clientes, está somente neste PC em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\backup-mercadopago-100-20261007\codigo-fonte-425b82504028.zip`.
 
 O congelamento preserva a versão que recebeu 100/100. Ele não fixa mudanças futuras dos critérios ou dos scripts externos do Mercado Pago e não garante aprovação de uma compra pelo antifraude.
+
+## Menus e páginas da comunidade — ordem do mantenedor em 07/10/2026
+
+É proibido acrescentar qualquer link ou qualquer outro elemento aos menus do site sem ordem expressa do mantenedor. A única exceção é o menu do admin.
+O link Cursos para `https://meshcraft.top/cursos/` foi retirado do menu do rodapé.
+As páginas `https://meshcraft.top/docs/comunidade` e `https://meshcraft.top/cursos/comunidade/parte-1/D02` são exclusivas de administradores; estar logado como aluno ou professor não concede acesso.

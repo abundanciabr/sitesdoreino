@@ -273,7 +273,11 @@ class PortaAdministrativa:
         if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
             return self._com_seguranca(self.get_response(request))
 
-        if not _arquivo_pedido_pelo_admin(request) and (
+        comunidade_privada = (
+            request.path_info.rstrip("/") == "/docs/comunidade"
+            or request.path_info.startswith("/docs/comunidade/")
+        )
+        if not comunidade_privada and not _arquivo_pedido_pelo_admin(request) and (
             request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
                 (
                     PREFIXO_PUBLICO_DOS_DOCUMENTOS,

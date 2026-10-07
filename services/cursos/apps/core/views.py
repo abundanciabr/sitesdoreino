@@ -1019,6 +1019,27 @@ def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
     """A pessoa, o curso, a aula publicada e o progresso NÃO trancado, ou a
     resposta que recusa (o convite, o 403, o 404, a parte errada ou a volta ao
     mapa). Devolve `(pessoa, curso, aula, progresso, recusa)`."""
+    if slug == "comunidade" and numero == "D02":
+        from .acesso_admin import autorizar
+        from apps.cursos.models import Pessoa
+        recusa = autorizar(request)
+        if recusa is not None:
+            return None, None, None, None, recusa
+        curso = enderecos.curso_do_site(site_atual(), slug)
+        if curso is None:
+            raise Http404("curso não encontrado")
+        aula = _aula_publicada(curso, numero)
+        if enderecos.parte_errada(curso, aula, parte) is not None:
+            raise Http404("aula não encontrada nesta parte")
+        pessoa, _ = Pessoa.objects.get_or_create(
+            id_da_plataforma=request.admin["id"],
+            defaults={"nome_exibido": request.admin["nome"][:120]},
+        )
+        progresso, _ = Progresso.objects.get_or_create(
+            pessoa=pessoa, aula=aula,
+            defaults={"estado": Progresso.Estado.EM_PRODUCAO},
+        )
+        return pessoa, curso, aula, progresso, None
     pessoa, curso, recusa = _sala(request, slug)
     if recusa is not None:
         return None, None, None, None, recusa

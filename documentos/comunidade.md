@@ -1,6 +1,6 @@
 ---
 titulo: A Comunidade Meshcraft: o que é, o que fazer agora e como pedir ajuda
-publico: true
+publico: false
 ordem: 12
 ---
 
