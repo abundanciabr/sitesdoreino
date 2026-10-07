@@ -46,8 +46,8 @@ def consultar_fontes(site_id, email):
         estado_nps, dados_nps = "indisponivel", None
     if estado_nps == "ok":
         dados_nps = dict(dados_nps)
-        dados_nps["avaliacoes"] = [dict(i, nota=(i.get("respostas") or {}).get("nota"),
-            comentario=(i.get("respostas") or {}).get("comentario"), respondida_em=i.get("concluida_em"))
+        dados_nps["avaliacoes"] = [dict(i, nota=(i.get("respostas") or {}).get("nota", (i.get("resultado") or {}).get("nps")),
+            comentario=(i.get("respostas") or {}).get("comentario", (i.get("respostas") or {}).get("R13")), respondida_em=i.get("concluida_em"))
             for i in dados_nps["avaliacoes"] if isinstance(i, dict)]
     fontes["nps"] = {"estado": estado_nps, "dados": dados_nps}
     if not pessoa:
