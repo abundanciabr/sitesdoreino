@@ -123,3 +123,14 @@
     finally { botao.disabled = false; }
   }));
 })();
+
+// Lesson preview chapter controls are present only on the course preview page.
+document.querySelectorAll('[data-video-inicio]').forEach(button => {
+  button.addEventListener('click', () => {
+    const video = document.getElementById('video-aula1');
+    if (!video) return;
+    video.currentTime = Number(button.dataset.videoInicio.replace(',', '.'));
+    video.play().catch(() => video.focus());
+    video.scrollIntoView({behavior: 'smooth', block: 'center'});
+  });
+});

@@ -4,13 +4,30 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>A nova Aula 1, cena por cena · Meshcraft</title>
   <meta name="description" content="Lívia, veja como o roteiro da nova Aula 1 aparece no curso: seis cenas, da chegada do pedido à promessa.">
-  <link rel="icon" href="data:,"><link rel="stylesheet" href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/galeria.css?v=aula1-20261006">
-  <script src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/galeria.js?v=aula1-20261006" defer></script>
+  <link rel="icon" href="data:,"><link rel="stylesheet" href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/galeria.css?v=aula1-video-20261007">
+  <script src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/galeria.js?v=aula1-video-20261007" defer></script>
 </head>
 <body class="galeria-aula1" data-galeria-base="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1" data-pode-votar="{% if aluno %}sim{% else %}nao{% endif %}">
   <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/">Abrir o curso</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome }}</span>{% else %}<a class="entrar" href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entrar</a>{% endif %}</nav></header>
   <main>
-    <section class="introducao"><p class="sobretitulo">DESAFIO · DIA 1 · PRÉVIA PARA A LÍVIA</p><h1>A nova Aula 1.<br>Cena por cena.</h1><p class="descricao">Lívia, estas seis imagens mostram como o seu roteiro pode acontecer dentro do curso.<br>Veja na ordem: o aluno assiste, responde ao Alex, modela e assume o prazo.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>→ Na ordem da aula</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
+    <section class="introducao"><p class="sobretitulo">DESAFIO · DIA 1 · PRÉVIA PARA A LÍVIA</p><h1>A nova Aula 1.<br>Cena por cena.</h1><p class="descricao">Lívia, assista à prévia narrada e veja como o seu roteiro pode acontecer dentro do curso.<br>Veja na ordem: o aluno assiste, responde ao Alex, modela e assume o prazo.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>→ Na ordem da aula</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
+
+    {% if previa_video %}
+    <section class="previa-video" aria-labelledby="titulo-video">
+      <p class="sobretitulo">ASSISTA À AULA · {{ previa_video.duracao }} MIN</p>
+      <h2 id="titulo-video">A fala, a tela e cada troca de câmera.</h2>
+      <p class="video-descricao">Uma simulação completa para orientar a gravação: apresentadora na câmera, apresentadora em janela e demonstração só de tela. Todas as falas aparecem como legendas.</p>
+      <video id="video-aula1" controls playsinline preload="metadata" poster="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/poster.jpg" aria-label="Prévia narrada e legendada da Aula 1">
+        <source src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/aula-1-previa-legendada.mp4" type="video/mp4">
+        <track kind="captions" src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/legendas.vtt" srclang="pt-BR" label="Português — fala completa">
+        Seu navegador não reproduz este vídeo. Use o link para baixar abaixo.
+      </video>
+      <p class="video-aviso">A apresentadora é ilustrada e a voz é sintética, usadas como referência. Esta ainda não é uma gravação da Lívia. O trecho do Blender indica a sequência a gravar.</p>
+      <div class="video-capitulos" aria-label="Ir para uma parte da aula">{% for capitulo in previa_video.capitulos %}<button type="button" data-video-inicio="{{ capitulo.inicio|stringformat:'.2f' }}"><span>{{ capitulo.tempo }}</span>{{ capitulo.titulo }}</button>{% endfor %}</div>
+      <div class="video-downloads"><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/aula-1-previa-legendada.mp4?download=1" download>Baixar vídeo MP4</a><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/legendas.srt?download=1" download>Baixar legendas</a></div>
+      <details class="video-roteiro"><summary>Ver as falas e o enquadramento de cada cena</summary>{% for cena in previa_video.cenas %}<article><h3>{{ cena.titulo }} <span>{% if cena.modo == 'camera' %}Lívia na câmera{% elif cena.modo == 'mista' %}Tela + Lívia{% else %}Só tela · voz em off{% endif %}</span></h3><p>{{ cena.texto }}</p></article>{% endfor %}<p class="video-aviso">As duas falas marcadas “CONFIRMAR” no roteiro — a história pessoal sobre contas e a resposta às primeiras N promessas — ficam para a confirmação da Lívia.</p></details>
+    </section>
+    {% endif %}
     <div class="cabecalho-grade"><h2>Seis momentos da mesma aula</h2><span id="ordem-votos">Do primeiro recado à promessa</span></div>
     <div id="grade" class="grade">
       {% for imagem in imagens %}

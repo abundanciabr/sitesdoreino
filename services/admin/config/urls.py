@@ -269,6 +269,7 @@ urlpatterns = [
     path("previa-aula-1/voto", galeria_aula1.votar),
     path("previa-aula-1/comentario", galeria_aula1.comentar),
     path("previa-aula-1/imagens/<slug:slug>", galeria_aula1.imagem),
+    path("previa-aula-1/midia/<str:nome>", galeria_aula1.midia),
     path("previa-aula-1/<str:nome>", galeria_votacao.recurso),
     path("galeria-publica/", galeria_votacao.galeria),
     path("galeria-publica/voto", galeria_votacao.votar),

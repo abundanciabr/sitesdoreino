@@ -33,7 +33,7 @@ SLUGS = frozenset(i[0] for i in IMAGENS)
 
 def caminho_publico(caminho):
     prefixo_aula = '/previa-aula-1'
-    if caminho in {prefixo_aula, prefixo_aula + '/', prefixo_aula + '/voto', prefixo_aula + '/comentario', prefixo_aula + '/galeria.css', prefixo_aula + '/galeria.js'} or caminho.startswith(prefixo_aula + '/imagens/'):
+    if caminho in {prefixo_aula, prefixo_aula + '/', prefixo_aula + '/voto', prefixo_aula + '/comentario', prefixo_aula + '/galeria.css', prefixo_aula + '/galeria.js'} or caminho.startswith(prefixo_aula + '/imagens/') or caminho.startswith(prefixo_aula + '/midia/'):
         return True
     return caminho in {'/galeria-publica', '/galeria-publica/', '/galeria-publica/voto', '/galeria-publica/comentario'} or caminho.startswith('/galeria-publica/imagens/') or caminho in {'/galeria-publica/galeria.css', '/galeria-publica/galeria.js'}
 
