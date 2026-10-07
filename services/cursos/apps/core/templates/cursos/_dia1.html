@@ -1,19 +1,19 @@
-<link rel="stylesheet" href="{% url 'estatico' 'dia1/dia1.css' %}?v=1">
+<link rel="stylesheet" href="{% url 'estatico' 'dia1/dia1.css' %}?v=2">
 {{ dia1|json_script:'dia1-config' }}
 <section class="d1" id="dia1" aria-label="Dia 1 — O pedido chega">
   <div hidden>{% csrf_token %}</div>
-  <header class="d1-header"><p class="d1-kicker">DIA 1 DE 7 · PRÁTICA COM A LÍVIA</p><h1>O pedido chega</h1><p>Um cliente. Um cubo. Sua primeira forma em 3D.</p><div class="d1-save" role="status" aria-live="polite">Seu andamento fica na sua conta.</div></header>
+  <header class="d1-header"><h2>Prática guiada: O pedido chega</h2><p class="d1-kicker">DIA 1 DE 7 · PRÁTICA COM A LÍVIA</p><p>Um cliente. Um cubo. Sua primeira forma em 3D.</p><div class="d1-save" role="status" aria-live="polite">Seu andamento fica na sua conta.</div></header>
   <div class="d1-layout">
     <aside class="d1-teacher" aria-label="Acompanhe a professora">
+      <h2>Veja o trabalho na tela</h2>
+      <p class="d1-caption">Prévia com apresentadora ilustrada e voz sintética.</p>
       <video id="d1-video" controls playsinline preload="metadata" poster="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/poster.jpg" aria-label="Trecho da prévia da Aula 1">
         <source src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/aula-1-previa-legendada.mp4" type="video/mp4">
         <track kind="captions" src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/midia/legendas.vtt" srclang="pt-BR" label="Português">
       </video>
-      <p class="d1-caption">Prévia com apresentadora ilustrada e voz sintética.</p>
-      <button type="button" id="d1-watch">Assistir este trecho</button>
-      <p id="d1-video-status" role="status">Assista, pause e faça no seu ritmo.</p>
+      <div class="d1-video-controls"><button type="button" id="d1-watch">Assistir este trecho</button><p id="d1-video-status" role="status">Assista, pause e faça no seu ritmo.</p></div>
       <blockquote id="d1-fala"></blockquote>
-      <details><summary>Como acompanhar</summary><p>A explicação para no fim do trecho. Faça a ação ao lado e aperte Continuar quando terminar. Pode rever quantas vezes quiser.</p></details>
+      <details><summary>Como acompanhar</summary><p>A explicação para no fim do trecho. Faça a ação abaixo e aperte Continuar quando terminar. Pode rever quantas vezes quiser.</p></details>
     </aside>
     <div class="d1-work">
       <div class="d1-stepbar"><span id="d1-counter"></span><progress id="d1-progress" max="11" value="0" aria-label="Andamento da prática"></progress></div>
