@@ -14,6 +14,7 @@ class ClienteFila(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'encomendas_clientefila'
         constraints = [
             models.UniqueConstraint(fields=['site_id', 'slug'], name='fila_cliente_site_slug'),
             models.UniqueConstraint(fields=['site_id', 'pessoa_id'], condition=~models.Q(pessoa_id=''), name='fila_cliente_conta_unica'),
@@ -31,6 +32,9 @@ class PedidoClienteFila(models.Model):
     referencia_provedor = models.CharField(max_length=160, blank=True)
     termos_aceitos = models.JSONField(default=dict)
 
+    class Meta:
+        db_table = 'encomendas_pedidoclientefila'
+
 
 class MovimentoOrcamentoFila(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -42,6 +46,9 @@ class MovimentoOrcamentoFila(models.Model):
     saldo_apos_cents = models.BigIntegerField()
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = 'encomendas_movimentoorcamentofila'
+
 
 class OrientacaoPrivadaFila(models.Model):
     pedido = models.ForeignKey('encomendas.PedidoMarketplace', on_delete=models.PROTECT, related_name='orientacoes_privadas')
@@ -50,6 +57,9 @@ class OrientacaoPrivadaFila(models.Model):
     resposta = models.TextField()
     criada_em = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        db_table = 'encomendas_orientacaoprivadafila'
+
 
 class CasoConversaFila(models.Model):
     """Resolução humana preservada para preparar o robô futuro, sem envio automático."""
@@ -57,3 +67,6 @@ class CasoConversaFila(models.Model):
     pergunta = models.OneToOneField('encomendas.MensagemMarketplace', on_delete=models.PROTECT, related_name='caso_fila')
     resposta = models.ForeignKey('encomendas.MensagemMarketplace', on_delete=models.PROTECT, null=True, blank=True, related_name='casos_resolvidos')
     criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'encomendas_casoconversafila'
