@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .editor import _authorized
 from .models import NPSAtendimento, NPSConfig, NPSTentativa, NPSRevisao, Site
 from . import nps_revisado
+from .participacao import aplicar as aplicar_participacao
 
 
 CALCULO_VERSAO = 1
@@ -281,6 +282,7 @@ def respostas(request, tentativa_id):
             error = nps_revisado.process(attempt, data)
             if error:
                 return _error(error)
+            aplicar_participacao(attempt)
             return JsonResponse(_serialize(attempt))
         action = data.get("acao", "responder")
         if action == "voltar":
@@ -310,6 +312,7 @@ def respostas(request, tentativa_id):
             attempt.status = "concluida"
             attempt.concluida_em = timezone.now()
             attempt.save(update_fields=["qualidade", "resultado", "status", "concluida_em"])
+            aplicar_participacao(attempt)
         elif action == "responder":
             key, value = data.get("pergunta_id"), data.get("valor")
             path = _flow(attempt.respostas, attempt.config_documento)

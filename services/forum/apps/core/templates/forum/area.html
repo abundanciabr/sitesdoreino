@@ -100,6 +100,7 @@ nunca aparece: sem login não há de quem guardar a marca de leitura.
   <div class="cartao">
     <h2><a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a>
       {% if topico.tem_novidade %}<span class="novidade">novidade</span>{% endif %}
+      {% if topico.embaixador %}<span class="etiqueta">Aluno Embaixador</span>{% endif %}
       {% if topico.fixado %}<span class="etiqueta">fixado</span>{% endif %}
       {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
       {% if topico.resposta_aceita_id %}<span class="etiqueta">resolvido</span>{% endif %}

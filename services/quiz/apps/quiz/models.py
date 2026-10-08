@@ -82,6 +82,21 @@ class NPSRevisao(models.Model):
     criada_em = models.DateTimeField(auto_now_add=True)
 
 
+class NPSParticipacao(models.Model):
+    site_id = models.CharField(max_length=64)
+    aluno_id = models.CharField(max_length=128)
+    segmento = models.CharField(max_length=20, default="sem_avaliacao")
+    nota = models.PositiveSmallIntegerField(null=True)
+    avaliacao_id = models.UUIDField(null=True)
+    avaliada_em = models.DateTimeField(null=True)
+    teve_positiva = models.BooleanField(default=False)
+    embaixador_desde = models.DateTimeField(null=True)
+    conquistas_privadas_ate = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id", "aluno_id"], name="nps_participacao_aluno_site")]
+
+
 class Quiz(models.Model):
     site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="quizzes")
     slug = models.SlugField(max_length=100)

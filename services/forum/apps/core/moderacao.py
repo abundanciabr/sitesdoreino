@@ -60,7 +60,7 @@ from apps.forum.models import (
 )
 from apps.forum.tasks import relay_apos_commit
 
-from . import agente, galeria
+from . import agente, galeria, participacao
 from .menu import site_id_do_host
 from .permissoes import pode_escrever, pode_moderar
 from .sessao import email_da_equipe, quem_e
@@ -799,6 +799,8 @@ def moderar_topico(request, topico_id: int):
         # cabeçalho deste arquivo).
         ator = _so_quem_modera(request)
 
+    if not participacao.topicos_visiveis(Topico.objects.filter(pk=topico.pk), ator).exists():
+        raise Http404("tópico não encontrado")
     erro = ""
     if acao == "salvar":
         titulo = (request.POST.get("titulo") or "").strip()
@@ -927,6 +929,8 @@ def _apontar_a_resposta_certa(request, topico) -> str:
     mensagem = Mensagem.objects.filter(pk=request.POST.get("mensagem_id") or 0).first()
     if mensagem is None or mensagem.topico_id != topico.pk:
         return ERRO_MENSAGEM_DE_OUTRO_TOPICO
+    if not participacao.mensagens_visiveis(Mensagem.objects.filter(pk=mensagem.pk), quem_e(request)).exists():
+        return ERRO_MENSAGEM_DE_OUTRO_TOPICO
     if mensagem.removida_em is not None:
         return ERRO_MENSAGEM_FORA_DO_AR
 
@@ -995,6 +999,8 @@ def moderar_mensagem(request, mensagem_id: int):
         pk=mensagem_id,
     )
     topico = mensagem.topico
+    if not participacao.mensagens_visiveis(Mensagem.objects.filter(pk=mensagem.pk), ator).exists():
+        raise Http404("mensagem não encontrada")
     acao = (request.POST.get("acao") or "").strip()
 
     # O alvo como a equipe vai lê-lo no registro: de quem é a fala e onde ela
@@ -1108,7 +1114,7 @@ def moderar_mensagem(request, mensagem_id: int):
 # sendo um segundo clique, de uma pessoa, na rota de sempre.
 
 
-def _falas_para_a_ia(topico: Topico) -> list[tuple[str, str]]:
+def _falas_para_a_ia(topico: Topico, ator=None) -> list[tuple[str, str]]:
     """A conversa em pares (quem, texto), SEM nome de ninguém.
 
     Duas escolhas:
@@ -1123,11 +1129,12 @@ def _falas_para_a_ia(topico: Topico) -> list[tuple[str, str]]:
       de pessoa, e chegaria à IA como se fosse dúvida de aluno.
     """
     falas: list[tuple[str, str]] = []
-    for mensagem in (
+    from .sessao import VISITANTE
+    for mensagem in participacao.mensagens_visiveis((
         Mensagem.objects.filter(topico=topico, removida_em__isnull=True)
         .select_related("autor")
         .order_by("criado_em")
-    ):
+    ), ator or VISITANTE):
         da_escola = mensagem.publicado_pela_escola or (
             mensagem.autor is not None and email_da_equipe(mensagem.autor.email)
         )
@@ -1162,6 +1169,8 @@ def gerar_resposta(request, topico_id: int):
         Topico.objects.select_related("area", "autor"), pk=topico_id
     )
     # Cortada no tamanho em vez de recusada: quem escreveu demais na caixinha
+    if not participacao.topicos_visiveis(Topico.objects.filter(pk=topico.pk), ator).exists():
+        raise Http404("tópico não encontrado")
     # quis dizer alguma coisa, e devolver a tela com um erro por causa disso
     # seria atrito puro. O teto existe para a chamada não carregar um livro.
     orientacao = (request.POST.get("orientacao") or "").strip()[
@@ -1187,7 +1196,7 @@ def gerar_resposta(request, topico_id: int):
         rascunho = agente.rascunhar(
             area_nome=topico.area.nome,
             titulo=topico.titulo,
-            falas=_falas_para_a_ia(topico),
+            falas=_falas_para_a_ia(topico, ator),
             orientacao=orientacao,
         )
     except agente.AgenteIndisponivel as erro:
@@ -1270,6 +1279,8 @@ def gerar_resposta_ao_vivo(request, topico_id: int):
     topico = get_object_or_404(
         Topico.objects.select_related("area", "autor"), pk=topico_id
     )
+    if not participacao.topicos_visiveis(Topico.objects.filter(pk=topico.pk), ator).exists():
+        raise Http404("tópico não encontrado")
     orientacao = (request.POST.get("orientacao") or "").strip()[
         : agente.TETO_DA_ORIENTACAO
     ]
@@ -1282,7 +1293,7 @@ def gerar_resposta_ao_vivo(request, topico_id: int):
     # AS FALAS SAEM DO BANCO AGORA, antes de a resposta começar. Consulta dentro
     # do gerador rodaria com o fluxo já aberto, e uma falha ali chegaria no meio
     # do texto, quando não há mais como devolver um erro limpo.
-    falas = _falas_para_a_ia(topico)
+    falas = _falas_para_a_ia(topico, ator)
     area_nome = topico.area.nome
     titulo = topico.titulo
 

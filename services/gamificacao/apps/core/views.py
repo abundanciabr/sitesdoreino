@@ -36,6 +36,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.gamificacao import contribuicoes as quadro
 from apps.gamificacao import forja as forjas
 from apps.gamificacao.criterios import medalhas_da_pessoa
+from .participacao import minha as minha_participacao
 from apps.gamificacao.models import (
     CompromissoDeContribuicao,
     Concessao,
@@ -274,7 +275,7 @@ def medalhas(request):
     return render(
         request,
         "gamificacao/medalhas.html",
-        {"entrou": True, "linhas": medalhas_da_pessoa(perfil), **de_fora},
+        {"entrou": True, "linhas": medalhas_da_pessoa(perfil), "participacao_nps": minha_participacao(pessoa_id), **de_fora},
     )
 
 

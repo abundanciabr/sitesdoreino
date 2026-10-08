@@ -34,6 +34,7 @@ script. Molde: `services/gamificacao/apps/core/views.py`.
 """
 
 from __future__ import annotations
+from .participacao import comentarios_visiveis
 
 import mimetypes
 import json
@@ -1213,9 +1214,9 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
             "navegacao": _navegacao_aulas(curso, aula, pessoa),
             "conteudo": _conteudo_do_curso(curso, aula, pessoa),
             "comentarios": Paginator(
-                ComentarioDeAula.objects.filter(aula=aula)
+                comentarios_visiveis(ComentarioDeAula.objects.filter(aula=aula)
                 .filter(Q(autor=pessoa) | Q(publico=True))
-                .select_related("autor"),
+                .select_related("autor"), pessoa),
                 20,
             ).get_page(request.GET.get("comentarios_pagina")),
             "url_enviar_comentario": reverse(

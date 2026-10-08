@@ -31,6 +31,7 @@ from django.db.models import Count, Exists, F, OuterRef, Q, Subquery
 from django.utils import timezone
 
 from apps.forum.models import MarcaDeLeitura, Topico, TopicoLido
+from .participacao import topicos_visiveis
 
 
 def _com_novidade(pessoa, areas):
@@ -54,7 +55,8 @@ def _com_novidade(pessoa, areas):
         topico=OuterRef("pk"),
         lido_em__gte=OuterRef("ultima_atividade_em"),
     )
-    return (
+    from .sessao import Ator
+    return topicos_visiveis((
         Topico.objects.filter(area__in=areas, estado=Topico.Estado.PUBLICADO)
         .annotate(marca_da_area=Subquery(marca), ja_visto=Exists(ja_visto))
         .filter(
@@ -62,7 +64,7 @@ def _com_novidade(pessoa, areas):
             | Q(ultima_atividade_em__gt=F("marca_da_area"))
         )
         .filter(ja_visto=False)
-    )
+    ), Ator(pessoa=pessoa, eh_aluno=True))
 
 
 def novidades_por_area(ator, areas) -> dict[int, int]:

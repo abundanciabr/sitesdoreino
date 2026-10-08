@@ -28,6 +28,9 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
     <p class="miudo">A escola também pede ajuda no <a href="{% url 'contribuicoes' %}">quadro de contribuições</a>: tarefas de verdade, com reconhecimento quando a equipe aceita.</p>
   </section>
 
+  {% if participacao_nps.embaixador %}
+    <section class="medalha conquistada"><h2>Aluno Embaixador</h2><p class="passo">Reconhecimento preservado na sua coleção.</p></section>
+  {% endif %}
   {% for linha in linhas %}
     <section class="medalha{% if linha.concessao and not linha.retirada %} conquistada{% endif %}">
       <h2>{{ linha.medalha.nome }}</h2>

@@ -101,6 +101,7 @@ from apps.gamificacao.interruptores import mudar as mudar_interruptor
 # ARMADILHA 020: alias obrigatório. `Sequencia` colide com o Schema homônimo do
 # contrato, e os outros seguem a mesma regra por disciplina, não por colisão.
 from apps.gamificacao.models import Concessao as ConcessaoModel
+from .participacao import consultar as estados_participacao, publica as conquista_publica
 from apps.gamificacao.models import LancamentoDeXP as LancamentoDeXPModel
 from apps.gamificacao.models import MissaoDefinicao as MissaoDefinicaoModel
 from apps.gamificacao.models import NivelDefinicao as NivelDefinicaoModel
@@ -292,6 +293,8 @@ def get_public_profiles(request, ids: str):
         site_id=site_id, pessoa_id__in=pedidos
     ).only("pessoa_id", "nivel")
     perfis = list(perfis)
+    estados = estados_participacao(pedidos)
+    perfis = [p for p in perfis if conquista_publica(estados.get(str(p.pessoa_id)))]
 
     titulos = _titulos_por_nivel(site_id, {p.nivel for p in perfis})
     mapa: dict[str, PerfilPublico] = {}
@@ -1003,6 +1006,7 @@ def list_student_standings(request):
     ids = [perfil.pessoa_id for perfil in perfis]
     ultimas = _ultima_atividade_por_pessoa(site_id, ids)
     conquistas = _conquistas_por_pessoa(site_id, ids)
+    estados = estados_participacao(ids)
 
     return [
         AlunoDoQuadro(
@@ -1010,7 +1014,7 @@ def list_student_standings(request):
             xp=perfil.xp_total,
             nivel=perfil.nivel,
             ultima_atividade_em=ultimas.get(perfil.pessoa_id),
-            conquistas=conquistas.get(perfil.pessoa_id, []),
+            conquistas=conquistas.get(perfil.pessoa_id, []) if conquista_publica(estados.get(str(perfil.pessoa_id))) else [],
         )
         for perfil in perfis
     ]

@@ -32,6 +32,9 @@ class SiteResolutionMiddleware:
         # request.path_info segue "/healthz" independente do prefixo do gateway.
         if request.path_info.startswith(CAMINHOS_SEM_SITE):
             return self.get_response(request)
+        if request.path_info == "/interno/nps/participacao":
+            # Esta consulta tem seu próprio token, limitado à leitura de participação.
+            return self.get_response(request)
         if request.path_info.startswith(("/interno/editor/", "/interno/crm/", "/interno/nps/")):
             if not _authorized(request):
                 return JsonResponse({"detail": "Não autorizado."}, status=401)

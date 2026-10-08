@@ -102,7 +102,7 @@ TETO_DE_IDS_POR_CHAMADA = 50
 # O mesmo TTL do menu, e pelo mesmo motivo: nível muda devagar (quem sobe de
 # degrau demora dias), e um minuto de atraso é barato perto de uma consulta de
 # rede por página aberta.
-TTL_SEGUNDOS = 60
+TTL_SEGUNDOS = 0
 
 # Teto de segurança, como o do menu: sem ele o dicionário cresceria sem fim
 # dentro do processo, uma entrada por aluno que já apareceu em alguma página.

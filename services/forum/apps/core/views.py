@@ -20,6 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import never_cache
 
 from apps.forum.models import (
     Area,
@@ -30,7 +31,7 @@ from apps.forum.models import (
     Topico,
 )
 
-from . import agente
+from . import agente, participacao
 from .etiquetas import decorar as decorar_com_etiquetas
 from .galeria import caixa_da_galeria
 from .leitura import (
@@ -128,6 +129,7 @@ def servir_estatico(request, caminho: str):
 
 
 @require_GET
+@never_cache
 def home(request):
     """A porta do fórum: as áreas que esta pessoa enxerga.
 
@@ -139,6 +141,7 @@ def home(request):
 
 
 @require_GET
+@never_cache
 def ver_area(request, slug: str):
     """Os tópicos de uma área. 404 para quem não pode ler — nunca 403.
 
@@ -159,6 +162,7 @@ def ver_area(request, slug: str):
 
 
 @require_GET
+@never_cache
 def ver_topico(request, topico_id: int):
     """Uma conversa inteira. A permissão é a da ÁREA — o tópico não afrouxa."""
     ator = quem_e(request)
@@ -166,6 +170,8 @@ def ver_topico(request, topico_id: int):
         Topico.objects.select_related("area", "autor"), pk=topico_id
     )
     if not pode_ler(topico.area, ator):
+        raise Http404("tópico não encontrado")
+    if not participacao.topicos_visiveis(Topico.objects.filter(pk=topico.pk), ator).exists():
         raise Http404("tópico não encontrado")
     if topico.estado != Topico.Estado.PUBLICADO and not pode_moderar(ator):
         # Tópico fora do ar é 404 para o mundo inteiro, e continua abrindo para
@@ -270,7 +276,7 @@ def contexto_da_home(ator, *, erro_admin="", digitado=None):
 def contexto_da_area(
     request, ator, area, *, erro="", titulo="", texto="", erro_admin=""
 ):
-    topicos = Topico.objects.filter(area=area).select_related("autor")
+    topicos = participacao.topicos_visiveis(Topico.objects.filter(area=area).select_related("autor"), ator)
     if not pode_moderar(ator):
         # Fora do ar é fora do ar para o mundo. Para quem modera, o tópico
         # removido continua na lista, marcado — senão restaurá-lo exigiria
@@ -281,7 +287,8 @@ def contexto_da_area(
     # novidade para esta pessoa. A conta é uma consulta só (`leitura.py`), e o
     # conjunto de ids evita perguntar de novo por linha.
     novos = topicos_com_novidade(ator, area)
-    lista = list(topicos)
+    lista = participacao.decorar(list(topicos), ator)
+    lista.sort(key=lambda t: (t.fixado, t.prioridade_promotor, t.ultima_atividade_em), reverse=True)
     for topico in lista:
         topico.tem_novidade = topico.pk in novos
 
@@ -324,7 +331,7 @@ def contexto_do_topico(
     orientacao="",
     erro_galeria="",
 ):
-    mensagens = Mensagem.objects.filter(topico=topico).select_related("autor")
+    mensagens = participacao.mensagens_visiveis(Mensagem.objects.filter(topico=topico).select_related("autor"), ator)
     if not pode_moderar(ator):
         mensagens = mensagens.filter(removida_em__isnull=True)
 
@@ -338,7 +345,7 @@ def contexto_do_topico(
     # Falha sempre para "sem etiqueta" (`apps/core/etiquetas.py`): gamificação
     # fora do ar ou par de tokens não provisionado deixa a página exatamente
     # como ela era antes desta linha existir.
-    lista = decorar_com_etiquetas(list(mensagens.order_by("criado_em")))
+    lista = participacao.decorar(decorar_com_etiquetas(list(mensagens.order_by("criado_em"))), ator)
 
     modera = pode_moderar(ator)
     return {
@@ -436,6 +443,10 @@ def _validar_nova_conversa(titulo: str, texto: str) -> str:
 
 def _criar_nova_conversa(request, ator, area, titulo: str, texto: str):
     site_id = site_id_do_host(request.get_host())
+    try:
+        participacao.da_pessoa(ator.pessoa)
+    except participacao.AvaliacaoIndisponivel:
+        return JsonResponse({"detail": "Não conseguimos confirmar sua participação agora. Tente novamente."}, status=503)
 
     with transaction.atomic():
         topico = Topico.objects.create(area=area, autor=ator.pessoa, titulo=titulo)
@@ -569,6 +580,8 @@ def responder(request, topico_id: int):
     )
     if not pode_ler(topico.area, ator):
         raise Http404("tópico não encontrado")
+    if not participacao.topicos_visiveis(Topico.objects.filter(pk=topico.pk), ator).exists():
+        raise Http404("tópico não encontrado")
     if not pode_escrever(topico.area, ator):
         return HttpResponseForbidden(ERRO_SEM_PERMISSAO)
     if topico.trancado:
@@ -591,6 +604,11 @@ def responder(request, topico_id: int):
 
     site_id = site_id_do_host(request.get_host())
 
+    try:
+        estado_participacao = participacao.da_pessoa(ator.pessoa)
+    except participacao.AvaliacaoIndisponivel:
+        return JsonResponse({"detail": "Não conseguimos confirmar sua participação agora. Tente novamente."}, status=503)
+
     with transaction.atomic():
         mensagem = Mensagem.objects.create(
             topico=topico, autor=ator.pessoa, texto=texto
@@ -603,7 +621,8 @@ def responder(request, topico_id: int):
         # A marca de leitura compara com ISTO (`MarcaDeLeitura`), nunca com a
         # data de cada mensagem. Sem este avanço, uma conversa que acabou de
         # receber resposta continuaria parecendo lida para a turma inteira.
-        Topico.objects.filter(pk=topico.pk).update(ultima_atividade_em=timezone.now())
+        if estado_participacao.get("segmento") != "detrator":
+            Topico.objects.filter(pk=topico.pk).update(ultima_atividade_em=timezone.now())
 
     return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
 
@@ -730,7 +749,7 @@ def contexto_da_comunidade(request, ator) -> dict:
     # pessoa, porque a sua própria você não responde.
     agora = timezone.now()
     dependem = list(
-        duvidas_abertas(grupos).exclude(autor=ator.pessoa)[:QUEM_DEPENDE_DE_VOCE_MAXIMO]
+        participacao.topicos_visiveis(duvidas_abertas(grupos).exclude(autor=ator.pessoa), ator)[:QUEM_DEPENDE_DE_VOCE_MAXIMO]
     )
     for topico in dependem:
         topico.espera = ha_quanto_tempo(topico.criado_em, agora)
@@ -740,6 +759,7 @@ def contexto_da_comunidade(request, ator) -> dict:
 
 
 @require_GET
+@never_cache
 def comunidade(request):
     """A página Comunidade do membro. Nunca 404: cada estado tem seu texto."""
     ator = quem_e(request)

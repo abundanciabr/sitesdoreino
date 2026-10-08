@@ -126,6 +126,7 @@ trabalho nunca encontra.
     a tela mostra "Nv 7", que é verdade, em vez de um nome chutado.
     {% endcomment %}
     {% if mensagem.etiqueta %}<span class="nivel" title="O degrau deste aluno na escola">Nv {{ mensagem.etiqueta.nivel }}{% if mensagem.etiqueta.titulo %} · {{ mensagem.etiqueta.titulo }}{% endif %}</span>{% endif %}
+    {% if mensagem.embaixador %}<span class="etiqueta">Aluno Embaixador</span>{% endif %}
     {% if mensagem.publicado_pela_escola %}<span class="etiqueta">a escola</span>{% endif %}
     <span class="quando">· {{ mensagem.criado_em|date:"d/m/Y H:i" }}</span>
     {% comment %}

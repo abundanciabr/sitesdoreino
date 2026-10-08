@@ -43,12 +43,14 @@ from django.shortcuts import render
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
+from django.views.decorators.cache import never_cache
 
 from apps.forum.config_de_busca import acento_importa, config_de_busca
 from apps.forum.models import Mensagem, Topico
 
 from .permissoes import areas_visiveis, pode_moderar
 from .sessao import quem_e
+from .participacao import mensagens_visiveis
 
 POR_PAGINA = 20
 # Uma letra casa com quase tudo e devolve o fórum inteiro ordenado por acaso.
@@ -82,6 +84,7 @@ def _trecho_seguro(bruto: str) -> str:
 
 
 @require_GET
+@never_cache
 def buscar(request):
     """A tela de busca. Sem termo, ela convida; com termo, ela responde."""
     ator = quem_e(request)
@@ -134,7 +137,7 @@ def buscar(request):
             removida_em__isnull=True, topico__estado=Topico.Estado.PUBLICADO
         )
 
-    achadas = achadas.order_by("-relevancia", "-criado_em")
+    achadas = mensagens_visiveis(achadas, ator).order_by("-relevancia", "-criado_em")
 
     paginas = Paginator(achadas, POR_PAGINA)
     pagina = paginas.get_page(request.GET.get("p"))
