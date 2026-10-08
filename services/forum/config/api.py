@@ -58,6 +58,8 @@ api = NinjaAPI(
     auth=bearerAuth(),
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
+from apps.core.suporte_api import router as suporte_router
+api.add_router("/suporte", suporte_router)
 api.add_router("", forum_router)
 api.add_router("/editor", editor_router)
 api.add_router("/editor/topicos", topicos_editor_router)

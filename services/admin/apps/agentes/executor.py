@@ -368,6 +368,8 @@ def rodar_para_sempre(parar: threading.Event) -> None:
     roda em threads próprias (`COMERCIAL_TRABALHADORES`), ligadas aqui."""
     trabalhador = nome_do_trabalhador()
     _ligar_trabalhadores_comerciais(parar)
+    from apps.atendimento.service import ligar as ligar_suporte
+    ligar_suporte(parar)
     ultimo_reacordar = timezone.now() - INTERVALO_DE_REACORDAR
     ultimo_audio = timezone.now() - INTERVALO_DO_AUDIO
     log.info("Executor dos robôs ligado: %s", trabalhador)

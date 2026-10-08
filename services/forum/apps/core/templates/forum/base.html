@@ -65,5 +65,7 @@ formulário comum. Quem lê o fórum sem entrar nem chega a baixá-lo.
 o prefixo público `/forum` (`armadilhas/083`).
 {% endcomment %}
 <script src="{% url 'estatico' 'forum.js' %}"></script>
+<link rel="stylesheet" href="{% url 'estatico' 'suporte.css' %}">
+<script defer src="{% url 'estatico' 'suporte.js' %}" data-curso="{{ curso.slug }}" data-aula="{{ aula.numero }}"></script>
 </body>
 </html>

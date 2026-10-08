@@ -274,7 +274,15 @@ from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 
 from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento as andamento_satisfacao, andamento_script as script_satisfacao
 
+from apps.atendimento import views as suporte
+
 urlpatterns = [
+    path("atendimento/", suporte.fila, name="atendimento"),
+    path("atendimento/base/", suporte.base, name="atendimento_base"),
+    path("atendimento/configuracao/", suporte.configuracao, name="atendimento_configuracao"),
+    path("atendimento/<uuid:conversa_id>/", suporte.conversa_admin, name="atendimento_conversa"),
+    path("atendimento/<uuid:conversa_id>/forum/", suporte.previa_forum, name="atendimento_forum"),
+    path("interno/atendimento-aluno/", suporte.aluno, name="atendimento_aluno"),
     path("clientes/", clientes_fila, name="clientes_fila"),
     path("clientes/saques/", saques_fila, name="saques_fila"),
     path("clientes/saques/<uuid:saque_id>/pago/", saque_fila_pago, name="saque_fila_pago"),

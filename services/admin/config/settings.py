@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     # com a chave e o teto de gasto dos robôs.
     "apps.voz",
     "apps.assistente",
+    "apps.atendimento.apps.AtendimentoConfig",
 ]
 
 MIDDLEWARE = [
