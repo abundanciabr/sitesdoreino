@@ -249,7 +249,8 @@ def listar(*, so_publicos: bool, com_arquivados: bool = False) -> "list[Document
         consulta = consulta.filter(publico=True, arquivado=False)
     elif not com_arquivados:
         consulta = consulta.filter(arquivado=False)
-    return list(consulta.order_by("ordem", "nome"))
+    encontrados = list(consulta.order_by("ordem", "nome"))
+    return [d for d in encontrados if d.no_ar] if so_publicos else encontrados
 
 
 @dataclass(frozen=True)
@@ -366,7 +367,7 @@ def _semear(modelo, caminho: Path) -> bool:
         nome=campos.nome,
         defaults={
             "titulo": campos.titulo,
-            "publico": campos.publico,
+            "publico": False,
             "ordem": campos.ordem,
             "corpo": campos.corpo,
         },

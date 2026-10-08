@@ -187,6 +187,7 @@ class Documento(models.Model):
     # texto morava em arquivo, quem garantia isso era a igualdade exata com
     # "true" no cabeçalho; aqui é o default da coluna.
     publico = models.BooleanField(default=False)
+    publicacao_manual = models.TextField(blank=True, default="")
 
     # Menor primeiro. O default alto manda o documento novo para o FIM: um
     # default pequeno o faria pular na frente dos que alguém posicionou.
@@ -264,7 +265,8 @@ class Documento(models.Model):
         arquivado visível no site — e é exatamente o tipo de esquecimento que
         uma propriedade com nome próprio evita.
         """
-        return self.publico and not self.arquivado
+        from .publicacao_manual_docs import autorizado
+        return self.publico and not self.arquivado and autorizado(self)
 
     @property
     def endereco(self) -> str:

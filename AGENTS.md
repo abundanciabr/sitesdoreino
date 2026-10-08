@@ -29,3 +29,8 @@ O congelamento preserva a versão que recebeu 100/100. Ele não fixa mudanças f
 É proibido acrescentar qualquer link ou qualquer outro elemento aos menus do site sem ordem expressa do mantenedor. A única exceção é o menu do admin.
 O link Cursos para `https://meshcraft.top/cursos/` foi retirado do menu do rodapé.
 As páginas `https://meshcraft.top/docs/comunidade` e `https://meshcraft.top/cursos/comunidade/parte-1/D02` são exclusivas de administradores; estar logado como aluno ou professor não concede acesso.
+
+
+## Regra de ferro de https://meshcraft.top/docs/ — ordem expressa em 08/10/2026
+
+Somente o mantenedor/admin autenticado pode criar e publicar páginas em `https://meshcraft.top/docs/`, entrando no painel `https://meshcraft.top/admin/documentos/` e fazendo isso manualmente. Nenhum robô pode publicar, republicar ou colocar páginas nesse local, mesmo por scripts, migrações, sementes, acesso direto ao banco ou usando a sessão/credenciais do mantenedor. Pedidos genéricos de trabalho no site não autorizam exceção. Não assine autorizações de publicação, não simule cliques do mantenedor, não fabrique a intenção do formulário e não remova nem contorne a proteção. Somente uma ordem expressa do mantenedor reconhecendo esta regra pode autorizar sua alteração. As páginas existentes foram retiradas do ar por ordem do mantenedor; não devem ressurgir em publicação ou recuperação de código. Edição, restauração e desarquivamento não republicam: uma nova publicação exige o gesto manual no painel.

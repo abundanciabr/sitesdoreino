@@ -64,8 +64,7 @@
   {% else %}
   <p class="aviso">
     <b>Nenhum documento público.</b> A página <code>meshcraft.top/docs/</code>
-    está no ar, mas vazia. Se você não arquivou nem fechou nenhum, avise o
-    agente: a carga inicial pode não ter rodado nesta subida do sistema.
+    está vazia. Para colocar uma página ali, crie e publique manualmente neste painel.
   </p>
   {% endif %}
 
@@ -99,10 +98,10 @@
 
   <p class="aviso espaco-28">
     <b>Como um documento vira público.</b>
-    Todo documento nasce na pasta fechada, visível só nesta tela. Ele passa para
-    a pasta aberta, em <code>meshcraft.top/docs/</code>, quando alguém decide
-    abri-lo, de propósito. Não existe caminho em que um texto interno escape para
-    o site aberto por esquecimento.
+    Somente o admin autenticado pode criar e publicar uma página em
+    <code>https://meshcraft.top/docs/</code>, manualmente neste painel.
+    Robôs, scripts, sementes e migrações não têm autorização para publicar.
+    Edições, restaurações e desarquivamento deixam o documento privado até nova publicação manual.
   </p>
 </div>
 {% endblock %}

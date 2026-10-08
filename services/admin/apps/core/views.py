@@ -143,8 +143,7 @@ def doc_publico(request, nome):
     só por `publico` deixaria o arquivado no ar.
     """
     documento = documentos.ler(nome)
-    acesso_admin = nome == "comunidade" and bool(getattr(request, "admin", None))
-    if documento is None or (not documento.no_ar and not acesso_admin):
+    if documento is None or not documento.no_ar:
         raise Http404("documento não encontrado")
     pagina_visual = documento.formato == Documento.Formato.PAGINA
     resposta = render(
@@ -200,8 +199,8 @@ def documentos_admin(request):
         "admin/documentos.html",
         {
             "admin": request.admin,
-            "so_administradores": [d for d in no_ar if not d.publico],
-            "publicos": [d for d in no_ar if d.publico],
+            "so_administradores": [d for d in no_ar if not d.no_ar],
+            "publicos": [d for d in no_ar if d.no_ar],
             # Os arquivados numa lista SEPARADA, e nao misturados com uma
             # etiqueta: eles nao estao no site, e quem abre esta tela quer ver o
             # que esta no ar. Escondidos de vez, porem, desarquivar seria
@@ -218,11 +217,13 @@ def documento_admin(request, nome):
     documento = documentos.ler(nome)
     if documento is None:
         raise Http404("documento não encontrado")
+    from .publicacao_manual_docs import intencao_no_painel
     pagina_visual = documento.formato == Documento.Formato.PAGINA
     resposta = render(
         request,
         "admin/documento_admin.html",
         {
+            "intencao_publicar": intencao_no_painel(request, documento),
             "admin": request.admin,
             "documento": documento,
             "corpo": (

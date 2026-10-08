@@ -13,7 +13,7 @@ um dia alguém vai ler só um deles.
   {% if recado == "criado" %}
   <p class="recado">Documento criado.</p>
   {% elif recado == "salvo" %}
-  <p class="recado">Salvo.</p>
+  <p class="recado">Salvo. Continua privado até você publicar pelo painel.</p>
   {% elif recado == "publicado" %}
   <p class="recado">Publicado. Agora qualquer pessoa com o endereço pode ler.</p>
   {% elif recado == "despublicado" %}
@@ -21,9 +21,9 @@ um dia alguém vai ler só um deles.
   {% elif recado == "arquivado" %}
   <p class="recado">Arquivado. Saiu do site, e o texto continua aqui inteiro.</p>
   {% elif recado == "desarquivado" %}
-  <p class="recado">Desarquivado, e de volta ao estado em que estava.</p>
+  <p class="recado">Desarquivado. Continua privado até você publicar pelo painel.</p>
   {% elif recado == "restaurado" %}
-  <p class="recado">Pronto: este documento voltou para a versão que você escolheu.</p>
+  <p class="recado">Pronto: esta versão foi restaurada como documento privado.</p>
   {% elif recado == "confirmacao" %}
   <p class="recado borda-vermelha">
     Não apaguei nada. Para apagar de vez, escreva o endereço do documento
@@ -53,7 +53,7 @@ um dia alguém vai ler só um deles.
     <b>Este documento está ARQUIVADO.</b> Ele saiu do site e não abre para
     ninguém de fora, nem por link direto. O texto continua guardado aqui, e
     volta como estava quando você desarquivar.
-    {% elif documento.publico %}
+    {% elif documento.no_ar %}
     <b>Este documento é PÚBLICO.</b> Qualquer pessoa o lê em
     <code>meshcraft.top/docs/{{ documento.nome }}</code>, sem entrar em nada.
     {% else %}
@@ -107,7 +107,7 @@ um dia alguém vai ler só um deles.
     <p class="nota">
       Este documento está arquivado. Desarquive antes de mudar quem pode lê-lo.
     </p>
-    {% elif documento.publico %}
+    {% elif documento.no_ar %}
     <p class="nota">
       Tirar do público mantém o texto e o histórico, mas fecha o endereço para
       visitantes. Só administradores continuarão vendo este documento.
@@ -118,13 +118,18 @@ um dia alguém vai ler só um deles.
     </form>
     {% else %}
     <p class="nota">
-      Revise o texto antes de publicar. Este gesto abre o endereço para qualquer
-      pessoa, sem exigir login.
+      Só o admin pode colocar uma página em https://meshcraft.top/docs/,
+      manualmente por este painel. Revise o texto e clique em Publicar no site.
     </p>
+    {% if intencao_publicar %}
     <form method="post" action="{% url 'documento_publicar' documento.nome %}">
       {% csrf_token %}
+      <input type="hidden" name="intencao_publicar" value="{{ intencao_publicar }}">
       <button type="submit">Publicar no site</button>
     </form>
+    {% else %}
+    <p class="nota">Somente o admin pode publicar manualmente pelo painel.</p>
+    {% endif %}
     {% endif %}
   </section>
 
@@ -140,8 +145,7 @@ um dia alguém vai ler só um deles.
     <div class="espaco-16">
       {% if documento.arquivado %}
       <p class="nota">
-        Desarquivar devolve o documento ao estado em que ele estava antes: se
-        era público, volta a ser público.
+        Desarquivar mantém o documento privado. Para abrir no site, publique pelo painel.
       </p>
       <form method="post" action="{% url 'documento_desarquivar' documento.nome %}">
         {% csrf_token %}

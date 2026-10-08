@@ -44,6 +44,9 @@ from apps.auditoria.models import Registro
 
 from . import documentos, midia
 from .models import Documento, VersaoDoDocumento
+from .publicacao_manual_docs import somente_admin_manual, conferir_intencao, gravacao_manual
+from django.db import transaction
+from django.http import HttpResponseForbidden
 from .views import _auditar
 
 #: Endereços que a ÁREA ADMINISTRATIVA já usa, e que por isso nenhum documento
@@ -222,6 +225,7 @@ def documento_novo(request):
 
 
 @require_POST
+@somente_admin_manual
 def documento_criar(request):
     """Grava um documento novo, ou devolve a tela dizendo o que faltou."""
     rascunho = _do_formulario(request)
@@ -346,6 +350,7 @@ def documento_editar(request, nome):
 
 
 @require_POST
+@somente_admin_manual
 def documento_salvar(request, nome):
     """Grava a edição. O ENDEREÇO nunca muda por aqui.
 
@@ -390,6 +395,8 @@ def documento_salvar(request, nome):
     documento.formato = rascunho["formato"]
     for campo, valor in _campos_de_apendice_vivo(rascunho).items():
         setattr(documento, campo, valor)
+    documento.publico = False
+    documento.publicacao_manual = ""
     documento.save()
 
     # O histórico é a única memória de quando o carimbo ligou ou desligou: as
@@ -432,6 +439,7 @@ def documento_salvar(request, nome):
 
 
 @require_POST
+@somente_admin_manual
 def documento_midia_enviar(request, nome):
     """Guarda a imagem ou o vídeo que ele escolheu, sem perder o texto na volta."""
     documento = documentos.ler(nome)
@@ -487,14 +495,21 @@ def documento_midia_enviar(request, nome):
 
 
 @require_POST
+@somente_admin_manual
 def documento_publicar(request, nome):
     """Expõe um documento já criado, num gesto separado de escrever."""
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+    if not conferir_intencao(request, documento):
+        return HttpResponseForbidden("Abra o documento no painel admin e clique em Publicar no site.")
     return _mudar_publicacao(
         request, nome, publico=True, acao=Registro.PUBLICAR_DOCUMENTO
     )
 
 
 @require_POST
+@somente_admin_manual
 def documento_despublicar(request, nome):
     """Torna o documento visível apenas para administradores."""
     return _mudar_publicacao(
@@ -502,6 +517,7 @@ def documento_despublicar(request, nome):
     )
 
 
+@transaction.atomic
 def _mudar_publicacao(request, nome, *, publico: bool, acao: str):
     documento = documentos.ler(nome)
     if documento is None:
@@ -511,14 +527,19 @@ def _mudar_publicacao(request, nome, *, publico: bool, acao: str):
         return HttpResponseRedirect(
             f"{reverse('documento_admin', args=[documento.nome])}?recado=arquivado"
         )
-    if documento.publico == publico:
+    if documento.no_ar == publico and documento.publico == publico:
         recado = "publicado" if publico else "despublicado"
         return HttpResponseRedirect(
             f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
         )
 
     documento.publico = publico
-    documento.save(update_fields=["publico", "atualizado_em"])
+    if publico:
+        with gravacao_manual(request, documento):
+            documento.save(update_fields=["publico", "publicacao_manual", "atualizado_em"])
+    else:
+        documento.publicacao_manual = ""
+        documento.save(update_fields=["publico", "publicacao_manual", "atualizado_em"])
     gesto = "publicou o documento" if publico else "tirou o documento do público"
     _guardar_versao(request, documento, gesto)
     _auditar(request, acao, documento.nome, Registro.OK)
@@ -544,6 +565,7 @@ def _mudar_publicacao(request, nome, *, publico: bool, acao: str):
 
 
 @require_POST
+@somente_admin_manual
 def documento_arquivar(request, nome):
     """Tira o documento do site. O texto fica inteiro, aqui dentro."""
     return _mudar_o_lugar(
@@ -552,6 +574,7 @@ def documento_arquivar(request, nome):
 
 
 @require_POST
+@somente_admin_manual
 def documento_desarquivar(request, nome):
     """Devolve o documento ao estado em que ele estava antes de ser arquivado."""
     return _mudar_o_lugar(
@@ -565,7 +588,9 @@ def _mudar_o_lugar(request, nome, *, arquivado: bool, acao: str):
         raise Http404("documento não encontrado")
 
     documento.arquivado = arquivado
-    documento.save(update_fields=["arquivado", "atualizado_em"])
+    documento.publico = False
+    documento.publicacao_manual = ""
+    documento.save(update_fields=["arquivado", "publico", "publicacao_manual", "atualizado_em"])
     _auditar(request, acao, documento.nome, Registro.OK)
 
     # NENHUMA versao e gravada aqui, e a omissao e a decisao: o historico guarda
@@ -582,6 +607,7 @@ def _mudar_o_lugar(request, nome, *, arquivado: bool, acao: str):
 
 
 @require_POST
+@somente_admin_manual
 def documento_apagar(request, nome):
     """Destroi o documento e todo o historico dele. Sem volta.
 
@@ -667,6 +693,7 @@ def documento_versoes(request, nome):
 
 
 @require_POST
+@somente_admin_manual
 def documento_restaurar(request, nome):
     """Restaura título, corpo e ordem, mantendo a visibilidade atual.
 
@@ -690,6 +717,8 @@ def documento_restaurar(request, nome):
     documento.titulo = versao.titulo
     documento.corpo = versao.corpo
     documento.ordem = versao.ordem
+    documento.publico = False
+    documento.publicacao_manual = ""
     documento.save()
 
     quando = timezone.localtime(versao.salvo_em).strftime("%d/%m/%Y às %H:%M")

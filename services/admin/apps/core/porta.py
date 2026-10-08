@@ -271,6 +271,11 @@ class PortaAdministrativa:
                     "porta: credencial de robô recusada em %s", request.path_info
                 )
                 return self._nao_existe()
+            if (request.method not in ("GET", "HEAD", "OPTIONS")
+                and request.path_info.startswith("/documentos/")):
+                return self._com_seguranca(HttpResponse(
+                    "Documentos: somente o admin pode criar ou alterar manualmente no painel.",
+                    status=403, content_type="text/plain; charset=utf-8"))
             if conta_do_robo.gesto_sem_volta(request):
                 return self._com_seguranca(conta_do_robo.recusa())
             request.admin = robo
@@ -280,11 +285,7 @@ class PortaAdministrativa:
         if request.path_info.startswith(PREFIXO_ACESSO_LOCAL):
             return self._com_seguranca(self.get_response(request))
 
-        comunidade_privada = (
-            request.path_info.rstrip("/") == "/docs/comunidade"
-            or request.path_info.startswith("/docs/comunidade/")
-        )
-        if not comunidade_privada and not _arquivo_pedido_pelo_admin(request) and (
+        if not _arquivo_pedido_pelo_admin(request) and (
             request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
                 (
                     PREFIXO_PUBLICO_DOS_DOCUMENTOS,

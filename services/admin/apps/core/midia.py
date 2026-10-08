@@ -430,7 +430,8 @@ def arquivo_da_semente_servir(request, nome, ficheiro):
     documento = ler(nome)
     if documento is None:
         raise Http404("arquivo não encontrado")
-    if not getattr(request, "admin", None) and not documento.no_ar:
+    if not documento.no_ar and (request.path_info.startswith("/docs/")
+                                  or not getattr(request, "admin", None)):
         raise Http404("arquivo não encontrado")
 
     caminho = caminho_do_arquivo(documento.nome, ficheiro)
