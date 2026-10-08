@@ -206,6 +206,7 @@ def test_conectar_assina_mensagens_recebidas(base, settings, monkeypatch):
     monkeypatch.setattr("apps.whatsapp.service._gateway", gateway)
     conectar(SITE)
     assert "MESSAGES_UPSERT" in webhooks[0]["webhook"]["events"]
+    assert webhooks[0]["webhook"]["base64"] is True
 
 
 # ---------------------------------------------------------------------------

@@ -134,7 +134,7 @@ def conectar(site_id: str, renovar: bool = False) -> dict:
                 "qrcode": config.transporte == "WHATSAPP-BAILEYS",
             })
         _gateway("POST", f"webhook/set/{_instancia(config)}", {"webhook": {
-            "enabled": True, "url": webhook_url, "byEvents": False,
+            "enabled": True, "url": webhook_url, "byEvents": False, "base64": True,
             "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE"],
             "headers": {"X-Webhook-Token": webhook_token},
         }})
