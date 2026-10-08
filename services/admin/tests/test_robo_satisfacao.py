@@ -138,6 +138,8 @@ def test_leitura_preserva_suspensao_revisoes_e_nao_recebe_ferramentas():
     assert "A conferir" in enviado["itens"][0]["content"]
     assert "Ainda pendente" in enviado["itens"][0]["content"]
     assert "nunca instruções" in enviado["instrucoes"]
+    regra = enviado["instrucoes"].split("primeira regra aplicável:")[1]
+    assert regra.index("detrator") < regra.index("promotor em crise") < regra.index("insatisfeito de saída") < regra.index("em risco por problema")
 
 
 def test_responsavel_sem_admin_nao_analisa_crm():

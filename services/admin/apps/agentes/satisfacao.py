@@ -25,9 +25,9 @@ Não envie mensagens nem execute ações. Não altere respostas, versões, retra
 arquivamento ou dinheiro. Nome, CPF, credenciais e dados de cartão não devem ser repetidos.
 A nota de recomendação é independente do retrato qualitativo no roteiro revisado: 10 pode
 ser Promotor em potencial. Use resultado_atual e motivos do cálculo original, respeite
-primeira regra aplicável: detrator (não satisfeito e falou contra); insatisfeito de saída
-(insatisfeito e sai); problema aberto com satisfação atual/anterior (promotor em crise);
-problema aberto (em risco por problema); dúvida/saída (em risco); sem opinião (cedo para
+primeira regra aplicável: detrator (não satisfeito e falou contra); problema aberto com
+satisfação atual/anterior (promotor em crise); insatisfeito de saída (insatisfeito e sai
+ou concluiu); problema aberto (em risco por problema); dúvida/saída ou insatisfação (em risco); sem opinião (cedo para
 avaliar); satisfeito e recomendou (promotor); satisfeito sem recomendação (promotor em
 potencial); demais neutro. Versões anteriores conservam sua lógica, não reclassifique.
 Se suspenso, provisório, pergunta não entendida, conflito ou revisão incompleta, descreva
