@@ -78,8 +78,8 @@ from django.utils import timezone
 #   · "Menu do site", e não "Menu": estando DENTRO do menu do admin, um item
 #     chamado "Menu" seria a pergunta "menu de quê?" em toda visita.
 SECOES = (
-    ("atendimento", "Atendimento aos alunos"),
     ("visao_geral", "Visão geral"),
+    ("atendimento", "Atendimento aos alunos"),
     # "Pendências", e vem logo depois da capa (07/09/2026): é a tela que diz o
     # que espera por ele, e um item de "o que fazer agora" no fim de uma lista
     # de treze é um item que ninguém vê. O nome é o da própria tela, e não
@@ -228,6 +228,10 @@ def moldura_do_contexto(request) -> dict:
         return {}
     menu = secoes_do_menu(request.path_info)
     if admin.get("equipe_apenas"):
+        for item in menu:
+            if item["rotulo"] == "Atendimento aos alunos":
+                item["href"] = reverse("atendimento_equipe")
+                item["aqui"] = request.path_info.startswith("/equipe/atendimento/")
         # Quem é só da equipe enxerga só a porta que tem: a saída para o site e
         # o painel. Desenhar as outras seções para alguém que recebe 404 nelas
         # seria um menu de links quebrados.

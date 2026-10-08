@@ -134,8 +134,12 @@ def aluno(request):
         return resposta({'erro':'Confira a mensagem e tente novamente.'},422)
 
 
+def prefixo(request):
+    return '/admin/equipe/atendimento' if request.path_info.startswith('/equipe/') else '/admin/atendimento'
+
+
 def contexto(request,sid):
-    return {'admin':request.admin,'assuntos':Assunto.objects.filter(site_id=sid),'config':service.config(sid),'modos':MODOS}
+    return {'admin':request.admin,'suporte_prefixo':prefixo(request),'assuntos':Assunto.objects.filter(site_id=sid),'config':service.config(sid),'modos':MODOS}
 
 
 @require_http_methods(['GET'])
@@ -167,7 +171,7 @@ def conversa_admin(request,conversa_id):
             sug=service.sugerir(conversa)
             Conversa.objects.filter(pk=conversa.pk).update(sugestao=sug)
         elif acao=='guardar_base':
-            return HttpResponseRedirect('/admin/atendimento/base/?conversa='+str(conversa.pk)+'&mensagem='+request.POST.get('mensagem',''))
+            return HttpResponseRedirect(prefixo(request)+'/base/?conversa='+str(conversa.pk)+'&mensagem='+request.POST.get('mensagem',''))
         else:
             with transaction.atomic():
                 conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid)
@@ -200,7 +204,7 @@ def conversa_admin(request,conversa_id):
                 else:raise Http404
                 conversa.save()
             if acao=='avisar':service.avisar(conversa)
-        return HttpResponseRedirect('/admin/atendimento/'+str(conversa.pk)+'/')
+        return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/')
     conversa.refresh_from_db()
     if conversa.sugestao and not service.fontes_atuais(conversa.sugestao.get('fontes',[])):
         conversa.sugestao={'estado':'A base foi corrigida. Prepare uma nova sugestão para usar a versão atual.'}
@@ -248,7 +252,7 @@ def base(request):
                     item.revisao+=1
                 else:item=Conhecimento(site_id=sid)
                 item.assunto=assunto;item.pergunta=pergunta;item.resposta=texto;item.curso=curso;item.save()
-            return HttpResponseRedirect('/admin/atendimento/base/?salvo=1')
+            return HttpResponseRedirect(prefixo(request)+'/base/?salvo=1')
     q=request.GET.get('q','').strip()[:120]
     consulta=Conhecimento.objects.filter(site_id=sid).select_related('assunto').order_by('-atualizado_em')
     if q:consulta=consulta.filter(Q(pergunta__icontains=q)|Q(resposta__icontains=q)|Q(assunto__nome__icontains=q))
@@ -294,7 +298,7 @@ def configuracao(request):
             total=service.reaproveitar_responsaveis(sid)
             if not total:erro='Não encontrei telefone cadastrado dos responsáveis da equipe neste site.'
         else:raise Http404
-        if not erro:return HttpResponseRedirect('/admin/atendimento/configuracao/?salvo=1')
+        if not erro:return HttpResponseRedirect(prefixo(request)+'/configuracao/?salvo=1')
     a=service.orcamento(c)
     dados,erro_whatsapp=pedir_whatsapp(sid)
     ctx.update(erro=erro,responsaveis=Responsavel.objects.filter(site_id=sid,ativo=True),
@@ -341,7 +345,7 @@ def previa_forum(request,conversa_id):
                 tid=request.POST.get('topico_existente','')
                 previa.topico_existente=int(tid) if tid.isdigit() else None
                 previa.save()
-                return HttpResponseRedirect('/admin/atendimento/'+str(conversa.pk)+'/forum/?previa='+str(previa.pk))
+                return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/forum/?previa='+str(previa.pk))
         elif acao=='publicar' and previa:
             if request.POST.get('confirmado')!='sim':erro='Confira a prévia e confirme a publicação em nome da escola.'
             else:

@@ -103,7 +103,7 @@ def test_aviso_usa_chave_estavel_sem_fingir_entrega(escola,monkeypatch):
     assert len(chamadas)==1
     assert Aviso.objects.get().estado=='enviado'
     assert 'pessoa' not in chamadas[0]['corpo'].lower()
-    assert 'https://meshcraft.top/admin/atendimento/' in chamadas[0]['corpo']
+    assert 'https://meshcraft.top/admin/equipe/atendimento/' in chamadas[0]['corpo']
 
 
 def test_redacao_publica_retirando_identificacao(escola):
@@ -149,9 +149,11 @@ def test_equipe_atende_sem_abrir_configuracao_ou_outro_admin(escola,monkeypatch)
     monkeypatch.setattr(porta,'_e_da_equipe',lambda email:email=='equipe@example.test')
     monkeypatch.setattr(views.IdentidadeClient,'sessao_completa',lambda *a:{'autenticado':True,'id':'equipe-teste','email':'equipe@example.test','nome_exibido':'Equipe'})
     c=Client();c.cookies['meshcraft_sessao']='sessao-testada-pelo-servico'
-    assert c.get('/atendimento/').status_code==200
-    assert c.get('/atendimento/base/').status_code==200
+    assert c.get('/equipe/atendimento/').status_code==200
+    assert c.get('/equipe/atendimento/base/').status_code==200
     assert c.get('/atendimento/configuracao/').status_code==404
+    assert c.get('/atendimento/').status_code==404
     assert c.get('/escola/').status_code==404
     monkeypatch.setattr(porta,'_e_da_equipe',lambda email:False)
     assert c.get('/atendimento/').status_code==404
+    assert c.get('/equipe/atendimento/').status_code==404

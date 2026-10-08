@@ -161,7 +161,7 @@ def avisar(conversa):
                     aviso.estado=confirmacao['status'];aviso.save(update_fields=['estado','atualizado_em'])
             continue
         dados,erro = pedir_whatsapp(conversa.site_id,'send',{'destinatario':r.telefone,
-            'corpo':f'Suporte Meshcraft: atendimento {str(conversa.pk)[:8]} aguardando a equipe. Assunto: {conversa.assunto.nome}. Abra https://meshcraft.top/admin/atendimento/{conversa.pk}/',
+            'corpo':f'Suporte Meshcraft: atendimento {str(conversa.pk)[:8]} aguardando a equipe. Assunto: {conversa.assunto.nome}. Abra https://meshcraft.top/admin/equipe/atendimento/{conversa.pk}/',
             'referencia':f'suporte:{conversa.pk}:{conversa.rodada}:{r.pk}'})
         aviso.estado = dados.get('status','desconhecido') if dados else 'pendente'
         aviso.detalhe = ('Não foi possível confirmar o envio; consulta pendente.' if erro else '')

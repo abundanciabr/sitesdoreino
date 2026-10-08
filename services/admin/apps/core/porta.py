@@ -154,13 +154,6 @@ def _sob_o_painel_da_equipe(caminho: str) -> bool:
     )
 
 
-def _sob_o_atendimento(caminho: str) -> bool:
-    # A equipe atende os alunos; configuração de autonomia continua com o admin.
-    return (caminho == "/atendimento" or caminho.startswith("/atendimento/")) and not (
-        caminho == "/atendimento/configuracao" or caminho.startswith("/atendimento/configuracao/")
-    )
-
-
 def _sob_clientes_da_fila(caminho: str) -> bool:
     return caminho == PREFIXO_DOS_CLIENTES_DA_FILA or caminho.startswith(
         PREFIXO_DOS_CLIENTES_DA_FILA + "/"
@@ -325,11 +318,11 @@ class PortaAdministrativa:
         # equipe pelo link. Vale SÓ sob `/equipe/`, e só é olhado ali.
         aparelho = (
             aparelho_da_requisicao(request)
-            if (_sob_o_painel_da_equipe(request.path_info) or _sob_o_atendimento(request.path_info))
+            if _sob_o_painel_da_equipe(request.path_info)
             else None
         )
-        if COOKIE_DA_SESSAO_DO_SITE not in request.COOKIES and (
-            _sob_o_painel_da_equipe(request.path_info) or _sob_o_atendimento(request.path_info)
+        if COOKIE_DA_SESSAO_DO_SITE not in request.COOKIES and _sob_o_painel_da_equipe(
+            request.path_info
         ):
             # No painel da equipe, navegador sem a sessão do site não tem o que
             # perguntar à identidade: ou apresenta um aparelho que vale, ou vai
@@ -378,7 +371,7 @@ class PortaAdministrativa:
                 return self._nao_existe()
             request.cliente_fila = {"pessoa_id": pessoa_id, "slug": cliente["slug"]}
             return self._com_seguranca(self.get_response(request))
-        elif (_sob_o_painel_da_equipe(request.path_info) or _sob_o_atendimento(request.path_info)) and _e_da_equipe(email):
+        elif _sob_o_painel_da_equipe(request.path_info) and _e_da_equipe(email):
             # O segundo crachá (01/10/2026): quem é da equipe entra SÓ no
             # painel da equipe. Fora dele, a resposta é a mesma de um estranho.
             equipe_apenas = True
@@ -454,7 +447,7 @@ class PortaAdministrativa:
         return self._com_seguranca(resposta)
 
     def _para_o_login(self, request):
-        if (_sob_o_painel_da_equipe(request.path_info) or _sob_o_atendimento(request.path_info)):
+        if _sob_o_painel_da_equipe(request.path_info):
             # Quem é da equipe e chegou sem acesso neste navegador vai para a
             # entrada DA EQUIPE: e-mail e senha, ou a conta Google.
             destino = (

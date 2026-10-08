@@ -277,6 +277,10 @@ from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento
 from apps.atendimento import views as suporte
 
 urlpatterns = [
+    path("equipe/atendimento/", suporte.fila, name="atendimento_equipe"),
+    path("equipe/atendimento/base/", suporte.base, name="atendimento_base_equipe"),
+    path("equipe/atendimento/<uuid:conversa_id>/", suporte.conversa_admin, name="atendimento_conversa_equipe"),
+    path("equipe/atendimento/<uuid:conversa_id>/forum/", suporte.previa_forum, name="atendimento_forum_equipe"),
     path("atendimento/", suporte.fila, name="atendimento"),
     path("atendimento/base/", suporte.base, name="atendimento_base"),
     path("atendimento/configuracao/", suporte.configuracao, name="atendimento_configuracao"),
