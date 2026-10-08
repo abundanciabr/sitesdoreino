@@ -160,7 +160,7 @@ def test_menu_mostra_as_quatro_areas_e_marca_oportunidades():
 
 
 def test_menu_com_paginas_existentes_vira_link_e_marca_a_area_aberta(monkeypatch):
-    enderecos = {"crm": "/admin/crm/", "crm_conversas": "/admin/crm/conversas/", "crm_agentes": "/admin/crm/agentes/", "crm_resultados": "/admin/crm/resultados/"}
+    enderecos = {"acompanhamento_alunos": "/admin/escola/alunos/acompanhamento/", "crm": "/admin/crm/", "crm_conversas": "/admin/crm/conversas/", "crm_agentes": "/admin/crm/agentes/", "crm_resultados": "/admin/crm/resultados/", "crm_satisfacao": "/admin/crm/satisfacao/", "crm_satisfacao_respondentes": "/admin/crm/satisfacao/respondentes/"}
 
     def falso(nome):
         if nome not in enderecos:
@@ -169,11 +169,12 @@ def test_menu_com_paginas_existentes_vira_link_e_marca_a_area_aberta(monkeypatch
 
     monkeypatch.setattr(crm_menu, "reverse", falso)
     areas = crm_menu.areas_do_crm("/admin/crm/conversas/abc/")
-    assert [a["nome"] for a in areas] == ["Oportunidades", "Conversas", "Agentes", "Resultados"]
+    assert [a["nome"] for a in areas] == ["Alunos", "Oportunidades", "Conversas", "Agentes", "Resultados", "Satisfação", "Quem respondeu"]
     assert [a["endereco"] for a in areas] == list(enderecos.values())
     assert [a["nome"] for a in areas if a["ativa"]] == ["Conversas"]
     assert [a["nome"] for a in crm_menu.areas_do_crm("/admin/crm/") if a["ativa"]] == ["Oportunidades"]
     assert [a["nome"] for a in crm_menu.areas_do_crm("/admin/crm/9f0c/") if a["ativa"]] == ["Oportunidades"]
+    assert [a["nome"] for a in crm_menu.areas_do_crm("/admin/crm/satisfacao/respondentes/") if a["ativa"]] == ["Quem respondeu"]
 
 
 def test_menu_com_pagina_que_ainda_nao_existe_nao_derruba(monkeypatch):
@@ -184,7 +185,7 @@ def test_menu_com_pagina_que_ainda_nao_existe_nao_derruba(monkeypatch):
 
     monkeypatch.setattr(crm_menu, "reverse", so_crm)
     areas = crm_menu.areas_do_crm("/admin/crm/")
-    assert [a["nome"] for a in areas if not a["endereco"]] == ["Conversas", "Agentes", "Resultados"]
+    assert [a["nome"] for a in areas if not a["endereco"]] == ["Alunos", "Conversas", "Agentes", "Resultados", "Satisfação", "Quem respondeu"]
 
 
 def test_menu_aceita_a_rota_antiga_dos_agentes(monkeypatch):
