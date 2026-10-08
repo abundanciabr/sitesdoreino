@@ -134,6 +134,10 @@ def test_leitura_preserva_suspensao_revisoes_e_nao_recebe_ferramentas():
          patch.object(satisfacao.modelo, "responder", return_value=SimpleNamespace(completa=True, texto=json.dumps(resultado()))) as responder:
         satisfacao.ler(e, {"fontes": {"pesquisa": a}})
     enviado = responder.call_args.kwargs
+    # O provedor exige JSON nas mensagens de entrada, mesmo quando
+    # instructions já pede esse formato. Este caso reproduz a execução 65.
+    assert enviado["formato"] == {"type": "json_object"}
+    assert "json" in enviado["itens"][0]["content"].split("\n\n", 1)[0].lower()
     assert "ferramentas" not in enviado
     assert "A conferir" in enviado["itens"][0]["content"]
     assert "Ainda pendente" in enviado["itens"][0]["content"]
