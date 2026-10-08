@@ -2,12 +2,13 @@ import json
 import os
 import re
 import uuid
+from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 from django.db import transaction
 from django.db.models import Q, Count, Avg
-from django.http import JsonResponse, Http404, HttpResponseRedirect
+from django.http import JsonResponse, Http404, HttpResponseRedirect, FileResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
@@ -55,6 +56,33 @@ def aluno(request):
         identidade=IdentidadeClient().sessao_completa(request.META.get('HTTP_COOKIE',''))
     except IdentidadeIndisponivel:
         return resposta({'erro':'Não foi possível conferir sua sessão. Tente novamente.'},503)
+    return _conversar(request, identidade)
+
+
+@require_http_methods(['GET','POST'])
+def chat_equipe(request):
+    admin(request)
+    from apps.core.equipe import _membro_da_sessao
+    membro = _membro_da_sessao(request)
+    dono = 'equipe-membro-' + str(membro.pk) if membro else 'equipe-admin-' + str(request.admin['id'])
+    return _conversar(request, {'autenticado': True, 'id': dono,
+        'nome_exibido': request.admin.get('nome') or 'Equipe'})
+
+
+@require_http_methods(['GET'])
+def chat_arquivo(request, nome):
+    admin(request)
+    tipos = {'suporte.js': 'text/javascript', 'suporte.css': 'text/css'}
+    if nome not in tipos:
+        raise Http404
+    caminho = Path(__file__).resolve().parent / 'static' / 'atendimento' / nome
+    r = FileResponse(caminho.open('rb'), content_type=tipos[nome])
+    r['Cache-Control'] = 'private, max-age=3600'
+    r['X-Content-Type-Options'] = 'nosniff'
+    return r
+
+
+def _conversar(request, identidade):
     if not identidade.get('autenticado') or not identidade.get('id'):
         return resposta({'erro':'Entre na sua conta para conversar com o suporte.','entrar':'/entrar/google'},401)
     sid=site(request)

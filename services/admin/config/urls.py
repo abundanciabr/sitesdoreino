@@ -278,6 +278,8 @@ from apps.atendimento import views as suporte
 
 urlpatterns = [
     path("equipe/atendimento/", suporte.fila, name="atendimento_equipe"),
+    path("equipe/atendimento/chat/", suporte.chat_equipe, name="atendimento_chat_equipe"),
+    path("equipe/atendimento/chat/arquivo/<str:nome>", suporte.chat_arquivo, name="atendimento_chat_arquivo"),
     path("equipe/atendimento/base/", suporte.base, name="atendimento_base_equipe"),
     path("equipe/atendimento/<uuid:conversa_id>/", suporte.conversa_admin, name="atendimento_conversa_equipe"),
     path("equipe/atendimento/<uuid:conversa_id>/forum/", suporte.previa_forum, name="atendimento_forum_equipe"),
