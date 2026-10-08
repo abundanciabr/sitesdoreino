@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow"><link rel="icon" href="data:,">
+  <title>{% if painel %}{{ painel.nome }} · {% endif %}Satisfação | CRM · Meshcraft</title>
+  {% include 'admin/_satisfacao_estilo.html' %}
+</head>
+<body>
+<header class="topo">
+  <a class="marca" href="{% url 'visao_geral' %}" aria-label="Meshcraft · Administração"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path fill="currentColor" d="M2 5 7 2l9 7 9-7 5 3v24h-7V13l-7 6-7-6v16H2Z"/></svg>Meshcraft</a>
+  <nav class="nav-topo" aria-label="Seções da administração">
+    <a class="secundario" href="{% url 'visao_geral' %}">Início</a>
+    <a class="ativo" href="{% url 'crm' %}" aria-current="page">CRM</a>
+    <a class="secundario" href="{% url 'escola_alunos' %}">Alunos</a>
+    <details class="mais-menu"><summary>Mais</summary><nav>{% for secao in menu_do_admin %}<a href="{{ secao.href }}">{{ secao.rotulo }}</a>{% endfor %}</nav></details>
+  </nav>
+  <div class="operador"><span class="avatar" aria-hidden="true">{{ admin.nome|slice:':1'|upper }}</span><span class="nome-operador">{{ admin.nome|default:'Administrador' }}</span></div>
+</header>
+<div class="bancada">
+  <aside class="alunos" aria-label="Alunos que responderam">
+    <h2>Alunos</h2>
+    <form class="busca" method="get" action="{% url 'crm_satisfacao' %}" role="search">
+      <input type="hidden" name="site_id" value="{{ site_id }}">
+      <input name="q" value="{{ q }}" maxlength="120" type="search" placeholder="Buscar aluno ou curso…" aria-label="Nome, e-mail ou curso">
+      <button type="submit" aria-label="Buscar">{% include 'admin/_icone_satisfacao.html' with icone='busca' %}</button>
+    </form>
+    {% if estado_lista == 'ok' %}<p class="contagem">{{ lista.alunos }} aluno{{ lista.alunos|pluralize }} · {{ lista.total }} pesquisa{{ lista.total|pluralize }} concluída{{ lista.total|pluralize }}{% if q %} na busca · <a href="{% url 'crm_satisfacao' %}?site_id={{ site_id|urlencode }}">Limpar</a>{% endif %}</p>
+    {% else %}<p class="aviso-lista" role="status">Não foi possível consultar a lista agora.</p>{% endif %}
+    <nav class="lista-alunos" aria-label="Selecionar uma resposta">
+    {% for item in itens %}
+      <a href="{{ item.url }}" class="pessoa tom-{{ item.tom }}{% if item.ativo %} ativa{% endif %}"{% if item.ativo %} aria-current="page"{% endif %}>
+        {% include 'admin/_icone_satisfacao.html' with icone='pessoa' %}
+        <span><span class="nome">{{ item.nome }}</span><span class="curso">{{ item.curso }}</span><span class="classificacao"><span class="ponto" aria-hidden="true"></span>{{ item.retrato }}</span>{% if item.motivo %}<span class="motivo">{{ item.motivo }}</span>{% endif %}</span>
+      </a>
+    {% empty %}{% if estado_lista == 'ok' %}<p class="aviso-lista">{% if q %}Nenhuma resposta corresponde à busca.{% else %}Nenhum aluno concluiu a pesquisa ainda.{% endif %}</p>{% endif %}{% endfor %}
+    </nav>
+    {% if lista.paginas > 1 %}<nav class="paginacao" aria-label="Páginas de respostas">{% if anterior_url %}<a href="{{ anterior_url }}">← Anterior</a>{% endif %}<span>{{ lista.pagina }}/{{ lista.paginas }}</span>{% if proxima_url %}<a href="{{ proxima_url }}">Próxima →</a>{% endif %}</nav>{% endif %}
+  </aside>
+  <main class="conteudo" id="aluno">
+    <nav class="migalha" aria-label="Você está em"><a href="{% url 'crm' %}">CRM</a><span aria-hidden="true">›</span><a href="{% url 'crm_satisfacao' %}?site_id={{ site_id|urlencode }}">Satisfação</a>{% if painel %}<span aria-hidden="true">›</span><b>{{ painel.nome }}</b>{% endif %}</nav>
+    <div class="cabecalho-aluno">
+      <div><h1>{% if painel %}{{ painel.nome }}{% else %}Satisfação dos alunos{% endif %}</h1>
+        {% if painel %}<div class="metadados"><span>Curso: <b>{{ painel.curso }}</b></span><span>Pesquisa: <time>{{ painel.data|date:'d/m/Y H:i'|default:'Data não registrada' }}</time></span></div>{% if painel.email %}<p class="email">{{ painel.email }}</p>{% endif %}{% endif %}
+      </div>
+      <a class="configurar" href="{{ config_url }}">{% include 'admin/_icone_satisfacao.html' with icone='config' %}Configurar pesquisa</a>
+    </div>
+    {% if request.GET.atendido %}<p class="aviso" role="status">Atendimento registrado.</p>{% endif %}
+    {% if estado_historico != 'ok' and estado_historico != 'sem-aluno' %}<p class="aviso erro" role="alert">Não foi possível consultar as respostas deste aluno agora. Tente novamente em instantes.</p>
+    {% elif selecao_invalida %}<p class="aviso erro" role="alert">Esta avaliação não foi encontrada para este aluno e site. Selecione uma resposta na lista.</p>
+    {% elif not painel %}<p class="aviso aviso-vazio">{% if estado_historico == 'ok' %}Nenhuma avaliação registrada para este aluno neste site.{% elif estado_lista == 'ok' and not itens %}As respostas aparecerão aqui quando um aluno concluir a pesquisa.{% else %}Selecione um aluno para consultar as respostas.{% endif %}</p>
+    {% else %}
+    <section class="retrato tom-{{ painel.tom }}" aria-labelledby="retrato-aluno">
+      {% include 'admin/_icone_satisfacao.html' with icone='pessoa' %}
+      <div class="retrato-texto"><h2 id="retrato-aluno">{{ painel.retrato }}</h2><p>{{ painel.explicacao }}</p>{% if painel.suspenso %}<div class="estado-avaliacao">Classificação suspensa · precisa de esclarecimento</div>{% elif painel.provisorio %}<div class="estado-avaliacao">Classificação provisória · aguarda conferência</div>{% elif painel.status != 'Concluída' %}<div class="estado-avaliacao">{{ painel.status }}</div>{% endif %}</div>
+      <div class="nota"><span>Nota de recomendação</span><strong>{% if painel.nota != None %}{{ painel.nota }}/10{% else %}—{% endif %}</strong><small>{% if painel.revisado %}A nota é independente do retrato do aluno.{% else %}Nota e classificação do roteiro anterior.{% endif %}</small></div>
+    </section>
+    <div class="leitura">
+      <section class="quadro respostas" aria-labelledby="respostas-aluno">
+        <h2 id="respostas-aluno">O que ele respondeu</h2>
+        {% for resposta in painel.respostas %}
+          <div class="resposta" id="resposta-{{ resposta.chave }}">
+            {% include 'admin/_icone_satisfacao.html' with icone=resposta.icone %}
+            <div class="assunto"><b>{{ resposta.assunto }}</b><details class="pergunta"><summary aria-label="Ver pergunta de {{ resposta.assunto }}">Resposta do aluno ⓘ</summary><p>{{ resposta.pergunta }}</p></details></div>
+            <div class="valor">{{ resposta.resposta }}{% if resposta.complemento %}<p class="complemento">{{ resposta.complemento }}</p>{% endif %}</div>
+          </div>
+        {% empty %}<p class="muted">Não foi possível ler as respostas desta avaliação.</p>{% endfor %}
+        {% if painel.revisoes %}<p class="revisao-aviso">Estas são as respostas originais. O retrato considera as revisões registradas{% if painel.original %}; originalmente era {{ painel.original }}{% endif %}.</p>{% endif %}
+        {% if not painel.revisado %}<p class="revisao-aviso">Pesquisa do roteiro anterior. Respostas e classificação originais preservadas.</p>{% endif %}
+      </section>
+      <section class="quadro explicacao" aria-labelledby="motivos-aluno">
+        <h2 id="motivos-aluno">Por que este retrato</h2>
+        <p class="explica-intro">{{ painel.explicacao }}</p>
+        {% if painel.pendencias %}<div class="pendencia"><b>Precisa de conferência</b>{% for motivo in painel.pendencias %}<p>{{ motivo }}</p>{% endfor %}</div>{% endif %}
+        <div class="evidencias">
+        {% for evidencia in painel.evidencias %}
+          <div class="evidencia tom-{{ evidencia.tom }}"><span class="sinal">{% if evidencia.tom == 'verde' %}{% include 'admin/_icone_satisfacao.html' with icone='check' %}{% else %}{% include 'admin/_icone_satisfacao.html' with icone='alerta' %}{% endif %}</span><div><h3>{{ evidencia.titulo }}</h3><p>{{ evidencia.assunto }} · {{ evidencia.origem }}</p>{% if evidencia.declarado %}<p class="fonte">O aluno declarou: {{ evidencia.declarado }}</p>{% endif %}{% if evidencia.fonte %}<p class="fonte">Fonte: {{ evidencia.fonte }}{% if evidencia.referencia %} · {{ evidencia.referencia }}{% endif %}</p>{% endif %}</div></div>
+        {% endfor %}
+        </div>
+        {% if painel.revisado %}<div class="legenda"><h3>Como distinguir as classificações</h3>
+          <p class="tom-verde"><span class="ponto" aria-hidden="true"></span><span><b>Promotor:</b> satisfeito e recomendou.</span></p>
+          <p class="tom-vermelho"><span class="ponto" aria-hidden="true"></span><span><b>Detrator:</b> não satisfeito e falou contra.</span></p>
+          <p class="tom-amarelo"><span class="ponto" aria-hidden="true"></span><span><b>Promotor em crise:</b> reclamação em aberto, com satisfação atual ou anterior.</span></p>
+          <p class="tom-amarelo"><span class="ponto" aria-hidden="true"></span><span><b>Promotor em potencial:</b> satisfeito, ainda sem recomendação.</span></p>
+        </div><a class="conferir" href="{{ revisao_url }}">Conferir retrato e fontes →</a>{% endif %}
+      </section>
+    </div>
+    <section class="acoes" aria-label="Situação e atendimento">
+      <div class="situacao">{% include 'admin/_icone_satisfacao.html' with icone='mensagem' %}<div><b>{{ painel.problemas }}</b><p>{% if painel.revisado %}Situação registrada nesta avaliação.{% else %}Confira os detalhes da pesquisa no histórico.{% endif %}</p></div></div>
+      <div class="situacao">{% include 'admin/_icone_satisfacao.html' with icone='ajuda' %}<div><b>{% if atendimento %}{{ atendimento.status_tela }}{% else %}Sem atendimento registrado{% endif %}</b><p>{% if atendimento %}{% if atendimento.responsavel %}{{ atendimento.responsavel }} · {% endif %}{{ atendimento.descricao_tela }}{% if atendimento.prazo_tela %} · Prazo: {{ atendimento.prazo_tela|date:'d/m/Y H:i' }}{% endif %}{% else %}Não há registro para esta avaliação ou para o aluno em geral.{% endif %}</p></div></div>
+      <div class="botoes"><a class="botao" href="{{ historico_url }}">{% include 'admin/_icone_satisfacao.html' with icone='historico' %}Abrir histórico</a><a class="botao principal" href="{{ atendimento_url }}">{% include 'admin/_icone_satisfacao.html' with icone='mais' %}Registrar atendimento</a></div>
+    </section>
+    {% if avaliacoes|length > 1 %}<details class="outras-avaliacoes"><summary>Outras avaliações deste aluno ({{ avaliacoes|length }})</summary><ul>{% for avaliacao in avaliacoes %}<li><a href="{{ avaliacao.url }}">{{ avaliacao.curso_tela }} · {{ avaliacao.data_tela|date:'d/m/Y H:i'|default:'Data não registrada' }}</a></li>{% endfor %}</ul></details>{% endif %}
+    {% endif %}
+    <footer class="rodape">Meshcraft · Administração · Os dados desta página são visíveis somente aos administradores.</footer>
+  </main>
+</div>
+</body>
+</html>

@@ -263,8 +263,10 @@ from apps.assistente.views import assistente_do_site
 
 from apps.core.nps_respondentes import crm_satisfacao_respondentes
 
+from apps.core.nps_painel import crm_satisfacao_painel
+
 urlpatterns = [
-    path("crm/satisfacao/respondentes/", crm_satisfacao_respondentes, name="crm_satisfacao_respondentes"),
+    path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
     path("previa-aula-1", never_cache(require_GET(galeria_aula1.pagina)), name="galeria_aula1"),
@@ -284,7 +286,8 @@ urlpatterns = [
     path("crm/condicoes/", crm_condicoes, name="crm_condicoes"),
     path("crm/condicoes/salvar/", crm_condicoes_salvar, name="crm_condicoes_salvar"),
     path("crm/resultados/", crm_resultados, name="crm_resultados"),
-    path("crm/satisfacao/", crm_satisfacao, name="crm_satisfacao"),
+    path("crm/satisfacao/", crm_satisfacao_painel, name="crm_satisfacao"),
+    path("crm/satisfacao/gestao/", crm_satisfacao, name="crm_satisfacao_gestao"),
     path("crm/satisfacao/config/salvar/", crm_satisfacao_config_salvar, name="crm_satisfacao_config_salvar"),
     path("crm/satisfacao/atendimentos/salvar/", crm_satisfacao_atendimento_salvar, name="crm_satisfacao_atendimento_salvar"),
     # A EQUIPE COMERCIAL DE AGENTES (03/10/2026, `apps/comercial`): fila,

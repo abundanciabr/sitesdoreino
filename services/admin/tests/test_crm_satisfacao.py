@@ -56,7 +56,7 @@ def test_consulta_mostra_nps_respostas_e_atendimento_sem_uuid_no_titulo():
         "atendimentos": [{"id": "atendimento-uuid", "status": "aberto", "responsavel": "Ana",
                           "proximo_passo": "Ligar amanhã", "historico": []}],
     }))
-    resposta = cliente.get(reverse("crm_satisfacao"), {"site_id": "principal", "email": "aluna@exemplo.com"})
+    resposta = cliente.get(reverse("crm_satisfacao_gestao"), {"site_id": "principal", "email": "aluna@exemplo.com"})
     assert resposta.status_code == 200
     texto = resposta.content.decode()
     for trecho in ("Curso de desenho", "NPS original:", "Indicou três pessoas", "O que gostou?", "Aulas práticas", "Ligar amanhã", "Aulas concluídas neste site", "Registros somente deste site."):
@@ -70,7 +70,7 @@ def test_servico_fora_do_ar_nao_vira_historico_vazio():
     cliente = entrar()
     respx.get(QUIZ + "/interno/nps/config").mock(side_effect=httpx.ConnectError("offline"))
     respx.get(QUIZ + "/interno/nps/historico").mock(side_effect=httpx.ConnectError("offline"))
-    resposta = cliente.get(reverse("crm_satisfacao"), {"site_id": "principal", "email": "aluna@exemplo.com"})
+    resposta = cliente.get(reverse("crm_satisfacao_gestao"), {"site_id": "principal", "email": "aluna@exemplo.com"})
     assert resposta.status_code == 200
     texto = resposta.content.decode()
     assert "não significa que não houve avaliações" in texto
@@ -80,7 +80,7 @@ def test_servico_fora_do_ar_nao_vira_historico_vazio():
 @respx.mock
 def test_somente_admin_e_post_exige_csrf():
     cliente = entrar("estranho@exemplo.com")
-    assert cliente.get(reverse("crm_satisfacao"), {"site_id": "principal"}).status_code == 404
+    assert cliente.get(reverse("crm_satisfacao_gestao"), {"site_id": "principal"}).status_code == 404
     cliente = entrar(csrf=True)
     resposta = cliente.post(reverse("crm_satisfacao_config_salvar"), {"site_id": "principal", "documento": "{}"})
     assert resposta.status_code == 403
@@ -149,7 +149,7 @@ def test_editar_atendimento_preenche_formulario_sem_expor_id():
                           "responsavel": "Ana", "proximo_passo": "Ligar amanhã", "prazo": "2026-10-07T18:30:00+00:00",
                           "solucao": "Aguardando", "status": "em_andamento"}],
     }))
-    resposta = cliente.get(reverse("crm_satisfacao"), {
+    resposta = cliente.get(reverse("crm_satisfacao_gestao"), {
         "site_id": "principal", "email": "aluna@exemplo.com", "atendimento": "atendimento-1",
     })
     assert resposta.status_code == 200
@@ -214,7 +214,7 @@ def test_roteiro_revisado_mostra_quatro_leituras_sem_converter_nps_antigo():
         "perguntas_pendentes_revisao": [{"id": "A8", "texto": "Quer continuar?", "tipo": "escolha",
                                          "opcoes": [{"valor": "sim", "texto": "Quero continuar"}]}],
     }))
-    resposta = cliente.get(reverse("crm_satisfacao"), {
+    resposta = cliente.get(reverse("crm_satisfacao_gestao"), {
         "site_id": "principal", "email": "aluno@exemplo.com", "revisao": "revisada-1",
     })
     assert resposta.status_code == 200

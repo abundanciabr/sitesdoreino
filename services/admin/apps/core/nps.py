@@ -359,12 +359,12 @@ def crm_satisfacao(request):
     atendimento_edicao = _atendimento_selecionado(historico or {}, _texto(request.GET.get("atendimento"), 100))
     if historico:
         for atendimento in historico.get("atendimentos", []):
-            params = {"site_id": site_id, "atendimento": atendimento.get("id", "")}
+            params = {"site_id": site_id, "atendimento": atendimento.get("id", ""), "secao": "atendimento"}
             if email:
                 params["email"] = email
             elif aluno_id:
                 params["aluno_id"] = aluno_id
-            atendimento["editar_url"] = reverse("crm_satisfacao") + "?" + urlencode(params)
+            atendimento["editar_url"] = reverse("crm_satisfacao_gestao") + "?" + urlencode(params)
     revisao_selecionada = None
     revisao_estado = "sem-selecao"
     revisao_dados = {}
@@ -389,14 +389,15 @@ def crm_satisfacao(request):
         for avaliacao in historico.get("avaliacoes", []):
             if not avaliacao.get("roteiro_revisado"):
                 continue
-            params = {"site_id": site_id, "revisao": avaliacao["id"]}
+            params = {"site_id": site_id, "revisao": avaliacao["id"], "secao": "historico"}
             if email:
                 params["email"] = email
             elif aluno_id:
                 params["aluno_id"] = aluno_id
-            avaliacao["revisao_url"] = reverse("crm_satisfacao") + "?" + urlencode(params) + "#revisao"
+            avaliacao["revisao_url"] = reverse("crm_satisfacao_gestao") + "?" + urlencode(params) + "#revisao"
     return render(request, "admin/crm_satisfacao.html", {
         "admin": request.admin,
+        "secao": request.GET.get("secao", "completa"),
         "site_id": site_id,
         "aluno_id": aluno_id,
         "email": email,
@@ -518,7 +519,7 @@ def crm_satisfacao_config_salvar(request):
     estado, detalhe = NPSClient().salvar_configuracao(site_id, documento)
     if estado != NPSClient.OK:
         return _erro(request, detalhe if isinstance(detalhe, str) else "Não foi possível salvar a configuração.", site_id=site_id, documento=texto)
-    return HttpResponseRedirect(reverse("crm_satisfacao") + "?" + urlencode({"site_id": site_id, "salvo": "1"}))
+    return HttpResponseRedirect(reverse("crm_satisfacao_gestao") + "?" + urlencode({"site_id": site_id, "salvo": "1", "secao": "configuracao"}))
 
 
 @require_POST
@@ -553,6 +554,8 @@ def crm_satisfacao_atendimento_salvar(request):
         return _erro(request, detalhe if isinstance(detalhe, str) else "Não foi possível registrar o atendimento.", site_id=site_id, aluno_id=aluno_id)
     email = _texto(request.POST.get("email"), 254).lower()
     params = {"site_id": site_id, "atendido": "1"}
+    if corpo["tentativa_id"]:
+        params["avaliacao"] = corpo["tentativa_id"]
     params["email" if email else "aluno_id"] = email or aluno_id
     return HttpResponseRedirect(reverse("crm_satisfacao") + "?" + urlencode(params))
 
@@ -595,9 +598,9 @@ def crm_satisfacao_revisao_salvar(request):
     if estado != NPSClient.OK:
         return _erro(request, detalhe if isinstance(detalhe, str) else "Não foi possível salvar a revisão.", site_id=site_id, aluno_id=aluno_id)
     email = _texto(request.POST.get("email"), 254).lower()
-    params = {"site_id": site_id, "revisao": tentativa_id, "revisado": "1"}
+    params = {"site_id": site_id, "revisao": tentativa_id, "revisado": "1", "secao": "historico"}
     params["email" if email else "aluno_id"] = email or aluno_id
-    return HttpResponseRedirect(reverse("crm_satisfacao") + "?" + urlencode(params) + "#revisao")
+    return HttpResponseRedirect(reverse("crm_satisfacao_gestao") + "?" + urlencode(params) + "#revisao")
 
 
 def _erro(request, mensagem, *, site_id="", aluno_id="", documento=""):

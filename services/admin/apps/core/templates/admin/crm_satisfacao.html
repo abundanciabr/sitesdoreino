@@ -4,7 +4,7 @@
 {% block corpo %}
 <main class="envolucro">
   <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
-  <h1>Satisfação dos alunos</h1>
+  <h1>{% if secao == "configuracao" %}Configurar pesquisa{% elif secao == "atendimento" %}Atendimento do aluno{% else %}Histórico de satisfação{% endif %}</h1>
   <p class="subtitulo">Avaliações por aluno e curso, reclamações e acompanhamento da equipe.</p>
   {% menu_do_crm %}
   <p><a href="{% url 'crm_satisfacao_respondentes' %}?site_id={{ site_id|urlencode }}">Ver todos os alunos que responderam à pesquisa</a></p>
@@ -13,6 +13,8 @@
   {% if atendido %}<p class="recado" role="status">Atendimento registrado.</p>{% endif %}
   {% if request.GET.revisado %}<p class="recado" role="status">Revisão registrada; o retrato foi atualizado pela área da pesquisa.</p>{% endif %}
 
+  <p><a href="{% url 'crm_satisfacao' %}?site_id={{ site_id|urlencode }}&amp;aluno_id={{ aluno_id|urlencode }}&amp;email={{ email|urlencode }}">← Voltar ao painel do aluno</a></p>
+  {% if secao != "configuracao" %}
   <form class="peneira espaco-20" method="get" action="{% url 'crm_satisfacao' %}">
     <input type="hidden" name="site_id" value="{{ site_id }}">
     <label class="campo">E-mail do aluno<input name="email" type="email" value="{{ email }}" placeholder="aluno@exemplo.com" required></label>
@@ -20,6 +22,7 @@
   </form>
   <p class="nota">Use o e-mail com que a pessoa entra na escola.</p>
 
+  {% if secao != "atendimento" %}
   <h2 class="titulo-de-bloco espaco-28">Histórico de satisfação</h2>
   {% if estado_historico == 'sem-aluno' %}
     <p class="aviso">Informe o e-mail do aluno para consultar avaliações.</p>
@@ -108,6 +111,7 @@
   </section>
   {% endif %}
 
+  {% endif %}
   <h2 class="titulo-de-bloco espaco-28">Atendimentos de satisfação</h2>
   {% if estado_historico == 'ok' %}
     {% for atendimento in historico.atendimentos %}
@@ -120,18 +124,20 @@
     <form method="post" action="{% url 'crm_satisfacao_atendimento_salvar' %}">{% csrf_token %}
       <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="email" value="{{ email }}">
       {% if atendimento_edicao %}<input type="hidden" name="atendimento_id" value="{{ atendimento_edicao.id }}"><input type="hidden" name="aluno_id" value="{{ atendimento_edicao.aluno_id }}">{% else %}<label class="campo">Aluno avaliado<select name="aluno_id">{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.aluno_id }}">{{ avaliacao.aluno_nome }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>{% endif %}
-      <label class="campo">Avaliação<select name="tentativa_id"><option value="">Aluno em geral</option>{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.id }}"{% if atendimento_edicao.tentativa_id == avaliacao.id %} selected{% endif %}>Avaliação {{ forloop.counter }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>
+      <label class="campo">Avaliação<select name="tentativa_id"><option value="">Aluno em geral</option>{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.id }}"{% if atendimento_edicao.tentativa_id == avaliacao.id or not atendimento_edicao and request.GET.avaliacao == avaliacao.id %} selected{% endif %}>Avaliação {{ forloop.counter }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>
       <label class="campo">Responsável<input name="responsavel" value="{{ atendimento_edicao.responsavel }}" required maxlength="120"></label>
       <label class="campo">Próximo passo<textarea name="proximo_passo" required maxlength="2000">{{ atendimento_edicao.proximo_passo }}</textarea></label>
       <label class="campo">Prazo<input name="prazo" type="datetime-local" value="{{ atendimento_edicao.prazo_form }}"></label>
       <label class="campo">Status<select name="status"><option value="aberto"{% if not atendimento_edicao or atendimento_edicao.status == 'aberto' %} selected{% endif %}>Aberto</option><option value="em_andamento"{% if atendimento_edicao.status == 'em_andamento' %} selected{% endif %}>Em andamento</option><option value="resolvido"{% if atendimento_edicao.status == 'resolvido' %} selected{% endif %}>Resolvido</option></select></label>
       <label class="campo">Solução<textarea name="solucao" maxlength="2000">{{ atendimento_edicao.solucao }}</textarea></label>
       <button type="submit">Salvar atendimento</button>
-      {% if atendimento_edicao %}<a href="{% url 'crm_satisfacao' %}?site_id={{ site_id|urlencode }}&amp;email={{ email|urlencode }}#editar-atendimento">Novo atendimento</a>{% endif %}
+      {% if atendimento_edicao %}<a href="{% url 'crm_satisfacao_gestao' %}?site_id={{ site_id|urlencode }}&amp;email={{ email|urlencode }}&amp;secao=atendimento#editar-atendimento">Novo atendimento</a>{% endif %}
     </form>
   </section>
   {% endif %}
 
+  {% endif %}
+  {% if secao == "configuracao" or secao == "completa" %}
   <h2 class="titulo-de-bloco espaco-28">Perguntas e caminhos</h2>
   <p class="nota">Ajuste os textos da pesquisa. O curso é pago uma única vez e o roteiro atual é para alunos adultos que pagaram. Salvar cria uma nova versão; avaliações antigas preservam a versão que receberam.</p>
   {% if estado_config == 'ok' %}<p class="nota">Versão atual: {{ config.versao }}</p>{% elif estado_config == 'sem-site' %}<p class="aviso">Informe o site para abrir a configuração.</p>{% else %}<p class="aviso borda-amarela">A configuração está indisponível agora. Não é seguro editar sem ler a versão atual.</p>{% endif %}
@@ -144,6 +150,7 @@
     <button type="submit">Salvar nova versão</button>
   </form>
   <details class="espaco-20"><summary>Edição avançada do documento</summary><p class="nota">IDs, tipos e valores das alternativas preservam o significado das respostas antigas. Altere apenas se souber como a avaliação usa esses dados.</p><form method="post" action="{% url 'crm_satisfacao_config_salvar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="modo" value="json"><label class="campo" for="documento">Documento JSON</label><textarea id="documento" name="documento" rows="30" spellcheck="false" style="width:100%;font-family:monospace">{{ config_json }}</textarea><button type="submit">Salvar documento</button></form></details>
+  {% endif %}
   {% endif %}
 </main>
 {% endblock %}

@@ -41,6 +41,7 @@ def respondentes(request):
             "concluida_em": dados.get("concluida_em"),
             "nota": nota if type(nota) is int and 0 <= nota <= 10 else None,
             "retrato": resultado.get("retrato") or resultado.get("classificacao") or "A conferir",
+            "motivo": " ".join(str(m) for m in resultado.get("motivos", []) if m) if isinstance(resultado.get("motivos"), list) else str(resultado.get("motivos") or ""),
         })
     return JsonResponse({"itens": itens, "alunos": alunos, "total": pagina.paginator.count,
                          "pagina": pagina.number, "paginas": pagina.paginator.num_pages})

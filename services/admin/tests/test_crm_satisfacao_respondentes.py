@@ -6,6 +6,7 @@ import respx
 from django.urls import reverse
 
 from tests.test_crm_satisfacao import entrar, ambiente, QUIZ
+from tests.test_satisfacao_painel import avaliacao
 
 
 @respx.mock
@@ -17,14 +18,17 @@ def test_lista_com_nota_zero_data_e_acesso_ao_historico():
             "curso": "Desenho", "concluida_em": "2026-10-08T15:00:00Z", "nota": 0, "retrato": "A conferir",
         }],
     }))
+    item = avaliacao()
+    item["resultado"]["nps"] = 0
+    respx.get(QUIZ + "/interno/nps/historico").mock(return_value=httpx.Response(200, json={"avaliacoes": [item], "atendimentos": []}))
     resposta = cliente.get(reverse("crm_satisfacao_respondentes"), {"site_id": "escola", "q": "Ana"})
     assert resposta.status_code == 200
     texto = resposta.content.decode()
-    for trecho in ("Ana Silva", "Desenho", "0/10", "08/10/2026 12:00", "Ver respostas", "1 aluno", "Próxima"):
+    for trecho in ("Ana Silva", "Desenho", "0/10", "08/10/2026 12:00", "O que ele respondeu", "1 aluno", "Próxima"):
         assert trecho in texto
     assert rota.calls.last.request.url.params["site_id"] == "escola"
     assert rota.calls.last.request.url.params["q"] == "Ana"
-    assert parse_qs(urlsplit(resposta.context["dados"]["itens"][0]["respostas_url"]).query)["aluno_id"] == ["aluno-1"]
+    assert parse_qs(urlsplit(resposta.context["itens"][0]["url"]).query)["aluno_id"] == ["aluno-1"]
     assert 'name="q"' in texto
 
 
