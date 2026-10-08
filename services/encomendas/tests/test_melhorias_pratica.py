@@ -106,6 +106,22 @@ def test_cliente_simulado_resposta_unica_falha_preserva_pergunta(participacao,mo
 
 
 @pytest.mark.django_db
+def test_cliente_recebe_distincao_entre_atraso_e_revisao_pontual(participacao):
+    entrega(participacao)
+    participacao.refresh_from_db()
+    participacao.prazo_ate=timezone.now()-timedelta(minutes=1)
+    participacao.save(update_fields=['prazo_ate'])
+    retrato=ia_sandbox._retrato(participacao)
+    assert retrato['entrega_pontual_aguardando_revisao'] is True
+    assert retrato['atraso_registrado'] is False
+    participacao.atraso_em=timezone.now()
+    participacao.save(update_fields=['atraso_em'])
+    retrato=ia_sandbox._retrato(participacao)
+    assert retrato['atraso_registrado'] is True
+    assert retrato['entrega_pontual_aguardando_revisao'] is False
+
+
+@pytest.mark.django_db
 def test_ia_fora_do_ar_preserva_medidas_repeticao(participacao,monkeypatch,settings,tmp_path):
     settings.MARKETPLACE_UPLOAD_ROOT=tmp_path
     e=entrega(participacao)
