@@ -239,7 +239,7 @@ def test_resposta_em_voz_se_apresenta_guarda_texto_e_conta_custo():
                                       chave_idempotencia="resp-1", conversa_ref="conv-9")
     pedido_de_voz = _corpo(fala.calls[0])
     assert pedido_de_voz["model"] == "gpt-4o-mini-tts" and pedido_de_voz["response_format"] == "opus"
-    assert pedido_de_voz["input"] == "Oi! Aqui é o assistente da equipe. O curso começa segunda."
+    assert pedido_de_voz["input"] == servico.APRESENTACAO + " O curso começa segunda."
     assert "assistente da equipe" in pedido_de_voz["instructions"]
     enviado = _corpo(envio.calls[0])
     assert base64.b64decode(enviado["audio_base64"]) == b"OggS-voz"

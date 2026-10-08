@@ -27,7 +27,7 @@ from .models import ProcessamentoDeVoz
 log = logging.getLogger(__name__)
 
 LIMITE_DE_CARACTERES_EM_VOZ = 1200
-APRESENTACAO = "Oi! Aqui é o assistente da equipe."
+APRESENTACAO = "Oi! Aqui é o assistente da equipe, com voz gerada por inteligência artificial."
 INDISPONIVEL = "O áudio ainda não está disponível: a mensageria não respondeu."
 
 
@@ -190,22 +190,32 @@ def texto_falado(texto: str, ja_respondeu_em_voz: bool) -> str:
     """Na primeira resposta em voz, o assistente se apresenta como assistente
     da equipe. Ele nunca diz ser o criador."""
     texto = texto.strip()
-    if ja_respondeu_em_voz or "assistente" in texto.lower():
+    if ja_respondeu_em_voz or "inteligência artificial" in texto.lower():
         return texto
     return f"{APRESENTACAO} {texto}"
 
 
 def responder(*, site_id: str, telefone: str, texto: str, chave_idempotencia: str,
-              conversa_ref: str = "", canal: str = "whatsapp") -> dict:
+              conversa_ref: str = "", canal: str = "whatsapp", modo_site: str | None = None) -> dict:
     """Decide e, se for voz, envia. Devolve {formato, motivo, ...}.
 
     `formato` "texto" quer dizer: quem chamou manda o texto pelo envio normal
     da conversa. "audio" quer dizer: já saiu em voz, com o texto guardado."""
     cliente = MensageriaAudio()
+    feito = ProcessamentoDeVoz.objects.filter(
+        tipo=ProcessamentoDeVoz.Tipo.SINTESE, site_id=site_id, referencia=chave_idempotencia[:160],
+    ).first()
+    if feito is not None and feito.resultado.get("pedido"):
+        return _entregar_voz(cliente, feito, feito.resultado["pedido"], feito.resultado.get("motivo", ""))
+    if modo_site == "texto":
+        return {"formato": "texto", "motivo": "site_prefere_texto"}
     decisao = cliente.formato(site_id, telefone, canal)
     if decisao is None:
         return {"formato": "texto", "motivo": "audio_indisponivel", "frase": INDISPONIVEL}
-    if decisao.get("formato") != "audio":
+    sempre = (modo_site == "sempre" and decisao.get("canal_aceita_audio")
+              and decisao.get("motivo") == "lead_mandou_texto"
+              and decisao.get("preferencia") != "texto")
+    if decisao.get("formato") != "audio" and not sempre:
         return {"formato": "texto", "motivo": decisao.get("motivo", "")}
     falado = texto_falado(texto, bool(decisao.get("ja_respondeu_em_voz")))
     if len(falado) > LIMITE_DE_CARACTERES_EM_VOZ:
@@ -214,29 +224,36 @@ def responder(*, site_id: str, telefone: str, texto: str, chave_idempotencia: st
         sintese = openai_audio.sintetizar(falado)
     except executor_modelo.ProblemaDoModelo as problema:
         return {"formato": "texto", "motivo": "sintese_indisponivel", "frase": problema.frase}
-    ProcessamentoDeVoz.objects.update_or_create(
-        tipo=ProcessamentoDeVoz.Tipo.SINTESE, site_id=site_id, referencia=chave_idempotencia[:160],
-        defaults={"conversa_ref": conversa_ref[:160], "consumo_id": sintese.consumo_id, "modelo": sintese.modelo,
-                  "caracteres": sintese.caracteres, "custo_usd": sintese.custo_usd, "texto": falado},
-    )
-    enviado = cliente.responder_em_voz(site_id, {
+    pedido = {
         "telefone": telefone, "texto": falado, "audio_base64": base64.b64encode(sintese.audio).decode("ascii"),
         "mime": sintese.mime, "chave_idempotencia": chave_idempotencia, "conversa_ref": conversa_ref,
         "modelo": sintese.modelo, "voz": sintese.voz, "custo_usd": str(sintese.custo_usd),
-    })
-    if enviado is None:
-        ProcessamentoDeVoz.objects.filter(
-            tipo=ProcessamentoDeVoz.Tipo.SINTESE, site_id=site_id, referencia=chave_idempotencia[:160],
-        ).update(situacao=ProcessamentoDeVoz.Situacao.FALHOU, detalhe="mensageria não respondeu")
-        return {"formato": "audio", "motivo": decisao.get("motivo", ""), "status": "desconhecido",
-                "texto": falado, "frase": "A mensageria não respondeu. Consulte antes de repetir."}
-    ProcessamentoDeVoz.objects.filter(
+    }
+    motivo = "site_prefere_audio" if sempre else decisao.get("motivo", "")
+    registro, _ = ProcessamentoDeVoz.objects.update_or_create(
         tipo=ProcessamentoDeVoz.Tipo.SINTESE, site_id=site_id, referencia=chave_idempotencia[:160],
-    ).update(situacao=ProcessamentoDeVoz.Situacao.ENTREGUE)
-    return {"formato": "audio", "motivo": decisao.get("motivo", ""),
+        defaults={"conversa_ref": conversa_ref[:160], "consumo_id": sintese.consumo_id, "modelo": sintese.modelo,
+                  "caracteres": sintese.caracteres, "custo_usd": sintese.custo_usd, "texto": falado,
+                  "resultado": {"pedido": pedido, "motivo": motivo}},
+    )
+    return _entregar_voz(cliente, registro, pedido, motivo)
+
+
+def _entregar_voz(cliente, registro, pedido: dict, motivo: str) -> dict:
+    """A retomada usa o áudio já pago e a mesma chave de envio."""
+    enviado = cliente.responder_em_voz(registro.site_id, pedido)
+    if enviado is None:
+        registro.detalhe = "mensageria não respondeu"
+        registro.save(update_fields=["detalhe", "atualizado_em"])
+        return {"formato": "audio", "motivo": motivo, "status": "desconhecido",
+                "texto": pedido["texto"], "frase": "A mensageria não respondeu. Consulte antes de repetir."}
+    registro.situacao = ProcessamentoDeVoz.Situacao.ENTREGUE
+    registro.detalhe = ""
+    registro.save(update_fields=["situacao", "detalhe", "atualizado_em"])
+    return {"formato": "audio", "motivo": motivo,
             "resultado": enviado.get("resultado", ""), "status": enviado.get("status"),
-            "erro": enviado.get("erro", ""), "texto": enviado.get("texto", falado),
-            "mensagem_ref": enviado.get("mensagem_ref", ""), "custo_usd": str(sintese.custo_usd)}
+            "erro": enviado.get("erro", ""), "texto": enviado.get("texto", pedido["texto"]),
+            "mensagem_ref": enviado.get("mensagem_ref", ""), "custo_usd": str(registro.custo_usd)}
 
 
 def consumo_da_conversa(site_id: str, *, telefone: str = "", conversa_ref: str = "") -> dict:

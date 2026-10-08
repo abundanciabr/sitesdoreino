@@ -1,9 +1,11 @@
 """Nota de voz do lead e resposta em voz, com o transporte simulado."""
 import base64
 import json
+from datetime import timedelta
 
 import pytest
 from django.test import Client
+from django.utils import timezone
 
 from apps.audio.models import AudioRecebido, PreferenciaDeResposta, RespostaEmVoz
 from apps.whatsapp.models import ConfiguracaoWhatsApp
@@ -220,3 +222,55 @@ def test_resposta_em_voz_com_instancia_desconectada_falha_sem_post(configurado, 
         "telefone": "5511988887777", "texto": "oi", "audio_base64": base64.b64encode(OGG).decode(),
         "chave_idempotencia": "resp-2"}), content_type="application/json", **ESCRITA).json()
     assert resposta["status"] == "falhou" and resposta["erro"] == "instancia desconectada"
+
+
+def test_texto_depois_do_audio_volta_a_receber_texto(configurado):
+    from apps.audio import servico
+    from apps.conversas.models import Conversa, MensagemDaConversa
+
+    _webhook(Client(), _upsert())
+    conversa = Conversa.objects.get(site_id="site-a")
+    assert servico.decidir_formato("site-a", "5511988887777")["formato"] == "audio"
+    MensagemDaConversa.objects.create(conversa=conversa, direcao="entrada", autor="lead",
+                                    texto="Qual a duração?", estado_envio="recebida", ocorrida_em=timezone.now())
+    assert servico.decidir_formato("site-a", "5511988887777")["motivo"] == "lead_mandou_texto"
+
+
+@pytest.mark.parametrize("texto,modo", [("Responda por áudio, por favor", "audio"),
+                                       ("Prefiro texto", "texto"), ("Não me mande áudio", "texto"),
+                                       ("Quero saber se o curso tem áudio", "")])
+def test_pedidos_diretos_de_formato(texto, modo):
+    from apps.audio.servico import _preferencia_pedida
+
+    assert _preferencia_pedida(texto) == modo
+
+
+def test_pedido_de_audio_persiste_e_pedido_de_texto_o_substitui(configurado):
+    from apps.audio import servico
+    from apps.conversas.models import Conversa, MensagemDaConversa
+
+    _webhook(Client(), _upsert())
+    conversa = Conversa.objects.get(site_id="site-a")
+    def mensagem(texto):
+        MensagemDaConversa.objects.create(conversa=conversa, direcao="entrada", autor="lead",
+                                        texto=texto, estado_envio="recebida", ocorrida_em=timezone.now())
+    mensagem("Responda por áudio")
+    assert servico.decidir_formato("site-a", "5511988887777")["motivo"] == "lead_prefere_audio"
+    mensagem("E a duração?")
+    assert servico.decidir_formato("site-a", "5511988887777")["formato"] == "audio"
+    mensagem("Prefiro texto")
+    assert servico.decidir_formato("site-a", "5511988887777")["motivo"] == "lead_prefere_texto"
+
+
+def test_janela_fechada_nao_gera_nem_envia_voz(configurado, monkeypatch):
+    from apps.audio import servico
+    from apps.conversas.models import Conversa
+
+    _webhook(Client(), _upsert())
+    Conversa.objects.update(janela_aberta_ate=timezone.now() - timedelta(seconds=1))
+    assert servico.decidir_formato("site-a", "5511988887777")["motivo"] == "fora_da_janela"
+    monkeypatch.setattr(servico, "_gateway_midia", lambda *a: pytest.fail("não devia enviar"))
+    resposta = Client().post("/api/mensageria/audio/site-a/responder-em-voz", json.dumps({
+        "telefone": "5511988887777", "texto": "oi", "audio_base64": base64.b64encode(OGG).decode(),
+        "chave_idempotencia": "janela-fechada"}), content_type="application/json", **ESCRITA).json()
+    assert resposta["resultado"] == "fora_da_janela" and not RespostaEmVoz.objects.exists()

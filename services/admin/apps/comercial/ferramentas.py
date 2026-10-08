@@ -24,6 +24,7 @@ import hashlib
 import json
 import logging
 import re
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from importlib import import_module
@@ -1002,8 +1003,10 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
         "autor_id": f"agente:{ctx.papel}",
         "assunto": str(args.get("assunto") or "")[:300],
     }
-    dados = _resolver(servicos.pedir("enviar_na_conversa", conversa_id, corpo=corpo, site_id=t.site_id),
-                      escrita=True)
+    dados = _enviar_em_voz(ctx, conversa_id, corpo, canal)
+    if dados is None:
+        dados = _resolver(servicos.pedir("enviar_na_conversa", conversa_id, corpo=corpo, site_id=t.site_id),
+                          escrita=True)
     usado = None
     if str(dados.get("resultado") or "") == "fora_da_janela":
         # Fora das 24 horas (primeiro contato) o WhatsApp só aceita modelo aprovado. Texto livre
@@ -1060,6 +1063,55 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
             log.warning("comercial: a mensagem saiu, mas o acompanhamento da oportunidade %s não foi "
                         "gravado (%s)", t.oportunidade_id, registro.estado)
     return saida
+
+
+def _enviar_em_voz(ctx: Contexto, conversa_id: str, corpo: dict, canal: str | None) -> dict | None:
+    """A voz usa a conversa e o contato do trabalho, nunca um destino escolhido pelo modelo."""
+    from apps.assistente.identidade import identidade_do_site
+    from apps.voz import servico as voz
+    from apps.voz.models import ProcessamentoDeVoz
+
+    t = ctx.trabalho
+    modo = identidade_do_site(t.site_id).resposta_em_voz
+    pendente = ProcessamentoDeVoz.objects.filter(
+        tipo="sintese", site_id=t.site_id, referencia=corpo["chave_idempotencia"],
+    ).exists()
+    if (modo == "texto" and not pendente) or canal == "email":
+        return None
+    consulta = servicos.pedir("conversa", conversa_id, params={"site_id": t.site_id}, site_id=t.site_id)
+    if not consulta.ok:
+        if pendente:
+            raise EnvioIncerto("A confirmação do áudio ainda não voltou.")
+        return None
+    conversa = consulta.dados.get("conversa") or consulta.dados
+    if str(conversa.get("site_id") or "") != str(t.site_id):
+        raise Recusa("Esta conversa não é deste site.")
+    if conversa.get("canal") != "whatsapp":
+        return None
+    if not pendente and (conversa.get("estado") == "pessoa" or not conversa.get("janela_aberta")):
+        return None
+    telefone = _contato_do_trabalho(t)["telefone"]
+    if not telefone and t.contato_id:
+        ficha = servicos.pedir("contato", t.contato_id, params={"origem": "crm"})
+        if ficha.ok and str(ficha.dados.get("site_id") or "") == str(t.site_id):
+            telefone = str(ficha.dados.get("telefone") or "")
+    if not telefone:
+        return None
+    resposta = voz.responder(site_id=t.site_id, telefone=telefone, texto=corpo["texto"],
+                             chave_idempotencia=corpo["chave_idempotencia"], conversa_ref=conversa_id,
+                             modo_site=modo)
+    if resposta.get("formato") != "audio":
+        return None
+    status = resposta.get("status")
+    if status in ("desconhecido", "pendente"):
+        raise EnvioIncerto("A confirmação do áudio ainda não voltou.")
+    if status in ("falhou", "nao_enviado"):
+        return None  # Falha confirmada: o texto pode sair pelo caminho existente.
+    if status not in ("aceito", "enviado", "entregue", "lido"):
+        raise Recusa(json.dumps({"resultado": resposta.get("resultado") or "falhou",
+                               "erro": resposta.get("erro") or "O áudio não foi enviado."}))
+    return {"resultado": "enviada", "mensagem": {"id": resposta.get("mensagem_ref")},
+            "conversa": {"canal": "whatsapp"}, "formato": "audio"}
 
 
 def _antes_de_enviar(ctx: Contexto, args: dict) -> None:
@@ -1241,7 +1293,7 @@ def _concluir_escrita(ctx: Contexto, decisao: DecisaoComercial, nome: str, argum
     incerta e grava o desfecho nela."""
     funcao = ESCRITAS_COM_CHAVE[nome]
     try:
-        with transaction.atomic():
+        with (nullcontext() if nome == "enviar_mensagem" else transaction.atomic()):
             saida = funcao(ctx, argumentos, decisao.chave_idempotencia)
             resultado = R.FEITO
     except Recusa as recusa:

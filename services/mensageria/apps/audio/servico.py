@@ -11,6 +11,8 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+import re
+import unicodedata
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from urllib import error, request
@@ -307,6 +309,11 @@ def decidir_formato(site_id: str, telefone: str, canal: str = "whatsapp") -> dic
     ultimo_audio = AudioRecebido.objects.filter(site_id=site_id, telefone=telefone).order_by("-recebido_em").first()
     ja_falou = RespostaEmVoz.objects.filter(site_id=site_id, telefone=telefone).exclude(status="falhou").exists()
     conversa = _conversa(site_id, telefone) if canal == "whatsapp" else None
+    if conversa is not None:
+        ultima = conversa.mensagens.filter(direcao="entrada").order_by("-ocorrida_em", "-criada_em", "-id").first()
+        solicitado = _preferencia_pedida(ultima.texto or ultima.transcricao) if ultima is not None else ""
+        if solicitado:
+            modo = definir_preferencia(site_id, telefone, solicitado)
     bloqueio = ""
     if conversa is not None:
         from apps.conversas.envio import bloqueio_por_descadastro
@@ -315,6 +322,13 @@ def decidir_formato(site_id: str, telefone: str, canal: str = "whatsapp") -> dic
             bloqueio = "conversa_com_pessoa"
         elif bloqueio_por_descadastro(conversa):
             bloqueio = "descadastrado"
+        else:
+            from apps.conversas.envio import janela_aberta
+
+            if not janela_aberta(conversa, timezone.now()):
+                bloqueio = "fora_da_janela"
+            else:
+                bloqueio = _bloqueio_de_iniciativa(conversa)
     if bloqueio:
         # Não gasta com voz: o envio normal da conversa explica o bloqueio.
         formato, motivo = "texto", bloqueio
@@ -338,8 +352,40 @@ def decidir_formato(site_id: str, telefone: str, canal: str = "whatsapp") -> dic
 
 
 def _ultima_entrada_foi_audio(site_id: str, telefone: str, ultimo_audio: AudioRecebido) -> bool:
-    """Vale o áudio recente: o lead mandou voz nas últimas 24 horas."""
+    """Uma mensagem de texto posterior ao áudio volta a receber texto."""
+    conversa = _conversa(site_id, telefone)
+    if conversa is not None:
+        ultima = conversa.mensagens.filter(direcao="entrada").order_by("-ocorrida_em", "-criada_em", "-id").first()
+        if ultima is not None:
+            return ultima.midia_tipo == "audio" and timezone.now() - ultima.ocorrida_em <= timedelta(hours=24)
     return timezone.now() - ultimo_audio.recebido_em <= timedelta(hours=24)
+
+
+def _preferencia_pedida(texto: str) -> str:
+    """Reconhece pedidos diretos de formato; os demais textos não mudam a preferência."""
+    texto = "".join(c for c in unicodedata.normalize("NFKD", texto.lower()) if not unicodedata.combining(c))
+    if re.search(r"\b(?:nao (?:me )?(?:mande|manda|envie|envia|responda|responde)(?:\s+\w+){0,3}\s+(?:audio|voz)|"
+                 r"(?:prefiro|responda|responde|mande|manda|envie|envia)(?:\s+\w+){0,3}\s+(?:texto|escrito))\b", texto):
+        return "texto"
+    if re.search(r"\b(?:prefiro|responda|responde|mande|manda|envie|envia)(?:\s+\w+){0,3}\s+(?:audio|voz)\b", texto):
+        return "audio"
+    return ""
+
+
+def _bloqueio_de_iniciativa(conversa) -> str:
+    """A voz respeita a mesma régua já usada pelo envio de texto."""
+    from apps.conversas import envio
+
+    agora = envio._agora()
+    if envio.e_resposta(conversa, agora):
+        return ""
+    if envio.recusa_por_preferencia(conversa):
+        return "descadastrado"
+    if envio._fora_do_horario(agora):
+        return "fora_do_horario"
+    if envio._iniciativas_do_agente_no_dia(conversa, agora) >= envio.teto_diario_do_agente():
+        return "limite_diario"
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +418,12 @@ def enviar_audio(*, site_id: str, telefone: str, texto: str, audio: bytes, mime:
             raise Bloqueado("conversa_com_pessoa", "uma pessoa da equipe assumiu esta conversa")
         if bloqueio_por_descadastro(conversa):
             raise Bloqueado("descadastrado", "o contato pediu para parar no whatsapp")
+        from apps.conversas.envio import janela_aberta
+
+        if not janela_aberta(conversa, timezone.now()):
+            raise Bloqueado("fora_da_janela", "a janela de resposta do whatsapp terminou")
+        if bloqueio := _bloqueio_de_iniciativa(conversa):
+            raise Bloqueado(bloqueio, "a conversa não aceita iniciativa do agente agora")
         conversa_ref = str(conversa.pk)
     with transaction.atomic():
         resposta, criada = RespostaEmVoz.objects.select_for_update().get_or_create(
