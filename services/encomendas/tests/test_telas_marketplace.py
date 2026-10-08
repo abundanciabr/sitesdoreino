@@ -3,7 +3,6 @@
 import pytest
 import json
 import base64
-import uuid
 from tempfile import TemporaryDirectory
 from datetime import timedelta
 from types import SimpleNamespace
@@ -146,27 +145,17 @@ def test_pix_mostra_qr_e_codigo_sem_criar_segunda_cobranca(client, pessoa, monke
 
 
 @pytest.mark.django_db
-def test_recarga_exige_pagador_completo_e_repeticao_usa_mesma_chave(client, pessoa, monkeypatch):
+def test_recarga_antiga_redireciona_cliente_sem_chamar_pagamentos(client, pessoa, monkeypatch):
     from apps.core import carteira_marketplace
-    from apps.encomendas.models import AutorizacaoMarketplaceCliente, RecargaMarketplace
+    from apps.encomendas.models import ClienteFila, RecargaMarketplace
 
     pessoa["id"] = "cliente-pix"
-    FaseMarketplace.objects.create(site_id="escola-a", clientes_liberados=True)
-    AutorizacaoMarketplaceCliente.objects.create(site_id="escola-a", cliente_id=pessoa["id"], ativa=True)
-    chamadas = []
-    monkeypatch.setattr(carteira_marketplace, "iniciar_recarga", lambda **kwargs: (
-        chamadas.append(kwargs) or {"id": "charge-uma", "status": "pending"}
-    ))
-    monkeypatch.setattr(carteira_marketplace, "consultar_recarga", lambda **kwargs: {"status": "pending"})
-    chave = str(uuid.uuid4())
-    dados = {"chave": chave, "creditos": "50", "nome": "Cliente Completo",
-             "cpf": "52998224725", "email": "cliente@example.com"}
-    assert client.post(reverse("marketplace_recarregar"), dados).status_code == 302
-    assert client.post(reverse("marketplace_recarregar"), dados).status_code == 302
-    assert RecargaMarketplace.objects.count() == 1
-    assert len(chamadas) == 1
-    assert chamadas[0]["chave_idempotencia"] == chave
-    assert chamadas[0]["valor_cents"] == 5000
+    ClienteFila.objects.create(site_id="escola-a", slug="tilon", nome="Tilon", pessoa_id=pessoa["id"])
+    monkeypatch.setattr(carteira_marketplace, "iniciar_recarga", lambda **kwargs: pytest.fail("recarga antiga não chama pagamentos"))
+    resposta = client.post(reverse("marketplace_recarregar"), {"creditos": "50"})
+    assert resposta.status_code == 302
+    assert resposta["Location"] == "/admin/clientes/tilon/"
+    assert RecargaMarketplace.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -343,16 +332,22 @@ def test_percurso_http_completo_sem_provedor_real(
                     "credits": 180, "entries": [], "withdrawals": []}
         monkeypatch.setattr(carteira_marketplace, "_pedir", resposta_carteira)
         comprar = reverse("marketplace_comprar_creditos", args=[pedido.pk])
-        assert client.post(comprar).status_code == 302
-        assert client.post(comprar).status_code == 302
-        assert len(gastos) == 1
+        assert client.post(comprar).status_code == 404
+        assert not gastos
+        # O percurso legado de entregas continua coberto a partir de um fato
+        # de pagamento simulado no banco de teste, sem porta HTTP financeira.
+        marketplace.confirmar_pagamento(
+            site_id=semeado, pedido_id=pedido.pk, versao=pedido.versao,
+            valor_cents=pedido.valor_cents, moeda=pedido.moeda,
+            ambiente=pedido.ambiente, referencia=f"legado-teste:{pedido.pk}",
+        )
         pedido.refresh_from_db()
         assert pedido.status == "na_fila"
         oferta = marketplace.distribuir_pedido(site_id=semeado, pedido_id=pedido.pk)
         assert oferta is not None and oferta.aluno_id == perfil.pk
 
         pessoa["id"] = aluno_id
-        assert client.get(reverse("marketplace_fila")).status_code == 200
+        assert client.get(reverse("marketplace_fila")).status_code == 302
         assert client.get(reverse("marketplace_pedido", args=[pedido.pk])).status_code == 200
         assert client.post(reverse("marketplace_responder_oferta", args=[oferta.pk, "aceitar"])).status_code == 302
         pedido.refresh_from_db()

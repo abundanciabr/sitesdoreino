@@ -13,7 +13,7 @@
   .cliente-painel a { color:var(--azul); }
   .cliente-painel details { margin-top:14px; }
 </style><main class="envolucro">
-{% if administrativo %}<p><a href="{% url 'clientes_fila' %}">← Clientes</a></p>{% endif %}
+{% if administrativo %}<p><a href="{% url 'clientes_fila' %}">← Clientes</a> · <a href="{% url 'saques_fila' %}">Saques dos alunos</a></p>{% endif %}
 <h1>{{ cliente.nome }} · Fila do Dólar</h1>
 <p class="subtitulo">Seus pedidos e orçamento interno.</p>
 {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}{% if mensagem %}<p role="status">{{ mensagem }}</p>{% endif %}
@@ -23,7 +23,7 @@
   <p>Comprometido: R$ {{ cliente.comprometido_cents|reais_fila }}</p>
   <p>Pagamentos pendentes: R$ {{ cliente.pendente_cents|reais_fila }}</p>
   <p>Os créditos internos não são depósitos Pix.</p>
-  <p>O pagamento Pix real está indisponível nesta etapa.</p>
+  <p>Os créditos internos reservam o pedido. Depois da aprovação do cliente, o aluno pode solicitar saque; o Pix é feito manualmente pelo mantenedor.</p>
 </section>
 {% if administrativo %}<section class="cartao cliente-painel">
   <h2>Conta deste cliente</h2>

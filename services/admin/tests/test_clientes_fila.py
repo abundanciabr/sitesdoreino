@@ -150,3 +150,95 @@ def test_pedido_iniciado_mostra_conversa_e_orientacao_sem_editor_de_preco():
     assert "Editar pedido" not in html
     assert "Pix ainda não confirmado" in html
     assert "Abertos (0)" in html and "Em andamento (1)" in html
+
+
+@respx.mock
+def test_saques_exclusivos_admin_e_sem_formulario_para_pagos():
+    from uuid import uuid4
+
+    saque_id = uuid4()
+    respx.get("http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais").mock(
+        return_value=httpx.Response(200, json={"saques": [{
+            "id": str(saque_id), "nome_recebedor": "Aluno Exemplo", "chave_pix": "chave-teste",
+            "valor_cents": 5000, "status": "pago", "referencia_pix": "ref-teste",
+        }]})
+    )
+    admin = _entrar("admin@exemplo.com")
+    resposta = admin.get(reverse("saques_fila"))
+    assert resposta.status_code == 200
+    assert resposta["Cache-Control"] == "private, no-store"
+    assert "Cookie" in resposta["Vary"]
+    assert b"Aluno Exemplo" in resposta.content and b"chave-teste" in resposta.content
+    assert b"Registrar Pix" not in resposta.content
+
+    respx.get("http://encomendas:8000/api/encomendas/clientes-fila/acesso/pessoa-1").mock(
+        return_value=httpx.Response(200, json={"slug": "paula", "pessoa_id": "pessoa-1"})
+    )
+    cliente = _entrar("paula@exemplo.com")
+    assert cliente.get(reverse("saques_fila")).status_code == 404
+    assert cliente.post(reverse("saque_fila_pago", args=[saque_id]), {}).status_code == 404
+
+
+@respx.mock
+def test_registro_pix_manual_envia_identificacao_completa_sem_reexibir_cpf():
+    from uuid import uuid4
+    import json
+
+    saque_id = uuid4()
+    chamada = respx.post(
+        f"http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais/{saque_id}/pago"
+    ).mock(return_value=httpx.Response(200, json={"status": "pago"}))
+    resposta = _entrar("admin@exemplo.com", pessoa="admin-opaco").post(
+        reverse("saque_fila_pago", args=[saque_id]), {
+            "referencia_pix": "pix-banco-123", "pagador_nome": "Pessoa Pagadora",
+            "pagador_cpf": "123.456.789-09", "pagador_email": "pagador@exemplo.com",
+        }
+    )
+    assert resposta.status_code == 302
+    assert b"123" not in resposta.content
+    assert chamada.calls[0].request.headers["Authorization"] == "Bearer escrita"
+    corpo = json.loads(chamada.calls[0].request.content)
+    assert corpo == {
+        "administrativo": True, "ator_id": "admin-opaco", "referencia_pix": "pix-banco-123",
+        "pagador_nome": "Pessoa Pagadora", "pagador_cpf": "12345678909",
+        "pagador_email": "pagador@exemplo.com",
+    }
+
+
+@respx.mock
+def test_dados_incompletos_nao_registram_pix_nem_reexibem_cpf():
+    from uuid import uuid4
+
+    saque_id = uuid4()
+    respx.get("http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais").mock(
+        return_value=httpx.Response(200, json={"saques": []})
+    )
+    chamada = respx.post(
+        f"http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais/{saque_id}/pago"
+    ).mock(return_value=httpx.Response(200, json={"status": "pago"}))
+    resposta = _entrar("admin@exemplo.com").post(reverse("saque_fila_pago", args=[saque_id]), {
+        "referencia_pix": "ref", "pagador_nome": "Pessoa Pagadora",
+        "pagador_cpf": "123.456.789-09", "pagador_email": "",
+    })
+    assert resposta.status_code == 400
+    assert not chamada.called
+    assert b"12345678909" not in resposta.content
+
+
+@respx.mock
+def test_cpf_invalido_nao_registra_pix():
+    from uuid import uuid4
+
+    saque_id = uuid4()
+    respx.get("http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais").mock(
+        return_value=httpx.Response(200, json={"saques": []})
+    )
+    chamada = respx.post(
+        f"http://encomendas:8000/api/encomendas/clientes-fila/saques-manuais/{saque_id}/pago"
+    ).mock(return_value=httpx.Response(200, json={"status": "pago"}))
+    resposta = _entrar("admin@exemplo.com").post(reverse("saque_fila_pago", args=[saque_id]), {
+        "referencia_pix": "ref", "pagador_nome": "Pessoa Pagadora",
+        "pagador_cpf": "111.111.111-11", "pagador_email": "pagador@exemplo.com",
+    })
+    assert resposta.status_code == 400
+    assert not chamada.called

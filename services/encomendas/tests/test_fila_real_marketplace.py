@@ -1,4 +1,4 @@
-"""Fluxos que separam orçamento interno, Pix confirmado e trabalho humano."""
+"""Créditos liberam o trabalho; aprovação libera saque por Pix manual."""
 
 from datetime import timedelta
 
@@ -84,20 +84,43 @@ def test_creditos_internos_recarregam_sem_fingir_deposito(cenario):
     )
     assert resumo["creditos_cents"] == 500000  # chegou a R$ 300 e repôs R$ 4.700
     assert resumo["comprometido_cents"] == 470000
-    assert resumo["pendente_cents"] == 470000
+    assert resumo["pendente_cents"] == 0
     assert resumo["pedidos"][0]["depositado_real"] is False
-    assert pedido.status == "aguardando_pagamento"
+    assert resumo["pedidos"][0]["pagamento_reservado"] is True
+    assert pedido.status == "na_fila"
+    assert pedido.pagamento_confirmado_em is None
     assert MovimentoOrcamentoFila.objects.filter(
         cliente__slug="tilon", tipo="reposicao_interna", valor_cents=470000,
     ).count() == 1
     assert fila_real.detalhe_cliente(
         site_id=SITE, slug="paula", pessoa_id="cliente-paula",
     )["creditos_cents"] == 500000
-    with pytest.raises(fila_real.ErroFilaReal):
-        fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk)
-    assert fila_real.catalogo(
+    assert [p.pk for p in fila_real.catalogo(
         site_id=SITE, pessoa_id="aluno-autorizado", categoria=None,
-    )["pedidos"] == []
+    )["pedidos"]] == [pedido.pk]
+    aceito = fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk)
+    assert aceito.status == "em_producao"
+    assert aceito.pagamento_confirmado_em is None
+
+
+@pytest.mark.django_db
+def test_migracao_libera_reserva_existente_sem_inventar_deposito(cenario):
+    from importlib import import_module
+    from types import SimpleNamespace
+    from django.apps import apps
+    from django.db import connection
+
+    reservado = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados())
+    sem_reserva = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados())
+    PedidoMarketplace.objects.filter(pk__in=[reservado.pk, sem_reserva.pk]).update(status="aguardando_pagamento")
+    sem_reserva.fila_cliente.reservado_cents = 0
+    sem_reserva.fila_cliente.save(update_fields=["reservado_cents"])
+    migracao = import_module("apps.encomendas.migrations.0024_liberar_reservas_para_pix_manual")
+    migracao.liberar_reservas(apps, SimpleNamespace(connection=connection))
+    reservado.refresh_from_db()
+    sem_reserva.refresh_from_db()
+    assert reservado.status == "na_fila" and reservado.pagamento_confirmado_em is None
+    assert sem_reserva.status == "aguardando_pagamento"
 
 
 @pytest.mark.django_db
@@ -137,18 +160,20 @@ def test_cliente_edita_apenas_proprio_pedido_e_isolamento_por_site(cenario):
 
 
 @pytest.mark.django_db
-def test_aceite_depende_de_autorizacao_individual_e_pix_confirmado(cenario):
+def test_aceite_depende_de_autorizacao_individual_e_reserva_interna(cenario):
     pedido = fila_real.criar_pedido(
         site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados(),
     )
     with pytest.raises(fila_real.ErroFilaReal):
         fila_real.aceitar(site_id=SITE, pessoa_id="aluno-nao-autorizado", pedido_id=pedido.pk)
-    # Mesmo o status "na_fila" isolado não basta para afirmar depósito.
-    pedido.status = "na_fila"
-    pedido.save(update_fields=["status"])
+    # Um pedido sem orçamento reservado não pode ser aceito.
+    pedido.fila_cliente.reservado_cents = 0
+    pedido.fila_cliente.save(update_fields=["reservado_cents"])
     with pytest.raises(fila_real.ErroFilaReal):
         fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk)
-    _deposito_confirmado(pedido)
+    assert fila_real.catalogo(site_id=SITE, pessoa_id="aluno-autorizado", categoria=None)["pedidos"] == []
+    pedido.fila_cliente.reservado_cents = pedido.valor_cents
+    pedido.fila_cliente.save(update_fields=["reservado_cents"])
     disponiveis = fila_real.catalogo(
         site_id=SITE, pessoa_id="aluno-autorizado", categoria="pets",
     )["pedidos"]
@@ -171,7 +196,6 @@ def test_conversa_entrega_ajuste_e_aprovacao_preservam_prazo_e_autoria(cenario):
     pedido = fila_real.criar_pedido(
         site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados(),
     )
-    _deposito_confirmado(pedido)
     aceito = fila_real.aceitar(
         site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk,
     )
@@ -252,6 +276,9 @@ def test_conversa_entrega_ajuste_e_aprovacao_preservam_prazo_e_autoria(cenario):
     assert pedido.fila_cliente.consumido_em is not None
     assert RecebivelMarketplace.objects.filter(pedido=pedido).count() == 1
     assert RecebivelMarketplace.objects.get(pedido=pedido).status == "pendente"
+    assert fila_real.detalhe_cliente(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon")["pendente_cents"] == 10000
+    from apps.encomendas import saques_fila
+    assert saques_fila.carteira(site_id=SITE, pessoa_id="aluno-autorizado")["saldo_disponivel_cents"] == 10000
 
 
 @pytest.mark.django_db

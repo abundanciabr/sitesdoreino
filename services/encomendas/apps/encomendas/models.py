@@ -2019,5 +2019,5 @@ from .sandbox_models import (  # noqa: E402,F401
 
 from .fila_real_models import (  # noqa: E402,F401
     ClienteFila, PedidoClienteFila, MovimentoOrcamentoFila,
-    OrientacaoPrivadaFila, CasoConversaFila,
+    OrientacaoPrivadaFila, CasoConversaFila, SaqueManualFila, ParcelaSaqueFila,
 )

@@ -9,6 +9,7 @@ from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhament
 from apps.core.clientes_fila import (
     clientes_fila, cliente_fila, vincular_cliente_fila, salvar_pedido_cliente_fila,
     orientar_pedido_cliente_fila,
+    saques_fila, saque_fila_pago,
 )
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
@@ -275,6 +276,8 @@ from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento
 
 urlpatterns = [
     path("clientes/", clientes_fila, name="clientes_fila"),
+    path("clientes/saques/", saques_fila, name="saques_fila"),
+    path("clientes/saques/<uuid:saque_id>/pago/", saque_fila_pago, name="saque_fila_pago"),
     path("clientes/<slug:slug>/", cliente_fila, name="cliente_fila"),
     path("clientes/<slug:slug>/vincular/", vincular_cliente_fila, name="vincular_cliente_fila"),
     path("clientes/<slug:slug>/pedidos/", salvar_pedido_cliente_fila, name="criar_pedido_cliente_fila"),

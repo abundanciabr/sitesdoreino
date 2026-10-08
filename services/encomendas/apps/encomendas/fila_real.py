@@ -73,9 +73,10 @@ def _reserva(cliente, vinculo, valor, chave):
 
 
 def dados_cliente(cliente):
+    from .saques_fila import pendente_cliente
     vinculos = PedidoClienteFila.objects.filter(cliente=cliente)
     comprometido = vinculos.filter(consumido_em__isnull=True).aggregate(n=Sum('reservado_cents'))['n'] or 0
-    pendente = vinculos.filter(pagamento_real_confirmado_em__isnull=True).exclude(pedido__status='rascunho').aggregate(n=Sum('reservado_cents'))['n'] or 0
+    pendente = pendente_cliente(cliente)
     return {'slug': cliente.slug, 'nome': cliente.nome, 'pessoa_id': cliente.pessoa_id,
         'ativo': cliente.ativo, 'creditos_cents': cliente.creditos_cents,
         'disponivel_cents': cliente.creditos_cents, 'comprometido_cents': comprometido,
@@ -97,11 +98,18 @@ def _depositado(pedido):
         and pedido.ambiente == 'production' and pedido.pagamento_confirmado_em)
 
 
+def _reservado(pedido):
+    vinculo = pedido.fila_cliente
+    return bool(pedido.ambiente == 'production' and vinculo.cliente.ativo
+        and vinculo.cliente.site_id == pedido.site_id
+        and vinculo.reservado_cents == pedido.valor_cents and pedido.valor_cents > 0)
+
+
 def dados_pedido(pedido):
     return {'id': str(pedido.pk), 'titulo': pedido.titulo, 'categoria': pedido.categoria,
         'status': pedido.status, 'valor_cents': pedido.valor_cents, 'briefing': pedido.briefing,
         'versao': pedido.versao, 'prazo_ate': pedido.producao_prazo_ate.isoformat() if pedido.producao_prazo_ate else None,
-        'depositado_real': _depositado(pedido), 'editavel': True,
+        'depositado_real': _depositado(pedido), 'pagamento_reservado': _reservado(pedido), 'editavel': True,
         'orientavel': bool(pedido.producao_iniciada_em),
         'termos_editaveis': not bool(pedido.producao_iniciada_em or pedido.pagamento_confirmado_em),
         'quantidade': 1, 'prazo_horas': 48, 'ajustes_inclusos': pedido.ajustes_inclusos,
@@ -111,7 +119,7 @@ def dados_pedido(pedido):
         'entregaveis': pedido.briefing.get('entregaveis', []),
         'cliente_slug': pedido.fila_cliente.cliente.slug,
         'cliente_nome': pedido.fila_cliente.cliente.nome,
-        'pagamento': 'Depositado pelo cliente' if _depositado(pedido) else 'Aguardando Pix real'}
+        'pagamento': 'Entrega aprovada · Pix manual' if pedido.status == 'aprovado' else 'Pagamento reservado pelo cliente'}
 
 
 def detalhe_cliente(*, site_id, slug, pessoa_id='', administrativo=False):
@@ -185,7 +193,7 @@ def criar_pedido(*, site_id, slug=None, pessoa_id='', dados, administrativo=Fals
             categoria=categoria, titulo=titulo, briefing=briefing, valor_cents=valor,
             cartao='item_simples', nivel='iniciante', moeda='BRL', prazo_quantidade=2,
             prazo_unidade='dias_corridos', ajustes_inclusos=ajustes, ambiente='production',
-            status='aguardando_pagamento', publicado_em=timezone.now())
+            status='na_fila', publicado_em=timezone.now())
         vinculo = PedidoClienteFila.objects.create(pedido=pedido, cliente=cliente)
         _reserva(cliente, vinculo, valor, f'pedido:{pedido.pk}:v1')
         return pedido
@@ -229,11 +237,12 @@ def pedido_acessivel(*, site_id, pessoa_id, pedido_id):
         papel = 'cliente'
     elif acesso_aluno(site_id=site_id, pessoa_id=pessoa_id) and (
         (pedido.aluno_id and pedido.aluno.pessoa_id == pessoa_id)
-        or (pedido.status == 'na_fila' and _depositado(pedido))):
+        or (pedido.status == 'na_fila' and _reservado(pedido))):
         papel = 'aluno'
     else:
         raise ErroMarketplace('Pedido indisponível para esta conta.')
     pedido.depositado_real = _depositado(pedido)
+    pedido.pagamento_reservado = _reservado(pedido)
     return pedido, papel
 
 
@@ -245,18 +254,21 @@ def catalogo(*, site_id, pessoa_id, categoria):
     if not equipe and not acesso_aluno(site_id=site_id, pessoa_id=pessoa_id):
         raise ErroMarketplace('Esta conta não tem autorização para a fila remunerada.')
     pedidos = PedidoMarketplace.objects.filter(site_id=site_id,
-        status='na_fila', fila_cliente__pagamento_real_confirmado_em__isnull=False,
-        pagamento_confirmado_em__isnull=False, ambiente='production').exclude(
-        fila_cliente__referencia_provedor='').select_related('fila_cliente__cliente').order_by('criado_em')
+        status='na_fila', fila_cliente__cliente__ativo=True,
+        fila_cliente__cliente__site_id=site_id,
+        fila_cliente__reservado_cents=F('valor_cents'), valor_cents__gt=0,
+        ambiente='production').select_related('fila_cliente__cliente').order_by('criado_em')
     if categoria:
         pedidos = pedidos.filter(categoria=categoria)
     pedidos = list(pedidos)
     for p in pedidos:
         p.depositado_real = _depositado(p)
+        p.pagamento_reservado = _reservado(p)
     trabalhos = list(PedidoMarketplace.objects.filter(site_id=site_id, aluno__pessoa_id=pessoa_id,
         fila_cliente__isnull=False).select_related('fila_cliente__cliente').order_by('-criado_em'))
     for p in trabalhos:
         p.depositado_real = _depositado(p)
+        p.pagamento_reservado = _reservado(p)
     return {'pedidos': pedidos, 'trabalhos': trabalhos,
         'trabalho_ativo': next((p for p in trabalhos if p.status in EM_ANDAMENTO), None)}
 
@@ -271,7 +283,7 @@ def aceitar(*, site_id, pessoa_id, pedido_id):
             raise ErroMarketplace('Pedido indisponível.')
         if pedido.aluno_id == perfil.pk and pedido.producao_iniciada_em:
             return pedido
-        if pedido.status != 'na_fila' or not _depositado(pedido):
+        if pedido.status != 'na_fila' or not _reservado(pedido):
             raise ErroMarketplace('Este pedido ainda não está disponível para aceite.')
         if perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:
             raise ErroMarketplace('Seu perfil precisa estar disponível para iniciar este trabalho.')

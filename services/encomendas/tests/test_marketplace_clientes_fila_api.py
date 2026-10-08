@@ -41,6 +41,35 @@ def test_token_leitura_nao_escreve_pedido_ou_vinculo(monkeypatch):
     assert erro.value.status_code == 403
 
 
+def test_saques_manuais_usam_par_admin_e_escrita(monkeypatch):
+    from uuid import uuid4
+
+    monkeypatch.setattr(clientes_fila_api.saques_fila, "listar_admin", lambda **kw: {"saques": []})
+    assert clientes_fila_api.saques_manuais(_requisicao("leitura-admin")) == {"saques": []}
+    with pytest.raises(HttpError) as erro:
+        clientes_fila_api.saques_manuais(_requisicao("outro-par"))
+    assert erro.value.status_code == 403
+    monkeypatch.setattr(clientes_fila_api.saques_fila, "confirmar", lambda **kw: pytest.fail("registrou sem autorização"))
+    with pytest.raises(HttpError) as erro:
+        clientes_fila_api.pagar_saque_manual(_requisicao("leitura-admin"), uuid4(), {"administrativo": True})
+    assert erro.value.status_code == 403
+    with pytest.raises(HttpError) as erro:
+        clientes_fila_api.pagar_saque_manual(_requisicao("escrita-admin"), uuid4(), {"administrativo": False})
+    assert erro.value.status_code == 403
+
+
+def test_registro_de_pix_manual_encaminha_identidade_e_dados(monkeypatch):
+    from uuid import uuid4
+
+    chamadas = []
+    monkeypatch.setattr(clientes_fila_api.saques_fila, "confirmar", lambda **kw: chamadas.append(kw) or {"status": "pago"})
+    saque_id = uuid4()
+    dados = {"administrativo": True, "ator_id": "admin-teste", "referencia_pix": "referencia-teste",
+             "pagador_nome": "Pessoa de Teste", "pagador_cpf": "cpf-no-corpo-privado", "pagador_email": "teste@example.test"}
+    assert clientes_fila_api.pagar_saque_manual(_requisicao("escrita-admin"), saque_id, dados) == {"status": "pago"}
+    assert chamadas == [{"site_id": "escola-a", "saque_id": saque_id, "ator_id": "admin-teste", "dados": dados}]
+
+
 @pytest.mark.django_db
 def test_cliente_ve_somente_proprio_saldo_e_aluno_nao_obtem_mapeamento():
     fila_real.garantir_clientes("escola-a")

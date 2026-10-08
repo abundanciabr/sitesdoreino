@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import uuid
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import quote
 
@@ -12,7 +14,8 @@ from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.debug import sensitive_post_parameters
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from apps.core import plantao
 from apps.core.telas_marketplace import _entrada
@@ -96,6 +99,114 @@ def catalogo(request):
         "trabalho_ativo": dados.get("trabalho_ativo"), "recado": request.GET.get("recado", ""),
         "papel": papel,
     })
+
+
+def _carteira_autorizada(request):
+    site, pessoa = _entrada(request)
+    from apps.encomendas import saques_fila
+    if not saques_fila.pode_acessar_carteira(site_id=site, pessoa_id=pessoa):
+        raise Http404
+    return site, pessoa
+
+
+@require_GET
+def entrada_antiga_fila(request):
+    site, pessoa = _entrada(request)
+    try:
+        _papel(site, pessoa)
+    except Http404:
+        from apps.encomendas import saques_fila
+        if saques_fila.pode_acessar_carteira(site_id=site, pessoa_id=pessoa):
+            return _voltar("fila_real_carteira")
+        raise
+    return _voltar("fila_real_catalogo")
+
+
+@sensitive_post_parameters()
+@require_http_methods(["GET", "POST"])
+def saque_antigo(request):
+    _carteira_autorizada(request)
+    return _voltar("fila_real_carteira")
+
+
+@sensitive_post_parameters()
+@require_http_methods(["GET", "POST"])
+def financeiro_antigo_cliente(request, pedido_id=None):
+    site, pessoa = _entrada(request)
+    cliente = fila_real.cliente_da_pessoa(site_id=site, pessoa_id=pessoa)
+    if cliente is None:
+        raise Http404
+    return HttpResponseRedirect("/admin/clientes/" + quote(cliente.slug) + "/")
+
+
+@require_GET
+def retorno_pagamento_antigo(request, pedido_id):
+    return entrada_antiga_fila(request)
+
+
+@require_GET
+def carteira_aluno(request):
+    site, pessoa = _carteira_autorizada(request)
+    from apps.encomendas import saques_fila
+    try:
+        dados = saques_fila.carteira(site_id=site, pessoa_id=pessoa)
+    except (ValueError, saques_fila.ErroMarketplace):
+        raise Http404
+    saques = []
+    nomes_status = {
+        "solicitado": "Solicitado", "pendente": "Aguardando Pix",
+        "reservado": "Aguardando Pix", "pago": "Pix pago",
+        "cancelado": "Cancelado", "rejeitado": "Não pago",
+    }
+    for item in dados.get("saques", []):
+        linha = dict(item) if isinstance(item, dict) else {
+            nome: getattr(item, nome, None) for nome in (
+                "id", "valor_cents", "status", "nome_recebedor",
+                "referencia_pix", "solicitado_em", "pago_em",
+            )
+        }
+        linha["valor_exibido"] = _moeda(linha.get("valor_cents") or 0)
+        linha["status_exibido"] = nomes_status.get(linha.get("status"), linha.get("status") or "Solicitado")
+        for campo in ("solicitado_em", "pago_em"):
+            if isinstance(linha.get(campo), str):
+                try:
+                    linha[campo] = datetime.fromisoformat(linha[campo])
+                except ValueError:
+                    linha[campo] = None
+        saques.append(linha)
+    resposta = render(request, "fila_real_carteira.html", {
+        "disponivel": _moeda(dados.get("saldo_disponivel_cents") or 0),
+        "solicitado": _moeda(dados.get("saldo_solicitado_cents") or 0),
+        "total_pago": _moeda(dados.get("total_pago_cents") or 0),
+        "saques": saques, "chave_idempotencia": uuid.uuid4(),
+        "recado": request.GET.get("recado", ""),
+    })
+    resposta["Cache-Control"] = "private, no-store"
+    resposta["Vary"] = "Cookie"
+    return resposta
+
+
+@sensitive_post_parameters("chave_pix")
+@require_POST
+def solicitar_saque(request):
+    site, pessoa = _carteira_autorizada(request)
+    from apps.encomendas import saques_fila
+    try:
+        valor = Decimal(request.POST.get("valor_reais", "").strip().replace(",", "."))
+        if not valor.is_finite() or valor <= 0 or valor.as_tuple().exponent < -2:
+            raise ValueError
+        valor_cents = int(valor * 100)
+        chave_idempotencia = str(uuid.UUID(request.POST.get("chave_idempotencia", "")))
+        saques_fila.solicitar(site_id=site, pessoa_id=pessoa, dados={
+            "valor_cents": valor_cents,
+            "nome_recebedor": request.POST.get("nome_recebedor", "").strip(),
+            "chave_pix": request.POST.get("chave_pix", "").strip(),
+            "chave_idempotencia": chave_idempotencia,
+        })
+    except (ValueError, InvalidOperation, saques_fila.ErroMarketplace) as erro:
+        mensagem = str(erro) if isinstance(erro, saques_fila.ErroMarketplace) else "Confira valor e dados do saque."
+        return _aviso(request, mensagem)
+    return _voltar("fila_real_carteira", recado="Saque solicitado. Aguarde a transferência Pix e a confirmação no site.")
 
 
 @require_GET
@@ -259,7 +370,7 @@ def avaliar(request, pedido_id, acao):
         entrega_id = uuid.UUID(request.POST.get("entrega_id", ""))
         if acao == "aprovar":
             fila_real.aprovar(site_id=site, pessoa_id=pessoa, pedido_id=pedido.pk, entrega_id=entrega_id)
-            recado = "Entrega aprovada. Acompanhe a liberação do saque."
+            recado = "Entrega aprovada. O saldo do aluno está disponível para solicitar saque."
         elif acao == "ajuste":
             fila_real.pedir_ajuste(site_id=site, pessoa_id=pessoa, pedido_id=pedido.pk,
                                   entrega_id=entrega_id, texto=request.POST.get("texto", ""))

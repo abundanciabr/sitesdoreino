@@ -3,13 +3,14 @@
 import hmac
 import os
 from uuid import UUID
+from django.views.decorators.debug import sensitive_variables
 
 from ninja import Router, Body
 from ninja.errors import HttpError
 
 from apps.core import sessao
 from apps.core.auth import exigir_grau_de_escrita
-from apps.encomendas import fila_real
+from apps.encomendas import fila_real, saques_fila
 from apps.encomendas.marketplace import ErroMarketplace
 
 router = Router()
@@ -38,6 +39,22 @@ def _executar(funcao, **kwargs):
 def lista(request):
     site = _admin(request)
     return {'clientes': fila_real.lista_clientes(site_id=site)}
+
+
+@router.get('/clientes-fila/saques-manuais')
+def saques_manuais(request):
+    site = _admin(request)
+    return _executar(saques_fila.listar_admin, site_id=site)
+
+
+@router.post('/clientes-fila/saques-manuais/{saque_id}/pago')
+@sensitive_variables('payload')
+def pagar_saque_manual(request, saque_id: UUID, payload: dict = Body(...)):
+    site = _admin(request, escrita=True)
+    if payload.get('administrativo') is not True:
+        raise HttpError(403, 'Somente a administração registra o Pix manual.')
+    return _executar(saques_fila.confirmar, site_id=site, saque_id=saque_id,
+        ator_id=str(payload.get('ator_id') or ''), dados=payload)
 
 
 @router.get('/clientes-fila/acesso/{pessoa_id}')
