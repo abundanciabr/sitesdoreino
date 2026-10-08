@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox
+from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -58,7 +58,17 @@ urlpatterns = [
     path("fila/sacar/", telas_marketplace.sacar, name="marketplace_sacar"),
     path("fila/disponibilidade/", telas_marketplace.disponibilidade, name="marketplace_disponibilidade"),
     path("fila/ofertas/<uuid:oferta_id>/<str:acao>/", telas_marketplace.responder_oferta, name="marketplace_responder_oferta"),
-    path("cliente/", telas_marketplace.cliente, name="marketplace_cliente"),
+    path("cliente/", telas_fila_real.catalogo, name="fila_real_catalogo"),
+    path("cliente/", telas_fila_real.catalogo, name="marketplace_cliente"),
+    path("cliente/trabalhos/<uuid:pedido_id>/confirmar/", telas_fila_real.confirmar, name="fila_real_confirmar"),
+    path("cliente/trabalhos/<uuid:pedido_id>/aceitar/", telas_fila_real.aceitar, name="fila_real_aceitar"),
+    path("cliente/trabalhos/<uuid:pedido_id>/", telas_fila_real.trabalho, name="fila_real_trabalho"),
+    path("cliente/trabalhos/<uuid:pedido_id>/mensagem/", telas_fila_real.mensagem, name="fila_real_mensagem"),
+    path("cliente/trabalhos/<uuid:pedido_id>/orientar/", telas_fila_real.orientar, name="fila_real_orientar"),
+    path("cliente/trabalhos/<uuid:pedido_id>/arquivo/", telas_fila_real.arquivo, name="fila_real_arquivo"),
+    path("cliente/arquivos/<uuid:arquivo_id>/", telas_fila_real.baixar, name="fila_real_baixar"),
+    path("cliente/trabalhos/<uuid:pedido_id>/entregar/", telas_fila_real.entregar, name="fila_real_entregar"),
+    path("cliente/trabalhos/<uuid:pedido_id>/<str:acao>/", telas_fila_real.avaliar, name="fila_real_avaliar"),
     path("cliente/recarregar/", telas_marketplace.recarregar, name="marketplace_recarregar"),
     path("cliente/novo/", telas_marketplace.novo, name="marketplace_novo"),
     path("cliente/salvar/", telas_marketplace.salvar, name="marketplace_salvar"),

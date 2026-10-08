@@ -108,7 +108,7 @@ def _papel(request, pedido):
 
 
 def _pedido(pedido_id, site):
-    return PedidoMarketplace.objects.filter(pk=pedido_id, site_id=site).select_related("aluno").first()
+    return PedidoMarketplace.objects.filter(pk=pedido_id, site_id=site, fila_cliente__isnull=True).select_related("aluno").first()
 
 
 def _voltar(nome, *args, recado=""):

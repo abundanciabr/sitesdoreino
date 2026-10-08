@@ -6,6 +6,10 @@ from apps.core import galeria_aula1
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
+from apps.core.clientes_fila import (
+    clientes_fila, cliente_fila, vincular_cliente_fila, salvar_pedido_cliente_fila,
+    orientar_pedido_cliente_fila,
+)
 
 from apps.core.modelo_flp import modelo_flp, modelo_flp_conteudo
 from apps.core.modelos_de_paginas import (
@@ -270,6 +274,12 @@ from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 from apps.agentes.satisfacao import solicitar as solicitar_satisfacao
 
 urlpatterns = [
+    path("clientes/", clientes_fila, name="clientes_fila"),
+    path("clientes/<slug:slug>/", cliente_fila, name="cliente_fila"),
+    path("clientes/<slug:slug>/vincular/", vincular_cliente_fila, name="vincular_cliente_fila"),
+    path("clientes/<slug:slug>/pedidos/", salvar_pedido_cliente_fila, name="criar_pedido_cliente_fila"),
+    path("clientes/<slug:slug>/pedidos/<uuid:pedido_id>/", salvar_pedido_cliente_fila, name="editar_pedido_cliente_fila"),
+    path("clientes/<slug:slug>/pedidos/<uuid:pedido_id>/orientar/", orientar_pedido_cliente_fila, name="orientar_pedido_cliente_fila"),
     path("crm/satisfacao/analisar/", solicitar_satisfacao, name="crm_satisfacao_analisar"),
     path("crm/satisfacao/arquivo/", arquivo, name="crm_satisfacao_arquivo"),
     path("crm/satisfacao/excluir/", confirmar_exclusao, name="crm_satisfacao_confirmar_exclusao"),

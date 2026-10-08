@@ -90,6 +90,7 @@ SECOES = (
     ("comunidade_admin", "Comunidade"),
     ("escola", "Escola"),
     ("crm", "CRM"),
+    ("clientes_fila", "Clientes"),
     # "Contatos", e não "Clientes" nem "CRM" (03/10/2026): a lista traz quem
     # deixou o nome, o e-mail ou o telefone, e a maioria ainda não comprou
     # nada. "Clientes" prometeria só quem pagou; "CRM" é sigla de quem vende

@@ -107,7 +107,7 @@ def configurar_fase(
 
 
 def _pedido(site_id: str, pedido_id, *, trava: bool = False) -> PedidoMarketplace:
-    consulta = PedidoMarketplace.objects.filter(pk=pedido_id, site_id=site_id)
+    consulta = PedidoMarketplace.objects.filter(pk=pedido_id, site_id=site_id, fila_cliente__isnull=True)
     if trava:
         consulta = consulta.select_for_update()
     pedido = consulta.first()
@@ -375,6 +375,7 @@ def rodar_marketplace(*, site_id: str, agora: datetime | None = None) -> int:
     ids = list(PedidoMarketplace.objects.filter(
         site_id=site_id, status=PedidoMarketplace.Status.NA_FILA,
         pagamento_confirmado_em__isnull=False,
+        fila_cliente__isnull=True,
     ).order_by("criado_em").values_list("pk", flat=True))
     for pedido_id in ids:
         if distribuir_pedido(site_id=site_id, pedido_id=pedido_id, agora=agora):

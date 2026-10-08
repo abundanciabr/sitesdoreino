@@ -2016,3 +2016,8 @@ from .sandbox_models import (  # noqa: E402,F401
     AjusteSandbox, ArquivoSandbox, EntregaSandbox, MensagemSandbox,
     MovimentoMeshcoin, ParticipacaoSandbox, ProjetoSandbox,
 )
+
+from .fila_real_models import (  # noqa: E402,F401
+    ClienteFila, PedidoClienteFila, MovimentoOrcamentoFila,
+    OrientacaoPrivadaFila, CasoConversaFila,
+)

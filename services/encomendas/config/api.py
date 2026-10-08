@@ -4,6 +4,7 @@ from ninja import NinjaAPI
 from apps.core.api import router as encomendas_router
 from apps.core.auth import bearerAuth
 from apps.core.acompanhamento_api import router as acompanhamento_router
+from apps.core.clientes_fila_api import router as clientes_fila_router
 
 # `servers` aponta para a REDE INTERNA do Docker: é o endereço que outra célula
 # porá no env dela, e é o mesmo que o rascunho em papel do contrato já previa
@@ -56,3 +57,4 @@ api = NinjaAPI(
 )
 api.add_router("", encomendas_router)
 api.add_router("", acompanhamento_router)
+api.add_router("", clientes_fila_router)

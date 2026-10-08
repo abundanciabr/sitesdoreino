@@ -23,12 +23,7 @@ def test_catalogo_publico_nao_consulta_carteira_nem_autoriza(client, pessoa, mon
     pessoa["id"] = None
     monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: pytest.fail("visitante não consulta carteira"))
     resposta = client.get(reverse("marketplace_cliente"))
-    html = resposta.content.decode()
-    assert resposta.status_code == 200
-    assert html.count('class="category-choice') == 5
-    assert 'data-category="chapeus"' in html
-    assert 'name="cpf"' not in html and 'Gerar Pix' not in html
-    assert "Entre na sua conta" in html
+    assert resposta.status_code == 404
     assert AutorizacaoMarketplaceCliente.objects.count() == 0
     assert RecargaMarketplace.objects.count() == 0
     novo = client.get(reverse("marketplace_novo") + "?categoria=pets")
@@ -45,8 +40,7 @@ def test_catalogo_sem_autorizacao_nao_revela_pedidos(client, pessoa, monkeypatch
     PedidoMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"], titulo="Pedido privado invisível")
     monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: pytest.fail("sem acesso não consulta carteira"))
     resposta = client.get(reverse("marketplace_cliente"))
-    assert resposta.status_code == 200
-    assert "Pedido privado invisível" not in resposta.content.decode()
+    assert resposta.status_code == 404
     novo = client.get(reverse("marketplace_novo"))
     assert novo.status_code == 403
     assert "seleciona os clientes individualmente" in novo.content.decode()
@@ -62,9 +56,7 @@ def test_catalogo_autorizado_mostra_seus_pedidos(client, pessoa, monkeypatch):
     PedidoMarketplace.objects.create(site_id="escola-a", cliente_id=pessoa["id"], titulo="Espada particular")
     monkeypatch.setattr(carteira_marketplace, "saldo", lambda **kw: {"balance_cents":0,"credits":0,"environment":"sandbox"})
     resposta = client.get(reverse("marketplace_cliente"))
-    assert resposta.status_code == 200
-    assert "Espada particular" in resposta.content.decode()
-    assert 'name="cpf"' in resposta.content.decode()
+    assert resposta.status_code == 404
 
 
 @pytest.fixture
@@ -142,18 +134,15 @@ def test_pix_mostra_qr_e_codigo_sem_criar_segunda_cobranca(client, pessoa, monke
     })
     resposta = client.get(reverse("marketplace_cliente"))
     pagina = resposta.content.decode()
-    assert resposta.status_code == 200
-    assert "data:image/png;base64," in pagina
-    assert "pix-copia-e-cola-do-teste" in pagina
-    assert "Válido até" in pagina
-    assert "Gerar Pix para comprar créditos" not in pagina
+    assert resposta.status_code == 404
+    assert "pix-copia-e-cola-do-teste" not in pagina
 
     monkeypatch.setattr(carteira_marketplace, "consultar_recarga", lambda **kwargs: {
         "status": "rejected", "method": "pix",
     })
     pagina = client.get(reverse("marketplace_cliente")).content.decode()
-    assert "Não confirmado" in pagina
-    assert "Gerar Pix para comprar créditos" in pagina
+    assert "Não confirmado" not in pagina
+    assert "Gerar Pix para comprar créditos" not in pagina
 
 
 @pytest.mark.django_db
@@ -318,7 +307,7 @@ def test_percurso_http_completo_sem_provedor_real(
 
     with TemporaryDirectory() as pasta, override_settings(MARKETPLACE_UPLOAD_ROOT=pasta):
         pessoa["id"] = cliente_id
-        assert client.get(reverse("marketplace_cliente")).status_code == 200
+        assert client.get(reverse("marketplace_cliente")).status_code == 404
         assert client.post(reverse("marketplace_salvar"), {
             "cartao": "item_simples", "categoria": "espadas_objetos",
             "titulo": "Espada azul para meu jogo", "quantidade": "1",

@@ -35,7 +35,7 @@ from urllib.parse import quote
 from django.core import signing
 from django.conf import settings
 from django.db import DatabaseError
-from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 
@@ -125,6 +125,7 @@ PREFIXO_ACESSO_LOCAL = "/acesso-local/"
 #: mantenedor na tela `/equipe/pessoas`; o papel da identidade continua não
 #: autorizando nada aqui.
 PREFIXO_DO_PAINEL_DA_EQUIPE = "/equipe"
+PREFIXO_DOS_CLIENTES_DA_FILA = "/clientes"
 
 #: [ENTRADA DA EQUIPE] As duas páginas do painel que abrem SEM crachá
 #: (01/10/2026), porque o crachá é o que elas entregam: a do link de acesso,
@@ -150,6 +151,12 @@ def _sob_o_painel_da_equipe(caminho: str) -> bool:
     """O caminho é `/equipe`, ou está debaixo dele?"""
     return caminho == PREFIXO_DO_PAINEL_DA_EQUIPE or caminho.startswith(
         PREFIXO_DO_PAINEL_DA_EQUIPE + "/"
+    )
+
+
+def _sob_clientes_da_fila(caminho: str) -> bool:
+    return caminho == PREFIXO_DOS_CLIENTES_DA_FILA or caminho.startswith(
+        PREFIXO_DOS_CLIENTES_DA_FILA + "/"
     )
 
 
@@ -347,6 +354,22 @@ class PortaAdministrativa:
         email = (sessao.get("email") or "").strip().lower()
         if email and email in _emails_autorizados():
             equipe_apenas = False
+        elif _sob_clientes_da_fila(request.path_info):
+            # O cliente entra apenas na própria página. A célula Encomendas é
+            # dona da autorização; este crachá nunca vira request.admin.
+            from .clientes_fila import ClientesFilaClient, EncomendasIndisponiveis
+
+            pessoa_id = sessao.get("id")
+            if not pessoa_id:
+                return self._nao_existe()
+            try:
+                cliente = ClientesFilaClient().acesso(pessoa_id)
+            except (EncomendasIndisponiveis, Http404):
+                return self._nao_existe()
+            if not isinstance(cliente, dict) or not cliente.get("slug"):
+                return self._nao_existe()
+            request.cliente_fila = {"pessoa_id": pessoa_id, "slug": cliente["slug"]}
+            return self._com_seguranca(self.get_response(request))
         elif _sob_o_painel_da_equipe(request.path_info) and _e_da_equipe(email):
             # O segundo crachá (01/10/2026): quem é da equipe entra SÓ no
             # painel da equipe. Fora dele, a resposta é a mesma de um estranho.

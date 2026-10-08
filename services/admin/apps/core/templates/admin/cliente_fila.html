@@ -1,0 +1,61 @@
+{% extends "admin/base.html" %}{% load reais_fila %}
+{% block titulo %}{{ cliente.nome }} · Fila do Dólar{% endblock %}
+{% block corpo %}<main class="envolucro">
+{% if administrativo %}<p><a href="{% url 'clientes_fila' %}">← Clientes</a></p>{% endif %}
+<h1>{{ cliente.nome }} · Fila do Dólar</h1>
+<p class="subtitulo">Seus pedidos e orçamento interno.</p>
+{% if erro %}<p role="alert">{{ erro }}</p>{% endif %}{% if mensagem %}<p role="status">{{ mensagem }}</p>{% endif %}
+<section class="card">
+  <h2>Orçamento interno</h2>
+  <p>Disponível: R$ {{ cliente.disponivel_cents|reais_fila }}</p>
+  <p>Comprometido: R$ {{ cliente.comprometido_cents|reais_fila }}</p>
+  <p>Pagamentos pendentes: R$ {{ cliente.pendente_cents|reais_fila }}</p>
+  <p>Os créditos internos não são depósitos Pix.</p>
+  <p>O pagamento Pix real está indisponível nesta etapa.</p>
+</section>
+{% if administrativo %}<section class="card">
+  <h2>Conta deste cliente</h2>
+  <form method="post" action="{% url 'vincular_cliente_fila' cliente.slug %}">{% csrf_token %}
+    <label>E-mail da conta <input type="email" name="email" required></label>
+    <button type="submit">Vincular conta</button>
+  </form>
+</section>{% endif %}
+<section class="card">
+<h2>Novo pedido</h2><p>Um item por pedido. O aluno terá 48 horas após aceitar.</p>
+<form method="post" action="{% url 'criar_pedido_cliente_fila' cliente.slug %}">{% csrf_token %}
+  <p><label>Título <input name="titulo" maxlength="200" required></label></p>
+  <p><label>Categoria <select name="categoria" required><option value="espadas_objetos">Espadas e armas</option><option value="pets">Pets</option><option value="cabelos">Cabelos</option><option value="chapeus">Chapéus</option><option value="personagens">Personagens</option></select></label></p>
+  <p><label>Descrição <textarea name="briefing" required></textarea></label></p>
+  <p><label>Referências <textarea name="referencias"></textarea></label></p>
+  <p><label>Entregáveis <textarea name="entregaveis" required></textarea></label></p>
+  <p><label>Valor oferecido (R$) <input name="valor_reais" type="text" inputmode="decimal" placeholder="100,00" required></label></p>
+  <button type="submit">Criar pedido</button>
+</form></section>
+<h2>Pedidos</h2>
+<nav aria-label="Situação dos pedidos">
+  <a href="?situacao=todos" {% if situacao == 'todos' %}aria-current="page"{% endif %}>Todos</a>
+  <a href="?situacao=abertos" {% if situacao == 'abertos' %}aria-current="page"{% endif %}>Abertos ({{ cliente.abertos|default:0 }})</a>
+  <a href="?situacao=em_andamento" {% if situacao == 'em_andamento' %}aria-current="page"{% endif %}>Em andamento ({{ cliente.em_andamento|default:0 }})</a>
+  <a href="?situacao=finalizados" {% if situacao == 'finalizados' %}aria-current="page"{% endif %}>Finalizados ({{ cliente.finalizados|default:0 }})</a>
+</nav>
+{% for pedido in cliente.pedidos %}<section class="card">
+  <h3>{{ pedido.titulo }}</h3><p>{{ pedido.categoria }} · {{ pedido.status }} · R$ {{ pedido.valor_cents|reais_fila }}</p>
+  <p><a href="https://meshcraft.top/encomendas/cliente/trabalhos/{{ pedido.id }}/">Abrir trabalho e conversa</a></p>
+  {% if pedido.depositado_real %}<p>Pix confirmado pelo cliente.</p>{% else %}<p>Pix ainda não confirmado.</p>{% endif %}
+  {% if pedido.prazo_ate %}<p>Prazo: {{ pedido.prazo_ate }}</p>{% endif %}
+  {% if pedido.termos_editaveis %}<details><summary>Editar pedido</summary>
+    <form method="post" action="{% url 'editar_pedido_cliente_fila' cliente.slug pedido.id %}">{% csrf_token %}
+      <p><label>Título <input name="titulo" value="{{ pedido.titulo }}" required></label></p>
+      <p><label>Categoria <select name="categoria"><option value="espadas_objetos" {% if pedido.categoria == 'espadas_objetos' %}selected{% endif %}>Espadas e armas</option><option value="pets" {% if pedido.categoria == 'pets' %}selected{% endif %}>Pets</option><option value="cabelos" {% if pedido.categoria == 'cabelos' %}selected{% endif %}>Cabelos</option><option value="chapeus" {% if pedido.categoria == 'chapeus' %}selected{% endif %}>Chapéus</option><option value="personagens" {% if pedido.categoria == 'personagens' %}selected{% endif %}>Personagens</option></select></label></p>
+      <p><label>Descrição <textarea name="briefing" required>{{ pedido.descricao_form }}</textarea></label></p>
+      <p><label>Referências <textarea name="referencias">{{ pedido.referencias_form }}</textarea></label></p>
+      <p><label>Entregáveis <textarea name="entregaveis" required>{{ pedido.entregaveis_form }}</textarea></label></p>
+      <p><label>Valor (R$) <input name="valor_reais" type="text" inputmode="decimal" value="{{ pedido.valor_reais_form }}" required></label></p>
+      <button type="submit">Salvar alterações</button>
+    </form></details>{% endif %}
+  {% if pedido.orientavel %}<form method="post" action="{% url 'orientar_pedido_cliente_fila' cliente.slug pedido.id %}">{% csrf_token %}
+    <label>Orientação ao aluno <textarea name="observacoes_cliente" required></textarea></label>
+    <button type="submit">Enviar orientação</button>
+  </form>{% endif %}
+</section>{% empty %}<p>Nenhum pedido ainda.</p>{% endfor %}
+</main>{% endblock %}
