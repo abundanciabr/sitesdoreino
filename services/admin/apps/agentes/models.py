@@ -77,6 +77,7 @@ class Execucao(models.Model):
         CONFERENCIA_QUIZ = "conferencia_quiz", "Conferência dos links do quiz"
         LEITURA_QUIZ = "leitura_quiz", "Leitura dos números do quiz"
         CONHECIMENTO = "conhecimento", "Leitura dos documentos para o mapa de conhecimento"
+        SATISFACAO = "satisfacao", "Cuidado com a satisfação dos alunos"
         SUPER_EQUIPE = "super_equipe", "Equipe de especialistas técnicos"
 
     class Situacao(models.TextChoices):
@@ -437,3 +438,19 @@ class LigacaoDoConhecimento(models.Model):
     relacao = models.CharField(max_length=80)
     destino = models.CharField(max_length=200)
     evidencia = models.CharField(max_length=400, blank=True, default="")
+
+
+class AnaliseSatisfacao(models.Model):
+    site_id = models.CharField(max_length=100)
+    aluno_id = models.CharField(max_length=200)
+    avaliacao_id = models.CharField(max_length=100)
+    execucao = models.ForeignKey(Execucao, null=True, on_delete=models.SET_NULL)
+    entrega = models.ForeignKey(Entrega, null=True, on_delete=models.SET_NULL)
+    tarefa_id = models.IntegerField(null=True)
+    assinatura = models.CharField(max_length=64, default="")
+    contexto = models.JSONField(default=dict)
+    resultado = models.JSONField(default=dict)
+    analisada_em = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id", "aluno_id", "avaliacao_id"], name="satisfacao_um_caso")]

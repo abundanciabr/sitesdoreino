@@ -200,8 +200,11 @@ def crm_satisfacao_painel(request):
         atendimento["descricao_tela"] = atendimento.get("proximo_passo") or atendimento.get("solucao") or ""
         atendimento["status_tela"] = {"aberto": "Atendimento aberto", "em_andamento": "Em acompanhamento", "resolvido": "Atendimento resolvido"}.get(atendimento.get("status"), "Atendimento registrado")
         atendimento["prazo_tela"] = parse_datetime(atendimento.get("prazo") or "")
+    from apps.agentes.satisfacao import contexto_painel
+    contexto_robo = contexto_painel(site_id, aluno_id, avaliacao, historico)
     atual = lista.get("pagina", 1)
     return render(request, "admin/crm_satisfacao_painel.html", {
+        **contexto_robo,
         "arquivadas": arquivadas, "aluno_id": aluno_id,
         "arquivo_url": reverse("crm_satisfacao_arquivo"),
         "excluir_url": reverse("crm_satisfacao_confirmar_exclusao") + "?" + urlencode({"site_id": site_id, "aluno_id": aluno_id, "avaliacao": avaliacao.get("id", "") if avaliacao else ""}),

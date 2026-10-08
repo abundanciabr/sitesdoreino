@@ -1,0 +1,27 @@
+<section class="quadro" aria-labelledby="robo-satisfacao">
+  <h2 id="robo-satisfacao">Robô · Cuidado com a satisfação</h2>
+  <p>Especialidade do robô pessoal do responsável. A análise continua no servidor quando você fecha a página. Contatos são sugestões para a equipe revisar.</p>
+  <form method="post" action="{% url 'crm_satisfacao_analisar' %}">
+    {% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}">
+    <label>Responsável humano <select name="responsavel_robo" required>{% for pessoa in analise_responsaveis %}<option value="{{ pessoa.id }}">{{ pessoa.nome }} · {{ pessoa.area }}</option>{% endfor %}</select></label>
+    {% if painel %}<button class="botao principal" name="avaliacao" value="{{ painel.id }}" formaction="{% url 'crm_satisfacao_analisar' %}?caso=1" type="submit">Analisar esta avaliação</button><input type="hidden" name="aluno_id" value="{{ aluno_id }}">{% endif %}
+  </form>
+  <form method="post" action="{% url 'crm_satisfacao_analisar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><label>Responsável da análise geral <select name="responsavel_robo" required>{% for pessoa in analise_responsaveis %}<option value="{{ pessoa.id }}">{{ pessoa.nome }} · {{ pessoa.area }}</option>{% endfor %}</select></label><button class="botao" type="submit">Analisar avaliações ativas</button></form>
+  {% for trabalho in analise_execucoes %}<p role="status">{{ trabalho.robo.nome }} · {{ trabalho.get_situacao_display }} · {{ trabalho.progresso }}% · {{ trabalho.etapa_atual }} {% if trabalho.motivo %}· {{ trabalho.motivo }}{% endif %} <a href="{% url 'execucao_do_robo' trabalho.id %}">Acompanhar trabalho</a></p>{% endfor %}
+  {% if analise_robo %}
+    <h3>Leitura desta avaliação · {{ analise_robo.analisada_em|date:'d/m/Y H:i' }}</h3>
+    {% if analise_mudou %}<p class="aviso">A avaliação ou os registros consultados mudaram depois da análise. Use “Analisar esta avaliação” para atualizar a leitura.</p>{% elif analise_mudou == None %}<p class="aviso">Não foi possível conferir agora se todas as fontes continuam iguais.</p>{% endif %}
+    <p>{{ analise_robo.resultado.resumo }}</p>
+    {% for acao in analise_robo.resultado.acoes %}<p><b>{{ acao.prioridade }} · {{ acao.passo }}</b><br>{{ acao.motivo }} · {{ acao.responsavel }} · {{ acao.area }}<br>Conferir: {{ acao.verificar }}</p>{% endfor %}
+    <details><summary>Evidências, hipóteses, pendências e mensagem sugerida</summary>
+      <h4>Evidências</h4>{% for evidencia in analise_robo.resultado.evidencias %}<p>{{ evidencia }}</p>{% endfor %}
+      <h4>O que já foi tentado</h4><p>{{ analise_robo.resultado.tentativas }}</p>
+      <h4>Hipóteses</h4>{% for item in analise_robo.resultado.hipoteses %}<p>{{ item }}</p>{% endfor %}
+      <h4>A conferir</h4>{% for item in analise_robo.resultado.pendencias %}<p>{{ item }}</p>{% endfor %}
+      <h4>Mensagem para revisão humana</h4><p>{{ analise_robo.resultado.mensagem_sugerida }}</p>
+      <h4>Fontes consultadas</h4>{% for nome, fonte in analise_robo.contexto.fontes.items %}<p><b>{{ nome }}</b> · {{ fonte.estado }} · {{ fonte.limitacao }}</p>{% endfor %}
+      <a href="{% url 'entrega_do_robo' analise_robo.entrega_id %}">Abrir entrega completa</a>
+    </details>
+  {% endif %}
+  {% if analise_padroes %}<h3>Melhorias para a escola</h3><p>Última análise geral: {{ analise_padroes.atualizada_em|date:'d/m/Y H:i' }}</p><a href="{% url 'entrega_do_robo' analise_padroes.id %}">Consultar padrões, casos e propostas</a>{% endif %}
+</section>

@@ -101,6 +101,7 @@
     </section>
     {% if avaliacoes|length > 1 %}<details class="outras-avaliacoes"><summary>Outras avaliações deste aluno ({{ avaliacoes|length }})</summary><ul>{% for avaliacao in avaliacoes %}<li><a href="{{ avaliacao.url }}">{{ avaliacao.curso_tela }} · {{ avaliacao.data_tela|date:'d/m/Y H:i'|default:'Data não registrada' }}</a></li>{% endfor %}</ul></details>{% endif %}
     {% endif %}
+    {% include 'admin/_satisfacao_robo.html' %}
     <footer class="rodape">Meshcraft · Administração · Os dados desta página são visíveis somente aos administradores.</footer>
   </main>
 </div>

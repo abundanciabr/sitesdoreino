@@ -179,6 +179,9 @@ def _executar(execucao: Execucao) -> None:
         quiz.executar_leitura(execucao)
     elif execucao.tipo == Execucao.Tipo.CONHECIMENTO:
         conhecimento.executar(execucao)
+    elif execucao.tipo == Execucao.Tipo.SATISFACAO:
+        from . import satisfacao
+        satisfacao.executar(execucao)
     elif execucao.tipo == Execucao.Tipo.SUPER_EQUIPE:
         super_equipe.executar(execucao)
     else:  # pragma: no cover - tipo novo sem executor

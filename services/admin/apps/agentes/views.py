@@ -397,6 +397,8 @@ def andamento_no_quiz(request, slug: str):
 
 def _execucao_visivel(request, id: int) -> Execucao | None:
     execucao = Execucao.objects.select_related("robo", "robo__membro").filter(pk=id).first()
+    if execucao and execucao.tipo == "satisfacao" and not _e_admin(request):
+        return None
     if execucao is None:
         return None
     if _e_admin(request):
@@ -487,6 +489,8 @@ def entrega_detalhe(request, id: int):
     if entrega.tipo == "super_equipe" and not _e_admin(request):
         return _nao_existe(request)
     membro = _membro_da_sessao(request)
+    if entrega.tipo in ("satisfacao", "satisfacao_padroes") and not _e_admin(request):
+        return _nao_existe(request)
     dono = membro is not None and entrega.robo.membro_id == membro.id
     if not (_e_admin(request) or dono or entrega.tarefa_id):
         return _nao_existe(request)

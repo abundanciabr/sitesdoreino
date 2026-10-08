@@ -51,7 +51,10 @@ from apps.core.satisfacao import pesquisa as satisfacao
 # qualquer segmento único, e sem esta ordem "plantao" seria lido como o
 # número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
 # pela qual `healthz` e `static/` já vêm antes dele.
+from apps.core.satisfacao_contexto import contexto as satisfacao_contexto
+
 urlpatterns = [
+    path("api/cursos/satisfacao-contexto", satisfacao_contexto, name="satisfacao_contexto"),
     path('<slug:curso>/parte-<int:parte>/<str:numero>/dia1/salvar', dia1.salvar, name='dia1-salvar'),
     path('<slug:curso>/parte-<int:parte>/<str:numero>/dia1/tradutor', dia1.tradutor, name='dia1-tradutor'),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3", previa_aula3.pagina, name="previa-aula3"),

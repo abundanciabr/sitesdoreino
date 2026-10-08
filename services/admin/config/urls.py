@@ -267,7 +267,10 @@ from apps.core.nps_respondentes import crm_satisfacao_respondentes
 from apps.core.nps_painel import crm_satisfacao_painel
 from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 
+from apps.agentes.satisfacao import solicitar as solicitar_satisfacao
+
 urlpatterns = [
+    path("crm/satisfacao/analisar/", solicitar_satisfacao, name="crm_satisfacao_analisar"),
     path("crm/satisfacao/arquivo/", arquivo, name="crm_satisfacao_arquivo"),
     path("crm/satisfacao/excluir/", confirmar_exclusao, name="crm_satisfacao_confirmar_exclusao"),
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
