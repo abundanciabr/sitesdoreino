@@ -1,0 +1,30 @@
+<!doctype html><html lang="pt-br"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow"><link rel="icon" href="data:,">
+  <title>Excluir avaliação · CRM · Meshcraft</title>
+  {% include 'admin/_satisfacao_estilo.html' %}
+  <style>.confirmacao-avaliacao{max-width:760px;padding:30px 20px;margin:30px auto}.confirmacao-avaliacao h1{font-size:26px;margin:24px 0}.confirmacao-avaliacao .quadro{padding:24px}.confirmacao-avaliacao p{margin:14px 0}.confirmacao-avaliacao label{display:flex;gap:10px;align-items:flex-start}.confirmacao-avaliacao input[type=checkbox]{margin-top:4px}.confirmacao-avaliacao .botoes{margin-top:24px}.confirmacao-avaliacao .excluir{background:#b52536;color:white;border-color:#b52536}.confirmacao-avaliacao .excluir:hover{background:#941e2d}</style>
+</head><body>
+<header class="topo"><a class="marca" href="{% url 'crm_satisfacao' %}">Meshcraft · CRM</a></header>
+<main class="confirmacao-avaliacao">
+  <a class="volta" href="{{ voltar_url }}">← Voltar à avaliação</a>
+  {% if erro %}<h1>A ação não foi concluída</h1><p role="alert">{{ erro }}</p>
+  {% else %}
+  <h1>Excluir definitivamente esta avaliação?</h1>
+  <section class="quadro">
+    <h2>{{ painel.nome }}</h2>
+    <p>{{ painel.curso }} · Pesquisa: {{ painel.data|date:'d/m/Y H:i' }}</p>
+    <p>{{ painel.retrato }} · Nota: {% if painel.nota != None %}{{ painel.nota }}/10{% else %}não registrada{% endif %}</p>
+    <p>As respostas e as revisões desta avaliação serão apagadas. Esta ação não pode ser desfeita pelo painel.</p>
+    <p>Os atendimentos continuarão no histórico do aluno, sem vínculo com esta avaliação.</p>
+    <form method="post" action="{% url 'crm_satisfacao_apagar' %}">{% csrf_token %}
+      <input type="hidden" name="site_id" value="{{ dados.site_id }}">
+      <input type="hidden" name="aluno_id" value="{{ dados.aluno_id }}">
+      <input type="hidden" name="avaliacao" value="{{ dados.tentativa_id }}">
+      <p><label><input type="checkbox" name="confirmacao" value="excluir" required> Entendo e quero excluir definitivamente esta avaliação.</label></p>
+      <div class="botoes"><a class="botao" href="{{ voltar_url }}">Cancelar</a><button class="botao excluir" type="submit">Excluir definitivamente</button></div>
+    </form>
+  </section>
+  {% endif %}
+</main>
+</body></html>

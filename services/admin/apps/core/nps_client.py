@@ -39,8 +39,14 @@ class NPSClient:
             return self.INDISPONIVEL, None
         return self.OK, dados
 
-    def respondentes(self, site_id, *, q="", pagina="1"):
-        return self.pedir("GET", "respondentes", params={"site_id": site_id, "q": q, "pagina": pagina})
+    def respondentes(self, site_id, *, q="", pagina="1", arquivadas=False):
+        params = {"site_id": site_id, "q": q, "pagina": pagina}
+        if arquivadas:
+            params["arquivadas"] = "1"
+        return self.pedir("GET", "respondentes", params=params)
+
+    def acao_avaliacao(self, corpo):
+        return self.pedir("POST", "acoes", corpo=corpo)
 
     def configuracao(self, site_id):
         return self.pedir("GET", "config", params={"site_id": site_id})

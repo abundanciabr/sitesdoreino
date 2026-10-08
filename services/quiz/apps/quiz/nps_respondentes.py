@@ -18,7 +18,8 @@ def respondentes(request):
     if not site_id:
         return _error("site_id obrigatório.")
     q = (request.GET.get("q") or "").strip()[:120]
-    pesquisas = NPSTentativa.objects.filter(site_id=site_id, status="concluida")
+    arquivadas = request.GET.get("arquivadas") == "1"
+    pesquisas = NPSTentativa.objects.filter(site_id=site_id, status="concluida", arquivada_em__isnull=not arquivadas)
     if q:
         pesquisas = pesquisas.filter(
             Q(aluno__nome__icontains=q) | Q(aluno__email__icontains=q)
@@ -39,6 +40,7 @@ def respondentes(request):
             "email": aluno.get("email") or "",
             "curso": curso.get("nome") or curso.get("name") or "Curso não identificado",
             "concluida_em": dados.get("concluida_em"),
+            "arquivada_em": dados.get("arquivada_em"),
             "nota": nota if type(nota) is int and 0 <= nota <= 10 else None,
             "retrato": resultado.get("retrato") or resultado.get("classificacao") or "A conferir",
             "motivo": " ".join(str(m) for m in resultado.get("motivos", []) if m) if isinstance(resultado.get("motivos"), list) else str(resultado.get("motivos") or ""),

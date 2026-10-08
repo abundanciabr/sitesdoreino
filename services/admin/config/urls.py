@@ -265,8 +265,12 @@ from apps.assistente.views import assistente_do_site
 from apps.core.nps_respondentes import crm_satisfacao_respondentes
 
 from apps.core.nps_painel import crm_satisfacao_painel
+from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 
 urlpatterns = [
+    path("crm/satisfacao/arquivo/", arquivo, name="crm_satisfacao_arquivo"),
+    path("crm/satisfacao/excluir/", confirmar_exclusao, name="crm_satisfacao_confirmar_exclusao"),
+    path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),

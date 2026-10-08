@@ -130,6 +130,7 @@ def preparar_painel(avaliacao):
     sinais = resultado.get("sinais") or []
     pendencias = [item.get("motivo", "") for item in sinais if isinstance(item, dict) and item.get("motivo")]
     return {
+        "arquivada": bool(avaliacao.get("arquivada_em")),
         "id": avaliacao.get("id", ""), "nome": aluno.get("nome") or aluno.get("email") or "Aluno",
         "email": aluno.get("email") or "", "curso": avaliacao["curso_nome"],
         "data": parse_datetime(avaliacao.get("concluida_em") or avaliacao.get("criada_em") or ""),
@@ -148,30 +149,33 @@ def preparar_painel(avaliacao):
 @require_GET
 def crm_satisfacao_painel(request):
     site_id, q = _site(request), _texto(request.GET.get("q"), 120)
+    arquivadas = request.GET.get("arquivadas") == "1"
     cliente = NPSClient()
-    estado_lista, lista = cliente.respondentes(site_id, q=q, pagina=_texto(request.GET.get("pagina"), 10) or "1") if site_id else ("sem-site", None)
+    estado_lista, lista = cliente.respondentes(site_id, q=q, pagina=_texto(request.GET.get("pagina"), 10) or "1", arquivadas=arquivadas) if site_id else ("sem-site", None)
     lista = lista if isinstance(lista, dict) else {}
     if estado_lista == cliente.OK and (not isinstance(lista.get("itens"), list)
                                        or any(type(lista.get(k)) is not int for k in ("alunos", "total", "pagina", "paginas"))):
         estado_lista, lista = cliente.INDISPONIVEL, {}
+    escolhida = _texto(request.GET.get("avaliacao"), 100)
     aluno_id = _texto(request.GET.get("aluno_id"))
     email = _texto(request.GET.get("email"), 254).lower()
     if not aluno_id and not email and lista.get("itens"):
         aluno_id = lista["itens"][0].get("aluno_id", "")
+        escolhida = escolhida or lista["itens"][0].get("id", "")
     estado, historico = cliente.historico(site_id, aluno_id=aluno_id, email=email) if site_id and (aluno_id or email) else ("sem-aluno", None)
     historico = historico if isinstance(historico, dict) else {}
     if estado == cliente.OK and (not isinstance(historico.get("avaliacoes"), list)
                                 or not isinstance(historico.get("atendimentos"), list)):
         estado, historico = cliente.INDISPONIVEL, {}
     avaliacoes = [a for a in historico.get("avaliacoes", []) if isinstance(a, dict)]
-    escolhida = _texto(request.GET.get("avaliacao"), 100)
-    avaliacao = next((a for a in avaliacoes if a.get("id") == escolhida), None) if escolhida else next(iter(avaliacoes), None)
+    visiveis = [a for a in avaliacoes if bool(a.get("arquivada_em")) == arquivadas]
+    avaliacao = next((a for a in avaliacoes if a.get("id") == escolhida), None) if escolhida else next(iter(visiveis), None)
     painel = preparar_painel(avaliacao) if avaliacao else None
     if avaliacao:
         aluno_id = avaliacao.get("aluno_id") or aluno_id
     def url(params, *, gestao=False):
         nome = "crm_satisfacao_gestao" if gestao else "crm_satisfacao"
-        return reverse(nome) + "?" + urlencode({"site_id": site_id, **params})
+        return reverse(nome) + "?" + urlencode({"site_id": site_id, **({"arquivadas": "1"} if arquivadas and not gestao else {}), **params})
     itens = []
     for item in lista.get("itens", []):
         item = dict(item)
@@ -186,7 +190,7 @@ def crm_satisfacao_painel(request):
         curso = a.get("curso") or a.get("produto") or {}
         a["curso_tela"] = curso.get("nome") or curso.get("name") or "Curso" if isinstance(curso, dict) else str(curso)
         a["data_tela"] = parse_datetime(a.get("concluida_em") or a.get("criada_em") or "")
-        a["url"] = url({**dono, "avaliacao": a.get("id", ""), "q": q})
+        a["url"] = url({**dono, "avaliacao": a.get("id", ""), "q": q, "arquivadas": "1" if a.get("arquivada_em") else "0"})
     atendimentos = historico.get("atendimentos", [])
     relevantes = [a for a in atendimentos if isinstance(a, dict) and (not a.get("tentativa_id") or (avaliacao and a.get("tentativa_id") == avaliacao.get("id")))]
     ativos = [a for a in relevantes if a.get("status") != "resolvido"]
@@ -198,6 +202,9 @@ def crm_satisfacao_painel(request):
         atendimento["prazo_tela"] = parse_datetime(atendimento.get("prazo") or "")
     atual = lista.get("pagina", 1)
     return render(request, "admin/crm_satisfacao_painel.html", {
+        "arquivadas": arquivadas, "aluno_id": aluno_id,
+        "arquivo_url": reverse("crm_satisfacao_arquivo"),
+        "excluir_url": reverse("crm_satisfacao_confirmar_exclusao") + "?" + urlencode({"site_id": site_id, "aluno_id": aluno_id, "avaliacao": avaliacao.get("id", "") if avaliacao else ""}),
         "admin": request.admin, "site_id": site_id, "q": q, "estado_lista": estado_lista,
         "lista": lista, "itens": itens, "estado_historico": estado, "painel": painel,
         "avaliacoes": avaliacoes, "atendimento": atendimento,

@@ -50,6 +50,7 @@ class NPSTentativa(models.Model):
     status = models.CharField(max_length=20, default="em_andamento")
     criada_em = models.DateTimeField(auto_now_add=True)
     concluida_em = models.DateTimeField(null=True, blank=True)
+    arquivada_em = models.DateTimeField(null=True, blank=True, db_index=True)
 
     class Meta:
         indexes = [models.Index(fields=["site_id", "aluno_id", "-criada_em"], name="nps_historico_aluno")]

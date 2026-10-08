@@ -201,6 +201,7 @@ def _serialize(attempt, include_question=True):
             overrides, facts, clarifications, context, pending = nps_revisado.review_context(attempt, revisions)
             data["resultado_atual"] = nps_revisado.calculate(attempt, overrides, facts, clarifications) if revisions else attempt.resultado
             data["perguntas_pendentes_revisao"] = pending
+        data["arquivada_em"] = attempt.arquivada_em.isoformat() if attempt.arquivada_em else None
         return data
     readable = []
     for key, value in attempt.respostas.items():
@@ -208,6 +209,7 @@ def _serialize(attempt, include_question=True):
         shown = next((choice.get("texto") for choice in question.get("opcoes", []) if choice.get("valor") == value), value)
         readable.append({"pergunta_id": key, "pergunta": question.get("texto", key), "valor": value, "resposta": shown})
     data = {"id": str(attempt.id), "site_id": attempt.site_id, "aluno_id": attempt.aluno_id, "status": attempt.status, "site": attempt.site, "aluno": attempt.aluno, "produto": attempt.produto, "curso": attempt.curso, "matricula": attempt.matricula, "config_versao": attempt.config_versao, "config_documento": attempt.config_documento, "calculo_versao": attempt.calculo_versao, "respostas": attempt.respostas, "respostas_legiveis": readable, "respostas_registro": attempt.respostas_registro, "perguntas_exibidas": attempt.perguntas_exibidas, "resultado": attempt.resultado, "qualidade": attempt.qualidade, "criada_em": attempt.criada_em.isoformat(), "concluida_em": attempt.concluida_em.isoformat() if attempt.concluida_em else None}
+    data["arquivada_em"] = attempt.arquivada_em.isoformat() if attempt.arquivada_em else None
     if include_question and attempt.status != "concluida":
         next_key = _next(attempt.respostas, attempt.config_documento)
         data["proxima_pergunta"] = _question(attempt, next_key) if next_key else None
