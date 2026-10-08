@@ -234,7 +234,7 @@ def moldura_do_contexto(request) -> dict:
         menu = [
             item
             for item in menu
-            if item["rotulo"] in (SAIDA_PARA_O_SITE["rotulo"], "Equipe")
+            if item["rotulo"] in (SAIDA_PARA_O_SITE["rotulo"], "Equipe", "Atendimento aos alunos")
         ]
     return {
         "menu_do_admin": menu,

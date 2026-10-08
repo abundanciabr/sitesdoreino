@@ -25,8 +25,8 @@ def site(request):
     return str(s['id'])
 
 
-def admin(request):
-    if not getattr(request,'admin',None) or request.admin.get('equipe_apenas'):
+def admin(request, somente_admin=False):
+    if not getattr(request,'admin',None) or (somente_admin and request.admin.get('equipe_apenas')):
         raise Http404
 
 
@@ -266,7 +266,7 @@ def base(request):
 
 @require_http_methods(['GET','POST'])
 def configuracao(request):
-    admin(request);sid=site(request);ctx=contexto(request,sid);c=ctx['config'];erro=''
+    admin(request,somente_admin=True);sid=site(request);ctx=contexto(request,sid);c=ctx['config'];erro=''
     if request.method=='POST':
         acao=request.POST.get('acao')
         if acao=='geral':
