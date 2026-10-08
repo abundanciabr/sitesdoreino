@@ -1,131 +1,18 @@
 from django.urls import path, re_path
-
 from apps.core.views import (
-    base,
-    contribuicoes,
-    contribuir,
-    decidir,
-    decidir_contribuicao,
-    decidir_reconhecimento,
-    enviar_prova,
-    forja,
-    forjar,
-    healthz,
-    interno,
-    interno_contribuicoes,
-    interno_reconhecimentos,
-    marcos,
-    medalhas,
-    servir_estatico,
+    base, medalhas, healthz, servir_estatico,
+    interno_reconhecimentos, decidir_reconhecimento,
 )
 from config.api import api
 
-# O urlconf da célula NÃO conhece o prefixo público (`/conquistas`): quem o
-# aplica é `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a
-# célula de endereço é editar Traefik + env, nunca cirurgia aqui.
-#
-# Quando as telas nascerem (PR 7 da escada — a Base, o Passaporte, a loja):
-# TODA rota leva `name=`, e nenhum template escreve caminho à mão — é
-# `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
-# endereço. Caminho cravado em string quebra em produção e SÓ lá.
-#
-# E quando houver CSS: a rota `servir_estatico` é obrigatória, com nome próprio
-# (`estatico`), porque com DEBUG=0 o Django não serve estático e não há nginx
-# nem CDN atrás do Traefik — o arquivo vira 404 em produção e SÓ lá.
-# Sob prefixo, o `<link>` sai de `{% url 'estatico' %}` e
-# **nunca** de `{% static %}`: as duas tags leem prefixos diferentes, e
-# `/static/…` em `meshcraft.top` é endereço do `funil`, não desta célula.
-# O molde vivo está em `services/forum`.
-#
-# A porta de MÁQUINA (PR 16 — `getPublicProfiles`, `getMyStatus`) nasceu aqui
-# embaixo, e o endereço dela NÃO é o que este comentário previa na gênese.
-#
-# A gênese escreveu `/interno/` (o formato de `identidade` e `forum`). O
-# contrato foi congelado na Sessão B de 30/08/2026 com
-# `servers: http://gamificacao:8000/api/gamificacao` (o formato de `alunos`,
-# `catalogo` e `notificacoes`), e o cabeçalho do contrato registra a divergência
-# de propósito, resolvendo-a: o endereço servido corresponde ao contrato.
-#
-# O que a gênese acertou, e continua valendo: nesta célula o caminho FICA
-# DEBAIXO do prefixo roteado. `meshcraft.top/conquistas/api/gamificacao/…` é
-# alcançável pela internet — o corte do prefixo é do Django, não do Traefik
-# (`armadilhas/186`; premissa fixada em
-# `tests/test_healthz_script_name.py::test_o_prefixo_alcanca_a_raiz_do_urlconf`).
-# Quem fecha a porta é o Bearer do par, e o guarda que importa é o teste de 401
-# em TODAS as operações (`tests/test_porta_de_maquina.py`); a topologia não
-# fecha nada aqui, e escrever o contrário no comentário seria ensinar errado
-# quem chegar depois.
 urlpatterns = [
     path("healthz", healthz),
     path("api/gamificacao/", api.urls),
-    # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em
-    # produção e SÓ lá: com DEBUG=0 o Django não serve
-    # estático, e não há nginx nem CDN atrás do Traefik.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
-    # A TRILHA DE MARCOS REAIS (degrau 12/13). Duas telas e dois gestos:
-    #
-    # `marcos` e `enviar-prova` são do ALUNO. `interno` e `decidir` são da
-    # EQUIPE, e quem fecha essa porta é `apps/core/equipe.py`, fail-CLOSED por
-    # uma lista de ids no env — nunca o `papel` que a identidade devolve, que é
-    # de exibição ("reconhecer não é autorizar", lei da célula §5).
-    #
-    # A área da equipe mora AQUI, e não na célula `admin`, por duas razões
-    # escritas na TAR-089: a lei manda que quem autoriza nesta célula seja esta
-    # célula; pôr a tela na `admin` exigiria uma nova operação na porta de máquina.
-    path("marcos", marcos, name="marcos"),
-    path("marcos/enviar", enviar_prova, name="enviar-prova"),
-    path("interno", interno, name="interno"),
-    path("interno/decidir", decidir, name="decidir"),
-    # A FORJA (degrau 14): o medidor de tentativas por peça, e o selo que sai
-    # dele. Duas rotas e três gestos, todos do ALUNO: não há área de equipe
-    # aqui, porque ninguém confere insistência.
-    #
-    # O gesto NÃO carrega o id de uma linha, e isso é desenho de segurança, não
-    # de estilo: o formulário manda o NOME da peça, e o dono é sempre quem a
-    # sessão diz que é. Uma rota que aceitasse `forja=317` dependeria de alguém
-    # lembrar de conferir o dono a cada caminho novo; esta não tem o que
-    # lembrar (guarda em `tests/test_forja.py`).
-    path("forja", forja, name="forja"),
-    path("forja/registrar", forjar, name="forjar"),
-    # AS MEDALHAS (27/09/2026, TAR-826): a coleção que o plano §5 previa. Uma
-    # rota só, de leitura: medalha não se pede, ela cai quando a conta bate.
     path("medalhas", medalhas, name="medalhas"),
-    # O QUADRO DE CONTRIBUIÇÕES (27/09/2026, TAR-849): a escola publica o que
-    # precisa, o aluno assume, entrega, e a equipe aceita ou devolve. Duas rotas
-    # do ALUNO e duas da EQUIPE, com a mesma porta fail-CLOSED da fila dos
-    # marcos. `contribuicoes` é o endereço combinado com o fórum, que aponta
-    # para cá: trocá-lo quebra um link de outra célula.
-    path("contribuicoes", contribuicoes, name="contribuicoes"),
-    path("contribuicoes/gesto", contribuir, name="contribuir"),
-    path(
-        "interno/contribuicoes",
-        interno_contribuicoes,
-        name="interno-contribuicoes",
-    ),
-    path(
-        "interno/contribuicoes/gesto",
-        decidir_contribuicao,
-        name="decidir-contribuicao",
-    ),
-    # O RASTRO DOS RECONHECIMENTOS (27/09/2026, TAR-850): a equipe vê cada
-    # conquista com a regra do dia e a história, e retira, devolve ou corrige
-    # com motivo. Bastidor, com a mesma porta fail-CLOSED da fila dos marcos.
-    path(
-        "interno/reconhecimentos",
-        interno_reconhecimentos,
-        name="interno-reconhecimentos",
-    ),
-    path(
-        "interno/reconhecimentos/gesto",
-        decidir_reconhecimento,
-        name="decidir-reconhecimento",
-    ),
-    # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
-    # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
-    # público para dentro do endereço. Vem por último porque `path("")` casa o
-    # caminho vazio, e ler a lista de cima para baixo é como se confere isto.
+    path("interno/reconhecimentos", interno_reconhecimentos, name="interno-reconhecimentos"),
+    path("interno/reconhecimentos/gesto", decidir_reconhecimento, name="decidir-reconhecimento"),
     path("", base, name="base"),
 ]
-
 handler404 = "site_errors.handlers.page_not_found_shared"
 handler500 = "site_errors.handlers.server_error_shared"

@@ -27,7 +27,6 @@ class PendenciasClient:
 
     FONTES = {
         "portfolio": ("PAGES_API_URL", "PAGES_API_TOKEN"),
-        "marcos": ("GAMIFICACAO_API_URL", "TOKEN_GAMIFICACAO"),
         "checkpoints": ("CURSOS_API_URL", "CURSOS_API_TOKEN"),
     }
 

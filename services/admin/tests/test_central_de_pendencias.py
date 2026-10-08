@@ -50,7 +50,6 @@ GAMIFICACAO = "http://gamificacao:8000/api/gamificacao"
 CURSOS = "http://cursos:8000/api/cursos"
 RESUMOS = {
     "portfolio": f"{PAGES}/pendencias/escola-a",
-    "marcos": f"{GAMIFICACAO}/pendencias/escola-a",
     "checkpoints": f"{CURSOS}/pendencias/escola-a",
 }
 CAIXA = "http://sugestoes:8000/interno"
@@ -279,16 +278,17 @@ def test_zero_de_verdade_e_uma_frase_DIFERENTE_de_nao_sei():
 # 4. A confissão: a tela diz o que ela ainda NÃO conta
 # ---------------------------------------------------------------------------
 @respx.mock
-def test_as_quatro_filas_entram_na_conta():
+def test_as_tres_filas_restantes_entram_na_conta():
     _alunos_responde()
-    for chave, quantidade, idade in (("portfolio", 2, 4), ("marcos", 3, 1), ("checkpoints", 5, 0)):
+    for chave, quantidade, idade in (("portfolio", 2, 4), ("checkpoints", 5, 0)):
         respx.get(RESUMOS[chave]).mock(return_value=httpx.Response(
             200, json={"quantidade": quantidade, "espera_ha_dias": idade}
         ))
     html = _texto(_dentro().get(TELA))
-    assert '<div class="hero-numero">19</div>' in html
-    for nome in ("Portfólios pedindo conferência", "Provas de marco enviadas pelos alunos", "Checkpoints de aula esperando laudo"):
+    assert '<div class="hero-numero">16</div>' in html
+    for nome in ("Portfólios pedindo conferência", "Checkpoints de aula esperando laudo"):
         assert nome in html
+    assert "Provas de marco enviadas pelos alunos" not in html
     assert "A mais antiga chegou hoje." in html
 
 
@@ -296,10 +296,10 @@ def test_as_quatro_filas_entram_na_conta():
 def test_fonte_caida_e_recusa_de_token_nao_viram_zero():
     _alunos_responde()
     respx.get(RESUMOS["portfolio"]).mock(return_value=httpx.Response(503))
-    respx.get(RESUMOS["marcos"]).mock(return_value=httpx.Response(403))
+    respx.get(RESUMOS["checkpoints"]).mock(return_value=httpx.Response(403))
     html = _texto(_dentro().get(TELA))
     assert "Não foi possível consultar a fila de portfólios agora" in html
-    assert "Acesso negado: a fila de marcos" in html
+    assert "Acesso negado: o plantão de aulas" in html
     assert "Nada esperando você em: a fila de portfólios" not in html
     assert '<div class="hero-numero">9</div>' in html
 

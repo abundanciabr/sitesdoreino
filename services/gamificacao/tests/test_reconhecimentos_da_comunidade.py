@@ -15,7 +15,7 @@ O QUE ESTE ARQUIVO TRAVA:
    por pessoa e conquista.
 2. **Reconhecer não depende de pagar.** Com a economia inteira desligada (o
    estado da produção), o fato é registrado e a medalha ligada cai.
-3. **Nascem desligadas, valem zero ponto e marco continua zero XP.**
+3. **Nascem desligadas, valem zero ponto e não recriam marcos.**
 4. **A migração leva as duas definições a toda escola já semeada**, porque o
    semeador não roda no deploy, e não pisa no que o mantenedor editou.
 """
@@ -136,8 +136,8 @@ def test_as_duas_medalhas_nascem_desligadas_como_dado_e_valem_zero():
         assert medalha.ativa is False, "ligar é gesto do mantenedor"
         assert (medalha.pontos, medalha.cristais) == (0, 0)
     assert not ConquistaDefinicao.objects.filter(
-        classe=ConquistaDefinicao.Classe.MARCO, pontos__gt=0
-    ).exists(), "marco real vale zero XP"
+        classe=ConquistaDefinicao.Classe.MARCO
+    ).exists(), "a semeadura não reativa marcos"
 
 
 def test_a_tela_da_economia_ja_lista_as_duas_sem_impedimento():

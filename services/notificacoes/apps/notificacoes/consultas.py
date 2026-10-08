@@ -34,6 +34,8 @@ import base64
 import json
 from datetime import datetime
 
+from .recursos_retired import filtro
+
 from .models import ContadorDeNaoLidos, Notificacao, NotificacaoArquivada
 
 LIMITE_MINIMO = 1
@@ -101,7 +103,8 @@ def resumo_de_nao_lidos(*, site_id: str, destinatario_id: str) -> int:
         .values_list("nao_lidos", flat=True)
         .first()
     )
-    return valor or 0
+    ocultos = Notificacao.objects.filter(filtro(), site_id=site_id, destinatario_id=destinatario_id, lido_em__isnull=True).count()
+    return max(0, (valor or 0) - ocultos)
 
 
 def _codificar_cursor(*, criado_em: datetime, fonte: str, pk: int) -> str:
@@ -184,7 +187,7 @@ def pagina_de_avisos(
         chave_cursor = (cursor_dt, cursor_fonte, cursor_pk)
 
     candidatos = _candidatos(
-        Notificacao.objects.filter(site_id=site_id, destinatario_id=destinatario_id),
+        Notificacao.objects.filter(site_id=site_id, destinatario_id=destinatario_id).exclude(filtro()),
         fonte=_FONTE_ATIVA,
         cursor_dt=cursor_dt,
         limite=limite,
@@ -192,7 +195,7 @@ def pagina_de_avisos(
     candidatos += _candidatos(
         NotificacaoArquivada.objects.filter(
             site_id=site_id, destinatario_id=destinatario_id
-        ),
+        ).exclude(filtro()),
         fonte=_FONTE_ARQUIVADA,
         cursor_dt=cursor_dt,
         limite=limite,

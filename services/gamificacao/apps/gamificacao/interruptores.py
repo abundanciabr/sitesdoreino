@@ -38,6 +38,8 @@ Bearer do par, como todas as outras desta célula.
 
 from __future__ import annotations
 
+from .recursos import disponiveis, retirada
+
 import logging
 
 from django.db import transaction
@@ -257,7 +259,7 @@ def listar_conquistas(site_id: str) -> list[ConquistaDefinicao]:
     andaime acima da espinha ensina a ordem errada a quem a lê todo dia.
     """
     return sorted(
-        ConquistaDefinicao.objects.filter(site_id=site_id),
+        disponiveis(ConquistaDefinicao.objects.filter(site_id=site_id)),
         key=lambda c: (c.classe != ConquistaDefinicao.Classe.MARCO, c.slug),
     )
 
@@ -286,6 +288,9 @@ def mudar_conquista(
             raise ConquistaDesconhecida(
                 f"não há conquista {slug!r} no site {site_id!r}"
             ) from erro
+
+        if retirada(conquista):
+            raise ConquistaDesconhecida("Este reconhecimento foi desativado.")
 
         if conquista.ativa == ativa:
             return conquista

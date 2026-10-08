@@ -363,48 +363,6 @@ def test_conquista_desconhecida_recusa_em_vez_de_inventar():
 
 
 @pytest.mark.django_db
-def test_os_marcos_vem_primeiro_na_lista():
-    """A hierarquia da lei virando ordem de tela.
-
-    Realidade > Criação > Maestria > Comunidade > XP. Uma tela que lista o
-    andaime acima da espinha ensina a ordem errada a quem a lê todo dia.
-    """
-    # Os slugs são escolhidos CONTRA a ordem alfabética de propósito: com
-    # "aaa-marco" e "zzz-medalha", ordenar só por slug daria o mesmo resultado, e
-    # o teste passaria sabotado — provando nada. Medido: com a chave de classe
-    # removida, a asserção abaixo fica vermelha.
-    _conquista(slug="aaa-medalha", nome="Medalha")
-    _conquista(
-        slug="zzz-marco",
-        nome="Marco",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        criterio={"tipo": "manual"},
-        pontos=0,
-        cristais=0,
-    )
-
-    ordem = [c.slug for c in listar_conquistas(SITE)]
-
-    assert ordem == ["zzz-marco", "aaa-medalha"]
-
-
-@pytest.mark.django_db
-def test_o_marco_nunca_tem_impedimento():
-    """Ele não depende de conta automática: depende de alguém mandar a prova."""
-    marco = _conquista(
-        slug="primeiro-cliente",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        criterio={"tipo": "manual"},
-        pontos=0,
-        cristais=0,
-    )
-
-    assert impedimentos_da_conquista(marco) == []
-
-
-@pytest.mark.django_db
 def test_a_medalha_com_conta_de_verdade_nao_tem_impedimento_nenhum():
     """Desde 01/09/2026 o motor existe, e o aviso de que ele faltava SAIU.
 
@@ -434,22 +392,6 @@ def test_criterio_que_nada_alimenta_continua_avisando():
 
     assert impedimentos_da_conquista(obra) == [SEM_FATO_QUE_ALIMENTA]
     assert impedimentos_da_conquista(sequencia) == [SEM_FATO_QUE_ALIMENTA]
-
-
-@pytest.mark.django_db
-def test_a_medalha_das_dez_forjas_parou_de_dizer_que_falta_o_fato():
-    """A Forja nasceu em 01/09/2026 (degrau 14), e o aviso saiu junto.
-
-    Este guarda é o que impede o aviso de sobreviver ao motivo dele. Um aviso
-    que mente é pior que nenhum: a tela do mantenedor seguiria dizendo "ligar
-    isto não vai conceder nada" sobre a única medalha que celebra insistência,
-    e ele não a ligaria nunca.
-    """
-    forjas = _conquista(
-        slug="dez-forjas", criterio={"tipo": "forjas_seladas", "alvo": 10}
-    )
-
-    assert impedimentos_da_conquista(forjas) == []
 
 
 @pytest.mark.django_db

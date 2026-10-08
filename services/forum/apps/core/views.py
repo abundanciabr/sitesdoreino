@@ -652,7 +652,6 @@ QUEM_DEPENDE_DE_VOCE_MAXIMO = 20
 # `/forum`: caminho do SITE, não `reverse()`. É só um link (TAR-855) — a
 # página não pergunta nada a ela, então continua inteira com a gamificação
 # fora do ar.
-CONTRIBUICOES_URL = "/conquistas/contribuicoes"
 
 
 def endereco_do_desafio(grupo: Area) -> str:
@@ -722,7 +721,6 @@ def contexto_da_comunidade(request, ator) -> dict:
         "estado": "",
         "grupos": [],
         "dependem": [],
-        "contribuicoes_url": CONTRIBUICOES_URL,
         "pratica_url": PRATICA_DA_COMUNIDADE,
     }
     if not ator.autenticado:

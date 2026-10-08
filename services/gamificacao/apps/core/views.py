@@ -30,69 +30,35 @@ from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.gamificacao import contribuicoes as quadro
-from apps.gamificacao import forja as forjas
+from apps.gamificacao.recursos import disponiveis
 from apps.gamificacao.criterios import medalhas_da_pessoa
 from .participacao import minha as minha_participacao
 from apps.gamificacao.models import (
-    CompromissoDeContribuicao,
     Concessao,
     ConquistaDefinicao,
-    PedidoDeValidacao,
-    Pessoa,
-    TarefaComunitaria,
 )
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
-    aceitar,
     corrigir,
-    devolver,
-    fila_da_equipe,
-    marcos_da_pessoa,
-    pedir_validacao,
     reconhecimentos_da_escola,
-    reenviar,
     restaurar,
     revogar,
 )
 
-from .equipe import e_da_equipe, ids_da_equipe
-from .matricula import MatriculaNaoConferida, categoria_de_quem_pede
+from .equipe import e_da_equipe
 from .perfil import escada_de, perfil_de
 from .sessao import quem_e, site_atual
 
 logger = logging.getLogger(__name__)
 
-# O que o aluno lê quando a matrícula não pôde ser perguntada. O motivo técnico
-# vai para o log; a tela diz só o que houve e o que fazer.
-MATRICULA_NAO_CONFERIDA = (
-    "Não consegui conferir a sua matrícula agora, então nada foi assumido. "
-    "Tente de novo em alguns minutos."
-)
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
 # não frases: o texto vive no template, no idioma de quem lê, e uma frase pronta
 # viajando na barra de endereço é uma frase que alguém pode trocar por outra
 # (`?recado=voce-foi-expulso`) e mandar por link a um aluno.
 RECADOS = {
-    "enviado": "Sua prova foi enviada. A escola vai olhar.",
-    "reenviado": "Enviado de novo. O prazo recomeçou.",
-    "aceito": "Aceito. A pessoa já foi avisada.",
-    "devolvido": "Devolvido, com o motivo que você escolheu.",
-    "forja-aberta": "A forja começou. A primeira tentativa já está contada.",
-    "forja-somada": "Mais uma tentativa contada. É assim que se faz.",
-    "forja-selada": "Peça selada. O número de tentativas ficou gravado nela.",
-    "tarefa-assumida": "Tarefa assumida. Quando terminar, mande o link por aqui.",
-    "contribuicao-enviada": "Enviada. A escola avalia e responde por aqui.",
-    "desistiu": "Você desistiu desta tarefa, e a vaga voltou para o quadro.",
-    "tarefa-publicada": "Tarefa publicada no quadro.",
-    "tarefa-encerrada": "Tarefa encerrada para compromissos novos.",
-    "tarefa-reaberta": "Tarefa aberta de novo no quadro.",
-    "contribuicao-aceita": "Aceita. O reconhecimento já está no nome da pessoa.",
-    "contribuicao-devolvida": "Devolvida, com o motivo e a orientação que você escreveu.",
     "revogada": "Retirada. A história ficou guardada.",
     "restaurada": "Devolvida à pessoa. A história ficou guardada.",
     "corrigida": "Referência corrigida. A antiga ficou na história.",
@@ -210,39 +176,6 @@ def _voltar(nome: str, *, recado: str = "", erro: str = ""):
     return HttpResponseRedirect(endereco)
 
 
-@require_GET
-def marcos(request):
-    """A trilha de marcos reais: o que a pessoa já provou, e o que falta provar.
-
-    **Visitante não leva erro**, pela mesma razão da Base: um 403 aqui seria a
-    escola dizendo "isto não é para você" a quem ainda vai se matricular.
-
-    **É esta tela que conta a devolução.** Devolver um pedido não gera aviso no
-    sininho — só boa notícia vira carta, e o contrato congelado não tem assunto
-    para "seu pedido voltou". Sem esta página a devolução seria silenciosa, e o
-    aluno ficaria esperando por uma resposta que já chegou. É por isso que ela
-    mostra o motivo em português e põe o botão de mandar de novo ao lado.
-    """
-    de_fora = {
-        "url_de_entrada": settings.URL_DE_ENTRADA,
-        "url_da_capa": settings.URL_DA_CAPA,
-    }
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return render(request, "gamificacao/marcos.html", {"entrou": False, **de_fora})
-
-    perfil = perfil_de(pessoa_id, site)
-    return render(
-        request,
-        "gamificacao/marcos.html",
-        {
-            "entrou": True,
-            "linhas": marcos_da_pessoa(perfil.pessoa, site),
-            "recado": RECADOS.get(request.GET.get("recado", "")),
-            "erro": request.GET.get("erro", ""),
-            **de_fora,
-        },
-    )
 
 
 @require_GET
@@ -279,59 +212,6 @@ def medalhas(request):
     )
 
 
-@require_POST
-def enviar_prova(request):
-    """O aluno diz "consegui", e mostra onde está a prova.
-
-    Padrão POST-redirect-GET: sem ele, um F5 depois de enviar repetiria o gesto.
-    Aqui repetir já seria recusado pela própria regra (o pedido está na fila),
-    mas o padrão fica porque o dia em que um gesto NÃO for idempotente é tarde
-    demais para lembrar dele.
-
-    **A recusa vira FRASE, nunca 500.** `ValidacaoRecusada` carrega um texto
-    escrito para ser lido por gente, e é ele que volta para a tela.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
-
-    perfil = perfil_de(pessoa_id, site)
-    slug = (request.POST.get("slug") or "").strip()
-    evidencia = (request.POST.get("evidencia") or "").strip()
-    de_novo = request.POST.get("de_novo") == "1"
-
-    marco = ConquistaDefinicao.objects.filter(
-        site_id=site, slug=slug, classe=ConquistaDefinicao.Classe.MARCO
-    ).first()
-    if marco is None:
-        return _voltar("marcos", erro="Não encontrei esse marco nesta escola.")
-
-    try:
-        if de_novo:
-            pedido = (
-                PedidoDeValidacao.objects.filter(
-                    pessoa=perfil.pessoa,
-                    site_id=site,
-                    conquista=marco,
-                    estado=PedidoDeValidacao.Estado.DEVOLVIDO,
-                )
-                .order_by("-id")
-                .first()
-            )
-            if pedido is None:
-                return _voltar(
-                    "marcos", erro="Não há pedido devolvido para reenviar aqui."
-                )
-            reenviar(pedido=pedido, evidencia=evidencia)
-            return _voltar("marcos", recado="reenviado")
-
-        pedir_validacao(
-            pessoa=perfil.pessoa, site_id=site, conquista=marco, evidencia=evidencia
-        )
-    except ValidacaoRecusada as recusa:
-        return _voltar("marcos", erro=str(recusa))
-
-    return _voltar("marcos", recado="enviado")
 
 
 # ---------------------------------------------------------------------------
@@ -349,272 +229,30 @@ def _recusar_quem_nao_e_da_equipe(request):
     """
     return render(
         request,
-        "gamificacao/interno.html",
+        "gamificacao/sem_acesso.html",
         {"pode": False, "url_da_capa": settings.URL_DA_CAPA},
         status=403,
     )
 
 
-@require_GET
-def interno(request):
-    """A fila única da equipe: o mais urgente em cima.
-
-    Ordenada por PRAZO, e não por data de criação: os prazos são de 2 e de 5 dias
-    úteis, então o pedido mais novo pode vencer antes do mais velho.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not e_da_equipe(pessoa_id) or not site:
-        return _recusar_quem_nao_e_da_equipe(request)
-
-    return render(
-        request,
-        "gamificacao/interno.html",
-        {
-            "pode": True,
-            "fila": fila_da_equipe(site),
-            "motivos": PedidoDeValidacao.MotivoDaDevolucao.choices,
-            "recado": RECADOS.get(request.GET.get("recado", "")),
-            "erro": request.GET.get("erro", ""),
-            "agora": timezone.now(),
-            "url_da_capa": settings.URL_DA_CAPA,
-        },
-    )
 
 
-@require_POST
-def decidir(request):
-    """Aceitar ou devolver, em um clique.
-
-    **O papel de quem decide sai do SERVIDOR, nunca do formulário.** Um campo
-    escondido dizendo `validador_papel=professor` seria uma etiqueta escrita pelo
-    próprio navegador — e a auditoria de um marco contestado passaria a valer o
-    que vale um campo que qualquer um edita. Quem está na lista da equipe decide
-    como equipe, e é isso que fica gravado.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not e_da_equipe(pessoa_id) or not site:
-        return _recusar_quem_nao_e_da_equipe(request)
-
-    pedido = PedidoDeValidacao.objects.filter(
-        pk=request.POST.get("pedido") or 0, site_id=site
-    ).first()
-    if pedido is None:
-        return _voltar("interno", erro="Esse pedido não existe mais nesta escola.")
-
-    try:
-        if request.POST.get("gesto") == "aceitar":
-            aceitar(
-                pedido=pedido,
-                validador_id=pessoa_id,
-                validador_papel=Concessao.PapelDoValidador.PROFESSOR,
-            )
-            return _voltar("interno", recado="aceito")
-
-        devolver(
-            pedido=pedido,
-            validador_id=pessoa_id,
-            validador_papel=Concessao.PapelDoValidador.PROFESSOR,
-            motivo=(request.POST.get("motivo") or "").strip(),
-        )
-    except ValidacaoRecusada as recusa:
-        return _voltar("interno", erro=str(recusa))
-
-    return _voltar("interno", recado="devolvido")
 
 
 # ---------------------------------------------------------------------------
 # A FORJA — o medidor de tentativas por peça, e o selo que sai dele
 # ---------------------------------------------------------------------------
-def _linha_da_forja(forja) -> dict:
-    """Uma peça pronta para o template, com o nome já em português.
-
-    A conta mora aqui e não dentro de `{{ }}`: template que calcula é template
-    que erra em silêncio, e ninguém escreve teste para uma expressão dentro de
-    uma chave dupla (o mesmo motivo de `Escada` trazer `falta` e `fracao`
-    prontos).
-    """
-    return {
-        "chave": forja.desafio_ref,
-        "nome": forjas.nome_da_peca(forja.desafio_ref),
-        "tentativas": forja.medidor,
-        "teto": forja.teto,
-        "no_teto": forja.medidor >= forja.teto,
-        "selo": forja.selo,
-        "selada_em": forja.selada_em,
-    }
 
 
-@require_GET
-def forja(request):
-    """A Forja: o único medidor desta escola que celebra a INSISTÊNCIA.
-
-    **Visitante não leva erro**, e **sem `SITE_ID` também não quebra** — a mesma
-    postura da Base e dos Marcos, pela mesma razão: página sem selo é uma
-    página, página quebrada não é.
-
-    A REGRA DE TELA aqui tem uma leitura própria. *"XP nunca maior que a imagem
-    da obra"* não vira "esconda o número": vira **o número de tentativas é o
-    assunto, e é dito com orgulho, não como placar**. Ele é a única coisa que
-    esta página conta, e a razão de ela existir é justamente tirar da pessoa a
-    vontade de escondê-lo.
-    """
-    de_fora = {
-        "url_de_entrada": settings.URL_DE_ENTRADA,
-        "url_da_capa": settings.URL_DA_CAPA,
-    }
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return render(request, "gamificacao/forja.html", {"entrou": False, **de_fora})
-
-    perfil = perfil_de(pessoa_id, site)
-    return render(
-        request,
-        "gamificacao/forja.html",
-        {
-            "entrou": True,
-            "abertas": [
-                _linha_da_forja(f) for f in forjas.abertas_de(perfil.pessoa, site)
-            ],
-            "seladas": [
-                _linha_da_forja(f) for f in forjas.seladas_de(perfil.pessoa, site)
-            ],
-            "recado": RECADOS.get(request.GET.get("recado", "")),
-            "erro": request.GET.get("erro", ""),
-            **de_fora,
-        },
-    )
 
 
-@require_POST
-def forjar(request):
-    """Os três gestos da Forja, numa porta só: começar, somar, selar.
-
-    **Nenhum deles recebe o id de uma linha.** O formulário manda o NOME da
-    peça, e o dono é sempre quem a sessão diz que é — a forja de outra pessoa
-    não é protegida por uma conferência que alguém precisa lembrar de escrever,
-    ela simplesmente não existe para esta consulta (`forja._minha`).
-
-    Padrão POST-redirect-GET, como em `enviar_prova`: sem ele um F5 depois de
-    somar uma tentativa somaria outra, e o medidor que só cresce cresceria por
-    engano — que é a única forma de esse número mentir.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
-
-    perfil = perfil_de(pessoa_id, site)
-    gesto = request.POST.get("gesto", "")
-
-    try:
-        if gesto == "abrir":
-            forjas.abrir(
-                pessoa=perfil.pessoa,
-                site_id=site,
-                nome=(request.POST.get("nome") or "").strip(),
-            )
-            return _voltar("forja", recado="forja-aberta")
-
-        chave = (request.POST.get("peca") or "").strip()
-        if gesto == "selar":
-            forjas.selar(pessoa=perfil.pessoa, site_id=site, desafio_ref=chave)
-            return _voltar("forja", recado="forja-selada")
-
-        if gesto == "tentativa":
-            forjas.mais_uma_tentativa(
-                pessoa=perfil.pessoa, site_id=site, desafio_ref=chave
-            )
-            return _voltar("forja", recado="forja-somada")
-    except forjas.ForjaRecusada as recusa:
-        return _voltar("forja", erro=str(recusa))
-
-    # Gesto que não existe não é erro do aluno: é formulário adulterado ou
-    # navegador antigo. Volta para a página sem mexer em nada.
-    return _voltar("forja")
 
 
 # ---------------------------------------------------------------------------
 # O QUADRO DE CONTRIBUIÇÕES: a escola pede, o aluno assume e entrega
 # ---------------------------------------------------------------------------
-@require_GET
-def contribuicoes(request):
-    """O quadro: as contribuições desta pessoa e as tarefas que ela pode assumir.
-
-    **A exigência inteira aparece ANTES do botão.** O dossiê da Comunidade (§6)
-    manda que o membro conheça o que será cobrado antes de assumir, então cada
-    tarefa mostra os cinco campos acima do "Assumir".
-
-    **É esta tela que conta a devolução**, com a data, o motivo e a orientação,
-    pela mesma razão da trilha dos marcos: devolver não vira carta.
-
-    Visitante não leva erro, e sem `SITE_ID` também não quebra: a mesma postura
-    da Base, dos Marcos, da Forja e das Medalhas.
-    """
-    de_fora = {
-        "url_de_entrada": settings.URL_DE_ENTRADA,
-        "url_da_capa": settings.URL_DA_CAPA,
-    }
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return render(
-            request, "gamificacao/contribuicoes.html", {"entrou": False, **de_fora}
-        )
-
-    perfil = perfil_de(pessoa_id, site)
-    return render(
-        request,
-        "gamificacao/contribuicoes.html",
-        {
-            "entrou": True,
-            **quadro.quadro_da_pessoa(perfil.pessoa, site),
-            "recado": RECADOS.get(request.GET.get("recado", "")),
-            "erro": request.GET.get("erro", ""),
-            **de_fora,
-        },
-    )
 
 
-@require_POST
-def contribuir(request):
-    """Os três gestos do aluno numa porta só: assumir, enviar, desistir.
-
-    **Nenhum deles recebe o id de um compromisso.** O formulário manda a TAREFA,
-    e o dono é sempre quem a sessão diz que é (o molde da Forja): o compromisso
-    de outra pessoa não existe para esta consulta.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not pessoa_id:
-        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
-
-    tarefa = TarefaComunitaria.objects.filter(
-        pk=_numero(request.POST.get("tarefa")), site_id=site
-    ).first()
-    if tarefa is None:
-        return _voltar("contribuicoes", erro="Não encontrei essa tarefa nesta escola.")
-
-    pessoa = perfil_de(pessoa_id, site).pessoa
-    gesto = request.POST.get("gesto", "")
-    try:
-        if gesto == "assumir":
-            try:
-                categoria = categoria_de_quem_pede(request)
-            except MatriculaNaoConferida as motivo:
-                logger.warning("matrícula não conferida no quadro: %s", motivo)
-                return _voltar("contribuicoes", erro=MATRICULA_NAO_CONFERIDA)
-            quadro.assumir(tarefa=tarefa, pessoa=pessoa, categoria=categoria)
-            return _voltar("contribuicoes", recado="tarefa-assumida")
-        if gesto == "enviar":
-            quadro.enviar(
-                tarefa=tarefa, pessoa=pessoa, link=request.POST.get("link", "")
-            )
-            return _voltar("contribuicoes", recado="contribuicao-enviada")
-        if gesto == "desistir":
-            quadro.desistir(tarefa=tarefa, pessoa=pessoa)
-            return _voltar("contribuicoes", recado="desistiu")
-    except quadro.ContribuicaoRecusada as recusa:
-        return _voltar("contribuicoes", erro=str(recusa))
-
-    # Gesto que não existe é formulário adulterado: volta sem mexer em nada.
-    return _voltar("contribuicoes")
 
 
 def _numero(valor) -> int:
@@ -625,124 +263,10 @@ def _numero(valor) -> int:
         return 0
 
 
-@require_GET
-def interno_contribuicoes(request):
-    """O bastidor do quadro: avaliar o que chegou, publicar e encerrar tarefas.
-
-    A porta é a mesma da fila dos marcos, fail-CLOSED por `IDS_DA_EQUIPE`, e a
-    recusa é a mesma: 403 com a frase que diz que a área existe e esta pessoa
-    não está na lista.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not e_da_equipe(pessoa_id) or not site:
-        return _recusar_quem_nao_e_da_equipe(request)
-    ids = sorted(ids_da_equipe())
-    nomes = dict(
-        Pessoa.objects.filter(pk__in=ids).values_list(
-            "id_da_plataforma", "nome_exibido"
-        )
-    )
-
-    return render(
-        request,
-        "gamificacao/interno_contribuicoes.html",
-        {
-            "fila": quadro.para_avaliar(site),
-            "tarefas": quadro.tarefas_da_escola(site),
-            "motivos": CompromissoDeContribuicao.MotivoDaDevolucao.choices,
-            "equipe": [{"id": id, "nome": nomes.get(id, "")} for id in ids],
-            "eu": pessoa_id,
-            "medalhas": quadro.medalhas_que_a_tarefa_pode_dar(site),
-            "recado": RECADOS.get(request.GET.get("recado", "")),
-            "erro": request.GET.get("erro", ""),
-            "agora": timezone.now(),
-            "url_da_capa": settings.URL_DA_CAPA,
-        },
-    )
 
 
-@require_POST
-def decidir_contribuicao(request):
-    """Os gestos da equipe no quadro: publicar, encerrar, reabrir, aceitar, devolver.
-
-    Quem decide é quem a sessão diz que é, conferido na lista da equipe; nada
-    do formulário diz quem está clicando.
-    """
-    pessoa_id, site = _pessoa_e_site(request)
-    if not e_da_equipe(pessoa_id) or not site:
-        return _recusar_quem_nao_e_da_equipe(request)
-
-    gesto = request.POST.get("gesto", "")
-    try:
-        if gesto == "publicar":
-            return _publicar(request, pessoa_id, site)
-
-        if gesto in ("encerrar", "reabrir"):
-            tarefa = TarefaComunitaria.objects.filter(
-                pk=_numero(request.POST.get("tarefa")), site_id=site
-            ).first()
-            if tarefa is None:
-                return _voltar("interno-contribuicoes", erro="Essa tarefa não existe.")
-            if gesto == "encerrar":
-                quadro.encerrar(tarefa=tarefa)
-                return _voltar("interno-contribuicoes", recado="tarefa-encerrada")
-            quadro.reabrir(tarefa=tarefa)
-            return _voltar("interno-contribuicoes", recado="tarefa-reaberta")
-
-        compromisso = CompromissoDeContribuicao.objects.filter(
-            pk=_numero(request.POST.get("compromisso")), site_id=site
-        ).first()
-        if compromisso is None:
-            return _voltar(
-                "interno-contribuicoes",
-                erro="Essa contribuição não existe mais nesta escola.",
-            )
-        if gesto == "aceitar":
-            quadro.aceitar(compromisso=compromisso, validador_id=pessoa_id)
-            return _voltar("interno-contribuicoes", recado="contribuicao-aceita")
-        if gesto == "devolver":
-            quadro.devolver(
-                compromisso=compromisso,
-                validador_id=pessoa_id,
-                motivo=request.POST.get("motivo", ""),
-                orientacao=request.POST.get("orientacao", ""),
-            )
-            return _voltar("interno-contribuicoes", recado="contribuicao-devolvida")
-    except quadro.ContribuicaoRecusada as recusa:
-        return _voltar("interno-contribuicoes", erro=str(recusa))
-
-    return _voltar("interno-contribuicoes")
 
 
-def _publicar(request, autor_id: str, site: str):
-    """O formulário de publicar, lido e conferido. A tarefa nasce em `quadro.publicar`.
-
-    O responsável vem de uma lista, mas a lista é do navegador: a conferência
-    contra `IDS_DA_EQUIPE` mora dentro de `quadro.publicar` (a porta única),
-    não aqui, para valer também para quem chamar por outro caminho.
-    """
-    responsavel_id = (request.POST.get("responsavel_id") or "").strip()
-    medalha = None
-    slug = (request.POST.get("medalha") or "").strip()
-    if slug:
-        medalha = ConquistaDefinicao.objects.filter(site_id=site, slug=slug).first()
-        if medalha is None:
-            raise quadro.ContribuicaoRecusada(
-                "Não encontrei essa medalha nesta escola."
-            )
-    quadro.publicar(
-        site_id=site,
-        autor_id=autor_id,
-        titulo=request.POST.get("titulo", ""),
-        o_que_entregar=request.POST.get("o_que_entregar", ""),
-        quem_pode=request.POST.get("quem_pode", ""),
-        criterios=(request.POST.get("criterios") or "").splitlines(),
-        responsavel_id=responsavel_id,
-        responsavel_nome=request.POST.get("responsavel_nome", ""),
-        vagas=_numero(request.POST.get("vagas")),
-        medalha=medalha,
-    )
-    return _voltar("interno-contribuicoes", recado="tarefa-publicada")
 
 
 # ---------------------------------------------------------------------------
@@ -788,9 +312,9 @@ def decidir_reconhecimento(request):
     if not e_da_equipe(pessoa_id) or not site:
         return _recusar_quem_nao_e_da_equipe(request)
 
-    concessao = Concessao.objects.filter(
+    concessao = disponiveis(Concessao.objects.filter(
         pk=_numero(request.POST.get("concessao")), site_id=site
-    ).first()
+    ), "conquista__").first()
     if concessao is None:
         return _voltar(
             "interno-reconhecimentos",

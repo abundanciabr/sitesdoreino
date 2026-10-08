@@ -17,10 +17,8 @@ para não virar barulho:
    sobre o placar — senão o sininho tocaria a cada ponto e a pessoa aprenderia a
    ignorá-lo.
 
-4. **Os quatro assuntos da Sessão B cabem na mesma porta.** Medalha, marco e
-   destaque ainda não têm fato que os justifique (degraus 12 e 19), mas o
-   caminho por onde eles vão sair está provado hoje. Assunto FORA do contrato é
-   recusado na origem.
+4. **Os assuntos ativos cabem na mesma porta.** Nível, medalha e destaque
+   seguem o mesmo contrato. Assunto FORA do contrato é recusado na origem.
 
 5. **A comemoração de tela e a carta são as duas metades da mesma coisa.** A
    celebração visceral alcança quem está com o site aberto; a carta alcança quem
@@ -45,7 +43,6 @@ from apps.core.api import _celebracoes
 from apps.gamificacao.cartas import (
     ASSUNTO_CONQUISTA,
     ASSUNTO_DESTAQUE,
-    ASSUNTO_MARCO,
     ASSUNTO_NIVEL,
     AssuntoForaDoContrato,
     EventoForaDaTransacao,
@@ -242,21 +239,11 @@ def test_o_mesmo_fato_reentregue_nao_comemora_duas_vezes():
 # ------------------------------------------- 4 e 5. o contrato manda
 
 
-def test_os_quatro_assuntos_da_sessao_b_cabem_na_mesma_porta():
-    """Os três que ainda não têm fato saem pelo caminho já provado.
-
-    Medalha (degrau 12), marco validado (degrau 12) e destaque da semana
-    (degrau 19) não têm, hoje, nada nesta célula que os conceda. O que este
-    teste garante é que, quando tiverem, a carta sai sem contrato novo e sem
-    código novo em `cartas.py`.
-    """
+def test_os_assuntos_ativos_cabem_na_mesma_porta():
+    """Nível, medalha e destaque usam o mesmo caminho de aviso."""
     parametros = {
         ASSUNTO_NIVEL: {"nivel": 7, "titulo_slug": "modelador"},
         ASSUNTO_CONQUISTA: {"conquista_slug": "primeira-obra", "familia": "oficio"},
-        ASSUNTO_MARCO: {
-            "conquista_slug": "primeiro-cliente",
-            "validador_papel": "professor",
-        },
         ASSUNTO_DESTAQUE: {"destaque_id": "dst-123", "semana": "2026-08-31"},
     }
 
@@ -268,7 +255,7 @@ def test_os_quatro_assuntos_da_sessao_b_cabem_na_mesma_porta():
             parametros=parametro,
         )
 
-    assert len(_cartas()) == 4
+    assert len(_cartas()) == 3
 
 
 def test_assunto_fora_do_contrato_e_recusado_na_origem():

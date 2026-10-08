@@ -79,7 +79,7 @@ MENU = {
         {"slug": "enxuto", "name": "Só o essencial", "items": []},
     ],
     # A metade "exceto nas páginas que já configuramos para não ter".
-    "pages": [{"page": "gamificacao/forja", "version": ""}],
+    "pages": [],
 }
 
 SITE = {
@@ -214,13 +214,13 @@ def test_o_menu_aparece_na_base_das_conquistas(client):
     assert 'href="/forum/"' in _menu(corpo)
 
 
-def test_o_menu_aparece_tambem_na_trilha_de_marcos(client):
+def test_o_menu_aparece_tambem_na_tela_de_medalhas(client):
     """ "Em todas as páginas" é processador de contexto e moldura compartilhada,
     nunca uma inclusão que alguém lembra de escrever: tela nova das Conquistas
     nasce com menu."""
     with respx.mock:
         respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=SITE))
-        corpo = client.get(reverse("marcos")).content.decode()
+        corpo = client.get(reverse("medalhas")).content.decode()
     assert '<nav class="menu-topo">' in corpo
 
 
@@ -240,8 +240,11 @@ def test_a_pagina_marcada_sem_menu_nao_mostra_menu(client):
     versão padrão do site. Cair no padrão aqui traria o menu de volta justamente
     onde ele mandou tirá-lo."""
     with respx.mock:
-        respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=SITE))
-        corpo = client.get(reverse("forja")).content.decode()
+        sem_menu = dict(SITE, menu=dict(MENU, pages=[
+            {"page": "gamificacao/medalhas", "version": ""}
+        ]))
+        respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=sem_menu))
+        corpo = client.get(reverse("medalhas")).content.decode()
     assert "menu-topo" not in corpo
 
 
@@ -261,7 +264,7 @@ def test_o_menu_nao_custa_uma_consulta_por_pagina(client):
     with respx.mock:
         rota = respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=SITE))
         client.get(reverse("base"))
-        client.get(reverse("marcos"))
+        client.get(reverse("medalhas"))
         client.get(reverse("base"))
     assert rota.call_count == 1
 
@@ -378,11 +381,10 @@ def test_nas_conquistas_o_item_conquistas_some(client):
 
 
 def test_o_item_conquistas_some_tambem_nas_telas_de_dentro(client):
-    """A regra é por ÁREA, não por página exata: na trilha de marcos o aluno
-    continua nas Conquistas."""
+    """A regra é por área: na tela de medalhas o aluno segue em Conquistas."""
     with respx.mock:
         respx.get(POR_HOST).mock(return_value=httpx.Response(200, json=SITE))
-        menu = _menu(client.get(reverse("marcos"), **PREFIXO).content.decode())
+        menu = _menu(client.get(reverse("medalhas"), **PREFIXO).content.decode())
     assert 'href="/conquistas/"' not in menu
     assert 'href="/forum/"' in menu
 

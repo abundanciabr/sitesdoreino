@@ -3,7 +3,7 @@
 Reconhecimento registra origem e data (dossiê da Comunidade §5). A aula e a
 resposta aceita já levavam o evento até a concessão; faltavam os dois caminhos
 por onde a maior parte das medalhas cai: o XP somado em `motor.recalcular` e o
-selo da Forja. Sem eles, a tela interna da equipe dizia "conta automática" para
+    eventos de XP. Sem eles, a tela interna da equipe dizia "conta automática" para
 uma medalha que tinha, sim, um fato por trás.
 
 O QUE ESTE ARQUIVO TRAVA:
@@ -13,8 +13,6 @@ O QUE ESTE ARQUIVO TRAVA:
    evento no lugar de "conta automática".
 2. **A reentrega do mesmo evento não concede duas vezes** nem escreve segunda
    linha de histórico.
-3. **A medalha que cai pelo selo guarda a peça selada** (`forja:<id>`), e a
-   tela interna a mostra.
 """
 
 from __future__ import annotations
@@ -27,7 +25,6 @@ from django.test import Client
 from django.utils import timezone
 
 from apps.core import equipe as porta_da_equipe
-from apps.gamificacao.forja import abrir, selar
 from apps.gamificacao.models import (
     Concessao,
     ConquistaDefinicao,
@@ -135,16 +132,3 @@ def test_a_reentrega_do_mesmo_evento_nao_concede_duas_vezes():
     assert HistoricoDaConcessao.objects.count() == 1
 
 
-def test_a_medalha_que_cai_pelo_selo_guarda_a_peca_e_a_tela_mostra():
-    pessoa = _pessoa()
-    _medalha("primeira-forja", {"tipo": "forjas_seladas", "alvo": 1})
-    forja = abrir(pessoa=pessoa, site_id=SITE, nome="Chapéu")
-
-    selar(pessoa=pessoa, site_id=SITE, desafio_ref=forja.desafio_ref)
-
-    concessao = Concessao.objects.get(conquista__slug="primeira-forja")
-    assert concessao.origem_event_id == f"forja:{forja.pk}"
-    assert concessao.historico.get().origem_nova == f"forja:{forja.pk}"
-    pagina = _tela_interna()
-    assert f"Origem: forja:{forja.pk}" in pagina
-    assert SEM_ORIGEM not in pagina

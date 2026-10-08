@@ -30,24 +30,19 @@ from django.test import Client
 
 from apps.core import equipe as porta_da_equipe
 from apps.core.api import _conquistas_por_pessoa
-from apps.gamificacao import contribuicoes
 from apps.gamificacao.criterios import _valor_familia, avaliar
 from apps.gamificacao.models import (
     Concessao,
     ConquistaDefinicao,
     HistoricoDaConcessao,
     LancamentoDeXP,
-    PedidoDeValidacao,
     PerfilJogador,
     Pessoa,
 )
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
-    aceitar,
     conceder,
     corrigir,
-    marcos_da_pessoa,
-    pedir_validacao,
     restaurar,
     revogar,
 )
@@ -100,17 +95,6 @@ def _mao_amiga(**campos) -> ConquistaDefinicao:
     }
     dados.update(campos)
     return ConquistaDefinicao.objects.create(**dados)
-
-
-def _marco() -> ConquistaDefinicao:
-    return ConquistaDefinicao.objects.create(
-        site_id=SITE,
-        slug="primeiro-cliente",
-        nome="Primeiro cliente",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        ativa=True,
-    )
 
 
 def _conceder(conquista, pessoa_id=ALUNA, origem="evt-1") -> Concessao:
@@ -191,64 +175,6 @@ def test_salvar_sem_mudar_o_criterio_nao_gasta_versao():
 
     medalha.refresh_from_db()
     assert medalha.versao == 1
-
-
-def test_o_marco_aceito_aponta_para_o_pedido_e_nunca_carrega_a_prova():
-    marco = _marco()
-    pedido = pedir_validacao(
-        pessoa=_pessoa(),
-        site_id=SITE,
-        conquista=marco,
-        evidencia="print do pix de R$ 300 do cliente Fulano",
-    )
-
-    concessao = aceitar(
-        pedido=pedido,
-        validador_id=PROFESSORA,
-        validador_papel=Concessao.PapelDoValidador.PROFESSOR,
-    )
-
-    concessao.refresh_from_db()
-    assert concessao.origem_event_id == f"pedido:{pedido.pk}"
-    guardado = f"{concessao.origem_event_id} {concessao.criterio} {concessao.criterio_em_texto}"
-    assert "Fulano" not in guardado
-    assert "Fulano" not in " ".join(
-        f"{h.origem_nova} {h.motivo}" for h in concessao.historico.all()
-    )
-
-
-def test_a_contribuicao_aceita_deixa_a_regra_e_a_origem_na_medalha():
-    medalha = ConquistaDefinicao.objects.create(
-        site_id=SITE,
-        slug="primeira-contribuicao",
-        nome="Primeira contribuição aceita",
-        classe=ConquistaDefinicao.Classe.MEDALHA,
-        familia=ConquistaDefinicao.Familia.COMUNIDADE,
-        criterio={"tipo": "contribuicoes_aceitas", "alvo": 1},
-        ativa=True,
-    )
-    tarefa = contribuicoes.publicar(
-        site_id=SITE,
-        autor_id=PROFESSORA,
-        titulo="Organizar os erros de UV",
-        o_que_entregar="Um tópico com os cinco erros.",
-        quem_pode="Qualquer aluno.",
-        criterios=["Um exemplo por erro"],
-        responsavel_id=PROFESSORA,
-        responsavel_nome="Professora Ana",
-        vagas=1,
-    )
-    contribuicoes.assumir(tarefa=tarefa, pessoa=_pessoa(), categoria="aluno")
-    compromisso = contribuicoes.enviar(
-        tarefa=tarefa, pessoa=_pessoa(), link="https://exemplo.test/uv"
-    )
-    contribuicoes.aceitar(compromisso=compromisso, validador_id=PROFESSORA)
-
-    concessao = Concessao.objects.get(conquista=medalha)
-    assert concessao.origem_event_id == f"contribuicao:{compromisso.aceite.pk}"
-    assert concessao.criterio == {"tipo": "contribuicoes_aceitas", "alvo": 1}
-    assert concessao.criterio_versao == 1
-    assert concessao.validador_id == PROFESSORA
 
 
 # ------------------------------------------- 2. revogar
@@ -404,21 +330,21 @@ def test_so_se_restaura_o_que_foi_retirado():
 
 
 def test_corrigir_troca_a_origem_e_a_antiga_fica_no_historico():
-    concessao = _conceder(_mao_amiga(), origem="contribuicao:12")
+    concessao = _conceder(_mao_amiga(), origem="resposta:12")
 
     corrigir(
         concessao=concessao,
         quem_id=PROFESSORA,
-        origem_nova="contribuicao:15",
-        motivo="A contribuição aceita era a 15; a 12 foi de outra tarefa.",
+        origem_nova="resposta:15",
+        motivo="A resposta aceita era a 15; a 12 era de outra conversa.",
     )
 
     concessao.refresh_from_db()
     assert concessao.estado == Estado.CORRIGIDA
-    assert concessao.origem_event_id == "contribuicao:15"
+    assert concessao.origem_event_id == "resposta:15"
     correcao = concessao.historico.get(gesto=Gesto.CORRIGIDA)
-    assert correcao.origem_anterior == "contribuicao:12"
-    assert correcao.origem_nova == "contribuicao:15"
+    assert correcao.origem_anterior == "resposta:12"
+    assert correcao.origem_nova == "resposta:15"
     assert correcao.quem_id == PROFESSORA
 
 
@@ -426,12 +352,12 @@ def test_corrigir_troca_a_origem_e_a_antiga_fica_no_historico():
     ("origem_nova", "motivo", "trecho"),
     [
         ("", "Troca.", "referência"),
-        ("contribuicao:12", "Troca.", "mesma"),
+        ("resposta:12", "Troca.", "mesma"),
         ("x" * 65, "Troca.", "64"),
     ],
 )
 def test_corrigir_recusa_o_que_nao_corrige_nada(origem_nova, motivo, trecho):
-    concessao = _conceder(_mao_amiga(), origem="contribuicao:12")
+    concessao = _conceder(_mao_amiga(), origem="resposta:12")
 
     with pytest.raises(ValidacaoRecusada, match=trecho):
         corrigir(
@@ -445,18 +371,18 @@ def test_corrigir_recusa_o_que_nao_corrige_nada(origem_nova, motivo, trecho):
 
 
 def test_corrigir_sem_motivo_funciona_e_a_antiga_fica_no_historico():
-    concessao = _conceder(_mao_amiga(), origem="contribuicao:12")
+    concessao = _conceder(_mao_amiga(), origem="resposta:12")
 
     corrigir(
         concessao=concessao,
         quem_id=PROFESSORA,
-        origem_nova="contribuicao:15",
+        origem_nova="resposta:15",
     )
 
     concessao.refresh_from_db()
-    assert concessao.origem_event_id == "contribuicao:15"
+    assert concessao.origem_event_id == "resposta:15"
     correcao = concessao.historico.get(gesto=Gesto.CORRIGIDA)
-    assert correcao.origem_anterior == "contribuicao:12"
+    assert correcao.origem_anterior == "resposta:12"
     assert correcao.motivo == ""
 
 
@@ -558,29 +484,6 @@ def test_a_medalha_retirada_nao_aparece_como_conquistada(monkeypatch):
     assert "medalha conquistada" not in pagina
     assert "Retirada pela equipe em" in pagina
     assert "Concedida por engano." in pagina
-
-
-def test_o_marco_retirado_diz_que_existiu_e_nao_pede_prova_de_novo(monkeypatch):
-    marco = _marco()
-    concessao, _ = conceder(
-        pessoa=_pessoa(),
-        site_id=SITE,
-        conquista=marco,
-        validador_id=PROFESSORA,
-        validador_papel=Concessao.PapelDoValidador.PROFESSOR,
-        origem_event_id="pedido:1",
-    )
-    revogar(concessao=concessao, quem_id=PROFESSORA, motivo="Cliente não confirmou.")
-
-    (linha,) = marcos_da_pessoa(_pessoa(), SITE)
-    assert linha["estado"] == "revogado"
-    with pytest.raises(ValidacaoRecusada, match="retirou"):
-        pedir_validacao(pessoa=_pessoa(), site_id=SITE, conquista=marco)
-
-    _entrar_como(monkeypatch, ALUNA)
-    pagina = Client().get("/marcos").content.decode()
-    assert "Retirado pela equipe em" in pagina
-    assert "Cliente não confirmou." in pagina
 
 
 @pytest.mark.parametrize("quem", [None, ALUNA])

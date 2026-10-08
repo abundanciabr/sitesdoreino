@@ -114,36 +114,15 @@ def test_cada_site_recebe_a_propria_economia():
 
 
 @pytest.mark.django_db
-def test_nenhum_marco_semeado_paga_xp():
-    """Decisão fechada 7: marco real vale 0 XP. Aqui vale para os dados, não só
-    para a restrição."""
+def test_a_semeadura_nao_ressuscita_os_recursos_retirados():
+    """A semeadura não deve recriar marcos, forjas nem contribuições."""
     _semear()
-
-    pagantes = list(
-        ConquistaDefinicao.objects.filter(
-            classe=ConquistaDefinicao.Classe.MARCO, pontos__gt=0
-        ).values_list("slug", "pontos")
-    )
-
-    assert pagantes == [], f"marco semeado pagando XP: {pagantes}"
-
-
-@pytest.mark.django_db
-def test_todo_marco_de_dinheiro_semeado_so_a_equipe_valida():
-    """Lei §9, conferida nos DADOS semeados e não só no esquema."""
-    _semear()
-
-    frouxos = list(
-        ConquistaDefinicao.objects.filter(envolve_dinheiro=True)
-        .exclude(exige_validador_da_equipe=True)
-        .values_list("slug", flat=True)
-    )
-
-    assert frouxos == [], f"marco de dinheiro sem a trava: {frouxos}"
-    assert ConquistaDefinicao.objects.filter(envolve_dinheiro=True).count() >= 1, (
-        "nenhum marco de dinheiro foi semeado — a trava acima passou a ser "
-        "vácuo, e um teste que não vê nada não prova nada"
-    )
+    assert not ConquistaDefinicao.objects.filter(
+        classe=ConquistaDefinicao.Classe.MARCO
+    ).exists()
+    assert not ConquistaDefinicao.objects.filter(
+        criterio__tipo__in=["forjas_seladas", "contribuicoes_aceitas"]
+    ).exists()
 
 
 @pytest.mark.django_db

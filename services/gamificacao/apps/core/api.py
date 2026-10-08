@@ -71,6 +71,8 @@ Guarda: `tests/test_porta_de_maquina.py`.
 
 from __future__ import annotations
 
+from apps.gamificacao.recursos import disponiveis, SLUGS_RETIRADOS
+
 import logging
 from datetime import datetime, timedelta
 from typing import Literal
@@ -121,19 +123,6 @@ class ResumoDaFila(Schema):
     espera_ha_dias: int | None
 
 
-@router.get("/pendencias/{site_id}", response=ResumoDaFila, operation_id="getAchievementReviewQueueSummary")
-def resumo_da_fila(request, site_id: str):
-    from apps.gamificacao.validacao import fila_da_equipe
-
-    dados = fila_da_equipe(site_id).aggregate(
-        quantidade=Count("pk"), primeira=Min("criado_em")
-    )
-    primeira = dados["primeira"]
-    return ResumoDaFila(
-        quantidade=dados["quantidade"],
-        espera_ha_dias=max(0, (timezone.localdate() - timezone.localtime(primeira).date()).days)
-        if primeira else None,
-    )
 
 # O teto de ids por chamada, escrito no contrato. Pedir mais não é erro: a porta
 # CORTA no teto, como o `limite` da porta do fórum. Consumidor nenhum deve
@@ -490,6 +479,8 @@ def _celebracoes(perfil) -> list[CelebracaoPendente]:
             continue
         tipo = item.get("tipo")
         referencia = item.get("referencia")
+        if tipo == "marco-validado" or (isinstance(referencia, str) and referencia in SLUGS_RETIRADOS):
+            continue
         if tipo not in TIPOS_DE_CELEBRACAO or not isinstance(referencia, str):
             logger.warning(
                 "celebracao descartada no perfil %s: tipo=%r referencia=%r",
@@ -672,30 +663,8 @@ def _interruptor_de_conquista(conquista) -> InterruptorDeConquista:
 
 
 @router.get(
-    "/economia/conquistas",
-    response=list[InterruptorDeConquista],
-    operation_id="listAchievementSwitches",
-    summary="Todas as medalhas e marcos, ligados e desligados",
-    description=(
-        "A segunda metade da tela do mantenedor. Devolve TODAS as conquistas do\n"
-        "site, com os MARCOS primeiro: a hierarquia da lei e\n"
-        "Realidade > Criacao > Maestria > Comunidade > XP, e uma tela que lista o\n"
-        "andaime acima da espinha ensina a ordem errada a quem a le todo dia.\n"
-        "\n"
-        "`nome` e `descricao` VIAJAM AQUI, e isto e uma excecao declarada ao\n"
-        "invariante 3 desta porta ('slug, nunca frase pronta'). A razao: estas\n"
-        "duas operacoes servem a tela do MANTENEDOR, que e bastidor e nao\n"
-        "vitrine, e o texto de uma conquista e dado que ele proprio edita, nao\n"
-        "frase de interface que precise existir em tres idiomas. As operacoes\n"
-        "que servem o ALUNO continuam devolvendo so slug e numero.\n"
-        "\n"
-        "`impedimentos` avisa antes do clique quando ligar nao vai adiantar:\n"
-        "`sem-motor-de-criterio` = a conta automatica das medalhas ainda nao\n"
-        "existe; `sem-fato-que-alimenta` = nada no site produz o numero que o\n"
-        "criterio conta; `so-por-concessao-manual` = a medalha so sai pela mao da\n"
-        "equipe. MARCO nunca tem impedimento: ele nao depende de conta, e sim de\n"
-        "alguem mandar a prova e a equipe conferir."
-    ),
+    "/economia/conquistas", response=list[InterruptorDeConquista],
+    operation_id="listAchievementSwitches", summary="Medalhas disponíveis, ligadas e desligadas",
 )
 def list_achievement_switches(request):
     site_id = site_atual()
@@ -707,30 +676,8 @@ def list_achievement_switches(request):
 
 
 @router.post(
-    "/economia/conquistas/{slug}",
-    response=InterruptorDeConquista,
-    operation_id="setAchievementSwitch",
-    summary="Liga ou desliga UMA medalha ou marco",
-    description=(
-        "Ligar um MARCO faz ele aparecer na trilha do aluno, que manda a prova e\n"
-        "espera a equipe conferir. Ligar uma MEDALHA faz a escola passar a\n"
-        "conceder sozinha quando a conta bater.\n"
-        "\n"
-        "NAO HA `vigente_desde` AQUI, e a ausencia e a decisao do mantenedor no\n"
-        "Rito de 01/09/2026: ligar uma conquista RECONHECE quem ja cumpriu o\n"
-        "criterio antes. O carimbo de data e o mecanismo do 'nunca retroativo'\n"
-        "das regras de pontuacao, onde pagar o passado inflaria o placar de quem\n"
-        "nao fez nada novo; aqui ele seria o mecanismo de negar a 'Primeira obra'\n"
-        "a quem ja fez a primeira obra, e ninguem faz duas estreias.\n"
-        "\n"
-        "`versao` sobe quando algo muda, e chamada que nao muda nada devolve a\n"
-        "linha como esta, sem gastar versao: dois cliques no mesmo botao nao\n"
-        "inflam o historico com mudancas que ninguem fez.\n"
-        "\n"
-        "Slug desconhecido responde 404, como o interruptor das regras: inventar\n"
-        "em silencio qual conquista o mantenedor quis ligar seria pior que\n"
-        "recusar."
-    ),
+    "/economia/conquistas/{slug}", response=InterruptorDeConquista,
+    operation_id="setAchievementSwitch", summary="Liga ou desliga uma medalha disponível",
 )
 def set_achievement_switch(request, slug: str, payload: PedidoDeInterruptor):
     site_id = site_atual()
@@ -910,7 +857,7 @@ def _conquistas_por_pessoa(
     história dela mora na concessão, no bastidor `/conquistas/interno/reconhecimentos`.
     """
     linhas = (
-        ConcessaoModel.objects.filter(site_id=site_id, pessoa_id__in=ids)
+        disponiveis(ConcessaoModel.objects.filter(site_id=site_id, pessoa_id__in=ids), "conquista__")
         .exclude(estado=ConcessaoModel.Estado.REVOGADA)
         .select_related("conquista")
         .order_by("pessoa_id", "-concedida_em")

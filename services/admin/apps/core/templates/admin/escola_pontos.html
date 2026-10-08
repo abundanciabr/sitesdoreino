@@ -4,7 +4,7 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
   <h1>Quadro de pontos</h1>
-  <p class="subtitulo">A turma ordenada por pontos: nível, título, medalhas, marcos e quem parou.</p>
+  <p class="subtitulo">A turma ordenada por pontos: nível, título, medalhas e quem parou.</p>
 
   {% if nao_consigo_ver_alunos %}
   <p class="aviso">
@@ -27,7 +27,7 @@
   <p class="aviso">Não consegui ler os títulos dos níveis agora — os alunos aparecem só com o número do nível.</p>
   {% endif %}
   {% if nao_consigo_ver_nomes_de_conquista %}
-  <p class="aviso">Não consegui ler os nomes das medalhas e marcos agora — as conquistas aparecem sem o nome delas.</p>
+  <p class="aviso">Não consegui ler os nomes das medalhas agora — as conquistas aparecem sem o nome delas.</p>
   {% endif %}
 
   {% comment %}
@@ -80,11 +80,11 @@
       {% if aluno.conquistas %}
       <div class="nota">
         {% for c in aluno.conquistas %}
-        <span title="{% if c.e_marco %}Marco{% else %}Medalha{% endif %}">{% if c.e_marco %}&#9733;{% else %}&#9679;{% endif %} {{ c.nome }}</span>{% if not forloop.last %} &middot; {% endif %}
+        <span title="Medalha">&#9679; {{ c.nome }}</span>{% if not forloop.last %} &middot; {% endif %}
         {% endfor %}
       </div>
       {% else %}
-      <div class="nota">Ainda sem medalha nem marco.</div>
+      <div class="nota">Ainda sem medalha.</div>
       {% endif %}
       <div class="nota">
         <a href="{% url 'escola_prontuario' %}?email={{ aluno.email|urlencode }}">Ver prontuário &rarr;</a>

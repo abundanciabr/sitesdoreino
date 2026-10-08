@@ -20,7 +20,6 @@ from .placar import site_de
 # Nome, endereço da equipe e descrição de cada fonte consultada.
 OUTRAS_FILAS = (
     ("portfolio", "Portfólios pedindo conferência", "/pages/equipe", "a fila de portfólios"),
-    ("marcos", "Provas de marco enviadas pelos alunos", "/conquistas/interno", "a fila de marcos"),
     ("checkpoints", "Checkpoints de aula esperando laudo", "/cursos/plantao", "o plantão de aulas"),
 )
 

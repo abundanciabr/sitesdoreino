@@ -1,6 +1,6 @@
 """As medalhas que a escola concede sozinha, e os limites honestos delas.
 
-O marco real se PEDE; a medalha cai quando a conta bate. Este arquivo trava a
+A medalha cai quando a conta bate. Este arquivo trava a
 conta — e, tão importante quanto, trava o que ela NÃO faz.
 
 O QUE ESTÁ GUARDADO AQUI:
@@ -32,7 +32,6 @@ from apps.gamificacao.criterios import avaliar, cumpre
 from apps.gamificacao.models import (
     Concessao,
     ConquistaDefinicao,
-    Forja,
     LancamentoDeXP,
     NivelDefinicao,
     OutboxEvent,
@@ -136,22 +135,6 @@ def test_avaliar_duas_vezes_nao_concede_duas_vezes():
 
 
 # ------------------------------------------- 2. o que NÃO cai por conta
-
-
-def test_marco_real_nunca_cai_por_conta():
-    """Conceder um marco por cálculo seria a escola afirmar que alguém conseguiu
-    um cliente sem ninguém ter olhado a prova."""
-    _perfil(xp=500)
-    _medalha(
-        slug="primeiro-cliente",
-        nome="Primeiro cliente",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        criterio={"tipo": "xp_acumulado", "alvo": 1},
-    )
-
-    assert avaliar(ALUNO, SITE) == []
-    assert Concessao.objects.count() == 0
 
 
 def test_medalha_manual_nao_cai_por_conta():
@@ -275,25 +258,3 @@ def test_consertar_um_perfil_nao_concede_medalha_nenhuma():
 # ------------------------------------------- 5. os limites, ditos em teste
 
 
-def test_os_criterios_sem_fato_devolvem_zero_lendo_a_tabela_vazia():
-    """Zero MEDIDO, não zero inventado.
-
-    `forjas_seladas` lê a tabela `Forja`, que existe e que ninguém escreve ainda
-    (degrau 14). O teste prova as duas metades: com a tabela vazia não concede, e
-    com uma linha de verdade lá dentro concede. É o que garante que a medalha vai
-    funcionar no dia em que a Forja nascer, sem ninguém precisar voltar aqui.
-    """
-    perfil = _perfil(xp=10)
-    medalha = _medalha(slug="uma-forja", criterio={"tipo": "forjas_seladas", "alvo": 1})
-
-    assert avaliar(ALUNO, SITE) == []
-
-    Forja.objects.create(
-        pessoa=perfil.pessoa,
-        site_id=SITE,
-        desafio_ref="peca-1",
-        medidor=3,
-        selada_em=timezone.now(),
-    )
-
-    assert [c.conquista.slug for c in avaliar(ALUNO, SITE)] == [medalha.slug]

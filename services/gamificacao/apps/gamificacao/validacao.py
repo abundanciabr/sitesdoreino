@@ -58,6 +58,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .cartas import ASSUNTO_CONQUISTA, ASSUNTO_MARCO, carta_de_celebracao
+from .recursos import disponiveis, retirada
 from .criterios import criterio_em_portugues
 from .models import (
     Concessao,
@@ -199,6 +200,8 @@ def conceder(
     """
     with transaction.atomic():
         vigente = ConquistaDefinicao.objects.get(pk=conquista.pk)
+        if retirada(vigente):
+            raise ValidacaoRecusada("Este reconhecimento foi desativado.")
         concessao, nova = Concessao.objects.get_or_create(
             pessoa=pessoa,
             conquista=conquista,
@@ -498,7 +501,7 @@ def reconhecimentos_da_escola(site_id: str, pessoa_id: str = ""):
     Bastidor da equipe. Sem filtro, as 50 mais recentes: a tela é para achar
     uma conquista e decidir sobre ela, não para ler a escola inteira.
     """
-    concessoes = Concessao.objects.filter(site_id=site_id)
+    concessoes = disponiveis(Concessao.objects.filter(site_id=site_id), "conquista__")
     if pessoa_id:
         concessoes = concessoes.filter(pessoa_id=pessoa_id)
     return (
@@ -820,7 +823,7 @@ def fila_da_equipe(site_id: str, *, incluir_respondidos: bool = False):
     criação mostraria primeiro o pedido mais velho, e não o mais urgente, que são
     coisas diferentes quando os prazos são de 2 e de 5 dias úteis.
     """
-    fila = PedidoDeValidacao.objects.filter(site_id=site_id).select_related(
+    fila = PedidoDeValidacao.objects.none().select_related(
         "conquista", "pessoa"
     )
     if not incluir_respondidos:

@@ -58,6 +58,15 @@ def env(monkeypatch):
         ("ADMIN_EMAILS", "dono@exemplo.com"),
     ]:
         monkeypatch.setenv(nome, valor)
+    # Os exemplos desta suíte são participantes visíveis; a consulta NPS
+    # pertence a outra célula e não deve ocultar as dúvidas que estes testes medem.
+    monkeypatch.setattr(
+        "apps.core.participacao.consultar",
+        lambda ids: {
+            str(pessoa_id): {"segmento": "promotor", "embaixador": False}
+            for pessoa_id in ids
+        },
+    )
 
 
 def dublar(monkeypatch, *, sessao=None, categoria=None):
@@ -457,7 +466,7 @@ def test_a_comunidade_sem_login_fecha_a_porta_com_texto(client, env, monkeypatch
     corpo = resposta.content.decode()
     assert "Entre para ver a sua Comunidade" in corpo
     assert "Quem depende de você" not in corpo
-    assert views.CONTRIBUICOES_URL not in corpo
+    assert "/conquistas/contribuicoes" not in corpo
 
 
 def test_a_comunidade_fecha_para_quem_nao_tem_matricula(
@@ -469,7 +478,7 @@ def test_a_comunidade_fecha_para_quem_nao_tem_matricula(
     corpo = pedir(client, "comunidade").content.decode()
     assert "A Comunidade é de quem está matriculado" in corpo
     assert grupo.nome not in corpo
-    assert views.CONTRIBUICOES_URL not in corpo
+    assert "/conquistas/contribuicoes" not in corpo
 
 
 def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatch, ana):
@@ -479,7 +488,7 @@ def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatc
     assert "A equipe da escola organiza os grupos" in corpo
     assert reverse("abrir_conversa") in corpo
     assert f'href="{views.PRATICA_DA_COMUNIDADE}"' in corpo
-    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
+    assert "/conquistas/contribuicoes" not in corpo
 
 
 def test_pedido_de_grupo_abre_a_area_geral_existente(
@@ -498,13 +507,13 @@ def test_pedido_de_grupo_abre_a_area_geral_existente(
     assert "área Sala dos alunos" in corpo
 
 
-def test_a_comunidade_sem_grupo_da_equipe_tambem_aponta_as_contribuicoes(
+def test_a_comunidade_sem_grupo_da_equipe_nao_aponta_as_contribuicoes(
     client, env, monkeypatch, professora
 ):
     como(monkeypatch, professora, categoria="cadastrado")
     corpo = pedir(client, "comunidade").content.decode()
     assert "Você ainda não responde por nenhum grupo de prática" in corpo
-    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
+    assert "/conquistas/contribuicoes" not in corpo
 
 
 def test_a_comunidade_com_grupo_mostra_o_desafio_e_quem_depende_de_voce(
@@ -546,7 +555,7 @@ def test_a_comunidade_com_grupo_vazio_diz_que_ninguem_espera(
     como(monkeypatch, ana)
     corpo = pedir(client, "comunidade").content.decode()
     assert "Ninguém do seu grupo está esperando resposta agora" in corpo
-    assert f'href="{views.CONTRIBUICOES_URL}"' in corpo
+    assert "/conquistas/contribuicoes" not in corpo
 
 
 def test_a_home_mostra_o_link_da_comunidade_so_para_quem_entrou(

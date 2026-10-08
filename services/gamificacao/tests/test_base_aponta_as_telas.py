@@ -1,23 +1,4 @@
-"""A Base de `/conquistas` leva o aluno às telas que já existem.
-
-O DEFEITO QUE ESTE ARQUIVO FECHA (27/09/2026)
----------------------------------------------
-Marcos, Forja, Medalhas e Contribuições já estavam no ar, e a Base não
-apontava para nenhuma delas: quem não digitasse o endereço não as achava. Pior,
-ela dizia que "as medalhas e a trilha de marcos chegam nos próximos passos",
-prometendo como futuro o que já estava pronto.
-
-O QUE ESTE ARQUIVO PROTEGE
---------------------------
-1. **Quem entrou vê os quatro caminhos**, cada um saído de `{% url %}`, que é
-   quem carrega o prefixo público `/conquistas`.
-2. **A promessa velha não volta.** O corpo é comparado com os espaços
-   normalizados, porque a frase do template ocupa várias linhas e um `in` cru
-   deixaria passar a frase de volta sem erro.
-3. **Nenhum link leva a 403 ou 404.** Cada endereço da faixa é seguido por quem
-   o vê, e a resposta tem de ser a tela.
-4. **Visitante continua com o convite para entrar**, sem a faixa de quem entrou.
-"""
+"""A Base de `/conquistas` leva o aluno às medalhas que seguem ativas."""
 
 from __future__ import annotations
 
@@ -29,7 +10,7 @@ from django.urls import reverse
 SITE = "site-de-teste"
 ALGUEM = "pes-base-aponta"
 
-TELAS = ("marcos", "forja", "medalhas", "contribuicoes")
+TELAS = ("medalhas",)
 
 
 @pytest.fixture
@@ -60,13 +41,13 @@ def _faixa_das_telas(corpo: str) -> str:
 
 
 @pytest.mark.django_db
-def test_quem_entrou_ve_os_quatro_caminhos(client, com_site, logado):
+def test_quem_entrou_ve_o_caminho_das_medalhas(client, com_site, logado):
     corpo = _corpo(client.get(reverse("base")))
     faixa = _faixa_das_telas(corpo)
 
     for nome in TELAS:
         assert f'href="{reverse(nome)}"' in faixa, f"falta o link para {nome}"
-    for rotulo in ("Marcos reais", "Forja", "Medalhas", "Contribuições"):
+    for rotulo in ("Medalhas",):
         assert rotulo in faixa, f"falta o nome da tela {rotulo}"
 
 

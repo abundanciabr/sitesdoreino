@@ -48,25 +48,8 @@ def test_a_base_tem_rodape(client, com_site, visitante):
 
 
 @pytest.mark.django_db
-def test_a_trilha_de_marcos_tem_rodape(client, com_site, visitante):
-    assert '<footer class="rodape' in _corpo(client.get(reverse("marcos")))
-
-
-@pytest.mark.django_db
-def test_a_forja_tem_rodape(client, com_site, visitante):
-    assert '<footer class="rodape' in _corpo(client.get(reverse("forja")))
-
-
-@pytest.mark.django_db
-def test_a_recusa_da_fila_da_equipe_tambem_tem_rodape(client, com_site, visitante):
-    """A tela de 403 é página, e página tem rodapé.
-
-    Ela é o caso que uma lista escrita à mão esqueceria: não é uma rota, é o
-    outro desfecho de uma rota que já existe.
-    """
-    resposta = client.get(reverse("interno"))
-    assert resposta.status_code == 403
-    assert '<footer class="rodape' in _corpo(resposta)
+def test_as_medalhas_tem_rodape(client, com_site, visitante):
+    assert '<footer class="rodape' in _corpo(client.get(reverse("medalhas")))
 
 
 def test_rota_que_ninguem_decidiu_herda_o_padrao():
@@ -141,7 +124,7 @@ def test_pagina_declarada_sem_rodape_nao_desenha_footer_nenhum(
 ):
     monkeypatch.setitem(regras.REGRA_POR_ROTA, "base", None)
     assert "<footer" not in _corpo(client.get(reverse("base")))
-    assert "<footer" in _corpo(client.get(reverse("marcos")))
+    assert "<footer" in _corpo(client.get(reverse("medalhas")))
 
 
 @pytest.mark.django_db

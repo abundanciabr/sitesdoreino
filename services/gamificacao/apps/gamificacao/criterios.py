@@ -49,6 +49,7 @@ from __future__ import annotations
 import logging
 import threading
 
+from .recursos import disponiveis
 from .models import (
     AjudaAceita,
     Concessao,
@@ -94,11 +95,6 @@ def _valor_missoes(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
     ).count()
 
 
-def _valor_forjas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
-    """Peças seladas no medidor de esforço. A Forja é o degrau 14."""
-    return Forja.objects.filter(
-        pessoa=pessoa, site_id=site_id, selada_em__isnull=False
-    ).count()
 
 
 def _valor_respostas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
@@ -126,13 +122,6 @@ def _valor_entregas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
     return EntregaAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
 
 
-def _valor_contribuicoes(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
-    """Contribuições do quadro aceitas pela equipe, uma por compromisso (TAR-849).
-
-    Conta `ContribuicaoAceita`, e não o ledger, pela razão de `_valor_respostas`:
-    o quadro não paga ponto nenhum, e a medalha existe mesmo assim.
-    """
-    return ContribuicaoAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
 
 
 def _valor_primeira_vez(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
@@ -153,9 +142,9 @@ def _valor_familia(
     if not familia:
         return 0
     return (
-        Concessao.objects.filter(
+        disponiveis(Concessao.objects.filter(
             pessoa=pessoa, site_id=site_id, conquista__familia=familia
-        )
+        ), "conquista__")
         .exclude(estado=Concessao.Estado.REVOGADA)
         .count()
     )
@@ -172,10 +161,8 @@ CONTAS = {
     "nivel_alcancado": _valor_nivel,
     "semanas_de_sequencia": _valor_semanas,
     "missoes_cumpridas": _valor_missoes,
-    "forjas_seladas": _valor_forjas,
     "respostas_aceitas": _valor_respostas,
     "entregas_aceitas": _valor_entregas,
-    "contribuicoes_aceitas": _valor_contribuicoes,
     "primeira_vez": _valor_primeira_vez,
     "conquistas_da_familia": _valor_familia,
 }
@@ -298,9 +285,9 @@ def medalhas_da_pessoa(perfil: PerfilJogador) -> list[dict]:
     }
     retiradas = HistoricoDaConcessao.retiradas_de(concedidas.values())
     linhas = []
-    for medalha in ConquistaDefinicao.objects.filter(
+    for medalha in disponiveis(ConquistaDefinicao.objects.filter(
         site_id=site_id, ativa=True, classe=ConquistaDefinicao.Classe.MEDALHA
-    ).order_by("nome"):
+    )).order_by("nome"):
         concessao = concedidas.get(medalha.pk)
         if medalha.secreta and concessao is None:
             continue
@@ -395,11 +382,11 @@ def avaliar(
             # afirmando que alguém conseguiu um cliente sem ninguém ter olhado.
             candidatas = [
                 c
-                for c in ConquistaDefinicao.objects.filter(
+                for c in disponiveis(ConquistaDefinicao.objects.filter(
                     site_id=site_id,
                     ativa=True,
                     classe=ConquistaDefinicao.Classe.MEDALHA,
-                )
+                ))
                 if c.pk not in ja_tem and cumpre(c, pessoa, site_id, perfil)
             ]
             if not candidatas:

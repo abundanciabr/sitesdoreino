@@ -115,21 +115,7 @@ def _conquista(slug, **campos):
 
 
 CONQUISTAS = [
-    _conquista(
-        "primeiro-cliente",
-        nome="Primeiro cliente",
-        classe="marco",
-        familia="carreira",
-        pontos=0,
-        cristais=0,
-        envolve_dinheiro=True,
-        exige_validador_da_equipe=True,
-    ),
     _conquista("primeira-obra", impedimentos=["sem-motor-de-criterio"]),
-    _conquista(
-        "dez-forjas",
-        impedimentos=["sem-motor-de-criterio", "sem-fato-que-alimenta"],
-    ),
 ]
 
 
@@ -447,7 +433,7 @@ def test_gamificacao_muda_e_a_tela_mostra_o_que_esta_GRAVADO():
 
 
 # ---------------------------------------------------------------------------
-# A SEGUNDA METADE DA TELA: as medalhas e os marcos (01/09/2026)
+# A SEGUNDA METADE DA TELA: as medalhas disponíveis
 # ---------------------------------------------------------------------------
 
 
@@ -459,7 +445,7 @@ def test_a_tela_mostra_as_conquistas_com_os_avisos_antes_do_clique():
     corpo = _dentro().get(reverse("economia")).content.decode()
 
     assert "O que a escola reconhece" in corpo
-    assert "Primeiro cliente" in corpo
+    assert "Primeira obra" in corpo
     # O aviso que impede a frustração: ligar uma medalha hoje não concede nada,
     # porque a conta automática ainda não existe.
     assert "a conta automática das medalhas é a próxima peça" in corpo
@@ -467,15 +453,16 @@ def test_a_tela_mostra_as_conquistas_com_os_avisos_antes_do_clique():
 
 @respx.mock
 @pytest.mark.django_db
-def test_o_marco_nao_mostra_numero_de_ponto_nenhum():
-    """Marco vale ZERO por lei, e um "0 pontos" ao lado de "Primeiro cliente"
-    convidaria à pergunta errada. A tela diz o que ele é, não quanto vale."""
+def test_a_tela_nao_mostra_os_marcos_retirados():
+    """A economia continua com medalhas sem exibir a antiga trilha de Marcos."""
     _gamificacao()
 
     corpo = _dentro().get(reverse("economia")).content.decode()
 
-    assert "O aluno manda a prova" in corpo
-    assert "Envolve dinheiro" in corpo
+    assert "Primeira obra" in corpo
+    assert "Primeiro cliente" not in corpo
+    assert "O aluno manda a prova" not in corpo
+    assert "Envolve dinheiro" not in corpo
 
 
 @respx.mock
@@ -555,7 +542,7 @@ def test_a_metade_de_baixo_falhando_nao_derruba_a_de_cima():
     # A metade de cima inteira.
     assert "regras estão ligadas" in corpo or "Nenhuma regra está ligada" in corpo
     # E a de baixo dizendo a verdade sobre si mesma.
-    assert "Não consegui ler as medalhas e os marcos agora" in corpo
+    assert "Não consegui ler as medalhas agora" in corpo
 
 
 @respx.mock
@@ -580,8 +567,7 @@ def test_conquista_recusada_pela_gamificacao_vira_frase_e_fica_na_auditoria():
 # ---------------------------------------------------------------------------
 # O PLURAL DE CRISTAL É CRISTAIS
 # ---------------------------------------------------------------------------
-# Achado pelo mantenedor na própria tela, em 01/09/2026, ao ligar a medalha das
-# dez forjas: o cartão dizia "Vale 80 pontos e 10 Cristalis".
+# A grafia de Cristais continua correta para as medalhas disponíveis.
 #
 # A causa é o `pluralize` de UM argumento, que ACRESCENTA o sufixo em vez de
 # trocar a terminação: `Cristal{{ n|pluralize:"is" }}` dá "Cristal" no singular
@@ -600,7 +586,7 @@ def test_conquista_recusada_pela_gamificacao_vira_frase_e_fica_na_auditoria():
 def test_o_plural_de_cristal_e_cristais_e_nunca_cristalis():
     """A palavra que o mantenedor lê na tela dele, escrita em português."""
     _gamificacao(
-        conquistas=[_conquista("dez-forjas", cristais=10, impedimentos=[])],
+        conquistas=[_conquista("primeira-obra", cristais=10, impedimentos=[])],
         regras=[_regra("sugestao-criada", cristais=3)],
     )
 
@@ -615,7 +601,7 @@ def test_o_plural_de_cristal_e_cristais_e_nunca_cristalis():
 def test_um_cristal_sozinho_continua_no_singular():
     """O outro lado da mesma régua: 1 é Cristal, sem o `is` colado."""
     _gamificacao(
-        conquistas=[_conquista("dez-forjas", cristais=1, impedimentos=[])],
+        conquistas=[_conquista("primeira-obra", cristais=1, impedimentos=[])],
         regras=[_regra("sugestao-criada", cristais=0)],
     )
 

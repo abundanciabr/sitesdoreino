@@ -22,10 +22,8 @@ from apps.gamificacao.models import (
     Concessao,
     ConquistaDefinicao,
     CriterioDesconhecido,
-    Forja,
     LancamentoDeXP,
     LigaDefinicao,
-    PedidoDeValidacao,
     PerfilJogador,
     Pessoa,
     Sequencia,
@@ -109,90 +107,6 @@ def test_a_fronteira_de_site_da_pessoa_mora_no_perfil():
 
 
 # ---------------------------------------------------------------------------
-# A hierarquia da lei virando restrição: marco real rende ZERO XP
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.django_db
-def test_o_banco_recusa_um_marco_real_que_pague_xp():
-    """Decisão fechada 7 da Sessão A: marco real vale 0 XP.
-
-    Se conseguir o primeiro cliente pagasse 500 XP, o marco viraria mais um item
-    do andaime, e o aluno aprenderia a perseguir o número em vez da coisa. A
-    hierarquia inteira (`Realidade > Criação > Maestria > Comunidade > XP`)
-    depende desta linha.
-    """
-    with pytest.raises(IntegrityError) as erro:
-        with transaction.atomic():
-            _conquista(
-                slug="primeiro-cliente",
-                classe=ConquistaDefinicao.Classe.MARCO,
-                familia=ConquistaDefinicao.Familia.CARREIRA,
-                pontos=500,
-            )
-
-    assert "marco_real_rende_zero_xp" in str(erro.value)
-
-
-@pytest.mark.django_db
-def test_marco_real_com_zero_xp_entra_normalmente():
-    """A contraprova: a restrição recusa o proibido, não a tabela inteira."""
-    marco = _conquista(
-        slug="portfolio-publicado",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        pontos=0,
-        cristais=0,
-    )
-    assert marco.pk and marco.pontos == 0
-
-
-@pytest.mark.django_db
-def test_o_banco_recusa_marco_de_dinheiro_validavel_por_colega():
-    """Lei §9: marco que envolve dinheiro é SEMPRE validado por alguém da equipe.
-
-    A trava está no banco porque a alternativa seria confiar em toda tela futura
-    lembrar da regra. Ela sobreviveu à emenda de 30/08/2026 mudando de RAZÃO, e
-    não de força: era proteção de menor, hoje é qualidade e confiança no que a
-    escola afirma ao dizer que alguém ganhou dinheiro com o próprio trabalho.
-
-    A metade que MORREU foi a faixa etária: numa escola só de adultos, exigir
-    "13 anos ou mais" não separa ninguém de ninguém. E "equipe" não é sinônimo
-    de "adulto" aqui, porque aqui o aluno também é adulto: `validador_papel`
-    aceita `par`, e um par não fecha marco de dinheiro.
-    """
-    with pytest.raises(IntegrityError) as erro:
-        with transaction.atomic():
-            _conquista(
-                slug="primeiro-cliente",
-                classe=ConquistaDefinicao.Classe.MARCO,
-                familia=ConquistaDefinicao.Familia.CARREIRA,
-                envolve_dinheiro=True,
-                exige_validador_da_equipe=False,
-            )
-
-    assert "marco_de_dinheiro_so_a_equipe_valida" in str(erro.value)
-
-
-@pytest.mark.django_db
-def test_o_banco_aceita_marco_de_dinheiro_quando_a_equipe_valida():
-    """O caminho feliz, e ele não é decoração.
-
-    Sem esta linha, um banco que recusasse TODA conquista passaria no teste
-    acima e ninguém saberia até a primeira medalha não nascer.
-    """
-    marco = _conquista(
-        slug="primeiros-dolares",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        envolve_dinheiro=True,
-        exige_validador_da_equipe=True,
-    )
-
-    assert marco.pk and marco.exige_validador_da_equipe is True
-
-
-# ---------------------------------------------------------------------------
 # O critério é vocabulário FECHADO, não DSL (critério de morte nº 1)
 # ---------------------------------------------------------------------------
 
@@ -208,8 +122,8 @@ def test_criterio_fora_do_vocabulario_e_recusado():
 
 @pytest.mark.django_db
 def test_criterio_do_vocabulario_entra_normalmente():
-    conquista = _conquista(criterio={"tipo": "forjas_seladas", "alvo": 10})
-    assert conquista.criterio["tipo"] == "forjas_seladas"
+    conquista = _conquista(criterio={"tipo": "xp_acumulado", "alvo": 10})
+    assert conquista.criterio["tipo"] == "xp_acumulado"
 
 
 # ---------------------------------------------------------------------------
@@ -339,7 +253,7 @@ def test_o_dia_do_lancamento_e_o_dia_de_sao_paulo():
 
 
 # ---------------------------------------------------------------------------
-# Perfil, sequência, forja, concessão e fila de validação
+# Perfil, sequência e concessão
 # ---------------------------------------------------------------------------
 
 
@@ -406,21 +320,6 @@ def test_a_sequencia_recusa_meta_que_nao_cabe_numa_semana(aluno):
     assert "meta_da_semana_cabe_numa_semana" in str(erro.value)
 
 
-def test_a_forja_recusa_medidor_acima_do_teto(aluno):
-    """O medidor só cresce, e cresce até um teto: senão vira competição de cliques."""
-    with pytest.raises(IntegrityError) as erro:
-        with transaction.atomic():
-            Forja.objects.create(
-                pessoa=aluno,
-                site_id="escola-a",
-                desafio_ref="d-1",
-                medidor=100,
-                teto=10,
-            )
-
-    assert "o_medidor_da_forja_respeita_o_teto" in str(erro.value)
-
-
 def test_a_concessao_nasce_privada(aluno):
     """Decisão fechada 7: consentimento padrão é PRIVADO.
 
@@ -437,7 +336,7 @@ def test_a_concessao_nasce_privada(aluno):
 
 
 def test_concessao_humana_sem_validador_e_recusada(aluno):
-    """Quando um marco é contestado, "quem disse que sim?" precisa ter resposta."""
+    """Uma medalha concedida por pessoa precisa registrar quem a validou."""
     conquista = _conquista()
 
     with pytest.raises(IntegrityError) as erro:
@@ -453,30 +352,3 @@ def test_concessao_humana_sem_validador_e_recusada(aluno):
     assert "concessao_humana_diz_quem_validou" in str(erro.value)
 
 
-def test_devolucao_sem_motivo_estruturado_e_recusada(aluno):
-    """ "Não" sem razão, vindo de um colega, é bullying com verniz de processo."""
-    with pytest.raises(IntegrityError) as erro:
-        with transaction.atomic():
-            PedidoDeValidacao.objects.create(
-                pessoa=aluno,
-                site_id="escola-a",
-                tipo=PedidoDeValidacao.Tipo.OBRA,
-                estado=PedidoDeValidacao.Estado.DEVOLVIDO,
-                motivo_da_devolucao="",
-            )
-
-    assert "motivo_da_devolucao_e_obrigatorio" in str(erro.value)
-
-
-def test_o_pedido_nasce_em_analise_e_com_evidencia_privada(aluno):
-    """ "Em análise" nunca parece recusa, e a evidência nasce fora do alcance dos pares."""
-    pedido = PedidoDeValidacao.objects.create(
-        pessoa=aluno,
-        site_id="escola-a",
-        tipo=PedidoDeValidacao.Tipo.MARCO,
-        prazo_ate=timezone.now() + timedelta(days=5),
-    )
-
-    assert pedido.estado == PedidoDeValidacao.Estado.EM_ANALISE
-    assert pedido.evidencia_privada is True
-    assert pedido.escalado_para_adulto is False

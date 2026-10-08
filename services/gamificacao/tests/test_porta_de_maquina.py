@@ -99,6 +99,22 @@ def rede_proibida(monkeypatch):
     monkeypatch.setattr(httpx.Client, "get", proibido)
 
 
+@pytest.fixture(autouse=True)
+def participacao_publica(monkeypatch):
+    """Os testes da porta não dependem da consulta NPS de outra célula."""
+    monkeypatch.setattr(
+        "apps.core.api.estados_participacao",
+        lambda ids: {
+            str(pessoa_id): {
+                "segmento": "promotor",
+                "embaixador": False,
+                "conquistas_privadas_ate": None,
+            }
+            for pessoa_id in ids
+        },
+    )
+
+
 def dublar_identidade(monkeypatch, *, corpo=None, erro=None, status=200):
     """Troca `httpx.Client.get` por um dublê que EXIGE a URL inteira."""
 
@@ -497,7 +513,7 @@ def test_celebracao_fora_de_forma_e_DESCARTADA_nunca_vira_500(monkeypatch):
     perfil.celebracoes_pendentes = [
         {"tipo": "nivel-alcancado", "referencia": "7"},
         {"tipo": "invencao-do-motor", "referencia": "x"},
-        {"tipo": "marco-validado"},
+        {"tipo": "conquista-concedida"},
         "isto nem e um dicionario",
         {"tipo": "conquista-concedida", "referencia": "primeiro-ugc"},
     ]
@@ -564,7 +580,6 @@ def test_sem_env_da_identidade_a_porta_fecha_em_visitante_e_nao_derruba(monkeypa
 # Os caminhos de LEITURA da porta de máquina. Operação nova de leitura entra
 # aqui junto com a rota, para o cadeado do 401 cobrir ela também.
 OPERACOES_DE_LEITURA = [
-    "/pendencias/escola-a",
     "/perfis",
     "/eu",
     "/economia/regras",

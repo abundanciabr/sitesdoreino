@@ -10,10 +10,13 @@ escrita. Regra de negócio aqui dentro seria regra escondida num tradutor.
 o formato do assunto.
 """
 
+from .recursos_retired import retirado
 from .services import avisar_os_aparelhos, guardar
 
 
 def ao_notificacao_devida(data: dict, *, ator_id: str | None = None) -> None:
+    if retirado(data["assunto"], data["parametros"]):
+        return
     guardar(
         site_id=data["site_id"],
         destinatario_id=data["destinatario_id"],

@@ -125,25 +125,17 @@ def test_a_medalha_conquistada_diz_quando(monkeypatch):
     assert "Seu progresso" not in corpo
 
 
-def test_so_aparece_medalha_ligada_nunca_marco_nem_secreta_por_conquistar(
+def test_so_aparece_medalha_ligada_nunca_desligada_nem_secreta_por_conquistar(
     monkeypatch,
 ):
     _entrar_como(monkeypatch, ALUNO)
     _medalha(slug="desligada", nome="Medalha desligada", ativa=False)
     _medalha(slug="segredo", nome="Medalha secreta", secreta=True)
-    _medalha(
-        slug="primeiro-cliente",
-        nome="Primeiro cliente",
-        classe=ConquistaDefinicao.Classe.MARCO,
-        familia=ConquistaDefinicao.Familia.CARREIRA,
-        criterio={"tipo": "manual"},
-    )
 
     corpo = _corpo()
 
     assert "Medalha desligada" not in corpo
     assert "Medalha secreta" not in corpo
-    assert "Primeiro cliente" not in corpo
     assert "Ainda não há medalhas ligadas nesta escola" in corpo
 
 

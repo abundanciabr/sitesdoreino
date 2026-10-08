@@ -14,8 +14,6 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
 
 {% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
-  <a href="{% url 'interno' %}">Fila dos marcos</a>
-  <a href="{% url 'interno-contribuicoes' %}">Contribuições</a>
   <a href="{% url 'interno-reconhecimentos' %}" aria-current="page">Reconhecimentos</a>
 {% endblock %}
 
@@ -65,7 +63,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
         <form method="post" action="{% url 'decidir-reconhecimento' %}">
           {% csrf_token %}
           <input type="hidden" name="concessao" value="{{ concessao.pk }}">
-          <label for="origem-{{ concessao.pk }}">Referência certa da origem (por exemplo pedido:7 ou contribuicao:15)</label>
+          <label for="origem-{{ concessao.pk }}">Referência certa da origem (por exemplo evento:7)</label>
           <input type="text" id="origem-{{ concessao.pk }}" name="origem" maxlength="64" required>
           <label for="motivo-corrigir-{{ concessao.pk }}">Por que corrigir (opcional)</label>
           <textarea id="motivo-corrigir-{{ concessao.pk }}" name="motivo" rows="2"></textarea>

@@ -39,7 +39,7 @@ def cliente(email=EQUIPE):
 
 
 @respx.mock
-def test_equipe_abre_grupos_duvidas_entregas_e_contribuicoes(monkeypatch):
+def test_equipe_abre_grupos_duvidas_entregas_e_reconhecimentos(monkeypatch):
     monkeypatch.setattr(
         "apps.core.comunidade.PendenciasClient.resumo",
         lambda self, fonte, site: ResumoDePendencias(3, 2),
@@ -49,9 +49,9 @@ def test_equipe_abre_grupos_duvidas_entregas_e_contribuicoes(monkeypatch):
     assert resposta.status_code == 200
     assert "3 entregas esperando laudo" in texto
     for caminho in ("/forum/comunidade/equipe", "/cursos/plantao",
-                    "/conquistas/interno/contribuicoes",
                     "/conquistas/interno/reconhecimentos"):
         assert caminho in texto
+    assert "/conquistas/interno/contribuicoes" not in texto
 
 
 @respx.mock

@@ -110,7 +110,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
 
   {% if not conquistas_lidas %}
   <p class="aviso borda-amarela">
-    Não consegui ler as medalhas e os marcos agora. A metade de cima desta tela
+    Não consegui ler as medalhas agora. A metade de cima desta tela
     continua valendo; esta aqui volta sozinha quando a parte das conquistas
     responder.
   </p>
@@ -118,8 +118,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
 
   <p class="subtitulo">
     {% if conquistas_ligadas == 0 %}
-    <b>Nenhuma está ligada.</b> Nenhum marco aparece para o aluno, e nenhuma
-    medalha é concedida.
+    <b>Nenhuma está ligada.</b> Nenhuma medalha é concedida.
     {% else %}
     <b>{{ conquistas_ligadas }} de {{ conquistas|length }}</b> estão ligadas.
     {% endif %}
@@ -130,22 +129,11 @@ quem a escreveu. Esta área é bastidor, e é só em português.
     <h2>{{ c.nome }}</h2>
     <p>{{ c.descricao }}</p>
 
-    {% if c.e_marco %}
-    <p class="numeros">
-      <b>Marco real.</b> O aluno manda a prova, alguém da equipe confere. Não
-      vale ponto nenhum, e é assim de propósito: ele não é parte do jogo.
-    </p>
-      {% if c.envolve_dinheiro %}
-      <p class="aviso">Envolve dinheiro: só a equipe da escola pode aceitar, e a
-      prova que o aluno mandar fica privada.</p>
-      {% endif %}
-    {% else %}
     <p class="numeros">
       <b>Medalha.</b>
       {% if c.pontos %}Vale <b>{{ c.pontos }}</b> ponto{{ c.pontos|pluralize }}{% endif %}
       {% if c.cristais %} e <b>{{ c.cristais }}</b> Crista{{ c.cristais|pluralize:"l,is" }}{% endif %}
     </p>
-    {% endif %}
 
     {% for aviso in c.impedimentos %}
     <p class="aviso borda-amarela">{{ aviso }}</p>
