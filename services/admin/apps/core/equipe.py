@@ -481,7 +481,7 @@ def tarefa_ver(request, id: int):
             "trabalhos_do_robo": list(
                 Execucao.objects.select_related("robo")
                 .filter(tarefa_id=tarefa.id)
-                .exclude(tipo=Execucao.Tipo.CONVERSA)[:10]
+                .exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SATISFACAO])[:10]
             ),
             "entregas_do_robo": painel_dos_robos.entregas_das_tarefas([tarefa.id]).get(
                 tarefa.id, []

@@ -165,7 +165,7 @@ def robo_da_pessoa(request):
     for mensagem in mensagens:
         if mensagem.papel == Mensagem.Papel.ROBO:
             mensagem.html = para_html(mensagem.texto)
-    execucoes = list(robo.execucoes.exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SUPER_EQUIPE])[:15])
+    execucoes = list(robo.execucoes.exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO])[:15])
     respondendo = robo.execucoes.filter(
         tipo=Execucao.Tipo.CONVERSA, situacao__in=Execucao.ABERTAS
     ).first()
@@ -192,7 +192,7 @@ def robo_da_pessoa(request):
             "mensagens": mensagens,
             "respondendo": respondendo,
             "execucoes": execucoes,
-            "entregas": list(robo.entregas.exclude(tipo="super_equipe")[:15]),
+            "entregas": list(robo.entregas.exclude(tipo__in=["super_equipe", "satisfacao", "satisfacao_padroes"])[:15]),
             "consumo": _consumo_do_mes(),
             "planejado": PLANEJADO,
             "chave_de_envio": uuid.uuid4().hex,
@@ -420,6 +420,9 @@ def execucao_detalhe(request, id: int):
     execucao = _execucao_visivel(request, id)
     if execucao is None:
         return _nao_existe(request)
+    if execucao.tipo == Execucao.Tipo.SATISFACAO:
+        from .satisfacao import endereco_do_caso
+        return HttpResponseRedirect(endereco_do_caso(execucao))
     tarefa = Tarefa.objects.filter(pk=execucao.tarefa_id).first() if execucao.tarefa_id else None
     membro = _membro_da_sessao(request)
     dono = _e_admin(request) or (membro is not None and execucao.robo.membro_id == membro.id)
@@ -491,7 +494,10 @@ def entrega_detalhe(request, id: int):
     membro = _membro_da_sessao(request)
     if entrega.tipo in ("satisfacao", "satisfacao_padroes") and not _e_admin(request):
         return _nao_existe(request)
-    dono = membro is not None and entrega.robo.membro_id == membro.id
+    if entrega.tipo in ("satisfacao", "satisfacao_padroes") and entrega.execucao:
+        from .satisfacao import endereco_do_caso
+        return HttpResponseRedirect(endereco_do_caso(entrega.execucao))
+    dono = membro is not None and entrega.robo_id is not None and entrega.robo.membro_id == membro.id
     if not (_e_admin(request) or dono or entrega.tarefa_id):
         return _nao_existe(request)
     tarefa = Tarefa.objects.filter(pk=entrega.tarefa_id).first() if entrega.tarefa_id else None
@@ -553,8 +559,8 @@ def robos_admin(request):
     robo_alunos = configuracao()
     robos = list(RoboPessoal.objects.select_related("membro").order_by("membro__ordem", "id"))
     for robo in robos:
-        robo.abertas = robo.execucoes.filter(situacao__in=Execucao.ABERTAS).count()
-        robo.ultima = robo.execucoes.first()
+        robo.abertas = robo.execucoes.filter(situacao__in=Execucao.ABERTAS).exclude(tipo=Execucao.Tipo.SATISFACAO).count()
+        robo.ultima = robo.execucoes.exclude(tipo=Execucao.Tipo.SATISFACAO).first()
     return render(
         request,
         "agentes/admin.html",
@@ -567,7 +573,7 @@ def robos_admin(request):
             "chave_ilegivel": bool(conexao.segredo_cifrado) and segredo.decifrar(conexao.segredo_cifrado) is None,
             "robos": robos,
             "membros_sem_robo": MembroDaEquipe.objects.filter(ativo=True, robo__isnull=True),
-            "execucoes": list(Execucao.objects.select_related("robo")[:20]),
+            "execucoes": list(Execucao.objects.select_related("robo").exclude(tipo=Execucao.Tipo.SATISFACAO)[:20]),
             "consumo": _consumo_do_mes(),
             "precos": modelo.PRECOS,
             "mapa": conhecimento.numeros(),

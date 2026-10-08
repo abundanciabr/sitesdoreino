@@ -1,27 +1,35 @@
-<section class="quadro" aria-labelledby="robo-satisfacao">
-  <h2 id="robo-satisfacao">Robô · Cuidado com a satisfação</h2>
-  <p>Especialidade do robô pessoal do responsável. A análise continua no servidor quando você fecha a página. Contatos são sugestões para a equipe revisar.</p>
-  <form method="post" action="{% url 'crm_satisfacao_analisar' %}">
-    {% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}">
-    <label>Responsável humano <select name="responsavel_robo" required>{% for pessoa in analise_responsaveis %}<option value="{{ pessoa.id }}">{{ pessoa.nome }} · {{ pessoa.area }}</option>{% endfor %}</select></label>
-    {% if painel %}<button class="botao principal" name="avaliacao" value="{{ painel.id }}" formaction="{% url 'crm_satisfacao_analisar' %}?caso=1" type="submit">Analisar esta avaliação</button><input type="hidden" name="aluno_id" value="{{ aluno_id }}">{% endif %}
-  </form>
-  <form method="post" action="{% url 'crm_satisfacao_analisar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><label>Responsável da análise geral <select name="responsavel_robo" required>{% for pessoa in analise_responsaveis %}<option value="{{ pessoa.id }}">{{ pessoa.nome }} · {{ pessoa.area }}</option>{% endfor %}</select></label><button class="botao" type="submit">Analisar avaliações ativas</button></form>
-  {% for trabalho in analise_execucoes %}<p role="status">{{ trabalho.robo.nome }} · {{ trabalho.get_situacao_display }} · {{ trabalho.progresso }}% · {{ trabalho.etapa_atual }} {% if trabalho.motivo %}· {{ trabalho.motivo }}{% endif %} <a href="{% url 'execucao_do_robo' trabalho.id %}">Acompanhar trabalho</a></p>{% endfor %}
+{% load static %}
+<section class="quadro satisfacao-robo" aria-labelledby="robo-satisfacao"{% if analise_acompanhar %} data-satisfacao-andamento="{% url 'crm_satisfacao_andamento' %}" data-site="{{ site_id }}" data-aluno="{{ aluno_id }}" data-avaliacao="{{ painel.id }}" data-marca="{{ analise_marca }}"{% endif %}>
+  <h2 id="robo-satisfacao">Robô · Análise desta avaliação</h2>
+  <p class="satisfacao-intro">Uma leitura das respostas e do contexto deste aluno, com evidências e próximos passos. A análise continua no servidor quando você fecha a página.</p>
+  {% if painel %}<form method="post" action="{% url 'crm_satisfacao_analisar' %}" class="satisfacao-pedir">
+    {% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="aluno_id" value="{{ aluno_id }}"><input type="hidden" name="avaliacao" value="{{ painel.id }}">
+    <button class="botao principal" type="submit">{% if analise_robo %}Atualizar análise desta avaliação{% else %}Analisar esta avaliação{% endif %}</button>
+  </form>{% endif %}
+  {% for trabalho in analise_execucoes %}<div role="status" class="satisfacao-andamento"><b>Análise desta avaliação · {{ trabalho.get_situacao_display }}</b><span>{{ trabalho.progresso }}% · {{ trabalho.etapa_atual }}</span>{% if trabalho.situacao == 'na_fila' or trabalho.situacao == 'executando' %}<progress value="{{ trabalho.progresso }}" max="100" aria-label="Andamento da análise desta avaliação"></progress>{% endif %}{% if trabalho.motivo %}<p>{{ trabalho.motivo }}</p>{% endif %}</div>{% endfor %}
   {% if analise_robo %}
     <h3>Leitura desta avaliação · {{ analise_robo.analisada_em|date:'d/m/Y H:i' }}</h3>
-    {% if analise_mudou %}<p class="aviso">A avaliação ou os registros consultados mudaram depois da análise. Use “Analisar esta avaliação” para atualizar a leitura.</p>{% elif analise_mudou == None %}<p class="aviso">Não foi possível conferir agora se todas as fontes continuam iguais.</p>{% endif %}
-    <p>{{ analise_robo.resultado.resumo }}</p>
-    {% for acao in analise_robo.resultado.acoes %}<p><b>{{ acao.prioridade }} · {{ acao.passo }}</b><br>{{ acao.motivo }} · {{ acao.responsavel }} · {{ acao.area }}<br>Conferir: {{ acao.verificar }}</p>{% endfor %}
-    <details><summary>Evidências, hipóteses, pendências e mensagem sugerida</summary>
+    {% if analise_mudou %}<p class="aviso">A avaliação ou os registros consultados mudaram depois desta leitura. Atualize a análise para considerar as informações atuais.</p>{% elif analise_mudou == None %}<p class="aviso">Não foi possível conferir agora se todas as fontes continuam iguais.</p>{% endif %}
+    <p class="satisfacao-resumo">{{ analise_robo.resultado.resumo }}</p>
+    <h3>Próximos passos para este aluno</h3>
+    {% for acao in analise_robo.resultado.acoes %}<article class="satisfacao-passo"><p><b>{{ acao.prioridade }} · {{ acao.passo }}</b></p><p>{{ acao.motivo }}</p><p class="satisfacao-conferir"><b>Como conferir:</b> {{ acao.verificar }}</p></article>{% endfor %}
+    <details class="satisfacao-detalhes"><summary>Evidências e detalhes desta avaliação</summary>
       <h4>Evidências</h4>{% for evidencia in analise_robo.resultado.evidencias %}<p>{{ evidencia }}</p>{% endfor %}
       <h4>O que já foi tentado</h4><p>{{ analise_robo.resultado.tentativas }}</p>
-      <h4>Hipóteses</h4>{% for item in analise_robo.resultado.hipoteses %}<p>{{ item }}</p>{% endfor %}
-      <h4>A conferir</h4>{% for item in analise_robo.resultado.pendencias %}<p>{{ item }}</p>{% endfor %}
-      <h4>Mensagem para revisão humana</h4><p>{{ analise_robo.resultado.mensagem_sugerida }}</p>
-      <h4>Fontes consultadas</h4>{% for nome, fonte in analise_robo.contexto.fontes.items %}<p><b>{{ nome }}</b> · {{ fonte.estado }} · {{ fonte.limitacao }}</p>{% endfor %}
-      <a href="{% url 'entrega_do_robo' analise_robo.entrega_id %}">Abrir entrega completa</a>
+      {% if analise_robo.resultado.hipoteses %}<h4>Hipóteses</h4>{% for item in analise_robo.resultado.hipoteses %}<p>{{ item }}</p>{% endfor %}{% endif %}
+      {% if analise_robo.resultado.pendencias %}<h4>A conferir</h4>{% for item in analise_robo.resultado.pendencias %}<p>{{ item }}</p>{% endfor %}{% endif %}
+      <h4>Mensagem sugerida sobre este caso</h4><p>{{ analise_robo.resultado.mensagem_sugerida }}</p><p class="satisfacao-intro">Sugestão para revisão humana. Nenhuma mensagem é enviada automaticamente.</p>
+      <h4>Fontes consultadas</h4>{% for nome, fonte in analise_robo.contexto.fontes.items %}<p><b>{{ nome }}</b> · {{ fonte.estado }}{% if fonte.limitacao %} · {{ fonte.limitacao }}{% endif %}</p>{% endfor %}
     </details>
-  {% endif %}
-  {% if analise_padroes %}<h3>Melhorias para a escola</h3><p>Última análise geral: {{ analise_padroes.atualizada_em|date:'d/m/Y H:i' }}</p><a href="{% url 'entrega_do_robo' analise_padroes.id %}">Consultar padrões, casos e propostas</a>{% endif %}
+  {% elif not analise_execucoes %}<p class="satisfacao-intro">Peça a análise para ver a leitura deste caso aqui, abaixo das respostas do aluno.</p>{% endif %}
+  <details class="satisfacao-detalhes satisfacao-geral"><summary>Análise das avaliações ativas</summary>
+    <p class="satisfacao-intro">Consulta separada dos padrões entre avaliações deste site. Avaliações arquivadas ficam de fora.</p>
+    <form method="post" action="{% url 'crm_satisfacao_analisar' %}">{% csrf_token %}<input type="hidden" name="site_id" value="{{ site_id }}"><button class="botao" type="submit">Analisar avaliações ativas</button></form>
+    {% if analise_geral %}<p role="status">Análise geral · {{ analise_geral.get_situacao_display }} · {{ analise_geral.progresso }}%{% if analise_geral.motivo %} · {{ analise_geral.motivo }}{% endif %}</p>{% endif %}
+    {% if analise_padroes %}<h3>Melhorias para a escola · {{ analise_padroes.atualizada_em|date:'d/m/Y H:i' }}</h3><div>{{ analise_padroes_html|safe }}</div>{% endif %}
+  </details>
 </section>
+<script src="{% static 'admin/satisfacao_robo.js' %}" defer></script>
+<style>
+.satisfacao-robo{margin-top:20px}.satisfacao-intro{color:var(--muted);font-size:13px;line-height:1.6}.satisfacao-pedir{margin:18px 0}.satisfacao-andamento{display:grid;gap:7px;padding:13px 15px;border:1px solid var(--linha);background:#f8fafc;border-radius:7px;margin:15px 0;font-size:12px}.satisfacao-andamento span{color:var(--muted)}.satisfacao-andamento progress{width:100%;max-width:400px;height:8px;accent-color:var(--azul)}.satisfacao-robo h3{margin:22px 0 12px;font-size:15px}.satisfacao-resumo{line-height:1.7;font-size:14px}.satisfacao-passo{border-left:3px solid var(--azul);padding:1px 15px;margin:18px 0}.satisfacao-passo p{font-size:13px;line-height:1.6;margin:7px 0}.satisfacao-conferir{color:var(--muted)}.satisfacao-detalhes{border-top:1px solid var(--linha);padding-top:15px;margin-top:22px;font-size:13px;line-height:1.6}.satisfacao-detalhes summary{cursor:pointer;color:var(--azul);font-weight:600}.satisfacao-detalhes h4{font-size:13px;margin:18px 0 6px}.satisfacao-detalhes p{overflow-wrap:anywhere}.satisfacao-geral form{margin:15px 0}
+</style>

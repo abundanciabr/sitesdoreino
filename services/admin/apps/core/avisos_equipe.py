@@ -954,7 +954,7 @@ def varrer_trabalhos_parados(agora=None, perguntas: _PerguntasALeads | None = No
         situacao=Execucao.Situacao.AGUARDANDO_DEPENDENCIA,
         atualizada_em__lte=limite,
         atualizada_em__gte=desde,
-    ).exclude(tipo=Execucao.Tipo.CONVERSA)
+    ).exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SATISFACAO])
     # Um aviso por pessoa, por causa e por dia: dez trabalhos do mesmo robô
     # parados pela mesma queda da conexão são um problema só.
     dia = (limite + timedelta(minutes=MINUTOS_DE_TOLERANCIA)).strftime("%Y%m%d")

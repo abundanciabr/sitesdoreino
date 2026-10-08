@@ -107,7 +107,7 @@ class Execucao(models.Model):
     )
 
     robo = models.ForeignKey(
-        RoboPessoal, on_delete=models.PROTECT, related_name="execucoes"
+        RoboPessoal, on_delete=models.PROTECT, related_name="execucoes", null=True, blank=True
     )
     tipo = models.CharField(max_length=30, choices=Tipo.choices)
     origem = models.CharField(max_length=30, blank=True, default="")
@@ -276,7 +276,7 @@ class Entrega(models.Model):
     """
 
     robo = models.ForeignKey(
-        RoboPessoal, on_delete=models.PROTECT, related_name="entregas"
+        RoboPessoal, on_delete=models.PROTECT, related_name="entregas", null=True, blank=True
     )
     execucao = models.ForeignKey(
         Execucao,

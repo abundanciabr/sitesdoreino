@@ -12,7 +12,7 @@ def trabalhos_das_tarefas(ids) -> dict[int, Execucao]:
     ultimos: dict[int, Execucao] = {}
     for execucao in (
         Execucao.objects.filter(tarefa_id__in=list(ids))
-        .exclude(tipo=Execucao.Tipo.CONVERSA)
+        .exclude(tipo__in=[Execucao.Tipo.CONVERSA, Execucao.Tipo.SATISFACAO])
         .order_by("tarefa_id", "-criada_em")
     ):
         ultimos.setdefault(execucao.tarefa_id, execucao)
@@ -21,6 +21,6 @@ def trabalhos_das_tarefas(ids) -> dict[int, Execucao]:
 
 def entregas_das_tarefas(ids) -> dict[int, list[Entrega]]:
     por_tarefa: dict[int, list[Entrega]] = {}
-    for entrega in Entrega.objects.filter(tarefa_id__in=list(ids)).order_by("-criada_em"):
+    for entrega in Entrega.objects.filter(tarefa_id__in=list(ids)).exclude(tipo__in=["satisfacao", "satisfacao_padroes"]).order_by("-criada_em"):
         por_tarefa.setdefault(entrega.tarefa_id, []).append(entrega)
     return por_tarefa

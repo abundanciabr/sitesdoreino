@@ -166,7 +166,7 @@ def _executar(execucao: Execucao) -> None:
     from . import conhecimento, conversa, panorama, quiz, super_equipe
     from .models import RoboPessoal
 
-    if execucao.tipo != Execucao.Tipo.SUPER_EQUIPE and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
+    if execucao.tipo not in (Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO) and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
         terminar(execucao, S.PAUSADA, "O robô está pausado. Volta quando for reativado.")
         return
     if execucao.tipo == Execucao.Tipo.CONVERSA:
