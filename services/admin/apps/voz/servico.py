@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 
 from django.db import IntegrityError
 
@@ -217,6 +218,8 @@ def responder(*, site_id: str, telefone: str, texto: str, chave_idempotencia: st
               and decisao.get("preferencia") != "texto")
     if decisao.get("formato") != "audio" and not sempre:
         return {"formato": "texto", "motivo": decisao.get("motivo", "")}
+    if re.search(r"https?://|www\.", texto, re.IGNORECASE):
+        return {"formato": "texto", "motivo": "link_clicavel"}
     falado = texto_falado(texto, bool(decisao.get("ja_respondeu_em_voz")))
     if len(falado) > LIMITE_DE_CARACTERES_EM_VOZ:
         return {"formato": "texto", "motivo": "texto_longo_para_audio"}

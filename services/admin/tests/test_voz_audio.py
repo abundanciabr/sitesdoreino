@@ -292,6 +292,17 @@ def test_texto_longo_vai_em_texto():
     assert resultado["motivo"] == "texto_longo_para_audio"
 
 
+def test_link_de_compra_continua_clicavel_sem_gasto_de_voz():
+    with respx.mock as rede:
+        _formato(rede)
+        fala = rede.post(FALA)
+        resultado = servico.responder(site_id="site-a", telefone="5511988887777",
+                                     texto="Aqui está seu link: https://meshcraft.top/checkout/compra",
+                                     chave_idempotencia="link-compra")
+    assert resultado == {"formato": "texto", "motivo": "link_clicavel"}
+    assert not fala.called and not Consumo.objects.exists()
+
+
 def test_consumo_da_conversa_vem_da_mensageria():
     with respx.mock as rede:
         rede.post(f"{MSG}/audio/site-a/consumo").mock(return_value=httpx.Response(200, json={
