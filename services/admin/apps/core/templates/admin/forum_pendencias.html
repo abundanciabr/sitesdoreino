@@ -24,7 +24,7 @@
   </form>
   <p class="subtitulo">Em aberto: ainda sem resposta aceita. Sem resposta: ninguém além do autor respondeu. Atualizações do próprio aluno e mensagens removidas não contam como resposta.</p>
   {% if dados %}
-  <p>{{ dados.total }} questão{{ dados.total|pluralize:"s" }} nesta seleção.</p>
+  <p>{{ dados.total }} {% if dados.total == 1 %}questão{% else %}questões{% endif %} nesta seleção.</p>
   {% for item in dados.itens %}
   <article class="cartao" style="margin-bottom:12px">
     <h2 style="font-size:18px;margin:0 0 8px"><a href="/forum/t/{{ item.id }}">{{ item.titulo }}</a></h2>
