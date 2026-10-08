@@ -1,4 +1,3 @@
-{% load static %}
 <section class="quadro satisfacao-robo" aria-labelledby="robo-satisfacao"{% if analise_acompanhar %} data-satisfacao-andamento="{% url 'crm_satisfacao_andamento' %}" data-site="{{ site_id }}" data-aluno="{{ aluno_id }}" data-avaliacao="{{ painel.id }}" data-marca="{{ analise_marca }}"{% endif %}>
   <h2 id="robo-satisfacao">Robô · Análise desta avaliação</h2>
   <p class="satisfacao-intro">Uma leitura das respostas e do contexto deste aluno, com evidências e próximos passos. A análise continua no servidor quando você fecha a página.</p>
@@ -29,7 +28,7 @@
     {% if analise_padroes %}<h3>Melhorias para a escola · {{ analise_padroes.atualizada_em|date:'d/m/Y H:i' }}</h3><div>{{ analise_padroes_html|safe }}</div>{% endif %}
   </details>
 </section>
-<script src="{% static 'admin/satisfacao_robo.js' %}" defer></script>
+<script src="{% url 'crm_satisfacao_script' %}" defer></script>
 <style>
 .satisfacao-robo{margin-top:20px}.satisfacao-intro{color:var(--muted);font-size:13px;line-height:1.6}.satisfacao-pedir{margin:18px 0}.satisfacao-andamento{display:grid;gap:7px;padding:13px 15px;border:1px solid var(--linha);background:#f8fafc;border-radius:7px;margin:15px 0;font-size:12px}.satisfacao-andamento span{color:var(--muted)}.satisfacao-andamento progress{width:100%;max-width:400px;height:8px;accent-color:var(--azul)}.satisfacao-robo h3{margin:22px 0 12px;font-size:15px}.satisfacao-resumo{line-height:1.7;font-size:14px}.satisfacao-passo{border-left:3px solid var(--azul);padding:1px 15px;margin:18px 0}.satisfacao-passo p{font-size:13px;line-height:1.6;margin:7px 0}.satisfacao-conferir{color:var(--muted)}.satisfacao-detalhes{border-top:1px solid var(--linha);padding-top:15px;margin-top:22px;font-size:13px;line-height:1.6}.satisfacao-detalhes summary{cursor:pointer;color:var(--azul);font-weight:600}.satisfacao-detalhes h4{font-size:13px;margin:18px 0 6px}.satisfacao-detalhes p{overflow-wrap:anywhere}.satisfacao-geral form{margin:15px 0}
 </style>

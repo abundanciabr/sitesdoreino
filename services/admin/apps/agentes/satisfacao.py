@@ -2,6 +2,7 @@
 import hashlib
 import json
 from urllib.parse import urlencode, quote
+from pathlib import Path
 
 from django.db import transaction
 from django.db.models import Q
@@ -382,6 +383,16 @@ def andamento(request):
         return HttpResponseForbidden()
     return JsonResponse({"marca": marca_andamento((request.GET.get("site_id") or "")[:100],
         (request.GET.get("aluno_id") or "")[:200], (request.GET.get("avaliacao") or "")[:100])})
+
+
+@require_GET
+def andamento_script(request):
+    if request.admin.get("equipe_apenas"):
+        return HttpResponseForbidden()
+    arquivo = Path(__file__).resolve().parents[2] / "static" / "admin" / "satisfacao_robo.js"
+    resposta = HttpResponse(arquivo.read_bytes(), content_type="text/javascript; charset=utf-8")
+    resposta["Cache-Control"] = "no-cache"
+    return resposta
 
 
 def endereco_do_caso(execucao):

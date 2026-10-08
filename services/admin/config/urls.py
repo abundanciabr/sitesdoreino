@@ -271,7 +271,7 @@ from apps.core.nps_respondentes import crm_satisfacao_respondentes
 from apps.core.nps_painel import crm_satisfacao_painel
 from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 
-from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento as andamento_satisfacao
+from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento as andamento_satisfacao, andamento_script as script_satisfacao
 
 urlpatterns = [
     path("clientes/", clientes_fila, name="clientes_fila"),
@@ -282,6 +282,7 @@ urlpatterns = [
     path("clientes/<slug:slug>/pedidos/<uuid:pedido_id>/orientar/", orientar_pedido_cliente_fila, name="orientar_pedido_cliente_fila"),
     path("crm/satisfacao/analisar/", solicitar_satisfacao, name="crm_satisfacao_analisar"),
     path("crm/satisfacao/andamento/", andamento_satisfacao, name="crm_satisfacao_andamento"),
+    path("crm/satisfacao/andamento.js", script_satisfacao, name="crm_satisfacao_script"),
     path("crm/satisfacao/arquivo/", arquivo, name="crm_satisfacao_arquivo"),
     path("crm/satisfacao/excluir/", confirmar_exclusao, name="crm_satisfacao_confirmar_exclusao"),
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),

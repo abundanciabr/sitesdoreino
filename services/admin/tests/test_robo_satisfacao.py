@@ -233,3 +233,15 @@ def test_andamento_restrito_a_administrador():
     req = RequestFactory().get("/")
     req.admin = {"equipe_apenas":True}
     assert satisfacao.andamento(req).status_code == 403
+
+
+def test_atualizacao_automatica_e_servida_pela_propria_area_admin():
+    req = RequestFactory().get("/")
+    req.admin = {}
+    resposta = satisfacao.andamento_script(req)
+    assert resposta.status_code == 200
+    assert resposta["Content-Type"].startswith("text/javascript")
+    assert b"window.location.reload()" in resposta.content
+    assert reverse("crm_satisfacao_script") in __import__('django.template.loader',fromlist=['render_to_string']).render_to_string("admin/_satisfacao_robo.html",{})
+    req.admin = {"equipe_apenas":True}
+    assert satisfacao.andamento_script(req).status_code == 403
