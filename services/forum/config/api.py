@@ -6,6 +6,7 @@ from apps.core.editor import router as editor_router
 from apps.core.editor_topicos import router as topicos_editor_router
 from apps.core.auth import bearerAuth
 from apps.core.acompanhamento_api import router as acompanhamento_router
+from apps.core.questoes_pendentes import router as questoes_pendentes_router
 
 # `servers` aponta para a REDE INTERNA do Docker — é o endereço que outra célula
 # porá no env dela.
@@ -61,3 +62,4 @@ api.add_router("", forum_router)
 api.add_router("/editor", editor_router)
 api.add_router("/editor/topicos", topicos_editor_router)
 api.add_router("", acompanhamento_router)
+api.add_router("", questoes_pendentes_router)

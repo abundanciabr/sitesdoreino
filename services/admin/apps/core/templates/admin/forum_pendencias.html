@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Questões do fórum{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Questões do fórum</h1>
+  <p class="subtitulo">Todas as áreas, incluindo grupos privados e áreas arquivadas. As questões mais antigas aparecem primeiro.</p>
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
+  <div class="cartoes" style="margin-bottom:24px">
+    <div class="cartao"><div class="rotulo">Em aberto</div><strong>{{ dados.abertas }}</strong></div>
+    <div class="cartao"><div class="rotulo">Sem resposta</div><strong>{{ dados.sem_resposta }}</strong></div>
+    <div class="cartao"><div class="rotulo">Respondidas, ainda não resolvidas</div><strong>{{ dados.respondidas }}</strong></div>
+  </div>
+  {% endif %}
+  <form method="get" action="{% url 'forum_pendencias' %}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:18px">
+    <label>Mostrar<br><select name="filtro">
+      <option value="abertas" {% if filtro == 'abertas' %}selected{% endif %}>Todas em aberto</option>
+      <option value="sem-resposta" {% if filtro == 'sem-resposta' %}selected{% endif %}>Sem resposta</option>
+      <option value="respondidas" {% if filtro == 'respondidas' %}selected{% endif %}>Respondidas, ainda não resolvidas</option>
+    </select></label>
+    <label>Área<br><select name="area"><option value="">Todas as áreas</option>{% for a in dados.areas %}<option value="{{ a.slug }}" {% if area == a.slug %}selected{% endif %}>{{ a.nome }}{% if not a.ativa %} (arquivada){% endif %}</option>{% endfor %}</select></label>
+    <label>Buscar por pergunta ou aluno<br><input type="search" name="q" value="{{ q }}" maxlength="120" placeholder="Título ou nome do aluno"></label>
+    <button type="submit">Filtrar</button>
+    <a href="{% url 'forum_pendencias' %}">Limpar filtros</a>
+  </form>
+  <p class="subtitulo">Em aberto: ainda sem resposta aceita. Sem resposta: ninguém além do autor respondeu. Atualizações do próprio aluno e mensagens removidas não contam como resposta.</p>
+  {% if dados %}
+  <p>{{ dados.total }} questão{{ dados.total|pluralize:"s" }} nesta seleção.</p>
+  {% for item in dados.itens %}
+  <article class="cartao" style="margin-bottom:12px">
+    <h2 style="font-size:18px;margin:0 0 8px"><a href="/forum/t/{{ item.id }}">{{ item.titulo }}</a></h2>
+    <p style="margin:0;color:var(--texto-2)">{{ item.autor }} · <a href="/forum/a/{{ item.area_slug }}">{{ item.area }}</a> · {{ item.criado_em|date:"d/m/Y H:i" }} ({{ item.tempo }})</p>
+    <p style="margin:8px 0 0">{% if item.respostas == 0 %}<strong style="color:var(--amarelo)">Sem resposta</strong>{% else %}{{ item.respostas }} resposta{{ item.respostas|pluralize:"s" }} · Ainda não resolvida{% endif %}{% if item.trancada %} · Conversa trancada{% endif %}{% if item.area_arquivada %} · Área arquivada{% endif %}</p>
+    {% if item.responsavel %}<p style="margin:6px 0 0;color:var(--texto-2)">Responsável pelo grupo: {{ item.responsavel }}</p>{% endif %}
+    <p style="margin:12px 0 0"><a class="botao" href="/forum/t/{{ item.id }}{% if not item.trancada %}#texto{% endif %}">{% if item.trancada %}Abrir conversa{% else %}Abrir conversa e responder{% endif %}</a></p>
+  </article>
+  {% empty %}<p class="aviso">Nenhuma questão encontrada nesta seleção.</p>{% endfor %}
+  {% if dados.paginas > 1 %}<nav aria-label="Páginas das questões" style="display:flex;gap:16px;align-items:center;margin-top:20px">{% if anterior %}<a href="?{{ anterior }}">← Anterior</a>{% endif %}<span>Página {{ dados.pagina }} de {{ dados.paginas }}</span>{% if proxima %}<a href="?{{ proxima }}">Próxima →</a>{% endif %}</nav>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

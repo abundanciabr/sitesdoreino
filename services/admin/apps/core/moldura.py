@@ -84,6 +84,7 @@ SECOES = (
     # de treze é um item que ninguém vê. O nome é o da própria tela, e não
     # "Fila" ou "Caixa de entrada", que já significam outra coisa nesta casa.
     ("pendencias", "Pendências"),
+    ("forum_pendencias", "Questões do fórum"),
     ("painel_da_equipe", "Equipe"),
     ("super_equipe", "Super equipe"),
     ("comunidade_admin", "Comunidade"),

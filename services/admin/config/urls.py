@@ -125,6 +125,7 @@ from apps.core.topicos_do_forum import (
     forum_topico_abrir_edicao, forum_topico_editar, forum_topico_salvar,
     forum_topico_publicar,
 )
+from apps.core.forum_pendencias import forum_pendencias
 from apps.core.paginas import (
     pagina_de_venda,
     pagina_de_venda_publicar,
@@ -308,6 +309,7 @@ urlpatterns = [
     path("crm/conversas/", crm_conversas, name="crm_conversas"),
     path("crm/conversas/<uuid:conversa_id>/", crm_conversa, name="crm_conversa"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),
+    path("forum/pendencias/", forum_pendencias, name="forum_pendencias"),
     path("conteudos/forum/topicos/", forum_topicos, name="forum_topicos"),
     path("conteudos/forum/topicos/novo", forum_topico_novo, name="forum_topico_novo"),
     path("conteudos/forum/topicos/criar", forum_topico_criar, name="forum_topico_criar"),
