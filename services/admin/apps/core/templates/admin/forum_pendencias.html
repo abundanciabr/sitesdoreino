@@ -1,17 +1,34 @@
 {% extends "admin/base.html" %}
 {% block titulo %}Questões do fórum{% endblock %}
 {% block corpo %}
+<style>
+  .questoes-resumo { margin-bottom:24px; }
+  .questoes-filtros { display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:18px; }
+  .questoes-filtros label { display:block;flex:1 1 210px;min-width:0; }
+  .questoes-filtros input, .questoes-filtros select { display:block;width:100%;margin-top:6px;padding:9px 10px;background:var(--painel);color:var(--texto);border:1px solid var(--linha);border-radius:8px;font:inherit; }
+  .questoes-filtros input:focus, .questoes-filtros select:focus { outline:2px solid var(--azul);outline-offset:1px; }
+  .questoes-filtros button { padding:9px 16px;background:var(--azul);color:white;border:0;border-radius:8px;font:inherit;font-weight:600;cursor:pointer; }
+  .questoes-filtros > a { padding:9px 0; }
+  .questao { margin-bottom:12px; }
+  .questao h2 { font-size:18px;margin:0 0 8px;overflow-wrap:anywhere; }
+  .questao-dados { margin:0;color:var(--texto-2); }
+  .questao-situacao { margin:8px 0 0; }
+  .questao-sem-resposta { color:var(--amarelo); }
+  .questao-responsavel { margin:6px 0 0;color:var(--texto-2); }
+  .questao-abrir { margin:12px 0 0; }
+  .questoes-paginas { display:flex;gap:16px;align-items:center;margin-top:20px; }
+</style>
 <div class="envolucro">
   <h1>Questões do fórum</h1>
   <p class="subtitulo">Todas as áreas, incluindo grupos privados e áreas arquivadas. As questões mais antigas aparecem primeiro.</p>
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% else %}
-  <div class="cartoes" style="margin-bottom:24px">
+  <div class="cartoes questoes-resumo">
     <div class="cartao"><div class="rotulo">Em aberto</div><strong>{{ dados.abertas }}</strong></div>
     <div class="cartao"><div class="rotulo">Sem resposta</div><strong>{{ dados.sem_resposta }}</strong></div>
     <div class="cartao"><div class="rotulo">Respondidas, ainda não resolvidas</div><strong>{{ dados.respondidas }}</strong></div>
   </div>
   {% endif %}
-  <form method="get" action="{% url 'forum_pendencias' %}" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin-bottom:18px">
+  <form class="questoes-filtros" method="get" action="{% url 'forum_pendencias' %}">
     <label>Mostrar<br><select name="filtro">
       <option value="abertas" {% if filtro == 'abertas' %}selected{% endif %}>Todas em aberto</option>
       <option value="sem-resposta" {% if filtro == 'sem-resposta' %}selected{% endif %}>Sem resposta</option>
@@ -26,15 +43,15 @@
   {% if dados %}
   <p>{{ dados.total }} {% if dados.total == 1 %}questão{% else %}questões{% endif %} nesta seleção.</p>
   {% for item in dados.itens %}
-  <article class="cartao" style="margin-bottom:12px">
-    <h2 style="font-size:18px;margin:0 0 8px"><a href="/forum/t/{{ item.id }}">{{ item.titulo }}</a></h2>
-    <p style="margin:0;color:var(--texto-2)">{{ item.autor }} · <a href="/forum/a/{{ item.area_slug }}">{{ item.area }}</a> · {{ item.criado_em|date:"d/m/Y H:i" }} ({{ item.tempo }})</p>
-    <p style="margin:8px 0 0">{% if item.respostas == 0 %}<strong style="color:var(--amarelo)">Sem resposta</strong>{% else %}{{ item.respostas }} resposta{{ item.respostas|pluralize:"s" }} · Ainda não resolvida{% endif %}{% if item.trancada %} · Conversa trancada{% endif %}{% if item.area_arquivada %} · Área arquivada{% endif %}</p>
-    {% if item.responsavel %}<p style="margin:6px 0 0;color:var(--texto-2)">Responsável pelo grupo: {{ item.responsavel }}</p>{% endif %}
-    <p style="margin:12px 0 0"><a class="botao" href="/forum/t/{{ item.id }}{% if not item.trancada %}#texto{% endif %}">{% if item.trancada %}Abrir conversa{% else %}Abrir conversa e responder{% endif %}</a></p>
+  <article class="cartao questao">
+    <h2><a href="/forum/t/{{ item.id }}">{{ item.titulo }}</a></h2>
+    <p class="questao-dados">{{ item.autor }} · <a href="/forum/a/{{ item.area_slug }}">{{ item.area }}</a> · {{ item.criado_em|date:"d/m/Y H:i" }} ({{ item.tempo }})</p>
+    <p class="questao-situacao">{% if item.respostas == 0 %}<strong class="questao-sem-resposta">Sem resposta</strong>{% else %}{{ item.respostas }} resposta{{ item.respostas|pluralize:"s" }} · Ainda não resolvida{% endif %}{% if item.trancada %} · Conversa trancada{% endif %}{% if item.area_arquivada %} · Área arquivada{% endif %}</p>
+    {% if item.responsavel %}<p class="questao-responsavel">Responsável pelo grupo: {{ item.responsavel }}</p>{% endif %}
+    <p class="questao-abrir"><a class="botao" href="/forum/t/{{ item.id }}{% if not item.trancada %}#texto{% endif %}">{% if item.trancada %}Abrir conversa{% else %}Abrir conversa e responder{% endif %}</a></p>
   </article>
   {% empty %}<p class="aviso">Nenhuma questão encontrada nesta seleção.</p>{% endfor %}
-  {% if dados.paginas > 1 %}<nav aria-label="Páginas das questões" style="display:flex;gap:16px;align-items:center;margin-top:20px">{% if anterior %}<a href="?{{ anterior }}">← Anterior</a>{% endif %}<span>Página {{ dados.pagina }} de {{ dados.paginas }}</span>{% if proxima %}<a href="?{{ proxima }}">Próxima →</a>{% endif %}</nav>{% endif %}
+  {% if dados.paginas > 1 %}<nav class="questoes-paginas" aria-label="Páginas das questões">{% if anterior %}<a href="?{{ anterior }}">← Anterior</a>{% endif %}<span>Página {{ dados.pagina }} de {{ dados.paginas }}</span>{% if proxima %}<a href="?{{ proxima }}">Próxima →</a>{% endif %}</nav>{% endif %}
   {% endif %}
 </div>
 {% endblock %}
