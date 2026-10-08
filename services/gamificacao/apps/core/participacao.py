@@ -29,7 +29,7 @@ def consultar(ids):
 
 
 def publica(estado):
-    return bool(estado and estado.get("segmento") != "detrator" and not estado.get("conquistas_privadas_ate"))
+    return bool(estado and estado.get("segmento") != "detrator")
 
 
 def minha(pessoa_id):

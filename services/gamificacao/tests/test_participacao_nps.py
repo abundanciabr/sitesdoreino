@@ -5,7 +5,8 @@ from apps.gamificacao.models import Pessoa, PerfilJogador, NivelDefinicao
 
 
 @pytest.mark.django_db
-def test_perfil_publico_some_imediatamente_e_nao_reaparece_na_recuperacao(monkeypatch):
+@pytest.mark.parametrize("recuperacao", ["neutro", "promotor"])
+def test_perfil_publico_some_imediatamente_e_reaparece_na_recuperacao(monkeypatch, recuperacao):
     monkeypatch.setenv("SITE_ID", "escola")
     pessoa = Pessoa.objects.create(id_da_plataforma="aluno", email="aluno@example.test")
     PerfilJogador.objects.create(pessoa=pessoa, site_id="escola", nivel=1)
@@ -15,8 +16,8 @@ def test_perfil_publico_some_imediatamente_e_nao_reaparece_na_recuperacao(monkey
     assert "aluno" in api.get_public_profiles(None, "aluno")
     estado.update(segmento="detrator", conquistas_privadas_ate="2026-10-08T00:00:00Z")
     assert api.get_public_profiles(None, "aluno") == {}
-    estado["segmento"] = "promotor"
-    assert api.get_public_profiles(None, "aluno") == {}
+    estado["segmento"] = recuperacao
+    assert "aluno" in api.get_public_profiles(None, "aluno")
     assert PerfilJogador.objects.get(pessoa=pessoa).nivel == 1
 
 

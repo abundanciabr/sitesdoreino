@@ -65,7 +65,7 @@ def mensagens_visiveis(consulta, ator):
 
 
 def selo_visivel(estado, proprio=False):
-    return bool(estado.get("embaixador") and (proprio or (estado.get("segmento") != "detrator" and not estado.get("conquistas_privadas_ate"))))
+    return bool(estado.get("embaixador") and (proprio or estado.get("segmento") != "detrator"))
 
 
 def decorar(lista, ator):
@@ -78,6 +78,6 @@ def decorar(lista, ator):
         proprio = ator.pessoa is not None and item.autor_id == ator.pessoa.pk
         item.embaixador = selo_visivel(estado, proprio)
         item.prioridade_promotor = estado.get("segmento") == "promotor"
-        if not proprio and (estado.get("segmento") == "detrator" or estado.get("conquistas_privadas_ate")):
+        if not proprio and estado.get("segmento") == "detrator":
             item.etiqueta = None
     return lista

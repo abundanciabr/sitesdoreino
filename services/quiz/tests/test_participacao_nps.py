@@ -42,7 +42,8 @@ def concluir(client, nota):
 
 
 @pytest.mark.django_db
-def test_conclusao_aplica_rebaixamento_e_recuperacao_sem_apagar_conquistas(client, escola):
+@pytest.mark.parametrize("nota_recuperacao", [7, 8, 9, 10])
+def test_conclusao_aplica_rebaixamento_e_recuperacao_sem_apagar_conquistas(client, escola, nota_recuperacao):
     positiva = concluir(client, 10)
     estado = NPSParticipacao.objects.get(aluno_id="aluno")
     assert estado.segmento == "promotor" and estado.embaixador_desde
@@ -52,12 +53,20 @@ def test_conclusao_aplica_rebaixamento_e_recuperacao_sem_apagar_conquistas(clien
     estado.refresh_from_db()
     corte = estado.conquistas_privadas_ate
     assert estado.segmento == "detrator" and corte and estado.embaixador_desde
-    concluir(client, 8)
+    selo_original = estado.embaixador_desde
+    concluir(client, nota_recuperacao)
     estado.refresh_from_db()
-    assert estado.segmento == "neutro" and estado.conquistas_privadas_ate == corte
-    concluir(client, 9)
+    assert estado.segmento == ("promotor" if nota_recuperacao >= 9 else "neutro")
+    assert estado.conquistas_privadas_ate is None
+    assert estado.embaixador_desde == selo_original
+    concluir(client, 0)
     estado.refresh_from_db()
-    assert estado.segmento == "promotor" and estado.conquistas_privadas_ate == corte
+    assert estado.segmento == "detrator" and estado.conquistas_privadas_ate
+    assert estado.embaixador_desde == selo_original
+    concluir(client, 10)
+    estado.refresh_from_db()
+    assert estado.segmento == "promotor" and estado.conquistas_privadas_ate is None
+    assert estado.embaixador_desde == selo_original
     assert NPSTentativa.objects.get(pk=positiva["id"]).resultado["nps"] == 10
 
 
@@ -113,3 +122,19 @@ def test_falha_na_participacao_desfaz_conclusao(client, escola, monkeypatch):
         concluir(client, 10)
     assert not NPSTentativa.objects.filter(status="concluida").exists()
     assert not NPSParticipacao.objects.exists()
+
+
+@pytest.mark.django_db
+def test_correcao_restabelece_recuperados_sem_modificar_detratores():
+    import importlib
+    from types import SimpleNamespace
+    from django.apps import apps
+    migracao = importlib.import_module("apps.quiz.migrations.0019_restaurar_conquistas_na_recuperacao")
+    data = timezone.now()
+    for segmento in ("neutro", "promotor", "detrator"):
+        NPSParticipacao.objects.create(site_id="escola", aluno_id=segmento, segmento=segmento,
+                                      conquistas_privadas_ate=data, embaixador_desde=data)
+    migracao.restaurar(apps, SimpleNamespace(connection=SimpleNamespace(alias="default")))
+    for estado in NPSParticipacao.objects.all():
+        assert estado.embaixador_desde == data
+        assert estado.conquistas_privadas_ate == (data if estado.segmento == "detrator" else None)

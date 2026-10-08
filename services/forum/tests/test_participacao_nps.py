@@ -61,12 +61,18 @@ def test_publicar_pela_moderacao_nao_retira_a_restricao_da_avaliacao(cenario):
 
 
 @pytest.mark.django_db
-def test_selo_historico_fica_apenas_com_o_autor_mesmo_apos_recuperacao(cenario):
+@pytest.mark.parametrize("recuperacao", ["neutro", "promotor"])
+def test_selo_historico_volta_a_ser_publico_apos_recuperacao(cenario, recuperacao):
     pessoas, area, topico, mensagem, estados = cenario
-    estados["autor"]["segmento"] = "promotor"
-    assert participacao.decorar([mensagem], Ator(pessoa=pessoas[0], eh_aluno=True))[0].embaixador
-    assert not participacao.decorar([mensagem], Ator(pessoa=pessoas[1], eh_aluno=True))[0].embaixador
-    assert not participacao.decorar([mensagem], Ator(pessoa=pessoas[2], eh_admin=True))[0].embaixador
+    dono = Ator(pessoa=pessoas[0], eh_aluno=True)
+    colega = Ator(pessoa=pessoas[1], eh_aluno=True)
+    assert participacao.decorar([mensagem], dono)[0].embaixador
+    assert not participacao.decorar([mensagem], colega)[0].embaixador
+    estados["autor"]["segmento"] = recuperacao
+    # Mesmo com um marcador histórico antigo, apenas a avaliação atual manda.
+    assert participacao.decorar([mensagem], dono)[0].embaixador
+    assert participacao.decorar([mensagem], colega)[0].embaixador
+    assert participacao.decorar([mensagem], Ator(pessoa=pessoas[2], eh_admin=True))[0].embaixador
 
 
 @pytest.mark.django_db

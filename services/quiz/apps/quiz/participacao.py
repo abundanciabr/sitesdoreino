@@ -39,6 +39,7 @@ def aplicar(avaliacao):
             estado.conquistas_privadas_ate = estado.conquistas_privadas_ate or avaliacao.concluida_em
         if segmento != "detrator":
             estado.teve_positiva = True
+            estado.conquistas_privadas_ate = None
         if segmento == "promotor":
             estado.embaixador_desde = estado.embaixador_desde or avaliacao.concluida_em
         estado.segmento = segmento
