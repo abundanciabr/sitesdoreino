@@ -39,6 +39,9 @@ class NPSClient:
             return self.INDISPONIVEL, None
         return self.OK, dados
 
+    def respondentes(self, site_id, *, q="", pagina="1"):
+        return self.pedir("GET", "respondentes", params={"site_id": site_id, "q": q, "pagina": pagina})
+
     def configuracao(self, site_id):
         return self.pedir("GET", "config", params={"site_id": site_id})
 

@@ -261,7 +261,10 @@ from apps.agentes.alunos import gerar as gerar_exemplo_do_aluno
 from apps.comercial.views import agentes_comerciais
 from apps.assistente.views import assistente_do_site
 
+from apps.core.nps_respondentes import crm_satisfacao_respondentes
+
 urlpatterns = [
+    path("crm/satisfacao/respondentes/", crm_satisfacao_respondentes, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
     path("previa-aula-1", never_cache(require_GET(galeria_aula1.pagina)), name="galeria_aula1"),

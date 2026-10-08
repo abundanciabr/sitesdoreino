@@ -15,7 +15,10 @@ from apps.quiz import crm as quiz_crm
 from apps.quiz import nps
 from apps.quiz.previa import previa as previa_editor
 
+from apps.quiz.nps_respondentes import respondentes
+
 urlpatterns = [
+    path("interno/nps/respondentes", respondentes),
     path("interno/nps/config", nps.config),
     path("interno/nps/tentativas", nps.tentativas),
     path("interno/nps/tentativas/<uuid:tentativa_id>", nps.tentativa),

@@ -1,0 +1,48 @@
+{% extends "admin/base.html" %}
+{% load crm_menu %}
+{% block titulo %}Quem respondeu à pesquisa | CRM{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
+  <h1>Quem respondeu à pesquisa</h1>
+  <p class="subtitulo">Alunos que concluíram a pesquisa de satisfação, com as respostas mais recentes primeiro.</p>
+  {% menu_do_crm %}
+  <p><a href="{% url 'crm_satisfacao' %}?site_id={{ site_id|urlencode }}">Consultar histórico e configurar a pesquisa</a></p>
+  <form class="peneira espaco-20" method="get">
+    <input type="hidden" name="site_id" value="{{ site_id }}">
+    <label class="campo" for="pesquisa-busca">Nome, e-mail ou curso<input id="pesquisa-busca" type="search" name="q" value="{{ q }}" maxlength="120" placeholder="Buscar quem respondeu"></label>
+    <button type="submit">Buscar</button>
+    {% if q %}<a href="{% url 'crm_satisfacao_respondentes' %}?site_id={{ site_id|urlencode }}">Limpar busca</a>{% endif %}
+  </form>
+  {% if estado != 'ok' %}
+    <p class="aviso borda-amarela" role="alert">Não foi possível consultar as respostas agora. Tente novamente em instantes.</p>
+  {% else %}
+    <p class="subtitulo">{{ dados.alunos }} aluno{{ dados.alunos|pluralize }} · {{ dados.total }} pesquisa{{ dados.total|pluralize }} concluída{{ dados.total|pluralize }}{% if q %} nesta busca{% endif %}.</p>
+    {% if dados.itens %}
+      <p class="nota">Cada cartão corresponde a uma pesquisa concluída. Um aluno pode ter respondido mais de uma vez ou em mais de um curso.</p>
+      <div class="cartoes espaco-20">
+      {% for item in dados.itens %}
+        <article class="cartao">
+          <h2>{{ item.nome }}</h2>
+          <p class="nota">{{ item.email|default:"E-mail não registrado" }}</p>
+          <p><b>Curso:</b> {{ item.curso }}</p>
+          <p><b>Respondida em:</b> {{ item.data|date:"d/m/Y H:i"|default:"Data não registrada" }}</p>
+          <p><b>Nota de recomendação:</b> {% if item.nota != None %}{{ item.nota }}/10{% else %}Não informada{% endif %}</p>
+          <p><b>Retrato atual:</b> {{ item.retrato }}</p>
+          <a href="{{ item.respostas_url }}">Ver respostas de {{ item.nome }}</a>
+        </article>
+      {% endfor %}
+      </div>
+      <nav class="peneira espaco-20" aria-label="Páginas de respostas">
+        {% if anterior_url %}<a href="{{ anterior_url }}">&larr; Anterior</a>{% endif %}
+        <span>Página {{ dados.pagina }} de {{ dados.paginas }}</span>
+        {% if proxima_url %}<a href="{{ proxima_url }}">Próxima &rarr;</a>{% endif %}
+      </nav>
+    {% elif q %}
+      <p class="aviso">Nenhuma resposta concluída corresponde à busca.</p>
+    {% else %}
+      <p class="aviso">Nenhum aluno concluiu a pesquisa de satisfação neste site ainda.</p>
+    {% endif %}
+  {% endif %}
+</main>
+{% endblock %}

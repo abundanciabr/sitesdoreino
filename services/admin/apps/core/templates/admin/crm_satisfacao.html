@@ -7,6 +7,7 @@
   <h1>Satisfação dos alunos</h1>
   <p class="subtitulo">Avaliações por aluno e curso, reclamações e acompanhamento da equipe.</p>
   {% menu_do_crm %}
+  <p><a href="{% url 'crm_satisfacao_respondentes' %}?site_id={{ site_id|urlencode }}">Ver todos os alunos que responderam à pesquisa</a></p>
   {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
   {% if salvo %}<p class="recado" role="status">Nova versão da configuração salva.</p>{% endif %}
   {% if atendido %}<p class="recado" role="status">Atendimento registrado.</p>{% endif %}
