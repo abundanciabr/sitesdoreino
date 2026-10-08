@@ -205,6 +205,8 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
         p.atraso_em = timezone.now()
     p.status = ParticipacaoSandbox.Status.ENTREGUE
     p.save(update_fields=["status", "atraso_em"])
+    from .analises_sandbox import preparar
+    preparar(entrega)
     return entrega
 
 
@@ -220,6 +222,8 @@ def pedir_ajuste(*, site_id, participacao_id, autor_id, texto):
     ajuste = AjusteSandbox.objects.create(participacao=p, entrega=entrega, texto=texto.strip(), autor_id=autor_id)
     p.status = ParticipacaoSandbox.Status.EM_AJUSTE
     p.save(update_fields=["status"])
+    from apps.core.ia_sandbox import enfileirar
+    enfileirar(p, 'ajuste:' + str(ajuste.pk), 'cliente')
     return ajuste
 
 

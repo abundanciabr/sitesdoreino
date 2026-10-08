@@ -89,3 +89,13 @@ def tique_periodico() -> dict[str, tique.Tique]:
     fila.
     """
     return bater_o_tique()
+
+
+@huey.periodic_task(crontab(minute="*"))
+def pratica_periodica():
+    from .analises_sandbox import rodada
+    from apps.core.ia_sandbox import rodada_respostas, enfileirar
+    rodada()
+    for p in ParticipacaoSandbox.objects.filter(atraso_em__isnull=False, status__in=['em_producao', 'em_ajuste']):
+        enfileirar(p, 'atraso:' + p.prazo_ate.isoformat(), 'cliente')
+    rodada_respostas()

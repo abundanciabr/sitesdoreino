@@ -46,13 +46,14 @@ def projeto(db):
 def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, projeto, settings, tmp_path, monkeypatch):
     settings.MARKETPLACE_UPLOAD_ROOT = tmp_path
     from apps.core import ia_sandbox
-    monkeypatch.setattr(ia_sandbox, "responder", lambda p: sandbox.mensagem(
-        site_id=p.site_id, participacao_id=p.pk, ator_id="ia-sandbox", papel="ia", texto="IA: confira os critérios."))
+    monkeypatch.setattr(ia_sandbox, "_consultar_modelo", lambda *args: "IA: confira os critérios.")
     assert client.get(reverse("sandbox_catalogo")).status_code == 200
-    assert client.post(reverse("sandbox_aceitar", args=[projeto.pk]), {"aceito_termos": "sim"}).status_code == 302
+    assert client.post(reverse("sandbox_aceitar", args=[projeto.pk]), {"aceito_termos": "sim", "prazo_horas": "48"}).status_code == 302
     p = ParticipacaoSandbox.objects.get(pessoa_id=contexto["id"])
     assert client.get(reverse("sandbox_trabalho", args=[p.pk])).status_code == 200
     assert client.post(reverse("sandbox_mensagem", args=[p.pk]), {"texto": "Como preparo a entrega?"}).status_code == 302
+    assert p.mensagens.filter(papel="ia").count() == 0
+    ia_sandbox.rodada_respostas()
     assert p.mensagens.filter(papel="ia").count() == 1
     for versao in (1, 2):
         recebido = SimpleUploadedFile(f"fonte-v{versao}.blend", b"BLENDER sandbox privado")
@@ -89,7 +90,7 @@ def test_visitante_outro_site_csrf_e_preservacao(client, contexto, projeto, monk
     contexto["site"] = "escola-a"
     monkeypatch.setattr(telas_sandbox, "_aluno_atual", lambda request, pessoa, site: False)
     assert client.get(reverse("sandbox_trabalho", args=[p.pk])).status_code == 200
-    assert client.post(reverse("sandbox_aceitar", args=[projeto.pk]), {"aceito_termos": "sim"}).status_code == 404
+    assert client.post(reverse("sandbox_aceitar", args=[projeto.pk]), {"aceito_termos": "sim", "prazo_horas": "48"}).status_code == 404
     contexto["id"] = None
     assert client.get(reverse("sandbox_catalogo")).status_code == 302
     assert client.get(reverse("sandbox_trabalho", args=[p.pk])).status_code == 302

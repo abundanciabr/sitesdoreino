@@ -67,6 +67,7 @@ class MensagemSandbox(models.Model):
         ALUNO = "aluno", "Aluno"
         EQUIPE = "equipe", "Equipe"
         IA = "ia", "IA"
+        CLIENTE = "cliente", "Cliente simulado (IA)"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="mensagens")
@@ -132,3 +133,44 @@ class MovimentoMeshcoin(models.Model):
     class Meta:
         db_table = "encomendas_movimentomeshcoin"
         constraints = [models.CheckConstraint(condition=Q(valor__gte=0), name="sb_movimento_nao_negativo")]
+
+
+class AnaliseArquivoSandbox(models.Model):
+    arquivo = models.OneToOneField(ArquivoSandbox, on_delete=models.PROTECT, related_name="analise")
+    sha256 = models.CharField(max_length=64)
+    chave_cache = models.CharField(max_length=64)
+    estado = models.CharField(max_length=20, default="na_fila")
+    resultado = models.JSONField(default=dict)
+    falha = models.TextField(blank=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "encomendas_analisearquivosandbox"
+
+
+class AnaliseEntregaSandbox(models.Model):
+    entrega = models.OneToOneField(EntregaSandbox, on_delete=models.PROTECT, related_name="analise")
+    estado = models.CharField(max_length=20, default="na_fila")
+    resultado = models.JSONField(default=dict)
+    falha = models.TextField(blank=True)
+    tentativas = models.PositiveIntegerField(default=0)
+    tentar_em = models.DateTimeField(null=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "encomendas_analiseentregasandbox"
+
+
+class RespostaSandbox(models.Model):
+    participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT)
+    origem = models.CharField(max_length=100)
+    papel = models.CharField(max_length=8)
+    estado = models.CharField(max_length=20, default="na_fila")
+    mensagem = models.OneToOneField(MensagemSandbox, on_delete=models.PROTECT, null=True)
+    tentativas = models.PositiveIntegerField(default=0)
+    tentar_em = models.DateTimeField(null=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "encomendas_respostasandbox"
+        constraints = [models.UniqueConstraint(fields=["participacao", "origem", "papel"], name="sb_resposta_origem_unica")]

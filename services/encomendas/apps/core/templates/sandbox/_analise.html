@@ -1,0 +1,17 @@
+{% load sandbox_texto %}<div data-analise="{{ entrega.pk }}" aria-live="polite">
+<h3>Análise da versão {{ entrega.versao }}</h3>
+{% with analise=entrega.analise %}
+<span class="analysis-state tiny" role="status">{% if analise.estado == 'concluida' %}Comparação concluída{% elif analise.estado == 'comparando' %}Comparando com o briefing aceito{% elif analise.estado == 'examinando' %}Examinando anexos em segundo plano{% elif analise.estado == 'falha_ia' %}Comparação por IA indisponível{% elif analise.estado == 'falha' %}Falha no processamento{% else %}Na fila de análise{% endif %} · esta versão</span>
+{% if analise.falha %}<p class="notice warn">{{ analise.falha }}</p>{% endif %}
+{% for arquivo in entrega.arquivos.all %}<details><summary>{{ arquivo.nome }} · {% if arquivo.analise.estado == 'concluida' %}conteúdo processado{% elif arquivo.analise.estado == 'falha' %}não foi aberto{% else %}análise em andamento{% endif %}</summary>
+{% if arquivo.analise.falha %}<p>{{ arquivo.analise.falha }}</p>{% endif %}
+{% for membro in arquivo.analise.resultado.arquivos %}<p><strong>{{ membro.arquivo }}</strong> · {% if membro.estado == 'concluida' %}examinado{% else %}não examinado{% endif %}</p>{% if membro.falha %}<p class="notice warn">{{ membro.falha }}</p>{% endif %}
+{% if membro.medidas %}<details><summary>Medidas obtidas por programas</summary><div class="analysis-details">{{ membro.medidas }}</div></details>{% endif %}
+{% if membro.aviso %}<p class="notice warn">{{ membro.aviso }}</p>{% endif %}
+{% if membro.texto %}<details><summary>Texto examinado{% if membro.texto_truncado %} · parcial{% endif %}</summary><pre class="analysis-details">{{ membro.texto }}</pre></details>{% endif %}
+{% for imagem in membro.imagens %}<figure><img class="analysis-image" loading="lazy" src="{% url 'sandbox_previa_analise' arquivo.pk imagem.arquivo %}" alt="{{ membro.arquivo }} — {{ imagem.vista }}"><figcaption>{{ imagem.vista }} · {{ membro.arquivo }}</figcaption></figure>{% endfor %}{% endfor %}</details>{% endfor %}
+{% if analise.estado == 'concluida' %}
+{% for requisito in analise.resultado.requisitos %}<div class="analysis-requirement"><strong>{{ requisito.requisito }}</strong><p class="tiny">Origem: {{ requisito.origem }} · aceite desta participação</p><p><strong>Encontrado:</strong> {{ requisito.encontrado|default:'Nenhuma confirmação.' }}</p><p><strong>Não encontrado:</strong> {{ requisito.nao_encontrado|default:'Nenhuma ausência confirmada.' }}</p><p><strong>Inconclusivo:</strong> {{ requisito.inconclusivo|default:'Nenhum ponto adicional informado.' }}</p><p><strong>Evidências:</strong></p>{% for evidencia in requisito.evidencias %}<p>{{ evidencia }}</p>{% empty %}<p>Sem evidência específica.</p>{% endfor %}</div>{% endfor %}
+<details><summary>Interpretação visual da IA</summary><div class="formatted">{{ analise.resultado.interpretacao_visual_ia|conversa }}</div><p class="tiny">Esta interpretação é separada das medidas dos programas. A aprovação permanece com a escola.</p>{% if analise.resultado.imagens_nao_enviadas_ia %}<p>{{ analise.resultado.imagens_nao_enviadas_ia }} imagens não foram enviadas à interpretação visual nesta tentativa.</p>{% endif %}</details>
+{% endif %}{% if analise.estado == 'falha' or analise.estado == 'falha_ia' or analise.resultado.tem_falhas %}<form method="post" action="{% url 'sandbox_repetir_analise' trabalho.pk entrega.pk %}">{% csrf_token %}<button class="secondary">Tentar análise desta versão novamente</button></form>{% endif %}
+{% endwith %}</div>

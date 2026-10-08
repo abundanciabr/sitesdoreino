@@ -248,6 +248,7 @@ def trabalho(request, participacao_id):
         "arquivos": ArquivoSandbox.objects.filter(participacao=participacao).select_related("entrega").order_by("-criado_em"),
         "entregas": EntregaSandbox.objects.filter(participacao=participacao).order_by("-versao"),
         "ajustes": AjusteSandbox.objects.filter(participacao=participacao).order_by("-criado_em"),
+        "respostas_pendentes": participacao.respostasandbox_set.exclude(estado='concluida'),
         "recado": request.GET.get("recado", ""),
     })
 
@@ -259,16 +260,17 @@ def mensagem(request, participacao_id):
         return _login(request)
     texto = request.POST.get("texto", "").strip()
     try:
-        sandbox.mensagem(site_id=trabalho.site_id, participacao_id=trabalho.pk,
+        fala = sandbox.mensagem(site_id=trabalho.site_id, participacao_id=trabalho.pk,
                          ator_id=pessoa, papel=papel, texto=texto)
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro), papel=papel)
     if papel == "aluno":
-        try:
-            from apps.core.ia_sandbox import responder
-            responder(trabalho)
-        except Exception:
-            logger.exception("IA do sandbox indisponível no trabalho %s", trabalho.pk)
+        from apps.core.ia_sandbox import enfileirar
+        destino = request.POST.get('destino', 'ia')
+        if destino not in ('ia', 'cliente', 'ambos'):
+            destino = 'ia'
+        for interlocutor in (('ia', 'cliente') if destino == 'ambos' else (destino,)):
+            enfileirar(trabalho, 'mensagem:' + str(fala.pk), interlocutor)
     return _voltar("sandbox_trabalho", trabalho.pk)
 
 
@@ -429,3 +431,41 @@ def salvar_projeto(request, projeto_id=None):
     except (ValueError, InvalidOperation, ValidationError) as erro:
         return _falha(request, str(erro), papel="equipe")
     return _voltar("sandbox_escola", recado="Projeto salvo.")
+
+
+@require_POST
+def repetir_analise(request, participacao_id, entrega_id):
+    trabalho, _, papel = _trabalho(request, participacao_id)
+    if trabalho is None:
+        return _login(request)
+    entrega = EntregaSandbox.objects.filter(pk=entrega_id, participacao=trabalho).first()
+    if not entrega:
+        raise Http404
+    from apps.encomendas.analises_sandbox import repetir
+    repetir(entrega)
+    return _voltar('sandbox_trabalho', trabalho.pk, recado='Nova tentativa solicitada para esta versão.')
+
+
+@require_GET
+def previa_analise(request, arquivo_id, nome):
+    arquivo = ArquivoSandbox.objects.filter(pk=arquivo_id).select_related('participacao').first()
+    if not arquivo:
+        raise Http404
+    trabalho, _, _ = _trabalho(request, arquivo.participacao_id)
+    if trabalho is None:
+        return _login(request)
+    import re
+    if not re.fullmatch('[a-f0-9]{24}(?:-(?:frontal|lateral|perspectiva))?\\.png', nome):
+        raise Http404
+    from apps.encomendas.analises_sandbox import pasta
+    from apps.encomendas.sandbox_models import AnaliseArquivoSandbox
+    analise = AnaliseArquivoSandbox.objects.filter(arquivo=arquivo, estado='concluida').first()
+    if not analise:
+        raise Http404
+    caminho = pasta() / analise.chave_cache / 'previas' / nome
+    if not caminho.is_file():
+        raise Http404
+    response = FileResponse(caminho.open('rb'), content_type='image/png')
+    response['Cache-Control'] = 'private, no-store'
+    response['X-Content-Type-Options'] = 'nosniff'
+    return response
