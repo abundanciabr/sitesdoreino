@@ -11,6 +11,7 @@ from django.db.models import Q, Count, Avg
 from django.http import JsonResponse, Http404, HttpResponseRedirect, FileResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import render, get_object_or_404
+from django.template.loader import render_to_string
 from django.views.decorators.http import require_http_methods
 from apps.core.clients import CatalogoClient, IdentidadeClient, IdentidadeIndisponivel
 from apps.core.whatsapp import _pedir as pedir_whatsapp
@@ -221,7 +222,11 @@ def conversa_admin(request,conversa_id):
     if request.method=='POST':
         acao=request.POST.get('acao','')
         if acao=='sugerir':
-            sug=service.sugerir(conversa)
+            if conversa.assunto.modo == 'assistido':
+                from .contexto import preparar
+                sug=preparar(conversa)
+            else:
+                sug=service.sugerir(conversa)
             Conversa.objects.filter(pk=conversa.pk).update(sugestao=sug)
         elif acao=='guardar_base':
             return HttpResponseRedirect(prefixo(request)+'/base/?conversa='+str(conversa.pk)+'&mensagem='+request.POST.get('mensagem',''))
@@ -263,7 +268,19 @@ def conversa_admin(request,conversa_id):
         return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/')
     conversa.refresh_from_db()
     if conversa.sugestao and not service.fontes_atuais(conversa.sugestao.get('fontes',[])):
-        conversa.sugestao={'estado':'A base foi corrigida. Prepare uma nova sugestão para usar a versão atual.'}
+        conversa.sugestao={'contexto':conversa.sugestao.get('contexto'),
+            'demanda':conversa.sugestao.get('demanda'), 'roteiro':conversa.sugestao.get('roteiro'),
+            'estado':'A base foi corrigida. Atualize o contexto para usar a versão atual.'}
+    if request.GET.get('formato') == 'json':
+        try:
+            depois=int(request.GET.get('depois','0'))
+            if not 0 <= depois <= 2**63-1: raise ValueError
+        except ValueError:
+            return resposta({'erro':'Confira a última mensagem informada.'},422)
+        ctx['conversa']=conversa
+        return resposta({'conversa':serializar(conversa,depois),
+            'contexto_em':conversa.sugestao.get('contexto',{}).get('atualizado_em','') if conversa.sugestao.get('contexto') else '',
+            'contexto_html':render_to_string('admin/atendimento_contexto.html',ctx)})
     ctx.update(conversa=conversa,mensagens=conversa.mensagens.all(),referencia=uuid.uuid4().hex,
       avisos=Aviso.objects.filter(conversa=conversa).select_related('responsavel'),
       sem_responsaveis=not Responsavel.objects.filter(site_id=sid,ativo=True).exists(),

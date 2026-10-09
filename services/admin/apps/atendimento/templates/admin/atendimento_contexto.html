@@ -1,0 +1,34 @@
+{% if conversa.assunto.modo == 'assistido' %}
+<section class="cartao"><h2>Contexto para a equipe</h2>
+<p>A equipe responde ao aluno. O robô lê a conversa e reúne as informações para apoiar o atendimento.</p>
+{% with s=conversa.sugestao c=conversa.sugestao.contexto %}
+{% if c %}
+<h3>Demanda do aluno</h3><p>{{ s.demanda }}</p>
+{% if s.sabemos %}<h3>O que já sabemos</h3><ul>{% for item in s.sabemos %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+{% if s.faltando %}<h3>O que falta esclarecer</h3><ul>{% for item in s.faltando %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+{% if s.passos %}<h3>Próximos passos sugeridos</h3><ul>{% for item in s.passos %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+<h3>Aluno e cadastro no CRM</h3><p>{{ c.nome }} · {{ c.crm.estado }}</p>
+{% if c.crm.url %}
+<p>{{ c.crm.email }}{% if c.crm.telefone %} · {{ c.crm.telefone }}{% endif %}</p>
+<p>Origem: {{ c.crm.origem }}{% if c.crm.tags %} · {{ c.crm.tags|join:", " }}{% endif %}</p>
+<a href="{{ c.crm.url }}">Abrir ficha completa no CRM</a>
+<h4>Matrículas</h4>{% for m in c.crm.matriculas %}<p>{{ m.product_id|default:'Curso não informado' }} · {{ m.situacao_nome }}{% if m.turma %} · {{ m.turma }}{% endif %}</p>{% empty %}<p>Nenhuma matrícula registrada neste cadastro.</p>{% endfor %}
+<details><summary>Perfil e respostas dos quizzes</summary>
+<p>{{ c.crm.perfil.resumo|default:'Perfil ainda não analisado.' }}</p>
+{% for a in c.crm.perfil.afirmacoes %}<p>{{ a.rotulo }}: {{ a.texto }}{% if a.hipotese %} · hipótese do perfil{% endif %}</p>{% endfor %}
+{% for quiz in c.crm.quizzes %}<h4>{{ quiz.quiz }} · {{ quiz.situacao }}</h4>{% for r in quiz.respostas %}<p>{{ r.pergunta }}: {{ r.resposta }}</p>{% endfor %}{% empty %}<p>Nenhuma resposta de quiz disponível.</p>{% endfor %}
+</details>
+<details><summary>Histórico do CRM</summary>{% for e in c.crm.eventos %}<p>{{ e.quando }} · {{ e.rotulo }}{% if e.produto %} · {{ e.produto }}{% endif %}{% if e.valor %} · {{ e.valor }}{% endif %}</p>{% empty %}<p>Nenhuma atividade registrada.</p>{% endfor %}{% if c.crm.eventos_cortados %}<p>Os demais registros estão na ficha completa do CRM.</p>{% endif %}</details>
+{% endif %}
+<h3>Faixa do aluno</h3><p>{% if c.faixa.nome %}{{ c.faixa.nome }}{% if c.faixa.conquista %} · {{ c.faixa.conquista }}{% endif %}{% if c.faixa.alcancada_em %} · desde {{ c.faixa.alcancada_em }}{% endif %}{% else %}{{ c.faixa.estado }}{% endif %}</p>
+<h3>NPS e histórico de satisfação</h3><p>{{ c.nps.estado }}</p>
+{% for a in c.nps.avaliacoes %}<details><summary>{{ a.curso_nome }} · NPS {{ a.nota|default_if_none:'não respondido' }} · {{ a.classificacao }}</summary><p>{{ a.concluida_em }}</p>{% for r in a.respostas_tela %}<p>{{ r.pergunta }}: {{ r.resposta }}</p>{% endfor %}</details>{% endfor %}
+{% for a in c.nps.atendimentos %}<p>Atendimento de satisfação: {{ a.status }}{% if a.proximo_passo %} · {{ a.proximo_passo }}{% endif %}{% if a.solucao %} · {{ a.solucao }}{% endif %}</p>{% endfor %}
+<details><summary>Atendimentos anteriores no suporte</summary>{% for a in c.anteriores %}<p><a href="{{ suporte_prefixo }}/{{ a.id }}/">{{ a.assunto }} · {{ a.estado }} · {{ a.em }}</a></p><p>{{ a.ultima_mensagem }}</p>{% empty %}<p>Não há atendimentos anteriores.</p>{% endfor %}</details>
+<p class="nota">Dados consultados em {{ c.atualizado_em }}. {{ s.estado }}</p>
+{% else %}<p>O contexto será preparado pelo robô após a mensagem do aluno. Você já pode ler o histórico e responder.</p>{% endif %}
+<details><summary>Roteiro inicial do atendimento</summary><ol>
+<li>Ler a conversa e identificar a demanda do aluno.</li><li>Conferir cadastro, matrículas, perfil, NPS, faixa e histórico.</li><li>Identificar o que já sabemos, o que falta esclarecer e próximos passos.</li><li>Responder por esta conversa e acompanhar o resultado com o aluno.</li><li>Guardar na base a pergunta e a resposta conferidas pela equipe.</li>
+</ol></details>
+{% endwith %}</section>
+{% endif %}

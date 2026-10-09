@@ -3,7 +3,7 @@
 
 {% block titulo %}Atendimento aos alunos{% endblock %}
 {% block corpo %}<main class="envolucro suporte-admin">
-<h1>Atendimento aos alunos</h1><p class="subtitulo">Dúvidas recebidas pelo site. Abra um atendimento para responder.</p>
+<h1>Atendimento aos alunos</h1><p class="subtitulo">Abra o atendimento do aluno, confira o contexto preparado pelo robô e responda pela mesma conversa.</p>
 {% include 'admin/_atendimento_nav.html' %}
 <section class="cartao"><h2>Retrato do suporte</h2><p>Resolvidos pelo robô: <b>{{ resolvidas }}</b> · Encaminhados à equipe: <b>{{ encaminhadas }}</b> · Avaliação dos alunos: <b>{{ nota|floatformat:1|default:'Sem avaliações' }}</b> / 5</p>
 {% for i in contagens %}<span>{{ i.estado }}: {{ i.total }} · </span>{% endfor %}</section>
