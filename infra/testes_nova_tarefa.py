@@ -45,7 +45,9 @@ def test_criacao_e_recusa(cenario):
     assert d["base"] == g(clone, "rev-parse", "origin/main")
     assert g(clone, "config", "branch.codex/entrega/a.origem") == "codex"
     assert g(clone, "config", "branch.codex/entrega/a.base-observada") == d["base"]
-    assert "entregas.py entregar" in d["comando_de_entrega"]
+    assert "robo.py" in d["comando_de_entrega"]
+    assert d["comando_de_entrega"].endswith("entregar")
+    assert d["base"] not in d["comando_de_entrega"]
     assert nova(tmp, clone, "codex", "a").returncode != 0
     assert nova(tmp, clone, "claude", "Nome Ruim").returncode != 0
 

@@ -131,9 +131,11 @@ class PublicacaoMercadoPagoCongeladoTest(unittest.TestCase):
             pilha.enter_context(patch.object(local, "versao_pedida", return_value={"codigo": str(codigo), "imagem": self.imagem}))
             pilha.enter_context(patch.object(local, "compose", return_value="aplicacao"))
             pilha.enter_context(patch.object(local, "pin", pin))
+            pilha.enter_context(patch.object(local, "conferir_codigo_docs"))
             pilha.enter_context(patch.object(local, "politica_mercadopago", return_value=self.politica))
             local.executar("preparar")
             self.assertEqual(json.loads(journal.read_text(encoding="utf-8"))["candidata"], self.sha)
+            local.executar("backup-concluido")
             (codigo / "payments" / "gateway.py").write_bytes(b"alterada depois de preparar")
             with self.assertRaises(IntegridadeMercadoPagoErro):
                 local.executar("aplicar")

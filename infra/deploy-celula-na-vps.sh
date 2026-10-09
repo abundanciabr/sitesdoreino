@@ -14,7 +14,7 @@ export CELULA=aplicacao
 SERVICOS=aplicacao
 
 python3 "$PUBLICACAO_LOCAL" preparar
-trap 'CODIGO=$?; if [ "$CODIGO" -ne 0 ]; then python3 "$PUBLICACAO_LOCAL" abortar || true; echo "ESTADO-PUBLICACAO: $(cat "$RAIZ/publicacoes/$CELULA.json")"; fi; exit "$CODIGO"' EXIT
+trap 'CODIGO=$?; if [ "$CODIGO" -ne 0 ]; then python3 "$PUBLICACAO_LOCAL" abortar || true; fi; exit "$CODIGO"' EXIT
 if [ -f "$RAIZ/publicacoes/imagens.json" ]; then
   export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 fi
@@ -36,6 +36,7 @@ unset BASES
 PRESERVAR_COPIAS=1 bash "$(dirname "$0")/backup-do-banco.sh" "${TAG:0:12}-$$" \
   || parar_o_deploy "a cópia de segurança do banco não saiu (motivo nas linhas acima)."
 echo "BACKUP-ANTES-DA-MIGRACAO: o caminho de volta é infra/restaurar-backup.sh (guia em infra/COMO-RESTAURAR.md)"
+python3 "$PUBLICACAO_LOCAL" backup-concluido
 
 # --wait reprova se o contêiner não ficar de pé e saudável em 180 s.
 python3 "$PUBLICACAO_LOCAL" aplicar
@@ -43,6 +44,7 @@ export COMPOSE_FILE="$RAIZ/docker-compose.yml:$RAIZ/publicacoes/imagens.json"
 python3 "$PUBLICACAO_LOCAL" conferir-ultima
 echo "CANDIDATA-APLICADA: $TAG"
 docker compose up -d --wait --wait-timeout 180 $SERVICOS
+python3 "$PUBLICACAO_LOCAL" servico-iniciado
 docker compose ps $SERVICOS
 
 python3 "$PUBLICACAO_LOCAL" aprovar

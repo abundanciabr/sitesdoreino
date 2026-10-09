@@ -1,5 +1,5 @@
 {
-  "name": "main só pelo integrador",
+  "name": "main somente integrador",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [

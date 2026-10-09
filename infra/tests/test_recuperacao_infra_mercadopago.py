@@ -75,6 +75,7 @@ class RecuperacaoMercadoPagoCongeladoTest(unittest.TestCase):
         pin = Mock(side_effect=AssertionError("nao pode trocar rota"))
         imagem = Mock(side_effect=AssertionError("nao pode tocar imagem"))
         with self._ambiente(), patch.object(self.local, "politica_mercadopago", return_value=self.politica), \
+             patch.object(self.local, "conferir_codigo_docs"), \
              patch.object(self.local, "pin", pin), patch.object(self.local, "garantir_imagem", imagem):
             with self.assertRaises(IntegridadeMercadoPagoErro):
                 self.local.executar("recuperar")
@@ -87,7 +88,9 @@ class RecuperacaoMercadoPagoCongeladoTest(unittest.TestCase):
         compose = Mock()
         provar = Mock()
         with self._ambiente(), patch.object(self.local, "politica_mercadopago", return_value=self.politica), \
+             patch.object(self.local, "conferir_codigo_docs"), \
              patch.object(self.local, "garantir_imagem"), patch.object(self.local, "pin", pin), \
+             patch.object(self.local, "conferir_execucao_para_recuperar"), \
              patch.object(self.local, "compose", compose), patch.object(self.local, "provar", provar), \
              patch.object(self.local, "medir"):
             self.local.executar("recuperar")

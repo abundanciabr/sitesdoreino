@@ -2,8 +2,9 @@
 """Publicador direto pela VPS: recebe a main, ativa, prova e volta sozinho.
 
 Pelo atalho /opt/plataforma/bin/plataforma (infra/plataforma.sh):
-  receber               busca a main e publica a infra e as células tocadas desde a última recebida
-  publicar aplicacao SHA  publica a aplicação: backup, troca, prova do endereço
+  publicar-entrega ID CELULA  ativa o pacote comprovado de uma promoção aceita
+  receber               legado; no controlador instalado, não ativa versões
+  publicar aplicacao SHA  legado; recusado no controlador instalado
   recuperar CELULA      volta a célula para a última aprovada distinta e prova de novo
   vigiar                mede o site; fora do ar, religa, volta a versão uma vez e avisa se não resolver
   estado                versões no ar e últimas medições
@@ -28,7 +29,8 @@ import shutil
 import subprocess
 import sys
 import time
-from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id
+from contextlib import contextmanager
+from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id, conferir_relatorio
 from docs_somente_admin import conferir_fontes_docs, conferir_codigo_docs
 from mercadopago_congelado import conferir_fontes, conferir_ambiente, conferir_pacote as conferir_mp_pacote
 from datetime import datetime, timezone
@@ -55,6 +57,39 @@ GATILHOS_DA_INFRA = ("infra/docker-compose.yml", "infra/traefik/", "infra/sites.
 SHA = re.compile(r"[0-9a-f]{40}")
 CELULA = re.compile(r"[a-z][a-z0-9_]*")
 ENDERECO = "https://meshcraft.top/"
+_trava_ativacao = None
+_profundidade_trava = 0
+
+
+@contextmanager
+def trava_ativacao():
+    """Uma única escrita em produção, inclusive vigia e recuperação aninhada."""
+    global _trava_ativacao, _profundidade_trava
+    if _profundidade_trava:
+        _profundidade_trava += 1
+        try:
+            yield
+        finally:
+            _profundidade_trava -= 1
+        return
+    PUBLICACOES.mkdir(parents=True, exist_ok=True)
+    with (PUBLICACOES / ".ativacao.lock").open("a+b") as arquivo:
+        if fcntl:
+            fcntl.flock(arquivo, fcntl.LOCK_EX)
+        else:
+            import msvcrt
+            arquivo.seek(0)
+            msvcrt.locking(arquivo.fileno(), msvcrt.LK_LOCK, 1)
+        _trava_ativacao, _profundidade_trava = arquivo, 1
+        try:
+            yield
+        finally:
+            _trava_ativacao, _profundidade_trava = None, 0
+            if fcntl:
+                fcntl.flock(arquivo, fcntl.LOCK_UN)
+            else:
+                arquivo.seek(0)
+                msvcrt.locking(arquivo.fileno(), msvcrt.LK_UNLCK, 1)
 
 sys.path.insert(0, str(FERRAMENTAS / "ci"))
 
@@ -69,6 +104,15 @@ def politica_mercadopago() -> dict:
 
 def agora() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def sincronizar_diretorio(caminho: Path) -> None:
+    if os.name == "posix":
+        fd = os.open(str(caminho), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
 
 
 def dizer(texto: str) -> None:
@@ -91,6 +135,18 @@ def git(*args) -> str:
 def journal(celula: str) -> dict | None:
     caminho = PUBLICACOES / f"{celula}.json"
     return json.loads(caminho.read_text()) if caminho.exists() else None
+
+
+def retomar_pendencia(celula: str) -> None:
+    estado = journal(celula) or {}
+    operacao = estado.get("operacao") or {}
+    if operacao.get("fase") not in ("preparada", "backup_concluido", "configurando", "configurada", "servico_iniciado"):
+        return
+    ambiente = ambiente_base() | {"CELULA": celula}
+    resultado = subprocess.run([sys.executable, str(FERRAMENTAS / "infra/publicacao-local.py"), "retomar"],
+                               cwd=RAIZ, env=ambiente, capture_output=True, text=True)
+    if resultado.returncode:
+        raise RuntimeError(f"retomada de {celula} requer intervenção: {(resultado.stderr or '')[-500:]}")
 
 
 def carregar_celulas():
@@ -269,6 +325,11 @@ def escolher_alvo(estado: dict) -> dict | None:
 
 
 def recuperar_versao(celula: str, registro, motivo: str, atual_esperada: str | None = None) -> bool:
+    with trava_ativacao():
+        return _recuperar_versao_travada(celula, registro, motivo, atual_esperada)
+
+
+def _recuperar_versao_travada(celula: str, registro, motivo: str, atual_esperada: str | None = None) -> bool:
     estado = journal(celula)
     if not estado or (atual_esperada and estado.get("atual") != atual_esperada):
         dizer(f"REVERSAO-DISPENSADA: {celula} já mudou de versão")
@@ -299,6 +360,206 @@ def podar_versoes(celula: str) -> None:
 
 
 def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
+    with trava_ativacao():
+        retomar_pendencia(celula)
+        return _publicar_travado(celula, sha, pedido_em)
+
+
+def publicar_entrega(id_entrega: str, celula: str) -> int:
+    """Ativa o artefato isolado de uma promoção remota já reconciliada."""
+    if not re.fullmatch(r"[0-9a-f]{12}", id_entrega) or celula not in ("aplicacao", "funil"):
+        raise ValueError("entrega ou célula inválida")
+    with trava_ativacao():
+        retomar_pendencia(celula)
+        registro_entrega = RAIZ / "entregas" / (id_entrega + ".json")
+        if registro_entrega.is_symlink() or not registro_entrega.is_file():
+            raise ValueError("entrega aceita ausente")
+        entrega = json.loads(registro_entrega.read_text(encoding="utf-8"))
+        promocao = entrega.get("promocao") or {}
+        sha = entrega.get("promovida_candidata")
+        if (entrega.get("id") != id_entrega or entrega.get("estado") != "integrada na main"
+                or promocao.get("estado") != "remota" or promocao.get("candidata") != sha
+                or not SHA.fullmatch(sha or "") or git("rev-parse", "refs/heads/main") != sha):
+            raise ValueError("entrega sem promoção remota reconciliada na main atual")
+        remoto = promocao.get("remoto")
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,80}", remoto or ""):
+            raise ValueError("remoto da promoção inválido")
+        resposta = git("ls-remote", "--heads", remoto, "main").split()
+        if not resposta or resposta[0] != sha:
+            raise ValueError("promoção remota não corresponde à candidata")
+        estado = journal(celula) or {}
+        ativa = (estado.get("aprovada") or {}).get("sha")
+        if celula == "funil":
+            return _publicar_funil_entrega(id_entrega, sha, promocao, estado)
+        if ativa:
+            if estado.get("atual") != ativa:
+                raise ValueError("versão executada ainda não é a aprovada; recupere a operação anterior")
+            conferir = subprocess.run([sys.executable, str(FERRAMENTAS / "infra/publicacao-local.py"),
+                                      "conferir-atual"], cwd=RAIZ,
+                                     env=ambiente_base() | {"CELULA": celula, "TAG": ativa},
+                                     capture_output=True, text=True)
+            if conferir.returncode:
+                raise ValueError("versão real diverge do registro antes da ativação")
+        if ativa and ativa != sha and subprocess.run(
+                ["git", "-C", str(REPO), "merge-base", "--is-ancestor", ativa, sha]).returncode:
+            raise ValueError("entrega não preserva a versão ativa aprovada")
+        if estado.get("atual") == sha and ativa == sha:
+            caminho_operacao = PUBLICACOES / "operacoes" / (id_entrega + ".json")
+            if caminho_operacao.is_file():
+                intencao = json.loads(caminho_operacao.read_text(encoding="utf-8"))
+                if intencao.get("id") == id_entrega and intencao.get("sha") == sha:
+                    intencao["fase"] = "concluida"
+                    temporario = caminho_operacao.with_name("." + id_entrega + f".{os.getpid()}.tmp")
+                    with temporario.open("w", encoding="utf-8") as arquivo:
+                        json.dump(intencao, arquivo, sort_keys=True)
+                        arquivo.flush()
+                        os.fsync(arquivo.fileno())
+                    os.replace(temporario, caminho_operacao)
+                    sincronizar_diretorio(caminho_operacao.parent)
+            return 0
+        from ensaio_entregas import verificar_prova
+        prova = verificar_prova(RAIZ, sha, FERRAMENTAS)
+        if promocao.get("prova_identidade") != prova.get("identidade"):
+            raise ValueError("promoção se refere a outra prova de ensaio")
+        relatorio = Path(prova["artefato"]["comercial_xml"])
+        resumo = conferir_relatorio(relatorio, registrar_falha_conhecida=True)
+        if any(prova["cobertura"].get(chave) != valor for chave, valor in resumo.items()):
+            raise ValueError("relatório comercial mudou após o ensaio")
+        codigo = Path(prova["artefato"]["codigo"])
+        imagem_tar = Path(prova["artefato"]["imagem_tar"])
+        imagem = prova["pacote_publicador"]["imagem_id"]
+        # A prova confere os bytes do tar; o daemon de produção recebe somente a imagem comprovada.
+        rodar("docker", "load", "-i", imagem_tar)
+        if imagem_id(imagem) != imagem:
+            raise ValueError("imagem carregada difere da imagem ensaiada")
+        conferir_codigo_docs(codigo)
+        politica = politica_mercadopago()
+        conferir_ambiente(RAIZ, politica)
+        conferir_mp_pacote(codigo, imagem, politica)
+        if identificar(codigo, imagem, RAIZ / "docker-compose.yml") != prova["pacote_publicador"]:
+            raise ValueError("pacote mudou depois do ensaio isolado")
+        pasta_operacoes = PUBLICACOES / "operacoes"
+        pasta_operacoes.mkdir(parents=True, exist_ok=True)
+        caminho_operacao = pasta_operacoes / (id_entrega + ".json")
+        intencao = {"id": id_entrega, "sha": sha, "ativa_esperada": ativa,
+                    "pacote": prova["pacote_publicador"], "fase": "ativacao_iniciada", "em": agora()}
+        def registrar(fase):
+            intencao["fase"] = fase
+            temporario = caminho_operacao.with_name("." + id_entrega + f".{os.getpid()}.tmp")
+            with temporario.open("w", encoding="utf-8") as arquivo:
+                json.dump(intencao, arquivo, sort_keys=True)
+                arquivo.flush()
+                os.fsync(arquivo.fileno())
+            os.replace(temporario, caminho_operacao)
+            sincronizar_diretorio(caminho_operacao.parent)
+        registrar("ativacao_iniciada")
+        ambiente = ambiente_base() | {"CELULA": celula, "TAG": sha, "IMAGEM": imagem,
+            "CODIGO": str(codigo), "PROVA_ENTREGA": "1", "OPERACAO_ID": id_entrega,
+            "ENDERECO_PROVA": estado.get("endereco") or ENDERECO,
+            "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
+        LOGS.mkdir(parents=True, exist_ok=True)
+        with (LOGS / f"entrega-{id_entrega}.log").open("a", encoding="utf-8") as registro:
+            retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh", ambiente, registro)
+            if retorno == 0 and f"ENTREGA-CONCLUIDA: {celula}" in saida:
+                registrar("concluida")
+                return 0
+            if (journal(celula) or {}).get("atual") == sha:
+                recuperar_versao(celula, registro, "entrega falhou", sha)
+            registrar("falhou")
+            return 1
+
+
+def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: dict) -> int:
+    celulas = carregar_celulas()
+    celulas.retomar_troca()
+    estado = journal("funil") or {}
+    topo = celulas.topologia()
+    if topo.get("em_troca"):
+        raise ValueError("troca anterior do funil ainda pendente")
+    ativa = (estado.get("aprovada") or {}).get("sha")
+    no_ar = topo.get("celulas", {}).get("funil")
+    if ativa:
+        if not no_ar or no_ar.get("sha") != ativa or estado.get("atual") != ativa:
+            raise ValueError("versão funil executada diverge do registro")
+        imagem_real = rodar("docker", "inspect", "--format", "{{.Image}}", no_ar["container"])
+        montagens = json.loads(rodar("docker", "inspect", "--format", "{{json .Mounts}}", no_ar["container"]))
+        codigo_real = next((m.get("Source") for m in montagens if m.get("Destination") == "/app"), None)
+        rota = (RAIZ / "traefik/dynamic/plataforma.yml").read_text(encoding="utf-8")
+        if (imagem_real != no_ar["pacote"]["imagem_id"] or codigo_real != no_ar["codigo"]
+                or rota.count("http://" + no_ar["container"] + ":8000") != 1):
+            raise ValueError("contêiner ou rota real do funil difere da aprovada")
+        if ativa != sha and subprocess.run(
+                ["git", "-C", str(REPO), "merge-base", "--is-ancestor", ativa, sha]).returncode:
+            raise ValueError("entrega funil não preserva a versão ativa")
+    if ativa == sha:
+        caminho_intencao = PUBLICACOES / "operacoes" / (id_entrega + "-funil.json")
+        if caminho_intencao.is_file():
+            intencao = json.loads(caminho_intencao.read_text(encoding="utf-8"))
+            if intencao.get("id") == id_entrega and intencao.get("sha") == sha:
+                intencao["fase"] = "concluida"
+                temporario = caminho_intencao.with_name("." + caminho_intencao.name + f".{os.getpid()}.tmp")
+                with temporario.open("w", encoding="utf-8") as arquivo:
+                    json.dump(intencao, arquivo, sort_keys=True)
+                    arquivo.flush()
+                    os.fsync(arquivo.fileno())
+                os.replace(temporario, caminho_intencao)
+                sincronizar_diretorio(caminho_intencao.parent)
+        return 0
+    from ensaio_entregas import verificar_prova
+    prova = verificar_prova(RAIZ, sha, FERRAMENTAS, celula="funil")
+    if promocao.get("prova_funil_identidade") != prova.get("identidade"):
+        raise ValueError("promoção funil se refere a outra prova")
+    artefato = prova["artefato"]
+    codigo = Path(artefato["codigo"])
+    bundle = Path(artefato["bundle"])
+    imagem = prova["pacote_publicador"]["imagem_id"]
+    nome = prova["nome_funil"]
+    rodar("docker", "load", "-i", artefato["imagem_tar"])
+    if imagem_id(imagem) != imagem:
+        raise ValueError("imagem funil carregada difere da ensaiada")
+    politica = politica_mercadopago()
+    conferir_ambiente(RAIZ, politica)
+    conferir_mp_pacote(bundle, imagem, politica)
+    conferir_codigo_docs(bundle)
+    # O snapshot privado representa a rota final. A configuração real ainda é a base ensaiada.
+    if identificar(codigo, imagem, Path(artefato["configuracao_final"]) / "docker-compose.yml") != prova["pacote_publicador"]:
+        raise ValueError("pacote funil alterado antes da ativação")
+    LOGS.mkdir(parents=True, exist_ok=True)
+    caminho_intencao = PUBLICACOES / "operacoes" / (id_entrega + "-funil.json")
+    caminho_intencao.parent.mkdir(parents=True, exist_ok=True)
+    intencao = {"id": id_entrega, "sha": sha, "ativa_esperada": ativa,
+                "pacote": prova["pacote_publicador"], "fase": "ativacao_iniciada", "em": agora()}
+    def registrar(fase):
+        intencao["fase"] = fase
+        temporario = caminho_intencao.with_name("." + caminho_intencao.name + f".{os.getpid()}.tmp")
+        with temporario.open("w", encoding="utf-8") as arquivo:
+            json.dump(intencao, arquivo, sort_keys=True)
+            arquivo.flush()
+            os.fsync(arquivo.fileno())
+        os.replace(temporario, caminho_intencao)
+        sincronizar_diretorio(caminho_intencao.parent)
+    with (LOGS / f"entrega-funil-{id_entrega}.log").open("a", encoding="utf-8") as registro:
+        registrar("ativacao_iniciada")
+        subprocess.run(["bash", str(FERRAMENTAS / "infra/backup-do-banco.sh"),
+                        "funil-" + sha[:12]], cwd=RAIZ,
+                       env=ambiente_base() | {"PRESERVAR_COPIAS": "1"},
+                       stdout=registro, stderr=subprocess.STDOUT, check=True)
+        registrar("backup_concluido")
+        if git("rev-parse", "refs/heads/main") != sha:
+            raise ValueError("main mudou durante o backup funil")
+        if verificar_prova(RAIZ, sha, FERRAMENTAS, celula="funil")["identidade"] != prova["identidade"]:
+            raise ValueError("prova funil mudou durante o backup")
+        registrar("configurando")
+        try:
+            celulas.ativar(codigo, imagem, sha, prova["pacote_publicador"], nome=nome)
+        except BaseException:
+            registrar("falhou")
+            raise
+        registrar("concluida")
+        return 0
+
+
+def _publicar_travado(celula: str, sha: str, pedido_em: str | None = None) -> int:
     if not CELULA.fullmatch(celula) or not SHA.fullmatch(sha):
         raise SystemExit("célula ou SHA inválido")
     git("cat-file", "-e", f"{sha}^{{commit}}")
@@ -377,7 +638,7 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
                 podar_versoes(celula)
                 return 0
             dizer(f"FALHOU: {celula} {sha[:9]}; log {caminho_registro}")
-            if re.search(r"^CANDIDATA-APLICADA:", saida, re.M):
+            if (journal(celula) or {}).get("atual") == sha or re.search(r"^CANDIDATA-APLICADA:", saida, re.M):
                 if recuperar_versao(celula, registro, "prova da publicação falhou", sha):
                     dizer(f"RECUPERADA-OU-SUPERADA: {celula}")
                 else:
@@ -560,6 +821,12 @@ def receber() -> int:
 
 
 def recuperar(celula: str) -> int:
+    with trava_ativacao():
+        retomar_pendencia(celula)
+        return _recuperar_travado(celula)
+
+
+def _recuperar_travado(celula: str) -> int:
     celulas = carregar_celulas()
     if celula in celulas.topologia()['celulas']:
         with (LOTES / '.lote.lock').open('a') as trava:
@@ -627,7 +894,9 @@ def vigiar() -> int:
             fcntl.flock(trava, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return 0
-        return vigiar_uma_vez()
+        with trava_ativacao():
+            retomar_pendencia("aplicacao")
+            return vigiar_uma_vez()
 
 
 def vigiar_uma_vez() -> int:
@@ -704,6 +973,15 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
     acao, resto = argv[0], argv[1:]
+    modo_exclusivo = (os.environ.get("PLATAFORMA_ENTREGAS_EXCLUSIVAS") == "1"
+                      or str(FERRAMENTAS.resolve()).startswith("/usr/local/lib/meshcraft-publicador/"))
+    if acao == "publicar-entrega" and len(resto) == 2:
+        return publicar_entrega(*resto)
+    if modo_exclusivo and acao == "receber":
+        dizer("ENTREGAS-EXCLUSIVAS: recebimento automático antigo desativado")
+        return 0
+    if modo_exclusivo and acao in ("publicar", "lote"):
+        raise SystemExit("modo de entregas: use publicar-entrega ID aplicacao")
     if acao in ('lote', 'publicar'):
         # A interrupção precisa atravessar os finally que encerram os ensaios.
         # SIGTERM padrão matava o Python e deixava PostgreSQL/Redis ligados.

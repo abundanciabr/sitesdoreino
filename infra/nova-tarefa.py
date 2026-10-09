@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -43,10 +44,10 @@ def main(argv=None):
     git(a.repo, "worktree", "add", "-b", ramo, str(pasta), base)
     git(a.repo, "config", f"branch.{ramo}.base-observada", base)
     git(a.repo, "config", f"branch.{ramo}.origem", a.robo)
-    head = git(pasta, "rev-parse", "HEAD")
     print(json.dumps({
-        "pasta": pasta.as_posix(), "ramo": ramo, "base": base,
-        "comando_de_entrega": f"python infra/entregas.py entregar --ramo {ramo} --commit {head} --base {base}",
+        "pasta": str(pasta.resolve()), "ramo": ramo, "base": base,
+        "entrada": a.robo, "servidor": "sitesdoreino-robo (disponível após D2)",
+        "comando_de_entrega": shlex.join([sys.executable, str(pasta / "infra" / "robo.py"), "--repo", str(pasta), "entregar"]),
     }, ensure_ascii=False))
 
 

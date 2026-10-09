@@ -1,27 +1,29 @@
-# D1: main só pelo integrador (nada foi aplicado)
+# D1 — main atualizada pelo integrador (preparado; nada aplicado)
 
-Formato do JSON conferido na documentação pública da API de rulesets (09/10/2026). Ponto a confirmar na hora: se o GitHub aceitar bypass de deploy key em repositório pessoal público (a doc diz que sim). Se recusar, parar e avisar.
+Repositório: `https://github.com/abundanciabr/sitesdoreino`. Em 09/10/2026, consulta somente leitura confirmou dono pessoal `abundanciabr`, repositório público, main sem proteção, sem rulesets e sem deploy keys. O GitHub Free admite rulesets de branches em repositórios públicos. A documentação vigente descreve `DeployKey` com `actor_id: null` para bypass; a restrição explícita a repositórios pessoais é para `OrganizationAdmin`. Isso sustenta o desenho, mas a aceitação efetiva neste repositório depende da aplicação autorizada e da resposta da API. Fontes: `https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets` e `https://docs.github.com/en/rest/repos/rules`.
 
-## Passos (nesta ordem)
-1. Chave na VPS, como deploy, sem senha:
-   `ssh sitesdoreino-vps 'ssh-keygen -t ed25519 -N "" -C integrador-vps -f /home/deploy/.ssh/integrador'`
-2. Cadastrar a chave pública com escrita:
-   `ssh sitesdoreino-vps 'cat /home/deploy/.ssh/integrador.pub' > integrador.pub`
-   `gh repo deploy-key add integrador.pub --repo abundanciabr/sitesdoreino --allow-write --title integrador-vps`
-3. Remoto na VPS:
-   `ssh sitesdoreino-vps 'git -C /opt/plataforma/codigo/repo.git remote add integrador git@github.com:abundanciabr/sitesdoreino.git && git -C /opt/plataforma/codigo/repo.git config core.sshCommand "ssh -i /home/deploy/.ssh/integrador -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"'`
-   (o remoto origin https de leitura não muda; o cron continua lendo por ele).
-4. Aplicar a regra:
-   `gh api -X POST repos/abundanciabr/sitesdoreino/rulesets --input C:/Users/davia/abundanciabr/wt-entregas-20261009/infra/acessos/D1-regra-da-main.json`
-   Anote o "id" devolvido.
+**Limite exato:** o bypass `DeployKey` vale para qualquer deploy key com escrita que venha a ser cadastrada neste repositório. O JSON não nomeia uma chave individual. Como hoje não há deploy keys, uma única chave nova do integrador atende ao isolamento pretendido na configuração inicial. O dono/admin do repositório continua podendo editar a regra e cadastrar outras chaves. Conferir novamente a lista antes de ativar; se houver outra chave com escrita, não afirmar exclusividade.
 
-## Provas inofensivas
-- Pelo PC: `git push origin meu-ramo-de-teste:main` deve ser RECUSADO (rule violations). Depois apague o ramo de teste.
-- Pelo integrador: `ssh sitesdoreino-vps 'git -C /opt/plataforma/codigo/repo.git push integrador <sha-ja-existente-na-main>:refs/heads/main'` (push sem mudança) deve ser aceito.
+Nesta sessão, `gh api` informou `permissions.admin=true` para a conta autenticada. Um robô que continue podendo usar essa credencial poderá alterar a regra ou cadastrar outra deploy key, mesmo após um push normal para main ser recusado. D1 só entrega exclusividade efetiva quando Codex/Claude executarem com credencial sem permissão Administration e sem acesso à credencial do mantenedor. A conta pessoal do dono continua sendo a recuperação administrativa.
 
-## Recuperação
-Dona: Settings > Rules > Rulesets > "main só pelo integrador" > Enforcement: Disabled. Ou:
-`gh api -X PUT repos/abundanciabr/sitesdoreino/rulesets/<id> -f enforcement=disabled`
+Arquivos preparados, só neste PC: `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-regra-da-main.json`, `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-ruleset.py` e `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-chave-integrador.sh`. O JSON restringe atualizações e exclusões de `main` e bloqueia force push. Os scripts preparam a chave, conferem a configuração atual, recusam outra deploy key com escrita, aplicam sem duplicar e desativam para recuperação. O GitHub ainda precisa aceitar o POST para comprovar a configuração efetiva.
 
-## O que muda para Codex e Claude
-Continuam fazendo push, mas só em ramos `codex/entrega/*` e `claude/entrega/*`. Nunca mais na main; quem leva à main é o integrador na VPS.
+## Ordem depois da decisão D1/D2
+
+1. Concluir D2: remover de `deploy` todas as chaves que Codex/Claude/robôs possuem, preservando acesso independente comprovado do mantenedor. Separar também a credencial GitHub de administração dos robôs. Gerar a chave do integrador só depois disso; enquanto os robôs entrarem em `deploy` com Docker, eles também podem usar ou substituir a chave nova.
+2. Na conta `integrador` isolada de D2, fixar a chave de host do GitHub em `/home/integrador/.ssh/known_hosts` depois de conferir o fingerprint contra `https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints`. Então executar como root `D1-chave-integrador.sh`: ele cria idempotentemente a chave ed25519 exclusiva em `/home/integrador/.ssh/integrador`, com permissões 0600, e configura o remoto independente. Ele recusa host ainda não verificado.
+3. Cadastrar **somente a chave pública** como deploy key com escrita: `gh repo deploy-key add <arquivo-publico-local> --repo abundanciabr/sitesdoreino --allow-write --title integrador-vps`. A credencial privada nunca sai da VPS. O remoto `integrador` fica no espelho independente `/var/lib/meshcraft-integrador/codigo/repo.git` e aponta para `git@github.com:abundanciabr/sitesdoreino.git`. Não alterar `core.sshCommand` global do espelho: o `origin` de leitura continua independente.
+4. Conferir por leitura `gh api repos/abundanciabr/sitesdoreino/keys` e assegurar que só a chave recém-criada tem `read_only=false`. Aplicar `D1-ruleset.py aplicar` no PC autenticado ao GitHub; o script confirma os pré-requisitos e devolve o id. A recuperação do mantenedor é Settings > Rules > Rulesets > regra > Disabled ou `D1-ruleset.py desativar`.
+5. Ler a regra efetiva com `gh api repos/abundanciabr/sitesdoreino/rulesets/<id>`; conferir `active`, `refs/heads/main`, `update`, `deletion`, `non_fast_forward` e bypass. Um push sem mudança pela chave do integrador deve ser aceito com `GIT_SSH_COMMAND='ssh -i /home/integrador/.ssh/integrador -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes' git --git-dir=/var/lib/meshcraft-integrador/codigo/repo.git push integrador refs/heads/main:refs/heads/main` executado como `integrador`. Um push normal de outra identidade para main deve receber recusa. Não criar nem apagar ramo de teste no repositório para essa prova.
+
+`infra/entregas.py promover <id> --remoto integrador` precisa receber `GIT_SSH_COMMAND` apenas no processo do integrador confiável. Atualizar a main não equivale a autorizar publicação: a ponte tipada `/run/meshcraft-entregas-publicador.sock` entrega pedido e prova ao publicador, que faz sua própria conferência. Os robôs continuam enviando a ramos de entrega; não recebem a chave nem o acesso a `deploy`.
+
+Não habilitar a regra antes de provar a recuperação do mantenedor no GitHub e na VPS. Se a API recusar a regra ou o bypass, manter main como está, registrar a resposta sem segredo e rever o mecanismo; não contratar plano.
+
+## Preparação conferida nesta retomada de 09/10/2026
+
+Nada aplicado. A credencial atual do robô tem os escopos `repo`, `workflow`, `read:org`, `gist` e `write:packages`; a conta tem administração deste repositório. Não publicar valores de tokens. O mantenedor informou não ter acesso independente confirmado aos painéis; D1/D2 seguem pendentes.
+
+Credencial prevista para Codex/Claude: token fine-grained restrito ao repositório `abundanciabr/sitesdoreino`, com `Contents: Read and write` e `Metadata: Read`; sem `Administration`. Não dar bypass ao usuário/token. Qualquer necessidade adicional de automações existentes deve ser identificada antes da troca. A referência oficial de permissões é `https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens`; criação manual no GitHub em `https://github.com/settings/personal-access-tokens/new`. A credencial administrativa anterior deve ficar indisponível ao ambiente dos robôs antes de afirmar exclusividade, preservada por acesso independente do mantenedor. Não basta criar um segundo token enquanto o primeiro continua acessível.
+
+Correção da prova operacional: push sem diferença não comprova o bloqueio de escrita, pois pode terminar antes da avaliação da regra. A prova positiva/negativa exige uma atualização real e reversível da main dentro do piloto autorizado F9, com duas contribuições internas e sem conteúdo público; uma recusa deve acontecer antes da mudança remota. Não chamar um push vazio de prova de exclusividade.

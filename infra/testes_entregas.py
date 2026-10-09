@@ -170,7 +170,7 @@ def test_C04_reenvio_nao_duplica_e_conteudo_ja_na_main_e_reconhecido(amb):
     sh(amb.work, "push", "-q", "origin", "main")
     reg = amb.entregar("rob-copia", sha2)
     assert reg["estado"] == "integrada na main"
-    assert reg["motivo"] == "conteúdo já incorporado (patch-id)"
+    assert reg["motivo"] == "conteúdo presente na main atual"
 
 
 def test_C05_main_avanca_promover_recusa_e_integrar_recombina(amb):
@@ -522,6 +522,7 @@ def test_promover_limpa_refs_da_entrega(amb):
     assert refs(amb, "refs/entregas/") and refs(amb, "refs/entregas-fixas/")
     assert amb.promover(id_)[0] == 0
     assert refs(amb, "refs/entregas/") == [] and refs(amb, "refs/entregas-fixas/") == []
+    assert sh(amb.origin, "rev-parse", "refs/entregas-promovidas/" + id_) == amb.consultar(id_)["promovida_candidata"]
 
 
 def test_C05_push_rejeitado_nao_mexe_na_main_local_nem_no_registro(amb, tmp_path):
@@ -614,3 +615,177 @@ def test_mensagens_ao_robo_nao_mostram_caminho_privado_nem_senha_de_url(amb):
     assert str(amb.plat) not in t and "segredo" not in t and "<plataforma>" in t
     reg = amb.entregar("rob-fantasma", "1" * 40)
     assert str(amb.plat) not in reg["motivo"] and "origin" not in reg["motivo"]
+
+
+def test_base_precisa_pertencer_ao_historico_da_main(amb):
+    outra_base = amb.ramo("isolado", {"x.txt": "x\n"})
+    commit = amb.ramo("derivado", {"y.txt": "y\n"}, de=outra_base)
+    reg = amb.entregar("derivado", commit, base=outra_base)
+    assert reg["estado"] == "precisa de correção"
+    assert "histórico da main" in reg["motivo"]
+
+
+def test_patch_antigo_revertido_na_main_nao_e_entrega_presente(amb):
+    sha = amb.ramo("robo", {"a.txt": "A\n"})
+    sh(amb.work, "checkout", "-q", "main")
+    sh(amb.work, "pull", "-q", "--ff-only", "origin", "main")
+    sh(amb.work, "cherry-pick", sha)
+    sh(amb.work, "revert", "--no-edit", "HEAD")
+    sh(amb.work, "push", "-q", "origin", "main")
+    reg = amb.entregar("robo", sha)
+    assert reg["estado"] == "recebida"
+    assert amb.integrar()[reg["id"]]["estado"] == "pronta"
+    assert amb.promover(reg["id"])[0] == 0
+    assert amb.arquivo_na_main("a.txt") == "A"
+
+
+def test_commit_ancestral_revertido_e_reaplicado_sem_perder_conteudo(amb):
+    sha = amb.ramo("robo", {"a.txt": "A\n"})
+    sh(amb.work, "checkout", "-q", "main")
+    sh(amb.work, "pull", "-q", "--ff-only", "origin", "main")
+    sh(amb.work, "merge", "-q", "--ff-only", sha)
+    sh(amb.work, "revert", "--no-edit", "HEAD")
+    sh(amb.work, "push", "-q", "origin", "main")
+    assert subprocess.run(["git", "--git-dir", str(amb.origin), "merge-base", "--is-ancestor",
+                           sha, amb.main()]).returncode == 0
+    reg = amb.entregar("robo", sha)
+    assert reg["estado"] == "recebida"
+    assert amb.integrar()[reg["id"]]["estado"] == "pronta"
+    assert amb.promover(reg["id"])[0] == 0
+    assert amb.arquivo_na_main("a.txt") == "A"
+
+
+def test_C08_renomeacao_e_binario_preservados(amb):
+    amb.escrever("antigo.txt", "conteúdo\n")
+    (amb.work / "imagem.bin").write_bytes(bytes(range(256)))
+    sh(amb.work, "add", "-A")
+    sh(amb.work, "commit", "-q", "-m", "arquivos")
+    sh(amb.work, "push", "-q", "origin", "HEAD:main")
+    base = amb.main()
+    sh(amb.work, "checkout", "-q", "-B", "rename", base)
+    (amb.work / "antigo.txt").rename(amb.work / "novo.txt")
+    (amb.work / "imagem.bin").write_bytes(bytes(reversed(range(256))))
+    sh(amb.work, "add", "-A")
+    sh(amb.work, "commit", "-q", "-m", "rename binario")
+    sha = sh(amb.work, "rev-parse", "HEAD")
+    sh(amb.work, "push", "-q", "origin", "rename")
+    reg = amb.entregar("rename", sha, base=base)
+    assert sorted(reg["arquivos"]) == ["antigo.txt", "imagem.bin", "novo.txt"]
+    assert reg["removidos"] == ["antigo.txt"]
+    assert amb.integrar()[reg["id"]]["estado"] == "pronta"
+    assert amb.promover(reg["id"])[0] == 0
+    assert sh(amb.origin, "show", "main:novo.txt") == "conteúdo"
+    assert subprocess.run(["git", "--git-dir", str(amb.origin), "show", "main:imagem.bin"],
+                          capture_output=True).stdout == bytes(reversed(range(256)))
+
+
+def test_C08_migracoes_concorrentes_ficam_pendentes_sem_executar_codigo(amb, tmp_path):
+    mig = "app/apps/app/migrations"
+    (amb.work / mig).mkdir(parents=True)
+    amb.escrever(mig + "/0001_initial.py", "class Migration:\n    dependencies = []\n")
+    sh(amb.work, "add", "-A")
+    sh(amb.work, "commit", "-q", "-m", "mig base")
+    sh(amb.work, "push", "-q", "origin", "HEAD:main")
+    base = amb.main()
+    a = amb.ramo("mig-a", {mig + "/0002_a.py": "class Migration:\n    dependencies = [('app', '0001_initial')]\n"}, de=base)
+    b = amb.ramo("mig-b", {mig + "/0002_b.py": "class Migration:\n    dependencies = [('app', '0001_initial')]\n"}, de=base)
+    ia = amb.entregar("mig-a", a, base=base)["id"]
+    ib = amb.entregar("mig-b", b, base=base)["id"]
+    assert amb.integrar()[ia]["estado"] == "pronta"
+    assert amb.promover(ia)[0] == 0
+    assert amb.integrar()[ib]["estado"] == "precisa de correção"
+    assert "pontas concorrentes" in amb.consultar(ib)["motivo"]
+
+
+def test_grafo_de_migracoes_e_lido_por_ast_sem_executar_candidata(amb, tmp_path):
+    marca = tmp_path / "executada.txt"
+    mig = "demo/apps/demo/migrations/0001_initial.py"
+    (amb.work / "demo" / "apps" / "demo" / "migrations").mkdir(parents=True)
+    codigo = ("from pathlib import Path\nPath(%r).write_text('inseguro')\n"
+              "class Migration:\n    dependencies = []\n") % str(marca)
+    sha = amb.ramo("mig-ast", {mig: codigo})
+    id_ = amb.entregar("mig-ast", sha)["id"]
+    assert amb.integrar()[id_]["estado"] == "pronta"
+    assert not marca.exists()
+
+
+def test_C12_resposta_perdida_apos_push_reconcilia_sem_duplicar(amb, tmp_path, monkeypatch):
+    github = tmp_path / "github.git"
+    sh(tmp_path, "clone", "-q", "--bare", str(amb.origin), str(github))
+    sh(amb.origin, "remote", "add", "github", str(github))
+    id_ = amb.entregar("robo", amb.ramo("robo", {"a.txt": "A\n"}))["id"]
+    amb.integrar()
+    main_antes = amb.main()
+    sys.path.insert(0, str(SCRIPT.parent))
+    try:
+        import entregas
+        original = entregas.git
+        def resposta_perdida(*args, **kwargs):
+            if args and args[0] == "push":
+                original(*args, **kwargs)
+                raise subprocess.TimeoutExpired("git push", 60)
+            return original(*args, **kwargs)
+        monkeypatch.setattr(entregas, "git", resposta_perdida)
+        with pytest.raises(subprocess.TimeoutExpired):
+            entregas.cmd_promover(type("Args", (), {"id": id_, "remoto": "github"})())
+    finally:
+        sys.path.pop(0)
+    assert amb.main() == main_antes
+    assert amb.consultar(id_)["promocao"]["estado"] == "intencao"
+    assert sh(github, "rev-parse", "main") == amb.consultar(id_)["candidata"]
+    assert amb.promover(id_, "--remoto", "github")[0] == 0
+    assert amb.promover(id_, "--remoto", "github")[0] == 0
+    assert amb.main() == sh(github, "rev-parse", "main")
+
+
+def test_promocao_em_modo_producao_exige_remoto_e_prova(amb, tmp_path, monkeypatch):
+    github = tmp_path / "github.git"
+    sh(tmp_path, "clone", "-q", "--bare", str(amb.origin), str(github))
+    sh(amb.origin, "remote", "add", "github", str(github))
+    id_ = amb.entregar("robo", amb.ramo("robo", {"a.txt": "A\n"}))["id"]
+    amb.integrar()
+    monkeypatch.setenv("ENTREGAS_EXIGIR_PROVA", "1")
+    assert "remoto" in amb.promover(id_)[1]["motivo"]
+    cod, resposta = amb.promover(id_, "--remoto", "github")
+    assert cod == 2 and "prova" in resposta["motivo"]
+    assert amb.main() == sh(github, "rev-parse", "main")
+    assert not amb.consultar(id_).get("promocao")
+
+
+def test_promocao_funil_sem_ensaio_especifico_e_recusada(amb, tmp_path, monkeypatch):
+    github = tmp_path / "github.git"
+    sh(tmp_path, "clone", "-q", "--bare", str(amb.origin), str(github))
+    sh(amb.origin, "remote", "add", "github", str(github))
+    (amb.work / "services" / "funil").mkdir(parents=True)
+    sha = amb.ramo("funil", {"services/funil/novo.txt": "teste\n"})
+    id_ = amb.entregar("funil", sha)["id"]
+    amb.integrar()
+    monkeypatch.setenv("ENTREGAS_EXIGIR_PROVA", "1")
+    cod, resposta = amb.promover(id_, "--remoto", "github")
+    assert cod == 2 and "prova" in resposta["motivo"]
+    assert amb.main() == sh(github, "rev-parse", "main")
+
+
+def test_promocao_mista_exige_identidades_das_duas_celulas(amb, tmp_path, monkeypatch):
+    github = tmp_path / "github.git"
+    sh(tmp_path, "clone", "-q", "--bare", str(amb.origin), str(github))
+    sh(amb.origin, "remote", "add", "github", str(github))
+    (amb.work / "services" / "funil").mkdir(parents=True)
+    sha = amb.ramo("misto", {"a.txt": "A\n", "services/funil/novo.txt": "F\n"})
+    id_ = amb.entregar("misto", sha)["id"]
+    amb.integrar()
+    monkeypatch.setenv("ENTREGAS_EXIGIR_PROVA", "1")
+    sys.path.insert(0, str(SCRIPT.parent))
+    try:
+        import entregas
+        chamadas = []
+        def comprovada(candidata, entrega, celula="aplicacao"):
+            chamadas.append(celula)
+            return {"identidade": ("a" if celula == "aplicacao" else "b") * 64}
+        monkeypatch.setattr(entregas, "prova_aceita", comprovada)
+        codigo, reg = entregas.cmd_promover(type("Args", (), {"id": id_, "remoto": "github"})())
+    finally:
+        sys.path.pop(0)
+    assert codigo == 0 and chamadas == ["aplicacao", "funil"]
+    assert reg["promocao"]["prova_identidade"] == "a" * 64
+    assert reg["promocao"]["prova_funil_identidade"] == "b" * 64
