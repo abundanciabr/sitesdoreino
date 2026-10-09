@@ -1,130 +1,338 @@
-"""A página /conquistas/ mostra as faixas: atual, próxima, barra, jornada, legenda."""
-
-from __future__ import annotations
+"""Sete faixas, treze passos: resultados declarados e valores privados."""
 
 import uuid
-
 import pytest
 from django.urls import reverse
-
-from apps.eventos.management.commands.consume_eventos import processar_envelope
-from apps.gamificacao.handlers import HANDLERS
+from apps.gamificacao.jornada import passos, salvar, situacao, centavos
+from apps.gamificacao.models import (
+    JornadaPessoal,
+    RecebimentoDeclarado,
+    RegistroDaJornada,
+    PerfilJogador,
+)
 
 pytestmark = pytest.mark.django_db
-
-SITE = "site-de-teste"
-ALGUEM = "pes-abc"
-AGORA = "2026-10-08T12:00:00+00:00"
+SITE, P = "site-de-teste", "pes-abc"
 
 
 @pytest.fixture(autouse=True)
-def _ambiente(monkeypatch):
+def ambiente(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
-    monkeypatch.setattr("apps.core.views.quem_e", lambda request: ALGUEM)
-    monkeypatch.setattr("apps.core.views.FAIXAS_PARA_O_ALUNO", True)
+    monkeypatch.setattr("apps.core.views.quem_e", lambda request: P)
 
 
-def _envio(event, **extra):
-    data = {"site_id": SITE, "pessoa_id": ALGUEM, "ocorrido_em": AGORA, "historico": False, **extra}
-    processar_envelope(
-        {"event_id": str(uuid.uuid4()), "event": event, "version": 1,
-         "occurred_at": AGORA, "ator_id": ALGUEM, "data": data},
-        HANDLERS,
+def imagem():
+    from io import BytesIO
+    from PIL import Image, ImageDraw
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    b = BytesIO()
+    im = Image.new("RGB", (340, 40), "white")
+    ImageDraw.Draw(im).text((1, 1), "TESTE " + str(uuid.uuid4()), fill="black")
+    im.save(b, format="PNG")
+    return SimpleUploadedFile("teste.png", b.getvalue(), content_type="image/png")
+
+
+def confirmar(r):
+    from unittest.mock import patch
+    from apps.gamificacao.prints_recebimentos import processar
+
+    leitura = {
+        "status": "recebido",
+        "valor_cents": r.valor_original_cents,
+        "moeda": r.moeda_original,
+        "data": r.recebido_em.isoformat(),
+    }
+    with patch("apps.gamificacao.prints_recebimentos.ler_modelo", return_value=leitura):
+        return processar(r.pk)
+
+
+def gesto(acao, **dados):
+    arquivo = (
+        imagem()
+        if acao in ("recebimento", "correcao") and str(dados.get("valor")) != "0"
+        else None
+    )
+    antes, depois, avancou = salvar(
+        P,
+        SITE,
+        {"acao": acao, "revisao": situacao(P, SITE)["revisao"], **dados},
+        arquivo=arquivo,
+    )
+    if acao in ("recebimento", "correcao") and arquivo:
+        r = RecebimentoDeclarado.objects.filter(pessoa_id=P, site_id=SITE).latest(
+            "atualizado_em"
+        )
+        confirmar(r)
+        depois = situacao(P, SITE)
+        avancou = depois["atual"]["ordem"] > antes["atual"]["ordem"]
+    return antes, depois, avancou
+
+
+def receber(valor, **extras):
+    dados = dict(
+        chave=str(uuid.uuid4()), valor=valor, origem="fora", recebido_em="2026-10-01"
+    )
+    dados.update(extras)
+    return gesto("recebimento", **dados)
+
+
+@pytest.mark.parametrize("meta", [10000, 50000, 100000, 13749])
+def test_sete_cores_treze_passos_preta_setimo_grau_na_meta(meta):
+    lista = passos(meta)
+    assert len(lista) == 13
+    assert len({p["faixa"] for p in lista}) == 7
+    assert [
+        sum(p["faixa"] == cor for p in lista)
+        for cor in ["Branca", "Amarela", "Azul", "Vermelha", "Verde", "Marrom", "Preta"]
+    ] == [1, 1, 1, 1, 1, 1, 7]
+    limites = [p["meta_cents"] for p in lista[5:]]
+    assert limites == sorted(set(limites)) and limites[-1] == meta
+    if meta == 13749:
+        assert limites[0] == 172
+
+
+@pytest.mark.parametrize(
+    "valor,esperado", [("100,00", 10000), ("1.000,00", 100000), ("137.49", 13749)]
+)
+def test_centavos_sem_float(valor, esperado):
+    assert centavos(valor) == esperado
+
+
+@pytest.mark.parametrize(
+    "valor", ["nan", "1e3", "-100", "100.0001", "", "9999999999999999999"]
+)
+def test_valores_invalidos(valor):
+    with pytest.raises(ValueError):
+        centavos(valor)
+
+
+def test_sugestao_nao_fabrica_escolha(client):
+    html = client.get(reverse("base")).content.decode()
+    assert "7 faixas, 13 passos" in html and html.count('class="grupo-faixa"') == 7
+    assert "Faixa Branca" in html and "1º Grau" in html and "sugestão" in html
+    assert JornadaPessoal.objects.count() == 0
+
+
+def test_preview_nao_grava_e_preserva_entrada(client):
+    r = client.post(
+        reverse("salvar-jornada"),
+        {
+            "acao": "preview-meta",
+            "revisao": 0,
+            "meta": "100",
+            "preset": "500",
+            "proposito": "Minha despesa",
+        },
+    )
+    assert r.status_code == 200
+    assert "R$ 500,00" in r.content.decode() and "R$ 6,25" in r.content.decode()
+    assert "Escolher esta meta" in r.content.decode()
+    assert JornadaPessoal.objects.count() == 0
+
+
+def test_meta_customizada_e_recebimento_avancam_sem_xp(client):
+    gesto("meta", meta="137.49", proposito="Pagar uma conta")
+    _, depois, avancou = receber("137.49")
+    assert (
+        avancou
+        and depois["atual"]["faixa"] == "Preta"
+        and depois["atual"]["ordem"] == 13
+    )
+    assert depois["total_cents"] == 13749
+    perfil = PerfilJogador.objects.get(pessoa_id=P)
+    assert perfil.xp_total == 0 and perfil.cristais_saldo == 0
+    assert "Pagar uma conta" in client.get(reverse("base")).content.decode()
+
+
+def test_iniciar_sandbox_nao_concede_grau():
+    from apps.gamificacao.faixas import registrar_fato
+    from django.utils import timezone
+
+    registrar_fato(
+        P,
+        SITE,
+        "sandbox",
+        event_id="sandbox-iniciado",
+        quando=timezone.now(),
+        historico=False,
+    )
+    assert situacao(P, SITE)["atual"]["ordem"] == 1
+    gesto("declaracao", passo="3", estado="feito")
+    assert situacao(P, SITE)["atual"]["ordem"] == 3
+
+
+def test_reenvio_nao_duplica_recebimento():
+    gesto("meta", meta="500")
+    dados = {
+        "acao": "recebimento",
+        "revisao": 1,
+        "chave": str(uuid.uuid4()),
+        "valor": "30",
+        "origem": "fora",
+        "recebido_em": "2026-10-01",
+    }
+    salvar(P, SITE, dados, arquivo=imagem())
+    confirmar(RecebimentoDeclarado.objects.get())
+    salvar(P, SITE, dados)
+    assert (
+        situacao(P, SITE)["total_cents"] == 3000
+        and RecebimentoDeclarado.objects.count() == 1
     )
 
 
-def _ate_laranja():
-    _envio("cursos.item-criado", item_id="i1")
-    _envio("encomendas.sandbox-trabalho-criado", trabalho_id="t1")
-    _envio("encomendas.fila-trabalho-aceito", pedido_id="p1")
+@pytest.mark.django_db(transaction=True)
+def test_recebimento_simultaneo_com_mesma_chave_so_soma_uma_vez():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from django.db import close_old_connections
+
+    gesto("meta", meta="500")
+    dados = {
+        "acao": "recebimento",
+        "revisao": 1,
+        "chave": str(uuid.uuid4()),
+        "valor": "30",
+        "origem": "fora",
+        "recebido_em": "2026-10-01",
+    }
+    barreira = Barrier(2)
+
+    def enviar():
+        close_old_connections()
+        try:
+            barreira.wait(timeout=10)
+            return salvar(P, SITE, dados, arquivo=imagem())
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        resultados = list(pool.map(lambda _: enviar(), range(2)))
+    assert len(resultados) == 2
+    confirmar(RecebimentoDeclarado.objects.get())
+    assert (
+        situacao(P, SITE)["total_cents"] == 3000
+        and RecebimentoDeclarado.objects.count() == 1
+    )
 
 
-def _pagar(centavos, rid="r1"):
-    _envio("encomendas.rendimento-real-confirmado", rendimento_id=rid, valor_cents=centavos)
+def test_correcao_guarda_historia_sem_apagar():
+    gesto("meta", meta="100")
+    receber("100")
+    r = RecebimentoDeclarado.objects.get()
+    gesto("correcao", recebimento=r.pk, valor="20", recebido_em="2026-10-01")
+    assert (
+        situacao(P, SITE)["total_cents"] == 2000
+        and situacao(P, SITE)["atual"]["ordem"] == 9
+    )
+    assert (
+        RegistroDaJornada.objects.filter(acao="correcao").get().dados["passo_antes"]
+        == 13
+    )
+    gesto("correcao", recebimento=r.pk, valor="0", recebido_em="2026-10-01")
+    assert (
+        situacao(P, SITE)["total_cents"] == 0
+        and RecebimentoDeclarado.objects.count() == 1
+    )
 
 
-def _pagina(client):
-    r = client.get(reverse("base"))
-    assert r.status_code == 200
-    return r.content.decode()
+def test_troca_meta_preserva_recebimentos_e_historico():
+    gesto("meta", meta="100")
+    receber("100")
+    gesto("meta", meta="1000")
+    s = situacao(P, SITE)
+    assert s["total_cents"] == 10000 and s["atual"]["ordem"] == 9
+    assert (
+        RegistroDaJornada.objects.filter(acao="meta").first().dados["passo_antes"] == 13
+    )
 
 
-def test_aluno_novo_e_branca_com_proxima_sem_barra(client):
-    corpo = _pagina(client)
-    assert "Faixa Branca" in corpo
-    assert "Começando do zero" in corpo
-    assert "Faixa Branca e amarela" in corpo
-    assert 'class="barra"' not in corpo.split("A jornada das 13 faixas")[0].split("Próxima faixa")[1]
-    assert corpo.count('class="faixa-item') == 13
-    assert "fita branca" in corpo
+def test_fila_um_recebimento_corrigivel_e_proxima_acao_forum():
+    receber("10", origem="fila")
+    with pytest.raises(ValueError, match="única participação"):
+        receber("20", origem="fila")
+    gesto(
+        "correcao",
+        recebimento=RecebimentoDeclarado.objects.get().pk,
+        valor="20",
+        recebido_em="2026-10-01",
+    )
+    assert situacao(P, SITE)["total_cents"] == 2000
+    assert situacao(P, SITE)["proxima_url"] == "/forum/"
 
 
-def test_laranja_proxima_verde_sem_valor_real(client):
-    _ate_laranja()
-    corpo = _pagina(client)
-    assert "Faixa Laranja" in corpo
-    assert "Faixa Verde" in corpo
-    assert "Receba o primeiro pagamento real" in corpo
-    assert "Primeiro dinheiro real ganho de um cliente real" in corpo
-    assert "/08/10/2026" not in corpo and "08/10/2026" in corpo
-    assert "linear-gradient" in corpo  # faixas de duas cores na jornada
+def test_apoio_muda_orientacao_sem_mudar_criterio():
+    antes = situacao(P, SITE)["lista"]
+    gesto("apoio", apoio="desafio")
+    assert (
+        situacao(P, SITE)["lista"] == antes
+        and "outra versão" in situacao(P, SITE)["dica"]
+    )
 
 
-def test_azul_com_barra_financeira(client):
-    _ate_laranja()
-    _pagar(7350)
-    corpo = _pagina(client)
-    assert "Faixa Azul" in corpo
-    assert "R$ 73,50" in corpo and "R$ 100,00" in corpo and "R$ 26,50" in corpo
-    assert "width: 73%" in corpo
-    assert "Pagamento real de cliente confirmado" in corpo
+def test_nao_corrige_recebimento_alheio():
+    receber("10")
+    r = RecebimentoDeclarado.objects.get()
+    for pessoa, site in [("outra-pessoa", SITE), (P, "outro-site")]:
+        with pytest.raises(ValueError, match="não encontrado"):
+            salvar(
+                pessoa,
+                site,
+                {
+                    "acao": "correcao",
+                    "revisao": 0,
+                    "recebimento": r.pk,
+                    "valor": "999",
+                    "recebido_em": "2026-10-01",
+                },
+                arquivo=imagem(),
+            )
+    assert situacao(P, SITE)["total_cents"] == 1000
 
 
-def test_preta_nao_tem_proxima(client):
-    _pagar(200000)
-    corpo = _pagina(client)
-    assert "última da jornada" in corpo
-    assert "Próxima faixa" not in corpo
+def test_aba_antiga_nao_sobrescreve():
+    gesto("meta", meta="500")
+    with pytest.raises(ValueError, match="outra aba"):
+        salvar(P, SITE, {"acao": "meta", "revisao": 0, "meta": "100"})
+    assert situacao(P, SITE)["meta_cents"] == 50000
 
 
-def test_legenda_presente(client):
-    corpo = _pagina(client)
-    for trecho in ("Não depende de XP", "experiência de estudo", "loja",
-                   "Não é dinheiro", "clientes reais, já confirmado"):
-        assert trecho in corpo
-    assert "Medalhas" in corpo  # o que já existia continua
-    assert "A sua escada está sendo montada" in corpo
+def test_api_nao_revela_meta_valor_proposito(client, monkeypatch):
+    from django.conf import settings
+
+    monkeypatch.setattr(settings, "TOKENS_ACEITOS", ["teste-jornada"])
+    gesto("meta", meta="137.49", proposito="MOTIVO-PRIVADO")
+    receber("20")
+    r = client.get(
+        "/api/gamificacao/faixa-do-aluno",
+        {"pessoa_id": P},
+        HTTP_AUTHORIZATION="Bearer teste-jornada",
+    )
+    assert r.status_code == 200 and r.json()["atual"]["nome"] == "Preta · 3º Grau"
+    for privado in ["137.49", "13749", "MOTIVO-PRIVADO", "20,00"]:
+        assert privado not in r.content.decode()
 
 
-def test_sem_vazamento_de_dados_de_cliente(client):
-    _ate_laranja()
-    _pagar(5000, rid="REF-SECRETA-123")
-    corpo = _pagina(client)
-    for proibido in ("REF-SECRETA-123", "r1", "p1", "pedido", "5000", "R$ 50,00 de"):
-        if proibido in ("r1", "p1"):
-            continue  # curtos demais para checar em HTML
-        assert proibido not in corpo.replace("R$ 50,00", "")
-    assert ALGUEM not in corpo
+def test_visitante_e_csrf_nao_gravam(client, monkeypatch):
+    from django.test import Client
 
-
-def test_visitante_continua_vendo_o_convite(client, monkeypatch):
+    assert (
+        Client(enforce_csrf_checks=True)
+        .post(reverse("salvar-jornada"), {"acao": "meta", "meta": "100", "revisao": 0})
+        .status_code
+        == 403
+    )
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: None)
-    corpo = _pagina(client)
-    assert "Suas conquistas ficam aqui" in corpo
-    assert "Sua faixa" not in corpo
+    assert (
+        client.post(
+            reverse("salvar-jornada"), {"acao": "meta", "meta": "100", "revisao": 0}
+        ).status_code
+        == 302
+    )
+    assert JornadaPessoal.objects.count() == 0
 
 
-def test_aluno_nao_ve_faixas_enquanto_sao_so_do_admin(client, monkeypatch):
-    monkeypatch.setattr("apps.core.views.FAIXAS_PARA_O_ALUNO", False)
-    _ate_laranja()
-    corpo = _pagina(client)
-    for trecho in ("Sua faixa", "A jornada das 13 faixas", "Como ler cada coisa", "Faixa Laranja"):
-        assert trecho not in corpo
-    assert "Medalhas" in corpo
-
-
-def test_pagina_nao_grava_nada_de_faixa(client):
-    from apps.gamificacao.models import FaixaDoAluno
-
-    _pagina(client)
-    assert FaixaDoAluno.objects.count() == 0
+def test_texto_e_escapado(client):
+    gesto("meta", meta="100", proposito='<script>alert("x")</script>')
+    html = client.get(reverse("base")).content.decode()
+    assert '<script>alert("x")</script>' not in html and "&lt;script&gt;" in html

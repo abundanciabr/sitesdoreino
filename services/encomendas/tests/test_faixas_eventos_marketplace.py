@@ -23,14 +23,14 @@ def saidas(evento):
     return list(OutboxMarketplace.objects.filter(event=evento).order_by("occurred_at", "pk"))
 
 
-def _aprovado(real=True, valor="50,00"):
+def _aprovado(real=True, valor="50,00", pessoa_id="aluno-autorizado"):
     pedido = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados(valor))
     if real:
         _deposito_confirmado(pedido)
-    fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk)
-    arq = fila_real.adicionar_arquivo(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk,
+    fila_real.aceitar(site_id=SITE, pessoa_id=pessoa_id, pedido_id=pedido.pk)
+    arq = fila_real.adicionar_arquivo(site_id=SITE, pessoa_id=pessoa_id, pedido_id=pedido.pk,
                                       nome="a.blend", chave=f"t/{uuid.uuid4()}.blend")
-    ent = fila_real.entregar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk, arquivos_ids=[arq.pk])
+    ent = fila_real.entregar(site_id=SITE, pessoa_id=pessoa_id, pedido_id=pedido.pk, arquivos_ids=[arq.pk])
     fila_real.aprovar(site_id=SITE, pessoa_id="cliente-tilon", pedido_id=pedido.pk, entrega_id=ent.pk)
     pedido.refresh_from_db()
     return pedido
@@ -127,7 +127,12 @@ def test_valor_que_muda_reverte_o_antigo_e_confirma_o_novo(cenario):
 
 def test_criterio_da_carga_bate_com_o_da_funcao_existente(cenario):
     ok = _aprovado()
-    sem_sinal = _aprovado(real=False)
+    # Dois pedidos pertencem a dois alunos; cada aluno participa uma única vez.
+    from apps.encomendas.models import Pessoa, PerfilProfissional, AutorizacaoMarketplaceAluno
+    outra = Pessoa.objects.create(id_da_plataforma="aluno-do-segundo-pedido")
+    PerfilProfissional.objects.create(pessoa=outra, site_id=SITE)
+    AutorizacaoMarketplaceAluno.objects.create(site_id=SITE, pessoa=outra, ativa=True, autorizada_por="admin-teste")
+    sem_sinal = _aprovado(real=False, pessoa_id=outra.pk)
     ids = set(fe.recebiveis_validos(RecebivelMarketplace).values_list("pedido_id", flat=True))
     assert ids == {ok.pk}
     for p in (ok, sem_sinal):

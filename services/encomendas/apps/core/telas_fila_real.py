@@ -97,6 +97,7 @@ def catalogo(request):
     return render(request, "fila_real_catalogo.html", {
         "pedidos": pedidos, "trabalhos": trabalhos, "categorias": categorias,
         "trabalho_ativo": dados.get("trabalho_ativo"), "recado": request.GET.get("recado", ""),
+        "participou_da_fila": dados.get("participou_da_fila", False),
         "papel": papel,
     })
 

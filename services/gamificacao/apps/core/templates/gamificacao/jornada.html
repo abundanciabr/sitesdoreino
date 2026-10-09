@@ -1,0 +1,86 @@
+<section class="degrau jornada-pessoal" aria-labelledby="minha-faixa">
+  <p class="rotulo">Seus primeiros dólares · 7 faixas, 13 passos</p>
+  <div class="faixa-cartao">
+    <span class="fita" style="background: {{ faixas.atual.cor }}" aria-hidden="true"></span>
+    <div><h1 id="minha-faixa">Faixa {{ faixas.atual.faixa }}</h1><p class="grau">{% if faixas.atual.grau %}{{ faixas.atual.grau }} Grau · {% endif %}Passo {{ faixas.atual.ordem }} de 13</p></div>
+  </div>
+  <p>{{ faixas.atual.conquista }}</p>
+  {% if jornada_recado == 'cor' %}<p class="celebracao" role="status">Uma nova cor na sua jornada! Você chegou à faixa {{ faixas.atual.faixa }} com um resultado que registrou.</p>
+  {% elif jornada_recado == 'grau' %}<p class="celebracao" role="status">Mais um grau alcançado! Veja o resultado e o próximo passo abaixo.</p>
+  {% elif jornada_recado == 'salvo' %}<p role="status">Seu registro foi salvo. Sua história acompanha suas escolhas.</p>{% endif %}
+  {% if jornada_erro %}<p class="jornada-erro" role="alert">{{ jornada_erro }}</p>{% endif %}
+  <p><strong>{{ faixas.total }}</strong> em recebimentos declarados por você e reconhecidos pelo conteúdo dos prints.</p>
+  <p>{% if faixas.meta_escolhida %}Sua meta para o 7º grau da faixa-preta: <strong>{{ faixas.meta }}</strong>.{% else %}Escolha sua meta para o 7º grau da faixa-preta. Os valores abaixo usam a sugestão de <strong>R$ 100,00</strong>.{% endif %}</p>
+  {% if faixas.proposito %}<p class="motivo">Meu motivo: {{ faixas.proposito }}</p>{% endif %}
+  {% if faixas.meta_escolhida %}<div class="barra" role="progressbar" aria-label="Dinheiro recebido em relação à sua meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ faixas.percentual }}"><div class="cheio" style="width: {{ faixas.percentual }}%"></div></div>{% endif %}
+  {% if faixas.proxima %}<div class="proximo-passo"><p class="rotulo">Seu próximo passo</p><h2>{{ faixas.proxima.nome }}</h2><p>{{ faixas.proxima.conquista }}</p>
+    {% if faixas.proxima.limite %}<p>{{ faixas.proxima.limite }} acumulados{% if faixas.meta_escolhida %} · faltam {{ faixas.falta }}{% else %} com a meta sugerida{% endif %}.</p>{% endif %}
+    <a class="botao-jornada" href="{{ faixas.proxima_url }}">{{ faixas.proxima_acao }}</a>
+  </div>{% else %}<p class="celebracao">Você alcançou sua meta para o 7º grau da faixa-preta! Seu histórico mostra o caminho percorrido. A escola e a comunidade continuam com você.</p>{% endif %}
+</section>
+
+{% if previa %}<section class="aviso previa-meta" aria-labelledby="previa-meta">
+  <h2 id="previa-meta">Veja como fica antes de escolher</h2>
+  <p>Meta: <strong>{{ previa.meta }}</strong>. Com seus recebimentos atuais, sua posição fica em <strong>{{ previa.nome }}</strong>.</p>
+  <p>Se aumentar a meta, os patamares ficam mais distantes. Se diminuir, você pode alcançar novos graus. Seus recebimentos e seu histórico permanecem guardados.</p>
+  <ul class="criterios">{% for grupo in previa.grupos %}{% for passo in grupo.passos %}{% if passo.limite %}<li>{{ passo.nome }}: {{ passo.limite }} ({{ passo.percentual }}%)</li>{% endif %}{% endfor %}{% endfor %}</ul>
+  <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}
+    <input type="hidden" name="acao" value="meta"><input type="hidden" name="revisao" value="{{ previa.revisao }}">
+    <input type="hidden" name="meta" value="{{ previa.meta_input }}"><input type="hidden" name="proposito" value="{{ previa.proposito }}">
+    <button type="submit">Escolher esta meta</button> <a href="{% url 'base' %}">Continuar com a meta atual</a>
+  </form>
+</section>{% endif %}
+
+<section class="aviso jornada-configuracao" aria-labelledby="meta-pessoal">
+  <h2 id="meta-pessoal">Quanto quero alcançar no 7º grau da faixa-preta?</h2>
+  <p>Escolha de R$ 100,00 a R$ 1.000,00 em recebimentos acumulados de modelagem 3D. Essa é a jornada dos primeiros dólares; a Fila do Dólar oferece uma única participação, e os próximos trabalhos vêm da sua busca por clientes.</p>
+  <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}
+    <input type="hidden" name="acao" value="preview-meta"><input type="hidden" name="revisao" value="{{ faixas.revisao }}">
+    <label for="minha-meta">Minha meta em reais</label><input id="minha-meta" type="number" name="meta" min="100" max="1000" step="0.01" required value="{{ faixas.meta_input }}">
+    <label for="meu-motivo">Para que quero esse dinheiro? (opcional, só você vê)</label><input id="meu-motivo" name="proposito" maxlength="280" value="{{ faixas.proposito }}" placeholder="Por exemplo: ajudar em uma despesa de casa">
+    <div class="opcoes-meta"><button type="submit" name="preset" value="100">R$ 100</button><button type="submit" name="preset" value="500">R$ 500</button><button type="submit" name="preset" value="1000">R$ 1.000</button></div>
+    <button type="submit">Ver minha meta antes de escolher</button>
+  </form>
+</section>
+
+<section class="aviso" aria-labelledby="meu-mapa"><h2 id="meu-mapa">Minha jornada: sete faixas, treze passos</h2>
+  <p>A cor mostra a faixa. O grau mostra seu avanço dentro dela. Cada passo descreve um resultado concreto; você declara suas entregas, e o robô lê seus prints antes de atualizar os passos financeiros.</p>
+  <div class="grupos-jornada">{% for grupo in faixas.grupos %}<details class="grupo-faixa"{% if grupo.nome == faixas.atual.faixa %} open{% endif %}><summary><span class="fita" style="background: {{ grupo.cor }}" aria-hidden="true"></span><strong>Faixa {{ grupo.nome }}</strong> · {% if grupo.nome == "Preta" %}7 graus{% else %}1 passo{% endif %}</summary>
+    <ol>{% for passo in grupo.passos %}<li value="{{ passo.ordem }}" class="passo-jornada{% if passo.alcancada %} alcancado{% endif %}{% if passo.ordem == faixas.atual.ordem %} atual{% endif %}">
+      <p><strong>{% if passo.grau %}{{ passo.grau }} Grau{% else %}{{ passo.faixa }}{% endif %}</strong> · Passo {{ passo.ordem }}{% if passo.ordem == faixas.atual.ordem %} <span class="selo">Você está aqui</span>{% elif passo.alcancada %} <span class="selo">Alcançado</span>{% endif %}</p>
+      <p>{{ passo.conquista }}</p>{% if passo.limite %}<p class="miudo">{{ passo.percentual }}% da meta · {{ passo.limite }} acumulados{% if not faixas.meta_escolhida %} (sugestão){% endif %}</p>{% endif %}
+      {% if passo.ordem >= 2 and passo.ordem <= 4 %}
+      {% if passo.ordem == 2 %}<p class="miudo">Crie e finalize um item. Confira a forma e salve os arquivos para mostrar sua criação.</p>
+      {% elif passo.ordem == 3 %}<p class="miudo">Entenda o pedido, modele o item, confira os entregáveis e faça a entrega. Use o feedback do tutor e do cliente simulado para melhorar o que precisar. Você reconhece quando concluiu.</p>
+      {% else %}<p class="miudo">Prepare a entrega para um cliente real, converse sobre o pedido e entregue os arquivos combinados. Essa participação na Fila do Dólar acontece uma única vez.</p>{% endif %}
+      <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="declaracao"><input type="hidden" name="revisao" value="{{ faixas.revisao }}"><input type="hidden" name="passo" value="{{ passo.ordem }}">
+      {% if passo.alcancada %}<button class="secundario" name="estado" value="corrigir">Corrigir: ainda quero praticar</button>{% else %}<button name="estado" value="feito">{% if passo.ordem == 2 %}Concluí meu item 3D{% elif passo.ordem == 3 %}Concluí e entreguei minha prática{% else %}Concluí e entreguei meu trabalho real{% endif %}</button>{% endif %}</form>{% endif %}
+    </li>{% endfor %}</ol></details>{% endfor %}</div>
+</section>
+
+<section class="aviso" aria-labelledby="meu-apoio"><h2 id="meu-apoio">Como quero praticar agora?</h2>
+  <p>Você pode mudar o apoio a qualquer momento. O resultado de cada passo permanece claro.</p>
+  <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="apoio"><input type="hidden" name="revisao" value="{{ faixas.revisao }}">
+  <label for="apoio">Minha preferência</label><select id="apoio" name="apoio">{% for opcao in faixas.apoios %}<option value="{{ opcao.valor }}"{% if opcao.selecionado %} selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}</select><button type="submit">Usar este apoio</button></form>
+  <p class="dica-apoio">{{ faixas.dica }}</p>
+  <p>No <a href="/forum/">Fórum</a>, peça ajuda aos agentes e troque experiências com colegas. Apresente seu portfólio, discuta como encontrar trabalhos no Fiverr, no X, nas redes sociais e em comunidades. Compartilhe o que tentou e o que funcionou.</p>
+  <p>A professora acompanha você pelas aulas e cria novas aulas a pedido dos alunos na <a href="/forms/sugestoes/">Caixa de Sugestões</a>.</p>
+</section>
+
+<section class="aviso" aria-labelledby="recebimentos"><h2 id="recebimentos">Recebi dinheiro por modelagem 3D</h2><p>Registre o que já recebeu, dentro ou fora do site. Envie um recorte com o valor, a moeda, a data e a confirmação de que o dinheiro entrou. Oculte nomes, CPF, dados de conta e outros dados pessoais que não ajudam nessa leitura. Você declara e envia o print; o robô confere o conteúdo visível. Se estiver incompleto ou ilegível, ele pede esclarecimento. A escola não precisa aprovar. MESH, XP, Cristais, propostas e pagamentos ainda esperados não são recebimentos. O leitor reconhece o que aparece na imagem; ele não autentica o pagamento.</p>
+  <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="recebimento"><input type="hidden" name="revisao" value="{{ faixas.revisao }}"><input type="hidden" name="chave" value="{{ faixas.chave }}">
+    <label for="valor-recebido">Valor recebido em reais (ou o equivalente em reais que você informa)</label><input id="valor-recebido" type="number" name="valor" min="0.01" step="0.01" required>
+    <label for="moeda-print">Moeda que aparece no print</label><input id="moeda-print" name="moeda_original" value="BRL" maxlength="3" pattern="[A-Za-z]{3}" required><p class="miudo">BRL para reais, USD para dólares, EUR para euros. Para outra moeda, use seu código de três letras.</p><label for="valor-original">Valor original no print (preencha se a moeda for diferente de BRL)</label><input id="valor-original" type="number" name="valor_original" min="0.01" step="0.01"><p class="miudo">Em outra moeda, você informa o equivalente em reais. O robô lê o valor original e não calcula câmbio.</p><label for="print-recebimento">Print privado do recebimento</label><input id="print-recebimento" name="print" type="file" accept="image/png,image/jpeg,image/webp" required><label for="data-recebimento">Dia do recebimento</label><input id="data-recebimento" type="date" name="recebido_em" required>
+    <label for="origem-recebimento">Onde aconteceu?</label><select id="origem-recebimento" name="origem"><option value="fora">Cliente fora do site</option><option value="fila">Minha única participação na Fila do Dólar</option></select>
+    <button type="submit">Enviar recebimento e print para leitura</button>
+  </form>
+  {% for r in faixas.recebimentos %}<details class="registro-recebimento"><summary>{{ r.valor }} · {{ r.estado }} · {{ r.recebido_em|date:'d/m/Y' }} · {% if r.origem == 'fila' %}Fila do Dólar{% else %}Fora do site{% endif %}</summary>
+    <p>{{ r.mensagem }}</p>{% for versao in r.versoes %}<p class="miudo"><a href="{% url 'print-recebimento' versao.pk %}" target="_blank" rel="noopener">Ver meu print · versão {{ versao.revisao|add:1 }}</a></p>{% endfor %}<form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="correcao"><input type="hidden" name="revisao" value="{{ faixas.revisao }}"><input type="hidden" name="recebimento" value="{{ r.pk }}">
+    <label for="valor-{{ r.pk }}">Corrigir o valor (zero anula o recebimento)</label><input id="valor-{{ r.pk }}" type="number" name="valor" min="0" step="0.01" value="{{ r.valor_input }}" required>
+    <label for="print-{{ r.pk }}">Novo print para corrigir (dispensado se anular com valor zero)</label><input id="print-{{ r.pk }}" name="print" type="file" accept="image/png,image/jpeg,image/webp"><label for="moeda-{{ r.pk }}">Moeda do print</label><input id="moeda-{{ r.pk }}" name="moeda_original" value="{{ r.moeda_original }}" maxlength="3"><label for="original-{{ r.pk }}">Valor original (para moeda diferente de BRL)</label><input id="original-{{ r.pk }}" name="valor_original" type="number" min="0.01" step="0.01" value="{{ r.valor_original_input }}"><label for="data-{{ r.pk }}">Dia do recebimento</label><input id="data-{{ r.pk }}" type="date" name="recebido_em" value="{{ r.recebido_em|date:'Y-m-d' }}" required><button type="submit">Guardar correção no histórico</button></form>
+  </details>{% endfor %}
+</section>
+
+<details class="aviso"><summary>Meu histórico privado</summary><p>Suas escolhas e correções ficam aqui. Não há ranking de renda nem comparação de metas.</p>
+  <ul>{% for registro in faixas.historico %}<li>{{ registro.criado_em|date:'d/m/Y H:i' }} · {{ registro.dados.texto }}</li>{% empty %}<li>Os registros aparecerão conforme você construir sua jornada.</li>{% endfor %}</ul>
+</details>

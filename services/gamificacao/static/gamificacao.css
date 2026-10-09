@@ -16,6 +16,30 @@
   --marca-fraca: #efeaff;
 }
 
+/* Jornada pessoal: cinco cores e graus legíveis também no celular. */
+.jornada-pessoal .grau { font-weight: 650; margin: 4px 0; }
+.jornada-pessoal .fita { border: 1px solid #777; width: 70px; }
+.jornada-configuracao label, .aviso form label { display: block; margin-top: 12px; font-weight: 600; }
+.jornada-configuracao input, .aviso form input:not([type=hidden]), .aviso select { width: 100%; max-width: 100%; padding: 10px 12px; font: inherit; border: 1px solid #aaa; border-radius: 7px; background: white; }
+.aviso button, .botao-jornada { display: inline-block; padding: 10px 14px; border: 0; border-radius: 8px; background: #5836c9; color: white; font: inherit; font-weight: 650; text-decoration: none; cursor: pointer; margin-top: 12px; }
+.aviso button.secundario { background: #eeeaf7; color: #352857; }
+.opcoes-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.celebracao { padding: 14px; background: #eaf5ed; border-radius: 9px; color: #174f29; }
+.jornada-erro { color: #891a21; background: #fff0f0; padding: 12px; }
+.proximo-passo { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--borda); }
+.grupo-faixa { border-top: 1px solid var(--borda); padding: 16px 0; }
+.grupo-faixa summary { display: flex; align-items: center; gap: 10px; cursor: pointer; flex-wrap: wrap; }
+.grupo-faixa .fita { flex: 0 0 45px; width: 45px; height: 14px; border: 1px solid #777; border-radius: 4px; }
+.grupo-faixa ol { padding-left: 26px; }
+.passo-jornada { padding: 8px 0 12px 10px; }
+.passo-jornada p { margin: 6px 0; }
+.passo-jornada.alcancado { border-left: 3px solid #317344; }
+.passo-jornada.atual { background: #f5f0ff; border-radius: 7px; }
+.registro-recebimento { margin-top: 18px; border-top: 1px solid var(--borda); padding-top: 12px; }
+.motivo, .dica-apoio { padding: 12px; border-radius: 8px; background: #f4f1fb; }
+@media (max-width: 420px) { .aviso, .degrau { padding: 20px 16px; } .faixa-cartao { gap: 10px; } .jornada-pessoal h1 { font-size: 26px; } }
+@media (prefers-reduced-motion: reduce) { .cheio { transition: none; } }
+
 * { box-sizing: border-box; }
 
 body {

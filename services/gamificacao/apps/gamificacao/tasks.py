@@ -179,3 +179,9 @@ def liberar_quarentena_periodico() -> tuple[int, int]:
     `DEFINITIVO` não é tocado de novo.
     """
     return liberar_quarentena()
+
+
+@huey.periodic_task(crontab(minute="*"))
+def ler_prints_de_recebimentos():
+    from .prints_recebimentos import rodada
+    return rodada()

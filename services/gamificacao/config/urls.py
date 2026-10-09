@@ -1,11 +1,13 @@
 from django.urls import path, re_path
 from apps.core.views import (
-    base, medalhas, healthz, servir_estatico,
+    base, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
     interno_reconhecimentos, decidir_reconhecimento,
 )
 from config.api import api
 
 urlpatterns = [
+    path("jornada/salvar", salvar_jornada, name="salvar-jornada"),
+    path("jornada/prints/<int:versao_id>", print_recebimento, name="print-recebimento"),
     path("healthz", healthz),
     path("api/gamificacao/", api.urls),
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),

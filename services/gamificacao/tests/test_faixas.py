@@ -267,8 +267,9 @@ def test_endpoint_interno_faixa_do_aluno(settings, monkeypatch):
     assert r.status_code == 200
     corpo = r.json()
     assert corpo["pessoa_id"] == P and corpo["site_id"] == SITE
-    assert corpo["atual"]["ordem"] == 7 and corpo["atual"]["nome"] == "Azul"
-    assert corpo["alcancadas"] == 4  # Branca + 5, 6, 7
+    # O livro anterior fica guardado; um sinal financeiro não declara recebimento pelo aluno.
+    assert corpo["atual"]["ordem"] == 1 and corpo["atual"]["nome"] == "Branca"
+    assert corpo["alcancadas"] == 1
     assert set(corpo["atual"]) == {"ordem", "nome", "cores", "conquista", "alcancada_em"}
     r = c.get("/api/gamificacao/faixa-do-aluno", {"pessoa_id": "ninguem"}, HTTP_AUTHORIZATION="Bearer tok")
     assert r.json()["atual"]["ordem"] == 1 and r.json()["alcancadas"] == 1

@@ -270,7 +270,9 @@ def catalogo(*, site_id, pessoa_id, categoria):
     for p in trabalhos:
         p.depositado_real = _depositado(p)
         p.pagamento_reservado = _reservado(p)
-    return {'pedidos': pedidos, 'trabalhos': trabalhos,
+    participou = AcordoMarketplace.objects.filter(site_id=site_id, aluno__pessoa_id=pessoa_id, pedido__fila_cliente__isnull=False).exists()
+    return {'pedidos': pedidos if equipe or not participou else [], 'trabalhos': trabalhos,
+        'participou_da_fila': participou,
         'trabalho_ativo': next((p for p in trabalhos if p.status in EM_ANDAMENTO), None)}
 
 
@@ -284,6 +286,8 @@ def aceitar(*, site_id, pessoa_id, pedido_id):
             raise ErroMarketplace('Pedido indisponível.')
         if pedido.aluno_id == perfil.pk and pedido.producao_iniciada_em:
             return pedido
+        if AcordoMarketplace.objects.filter(site_id=site_id, aluno__pessoa_id=pessoa_id, pedido__fila_cliente__isnull=False).exists():
+            raise ErroMarketplace('Você já usou sua única participação na Fila do Dólar. Continue seu trabalho atual; para os próximos clientes, conte com o Fórum e a comunidade.')
         if pedido.status != 'na_fila' or not _reservado(pedido):
             raise ErroMarketplace('Este pedido ainda não está disponível para aceite.')
         if perfil.disponibilidade != PerfilProfissional.Disponibilidade.DISPONIVEL:

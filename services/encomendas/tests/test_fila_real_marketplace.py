@@ -1,5 +1,7 @@
 """Créditos liberam o trabalho; aprovação libera saque por Pix manual."""
 
+from tests.test_sandbox_concorrencia import limpeza_transacional  # noqa: F401
+
 from datetime import timedelta
 
 import pytest
@@ -189,6 +191,48 @@ def test_aceite_depende_de_autorizacao_individual_e_reserva_interna(cenario):
         site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido.pk,
     ).pk == pedido.pk
     assert pedido.acordo.pk == aceito.acordo.pk
+
+
+@pytest.mark.django_db
+def test_participacao_unica_persiste_apos_conclusao_e_catalogo_orienta(cenario):
+    primeiro = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados())
+    segundo = fila_real.criar_pedido(site_id=SITE, slug="paula", pessoa_id="cliente-paula", dados=_dados())
+    fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=primeiro.pk)
+    PedidoMarketplace.objects.filter(pk=primeiro.pk).update(status="aprovado")
+    cenario.disponibilidade = PerfilProfissional.Disponibilidade.DISPONIVEL
+    cenario.save(update_fields=["disponibilidade"])
+    with pytest.raises(fila_real.ErroFilaReal, match="única participação"):
+        fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=segundo.pk)
+    assert fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=primeiro.pk).pk == primeiro.pk
+    catalogo = fila_real.catalogo(site_id=SITE, pessoa_id="aluno-autorizado", categoria=None)
+    assert catalogo["participou_da_fila"] and catalogo["pedidos"] == []
+    assert primeiro.pk in [p.pk for p in catalogo["trabalhos"]]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_dois_aceites_simultaneos_consumem_so_uma_participacao(cenario, limpeza_transacional):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from django.db import close_old_connections
+    from apps.encomendas.models import AcordoMarketplace
+    primeiro = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados())
+    segundo = fila_real.criar_pedido(site_id=SITE, slug="paula", pessoa_id="cliente-paula", dados=_dados())
+    barreira = Barrier(2)
+    def aceitar(pedido):
+        close_old_connections()
+        try:
+            barreira.wait(timeout=10)
+            try:
+                fila_real.aceitar(site_id=SITE, pessoa_id="aluno-autorizado", pedido_id=pedido)
+                return "aceito"
+            except fila_real.ErroFilaReal:
+                return "participacao-usada"
+        finally:
+            close_old_connections()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        resultados = list(pool.map(aceitar, [primeiro.pk, segundo.pk]))
+    assert sorted(resultados) == ["aceito", "participacao-usada"]
+    assert AcordoMarketplace.objects.filter(site_id=SITE, aluno=cenario).count() == 1
 
 
 @pytest.mark.django_db

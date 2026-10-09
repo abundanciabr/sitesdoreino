@@ -1772,6 +1772,79 @@ class RendimentoRealLivro(models.Model):
         return f"{self.pessoa_id}@{self.site_id} {self.valor_cents}c ({self.rendimento_id})"
 
 
+class JornadaPessoal(models.Model):
+    """Meta e declarações do próprio aluno para os 13 passos em sete faixas."""
+
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    meta_cents = models.PositiveIntegerField(null=True, blank=True)
+    proposito = models.CharField(max_length=280, blank=True, default="")
+    apoio = models.CharField(max_length=12, default="guiado")
+    declaracoes = models.JSONField(default=dict)
+    celebracao_pendente = models.JSONField(default=dict)
+    revisao = models.PositiveIntegerField(default=0)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["pessoa", "site_id"], name="uma_jornada_pessoal_por_site")]
+
+
+class RecebimentoDeclarado(models.Model):
+    """Recebimento informado pelo aluno. Correção preserva o registro e a história."""
+
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    chave = models.UUIDField(default=uuid.uuid4)
+    valor_cents = models.PositiveIntegerField()
+    origem = models.CharField(max_length=8)
+    estado = models.CharField(max_length=14, default="pendente")
+    print_bytes = models.BinaryField(null=True, blank=True)
+    print_sha256 = models.CharField(max_length=64, blank=True, default="")
+    moeda_original = models.CharField(max_length=3, default="BRL")
+    valor_original_cents = models.PositiveIntegerField(default=0)
+    leitura = models.JSONField(default=dict)
+    analise_iniciada_em = models.DateTimeField(null=True, blank=True)
+    analisada_em = models.DateTimeField(null=True, blank=True)
+    tentar_em = models.DateTimeField(null=True, blank=True)
+    tentativas = models.PositiveIntegerField(default=0)
+    recebido_em = models.DateField()
+    revisao = models.PositiveIntegerField(default=0)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["pessoa", "site_id", "chave"], name="um_recebimento_declarado_por_chave")]
+
+
+class VersaoDoRecebimento(models.Model):
+    """Versão privada do print e da declaração; corrigir nunca apaga a versão anterior."""
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    recebimento = models.ForeignKey(RecebimentoDeclarado, on_delete=models.PROTECT)
+    revisao = models.PositiveIntegerField()
+    print_bytes = models.BinaryField()
+    print_sha256 = models.CharField(max_length=64)
+    dados = models.JSONField(default=dict)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["recebimento", "revisao"], name="uma_versao_por_recebimento")]
+
+
+class RegistroDaJornada(models.Model):
+    """História privada de metas, declarações e correções, sem aprovação externa."""
+
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    acao = models.CharField(max_length=20)
+    dados = models.JSONField(default=dict)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-id"]
+
+
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     """Uma linha por fato que a gamificação afirma ao resto da plataforma.
 

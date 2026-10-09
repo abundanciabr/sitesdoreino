@@ -28,9 +28,12 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse
+import io
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.cache import never_cache
 
 from apps.gamificacao.recursos import disponiveis
 from apps.gamificacao.criterios import medalhas_da_pessoa
@@ -53,9 +56,8 @@ from .sessao import quem_e, site_atual
 
 logger = logging.getLogger(__name__)
 
-# As 13 faixas ainda são só do admin (ficha do aluno no painel); a página do
-# aluno não as mostra enquanto isto for False.
-FAIXAS_PARA_O_ALUNO = False
+# Sete faixas e sete graus na Preta: treze passos na jornada privada do aluno.
+FAIXAS_PARA_O_ALUNO = True
 
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
@@ -85,6 +87,7 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 
+@never_cache
 @require_GET
 def base(request):
     """A Base: onde o aluno vê em que degrau está.
@@ -113,16 +116,25 @@ def base(request):
         return render(request, "gamificacao/base.html", {"entrou": False, **de_fora})
 
     perfil = perfil_de(pessoa_id, site)
-    return render(
+    faixas = _faixas_para_tela(pessoa_id, site) if FAIXAS_PARA_O_ALUNO else None
+    recado = request.GET.get("jornada", "")
+    if faixas and faixas["celebracao"].get("ordem") == faixas["atual"]["ordem"]:
+        recado = faixas["celebracao"].get("tipo", recado)
+    resposta = render(
         request,
         "gamificacao/base.html",
         {
             "entrou": True,
             "escada": escada_de(perfil),
-            "faixas": _faixas_para_tela(pessoa_id, site) if FAIXAS_PARA_O_ALUNO else None,
+            "faixas": faixas,
+            "jornada_recado": recado,
             **de_fora,
         },
     )
+    if faixas and faixas["celebracao"]:
+        from apps.gamificacao.models import JornadaPessoal
+        JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site, celebracao_pendente=faixas["celebracao"]).update(celebracao_pendente={})
+    return resposta
 
 
 def _reais(cents: int) -> str:
@@ -139,38 +151,57 @@ def _fundo(cores: list[str]) -> str:
 
 
 def _faixas_para_tela(pessoa_id: str, site: str) -> dict:
-    """A situação das 13 faixas pronta para o template (sem dado de cliente)."""
-    from django.utils import timezone
+    """Os treze passos em sete faixas, prontos para a tela privada do aluno."""
+    from apps.gamificacao.jornada import situacao
+    return situacao(pessoa_id, site)
 
-    from apps.gamificacao.faixas import situacao_das_faixas
 
-    s = situacao_das_faixas(pessoa_id, site)
+@never_cache
+@require_POST
+def salvar_jornada(request):
+    from apps.gamificacao.jornada import salvar, situacao, centavos, reais
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id or not site:
+        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
+    contexto = {"entrou": True, "escada": escada_de(perfil_de(pessoa_id, site)),
+                "faixas": situacao(pessoa_id, site)}
+    if request.POST.get("acao") == "preview-meta":
+        try:
+            meta = centavos(request.POST.get("preset") or request.POST.get("meta", ""))
+            if not 10000 <= meta <= 100000:
+                raise ValueError("Escolha uma meta entre R$ 100,00 e R$ 1.000,00.")
+            previa = situacao(pessoa_id, site, meta_simulada=meta)
+            contexto["previa"] = {"meta": reais(meta), "meta_input": f"{meta / 100:.2f}",
+                                   "nome": previa["atual"]["nome"], "revisao": request.POST.get("revisao", ""),
+                                   "proposito": request.POST.get("proposito", "")[:280],
+                                   "grupos": previa["grupos"]}
+            return render(request, "gamificacao/base.html", contexto)
+        except ValueError as erro:
+            contexto["jornada_erro"] = str(erro)
+            return render(request, "gamificacao/base.html", contexto, status=400)
+    try:
+        antes, depois, avancou = salvar(pessoa_id, site, request.POST, arquivo=request.FILES.get("print"))
+    except (ValueError, TypeError) as erro:
+        contexto["jornada_erro"] = str(erro)
+        return render(request, "gamificacao/base.html", contexto, status=400)
+    recado = "cor" if avancou and antes["atual"]["faixa"] != depois["atual"]["faixa"] else ("grau" if avancou else "salvo")
+    return HttpResponseRedirect(reverse("base") + "?jornada=" + recado)
 
-    def data(d):
-        return timezone.localtime(d).strftime("%d/%m/%Y") if d else None
 
-    atual = {**s["atual"], "fundo": _fundo(s["atual"]["cores"]),
-             "data": data(s["atual"]["alcancada_em"])}
-    proxima = None
-    if s["proxima"]:
-        p = s["proxima"]
-        proxima = {**p, "fundo": _fundo(p["cores"]), "barra": None}
-        d = p["dinheiro"]
-        if d:
-            proxima["barra"] = {
-                "pct": d["fracao_pct"],
-                "total": _reais(d["total_cents"]),
-                "meta": _reais(d["meta_cents"]),
-                "falta": _reais(d["falta_cents"]),
-                "unica": d["meta_cents"] <= 1,
-            }
-    lista = [
-        {**f, "fundo": _fundo(f["cores"]), "data": data(f["alcancada_em"]),
-         "atual": f["ordem"] == s["atual"]["ordem"]}
-        for f in s["faixas"]
-    ]
-    return {"atual": atual, "proxima": proxima, "lista": lista,
-            "total": _reais(s["total_real_cents"])}
+@never_cache
+@require_GET
+def print_recebimento(request, versao_id):
+    from apps.gamificacao.models import VersaoDoRecebimento
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id or not site:
+        raise Http404
+    versao = VersaoDoRecebimento.objects.filter(pk=versao_id, pessoa_id=pessoa_id, site_id=site).first()
+    if versao is None:
+        raise Http404
+    resposta = HttpResponse(bytes(versao.print_bytes), content_type="image/png")
+    resposta["Content-Disposition"] = 'inline; filename="recebimento.png"'
+    resposta["X-Content-Type-Options"] = "nosniff"
+    return resposta
 
 
 @require_GET

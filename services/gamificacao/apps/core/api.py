@@ -997,13 +997,13 @@ class FaixaDoAluno(Schema):
     ),
 )
 def get_student_belt(request, pessoa_id: str):
-    from apps.gamificacao.faixas import situacao_das_faixas
+    from apps.gamificacao.jornada import situacao
 
     site_id = site_atual()
     if site_id is None:
         raise HttpError(503, "SITE_ID ausente no env da gamificacao")
-    situacao = situacao_das_faixas(pessoa_id, site_id)
-    atual = situacao["atual"]
+    jornada = situacao(pessoa_id, site_id)
+    atual = jornada["atual"]
     return FaixaDoAluno(
         pessoa_id=pessoa_id,
         site_id=site_id,
@@ -1011,5 +1011,5 @@ def get_student_belt(request, pessoa_id: str):
             ordem=atual["ordem"], nome=atual["nome"], cores=atual["cores"],
             conquista=atual["conquista"], alcancada_em=atual["alcancada_em"],
         ),
-        alcancadas=sum(1 for f in situacao["faixas"] if f["alcancada"]),
+        alcancadas=sum(1 for f in jornada["lista"] if f["alcancada"]),
     )
