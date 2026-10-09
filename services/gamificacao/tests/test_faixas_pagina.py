@@ -336,3 +336,95 @@ def test_texto_e_escapado(client):
     gesto("meta", meta="100", proposito='<script>alert("x")</script>')
     html = client.get(reverse("base")).content.decode()
     assert '<script>alert("x")</script>' not in html and "&lt;script&gt;" in html
+
+
+def _corrigir_sem_confirmar(r, valor):
+    salvar(
+        P,
+        SITE,
+        {
+            "acao": "correcao",
+            "revisao": situacao(P, SITE)["revisao"],
+            "recebimento": r.pk,
+            "valor": valor,
+            "recebido_em": "2026-10-01",
+        },
+        arquivo=imagem(),
+    )
+    r.refresh_from_db()
+    return r
+
+
+def test_correcao_pendente_mantem_total_e_passo():
+    gesto("meta", meta="100")
+    receber("100")
+    r = RecebimentoDeclarado.objects.get()
+    _corrigir_sem_confirmar(r, "100")
+    s = situacao(P, SITE)
+    assert r.estado == "pendente" and s["total_cents"] == 10000
+    assert s["atual"]["ordem"] == 13
+    reg = RegistroDaJornada.objects.filter(acao="correcao").get()
+    assert reg.dados["passo_depois"] == 13
+
+
+def test_reconfirmar_correcao_igual_nao_comemora():
+    gesto("meta", meta="100")
+    receber("100")
+    j = JornadaPessoal.objects.get()
+    j.celebracao_pendente = {}
+    j.save()
+    r = RecebimentoDeclarado.objects.get()
+    _corrigir_sem_confirmar(r, "100")
+    confirmar(r)
+    j.refresh_from_db()
+    assert j.celebracao_pendente == {}
+
+
+def test_correcao_maior_comemora_so_passo_novo():
+    gesto("meta", meta="100")
+    receber("30")
+    j = JornadaPessoal.objects.get()
+    j.celebracao_pendente = {}
+    j.save()
+    r = RecebimentoDeclarado.objects.get()
+    antes = situacao(P, SITE)["atual"]["ordem"]
+    _corrigir_sem_confirmar(r, "100")
+    assert situacao(P, SITE)["atual"]["ordem"] == antes
+    confirmar(r)
+    j.refresh_from_db()
+    assert j.celebracao_pendente["ordem"] == situacao(P, SITE)["atual"]["ordem"] > antes
+
+
+def test_correcao_que_vira_esclarecer_deixa_de_somar():
+    from unittest.mock import patch
+    from apps.gamificacao.prints_recebimentos import processar
+
+    receber("50")
+    r = RecebimentoDeclarado.objects.get()
+    _corrigir_sem_confirmar(r, "60")
+    assert situacao(P, SITE)["total_cents"] == 5000
+    with patch(
+        "apps.gamificacao.prints_recebimentos.ler_modelo",
+        return_value={"status": "ilegivel"},
+    ):
+        processar(r.pk)
+    r.refresh_from_db()
+    assert r.estado == "esclarecer" and situacao(P, SITE)["total_cents"] == 0
+
+
+def test_anular_confirmado_zera_na_hora():
+    receber("50")
+    r = RecebimentoDeclarado.objects.get()
+    gesto("correcao", recebimento=r.pk, valor="0", recebido_em="2026-10-01")
+    r.refresh_from_db()
+    assert r.estado == "anulado" and r.leitura == {}
+    assert situacao(P, SITE)["total_cents"] == 0
+
+
+def test_duas_correcoes_seguidas_mantem_anterior_original():
+    receber("50")
+    r = RecebimentoDeclarado.objects.get()
+    _corrigir_sem_confirmar(r, "60")
+    _corrigir_sem_confirmar(r, "70")
+    assert r.leitura == {"anterior_cents": 5000}
+    assert situacao(P, SITE)["total_cents"] == 5000

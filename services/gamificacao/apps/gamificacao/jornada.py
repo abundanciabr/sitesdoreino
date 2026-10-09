@@ -113,6 +113,9 @@ def passos(meta):
     return lista
 
 
+ESPERANDO_LEITURA = ("pendente", "analisando", "falha")
+
+
 def situacao(pessoa_id, site_id, *, meta_simulada=None):
     jornada = JornadaPessoal.objects.filter(
         pessoa_id=pessoa_id, site_id=site_id
@@ -128,7 +131,14 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         .defer("print_bytes")
         .order_by("-recebido_em", "-id")
     )
-    total = sum(r.valor_cents for r in recebimentos if r.estado == "confirmado")
+    total = sum(
+        r.valor_cents
+        if r.estado == "confirmado"
+        else (r.leitura or {}).get("anterior_cents", 0)
+        if r.estado in ESPERANDO_LEITURA
+        else 0
+        for r in recebimentos
+    )
     lista = passos(meta or 10000)
     for p in lista:
         ordem = p["ordem"]
@@ -379,6 +389,13 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     "data_anterior": r.recebido_em.isoformat(),
                     "texto": f"Corrigi um recebimento para {reais(valor)}.",
                 }
+                # Enquanto o robô relê, o último valor confirmado continua somando.
+                if r.estado == "confirmado":
+                    anterior = r.valor_cents
+                elif r.estado in ESPERANDO_LEITURA:
+                    anterior = (r.leitura or {}).get("anterior_cents", 0)
+                else:
+                    anterior = 0
                 r.valor_cents, r.recebido_em = valor, recebido_em
                 if print_bytes:
                     r.print_bytes, r.print_sha256 = print_bytes, print_sha256
@@ -387,7 +404,8 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     valor_original,
                 )
                 r.estado = "pendente" if valor else "anulado"
-                r.leitura, r.tentar_em, r.analise_iniciada_em = {}, None, None
+                r.leitura = {"anterior_cents": anterior} if anterior and valor else {}
+                r.tentar_em, r.analise_iniciada_em = None, None
                 r.tentativas = 0
                 r.revisao += 1
                 r.save()
