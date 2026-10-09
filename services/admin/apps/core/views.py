@@ -35,7 +35,7 @@ from apps.auditoria.models import Registro
 
 from . import documento_em_pagina, documentos
 from .clients import AlunosClient, CatalogoClient, IdentidadeClient
-from .models import Administrador, Documento, RascunhoDeConfiguracao
+from .models import Administrador, AlunoRemovidoDaLista, Documento, RascunhoDeConfiguracao
 from .porta import _emails_autorizados
 from .telefone import numeros_no_texto
 from .turmas import conferir
@@ -786,6 +786,15 @@ def escola_alunos(request):
     # faria o cartão responder a busca do mantenedor como se fosse o tamanho da
     # escola. Guarda: `tests/test_busca_e_filtro.py`.
     alunos = agrupar_alunos(alunos)
+    removidos = set(AlunoRemovidoDaLista.objects.filter(removido=True).values_list("site_id", "email"))
+    mostrar_removidos = request.GET.get("removidos") == "1"
+    if alunos is not None:
+        for pessoa in alunos:
+            pessoa["removido_da_lista"] = (str(pessoa.get("site_id") or ""), str(pessoa.get("email") or "").strip().lower()) in removidos
+        quantidade_removidos = sum(p["removido_da_lista"] for p in alunos)
+        alunos = [p for p in alunos if p["removido_da_lista"] == mostrar_removidos]
+    else:
+        quantidade_removidos = 0
     procurado = (request.GET.get("q") or "").strip()[:120]
     estado_pedido = (request.GET.get("estado") or "").strip()
     estado = estado_pedido if estado_pedido in _estados_filtraveis() else ""
@@ -810,6 +819,8 @@ def escola_alunos(request):
             "tipos": tipos_com_contagem(contagens),
             "esperando": esperando_na_tela,
             "alunos": alunos_na_tela,
+            "mostrar_removidos": mostrar_removidos,
+            "quantidade_removidos": quantidade_removidos,
             # [BUSCA] O que a pessoa pediu, devolvido para os campos do
             # formulário: um filtro que se apaga ao recarregar a página faz o
             # mantenedor achar que a lista inteira é o resultado da busca dele.
@@ -1340,7 +1351,8 @@ RECADOS = {
     ),
     "nao-valeu": "A decisão não valeu.",
     "salvo": "Pronto: as mudanças foram salvas.",
-    "aluno-removido": "Aluno removido: o acesso foi encerrado e a ficha foi mantida como Ex-aluno.",
+    "aluno-removido": "Aluno removido da lista e sem acesso. A ficha continua disponível em Alunos removidos.",
+    "aluno-restaurado": "Ficha restaurada à lista. O acesso continua encerrado; você pode alterar a situação se quiser liberar novamente.",
     "cursos-indisponiveis": (
         "Não salvei os cursos: a lista de cursos não respondeu ou mudou. "
         "Recarregue a página e tente de novo."
@@ -1569,7 +1581,7 @@ DESFECHO_NA_AUDITORIA = {
 
 @require_POST
 def escola_aluno_remover(request):
-    """Encerra as matrículas da ficha sem apagar o cadastro ou os cursos."""
+    """Encerra as matrículas e retira a ficha da lista, preservando o histórico."""
     alvo = (request.POST.get("alvo") or "").strip()
     cliente = AlunosClient()
     matriculas = cliente.alunos()
@@ -1591,12 +1603,32 @@ def escola_aluno_remover(request):
         )
         if desfecho != AlunosClient.OK:
             break
+    if desfecho == AlunosClient.OK:
+        AlunoRemovidoDaLista.objects.update_or_create(
+            site_id=str(pessoa.get("site_id") or ""), email=email, defaults={"removido": True},
+        )
     _auditar(request, Registro.EDITAR, alvo, DESFECHO_NA_AUDITORIA[desfecho],
-             detalhe or "status=encerrada; remover aluno")
+             detalhe or "status=encerrada; remover aluno da lista")
     recado = "aluno-removido" if desfecho == AlunosClient.OK else (
         "nao-valeu" if desfecho == AlunosClient.RECUSADO else "nao-deu"
     )
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+
+@require_POST
+def escola_aluno_restaurar(request):
+    alvo = (request.POST.get("alvo") or "").strip()
+    matriculas = AlunosClient().alunos()
+    if matriculas is None:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-deu")
+    pessoa = next((m for m in matriculas if str(m.get("id")) == alvo), None)
+    if pessoa is None:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+    AlunoRemovidoDaLista.objects.filter(
+        site_id=str(pessoa.get("site_id") or ""), email=str(pessoa.get("email") or "").strip().lower(),
+    ).update(removido=False, atualizado_em=timezone.now())
+    _auditar(request, Registro.EDITAR, alvo, Registro.OK, "restaurar aluno à lista; acesso mantido")
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=aluno-restaurado")
 
 
 @require_POST

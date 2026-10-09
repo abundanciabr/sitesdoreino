@@ -70,6 +70,7 @@
   busca passar por número da escola.
   {% endcomment %}
   <form class="peneira" method="get" action="{% url 'escola_alunos' %}">
+    {% if mostrar_removidos %}<input type="hidden" name="removidos" value="1">{% endif %}
     <div class="campo">
       <label class="rotulo" for="busca">Procurar por nome, e-mail ou turma</label>
       <input id="busca" type="search" name="q" maxlength="120" value="{{ procurado }}"
@@ -87,6 +88,13 @@
     <button class="sim" type="submit">Procurar</button>
     {% if peneirando %}<a class="volta" href="{% url 'escola_alunos' %}">Limpar</a>{% endif %}
   </form>
+  <p class="nota">
+    {% if mostrar_removidos %}
+    <a href="{% url 'escola_alunos' %}">Voltar à lista de alunos</a>
+    {% else %}
+    <a href="{% url 'escola_alunos' %}?removidos=1">Alunos removidos ({{ quantidade_removidos }})</a>
+    {% endif %}
+  </p>
 
   {% if estado_desconhecido %}
   <p class="aviso">
@@ -349,7 +357,7 @@
     </form>
   </details>
 
-  <h2 class="titulo-de-bloco mais-afastado">Os alunos</h2>
+  <h2 class="titulo-de-bloco mais-afastado">{% if mostrar_removidos %}Alunos removidos{% else %}Os alunos{% endif %}</h2>
 
   {% if peneirando and alunos %}
   <p class="nota">Mostrando {{ alunos|length }} de {{ total_de_alunos }} alunos.</p>
@@ -392,6 +400,7 @@
         &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>
         &middot; <a href="{% url 'contatos' %}?q={{ pessoa.email|urlencode }}&amp;site_id={{ pessoa.site_id|urlencode }}">Ver no CRM</a>
       </div>
+      {% if not pessoa.removido_da_lista %}
       <form class="decidir" method="post" action="{% url 'escola_aluno_salvar' %}">
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
@@ -433,6 +442,7 @@
         </fieldset>
         <button class="sim" type="submit">Salvar</button>
       </form>
+      {% endif %}
 
       {% comment %}
       Os poderes que a DECISAO-administradores-e-apagar autorizou. Formulários
@@ -442,6 +452,7 @@
       <div class="decidir">
         <p class="rotulo">Perfil: <b>{% if pessoa.email in administradores %}ADMIN{% else %}ALUNO{% endif %}</b></p>
         <div class="botoes-da-pagina">
+        {% if not pessoa.removido_da_lista %}
         {% if pessoa.email in administradores %}
           {% if pessoa.email in admins_do_servidor %}
           <p class="nota">
@@ -467,13 +478,22 @@
           {% endif %}
         </form>
         {% endif %}
+        {% endif %}
+        {% if pessoa.removido_da_lista %}
+        <form method="post" action="{% url 'escola_aluno_restaurar' %}">
+          {% csrf_token %}
+          <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+          <button type="submit">Restaurar à lista</button>
+        </form>
+        {% else %}
         <form method="post" action="{% url 'escola_aluno_remover' %}">
           {% csrf_token %}
           <input type="hidden" name="alvo" value="{{ pessoa.id }}">
           <button class="nao" type="submit">Remover aluno</button>
         </form>
+        {% endif %}
         </div>
-        <p class="nota">Tornar ADMIN libera o painel administrativo. Remover aluno encerra o acesso e mantém a ficha como Ex-aluno.</p>
+        <p class="nota">Remover aluno encerra o acesso e retira a ficha da lista. Restaurar à lista mantém o acesso encerrado.</p>
       </div>
 
       {% comment %}

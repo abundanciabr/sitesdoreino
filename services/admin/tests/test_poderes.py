@@ -43,7 +43,7 @@ from django.test import Client
 from django.urls import reverse
 
 from apps.auditoria.models import Registro
-from apps.core.models import Administrador, RascunhoDeConfiguracao
+from apps.core.models import Administrador, AlunoRemovidoDaLista, RascunhoDeConfiguracao
 from apps.core.porta import _emails_autorizados
 
 BASE = "http://identidade:8000/interno"
@@ -405,7 +405,7 @@ def test_o_verbo_apagar_continua_no_vocabulario_da_auditoria():
 
 
 @respx.mock
-@pytest.mark.parametrize("rota", ["escola_admin_promover", "escola_admin_remover", "escola_aluno_remover"])
+@pytest.mark.parametrize("rota", ["escola_admin_promover", "escola_admin_remover", "escola_aluno_remover", "escola_aluno_restaurar"])
 def test_as_rotas_de_poder_nao_atendem_GET(rota):
     assert _dentro().get(reverse(rota)).status_code == 405
 
@@ -433,6 +433,8 @@ def test_remover_aluno_encerra_todos_seus_cursos_na_mesma_escola(monkeypatch):
     ]
     administrador.refresh_from_db()
     assert administrador.ativo
+    assert AlunoRemovidoDaLista.objects.get(site_id="a", email=OUTRO).removido
+    assert AlunoRemovidoDaLista.objects.count() == 1
     registro = Registro.objects.get()
     assert registro.acao == Registro.EDITAR
     assert registro.alvo == "7"
@@ -465,6 +467,7 @@ def test_remover_aluno_informa_quando_nao_conseguiu_encerrar(monkeypatch):
     assert resposta.url.endswith("?resultado=nao-deu")
     assert len(chamadas) == 1
     assert "indisponível" in Registro.objects.get().detalhe
+    assert not AlunoRemovidoDaLista.objects.exists()
 
 
 @respx.mock
@@ -475,3 +478,52 @@ def test_remover_aluno_exige_admin(monkeypatch):
         pytest.fail("Não deveria consultar matrículas sem autorização")
     monkeypatch.setattr(AlunosClient, "alunos", inesperada)
     assert _dentro("aluno@exemplo.com").post(reverse("escola_aluno_remover"), {"alvo": "7"}).status_code == 404
+
+
+def _lista_para_remocao(monkeypatch):
+    from apps.core.clients import AlunosClient, CatalogoClient
+    rows = [
+        {"id": "7", "site_id": "a", "email": OUTRO, "status": "encerrada", "nome_completo": "Teste removido", "matriculas": []},
+        {"id": "8", "site_id": "a", "email": OUTRO, "status": "encerrada", "nome_completo": "Teste removido", "matriculas": []},
+        {"id": "9", "site_id": "b", "email": OUTRO, "status": "encerrada", "nome_completo": "Outra escola", "matriculas": []},
+        {"id": "10", "site_id": "a", "email": "historico@exemplo.com", "status": "encerrada", "nome_completo": "Ex-aluno mantido", "matriculas": []},
+    ]
+    monkeypatch.setattr(AlunosClient, "alunos", lambda self: rows)
+    monkeypatch.setattr(AlunosClient, "fila", lambda self, status: [])
+    monkeypatch.setattr(CatalogoClient, "listar_produtos", lambda self: [])
+    return rows
+
+
+@respx.mock
+def test_removido_some_da_lista_normal_e_da_busca_mas_o_historico_continua(monkeypatch):
+    rows = _lista_para_remocao(monkeypatch)
+    AlunoRemovidoDaLista.objects.create(site_id="a", email=OUTRO)
+    cliente = _dentro()
+    resposta = cliente.get(reverse("escola_alunos"))
+    assert {p["nome_completo"] for p in resposta.context["alunos"]} == {"Outra escola", "Ex-aluno mantido"}
+    assert resposta.context["total_de_alunos"] == 2
+    assert resposta.context["quantidade_removidos"] == 1
+    assert cliente.get(reverse("escola_alunos"), {"q": "Teste removido"}).context["alunos"] == []
+    assert len(rows) == 4
+    removidos = cliente.get(reverse("escola_alunos"), {"removidos": "1"})
+    assert len(removidos.context["alunos"]) == 1
+    assert removidos.context["alunos"][0]["nome_completo"] == "Teste removido"
+    assert "Restaurar à lista" in removidos.content.decode()
+    assert "Tornar ADMIN" not in removidos.content.decode().split('Quem é administrador desta área:')[0]
+
+
+@respx.mock
+def test_restaurar_ficha_reaparece_sem_liberar_acesso(monkeypatch):
+    from apps.core.clients import AlunosClient
+    rows = _lista_para_remocao(monkeypatch)
+    removido = AlunoRemovidoDaLista.objects.create(site_id="a", email=OUTRO)
+    def inesperada(self, **kw):
+        pytest.fail("Restaurar à lista não altera o acesso")
+    monkeypatch.setattr(AlunosClient, "atualizar_aluno", inesperada)
+    cliente = _dentro()
+    assert cliente.post(reverse("escola_aluno_restaurar"), {"alvo": "7"}).url.endswith("?resultado=aluno-restaurado")
+    removido.refresh_from_db()
+    assert not removido.removido
+    assert len(cliente.get(reverse("escola_alunos")).context["alunos"]) == 3
+    assert all(r["status"] == "encerrada" for r in rows)
+    assert Registro.objects.get().detalhe == "restaurar aluno à lista; acesso mantido"

@@ -133,6 +133,18 @@ class Administrador(models.Model):
         return f"{self.email}{'' if self.ativo else ' (removido)'}"
 
 
+class AlunoRemovidoDaLista(models.Model):
+    """Guarda a retirada reversível de uma pessoa da lista administrativa."""
+
+    site_id = models.CharField(max_length=64)
+    email = models.EmailField()
+    removido = models.BooleanField(default=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["site_id", "email"], name="aluno_removido_por_escola")]
+
+
 class RascunhoDeConfiguracao(models.Model):
     """Edição privada de uma configuração; só a publicação altera seu dono."""
 
