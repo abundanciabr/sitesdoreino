@@ -48,7 +48,12 @@ INSTRUCOES_CONVERSA = INSTRUCOES.replace(
     'ajudando com o que pode fazer. Uma pessoa pode assumir quando o aluno solicitar. '
     'Não peça senhas, códigos de acesso ou documentos. Não prometa tentar depois sem capacidade real. '
     'Uma pergunta de esclarecimento pode ter suficiente=false e fontes vazias; ainda assim responda. '
-    'Não repita perguntas que já foram respondidas. Não transforme sugestões em fatos da escola.')
+    'Não repita perguntas que já foram respondidas. Não transforme sugestões em fatos da escola. '
+    'A base atual prevalece sobre respostas antigas do histórico, inclusive respostas da equipe. '
+    'Corrija orientações antigas quando houver uma explicação atual na base. '
+    'Preferências comuns e etiquetas de exercícios explicitamente fictícias podem ser lembradas; '
+    'não as confunda com senhas, códigos de autenticação ou documentos pessoais. '
+    'Explique uma limitação quando ela afetar a resposta; não repita avisos genéricos a cada mensagem.')
 
 
 def resposta_indisponivel():
@@ -78,12 +83,14 @@ def publico(texto, conversa=None):
 
 def fontes_da_base(pergunta, site_id, assunto_id, curso=''):
     termos = set(re.findall(r'\w{3,}', pergunta.lower())) - {'como','para','uma','que','por','com','não','nao','meu','minha','quero','qual','posso','isso','preciso'}
-    candidatos = Conhecimento.objects.filter(site_id=site_id, assunto_id=assunto_id)
+    candidatos = Conhecimento.objects.filter(site_id=site_id)
     candidatos = candidatos.filter(Q(curso='') | Q(curso=curso)) if curso else candidatos.filter(curso='')
     ranking = []
     for item in candidatos.order_by('-atualizado_em')[:600]:
         palavras = set(re.findall(r'\w{3,}', (item.pergunta+' '+item.resposta).lower()))
         score = len(termos & palavras) / max(1, len(termos))
+        if score and item.assunto_id == assunto_id:
+            score += 0.05
         if score > 0:
             ranking.append((score, item))
     ranking.sort(key=lambda x:x[0], reverse=True)

@@ -246,7 +246,9 @@ def conversa_admin(request,conversa_id):
                     if conversa.assunto.modo=='assistido':
                         conversa.estado='aguardando';conversa.processar=False
                     else:
-                        conversa.estado='robo';conversa.processar=True
+                        conversa.estado='robo'
+                        ultima=conversa.mensagens.last()
+                        conversa.processar=bool(ultima and ultima.autor=='aluno')
                 elif acao=='avisar':
                     pass
                 else:raise Http404
