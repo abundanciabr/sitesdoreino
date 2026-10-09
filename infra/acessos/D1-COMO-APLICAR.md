@@ -8,7 +8,7 @@ Nesta sessão, `gh api` informou `permissions.admin=true` para a conta autentica
 
 Arquivos preparados, só neste PC: `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-regra-da-main.json`, `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-ruleset.py` e `C:\Users\davia\.codex\worktrees\entregas-retomada-20261009\sitesdoreino-limpo-20260923\infra\acessos\D1-chave-integrador.sh`. O JSON restringe atualizações e exclusões de `main` e bloqueia force push. Os scripts preparam a chave, conferem a configuração atual, recusam outra deploy key com escrita, aplicam sem duplicar e desativam para recuperação. O GitHub ainda precisa aceitar o POST para comprovar a configuração efetiva.
 
-## Ordem depois da decisão D1/D2
+## Sequência de preparação D1/D2
 
 1. Concluir D2: remover de `deploy` todas as chaves que Codex/Claude/robôs possuem, preservando acesso independente comprovado do mantenedor. Separar também a credencial GitHub de administração dos robôs. Gerar a chave do integrador só depois disso; enquanto os robôs entrarem em `deploy` com Docker, eles também podem usar ou substituir a chave nova.
 2. Na conta `integrador` isolada de D2, fixar a chave de host do GitHub em `/home/integrador/.ssh/known_hosts` depois de conferir o fingerprint contra `https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints`. Então executar como root `D1-chave-integrador.sh`: ele cria idempotentemente a chave ed25519 exclusiva em `/home/integrador/.ssh/integrador`, com permissões 0600, e configura o remoto independente. Ele recusa host ainda não verificado.
