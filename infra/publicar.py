@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id
+from docs_somente_admin import conferir_fontes_docs, conferir_codigo_docs
 from mercadopago_congelado import conferir_fontes, conferir_ambiente, conferir_pacote as conferir_mp_pacote
 from datetime import datetime, timezone
 from pathlib import Path
@@ -329,12 +330,16 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
         try:
             fonte = trabalho / "fonte"
             extrair(sha, fonte)
+            if celula == "aplicacao":
+                conferir_fontes_docs(fonte)
             politica_mp = politica_mercadopago() if celula == "aplicacao" else None
             if politica_mp is not None:
                 conferir_fontes(fonte, politica_mp)
                 conferir_ambiente(RAIZ, politica_mp)
             codigo, imagem, construida, build_s = preparar_codigo(celula, sha, fonte, registro)
             imagem = imagem_id(imagem)
+            if celula == "aplicacao":
+                conferir_codigo_docs(codigo)
             if politica_mp is not None:
                 conferir_mp_pacote(codigo, imagem, politica_mp)
             pacote = identificar(codigo, imagem, RAIZ / "docker-compose.yml")
