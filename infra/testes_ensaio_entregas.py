@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import sys
 import tarfile
@@ -121,6 +122,41 @@ def test_collectstatic_usa_uid_sem_privilegio_e_pacote_somente_leitura(tmp_path,
 def test_celula_sem_ensaio_e_recusada_explicitamente(tmp_path):
     with pytest.raises(modulo.RecusaEnsaio, match="célula sem ensaio"):
         modulo.executar(tmp_path, A, celula="outra")
+
+
+@pytest.mark.skipif(os.name != "posix", reason="permissões Unix do arquivo Git")
+def test_fonte_extraida_com_umask_restritiva_fica_legivel_sem_mudar_config_privada(tmp_path):
+    fonte = tmp_path / "fonte"
+    privado = tmp_path / "configuracao-privada"
+    privado.mkdir(mode=0o700)
+    segredo = privado / ".env"
+    segredo.write_text("MARCADOR=privado", encoding="utf-8")
+    os.chmod(segredo, 0o600)
+    conteudo_privado = segredo.read_bytes()
+    arquivo_tar = tmp_path / "fonte.tar"
+    with tarfile.open(arquivo_tar, "w") as arquivo:
+        for nome, modo in (("admin/config/settings.py", 0o644),
+                           ("admin/bin/iniciar", 0o755)):
+            dados = b"conteudo"
+            membro = tarfile.TarInfo(nome)
+            membro.mode = modo
+            membro.size = len(dados)
+            arquivo.addfile(membro, io.BytesIO(dados))
+    umask_anterior = os.umask(0o077)
+    try:
+        fonte.mkdir()
+        with tarfile.open(arquivo_tar) as arquivo:
+            arquivo.extractall(fonte, filter="data")
+    finally:
+        os.umask(umask_anterior)
+    assert (fonte / "admin/config").stat().st_mode & 0o777 == 0o700
+    modulo._normalizar_fonte(fonte)
+    assert (fonte / "admin/config").stat().st_mode & 0o777 == 0o755
+    assert (fonte / "admin/config/settings.py").stat().st_mode & 0o777 == 0o644
+    assert (fonte / "admin/bin/iniciar").stat().st_mode & 0o777 == 0o755
+    assert privado.stat().st_mode & 0o777 == 0o700
+    assert segredo.stat().st_mode & 0o777 == 0o600
+    assert segredo.read_bytes() == conteudo_privado
 
 
 def test_funil_snapshot_privado_aponta_rota_sem_mudar_origem(tmp_path, monkeypatch):

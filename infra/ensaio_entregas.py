@@ -505,6 +505,22 @@ def verificar_prova(plataforma: Path, candidata: str,
     return prova
 
 
+def _normalizar_fonte(fonte: Path) -> None:
+    """Permite ao UID isolado ler somente os arquivos exportados pelo Git."""
+    from protecao_publicacao import arvore
+
+    arvore(fonte)  # recusa ligações simbólicas antes de alterar permissões
+    for caminho in sorted(fonte.rglob("*")):
+        if caminho.is_dir():
+            os.chmod(caminho, 0o755)
+        elif caminho.is_file():
+            executavel = bool(caminho.stat().st_mode & 0o111)
+            os.chmod(caminho, 0o755 if executavel else 0o644)
+        else:
+            raise RecusaEnsaio("arquivo especial na fonte exportada")
+    os.chmod(fonte, 0o755)
+
+
 def preparar_entrada(plataforma: Path, candidata: str, imagem_base: str) -> Path:
     """Exporta a candidata para a conta isolada sem dar acesso ao Git/segredos.
 
@@ -541,6 +557,7 @@ def preparar_entrada(plataforma: Path, candidata: str, imagem_base: str) -> Path
         if proc.wait(timeout=60):
             raise RecusaEnsaio("exportação da candidata falhou")
         from protecao_publicacao import arvore
+        _normalizar_fonte(fonte)
         manifesto = {"candidata": candidata, "imagem_base": imagem_base,
                      "arvore": arvore(fonte)}
         (temporaria / ".origem-ensaio.json").write_text(
