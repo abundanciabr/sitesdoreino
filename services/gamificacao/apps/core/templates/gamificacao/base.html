@@ -45,6 +45,7 @@ paga.
 
 {% block conteudo %}
 {% if entrou %}
+  {% if faixas %}
   <section class="degrau faixa-atual" aria-labelledby="faixa-atual-titulo">
     <p class="rotulo">Sua faixa</p>
     <div class="faixa-cartao">
@@ -112,6 +113,7 @@ paga.
       <li class="miudo"><strong>Dinheiro real</strong> = o que você ganhou de clientes reais, já confirmado.</li>
     </ul>
   </section>
+  {% endif %}
 
   <section class="degrau">
     {% if not escada.montada %}

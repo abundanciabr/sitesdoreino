@@ -63,6 +63,9 @@ ORIGENS = {
 }
 _ORDEM_DO_FATO = {"item": 2, "sandbox": 3, "fila": 4}
 
+#: Enquanto as faixas forem só do admin, o aluno não recebe carta nem comemoração.
+AVISAR_O_ALUNO = False
+
 #: Prefixo do slug enviado na carta (assunto `gamificacao.conquista-concedida`).
 PREFIXO_DO_SLUG = "faixa-"
 
@@ -107,6 +110,8 @@ def _garantir_branca(pessoa, site_id, event_id, historico, quando) -> None:
 
 def _avisar(pessoa, site_id, ordem: int, event_id: str) -> None:
     """Carta + comemoração de tela. Só ao vivo; reutiliza o mecanismo existente."""
+    if not AVISAR_O_ALUNO:
+        return
     faixa = _POR_ORDEM[ordem]
     slug = PREFIXO_DO_SLUG + faixa["slug"]
     carta_de_celebracao(

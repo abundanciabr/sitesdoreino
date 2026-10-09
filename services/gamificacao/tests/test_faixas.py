@@ -54,6 +54,19 @@ def atual(pessoa=P, site=SITE):
     return situacao_das_faixas(pessoa, site)["atual"]["ordem"]
 
 
+@pytest.fixture(autouse=True)
+def _aviso_ligado(monkeypatch):
+    monkeypatch.setattr("apps.gamificacao.faixas.AVISAR_O_ALUNO", True)
+
+
+def test_aluno_nao_e_avisado_enquanto_faixas_sao_so_do_admin(monkeypatch):
+    monkeypatch.setattr("apps.gamificacao.faixas.AVISAR_O_ALUNO", False)
+    paga(6000)
+    assert atual() == 7
+    assert cartas().count() == 0
+    assert not PerfilJogador.objects.filter(pessoa_id=P).exists()
+
+
 def cartas():
     return OutboxEvent.objects.filter(event="notificacao.devida")
 

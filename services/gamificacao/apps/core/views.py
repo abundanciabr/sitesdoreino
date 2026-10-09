@@ -53,6 +53,10 @@ from .sessao import quem_e, site_atual
 
 logger = logging.getLogger(__name__)
 
+# As 13 faixas ainda são só do admin (ficha do aluno no painel); a página do
+# aluno não as mostra enquanto isto for False.
+FAIXAS_PARA_O_ALUNO = False
+
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
 # não frases: o texto vive no template, no idioma de quem lê, e uma frase pronta
@@ -115,7 +119,7 @@ def base(request):
         {
             "entrou": True,
             "escada": escada_de(perfil),
-            "faixas": _faixas_para_tela(pessoa_id, site),
+            "faixas": _faixas_para_tela(pessoa_id, site) if FAIXAS_PARA_O_ALUNO else None,
             **de_fora,
         },
     )

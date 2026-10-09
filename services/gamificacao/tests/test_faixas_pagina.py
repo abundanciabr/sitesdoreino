@@ -21,6 +21,7 @@ AGORA = "2026-10-08T12:00:00+00:00"
 def _ambiente(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: ALGUEM)
+    monkeypatch.setattr("apps.core.views.FAIXAS_PARA_O_ALUNO", True)
 
 
 def _envio(event, **extra):
@@ -111,6 +112,15 @@ def test_visitante_continua_vendo_o_convite(client, monkeypatch):
     corpo = _pagina(client)
     assert "Suas conquistas ficam aqui" in corpo
     assert "Sua faixa" not in corpo
+
+
+def test_aluno_nao_ve_faixas_enquanto_sao_so_do_admin(client, monkeypatch):
+    monkeypatch.setattr("apps.core.views.FAIXAS_PARA_O_ALUNO", False)
+    _ate_laranja()
+    corpo = _pagina(client)
+    for trecho in ("Sua faixa", "A jornada das 13 faixas", "Como ler cada coisa", "Faixa Laranja"):
+        assert trecho not in corpo
+    assert "Medalhas" in corpo
 
 
 def test_pagina_nao_grava_nada_de_faixa(client):
