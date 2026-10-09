@@ -40,7 +40,7 @@ services:
   # Perfil separado: a aplicação continua subindo sem configuração WhatsApp.
   # Evolution fica acessível só pela rede interna, sem porta, manager ou chave pública.
   evolution:
-    image: evoapicloud/evolution-api:v2.3.7
+    image: meshcraft/evolution-api:2.3.7-interativos-20261009
     restart: unless-stopped
     profiles: [whatsapp]
     env_file:
