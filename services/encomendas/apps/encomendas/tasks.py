@@ -99,3 +99,10 @@ def pratica_periodica():
     for p in ParticipacaoSandbox.objects.filter(atraso_em__isnull=False, status__in=['em_producao', 'em_ajuste']):
         enfileirar(p, 'atraso:' + p.prazo_ate.isoformat(), 'cliente')
     rodada_respostas()
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def rendimentos_para_as_faixas():
+    """Pega mudanças do critério do rendimento real que não passaram por um gancho."""
+    from . import faixas_eventos
+    return faixas_eventos.reconciliar()

@@ -172,7 +172,7 @@ def test_a_task_periodica_esta_registrada_e_bate_a_cada_minuto():
     nada e não reclama de nada.
     """
     periodicas = [t.name for t in huey._registry.periodic_tasks]
-    assert periodicas == ["tique_periodico"]
+    assert "tique_periodico" in periodicas  # as outras (prática, faixas) têm seus próprios testes
 
 
 def test_o_crontab_do_tique_aceita_qualquer_minuto():

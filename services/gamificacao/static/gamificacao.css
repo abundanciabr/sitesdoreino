@@ -444,3 +444,39 @@ form input[type="text"], form input[type="url"], form input[type="number"] {
 
 .barra-do-site .menu-topo a:hover,
 .barra-do-site .menu-topo a:focus { background: var(--marca-fraca); }
+
+/* ------------------------------------------------------------------ */
+/* AS FAIXAS: cartão da faixa atual, próxima, jornada e legenda.       */
+/* Faixa de duas cores = metade de cada cor.                           */
+/* ------------------------------------------------------------------ */
+.faixa-cartao { align-items: center; display: flex; gap: 16px; margin: 8px 0 4px; }
+.faixa-cartao h2, .faixa-cartao h3 { font-size: 22px; line-height: 1.2; margin: 0; }
+.fita {
+  border: 2px solid #8a8a93;
+  border-radius: 8px;
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 40px;
+  width: 96px;
+}
+.faixa-atual .proxima { margin-top: 20px; }
+.faixas-lista { list-style: none; margin: 8px 0 0; padding: 0; }
+.faixa-item {
+  align-items: center;
+  border-top: 1px solid var(--borda);
+  display: flex;
+  gap: 14px;
+  padding: 10px 0;
+}
+.faixa-item:first-child { border-top: 0; }
+.faixa-item .fita { height: 28px; width: 64px; }
+.faixa-item.apagada .fita { opacity: .45; }
+.faixa-item.atual .faixa-nome { color: var(--marca); }
+.faixa-item .miudo { margin: 0; }
+.faixa-nome { font-weight: 600; margin: 0; }
+.faixa-nome .selo { margin-left: 8px; }
+@media (max-width: 480px) {
+  .faixa-cartao { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .fita { width: 80px; }
+  .faixa-item .fita { width: 48px; }
+}

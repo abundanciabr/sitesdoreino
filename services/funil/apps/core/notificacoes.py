@@ -24,6 +24,11 @@ logger = logging.getLogger(__name__)
 MAXIMO_DE_PAGINAS = 50
 ASSUNTO_SUGESTAO = "sugestao.status-alterado"
 ASSUNTO_JORNADA = "jornada.passo"
+# Nomes das 13 faixas (chaves de `notificacoes.faixa_nome_*`).
+FAIXAS_CONHECIDAS = frozenset({
+    "branca", "branca_e_amarela", "amarela", "laranja", "verde", "verde_e_azul",
+    "azul", "azul_e_roxa", "roxa", "roxa_e_marrom", "marrom", "marrom_e_preta", "preta",
+})
 # Assunto → tipo do cartão, para a página e para o aviso no celular.
 # Assunto fora daqui cai no cartão genérico.
 TIPOS_POR_ASSUNTO = {
@@ -222,7 +227,16 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
     passo = (passos or {}).get(_passo_id(item), {})
     nivel = parametros.get("nivel")
     situacao = _texto(parametros, "situacao_nova")
+    # Aviso de faixa: a gamificação reaproveita o assunto da conquista e manda
+    # o slug `faixa-<nome>`; só slugs conhecidos viram texto.
+    faixa = ""
+    slug = _texto(parametros, "conquista_slug")
+    if tipo == "conquista" and slug.startswith("faixa-"):
+        candidato = slug[len("faixa-"):].replace("-", "_")
+        if candidato in FAIXAS_CONHECIDAS:
+            faixa = candidato
     return {
+        "faixa": faixa,
         "id": item["id"],
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),

@@ -25,6 +25,8 @@ batimento de um minuto sem ninguém perceber.
 
 from __future__ import annotations
 
+import uuid
+from datetime import datetime
 from typing import Any
 
 from django.db import transaction
@@ -37,6 +39,40 @@ PRAZO_ESTOURADO = "revisao.prazo-estourado"
 LAUDO_EMITIDO = "laudo.emitido"
 AULA_CONCLUIDA = "aula.concluida"
 CHECKPOINT_DEVOLVIDO = "checkpoint.devolvido"
+ITEM_CRIADO = "cursos.item-criado"
+
+
+def event_id_item_criado(item_id) -> uuid.UUID:
+    """Id determinístico do fato 'item criado' (faixas da gamificação)."""
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"meshcraft-faixas:{ITEM_CRIADO}:{item_id}")
+
+
+def dados_item_criado(
+    *, site_id: str, pessoa_id: str, item_id, ocorrido_em: datetime, historico: bool
+) -> dict[str, Any]:
+    return {
+        "site_id": site_id,
+        "pessoa_id": str(pessoa_id),
+        "item_id": str(item_id),
+        "ocorrido_em": ocorrido_em.isoformat(),
+        "historico": historico,
+    }
+
+
+def emitir_item_criado(projeto, *, ocorrido_em: datetime, historico: bool = False) -> OutboxEvent:
+    """`cursos.item-criado`: nasce quando um Projeto3D é CRIADO (não ao atualizar).
+    `pessoa_id` = Pessoa.id_da_plataforma; `site_id` = Curso.site_id do projeto."""
+    return emitir(
+        ITEM_CRIADO,
+        dados_item_criado(
+            site_id=projeto.curso.site_id,
+            pessoa_id=projeto.pessoa_id,
+            item_id=projeto.pk,
+            ocorrido_em=ocorrido_em,
+            historico=historico,
+        ),
+        event_id=event_id_item_criado(projeto.pk),
+    )
 
 
 class EventoForaDaTransacao(Exception):
@@ -56,6 +92,7 @@ def emitir(
     *,
     version: int = 1,
     envelope_extra: dict[str, Any] | None = None,
+    event_id: uuid.UUID | None = None,
 ) -> OutboxEvent:
     """Grava o fato na outbox, SEMPRE dentro da transação do fato.
 
@@ -70,12 +107,24 @@ def emitir(
             "(INV-P6): sem isso, um rollback deixa a plataforma acreditando "
             "num fato que não aconteceu."
         )
-    evento = OutboxEvent.objects.create(
-        event=event,
-        version=version,
-        payload=data,
-        envelope_extra=envelope_extra or {},
-    )
+    if event_id is not None:
+        # Fato com id determinístico: emissão idempotente (não duplica).
+        evento, _ = OutboxEvent.objects.get_or_create(
+            event_id=event_id,
+            defaults={
+                "event": event,
+                "version": version,
+                "payload": data,
+                "envelope_extra": envelope_extra or {},
+            },
+        )
+    else:
+        evento = OutboxEvent.objects.create(
+            event=event,
+            version=version,
+            payload=data,
+            envelope_extra=envelope_extra or {},
+        )
     transaction.on_commit(tasks.relay_apos_commit)
     return evento
 

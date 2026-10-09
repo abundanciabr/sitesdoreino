@@ -145,6 +145,10 @@ def test_fila_passagem_aceite_direto_entrega_ajuste_e_recebivel(
     ).pk == acordo.pk
     pedido.refresh_from_db()
     assert pedido.status == PedidoMarketplace.Status.EM_PRODUCAO
+    from apps.encomendas.models import OutboxMarketplace
+    fatos = list(OutboxMarketplace.objects.filter(event="encomendas.fila-trabalho-aceito"))
+    assert len(fatos) == 1  # a repetição do aceite não duplica
+    assert fatos[0].payload["pessoa_id"] == segundo.pessoa_id and fatos[0].payload["pedido_id"] == str(pedido.pk)
     assert acordo.termos["valor_cents"] == 18000
     primeiro.refresh_from_db()
     assert primeiro.data_entrada_fila == agora - timedelta(days=15)

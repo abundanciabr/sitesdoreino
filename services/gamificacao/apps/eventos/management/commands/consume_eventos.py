@@ -46,6 +46,13 @@ STREAMS = [
     # marco real vale zero XP de propósito. O motivo está declarado em
     # `handlers.NAO_CREDITAM`, ao lado do handler que o cumpre.
     "eventos.pages.portfolio.conferido",
+    # AS FAIXAS (08/10/2026). O grupo nasce em "0" para TODOS os streams (ver
+    # `handle`): fatos publicados antes de o grupo existir são lidos mesmo assim.
+    "eventos.cursos.item-criado",
+    "eventos.encomendas.sandbox-trabalho-criado",
+    "eventos.encomendas.fila-trabalho-aceito",
+    "eventos.encomendas.rendimento-real-confirmado",
+    "eventos.encomendas.rendimento-real-revertido",
 ]
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células
