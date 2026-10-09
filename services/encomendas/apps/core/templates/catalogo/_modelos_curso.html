@@ -1,0 +1,19 @@
+{% load catalogo_visual %}
+<details class="details-area" id="modelos-curso" {% if not pedidos %}open{% endif %}>
+<summary>Projetos do curso</summary>
+<p class="course-intro">O mesmo catálogo da prática, com os briefings do curso. Para começar um trabalho remunerado, escolha um pedido disponível com valor reservado pelo cliente.</p>
+<div class="project-grid">
+{% for projeto in projetos_curso %}<article class="project-tile course-model">
+<div class="choose-project"><div class="tile-art">{% visual_projeto projeto.slug projeto.titulo %}</div><div class="tile-copy"><h3>{{ projeto.titulo }}</h3><p class="tiny">Modelagem 3D · Projeto do curso</p></div></div>
+<button class="brief-button" type="button" data-brief-curso="{{ projeto.slug }}">Ver briefing do curso →</button>
+</article>{% endfor %}
+</div>
+</details>
+{% for projeto in projetos_curso %}<dialog id="curso-{{ projeto.slug }}" aria-labelledby="curso-titulo-{{ projeto.slug }}">
+<button type="button" class="dialog-close" aria-label="Fechar briefing">×</button>
+<div class="brief-content"><h2 id="curso-titulo-{{ projeto.slug }}">{{ projeto.titulo }}</h2><div class="course-preview">{% visual_projeto projeto.slug projeto.titulo %}</div><p>{{ projeto.briefing }}</p>
+<h3>Entregáveis</h3><ul>{% for item in projeto.entregaveis %}<li>{{ item }}</li>{% endfor %}</ul>
+<h3>Referências</h3>{% for referencia in projeto.referencias %}<p>{{ referencia }}</p>{% endfor %}
+<h3>Critérios de aprovação</h3><p>{{ projeto.criterios }}</p>
+<p class="course-intro">Este é o modelo do curso. As condições e o valor de um trabalho remunerado aparecem no pedido criado pelo cliente.</p>
+</div></dialog>{% endfor %}

@@ -97,6 +97,7 @@ def catalogo(request):
         "trabalho_ativo": dados.get("trabalho_ativo"), "recado": request.GET.get("recado", ""),
         "participou_da_fila": dados.get("participou_da_fila", False),
         "papel": papel, "catalogo_curso": catalogo_curso.dados_publicos(),
+        "projetos_curso": [p for p in catalogo_curso.PROJETOS if p["categoria"] == categoria],
     })
 
 
