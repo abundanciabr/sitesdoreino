@@ -236,6 +236,7 @@ from apps.core.views import (
     escola_admin_publicar,
     escola_admin_remover,
     escola_aluno_salvar,
+    escola_aluno_remover,
     doc_publico,
     docs_publicos,
     documento_admin,
@@ -1238,6 +1239,7 @@ urlpatterns = [
     # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
     # POST-only pelo mesmo motivo da de cima.
     path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
+    path("escola/alunos/remover", escola_aluno_remover, name="escola_aluno_remover"),
     # [SENHA] O reset manual de senha, pelo
     # botao do prontuario. POST-only pelo mesmo motivo dos de cima.
     path(

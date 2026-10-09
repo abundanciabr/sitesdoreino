@@ -1340,6 +1340,7 @@ RECADOS = {
     ),
     "nao-valeu": "A decisão não valeu.",
     "salvo": "Pronto: as mudanças foram salvas.",
+    "aluno-removido": "Aluno removido: o acesso foi encerrado e a ficha foi mantida como Ex-aluno.",
     "cursos-indisponiveis": (
         "Não salvei os cursos: a lista de cursos não respondeu ou mudou. "
         "Recarregue a página e tente de novo."
@@ -1564,6 +1565,38 @@ DESFECHO_NA_AUDITORIA = {
     AlunosClient.SEM_ESSE_CURSO: Registro.RECUSADO_PELA_CELULA,
     AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
 }
+
+
+@require_POST
+def escola_aluno_remover(request):
+    """Encerra as matrículas da ficha sem apagar o cadastro ou os cursos."""
+    alvo = (request.POST.get("alvo") or "").strip()
+    cliente = AlunosClient()
+    matriculas = cliente.alunos()
+    if matriculas is None:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-deu")
+    pessoa = next((m for m in matriculas if str(m.get("id")) == alvo), None)
+    if pessoa is None:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=nao-valeu")
+    email = str(pessoa.get("email") or "").strip().lower()
+    grupo = [m for m in matriculas if m.get("site_id") == pessoa.get("site_id")
+             and str(m.get("email") or "").strip().lower() == email]
+    desfecho, detalhe = AlunosClient.OK, ""
+    for matricula in grupo:
+        if matricula.get("status") == "encerrada":
+            continue
+        desfecho, detalhe = cliente.atualizar_aluno(
+            alvo=str(matricula["id"]), mudancas={"status": "encerrada"},
+            decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
+        )
+        if desfecho != AlunosClient.OK:
+            break
+    _auditar(request, Registro.EDITAR, alvo, DESFECHO_NA_AUDITORIA[desfecho],
+             detalhe or "status=encerrada; remover aluno")
+    recado = "aluno-removido" if desfecho == AlunosClient.OK else (
+        "nao-valeu" if desfecho == AlunosClient.RECUSADO else "nao-deu"
+    )
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
 
 
 @require_POST

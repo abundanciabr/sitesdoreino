@@ -362,6 +362,8 @@ def test_a_tela_nao_oferece_apagar_e_explica_a_ausencia():
     html = _dentro().get("/escola/alunos/").content.decode()
 
     assert "Tornar ADMIN" in html
+    assert "Remover aluno" in html
+    assert reverse("escola_aluno_remover") in html
     assert 'name="aplicar" value="1"' in html
     assert "Perfil: <b>ALUNO</b>" in html
     assert "escola/alunos/apagar" not in html
@@ -403,6 +405,73 @@ def test_o_verbo_apagar_continua_no_vocabulario_da_auditoria():
 
 
 @respx.mock
-@pytest.mark.parametrize("rota", ["escola_admin_promover", "escola_admin_remover"])
+@pytest.mark.parametrize("rota", ["escola_admin_promover", "escola_admin_remover", "escola_aluno_remover"])
 def test_as_rotas_de_poder_nao_atendem_GET(rota):
     assert _dentro().get(reverse(rota)).status_code == 405
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_remover_aluno_encerra_todos_seus_cursos_na_mesma_escola(monkeypatch):
+    from apps.core.clients import AlunosClient
+    matriculas = [
+        {"id": "7", "site_id": "a", "email": OUTRO, "status": "ativa"},
+        {"id": "8", "site_id": "a", "email": OUTRO.upper(), "status": "suspensa"},
+        {"id": "9", "site_id": "a", "email": OUTRO, "status": "encerrada"},
+        {"id": "10", "site_id": "b", "email": OUTRO, "status": "ativa"},
+        {"id": "11", "site_id": "a", "email": DONO, "status": "ativa"},
+    ]
+    chamadas = []
+    monkeypatch.setattr(AlunosClient, "alunos", lambda self: matriculas)
+    monkeypatch.setattr(AlunosClient, "atualizar_aluno", lambda self, **kw: (chamadas.append(kw) or (AlunosClient.OK, "")))
+    administrador = Administrador.objects.create(email=OUTRO)
+    resposta = _dentro().post(reverse("escola_aluno_remover"), {"alvo": "7"})
+    assert resposta.url.endswith("?resultado=aluno-removido")
+    assert chamadas == [
+        {"alvo": "7", "mudancas": {"status": "encerrada"}, "decidido_por": ID_DO_DONO},
+        {"alvo": "8", "mudancas": {"status": "encerrada"}, "decidido_por": ID_DO_DONO},
+    ]
+    administrador.refresh_from_db()
+    assert administrador.ativo
+    registro = Registro.objects.get()
+    assert registro.acao == Registro.EDITAR
+    assert registro.alvo == "7"
+    assert registro.quem_email == DONO
+
+
+@respx.mock
+@pytest.mark.django_db
+@pytest.mark.parametrize("matriculas,resultado", [(None, "nao-deu"), ([], "nao-valeu"), ([{"id": "7", "site_id": "a", "email": OUTRO, "status": "encerrada"}], "aluno-removido")])
+def test_remover_aluno_sem_alterar_outros_cadastros(monkeypatch, matriculas, resultado):
+    from apps.core.clients import AlunosClient
+    monkeypatch.setattr(AlunosClient, "alunos", lambda self: matriculas)
+    def inesperada(self, **kw):
+        pytest.fail("Nenhuma matrícula deveria ser alterada")
+    monkeypatch.setattr(AlunosClient, "atualizar_aluno", inesperada)
+    assert _dentro().post(reverse("escola_aluno_remover"), {"alvo": "7"}).url.endswith(f"?resultado={resultado}")
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_remover_aluno_informa_quando_nao_conseguiu_encerrar(monkeypatch):
+    from apps.core.clients import AlunosClient
+    monkeypatch.setattr(AlunosClient, "alunos", lambda self: [
+        {"id": "7", "site_id": "a", "email": OUTRO, "status": "ativa"},
+        {"id": "8", "site_id": "a", "email": OUTRO, "status": "ativa"},
+    ])
+    chamadas = []
+    monkeypatch.setattr(AlunosClient, "atualizar_aluno", lambda self, **kw: (chamadas.append(kw) or (AlunosClient.NAO_RESPONDEU, "indisponível")))
+    resposta = _dentro().post(reverse("escola_aluno_remover"), {"alvo": "7"})
+    assert resposta.url.endswith("?resultado=nao-deu")
+    assert len(chamadas) == 1
+    assert "indisponível" in Registro.objects.get().detalhe
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_remover_aluno_exige_admin(monkeypatch):
+    from apps.core.clients import AlunosClient
+    def inesperada(self):
+        pytest.fail("Não deveria consultar matrículas sem autorização")
+    monkeypatch.setattr(AlunosClient, "alunos", inesperada)
+    assert _dentro("aluno@exemplo.com").post(reverse("escola_aluno_remover"), {"alvo": "7"}).status_code == 404

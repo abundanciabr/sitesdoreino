@@ -441,6 +441,7 @@
       {% endcomment %}
       <div class="decidir">
         <p class="rotulo">Perfil: <b>{% if pessoa.email in administradores %}ADMIN{% else %}ALUNO{% endif %}</b></p>
+        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
         {% if pessoa.email in administradores %}
           {% if pessoa.email in admins_do_servidor %}
           <p class="nota">
@@ -461,12 +462,18 @@
           {% if pode_publicar_permissoes %}
           <input type="hidden" name="aplicar" value="1">
           <button class="sim" type="submit">Tornar ADMIN</button>
-          <p class="nota">Libera o acesso ao painel administrativo e mantém as matrículas do aluno.</p>
           {% else %}
           <button type="submit">Preparar promoção para ADMIN</button>
           {% endif %}
         </form>
         {% endif %}
+        <form method="post" action="{% url 'escola_aluno_remover' %}">
+          {% csrf_token %}
+          <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+          <button class="nao" type="submit">Remover aluno</button>
+        </form>
+        </div>
+        <p class="nota">Tornar ADMIN libera o painel administrativo. Remover aluno encerra o acesso e mantém a ficha como Ex-aluno.</p>
       </div>
 
       {% comment %}
