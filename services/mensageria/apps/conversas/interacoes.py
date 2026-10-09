@@ -39,7 +39,7 @@ def preparar(tipo: str | None, texto: str) -> tuple[str, dict | None]:
     return corpo, {"tipo": "lista", "title": "Assuntos do atendimento", "description": corpo,
                    "buttonText": "Escolher assunto", "footerText": "Equipe Meshcraft",
                    "sections": [{"title": "Como podemos ajudar?", "rows": [
-                       {"title": titulo, "description": "", "rowId": ident}
+                       {"title": titulo, "description": f"Conversar sobre: {titulo}", "rowId": ident}
                        for ident, titulo in itens]}]}
 
 

@@ -1794,3 +1794,27 @@ def test_menu_interativo_responde_sem_modelo_pago_e_retomada_nao_repete(pedido, 
     assert envio.call_count == 1
     assert _corpo(envio.calls[0])["interacao"] == tipo
     assert trabalho.decisoes.get(call_id="menu-interativo").resultado == R.FEITO
+
+
+@respx.mock
+def test_transferencia_confirma_antes_de_pausar_agente_e_nao_repete(monkeypatch):
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", contato_id="", oportunidade_id="")
+    ordem = []
+    def enviado(request):
+        ordem.append("confirmou")
+        return httpx.Response(200, json={"resultado": "enviada", "mensagem": {"id": "m-1"},
+                                        "conversa": {"canal": "whatsapp"}})
+    def assumido(request):
+        assert ordem == ["confirmou"]
+        ordem.append("transferiu")
+        return httpx.Response(200, json={"id": "conv-1", "site_id": "site-1"})
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").mock(side_effect=enviado)
+    respx.post(f"{MENSAGERIA}/conversas/conv-1/assumir").mock(side_effect=assumido)
+    monkeypatch.setattr(ferramentas, "_avisar_a_equipe_agora", lambda *a: None)
+    monkeypatch.setattr(ferramentas, "_enviar_em_voz", lambda *a: None)
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel="atendimento")
+    args = json.dumps({"motivo": "pediu a equipe", "resumo": "quer conversar"})
+    assert json.loads(ferramentas.executar(ctx, "passar", "passar_para_responsavel", args))["passado"]
+    assert json.loads(ferramentas.executar(ctx, "passar", "passar_para_responsavel", args))["passado"]
+    assert envio.call_count == 1 and ordem == ["confirmou", "transferiu"]
+    assert trabalho.decisoes.get(call_id="aviso-passagem").resultado == R.FEITO

@@ -100,6 +100,8 @@ def test_a_tela_e_o_aviso_dizem_o_que_o_coordenador_faz_no_envio_incerto():
 
 
 def _assumir(trabalho, assumida_em="2026-10-04T12:00:00+00:00"):
+    respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": "enviada", "mensagem": {"id": "confirmacao"}, "conversa": {"canal": "whatsapp"}})
     return respx.post(f"{MENSAGERIA}/conversas/conv-1/assumir").respond(200, json={
         "id": "conv-1", "site_id": "site-1", "canal": "whatsapp", "estado": "pessoa", "assumida_por": "equipe",
         "assumida_em": assumida_em})

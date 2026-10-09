@@ -805,6 +805,23 @@ def registrar_nota_proximo_passo(ctx: Contexto, args: dict) -> dict:
 
 def passar_para_responsavel(ctx: Contexto, args: dict) -> dict:
     t = ctx.trabalho
+    if t.tipo == T.ATENDER_MENSAGEM and not t.teste and not t.decisoes.filter(
+        ferramenta="enviar_mensagem", resultado=R.FEITO,
+    ).exists():
+        # Antes de pausar o agente, a pessoa recebe a confirmação no próprio canal.
+        anterior = t.decisoes.filter(call_id="aviso-passagem").first()
+        if anterior is not None and anterior.resultado == R.INDISPONIVEL:
+            _concluir_escrita(ctx, anterior, "enviar_mensagem", anterior.entrada)
+        else:
+            executar(ctx, "aviso-passagem", "enviar_mensagem", json.dumps({
+                "texto": "Recebi sua mensagem. Esse assunto precisa da equipe, então vou encaminhar "
+                         "seu pedido com o contexto da nossa conversa para uma pessoa responsável.",
+                "razao": "Confirmar o recebimento antes de transferir o atendimento."}))
+        confirmacao = t.decisoes.get(call_id="aviso-passagem")
+        if confirmacao.resultado == R.INDISPONIVEL:
+            raise Esperar("A confirmação da transferência ainda não saiu.", timedelta(seconds=30))
+        if confirmacao.resultado != R.FEITO:
+            raise Recusa("O canal ainda não permitiu confirmar a transferência.")
     motivo = str(args.get("motivo") or "")[:500]
     resumo = str(args.get("resumo") or "")[:2000]
     feito = []
@@ -1398,7 +1415,7 @@ def executar(ctx: Contexto, call_id: str, nome: str, argumentos_crus: str) -> st
 
     acao = ACOES[nome]
     try:
-        with transaction.atomic():
+        with (nullcontext() if nome == "passar_para_responsavel" else transaction.atomic()):
             saida = acao(ctx, argumentos)
             return _texto(_gravar(ctx, call_id, nome, argumentos, saida, R.FEITO))
     except Recusa as recusa:

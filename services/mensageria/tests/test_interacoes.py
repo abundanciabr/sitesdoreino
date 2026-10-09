@@ -56,6 +56,8 @@ def test_texto_e_componente_tem_chaves_duraveis_e_nao_repetem(monkeypatch, tipo,
     assert saida.resultado == "enviada"
     assert chamadas[0][0] == "message/sendText/inst"
     assert chamadas[1][0] == f"message/{endpoint}/inst"
+    if tipo == "lista":
+        assert all(row["description"].strip() for row in chamadas[1][1]["sections"][0]["rows"])
     assert "https://meshcraft.top/cursos/" in saida.mensagem.texto
     if tipo != "links":
         assert "1. Conhecer cursos" in saida.mensagem.texto
