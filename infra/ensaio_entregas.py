@@ -317,19 +317,45 @@ def _modulo_funil(ferramentas: Path):
 
 def _snapshot_rota(plataforma: Path, base: Path, nome_funil: str,
                    ferramentas: Path) -> Path:
-    """Só o controlador lê a configuração privada; contêineres não a montam."""
+    """Copia os insumos que entram na identidade, sem backups alheios em env/."""
+    from protecao_publicacao import arvore
+
     destino = base / "configuracao-final"
     if destino.exists():
         raise RecusaEnsaio("snapshot privado anterior exige revisão antes de novo ensaio")
     destino.mkdir(mode=0o700)
-    for nome in ("docker-compose.yml", ".env"):
-        origem = plataforma / nome
-        if origem.is_file():
-            shutil.copy2(origem, destino / nome)
-    for nome in ("env", "env-celulas", "traefik", "protecao-celulas"):
-        origem = plataforma / nome
-        if origem.is_dir():
-            shutil.copytree(origem, destino / nome)
+    def copiar(relativo: Path) -> None:
+        origem = plataforma / relativo
+        if origem.is_symlink() or not origem.is_file():
+            raise RecusaEnsaio("configuração relevante indisponível")
+        alvo = destino / relativo
+        alvo.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(origem, alvo)
+        if alvo.is_symlink() or not alvo.is_file() or _hash(origem) != _hash(alvo):
+            raise RecusaEnsaio("snapshot da configuração divergiu")
+
+    try:
+        copiar(Path("docker-compose.yml"))
+        for nome in (".env", "protecao-celulas/politica.json"):
+            if (plataforma / nome).exists() or (plataforma / nome).is_symlink():
+                copiar(Path(nome))
+        for nome in ("env", "env-celulas"):
+            origem = plataforma / nome
+            if origem.is_symlink():
+                raise RecusaEnsaio("configuração contém ligação simbólica")
+            if origem.is_dir():
+                (destino / nome).mkdir()
+                for arquivo in sorted(origem.glob("*.env")):
+                    copiar(Path(nome) / arquivo.name)
+        origem_rota = plataforma / "traefik"
+        if origem_rota.is_symlink() or not origem_rota.is_dir():
+            raise RecusaEnsaio("rota do funil indisponível")
+        esperado = arvore(origem_rota)
+        shutil.copytree(origem_rota, destino / "traefik")
+        if arvore(destino / "traefik") != esperado:
+            raise RecusaEnsaio("snapshot da configuração divergiu")
+    except (OSError, ValueError) as erro:
+        raise RecusaEnsaio("configuração relevante indisponível") from erro
     rota = destino / "traefik/dynamic/plataforma.yml"
     if not rota.is_file():
         raise RecusaEnsaio("rota do funil indisponível")

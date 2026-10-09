@@ -123,13 +123,21 @@ def test_celula_sem_ensaio_e_recusada_explicitamente(tmp_path):
         modulo.executar(tmp_path, A, celula="outra")
 
 
-def test_funil_snapshot_privado_aponta_rota_sem_mudar_origem(tmp_path):
+def test_funil_snapshot_privado_aponta_rota_sem_mudar_origem(tmp_path, monkeypatch):
     plataforma = tmp_path / "plataforma"
     (plataforma / "traefik/dynamic").mkdir(parents=True)
     (plataforma / "env").mkdir()
     (plataforma / "docker-compose.yml").write_text("services: {}", encoding="utf-8")
     (plataforma / ".env").write_text("MARCADOR_FICTICIO=valor", encoding="utf-8")
     (plataforma / "env/app.env").write_text("MARCADOR_FICTICIO=valor", encoding="utf-8")
+    backup = plataforma / "env/sugestoes.env.bak-1787580458"
+    backup.write_text("backup antigo", encoding="utf-8")
+    copiar_real = modulo.shutil.copy2
+    def copiar(origem, destino):
+        if Path(origem) == backup:
+            raise PermissionError("backup alheio root-only")
+        return copiar_real(origem, destino)
+    monkeypatch.setattr(modulo.shutil, "copy2", copiar)
     rota = (plataforma / "traefik/dynamic/plataforma.yml")
     rota.write_text('\n  services:\n    funil:\n      loadBalancer:\n        servers: [ { url: "http://antigo:8000" } ]\n', encoding="utf-8")
     base = tmp_path / "saida"
@@ -139,8 +147,29 @@ def test_funil_snapshot_privado_aponta_rota_sem_mudar_origem(tmp_path):
     assert "meshcraft-funil-candidato:8000" in (destino / "traefik/dynamic/plataforma.yml").read_text()
     assert "http://antigo:8000" in rota.read_text()
     assert (destino / ".env").read_text() == (plataforma / ".env").read_text()
+    assert (destino / "env/app.env").read_text() == (plataforma / "env/app.env").read_text()
+    assert not (destino / "env/sugestoes.env.bak-1787580458").exists()
     with pytest.raises(modulo.RecusaEnsaio, match="snapshot privado anterior"):
         modulo._snapshot_rota(plataforma, base, "outro", Path(__file__).resolve().parents[1])
+
+
+def test_funil_snapshot_recusa_configuracao_relevante_ausente(tmp_path, monkeypatch):
+    plataforma = tmp_path / "plataforma"
+    (plataforma / "env").mkdir(parents=True)
+    (plataforma / "traefik/dynamic").mkdir(parents=True)
+    (plataforma / "docker-compose.yml").write_text("services: {}", encoding="utf-8")
+    (plataforma / "env/app.env").write_text("MARCADOR=valor", encoding="utf-8")
+    (plataforma / "traefik/dynamic/plataforma.yml").write_text("rota", encoding="utf-8")
+    base = tmp_path / "saida"
+    base.mkdir()
+    copiar_real = modulo.shutil.copy2
+    def perder_env(origem, destino):
+        if Path(origem).name != "app.env":
+            return copiar_real(origem, destino)
+    monkeypatch.setattr(modulo.shutil, "copy2", perder_env)
+    with pytest.raises(modulo.RecusaEnsaio, match="snapshot da configuração divergiu"):
+        modulo._snapshot_rota(plataforma, base, "meshcraft-funil-candidato",
+                              Path(__file__).resolve().parents[1])
 
 
 def test_funil_prova_separada_exige_dois_relatorios(tmp_path, monkeypatch):
