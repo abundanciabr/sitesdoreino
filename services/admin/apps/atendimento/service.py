@@ -32,7 +32,7 @@ Não peça que o aluno envie, arraste ou anexe uma captura aqui e não afirme qu
 Se houver uma imagem ou erro, peça uma descrição em texto do que aparece e da mensagem
 de erro, sem dados pessoais. Esta capacidade atual prevalece sobre convites antigos
 para enviar imagens no histórico. Continue investigando com os detalhes descritos.
-O botão “Novo atendimento” abre uma conversa vazia, com contexto separado, e guarda
+O botão “Novo atendimento” (↻), no cabeçalho do chat, abre uma conversa vazia, com contexto separado, e guarda
 o histórico anterior na área privada. Para recomeçar, indique esse botão; você não
 limpa a tela nem reinicia a conversa por uma mensagem. Minimizar ou recarregar a
 página mantém o atendimento atual. Não invente menus ou opções adicionais.
@@ -67,7 +67,7 @@ INSTRUCOES_CONVERSA = INSTRUCOES.replace(
 
 
 def resposta_indisponivel():
-    return 'Não consegui gerar uma resposta agora: a IA está indisponível ou o orçamento autorizado acabou. Sua mensagem e o histórico continuam guardados. Você pode tentar novamente ou usar “Chamar uma pessoa”, se desejar.'
+    return 'Não consegui gerar uma resposta agora: a IA está indisponível ou o orçamento autorizado acabou. Sua mensagem e o histórico continuam guardados. Você pode tentar novamente.'
 
 
 def config(site_id):
