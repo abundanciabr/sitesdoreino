@@ -6,6 +6,7 @@ import threading
 import time
 import contextvars
 import uuid
+import unicodedata
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -167,6 +168,36 @@ def novo_atendimento(site_id, pessoa_id, nome, nova_id, pagina='', curso='', aul
             Conversa.objects.filter(site_id=site_id, pessoa_id=pessoa_id).exclude(pk=conversa.pk).update(
                 estado='encerrado', processar=False)
         return conversa
+
+
+def aluno_agradeceu_ou_concluiu(texto):
+    normal = ''.join(c for c in unicodedata.normalize('NFKD', texto.casefold()) if not unicodedata.combining(c))
+    palavras = ' '.join(re.findall(r'\w+', normal))
+    if re.match(r'(?:se|quando|como|qual|a frase|a mensagem|a palavra|exemplo|ele disse|ela disse|o assistente|o robo)\b', palavras):
+        return False
+    if re.search(r'\b(?:outra(?:s)? (?:duvida|pergunta|questao)|mais uma (?:duvida|pergunta)|quero (?:saber|entender|perguntar)|preciso de ajuda)\b', palavras):
+        return False
+    fechar = r'(?:pode|podemos|vamos|quero|vou) (?:encerrar|finalizar|concluir|terminar)(?: (?:a conversa|o atendimento|por aqui))?'
+    if '?' in normal and not re.fullmatch(fechar, palavras):
+        return False
+    if re.match(r'(?:(?:ok|certo|entao) )?(?:' + fechar + r'|era so isso|e so isso|por hoje e so|nao tenho mais duvidas|nao preciso de mais ajuda|conversa concluida|atendimento concluido|encerrado|finalizado)\b', palavras):
+        return True
+    if re.search(r'\b(?:ainda|mas|porem|so que|nao (?:me )?(?:ajudou|funcionou|funciona|resolveu|consegui|entendi|deu certo|foi resolvido|esta resolvido|abre)|continua (?:travando|carregando|com|sem)|continuo com|tenho duvidas)\b', palavras):
+        return False
+    return bool(re.match(r'(?:(?:ok|certo|sim|perfeito|show|opa|beleza|agora sim) )?(?:muito )?(?:obrigad[oa]|obg|valeu|agradeco)\b', palavras)
+        or re.match(r'(?:(?:agora|ja) )?(?:funcionou|deu certo|consegui|entendi|resolvi|resolvido|tudo certo)\b', palavras))
+
+
+def avaliacao_disponivel(conversa):
+    ultima = conversa.mensagens.filter(autor='aluno').last()
+    if not ultima:
+        return False
+    respostas = conversa.mensagens.filter(autor__in=('robo', 'equipe'))
+    if conversa.estado == 'encerrado':
+        return respostas.exists()
+    if not aluno_agradeceu_ou_concluiu(ultima.texto):
+        return False
+    return respostas.filter(pk__lt=ultima.pk).exists()
 
 
 def historico_para_sugestao(conversa):

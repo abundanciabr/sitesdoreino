@@ -46,6 +46,7 @@ def serializar(conversa, depois=0, antes=0):
     lista=list(msgs.order_by('-id')[:100])[::-1]
     return {'id':str(conversa.pk),'estado':conversa.estado,'assunto':conversa.assunto.nome,
       'atendente':conversa.atendente_nome,'avaliacao':conversa.avaliacao,
+      'mostrar_avaliacao':service.avaliacao_disponivel(conversa),
       'mensagens':[{'id':m.pk,'autor':m.autor,'nome':primeiro_nome(m.nome) if m.autor == 'aluno' else m.nome,'texto':m.texto,'fontes':m.fontes,
                    'em':m.criada_em.isoformat()} for m in lista],
       'tem_anteriores':bool(lista and conversa.mensagens.filter(pk__lt=lista[0].pk).exists())}
