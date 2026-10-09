@@ -371,6 +371,8 @@ def forum_pedir(metodo,caminho,dados=None):
 @require_http_methods(['GET','POST'])
 def previa_forum(request,conversa_id):
     admin(request);sid=site(request);ctx=contexto(request,sid)
+    from apps.core.publicacao_manual_docs import admin_humano
+    pode_publicar=admin_humano(request)
     conversa=get_object_or_404(Conversa,pk=conversa_id,site_id=sid)
     previa=None;erro='';semelhantes=[];areas=[]
     pid=request.GET.get('previa') or request.POST.get('previa')
@@ -394,7 +396,8 @@ def previa_forum(request,conversa_id):
                 previa.save()
                 return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/forum/?previa='+str(previa.pk))
         elif acao=='publicar' and previa:
-            if request.POST.get('confirmado')!='sim':erro='Confira a prévia e confirme a publicação em nome da escola.'
+            if not pode_publicar:erro='A publicação exige a confirmação expressa do mantenedor. A equipe pode preparar e guardar a prévia.'
+            elif request.POST.get('confirmado')!='sim':erro='Confira a prévia e confirme a publicação em nome da escola.'
             else:
                 try:
                     d=forum_pedir('POST','/publicar',{'referencia':str(previa.pk),'area_slug':previa.area,'titulo':previa.titulo,
@@ -407,7 +410,7 @@ def previa_forum(request,conversa_id):
     except (ValueError,KeyError) as e:erro=erro or str(e)
     ultima=conversa.mensagens.filter(autor='equipe').last()
     pergunta=conversa.mensagens.filter(autor='aluno').last()
-    ctx.update(conversa=conversa,previa=previa,erro=erro,areas=areas,semelhantes=semelhantes,
+    ctx.update(conversa=conversa,previa=previa,erro=erro,areas=areas,semelhantes=semelhantes,pode_publicar=pode_publicar,
       pergunta=service.publico(pergunta.texto,conversa) if pergunta else '',
       resposta_texto=service.publico(ultima.texto,conversa) if ultima else '')
     return render(request,'admin/atendimento_forum.html',ctx,status=422 if erro and request.method=='POST' else 200)

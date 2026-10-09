@@ -136,3 +136,28 @@ def test_orcamento_indisponivel_sem_chamada_nem_encaminhamento(chat, monkeypatch
     c.refresh_from_db()
     assert c.estado=='robo' and not c.encaminhada
     assert c.mensagens.last().texto==service.resposta_indisponivel()
+
+
+@pytest.mark.parametrize('admin', [
+    {'id':'equipe', 'email':'equipe@example.test', 'equipe_apenas':True},
+    {'id':'robo', 'email':'mantenedor@example.test', 'robo':True},
+])
+def test_equipe_e_robo_nao_publicam_forum(chat, monkeypatch, admin):
+    from django.test import RequestFactory
+    from apps.core import porta
+    from apps.atendimento.models import PreviaForum
+    monkeypatch.setattr(porta, '_emails_autorizados', lambda: {'mantenedor@example.test'})
+    c=enviar(chat, 'Dúvida de teste.')
+    p=PreviaForum.objects.create(conversa=c, titulo='Título de teste', pergunta='Pergunta', resposta='Resposta', area='teste')
+    chamadas=[]
+    def forum(metodo, caminho, dados=None):
+        chamadas.append(caminho)
+        assert caminho!='/publicar'
+        return {'areas':[], 'topicos':[]}
+    monkeypatch.setattr(views, 'forum_pedir', forum)
+    r=RequestFactory().post('/atendimento/'+str(c.pk)+'/forum/', {'acao':'publicar', 'previa':str(p.pk), 'confirmado':'sim'})
+    r.admin=admin
+    assert views.previa_forum(r,c.pk).status_code==422
+    assert chamadas==['/buscar']
+    p.refresh_from_db()
+    assert not p.publicada_url
