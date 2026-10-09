@@ -1,7 +1,7 @@
 """Quem é administrador, para a página /conquistas/ ficar só com eles.
 
-Admin = (a) a pessoa está em `IDS_DA_EQUIPE`, OU (b) o e-mail da sessão completa
-(`getSessionFull`) é administrador na célula admin (`isAdministrator`).
+Admin = o e-mail da sessão completa (`getSessionFull`) é administrador na
+célula admin (`isAdministrator`). Pertencer à equipe não concede esse acesso.
 
 FECHADO: env ausente, timeout (3 s), erro HTTP ou resposta estranha = não admin.
 Nunca levanta. No máximo uma checagem por requisição (guardada no `request`).
@@ -12,7 +12,6 @@ import os
 
 import httpx
 
-from .equipe import e_da_equipe
 from .sessao import http
 
 logger = logging.getLogger(__name__)
@@ -72,7 +71,7 @@ def e_admin(request, pessoa_id) -> bool:
     if hasattr(request, "_conquistas_e_admin"):
         return request._conquistas_e_admin
     try:
-        resultado = e_da_equipe(pessoa_id) or _admin_pelo_email(request)
+        resultado = _admin_pelo_email(request)
     except (httpx.HTTPError, ValueError, OSError) as erro:
         logger.warning("conquistas: não deu para conferir admin (%s)", type(erro).__name__)
         resultado = False

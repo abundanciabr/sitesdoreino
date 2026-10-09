@@ -53,10 +53,13 @@ def test_aluno_nao_admin_ve_so_o_aviso(monkeypatch):
         assert proibido not in corpo
 
 
-def test_admin_pela_equipe_ve_a_pagina(monkeypatch):
+def test_equipe_sem_permissao_admin_ve_so_o_aviso(monkeypatch):
     como(monkeypatch, "pes-1")
     monkeypatch.setenv("IDS_DA_EQUIPE", "pes-1")
-    assert AVISO not in get(reverse("base")).content.decode()
+    with respx.mock:
+        respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
+        respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": False})
+        assert AVISO in get(reverse("base")).content.decode()
 
 
 def test_admin_pelo_email_ve_a_pagina(monkeypatch):
@@ -104,9 +107,16 @@ def test_print_404_para_nao_admin_e_200_para_admin(monkeypatch):
     enviar()
     url = reverse("print-recebimento", args=[VersaoDoRecebimento.objects.get().pk])
     como(monkeypatch, P)
-    assert Client().get(url).status_code == 404
     monkeypatch.setenv("IDS_DA_EQUIPE", P)
-    assert Client().get(url).status_code == 200
+    with respx.mock:
+        respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
+        respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": False})
+        assert get(url).status_code == 404
+    with respx.mock:
+        respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
+        rota = respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": True})
+        assert get(url).status_code == 200
+        assert rota.call_count == 1
 
 
 def test_healthz_e_api_continuam_abertos(monkeypatch):
