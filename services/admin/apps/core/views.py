@@ -1923,7 +1923,7 @@ def _auditar(request, acao, alvo, desfecho, detalhe=""):
 
 @require_POST
 def escola_admin_promover(request):
-    """Prepara a promoção sem alterar a porta de acesso."""
+    """Prepara a promoção; o mantenedor pode aplicá-la na própria ficha."""
     email = (request.POST.get("email") or "").strip().lower()
     if not email:
         return HttpResponseRedirect(reverse("escola_alunos"))
@@ -1944,6 +1944,8 @@ def escola_admin_promover(request):
         alvo=email,
         defaults={"conteudo": {"ativo": True}, "base": {"ativo": atual}},
     )
+    if request.POST.get("aplicar") == "1":
+        return escola_admin_publicar(request)
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=rascunho")
 
 

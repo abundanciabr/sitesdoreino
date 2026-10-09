@@ -440,6 +440,7 @@
       junto o que a pessoa estava digitando no campo do nome.
       {% endcomment %}
       <div class="decidir">
+        <p class="rotulo">Perfil: <b>{% if pessoa.email in administradores %}ADMIN{% else %}ALUNO{% endif %}</b></p>
         {% if pessoa.email in administradores %}
           {% if pessoa.email in admins_do_servidor %}
           <p class="nota">
@@ -457,7 +458,13 @@
         <form method="post" action="{% url 'escola_admin_promover' %}">
           {% csrf_token %}
           <input type="hidden" name="email" value="{{ pessoa.email }}">
-          <button type="submit">Preparar promoção</button>
+          {% if pode_publicar_permissoes %}
+          <input type="hidden" name="aplicar" value="1">
+          <button class="sim" type="submit">Tornar ADMIN</button>
+          <p class="nota">Libera o acesso ao painel administrativo e mantém as matrículas do aluno.</p>
+          {% else %}
+          <button type="submit">Preparar promoção para ADMIN</button>
+          {% endif %}
         </form>
         {% endif %}
       </div>
@@ -485,7 +492,8 @@
   {% endcomment %}
   <p class="aviso espaco-16">
     <b>Quem é administrador desta área:</b> {{ administradores|join:", " }}.
-    <br><br>As mudanças preparadas ficam privadas até o mantenedor publicar.
+    <br><br>O mantenedor pode usar <b>Tornar ADMIN</b> na ficha para liberar o acesso na hora.
+    As mudanças preparadas pelos demais ficam privadas até o mantenedor publicar.
     <br><br>
     Os botões acima promovem e removem — menos quem vem da lista do servidor,
     que o botão não alcança. Isso é de propósito: é o que garante que sempre

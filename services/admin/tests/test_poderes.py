@@ -150,6 +150,45 @@ def test_promover_deixa_a_pessoa_entrar_e_deixa_rastro():
     assert linha.quem_email == DONO
 
 
+@respx.mock
+def test_tornar_admin_aplica_na_ficha_e_nao_duplica_o_cadastro():
+    cliente = _dentro()
+    for _ in range(2):
+        resposta = cliente.post(
+            reverse("escola_admin_promover"), {"email": OUTRO, "aplicar": "1"}
+        )
+        assert resposta["Location"].endswith("?resultado=publicado")
+    assert OUTRO in _emails_autorizados()
+    assert Administrador.objects.filter(email=OUTRO, ativo=True).count() == 1
+    assert not RascunhoDeConfiguracao.objects.filter(tipo="permissao", alvo=OUTRO).exists()
+    assert Registro.objects.filter(acao=Registro.PROMOVER, alvo=OUTRO, quem_email=DONO).count() == 2
+
+
+@respx.mock
+def test_tornar_admin_reativa_quem_ja_foi_removido():
+    Administrador.objects.create(email=OUTRO, ativo=False)
+    resposta = _dentro().post(
+        reverse("escola_admin_promover"), {"email": OUTRO, "aplicar": "1"}
+    )
+    assert resposta.status_code == 302
+    assert OUTRO in _emails_autorizados()
+    assert Administrador.objects.filter(email=OUTRO).count() == 1
+
+
+@pytest.mark.parametrize("robo", [False, True])
+def test_aplicar_na_ficha_preserva_a_autorizacao_do_mantenedor(robo):
+    from django.test import RequestFactory
+    from apps.core.views import escola_admin_promover
+
+    request = RequestFactory().post(
+        reverse("escola_admin_promover"), {"email": "nova@exemplo.com", "aplicar": "1"}
+    )
+    request.admin = {"email": DONO if robo else OUTRO, "robo": robo}
+    assert escola_admin_promover(request).status_code == 403
+    assert not Administrador.objects.filter(email="nova@exemplo.com").exists()
+    assert Registro.objects.count() == 0
+
+
 @pytest.mark.django_db
 @respx.mock
 def test_promover_duas_vezes_nao_cria_duas_linhas():
@@ -322,6 +361,9 @@ def test_a_tela_nao_oferece_apagar_e_explica_a_ausencia():
     )
     html = _dentro().get("/escola/alunos/").content.decode()
 
+    assert "Tornar ADMIN" in html
+    assert 'name="aplicar" value="1"' in html
+    assert "Perfil: <b>ALUNO</b>" in html
     assert "escola/alunos/apagar" not in html
     assert "Apagar esta ficha" not in html
     assert "Nenhuma ficha se apaga por aqui" in html
