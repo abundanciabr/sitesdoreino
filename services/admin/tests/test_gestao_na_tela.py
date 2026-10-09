@@ -125,7 +125,7 @@ def test_a_tela_lista_os_alunos_com_o_formulario():
     _tela_responde([_aluno(turma="Turma A")])
     html = _dentro().get("/escola/alunos/").content.decode()
 
-    assert "Aluno Exemplo" in html
+    assert "Aluno" in html and "Aluno Exemplo" not in html
     assert "aluno@exemplo.com" in html
     assert "(96) 99999-0000" in html
     # Os cinco campos que a lei §3 deixa mexer, e o botão.
@@ -146,7 +146,7 @@ def test_a_tela_diz_quem_comprou_e_quem_voce_liberou():
     )
     html = _dentro().get("/escola/alunos/").content.decode()
     assert "Comprou pelo site" in html
-    assert "Você liberou" in html
+    assert "Aluno antigo — acesso liberado" in html
 
 
 @respx.mock
@@ -601,3 +601,13 @@ def test_o_cartao_de_ex_alunos_conta_quem_saiu():
     _tela_responde([_aluno(status="encerrada"), _aluno(id="2", status="ativa")])
     html = _dentro().get("/escola/alunos/").content.decode()
     assert "Ex-alunos" in html
+
+
+@respx.mock
+def test_nome_vazio_na_tela_mantem_o_cadastro_completo():
+    rota = _salvar_responde()
+    r = _salvar(_dentro(), nome_completo='', whatsapp='(96) 99999-1111')
+    assert r.status_code == 302
+    dados = json.loads(rota.calls.last.request.content)
+    assert 'nome_completo' not in dados
+    assert dados['whatsapp'] == '(96) 99999-1111'

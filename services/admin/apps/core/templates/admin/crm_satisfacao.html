@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% load crm_menu %}
 {% block titulo %}Satisfação | CRM{% endblock %}
 {% block corpo %}
@@ -123,7 +125,7 @@
     <h3>{% if atendimento_edicao %}Editar atendimento{% else %}Registrar atendimento{% endif %}</h3>
     <form method="post" action="{% url 'crm_satisfacao_atendimento_salvar' %}">{% csrf_token %}
       <input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="email" value="{{ email }}">
-      {% if atendimento_edicao %}<input type="hidden" name="atendimento_id" value="{{ atendimento_edicao.id }}"><input type="hidden" name="aluno_id" value="{{ atendimento_edicao.aluno_id }}">{% else %}<label class="campo">Aluno avaliado<select name="aluno_id">{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.aluno_id }}">{{ avaliacao.aluno_nome }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>{% endif %}
+      {% if atendimento_edicao %}<input type="hidden" name="atendimento_id" value="{{ atendimento_edicao.id }}"><input type="hidden" name="aluno_id" value="{{ atendimento_edicao.aluno_id }}">{% else %}<label class="campo">Aluno avaliado<select name="aluno_id">{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.aluno_id }}">{{ avaliacao.aluno_nome|primeiro_nome }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>{% endif %}
       <label class="campo">Avaliação<select name="tentativa_id"><option value="">Aluno em geral</option>{% for avaliacao in historico.avaliacoes %}<option value="{{ avaliacao.id }}"{% if atendimento_edicao.tentativa_id == avaliacao.id or not atendimento_edicao and request.GET.avaliacao == avaliacao.id %} selected{% endif %}>Avaliação {{ forloop.counter }} · {{ avaliacao.curso_nome }}</option>{% endfor %}</select></label>
       <label class="campo">Responsável<input name="responsavel" value="{{ atendimento_edicao.responsavel }}" required maxlength="120"></label>
       <label class="campo">Próximo passo<textarea name="proximo_passo" required maxlength="2000">{{ atendimento_edicao.proximo_passo }}</textarea></label>

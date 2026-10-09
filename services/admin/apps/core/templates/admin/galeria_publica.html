@@ -1,3 +1,5 @@
+
+{% load nomes_admin %}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -8,7 +10,7 @@
   <script src="/comunidade/galeria.js" defer></script>
 </head>
 <body data-pode-votar="{% if aluno %}sim{% else %}nao{% endif %}">
-  <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/forum/comunidade">Minha comunidade</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome }}</span>{% else %}<a class="entrar" href="/login?next=/comunidade">Entrar</a>{% endif %}</nav></header>
+  <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/forum/comunidade">Minha comunidade</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome|primeiro_nome }}</span>{% else %}<a class="entrar" href="/login?next=/comunidade">Entrar</a>{% endif %}</nav></header>
   <main>
     <section class="introducao"><p class="sobretitulo">A PRÓXIMA CARA DA MESHCRAFT</p><h1>Uma comunidade.<br>Nove possibilidades.</h1><p class="descricao">Explore os modelos e vote nos que você gostaria de usar.<br>Seu olhar ajuda a dar forma à nossa comunidade.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>↕ Mais votadas primeiro</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/comunidade">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
     <div class="cabecalho-grade"><h2>Os nove modelos</h2><span id="ordem-votos">Ordenados por votos</span></div>

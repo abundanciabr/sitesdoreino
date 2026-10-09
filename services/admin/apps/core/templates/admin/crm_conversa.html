@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% load crm_menu %}
 {% block titulo %}Conversa{% endblock %}
 {% block corpo %}
@@ -8,7 +10,7 @@
 {% menu_do_crm %}
 {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 {% if conversa %}
-<h1>{% if nome %}{{ nome }}{% elif conversa.ambigua %}Contato ambíguo{% else %}Conversa{% endif %}</h1>
+<h1>{% if nome %}{{ nome|primeiro_nome }}{% elif conversa.ambigua %}Contato ambíguo{% else %}Conversa{% endif %}</h1>
 <p class="subtitulo">{{ conversa.canal_nome }} {{ conversa.endereco_mascarado }} · {{ conversa.estado_nome }}{% if quem_atende %} ({{ quem_atende }}){% endif %}</p>
 <div class="conv-grade"><section class="cartao" aria-label="Mensagens">
 {% if anteriores %}<p><a href="{{ anteriores }}">← Mensagens anteriores</a></p>{% endif %}

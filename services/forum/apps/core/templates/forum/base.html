@@ -1,3 +1,5 @@
+
+{% load nomes_forum %}
 {% comment %}
 O molde do fórum. Todo endereço sai de `{% url %}` — nunca escrito à mão:
 é o `{% url %}` que carrega o prefixo público `/forum` para dentro do
@@ -20,7 +22,7 @@ contexto (apps/core/menu.py); aqui so se desenha.
 {% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">
   <a href="{% url 'home' %}">Fórum da Meshcraft Academy</a>
-  <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|default:"você" }}{% else %}visitante{% endif %}</span>
+  <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|primeiro_nome|default:"você" }}{% else %}visitante{% endif %}</span>
   {% comment %}
   A CAIXA DE BUSCA fica no molde, e não em cada página, porque procurar é o
   gesto que a pessoa faz de qualquer lugar do fórum: no meio de uma conversa,

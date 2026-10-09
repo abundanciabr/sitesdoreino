@@ -1,4 +1,6 @@
 {% extends 'pages/moldura.html' %}
+{% load nomes_pages %}
+
 {% block titulo %}Monte sua apresentação{% endblock %}
 {% block faixa %}Meshcraft Academy · Meu portfólio{% endblock %}
 {% block conteudo %}
@@ -7,7 +9,7 @@
 @media(max-width:850px){main{padding:1.2rem 1rem 12rem}.pf-layout{grid-template-columns:1fr}.pf-preview{position:static}.pf-toolbar{padding:.7rem 1rem;flex-wrap:wrap;gap:.5rem}.pf-toolbar .pf-save-state{width:100%;max-width:none}.pf-toolbar .pf-button{flex:1 1 40%}.pf-preview iframe{height:620px}.pf-nav{gap:.8rem;font-size:.9rem}.pf-nav .pf-user{width:100%;margin:0}.pf-preview-head{flex-wrap:wrap}}
 .pf-nav a{text-decoration:none}.pf-nav a:hover{text-decoration:underline;text-underline-offset:6px}
 </style>
-<nav class="pf-nav" aria-label="Portfólio"><a href="{% url 'prancheta' %}">Meu portfólio</a><a href="{% url 'pecas' %}">Meus trabalhos</a><a href="{% url 'colegas' %}">Feedback dos colegas</a>{% if portfolio.vitrine_publicada %}<a href="{% url 'vitrine' apelido=portfolio.apelido %}">Minha página pública</a>{% endif %}<span class="pf-user">{{ aluno.nome }}</span></nav>
+<nav class="pf-nav" aria-label="Portfólio"><a href="{% url 'prancheta' %}">Meu portfólio</a><a href="{% url 'pecas' %}">Meus trabalhos</a><a href="{% url 'colegas' %}">Feedback dos colegas</a>{% if portfolio.vitrine_publicada %}<a href="{% url 'vitrine' apelido=portfolio.apelido %}">Minha página pública</a>{% endif %}<span class="pf-user">{{ aluno.nome|primeiro_nome }}</span></nav>
 <header class="pf-heading"><small>Meu portfólio / Apresentação</small><h1>Monte sua apresentação</h1><p>Escolha seus melhores trabalhos, defina as informações e veja como ficará sua página pública.</p></header>
 {% if erro %}<div class="pf-error" role="alert">{{ erro }}</div>{% endif %}
 {{ conteudo|json_script:'conteudo-inicial' }}

@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Votação do visual da comunidade{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -6,7 +8,7 @@
   <section class="cartao"><h2>Votos por modelo</h2><table><thead><tr><th>Posição</th><th>Modelo</th><th>Votos</th></tr></thead><tbody>{% for linha in ranking %}<tr><td>{{ forloop.counter }}</td><td><a href="/comunidade#{{ linha.slug }}">{{ linha.titulo }}</a></td><td>{{ linha.votos }}</td></tr>{% endfor %}</tbody></table></section>
   <h2>Comentários dos alunos</h2><form method="get"><label for="filtro-modelo">Modelo</label><select name="imagem" id="filtro-modelo"><option value="">Todos</option>{% for slug,titulo,descricao in imagens %}<option value="{{ slug }}"{% if filtro == slug %} selected{% endif %}>{{ titulo }}</option>{% endfor %}</select><button>Filtrar</button></form>
   <p>{{ pagina.paginator.count }} comentário{{ pagina.paginator.count|pluralize }}</p>
-  {% for comentario in pagina %}<section class="cartao"><h3>{{ comentario.nome }}</h3><p>{{ comentario.email }} · {{ comentario.modelo }} · {{ comentario.criado_em|date:"d/m/Y H:i" }}</p><div>{{ comentario.texto|linebreaksbr }}</div><p><a href="{{ comentario.crm }}">Localizar aluno no CRM</a></p></section>{% empty %}<p>Nenhum comentário recebido{% if filtro %} neste modelo{% endif %}.</p>{% endfor %}
+  {% for comentario in pagina %}<section class="cartao"><h3>{{ comentario.nome|primeiro_nome }}</h3><p>{{ comentario.email }} · {{ comentario.modelo }} · {{ comentario.criado_em|date:"d/m/Y H:i" }}</p><div>{{ comentario.texto|linebreaksbr }}</div><p><a href="{{ comentario.crm }}">Localizar aluno no CRM</a></p></section>{% empty %}<p>Nenhum comentário recebido{% if filtro %} neste modelo{% endif %}.</p>{% endfor %}
   {% if pagina.has_previous %}<a href="?imagem={{ filtro }}&pagina={{ pagina.previous_page_number }}">← Mais recentes</a>{% endif %}
   {% if pagina.has_next %}<a href="?imagem={{ filtro }}&pagina={{ pagina.next_page_number }}">Mais antigos →</a>{% endif %}
 </div>

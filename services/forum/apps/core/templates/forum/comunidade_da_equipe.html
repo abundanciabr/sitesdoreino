@@ -1,4 +1,6 @@
 {% extends "forum/base.html" %}
+{% load nomes_forum %}
+
 {% block titulo %}Comunidade da equipe{% endblock %}
 {% block conteudo %}
 {% comment %}
@@ -43,7 +45,7 @@ células são links: os números delas moram nas telas delas.
     {% elif grupo.acolhimento %}
       <ul>
         {% for vinculo in grupo.acolhimento %}
-          <li>{{ vinculo.pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }} entrou {{ vinculo.espera }} e ainda não escreveu no grupo.
+          <li>{{ vinculo.pessoa.nome_exibido|primeiro_nome|default:"Pessoa sem nome de exibição" }} entrou {{ vinculo.espera }} e ainda não escreveu no grupo.
             <span class="{% if grupo.quem_responde %}sub{% else %}recado{% endif %}">Quem acolhe: {{ grupo.quem_responde|default:"ninguém definido" }}.</span></li>
         {% endfor %}
       </ul>
@@ -55,7 +57,7 @@ células são links: os números delas moram nas telas delas.
     {% if grupo.rastro %}
       <ul>
         {% for linha in grupo.rastro %}
-          <li>{{ linha.ator.nome_exibido|default:"Pessoa sem nome de exibição" }} {{ linha.get_acao_display }}{% if linha.detalhe %}: {{ linha.detalhe }}{% endif %}.<br>
+          <li>{{ linha.ator.nome_exibido|primeiro_nome|default:"Pessoa sem nome de exibição" }} {{ linha.get_acao_display }}{% if linha.detalhe %}: {{ linha.detalhe }}{% endif %}.<br>
             <span class="sub">Em {{ linha.quando|date:"d/m/Y H:i" }}.{% if linha.motivo %} Motivo: {{ linha.motivo }}{% endif %}</span></li>
         {% endfor %}
       </ul>

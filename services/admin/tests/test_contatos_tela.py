@@ -167,7 +167,7 @@ def test_lista_mostra_quem_deixou_o_contato_e_o_ultimo_passo():
 
     corpo = r.content.decode()
     assert r.status_code == 200
-    assert "Ana Souza" in corpo
+    assert "Ana" in corpo and "Ana Souza" not in corpo
     assert "ana@exemplo.com" in corpo
     assert f"/contatos/{ANA}/" in corpo
     assert "Pix venceu sem pagar" in corpo
@@ -201,7 +201,7 @@ def test_ficha_traz_dados_origem_tags_e_a_linha_do_tempo_em_portugues():
 
     corpo = r.content.decode()
     assert r.status_code == 200
-    assert "Ana Souza" in corpo
+    assert "Ana" in corpo and "Ana Souza" not in corpo
     assert "ana@exemplo.com" in corpo
     assert "11999990000" in corpo
     assert "pagina-de-venda" in corpo

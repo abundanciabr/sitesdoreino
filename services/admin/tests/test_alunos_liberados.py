@@ -1,8 +1,9 @@
 """A lista de nomes para avisar o grupo — pedido do mantenedor, 31/08/2026.
 
 *"crie uma lista dos nomes dos alunos que já foram aprovados (liberados)... A
-lista deve conter apenas e unicamente os nomes completos dos alunos e nada
-mais"* — para ele colar no grupo de WhatsApp.
+lista deve conter apenas e unicamente os nomes dos alunos e nada
+mais"* — para ele colar no grupo de WhatsApp. Em 09/10/2026 o mantenedor
+determinou que a exibição use somente o primeiro nome.
 
 O que este arquivo trava, e por que um teste de status não pegaria:
 
@@ -111,7 +112,8 @@ def test_a_lista_mostra_so_os_nomes_um_por_linha():
 
     assert PRE in html
     # A ORDEM é alfabética, sem acento — não a ordem de chegada da API.
-    assert html.index("Ana Paula") < html.index("Zeca Nunes")
+    assert html.index("Ana") < html.index("Zeca")
+    assert "Ana Paula" not in html and "Zeca Nunes" not in html
 
     # Nada além do nome: nem e-mail, nem WhatsApp, nem os rótulos do cartão de
     # gestão vazam para esta tela.
@@ -131,7 +133,7 @@ def test_a_ordenacao_ignora_acento_e_maiusculas():
         ]
     )
     html = _texto(_dentro().get("/escola/alunos/liberados"))
-    posicoes = [html.index(n) for n in ("Bruna Reis", "Ítalo Souza", "joão da Silva")]
+    posicoes = [html.index(n) for n in ("Bruna", "Ítalo", "João")]
     assert posicoes == sorted(posicoes)
 
 
@@ -149,7 +151,8 @@ def test_dois_alunos_com_o_mesmo_nome_aparecem_duas_vezes():
         ]
     )
     html = _texto(_dentro().get("/escola/alunos/liberados"))
-    assert html.count("Maria Silva") == 2
+    assert html.count("Maria\n") == 2
+    assert "Maria Silva" not in html
 
 
 # --------------------------------------------- 2. só `status=ativa`, direto
@@ -163,7 +166,7 @@ def test_pede_direto_o_filtro_ativa_e_nao_a_lista_inteira():
     _ativos_respondem([_aluno(nome_completo="Fulano de Tal")])
     r = _dentro().get("/escola/alunos/liberados")
     assert r.status_code == 200, r.content
-    assert "Fulano de Tal" in _texto(r)
+    assert "Fulano" in _texto(r) and "Fulano de Tal" not in _texto(r)
 
 
 # ------------------------------------------- 3. "não sei" nunca vira "zero"

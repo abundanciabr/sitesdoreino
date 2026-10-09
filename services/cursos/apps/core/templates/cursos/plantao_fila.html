@@ -1,4 +1,6 @@
-{% extends "cursos/moldura.html" %}{% comment %}
+{% extends "cursos/moldura.html" %}
+{% load nomes_cursos %}
+{% comment %}
 A fila de revisão: os envios em `recebido` ou `em_revisao`, vencidos primeiro
 (a view já recebe a lista ordenada por `prazo_em`; nada se reordena aqui).
 Reenvio mostra o laudo anterior ao lado. Formulário normal com melhoria
@@ -24,7 +26,7 @@ progressiva: cada linha é um link para `plantao_ficha`, sem script nenhum.
 
 {% for item in itens %}
 <section class="item-da-fila{% if item.vencido %} vencido{% endif %}">
-  <p class="rotulo">{{ item.envio.aula.numero }} · {{ item.envio.pessoa.nome_exibido }} · envio {{ item.envio.numero }}</p>
+  <p class="rotulo">{{ item.envio.aula.numero }} · {{ item.envio.pessoa.nome_exibido|primeiro_nome }} · envio {{ item.envio.numero }}</p>
   <h2>{{ item.envio.aula.titulo_exibido }}</h2>
   <p>Recebido em {{ item.envio.enviado_em|date:"d/m/Y" }} às {{ item.envio.enviado_em|date:"H:i" }}.
   Revisão até {{ item.envio.prazo_em|date:"d/m/Y" }} às {{ item.envio.prazo_em|date:"H:i" }}.</p>

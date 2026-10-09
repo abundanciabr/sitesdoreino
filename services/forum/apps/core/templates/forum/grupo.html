@@ -1,4 +1,6 @@
 {% extends "forum/base.html" %}
+{% load nomes_forum %}
+
 {% block titulo %}Membros de {{ grupo.nome }}{% endblock %}
 {% block conteudo %}
 {% comment %}
@@ -12,14 +14,14 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
 <p class="migalha"><a href="{% url 'area' grupo.slug %}">← voltar ao grupo</a></p>
 <h1>Membros de {{ grupo.nome }}</h1>
 <p class="sub">Só a escola enxerga esta página. Vagas ocupadas: {{ membros|length }} de {{ grupo.vagas }}.
-  Responsável: {{ grupo.responsavel.nome_exibido|default:"ninguém definido" }}.
+  Responsável: {{ grupo.responsavel.nome_exibido|primeiro_nome|default:"ninguém definido" }}.
   <a href="{{ desafio }}">Prática da comunidade, envios e laudos</a>.</p>
 {% if erro %}<p class="erro" role="alert">{{ erro }}</p>{% endif %}
 
 {% for membro in membros %}
   <div class="cartao">
-    <strong>{{ membro.pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }}</strong>
-    <p class="sub" style="margin:4px 0 0">No grupo desde {{ membro.desde|date:"d/m/Y" }}. Quem adicionou: {{ membro.adicionado_por.nome_exibido|default:"alguém da escola" }}. Motivo: {{ membro.motivo }}</p>
+    <strong>{{ membro.pessoa.nome_exibido|primeiro_nome|default:"Pessoa sem nome de exibição" }}</strong>
+    <p class="sub" style="margin:4px 0 0">No grupo desde {{ membro.desde|date:"d/m/Y" }}. Quem adicionou: {{ membro.adicionado_por.nome_exibido|primeiro_nome|default:"alguém da escola" }}. Motivo: {{ membro.motivo }}</p>
     <details class="ferramentas-mini">
       <summary>Tirar do grupo ou trocar de grupo</summary>
       <form class="escrever" method="post" action="{% url 'membros_do_grupo' grupo.slug %}">
@@ -28,7 +30,7 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
         <input type="hidden" name="vinculo_id" value="{{ membro.pk }}">
         <label for="motivo-saida{{ membro.pk }}">Motivo da saída</label>
         <input id="motivo-saida{{ membro.pk }}" name="motivo" maxlength="200">
-        <button type="submit" aria-label="Tirar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} do grupo">Tirar do grupo</button>
+        <button type="submit" aria-label="Tirar {{ membro.pessoa.nome_exibido|primeiro_nome|default:'esta pessoa' }} do grupo">Tirar do grupo</button>
       </form>
       {% if destinos %}
         <form class="escrever" method="post" action="{% url 'membros_do_grupo' grupo.slug %}">
@@ -41,7 +43,7 @@ instante, e as duas saídas pedem motivo, que fica no rastro da moderação.
           </select>
           <label for="motivo-troca{{ membro.pk }}">Motivo da troca</label>
           <input id="motivo-troca{{ membro.pk }}" name="motivo" maxlength="200">
-          <button type="submit" aria-label="Trocar {{ membro.pessoa.nome_exibido|default:'esta pessoa' }} de grupo">Trocar de grupo</button>
+          <button type="submit" aria-label="Trocar {{ membro.pessoa.nome_exibido|primeiro_nome|default:'esta pessoa' }} de grupo">Trocar de grupo</button>
         </form>
       {% else %}
         <p class="sub" style="margin:10px 0 0">Não existe outro grupo de prática ativo para onde trocar.</p>

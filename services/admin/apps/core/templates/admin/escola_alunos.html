@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Alunos{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -172,7 +174,7 @@
   <div class="cartoes">
     {% for pessoa in esperando %}
     <div class="cartao">
-      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="valor"><b>{{ pessoa.nome_completo|primeiro_nome }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
       <div class="nota">
@@ -381,7 +383,7 @@
   <div class="cartoes">
     {% for pessoa in alunos %}
     <div class="cartao">
-      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="valor"><b>{{ pessoa.nome_completo|primeiro_nome }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">
         {% if pessoa.origem == "teste" %}Compra de teste{% elif pessoa.venda_origem == "quiz" %}Nova venda — Quiz{% elif pessoa.venda_origem == "trafego" %}Nova venda — Tráfego{% elif pessoa.venda_origem == "outros" %}Nova venda — outra origem{% elif pessoa.venda_origem == "desconhecida" %}Nova venda — origem não identificada{% elif pessoa.venda_origem == "crm" %}Nova venda — CRM / atendimento{% elif pessoa.origem == "comprou" %}Comprou pelo site{% elif pessoa.origem == "administrativo" %}Matrícula feita por você{% else %}Aluno antigo — acesso liberado{% endif %}
@@ -400,9 +402,9 @@
           <option value="{{ valor }}" {% if valor == pessoa.status %}selected{% endif %}>{{ texto }}</option>
           {% endfor %}
         </select>
-        <label class="rotulo" for="nome-{{ pessoa.id }}">Nome</label>
+        <label class="rotulo" for="nome-{{ pessoa.id }}">Novo nome completo (se quiser alterar)</label>
         <input id="nome-{{ pessoa.id }}" type="text" name="nome_completo"
-               maxlength="255" value="{{ pessoa.nome_completo }}">
+               maxlength="255" value="" placeholder="Deixe em branco para manter o nome cadastrado" autocomplete="off">
         <label class="rotulo" for="zap-{{ pessoa.id }}">WhatsApp</label>
         <input id="zap-{{ pessoa.id }}" type="text" name="whatsapp"
                maxlength="32" value="{{ pessoa.whatsapp }}">

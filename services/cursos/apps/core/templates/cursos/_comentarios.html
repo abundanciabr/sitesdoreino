@@ -1,3 +1,5 @@
+
+{% load nomes_cursos %}
 <section class="comentarios-aula" id="comentarios" aria-labelledby="titulo-comentarios">
   <h2 id="titulo-comentarios">Comentários</h2>
   <form method="post" action="{{ url_enviar_comentario }}" class="comentarios-formulario">
@@ -9,7 +11,7 @@
   <div class="comentarios-lista">
     {% for comentario in comentarios %}
     <article class="comentario-aula">
-      <div class="comentario-cabecalho"><strong>{{ comentario.nome_do_autor }}</strong><span class="comentario-visibilidade">{% if comentario.publico %}Público{% else %}Privado{% endif %}</span></div>
+      <div class="comentario-cabecalho"><strong>{{ comentario.nome_do_autor|primeiro_nome }}</strong><span class="comentario-visibilidade">{% if comentario.publico %}Público{% else %}Privado{% endif %}</span></div>
       <time datetime="{{ comentario.criado_em|date:'c' }}">{{ comentario.criado_em|date:'d/m/Y H:i' }}</time>
       <p class="comentario-texto">{{ comentario.corpo|linebreaksbr }}</p>
     </article>

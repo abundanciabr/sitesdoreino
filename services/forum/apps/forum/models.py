@@ -49,7 +49,8 @@ def assinatura_de(autor, publicado_pela_escola: bool) -> str:
     """
     if publicado_pela_escola:
         return NOME_DA_ESCOLA
-    return (autor.nome_exibido if autor else "") or ALGUEM
+    from apps.core.templatetags.nomes_forum import primeiro_nome
+    return primeiro_nome(autor.nome_exibido if autor else "") or ALGUEM
 
 
 def _fala_de_pessoa_ou_da_escola(nome: str) -> models.CheckConstraint:

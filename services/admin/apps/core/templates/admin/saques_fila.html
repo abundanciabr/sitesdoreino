@@ -1,4 +1,6 @@
-{% extends "admin/base.html" %}{% load reais_fila %}
+{% extends "admin/base.html" %}
+{% load nomes_admin %}
+{% load reais_fila %}
 {% block titulo %}Saques da Fila do Dólar{% endblock %}
 {% block corpo %}<style>
   .saques-fila-card { margin:16px 0; }
@@ -15,7 +17,7 @@
   {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
   {% if mensagem %}<p role="status">{{ mensagem }}</p>{% endif %}
   {% for saque in saques %}<section class="cartao saques-fila-card">
-    <h2>{% if saque.nome_recebedor %}{{ saque.nome_recebedor }}{% else %}Aluno {{ saque.aluno_id }}{% endif %}</h2>
+    <h2>{% if saque.nome_recebedor %}{{ saque.nome_recebedor|primeiro_nome }}{% else %}Aluno {{ saque.aluno_id }}{% endif %}</h2>
     <p>Valor: R$ {{ saque.valor_cents|reais_fila }} · Situação: {% if saque.status == 'pago' %}Pago{% else %}Solicitado{% endif %}</p>
     <p>Chave Pix do recebedor: <strong>{{ saque.chave_pix }}</strong></p>
     <p>Solicitado em: {{ saque.solicitado_em|date:"d/m/Y H:i" }}</p>

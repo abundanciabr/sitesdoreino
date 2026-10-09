@@ -1,4 +1,6 @@
-{% extends "cursos/moldura.html" %}{% comment %}
+{% extends "cursos/moldura.html" %}
+{% load nomes_cursos %}
+{% comment %}
 O formulário do laudo: a rubrica primeiro, completa, antes de qualquer campo
 livre; depois as forças, as mudanças, a decisão, a data de retorno (só
 exigida quando "devolvido") e a pergunta de amanhã de manhã.
@@ -20,11 +22,11 @@ e a pergunta de amanhã de manhã. Não existe `{{ sugestao }}` dentro delas, e 
 guarda de tela (`tests/test_inv_l4_a_ia_nao_decide.py`) prova essa ausência
 pedindo um rascunho em que a IA tentou responder as três.
 {% endcomment %}
-{% block titulo %}Laudo de {{ envio.pessoa.nome_exibido }}{% endblock %}
+{% block titulo %}Laudo de {{ envio.pessoa.nome_exibido|primeiro_nome }}{% endblock %}
 
 {% block faixa %}
   <a href="{% url 'plantao' %}">Plantão</a>
-  <span class="onde">{{ envio.aula.titulo_exibido }} · {{ envio.pessoa.nome_exibido }}</span>
+  <span class="onde">{{ envio.aula.titulo_exibido }} · {{ envio.pessoa.nome_exibido|primeiro_nome }}</span>
 {% endblock %}
 
 {% block conteudo %}

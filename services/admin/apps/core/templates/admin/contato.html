@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Contato | CRM{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -13,7 +15,7 @@
   <h1>Ficha indisponível</h1>
   <p class="aviso borda-vermelha espaco-20">A área que guarda os contatos não respondeu agora. Recarregue a página em alguns minutos.</p>
   {% else %}
-  <h1>{{ tela.nome }}</h1>
+  <h1>{{ tela.nome|primeiro_nome }}</h1>
   <p class="subtitulo">Ficha do contato · {% if tela.criado_em %}chegou em {{ tela.criado_em|date:"d/m/Y H:i" }}{% else %}data de chegada desconhecida{% endif %}</p>
 
   <div class="cartoes">

@@ -90,7 +90,7 @@ def test_filtro_aguardando_sim_e_da_api_e_o_admin_nao_refiltra_a_pagina():
         "resumo": RESUMO, "pagina": 1, "total": 250, "tem_mais": True}))
     html = dentro().get(reverse("crm"), {"aguardando_resposta": "sim"}).content.decode()
     assert rota.calls.last.request.url.params["aguardando_resposta"] == "sim"
-    assert "Ana" in html and "Zeca Outro" in html
+    assert "Ana" in html and "Zeca" in html and "Zeca Outro" not in html
     assert "aguardando_resposta=sim" in html and "pagina=2" in html
 
 

@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Liberar pela lista{% endblock %}
 {% block corpo %}
 <style>
@@ -103,7 +105,7 @@
         <label class="linha-de-pessoa">
           <input type="checkbox" name="alvo" value="{{ item.pessoa.id }}" checked>
           <span class="quem-e">
-            <b>{{ item.pessoa.nome_completo }}</b>
+            <b>{{ item.pessoa.nome_completo|primeiro_nome }}</b>
             <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero_formatado }}</span>
             <span class="nota">
               {% if item.pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ item.pessoa.esperando_ha_dias }} dia{{ item.pessoa.esperando_ha_dias|pluralize }}{% endif %}
@@ -135,7 +137,7 @@
         <label class="linha-de-pessoa">
           <input type="checkbox" name="alvo" value="{{ item.pessoa.id }}">
           <span class="quem-e">
-            <b>{{ item.pessoa.nome_completo }}</b>
+            <b>{{ item.pessoa.nome_completo|primeiro_nome }}</b>
             <span class="nota">{{ item.pessoa.email }} &middot; {{ item.pessoa.whatsapp }}</span>
             {% if item.talvez_o_numero %}
             <span class="nota">
@@ -216,7 +218,7 @@
       {% for item in conferencia.ja_dentro %}
       <div class="linha-de-pessoa">
         <span class="quem-e">
-          <b>{{ item.pessoa.nome_completo }}</b>
+          <b>{{ item.pessoa.nome_completo|primeiro_nome }}</b>
           <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero_formatado }}</span>
         </span>
       </div>
@@ -242,7 +244,7 @@
       <div class="nota">
         Pode ser:
         {% for pessoa in item.parecidos %}
-        {{ pessoa.nome }} ({{ pessoa.whatsapp }}){% if not forloop.last %}; {% endif %}
+        {{ pessoa.nome|primeiro_nome }} ({{ pessoa.whatsapp }}){% if not forloop.last %}; {% endif %}
         {% endfor %}.
       </div>
       {% endif %}

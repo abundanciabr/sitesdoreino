@@ -143,7 +143,7 @@ def test_conversa_mostra_dois_sentidos_midia_transcricao_e_ligacoes():
     r = dentro().get(reverse("crm_conversa", args=[CONVERSA]))
     html = r.content.decode()
     assert r.status_code == 200
-    assert "Ana Souza" in html and "Quanto custa?" in html and "Custa R$ 97." in html and "Entregue" in html
+    assert "<h1>Ana</h1>" in html and "Ana Souza" not in html and "Quanto custa?" in html and "Custa R$ 97." in html and "Entregue" in html
     assert "Áudio" in html and "Transcrição: Posso pagar no Pix?" in html
     assert reverse("contato", args=[LEAD]) in html and reverse("crm_oportunidade", args=[OPORTUNIDADE]) in html
     assert "24 horas" in html and "Assumir a conversa" in html

@@ -1578,6 +1578,9 @@ def escola_aluno_salvar(request):
         for campo in CAMPOS_DO_FORMULARIO
         if campo in request.POST
     }
+    # O nome completo não é preenchido na tela. Um campo vazio mantém o cadastro.
+    if mudancas.get("nome_completo") == "":
+        mudancas.pop("nome_completo")
     # Campo de data em branco significa "não sei", e o contrato aceita `null` —
     # mandar `""` seria pedir para o outro lado gravar uma data vazia.
     if mudancas.get("comprou_em") == "":

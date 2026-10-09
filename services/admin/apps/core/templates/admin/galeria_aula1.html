@@ -1,3 +1,5 @@
+
+{% load nomes_admin %}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -8,7 +10,7 @@
   <script src="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1/galeria.js?v=aula1-video-20261007" defer></script>
 </head>
 <body class="galeria-aula1" data-galeria-base="/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1" data-pode-votar="{% if aluno %}sim{% else %}nao{% endif %}">
-  <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/">Abrir o curso</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome }}</span>{% else %}<a class="entrar" href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entrar</a>{% endif %}</nav></header>
+  <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/cursos/desafio-como-ganhar-em-dolar-com-roblox/">Abrir o curso</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome|primeiro_nome }}</span>{% else %}<a class="entrar" href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entrar</a>{% endif %}</nav></header>
   <main>
     <section class="introducao"><p class="sobretitulo">DESAFIO · DIA 1 · PRÉVIA PARA A LÍVIA</p><h1>A nova Aula 1.<br>Cena por cena.</h1><p class="descricao">Lívia, assista à prévia narrada e veja como o seu roteiro pode acontecer dentro do curso.<br>Veja na ordem: o aluno assiste, responde ao Alex, modela e assume o prazo.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>→ Na ordem da aula</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/cursos/desafio-como-ganhar-em-dolar-com-roblox/previa-aula-1">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
 

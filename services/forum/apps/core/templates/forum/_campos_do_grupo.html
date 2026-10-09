@@ -1,3 +1,5 @@
+
+{% load nomes_forum %}
 {% comment %}
 Os três campos do GRUPO DE PRÁTICA (TAR-824), iguais na caixa de criar área
 (capa) e na de editar um grupo (página dele). Uma peça só, porque duas cópias
@@ -11,7 +13,7 @@ recusar sem a pessoa entender por quê. Quem confere é
 <label for="responsavel">Responsável pelo grupo</label>
 <select id="responsavel" name="responsavel">
   <option value="">Escolha alguém da escola</option>
-  {% for pessoa in responsaveis %}<option value="{{ pessoa.pk }}"{% if pessoa.pk == responsavel_id %} selected{% endif %}>{{ pessoa.nome_exibido|default:"Pessoa sem nome de exibição" }}</option>{% endfor %}
+  {% for pessoa in responsaveis %}<option value="{{ pessoa.pk }}"{% if pessoa.pk == responsavel_id %} selected{% endif %}>{{ pessoa.nome_exibido|primeiro_nome|default:"Pessoa sem nome de exibição" }}</option>{% endfor %}
 </select>
 {% if not responsaveis %}<p class="sub" style="margin:6px 0 0">Ninguém da escola entrou no fórum ainda, então não há quem escolher. Peça ao professor que entre uma vez e recarregue esta página.</p>{% endif %}
 <label for="vagas">Vagas</label>

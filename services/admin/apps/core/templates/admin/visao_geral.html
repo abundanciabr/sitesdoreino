@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Visão geral{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -12,7 +14,7 @@
     </a>
     <div class="cartao">
       <div class="rotulo">Quem está aqui</div>
-      <div class="valor">{{ admin.nome }}</div>
+      <div class="valor">{{ admin.nome|primeiro_nome }}</div>
     </div>
     <div class="cartao">
       <div class="rotulo">Área administrativa</div>

@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% load crm_menu %}
 {% block titulo %}Quem respondeu à pesquisa | CRM{% endblock %}
 {% block corpo %}
@@ -23,13 +25,13 @@
       <div class="cartoes espaco-20">
       {% for item in dados.itens %}
         <article class="cartao">
-          <h2>{{ item.nome }}</h2>
+          <h2>{{ item.nome|primeiro_nome }}</h2>
           <p class="nota">{{ item.email|default:"E-mail não registrado" }}</p>
           <p><b>Curso:</b> {{ item.curso }}</p>
           <p><b>Respondida em:</b> {{ item.data|date:"d/m/Y H:i"|default:"Data não registrada" }}</p>
           <p><b>Nota de recomendação:</b> {% if item.nota != None %}{{ item.nota }}/10{% else %}Não informada{% endif %}</p>
           <p><b>Retrato atual:</b> {{ item.retrato }}</p>
-          <a href="{{ item.respostas_url }}">Ver respostas de {{ item.nome }}</a>
+          <a href="{{ item.respostas_url }}">Ver respostas de {{ item.nome|primeiro_nome }}</a>
         </article>
       {% endfor %}
       </div>

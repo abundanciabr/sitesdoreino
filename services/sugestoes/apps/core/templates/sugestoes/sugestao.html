@@ -1,4 +1,6 @@
 {% extends "sugestoes/base_caixa.html" %}
+{% load nomes_sugestoes %}
+
 {% comment %}
 Uma sugestão: o texto de quem escreveu, o voto e a conversa — com o inspector
 do protótipo v2 à direita (a ficha e a linha do tempo do status).
@@ -25,7 +27,7 @@ O que esta página NÃO mostra, e nunca vai mostrar:
 <p class="meta" style="margin-bottom:18px">
   <span class="selo selo-{{ sugestao.status }}">{{ sugestao.get_status_display }}</span>
   {{ sugestao.categoria.nome }} ·
-  {{ sugestao.autor.nome_exibido|default:"Aluno" }}
+  {{ sugestao.autor.nome_exibido|primeiro_nome|default:"Aluno" }}
 </p>
 
 {% comment %}
@@ -86,9 +88,9 @@ etapas saem da página. Votos e comentários continuam no banco.
 <div class="conversa">
   {% for comentario in comentarios %}
     <div class="fala">
-      <span class="retrato" aria-hidden="true">{{ comentario.autor.nome_exibido|default:"A"|slice:":1" }}</span>
+      <span class="retrato" aria-hidden="true">{{ comentario.autor.nome_exibido|primeiro_nome|default:"A"|slice:":1" }}</span>
       <div>
-        <p class="meta">{{ comentario.autor.nome_exibido|default:"Aluno" }} · {{ comentario.criado_em|date:"d/m/Y H:i" }}</p>
+        <p class="meta">{{ comentario.autor.nome_exibido|primeiro_nome|default:"Aluno" }} · {{ comentario.criado_em|date:"d/m/Y H:i" }}</p>
         <p>{{ comentario.texto|linebreaksbr }}</p>
       </div>
     </div>

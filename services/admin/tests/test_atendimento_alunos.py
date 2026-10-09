@@ -33,7 +33,12 @@ def test_recepcao_idempotente_e_continuacao(escola):
     assert conversa.pagina=='/cursos/exemplo/aula'
     assert conversa.mensagens.filter(autor='aluno').count()==1
     assert conversa.mensagens.filter(autor='robo').count()==1
-    assert c.get('/interno/atendimento-aluno/').json()['conversa']['id']==d['conversa']
+    exibida = c.get('/interno/atendimento-aluno/').json()['conversa']
+    assert exibida['id']==d['conversa']
+    assert conversa.nome == 'Pessoa de Teste'
+    assert conversa.mensagens.get(autor='aluno').nome == 'Pessoa de Teste'
+    assert next(m['nome'] for m in exibida['mensagens'] if m['autor']=='aluno') == 'Pessoa'
+    assert 'Pessoa de Teste' not in json.dumps(exibida)
 
 
 def test_outro_aluno_nao_le_nem_escreve(escola,monkeypatch):

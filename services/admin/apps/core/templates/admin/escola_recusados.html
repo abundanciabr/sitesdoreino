@@ -1,9 +1,11 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Alunos recusados{% endblock %}
 {% block corpo %}
 <div class="barra">
   <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
+  <span class="quem">{{ admin.nome|primeiro_nome }}</span>
 </div>
 
 <div class="envolucro">
@@ -98,7 +100,7 @@
   <div class="cartoes">
     {% for pessoa in recusados %}
     <div class="cartao">
-      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="valor"><b>{{ pessoa.nome_completo|primeiro_nome }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
       <div class="nota">

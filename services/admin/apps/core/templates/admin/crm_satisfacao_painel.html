@@ -1,3 +1,5 @@
+
+{% load nomes_admin %}
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -15,7 +17,7 @@
     <a class="secundario" href="{% url 'escola_alunos' %}">Alunos</a>
     <details class="mais-menu"><summary>Mais</summary><nav>{% for secao in menu_do_admin %}<a href="{{ secao.href }}">{{ secao.rotulo }}</a>{% endfor %}</nav></details>
   </nav>
-  <div class="operador"><span class="avatar" aria-hidden="true">{{ admin.nome|slice:':1'|upper }}</span><span class="nome-operador">{{ admin.nome|default:'Administrador' }}</span></div>
+  <div class="operador"><span class="avatar" aria-hidden="true">{{ admin.nome|primeiro_nome|slice:':1'|upper }}</span><span class="nome-operador">{{ admin.nome|primeiro_nome|default:'Administrador' }}</span></div>
 </header>
 <div class="bancada">
   <aside class="alunos" aria-label="Alunos que responderam">
@@ -33,7 +35,7 @@
     {% for item in itens %}
       <a href="{{ item.url }}" class="pessoa tom-{{ item.tom }}{% if item.ativo %} ativa{% endif %}"{% if item.ativo %} aria-current="page"{% endif %}>
         {% include 'admin/_icone_satisfacao.html' with icone='pessoa' %}
-        <span><span class="nome">{{ item.nome }}</span><span class="curso">{{ item.curso }}</span><span class="classificacao"><span class="ponto" aria-hidden="true"></span>{{ item.retrato }}</span>{% if item.motivo %}<span class="motivo">{{ item.motivo }}</span>{% endif %}</span>
+        <span><span class="nome">{{ item.nome|primeiro_nome }}</span><span class="curso">{{ item.curso }}</span><span class="classificacao"><span class="ponto" aria-hidden="true"></span>{{ item.retrato }}</span>{% if item.motivo %}<span class="motivo">{{ item.motivo }}</span>{% endif %}</span>
       </a>
     {% empty %}{% if estado_lista == 'ok' %}<p class="aviso-lista">{% if q %}Nenhuma resposta corresponde à busca.{% else %}{% if arquivadas %}Nenhuma avaliação arquivada.{% else %}Nenhum aluno concluiu a pesquisa ainda.{% endif %}{% endif %}</p>{% endif %}{% endfor %}
     </nav>

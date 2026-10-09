@@ -24,7 +24,8 @@ def test_lista_com_nota_zero_data_e_acesso_ao_historico():
     resposta = cliente.get(reverse("crm_satisfacao_respondentes"), {"site_id": "escola", "q": "Ana"})
     assert resposta.status_code == 200
     texto = resposta.content.decode()
-    for trecho in ("Ana Silva", "Desenho", "0/10", "08/10/2026 12:00", "O que ele respondeu", "1 aluno", "Próxima"):
+    assert "Ana Silva" not in texto
+    for trecho in ("Ana", "Desenho", "0/10", "08/10/2026 12:00", "O que ele respondeu", "1 aluno", "Próxima"):
         assert trecho in texto
     assert rota.calls.last.request.url.params["site_id"] == "escola"
     assert rota.calls.last.request.url.params["q"] == "Ana"

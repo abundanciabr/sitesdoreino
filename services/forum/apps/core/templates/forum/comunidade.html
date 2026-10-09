@@ -1,4 +1,6 @@
 {% extends "forum/base.html" %}
+{% load nomes_forum %}
+
 {% block titulo %}Comunidade{% endblock %}
 {% block conteudo %}
 {% comment %}
@@ -45,7 +47,7 @@ contribuições dela, sem pedir nada a mais que o caminho.
   {% for grupo in grupos %}
     <section class="cartao" aria-labelledby="grupo-{{ grupo.pk }}">
       <h2 id="grupo-{{ grupo.pk }}"><a href="{% url 'area' grupo.slug %}">{{ grupo.nome }}</a></h2>
-      {% if grupo.responsavel %}<p class="sub" style="margin:4px 0 0">Responsável: {{ grupo.responsavel.nome_exibido|default:"a escola" }}</p>{% endif %}
+      {% if grupo.responsavel %}<p class="sub" style="margin:4px 0 0">Responsável: {{ grupo.responsavel.nome_exibido|primeiro_nome|default:"a escola" }}</p>{% endif %}
       <ul>
         <li><a href="{% url 'area' grupo.slug %}#abrir">Primeiro passo: apresente-se ao grupo</a>. Diga em qual etapa está e o que quer criar.</li>
         <li><a href="{{ grupo.desafio }}">Abrir a prática da comunidade</a></li>

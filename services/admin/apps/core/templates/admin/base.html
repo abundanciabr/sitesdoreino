@@ -1,3 +1,5 @@
+
+{% load nomes_admin %}
 {% comment %}
 Layout da área administrativa. O CSS é EMBUTIDO de propósito, e não servido de
 /static: uma célula sob SCRIPT_NAME precisa de rota própria de estático para
@@ -1049,7 +1051,7 @@ várias o texto vaza para a tela (`armadilhas/087`).
 {% endcomment %}{% if admin %}
 <header class="barra">
   <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
+  <span class="quem">{{ admin.nome|primeiro_nome }}</span>
 </header>
 {% comment %}
 As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da

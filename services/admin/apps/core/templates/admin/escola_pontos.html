@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Quadro de pontos{% endblock %}
 {% block corpo %}
 <div class="envolucro">
@@ -62,7 +64,7 @@
   <div class="cartoes">
     {% for aluno in alunos %}
     <div class="cartao">
-      <div class="valor"><b>{{ aluno.nome }}</b></div>
+      <div class="valor"><b>{{ aluno.nome|primeiro_nome }}</b></div>
       <div class="nota">
         {{ aluno.xp }} ponto{{ aluno.xp|pluralize }}
         &middot; nível {{ aluno.nivel }}{% if aluno.titulo %} &middot; {{ aluno.titulo }}{% endif %}

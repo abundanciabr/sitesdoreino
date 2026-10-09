@@ -1,11 +1,13 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Alunos liberados{% endblock %}
 {% block corpo %}
 <div class="envolucro">
   <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
   <h1>Alunos liberados</h1>
   <p class="subtitulo">
-    Só os nomes completos de quem está com acesso ativo agora, um por linha,
+    Só os primeiros nomes de quem está com acesso ativo agora, um por linha,
     prontos para colar no grupo. Toque e segure (ou Ctrl+A no computador) em
     cima da caixa abaixo para selecionar tudo, e depois copie.
   </p>
@@ -32,7 +34,7 @@
   base.html) é o que faz a quebra de linha aparecer sem marcação nenhuma
   entre um nome e o outro.
   {% endcomment %}
-  <pre class="lista-de-nomes">{% for nome in nomes %}{{ nome }}
+  <pre class="lista-de-nomes">{% for nome in nomes %}{{ nome|primeiro_nome }}
 {% endfor %}</pre>
   {% endif %}
 </div>

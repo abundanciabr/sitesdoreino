@@ -1,4 +1,6 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Prontuário{% endblock %}
 {% block corpo %}
 {% comment %}
@@ -26,7 +28,7 @@ aconteceu.
   </section>
 
   <div class="cartao">
-    <div class="valor"><b>{% if ficha.nome_completo %}{{ ficha.nome_completo }}{% else %}{{ email }}{% endif %}</b></div>
+    <div class="valor"><b>{% if ficha.nome_completo %}{{ ficha.nome_completo|primeiro_nome }}{% else %}{{ email }}{% endif %}</b></div>
     <div class="nota">{{ email }}</div>
     {% if situacao_na_tela %}<div class="nota"><b>Hoje:</b> {{ situacao_na_tela }}</div>{% endif %}
     {% if ficha.whatsapp %}<div class="nota">WhatsApp: {{ ficha.whatsapp }}</div>{% endif %}
@@ -97,7 +99,7 @@ aconteceu.
         {% if p.decidida_em_dia %} &middot; última decisão sua em {{ p.decidida_em_dia|date:"d/m/Y" }}{% endif %}
       </div>
       {% if p.nome_completo != ficha.nome_completo %}
-      <div class="nota">Nesta passagem, o nome era: {{ p.nome_completo }}</div>
+      <div class="nota">Nesta passagem, o nome era: {{ p.nome_completo|primeiro_nome }}</div>
       {% endif %}
       {% if p.turma %}<div class="nota">Turma: {{ p.turma }}</div>{% endif %}
       {% if p.motivo_recusa %}

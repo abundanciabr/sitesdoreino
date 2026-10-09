@@ -1,10 +1,12 @@
 {% extends 'admin/base.html' %}
-{% block titulo %}Atendimento · {{ conversa.nome }}{% endblock %}
+{% load nomes_admin %}
+
+{% block titulo %}Atendimento · {{ conversa.nome|primeiro_nome }}{% endblock %}
 {% block corpo %}<main class="envolucro suporte-admin">
-<h1>Atendimento de {{ conversa.nome|default:'Aluno' }}</h1>{% include 'admin/_atendimento_nav.html' %}
+<h1>Atendimento de {{ conversa.nome|primeiro_nome|default:'Aluno' }}</h1>{% include 'admin/_atendimento_nav.html' %}
 <section class="cartao"><p><b>{{ conversa.estado }}</b> · {{ conversa.assunto.nome }}{% if conversa.atendente_nome %} · Com {{ conversa.atendente_nome }}{% endif %}</p><p>Curso: {{ conversa.curso|default:'Não informado' }} · Aula: {{ conversa.aula|default:'Não informada' }}</p>{% if conversa.pagina %}<p>Página de origem: {{ conversa.pagina }}</p>{% endif %}<p>Atendimento {{ conversa.id|stringformat:"s"|slice:":8" }} · Aberto em {{ conversa.criada_em|date:"d/m H:i" }}</p>
 <form method="post">{% csrf_token %}<button name="acao" value="assumir">Assumir atendimento</button><button name="acao" value="robo">Devolver ao robô</button><button name="acao" value="encerrar">Encerrar</button></form><a href="{{ suporte_prefixo }}/{{ conversa.id }}/">Atualizar conversa</a></section>
-<section class="cartao"><h2>Histórico privado</h2>{% for m in mensagens %}<article><p><b>{{ m.nome|default:m.autor }}</b> · {{ m.criada_em|date:'d/m H:i' }}</p><p>{{ m.texto|linebreaksbr }}</p>{% if m.autor == 'equipe' %}<a href="{{ suporte_prefixo }}/base/?conversa={{ conversa.id }}&amp;mensagem={{ m.id }}">Guardar na base</a>{% endif %}<hr></article>{% empty %}<p>Nenhuma mensagem ainda.</p>{% endfor %}</section>
+<section class="cartao"><h2>Histórico privado</h2>{% for m in mensagens %}<article><p><b>{% if m.autor == 'aluno' %}{{ m.nome|primeiro_nome|default:'Aluno' }}{% else %}{{ m.nome|default:m.autor }}{% endif %}</b> · {{ m.criada_em|date:'d/m H:i' }}</p><p>{{ m.texto|linebreaksbr }}</p>{% if m.autor == 'equipe' %}<a href="{{ suporte_prefixo }}/base/?conversa={{ conversa.id }}&amp;mensagem={{ m.id }}">Guardar na base</a>{% endif %}<hr></article>{% empty %}<p>Nenhuma mensagem ainda.</p>{% endfor %}</section>
 <section class="cartao"><h2>Preparar resposta</h2><form method="post">{% csrf_token %}<button name="acao" value="sugerir">Preparar sugestão pelo robô</button></form>
 {% if conversa.sugestao.estado %}<p>{{ conversa.sugestao.estado }}</p>{% endif %}
 {% for f in conversa.sugestao.fontes %}<p>Fonte: <a href="{{ suporte_prefixo }}/base/?editar={{ f.id }}">{{ f.pergunta }}</a> · revisão {{ f.revisao }}</p>{% endfor %}

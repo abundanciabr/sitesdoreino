@@ -14,6 +14,7 @@ from django.shortcuts import render, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from apps.core.clients import CatalogoClient, IdentidadeClient, IdentidadeIndisponivel
 from apps.core.whatsapp import _pedir as pedir_whatsapp
+from apps.core.templatetags.nomes_admin import primeiro_nome
 from apps.agentes import modelo
 from .models import Configuracao, Assunto, Conhecimento, Conversa, Mensagem, Responsavel, Aviso, PreviaForum, MODOS
 from . import service
@@ -45,7 +46,7 @@ def serializar(conversa, depois=0, antes=0):
     lista=list(msgs.order_by('-id')[:100])[::-1]
     return {'id':str(conversa.pk),'estado':conversa.estado,'assunto':conversa.assunto.nome,
       'atendente':conversa.atendente_nome,'avaliacao':conversa.avaliacao,
-      'mensagens':[{'id':m.pk,'autor':m.autor,'nome':m.nome,'texto':m.texto,'fontes':m.fontes,
+      'mensagens':[{'id':m.pk,'autor':m.autor,'nome':primeiro_nome(m.nome) if m.autor == 'aluno' else m.nome,'texto':m.texto,'fontes':m.fontes,
                    'em':m.criada_em.isoformat()} for m in lista],
       'tem_anteriores':bool(lista and conversa.mensagens.filter(pk__lt=lista[0].pk).exists())}
 

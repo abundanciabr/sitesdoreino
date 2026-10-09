@@ -1,9 +1,11 @@
 {% extends "admin/base.html" %}
+{% load nomes_admin %}
+
 {% block titulo %}Acompanhamento do aluno{% endblock %}
 {% block corpo %}
 <div class="envolucro">
   <a class="volta" href="{% url 'acompanhamento_alunos' %}">&larr; Acompanhamento</a>
-  <h1>{{ nome|default:email }}</h1>
+  <h1>{{ nome|primeiro_nome|default:"Aluno" }}</h1>
   <p class="subtitulo">{{ email }} · {{ site_id }}</p>
   {% if fonte_indisponivel %}<p class="aviso">Não foi possível consultar as matrículas agora. Tente novamente.</p>
   {% else %}
@@ -47,7 +49,7 @@
       <div class="nota">Registrado por {{ registro.registrado_por }}</div>
     </div>{% empty %}<p>Sem registros ainda.</p>{% endfor %}
     <h2>Contato e atendimentos existentes no CRM</h2>
-    {% if contatos %}{% for contato in contatos %}<div class="cartao"><div class="rotulo">{{ contato.nome|default:contato.email }}</div><div class="nota">{{ contato.email }} · {{ contato.telefone|default:"Telefone não registrado" }}</div><p class="nota">Origem do contato: {{ contato.origem|default:"Sem informação" }}</p><a href="{% url 'contato' contato.id %}">Abrir contato e histórico completo no CRM</a>
+    {% if contatos %}{% for contato in contatos %}<div class="cartao"><div class="rotulo">{{ contato.nome|primeiro_nome|default:"Aluno" }}</div><div class="nota">{{ contato.email }} · {{ contato.telefone|default:"Telefone não registrado" }}</div><p class="nota">Origem do contato: {{ contato.origem|default:"Sem informação" }}</p><a href="{% url 'contato' contato.id %}">Abrir contato e histórico completo no CRM</a>
       <h3>Atendimentos e conversas</h3><p class="nota">Fonte: histórico de conversas do CRM</p>
       {% if contato.conversa.estado == 'ok' %}{% if contato.conversa.atual %}<p>{{ contato.conversa.atual.canal }} · {{ contato.conversa.atual.quem_atende }} · {{ contato.conversa.atual.estado }}</p>{% for mensagem in contato.conversa.mensagens %}<p><b>{{ mensagem.quem }}</b> · {{ mensagem.quando|date:"d/m/Y H:i" }}<br>{{ mensagem.texto|linebreaksbr }}</p>{% endfor %}{% if contato.conversa.mensagens_indisponiveis %}<p>Mensagens indisponíveis nesta consulta.</p>{% endif %}{% else %}<p>Nenhuma conversa registrada nesta fonte.</p>{% endif %}{% else %}<p>Conversas indisponíveis nesta consulta.</p>{% endif %}
     </div>{% endfor %}

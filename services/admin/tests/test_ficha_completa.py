@@ -286,7 +286,7 @@ def test_todas_as_outras_fontes_fora_do_ar_a_ficha_abre_e_diz_o_que_faltou():
     resposta = _dentro().get(_url())
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert "Ana Souza" in html and "Respondeu o quiz" in html
+    assert "Ana" in html and "Ana Souza" not in html and "Respondeu o quiz" in html
     assert "Respostas do quiz: ainda indisponível." in html
     assert "Perfil: ainda indisponível." in html
     assert "Ainda indisponível: o CRM não respondeu." in html

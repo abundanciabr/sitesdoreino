@@ -1,3 +1,5 @@
+
+{% load nomes_sugestoes %}
 {% comment %}
 A moldura da Caixa — o ROSTO do EVO-30, sobre o esqueleto do EVO-12b.
 
@@ -85,7 +87,7 @@ ocupa a largura toda; o `wrap` e a bancada desta area.
     {% block numeros %}{% endblock %}
     {% if ator %}
       <span class="quem">
-        {{ ator.identidade.nome_exibido|default:ator.identidade.email }}
+        {{ ator.identidade.nome_exibido|primeiro_nome|default:"Aluno" }}
         <form method="post" action="{% url 'sair' %}">
           {% csrf_token %}
           <button type="submit" class="botao discreto">Sair</button>
