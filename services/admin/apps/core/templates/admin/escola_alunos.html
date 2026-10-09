@@ -441,7 +441,7 @@
       {% endcomment %}
       <div class="decidir">
         <p class="rotulo">Perfil: <b>{% if pessoa.email in administradores %}ADMIN{% else %}ALUNO{% endif %}</b></p>
-        <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div class="botoes-da-pagina">
         {% if pessoa.email in administradores %}
           {% if pessoa.email in admins_do_servidor %}
           <p class="nota">
