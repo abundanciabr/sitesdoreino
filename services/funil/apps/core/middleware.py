@@ -8,6 +8,7 @@ from urllib.parse import quote
 
 from django.http import (
     Http404,
+    HttpResponse,
     HttpResponsePermanentRedirect,
     HttpResponseRedirect,
 )
@@ -16,6 +17,7 @@ from django.utils.cache import patch_vary_headers
 
 from apps.core import enderecos, ver_como
 from apps.core.clients import (
+    SEM_RESPOSTA,
     AlunosClient,
     CatalogoClient,
     GamificacaoClient,
@@ -26,6 +28,7 @@ from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
 TTL_SEGUNDOS = 60
+REPETIR_CONSULTA_EM = 5
 
 # ---------------------------------------------------------------------------
 # Quem é a pessoa desta requisição
@@ -614,6 +617,16 @@ class SiteResolutionMiddleware:
             return self.get_response(request)
         host = request.get_host().split(":")[0].lower()
         site, cfg = self._resolver(host)
+        if site is SEM_RESPOSTA:
+            return HttpResponse(
+                "Serviço temporariamente indisponível. Tente novamente em instantes.",
+                status=503,
+                content_type="text/plain; charset=utf-8",
+                headers={
+                    "Retry-After": str(REPETIR_CONSULTA_EM),
+                    "Cache-Control": "no-store",
+                },
+            )
         if site is None:
             raise Http404("site desconhecido")
         request.site = site  # todo o resto da célula lê daqui
@@ -628,11 +641,18 @@ class SiteResolutionMiddleware:
         if hit and hit[0] > time.time():
             return hit[1], hit[2]
         site = CatalogoClient().obter_site_por_host(host)
+        if site is SEM_RESPOSTA:
+            # Uma interrupção do catálogo não apaga o site já conhecido.
+            # Só uma resposta explícita de ausência/desativação faz isso.
+            if hit and hit[1] is not None:
+                _CACHE[host] = (time.time() + REPETIR_CONSULTA_EM, hit[1], hit[2])
+                return hit[1], hit[2]
+            return SEM_RESPOSTA, None
         # Os idiomas são derivados UMA vez por janela de cache, junto com o
         # Site: zero trabalho por request, e o ERROR de dado inválido não vira
         # enxurrada de log a cada acesso.
         cfg = idiomas_do_site(site)
-        # Cacheia inclusive o 404 (site None).
+        # Cacheia apenas respostas do catálogo, inclusive a ausência confirmada.
         _CACHE[host] = (time.time() + TTL_SEGUNDOS, site, cfg)
         return site, cfg
 

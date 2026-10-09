@@ -97,14 +97,36 @@ class CatalogoClient:
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.token}"}
 
-    def obter_site_por_host(self, host: str) -> dict | None:
-        """404 do catálogo é 'site desconhecido', nunca um site padrão."""
-        r = http().get(
-            f"{self.base}/sites/by-host/{host}",
-            headers=self._headers(),
-            timeout=5.0,  # timeout SEMPRE explícito
-        )
-        return r.json() if r.status_code == 200 else None
+    def obter_site_por_host(self, host: str):
+        """None confirma ausência; SEM_RESPOSTA preserva a configuração conhecida."""
+        try:
+            r = http().get(
+                f"{self.base}/sites/by-host/{host}",
+                headers=self._headers(),
+                timeout=5.0,
+            )
+        except httpx.HTTPError:
+            logger.warning("configuração do site: catálogo indisponível")
+            return SEM_RESPOSTA
+        if r.status_code == 404:
+            return None
+        if r.status_code != 200:
+            logger.warning("configuração do site: catálogo HTTP %s", r.status_code)
+            return SEM_RESPOSTA
+        try:
+            site = r.json()
+        except ValueError:
+            return SEM_RESPOSTA
+        if (
+            not isinstance(site, dict)
+            or not isinstance(site.get("id"), str)
+            or not site["id"]
+            or not isinstance(site.get("host"), str)
+            or not site["host"]
+            or not isinstance(site.get("active"), bool)
+        ):
+            return SEM_RESPOSTA
+        return site if site["active"] else None
 
     def obter_oferta(self, site_id: str, slug: str) -> dict | None:
         """Slugs são únicos POR site — o site_id na rota é o que impede vazamento."""
