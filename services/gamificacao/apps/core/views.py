@@ -21,6 +21,7 @@ em lugar nenhum. O estado dessas coisas mora em
 `PerfilJogador.celebracoes_pendentes`, no banco.
 """
 
+import functools
 import logging
 import mimetypes
 from pathlib import Path
@@ -50,6 +51,7 @@ from apps.gamificacao.validacao import (
     revogar,
 )
 
+from .acesso import e_admin
 from .equipe import e_da_equipe
 from .perfil import escada_de, perfil_de
 from .sessao import quem_e, site_atual
@@ -71,6 +73,26 @@ RECADOS = {
 }
 
 
+def so_admin(modo="pagina"):
+    """Durante a atualização, /conquistas/ é só dos administradores.
+
+    Não admin: página -> aviso (200); POST -> 303 para a página, sem gravar;
+    `modo="404"` -> 404.
+    """
+    def decorador(view):
+        @functools.wraps(view)
+        def envolvido(request, *args, **kwargs):
+            if e_admin(request, quem_e(request)):
+                return view(request, *args, **kwargs)
+            if modo == "404":
+                raise Http404
+            if modo == "redirecionar":
+                return HttpResponseRedirect(reverse("base"), status=303)
+            return render(request, "gamificacao/em_atualizacao.html")
+        return envolvido
+    return decorador
+
+
 @require_GET
 def healthz(request):
     """A sonda do container. Rota de MÁQUINA.
@@ -88,6 +110,7 @@ def healthz(request):
 
 
 @never_cache
+@so_admin()
 @require_GET
 def base(request):
     """A Base: onde o aluno vê em que degrau está.
@@ -158,6 +181,7 @@ def _faixas_para_tela(pessoa_id: str, site: str) -> dict:
 
 @never_cache
 @require_POST
+@so_admin("redirecionar")
 def salvar_jornada(request):
     from apps.gamificacao.jornada import salvar, situacao, centavos, reais
     pessoa_id, site = _pessoa_e_site(request)
@@ -190,6 +214,7 @@ def salvar_jornada(request):
 
 @never_cache
 @require_GET
+@so_admin("404")
 def print_recebimento(request, versao_id):
     from apps.gamificacao.models import VersaoDoRecebimento
     pessoa_id, site = _pessoa_e_site(request)
@@ -266,7 +291,9 @@ def _voltar(nome: str, *, recado: str = "", erro: str = ""):
 
 
 
+@never_cache
 @require_GET
+@so_admin()
 def medalhas(request):
     """As medalhas ligadas da escola: como cada uma se ganha, e onde a pessoa está.
 
