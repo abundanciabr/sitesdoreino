@@ -468,3 +468,36 @@ def test_cinco_falhas_do_leitor_em_correcao_mantem_valor_antigo():
     confirmar(r)
     j.refresh_from_db()
     assert j.celebracao_pendente == {}
+
+
+def test_correcao_sobre_esclarecer_do_leitor_mantem_total_e_nao_comemora():
+    from unittest.mock import patch
+    from apps.gamificacao.prints_recebimentos import processar
+
+    gesto("meta", meta="100")
+    receber("100")
+    j = JornadaPessoal.objects.get()
+    j.celebracao_pendente = {}
+    j.save()
+    r = RecebimentoDeclarado.objects.get()
+    _corrigir_sem_confirmar(r, "100")
+    RecebimentoDeclarado.objects.filter(pk=r.pk).update(tentativas=4)
+    with patch(
+        "apps.gamificacao.prints_recebimentos.ler_modelo",
+        side_effect=RuntimeError("fora"),
+    ):
+        processar(r.pk)
+    r.refresh_from_db()
+    assert r.estado == "esclarecer" and r.leitura["motivo"] == "leitor"
+    _corrigir_sem_confirmar(r, "100")
+    r.refresh_from_db()
+    assert r.leitura == {"anterior_cents": 10000}
+    s = situacao(P, SITE)
+    assert s["total_cents"] == 10000 and s["atual"]["ordem"] == 13
+    assert (
+        RegistroDaJornada.objects.filter(acao="correcao").latest("id").dados["passo_depois"]
+        == 13
+    )
+    confirmar(r)
+    j.refresh_from_db()
+    assert j.celebracao_pendente == {}

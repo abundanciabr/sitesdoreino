@@ -116,6 +116,13 @@ def passos(meta):
 ESPERANDO_LEITURA = ("pendente", "analisando", "falha")
 
 
+def _soma_anterior(r):
+    """O recebimento ainda guarda o último valor confirmado (leitor em andamento ou caído)?"""
+    return r.estado in ESPERANDO_LEITURA or (
+        r.estado == "esclarecer" and (r.leitura or {}).get("motivo") == "leitor"
+    )
+
+
 def situacao(pessoa_id, site_id, *, meta_simulada=None):
     jornada = JornadaPessoal.objects.filter(
         pessoa_id=pessoa_id, site_id=site_id
@@ -135,8 +142,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         r.valor_cents
         if r.estado == "confirmado"
         else (r.leitura or {}).get("anterior_cents", 0)
-        if r.estado in ESPERANDO_LEITURA
-        or (r.estado == "esclarecer" and (r.leitura or {}).get("motivo") == "leitor")
+        if _soma_anterior(r)
         else 0
         for r in recebimentos
     )
@@ -408,7 +414,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 # Enquanto o robô relê, o último valor confirmado continua somando.
                 if r.estado == "confirmado":
                     anterior = r.valor_cents
-                elif r.estado in ESPERANDO_LEITURA:
+                elif _soma_anterior(r):
                     anterior = (r.leitura or {}).get("anterior_cents", 0)
                 else:
                     anterior = 0
