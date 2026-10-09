@@ -258,17 +258,8 @@ def ao_mensagem_recebida(envelope: dict):
         contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
-    grupo = comparacao.grupo_do_contato_id(site_id, contato_id) if contato_id else None
-    if grupo is None and contato_id and isinstance(lead, dict):
-        # Lead ainda sem marca e o evento já diz quem ele é: sorteia antes de criar o trabalho.
-        grupo = coordenador.sortear_se_ainda_sem_marca(
-            site_id, comparacao.quem_e(contato["email"], contato["telefone"]), contato_id,
-            teste=de_teste(contato, data))
-    if grupo == comparacao.GRUPO_COMPARACAO:
-        return None  # grupo de comparação: a mensagem fica na caixa para a equipe responder
-    escopo = interruptor.escopo()
-    if escopo and not sem_cadastro and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
-        return None  # a equipe atua só em alguns quizzes e este contato não veio deles
+    # Mensagem iniciada pela pessoa sempre pede atendimento, qualquer que seja
+    # o quiz ou o grupo usado para comparar abordagens por iniciativa do agente.
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
     texto = str(data.get("texto") or "")[:4000]
     # Áudio sem texto: espera a transcrição (`mensagem.transcrita`), que libera o trabalho.

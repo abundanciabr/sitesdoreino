@@ -853,6 +853,8 @@ def test_mensagens_em_sequencia_viram_um_atendimento_e_a_mensagem_do_lead_nao_da
             "conversa_id": "conv-7", "canal": "whatsapp", "site_id": "site-1", "lead": "lead-1",
             "lead_ligacao": "ligada", "texto": texto, "estado_conversa": "agente"}))
     respx.get(f"{MENSAGERIA}/conversas/conv-7").respond(200, json={"estado": "agente", "site_id": "site-1"})
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-7/mensagens").respond(200, json={
+        "resultado": "enviada", "mensagem": {"id": "msg-continuidade"}, "conversa": {"canal": "whatsapp"}})
     _resto_404()
     openai = respx.post(RESPOSTAS).mock(side_effect=[
         _chamada("salvar_perfil", {"resumo": "x"}, "c1"),
@@ -862,6 +864,7 @@ def test_mensagens_em_sequencia_viram_um_atendimento_e_a_mensagem_do_lead_nao_da
     trabalho = coordenador.rodar_um("t1")
     trabalho.refresh_from_db()
     assert trabalho.estado == E.CONCLUIDO
+    assert envio.call_count == 1
     juntado = TrabalhoComercial.objects.exclude(pk=trabalho.pk).get()
     assert juntado.estado == E.CANCELADO and juntado.anterior_id == trabalho.pk
     pedido = _corpo(openai.calls[0])
@@ -1310,6 +1313,8 @@ def _reanalises():
 
 def _rotas_do_atendimento():
     respx.get(f"{MENSAGERIA}/conversas/conv-9").respond(200, json={"estado": "agente", "site_id": "site-1"})
+    respx.post(f"{MENSAGERIA}/conversas/conv-9/mensagens").respond(200, json={
+        "resultado": "enviada", "mensagem": {"id": "msg-9"}, "conversa": {"canal": "whatsapp"}})
     respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "nome": "Ana", "email": EMAIL})
     respx.get(f"{LEADS}/crm").respond(200, json={"itens": [{"id": "opp-1", "lead_id": "lead-1"}]})
 
@@ -1318,7 +1323,7 @@ def _rotas_do_atendimento():
 @pytest.mark.parametrize("decisao", [
     _atendimento("nao"),
     {k: v for k, v in _atendimento("sim").items() if k != "informacao_nova"},  # modelo antigo: sem o campo
-    _atendimento("sim", acao="sem_resposta"),
+    _atendimento("nao", acao="sem_resposta"),
 ])
 def test_atendimento_sem_informacao_nova_nao_cria_reanalise(decisao):
     _guardar_chave()
@@ -1690,3 +1695,86 @@ def test_mensagem_de_texto_nao_engole_o_audio_que_espera_a_transcricao():
     assert feito.evento_id == "ev-texto"
     audio = TrabalhoComercial.objects.get(evento_id="ev-audio")
     assert audio.estado == E.NA_FILA and audio.entrada["aguarda_transcricao"] is True
+
+# Uma decisão silenciosa nunca significa que a pessoa recebeu resposta.
+@respx.mock
+@pytest.mark.parametrize('acao', ['sem_resposta', 'respondeu'])
+def test_final_sem_envio_real_recebe_resposta_de_continuidade(acao):
+    _guardar_chave()
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id='conv-1',
+                         chave_da_conversa='conversa:conv-1', entrada={'texto': 'oi'})
+    respx.get(f'{MENSAGERIA}/conversas/conv-1').respond(200, json={'estado': 'agente', 'site_id': 'site-1'})
+    envio = _rotas_de_envio()
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento('nao', acao=acao))])
+    coordenador.rodar_um('t1')
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert envio.call_count == 1
+    assert trabalho.decisoes.get(call_id='resposta-sem-silencio').resultado == R.FEITO
+    assert trabalho.resultado['decisao']['resposta_de_continuidade'] is True
+    assert _corpo(envio.calls[0])['texto'].startswith('Recebi sua mensagem.')
+
+
+@respx.mock
+def test_resposta_de_continuidade_espera_e_retoma_sem_refazer_modelo():
+    _guardar_chave()
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id='conv-1',
+                         chave_da_conversa='conversa:conv-1', entrada={'texto': 'oi'})
+    respx.get(f'{MENSAGERIA}/conversas/conv-1').respond(200, json={'estado': 'agente', 'site_id': 'site-1'})
+    envio = _rotas_de_envio()
+    envio.mock(side_effect=[httpx.Response(503, json={'erro': 'indisponivel'}),
+                           httpx.Response(200, json={'resultado': 'enviada', 'mensagem': {'id': 'msg-1'},
+                                                   'conversa': {'canal': 'whatsapp'}})])
+    _resto_404()
+    openai = respx.post(RESPOSTAS).mock(side_effect=[_final(_atendimento('nao', acao='sem_resposta'))])
+    coordenador.rodar_um('t1')
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.NA_FILA
+    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(nao_antes_de=timezone.now())
+    coordenador.rodar_um('t2')
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert openai.call_count == 1
+    assert envio.call_count == 2
+    assert _corpo(envio.calls[0])['chave_idempotencia'] == _corpo(envio.calls[1])['chave_idempotencia']
+
+
+@respx.mock
+def test_resposta_ja_enviada_nao_ganha_mensagem_de_continuidade_duplicada():
+    _guardar_chave()
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id='conv-1',
+                         chave_da_conversa='conversa:conv-1', entrada={'texto': 'oi'})
+    respx.get(f'{MENSAGERIA}/conversas/conv-1').respond(200, json={'estado': 'agente', 'site_id': 'site-1'})
+    envio = _rotas_de_envio()
+    _resto_404()
+    respx.post(RESPOSTAS).mock(side_effect=[
+        _chamada('enviar_mensagem', {'texto': 'Oi! Como posso ajudar?', 'canal': None, 'assunto': ''}, 'fala'),
+        _final(_atendimento('nao'))])
+    coordenador.rodar_um('t1')
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert envio.call_count == 1
+    assert not trabalho.decisoes.filter(call_id='resposta-sem-silencio').exists()
+
+
+def test_mensagem_recebida_nao_depende_do_escopo_do_quiz(monkeypatch):
+    monkeypatch.setattr(eventos.interruptor, 'escopo', lambda: ['outro-quiz'])
+    envelope = _mensagem_do_lead()
+    trabalho = eventos.tratar('eventos.mensagem.recebida', envelope)
+    assert trabalho is not None and trabalho.tipo == T.ATENDER_MENSAGEM
+
+@respx.mock
+def test_modelo_indisponivel_ainda_envia_retorno_em_texto():
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id='conv-1',
+                         chave_da_conversa='conversa:conv-1', entrada={'texto': 'oi'})
+    respx.get(f'{MENSAGERIA}/conversas/conv-1').respond(200, json={'estado': 'agente', 'site_id': 'site-1'})
+    envio = _rotas_de_envio()
+    _resto_404()
+    openai = respx.post(RESPOSTAS)
+    coordenador.rodar_um('t1')
+    trabalho.refresh_from_db()
+    assert trabalho.estado == E.CONCLUIDO
+    assert envio.call_count == 1 and not openai.called
+    assert trabalho.resultado['decisao']['resposta_de_continuidade'] is True
+    assert trabalho.resultado['decisao']['modelo_indisponivel'] == 'aguardando_dependencia'

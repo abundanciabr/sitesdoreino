@@ -202,7 +202,7 @@ def _do_grupo(grupo, percentual=50):
 
 @pytest.mark.django_db
 @respx.mock
-def test_primeira_mensagem_de_lead_sem_marca_e_sorteada_antes_do_agente():
+def test_primeira_mensagem_de_lead_sem_marca_chega_ao_atendente(monkeypatch):
     comparacao.definir_percentual(50, "dono")
     sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
     com = _do_grupo(comparacao.GRUPO_AGENTE)
@@ -212,27 +212,31 @@ def test_primeira_mensagem_de_lead_sem_marca_e_sorteada_antes_do_agente():
     assert not comparacao.MarcaDeComparacao.objects.exists()  # nenhum dos dois passou pelo quiz
     eventos.tratar("eventos.mensagem.recebida", _mensagem(lead="lead-1", conversa="conv-1"))
     eventos.tratar("eventos.mensagem.recebida", _mensagem(lead="lead-2", conversa="conv-2"))
+    chamadas = []
+    def atender(trabalho):
+        chamadas.append(trabalho.pk)
+        coordenador.terminar(trabalho, E.CONCLUIDO)
+    monkeypatch.setattr(coordenador, "_atender", atender)
 
     primeiro = coordenador.rodar_um("t1")
     primeiro.refresh_from_db()
-    assert primeiro.estado == E.ENCERRADO and "grupo de comparação" in primeiro.motivo
-    assert comparacao.grupo_do_contato_id("site-1", "lead-1") == comparacao.GRUPO_COMPARACAO
-    assert comparacao.grupo_do_contato_id("site-1", "lead-2") is None  # o segundo ainda não rodou
-    assert not DecisaoComercial.objects.exists()
-    # O lead sorteado para o agente fica marcado e segue atendido.
-    assert coordenador._do_grupo_de_comparacao(TrabalhoComercial.objects.get(contato_id="lead-2")) is False
-    assert comparacao.grupo_do_contato_id("site-1", "lead-2") == comparacao.GRUPO_AGENTE
+    assert primeiro.estado == E.CONCLUIDO and chamadas == [primeiro.pk]
+    segundo = coordenador.rodar_um("t2")
+    segundo.refresh_from_db()
+    assert segundo.estado == E.CONCLUIDO and chamadas == [primeiro.pk, segundo.pk]
+    assert not comparacao.MarcaDeComparacao.objects.exists()
 
 
 @pytest.mark.django_db
-def test_evento_com_o_lead_completo_sorteia_antes_de_criar_o_trabalho():
+def test_evento_com_o_lead_completo_nao_ignora_a_mensagem_por_comparacao():
     comparacao.definir_percentual(50, "dono")
     sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
     envelope = _mensagem()
     envelope["data"]["lead"] = {"id": "lead-1", "email": sem, "nome": "Ana"}
-    assert eventos.tratar("eventos.mensagem.recebida", envelope) is None  # nem virou trabalho
-    assert not TrabalhoComercial.objects.exists()
-    assert comparacao.grupo_do_contato_id("site-1", "lead-1") == comparacao.GRUPO_COMPARACAO
+    trabalho = eventos.tratar("eventos.mensagem.recebida", envelope)
+    assert trabalho is not None and trabalho.tipo == T.ATENDER_MENSAGEM
+    assert trabalho.contato_id == "lead-1"
+    assert not comparacao.MarcaDeComparacao.objects.exists()
 
 
 @pytest.mark.django_db

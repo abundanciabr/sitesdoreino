@@ -1,7 +1,7 @@
 """O grupo de comparação: leads que ficam sem o agente para medir o efeito real dele.
 
 Prova: percentual 0 não muda nada; 50% divide de forma estável; lead de comparação
-não vira trabalho (nem pelo quiz, nem pela mensagem); a tela de resultados diz
+não recebe abordagem do quiz, mas suas mensagens recebem atendimento; a tela de resultados diz
 "ainda não dá para concluir" com amostra pequena; dado de um site não entra no outro;
 o otimizador ignora o grupo; o percentual só muda com confirmação e deixa rastro.
 """
@@ -187,13 +187,13 @@ def _mensagem(contato_id="lead-1", conversa="conv-1", site="site-1"):
 
 
 @pytest.mark.django_db
-def test_mensagem_de_quem_esta_no_grupo_de_comparacao_fica_na_caixa_sem_trabalho():
+def test_mensagem_de_quem_esta_no_grupo_de_comparacao_tambem_recebe_atendimento():
     comparacao.definir_percentual(50, "dono")
     sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
     comparacao.decidir("site-1", sem)
     comparacao.ligar_contato("site-1", sem, "lead-1")  # a ficha foi achada alguma vez
-    assert eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1")) is None
-    assert not TrabalhoComercial.objects.exists()
+    trabalho = eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1"))
+    assert trabalho is not None and trabalho.tipo == T.ATENDER_MENSAGEM
     # Outro lead, do grupo do agente, segue sendo atendido.
     com = _do_grupo(comparacao.GRUPO_AGENTE)
     comparacao.decidir("site-1", com)
@@ -205,51 +205,47 @@ def test_mensagem_de_quem_esta_no_grupo_de_comparacao_fica_na_caixa_sem_trabalho
 
 @pytest.mark.django_db
 @respx.mock
-def test_primeira_mensagem_do_grupo_de_comparacao_acha_a_ficha_e_termina_sem_modelo_nem_envio():
+def test_primeira_mensagem_do_grupo_de_comparacao_chega_ao_atendente(monkeypatch):
     comparacao.definir_percentual(50, "dono")
     sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
     comparacao.decidir("site-1", sem)  # marcada no quiz, sem conhecer o id do contato ainda
     ficha = respx.get(f"{LEADS}/leads/lead-1").respond(200, json={"id": "lead-1", "email": sem, "nome": "Ana"})
     respx.route(url__startswith="http://").respond(404, json={"detail": "sem esta rota"})
+    chamadas = []
+    def atender(trabalho):
+        chamadas.append(trabalho.pk)
+        coordenador.terminar(trabalho, E.CONCLUIDO)
+    monkeypatch.setattr(coordenador, "_atender", atender)
     eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1"))
-    assert TrabalhoComercial.objects.count() == 1  # só nesta primeira vez a mensagem chega a virar trabalho
+    assert TrabalhoComercial.objects.count() == 1
 
     trabalho = coordenador.rodar_um("t1")
     trabalho.refresh_from_db()
     assert ficha.called
-    assert trabalho.estado == E.ENCERRADO and "grupo de comparação" in trabalho.motivo
-    assert not DecisaoComercial.objects.exists() and trabalho.custo_usd == 0
-    # A marca aprendeu o id: a próxima mensagem já nem vira trabalho.
-    assert comparacao.grupo_do_contato_id("site-1", "lead-1") == comparacao.GRUPO_COMPARACAO
-    assert eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1", "conv-1")) is None
-    assert TrabalhoComercial.objects.count() == 1
+    assert trabalho.estado == E.CONCLUIDO and chamadas == [trabalho.pk]
+    assert eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1", "conv-1")) is not None
+    assert TrabalhoComercial.objects.count() == 2
 
 
 @pytest.mark.django_db
 @respx.mock
 @pytest.mark.parametrize("status", [500, 404])
-def test_sem_a_ficha_o_lead_marcado_nao_segue_para_o_agente(status, monkeypatch):
+def test_sem_a_ficha_a_mensagem_ainda_chega_ao_atendente(status, monkeypatch):
     comparacao.definir_percentual(50, "dono")
     sem = _do_grupo(comparacao.GRUPO_COMPARACAO)
     comparacao.decidir("site-1", sem)
     respx.get(f"{LEADS}/leads/lead-1").respond(status, json={"detail": "fora"})
     respx.route(url__startswith="http://").respond(404, json={"detail": "sem esta rota"})
     chamadas = []
-    monkeypatch.setattr(coordenador, "_atender", lambda trabalho: chamadas.append(trabalho.pk))
+    def atender(trabalho):
+        chamadas.append(trabalho.pk)
+        coordenador.terminar(trabalho, E.CONCLUIDO)
+    monkeypatch.setattr(coordenador, "_atender", atender)
     eventos.tratar("eventos.mensagem.recebida", _mensagem("lead-1"))
 
     trabalho = coordenador.rodar_um("t1")
     trabalho.refresh_from_db()
-    assert not chamadas
-    assert trabalho.estado == E.NA_FILA  # espera a leads voltar, nunca vai ao agente no escuro
-
-    # Passado o prazo sem ficha, a equipe fica com a conversa: ainda sem agente.
-    TrabalhoComercial.objects.filter(pk=trabalho.pk).update(
-        criado_em=timezone.now() - coordenador.ESPERA_DA_FICHA - timedelta(minutes=1),
-        nao_antes_de=timezone.now() - timedelta(seconds=1))
-    trabalho = coordenador.rodar_um("t1")
-    trabalho.refresh_from_db()
-    assert not chamadas and trabalho.estado == E.ENCERRADO
+    assert chamadas == [trabalho.pk] and trabalho.estado == E.CONCLUIDO
 
 
 # ---------------------------------------------------------------- o otimizador

@@ -320,7 +320,7 @@ def _executar(trabalho: TrabalhoComercial) -> None:
                      "O pagamento já foi aprovado pelo provedor: nada a fazer, o modelo não foi chamado.")
             return
     _achar_a_ficha(trabalho)
-    if _do_grupo_de_comparacao(trabalho):
+    if trabalho.tipo != T.ATENDER_MENSAGEM and _do_grupo_de_comparacao(trabalho):
         terminar(trabalho, E.ENCERRADO,
                  "Este lead não vai para o agente: está no grupo de comparação (sem agente, de propósito, para medir "
                  "o efeito dele) ou a ficha não pôde ser lida para saber. Nada foi enviado e o modelo não foi chamado: a conversa fica na caixa para a equipe.")
@@ -754,7 +754,7 @@ def _atender(trabalho: TrabalhoComercial) -> None:
                 texto += (f"\n(trecho incerto: antes de falar de nome, produto, preço ou condição, confirme com "
                           f"o lead. Sugestão: {str(mensagem['esclarecer'])[:300]})")
         blocos.append(f"<<<mensagem {numero}\n{texto}\n>>>")
-    final = conversar(trabalho, (
+    final = _conversar_no_atendimento(trabalho, (
         "Trabalho: atender a(s) mensagem(ns) que o lead acabou de mandar.\n" + _sobre_o_lead(trabalho)
         + ("\nEsta pessoa iniciou uma conversa sem ficha de cliente confirmada. Responda ao assunto "
            "normalmente e incentive o diálogo; fazer quiz ou cadastro não é condição para conversar. "
@@ -771,6 +771,9 @@ def _atender(trabalho: TrabalhoComercial) -> None:
         "(objeção, prazo, dúvida nova, interesse em outro produto, mudança de objetivo); saudação, agradecimento "
         "e pergunta já respondida são nao. Você não grava o perfil: sim põe a atualização dele na fila."
     ))
+    if not _responder_se_o_modelo_ficou_em_silencio(trabalho, final):
+        terminar(trabalho, E.ENCERRADO, "O canal recusou a resposta; o motivo ficou na decisão do envio.")
+        return
     trabalho.resultado = {**(trabalho.resultado or {}), "decisao": final}
     if trabalho.pedido_id and not ferramentas.pagamento_aprovado(trabalho):
         criar(
@@ -793,6 +796,37 @@ def _atender(trabalho: TrabalhoComercial) -> None:
     terminar(trabalho, E.CONCLUIDO, resumo={"respondeu": "Respondeu ao lead.",
                                             "passou_para_pessoa": "Passou para uma pessoa da equipe.",
                                             "sem_resposta": "Não respondeu."}.get(acao, f"Decisão: {acao}."))
+
+
+def _conversar_no_atendimento(trabalho: TrabalhoComercial, pedido: str) -> dict:
+    try:
+        return conversar(trabalho, pedido)
+    except modelo.ProblemaDoModelo as problema:
+        # A indisponibilidade do modelo não impede um retorno em texto, sem API paga.
+        return {"acao": "sem_resposta", "informacao_nova": "nao", "modelo_indisponivel": problema.situacao}
+
+
+def _responder_se_o_modelo_ficou_em_silencio(trabalho: TrabalhoComercial, final: dict) -> bool:
+    """Uma decisão final do modelo não substitui uma mensagem realmente enviada."""
+    R = DecisaoComercial.Resultado
+    if trabalho.teste or trabalho.decisoes.filter(ferramenta="enviar_mensagem", resultado=R.FEITO).exists():
+        return True
+    ctx = ferramentas.Contexto(trabalho=trabalho, papel=P.ATENDIMENTO, estrategia=_estrategia(trabalho))
+    argumentos = {"texto": "Recebi sua mensagem. Não consegui preparar uma resposta completa agora, "
+                  "mas continuo por aqui para conversar. Qual ponto você gostaria que eu esclarecesse primeiro?"}
+    anterior = trabalho.decisoes.filter(call_id="resposta-sem-silencio").first()
+    if anterior is not None and anterior.resultado == R.INDISPONIVEL:
+        ferramentas._concluir_escrita(ctx, anterior, "enviar_mensagem", anterior.entrada)
+    else:
+        ferramentas.executar(ctx, "resposta-sem-silencio", "enviar_mensagem", json.dumps(argumentos))
+    enviada = trabalho.decisoes.get(call_id="resposta-sem-silencio")
+    if enviada.resultado == R.INDISPONIVEL:
+        raise Esperar("A resposta ainda não saiu: esperando a mensageria voltar.", timedelta(seconds=30))
+    if enviada.resultado != R.FEITO:
+        return False
+    final.update(acao="respondeu", resposta_de_continuidade=True,
+                 resumo="Enviou uma resposta de continuidade porque o modelo terminou sem enviar mensagem.")
+    return True
 
 
 def _pedir_reanalise(trabalho: TrabalhoComercial, final: dict, mensagens: list[dict]) -> TrabalhoComercial | None:
