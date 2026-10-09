@@ -112,3 +112,14 @@ def test_print_404_para_nao_admin_e_200_para_admin(monkeypatch):
 def test_healthz_e_api_continuam_abertos(monkeypatch):
     como(monkeypatch, None)
     assert Client().get("/healthz").status_code == 200
+
+
+def test_admin_http_403_fecha_e_registra_aviso(monkeypatch, caplog):
+    como(monkeypatch, "pes-1")
+    with respx.mock, caplog.at_level("WARNING"):
+        respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
+        respx.post(f"{ADM}/administradores/consultar").respond(403)
+        corpo = get(reverse("base")).content.decode()
+    assert AVISO in corpo
+    assert "admin respondeu HTTP 403" in caplog.text
+    assert "a@x.com" not in caplog.text

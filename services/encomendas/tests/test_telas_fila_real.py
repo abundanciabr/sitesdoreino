@@ -183,14 +183,11 @@ def test_catalogo_nao_repete_aviso_de_antes_do_aceite_para_quem_ja_participou(mo
 
 def test_catalogo_da_equipe_nao_mostra_aviso_de_aluno(monkeypatch):
     monkeypatch.setattr(telas_fila_real, "_entrada", lambda request: ("site-a", "pessoa-a"))
-    monkeypatch.setattr(telas_fila_real, "_papel", lambda site, pessoa: "plantao")
+    monkeypatch.setattr(telas_fila_real, "_papel", lambda site, pessoa: "equipe")
     monkeypatch.setattr(telas_fila_real.fila_real, "catalogo", lambda **kwargs: {
         "pedidos": [], "trabalhos": [], "trabalho_ativo": None, "participou_da_fila": False,
     })
-    try:
-        html = telas_fila_real.catalogo(RequestFactory().get("/cliente/")).content.decode()
-    except Exception:
-        return
+    html = telas_fila_real.catalogo(RequestFactory().get("/cliente/")).content.decode()
     assert "escolha com calma" not in html
 
 

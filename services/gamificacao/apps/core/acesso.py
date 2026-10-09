@@ -36,6 +36,7 @@ def _email_da_sessao(request) -> str:
         timeout=TIMEOUT_CURTO,
     )
     if resposta.status_code != 200:
+        logger.warning("conquistas: identidade respondeu HTTP %s", resposta.status_code)
         return ""
     corpo = resposta.json()
     if not (isinstance(corpo, dict) and corpo.get("autenticado") is True):
@@ -59,6 +60,7 @@ def _admin_pelo_email(request) -> bool:
         timeout=TIMEOUT_CURTO,
     )
     if resposta.status_code != 200:
+        logger.warning("conquistas: admin respondeu HTTP %s", resposta.status_code)
         return False
     corpo = resposta.json()
     return isinstance(corpo, dict) and corpo.get("e_administrador") is True
