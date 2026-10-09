@@ -21,10 +21,10 @@ using System.Text;
 public class SshFicticio {
   public static int Main(string[] args) {
     string entrada = Console.In.ReadToEnd();
-    if (args.Length != 6 || args[0] != "-o" || args[1] != "BatchMode=yes" ||
-        args[2] != "alias-ficticio" || args[3] != "cofre" ||
-        args[4] != "fetch" || args[5] != "backups-de-banco" ||
-        entrada != "YWJj\nZGVm\n") return 7;
+    bool fetch = args.Length == 6 && args[4] == "fetch" && args[5] == "backups-de-banco" && entrada == "YWJj\nZGVm\n";
+    bool secrets = args.Length == 5 && args[4] == "secrets" && entrada == "";
+    if ((!fetch && !secrets) || args[0] != "-o" || args[1] != "BatchMode=yes" ||
+        args[2] != "alias-ficticio" || args[3] != "cofre") return 7;
     byte[] bytes = new byte[] { 0, 255, 254, 128, 10, 13, 0, 65 };
     Console.OpenStandardOutput().Write(bytes, 0, bytes.Length);
     return 0;
@@ -39,11 +39,19 @@ public class SshFicticio {
   if (-not [System.Linq.Enumerable]::SequenceEqual([byte[]]$recebido, [byte[]]$esperado)) {
     throw 'bytes binários alterados'
   }
+  $saidaVazia = Join-Path $temporario 'sem-entrada.bin'
+  Baixar-Cofre 'secrets' '' $saidaVazia
+  if (-not [System.Linq.Enumerable]::SequenceEqual([byte[]][System.IO.File]::ReadAllBytes($saidaVazia), [byte[]]$esperado)) {
+    throw 'operação sem entrada falhou'
+  }
   $recusado = $false
   try { Baixar-Cofre 'fetch' 'backups-de-banco' (Join-Path $temporario 'falha.bin') @('nome-invalido') }
   catch { $recusado = $true }
   if (-not $recusado) { throw 'falha do SSH foi ignorada' }
   Write-Output 'Transporte binário local: OK; entrada tipada e falha do SSH: OK'
 } finally {
+  $raizEsperada = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+  if (-not [System.IO.Path]::GetFullPath($temporario).StartsWith($raizEsperada, [System.StringComparison]::OrdinalIgnoreCase) -or
+      [System.IO.Path]::GetFileName($temporario) -notlike 'cofre teste - *') { throw 'pasta de teste fora do destino esperado' }
   Remove-Item -LiteralPath $temporario -Recurse -Force -ErrorAction SilentlyContinue
 }
