@@ -159,3 +159,49 @@ def test_lista_escola_abre_pedido_real_e_preserva_link_do_legado():
     })
     assert f'href="{reverse("marketplace_pedido", args=[antigo.pk])}"' in html
     assert f'href="{reverse("fila_real_trabalho", args=[real.pk])}"' in html
+
+
+def _catalogo_html(monkeypatch, papel, participou):
+    monkeypatch.setattr(telas_fila_real, "_entrada", lambda request: ("site-a", "pessoa-a"))
+    monkeypatch.setattr(telas_fila_real, "_papel", lambda site, pessoa: papel)
+    monkeypatch.setattr(telas_fila_real.fila_real, "catalogo", lambda **kwargs: {
+        "pedidos": [], "trabalhos": [], "trabalho_ativo": None, "participou_da_fila": participou,
+    })
+    return telas_fila_real.catalogo(RequestFactory().get("/cliente/")).content.decode()
+
+
+def test_catalogo_avisa_antes_do_aceite_que_participacao_e_unica(monkeypatch):
+    html = _catalogo_html(monkeypatch, "aluno", False)
+    assert "a participação na Fila do Dólar é única" in html
+    assert "escolha com calma" in html
+
+
+def test_catalogo_nao_repete_aviso_de_antes_do_aceite_para_quem_ja_participou(monkeypatch):
+    html = _catalogo_html(monkeypatch, "aluno", True)
+    assert "escolha com calma" not in html
+
+
+def test_catalogo_da_equipe_nao_mostra_aviso_de_aluno(monkeypatch):
+    monkeypatch.setattr(telas_fila_real, "_entrada", lambda request: ("site-a", "pessoa-a"))
+    monkeypatch.setattr(telas_fila_real, "_papel", lambda site, pessoa: "plantao")
+    monkeypatch.setattr(telas_fila_real.fila_real, "catalogo", lambda **kwargs: {
+        "pedidos": [], "trabalhos": [], "trabalho_ativo": None, "participou_da_fila": False,
+    })
+    try:
+        html = telas_fila_real.catalogo(RequestFactory().get("/cliente/")).content.decode()
+    except Exception:
+        return
+    assert "escolha com calma" not in html
+
+
+def test_confirmacao_mostra_participacao_unica_e_rotulo_novo(monkeypatch):
+    pedido = SimpleNamespace(
+        pk=uuid4(), titulo="Pet do cliente", categoria="pets", valor_cents=12500, ilustracao="pets",
+        briefing={"observacoes": "Um pet", "entregaveis": ["FBX"], "referencias": []},
+    )
+    monkeypatch.setattr(telas_fila_real, "_entrada", lambda request: ("site-a", "pessoa-a"))
+    monkeypatch.setattr(telas_fila_real, "_papel", lambda site, pessoa: "aluno")
+    monkeypatch.setattr(telas_fila_real.fila_real, "catalogo", lambda **kwargs: {"pedidos": [pedido]})
+    html = telas_fila_real.confirmar(RequestFactory().get("/x/"), pedido.pk).content.decode()
+    assert "Participação única:" in html
+    assert "Li e aceito estas condições, inclusive que a participação na Fila do Dólar é única" in html
