@@ -183,6 +183,10 @@ class Jornada(models.Model):
     # colateral de um deploy — a mesma escolha que a `gamificacao` fez com a
     # economia. Sem isto, o PR que semeia uma jornada a põe no ar sozinho.
     ativa = models.BooleanField(default=False)
+    central_nome = models.CharField(max_length=160, blank=True, default="")
+    central_objetivo = models.TextField(blank=True, default="")
+    central_entrada_aberta = models.BooleanField(default=False)
+    central_pausada = models.BooleanField(default=False)
     criada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -221,6 +225,7 @@ class JornadaVersao(models.Model):
     )
     numero = models.PositiveIntegerField()
     publicada_em = models.DateTimeField(null=True, blank=True)
+    central_config = models.JSONField(default=dict, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -295,6 +300,8 @@ class Passo(models.Model):
     # Vazio é "sem condição". Condição nova é PR pequeno; uma linguagem de
     # fórmulas dentro do banco é o critério de morte §10.1.
     condicao_slug = models.CharField(max_length=64, blank=True, default="")
+    central_interacao = models.CharField(max_length=16, blank=True, default="")
+    central_modelo_whatsapp = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = [
@@ -460,6 +467,9 @@ class Inscricao(models.Model):
     lead_id = models.CharField(max_length=64, blank=True, default="")
     # O que a última conferência com o CRM disse, quando o passo não saiu.
     ultima_conferencia = models.CharField(max_length=200, blank=True, default="")
+    central_suspensa = models.BooleanField(default=False)
+    central_conversa_id = models.UUIDField(null=True, blank=True, db_index=True)
+    central_contexto = models.JSONField(default=dict, blank=True)
 
     criada_em = models.DateTimeField(auto_now_add=True)
 

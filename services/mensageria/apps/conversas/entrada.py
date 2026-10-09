@@ -219,8 +219,24 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
         conversa.save(update_fields=campos)
         registro = descadastros.registrar(conversa, momento) if pede_parar else None
         if not historica:
-            emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
+            evento = emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
             transaction.on_commit(relay_apos_commit)
+            # A Central vê somente a fala nova já gravada. Savepoints isolam
+            # suas falhas sem perder a entrada nem o evento do atendimento.
+            try:
+                with transaction.atomic():
+                    from apps.jornadas.central import ao_resposta
+
+                    ao_resposta(mensagem)
+            except Exception:  # noqa: BLE001 - a caixa de entrada prevalece
+                logger.exception("conversas: falha ao vincular resposta a jornada")
+            try:
+                with transaction.atomic():
+                    from apps.jornadas.acontecimentos import encaminhar_mensagem
+
+                    encaminhar_mensagem(mensagem, event_id=evento.event_id)
+            except Exception:  # noqa: BLE001 - a caixa de entrada prevalece
+                logger.exception("conversas: falha ao iniciar jornada por mensagem")
     if registro is not None:
         try:
             descadastros.aplicar_preferencia(registro)

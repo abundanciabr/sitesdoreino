@@ -368,7 +368,8 @@ def candidatas(agora: datetime):
     implementações da mesma ordem divergem no primeiro dia em que alguém mexer
     numa delas.
     """
-    consulta = Inscricao.objects.filter(estado="andando", proximo_em__lte=agora)
+    consulta = Inscricao.objects.filter(estado="andando", proximo_em__lte=agora,
+                                        central_suspensa=False).exclude(jornada__central_pausada=True)
     return consulta.order_by(
         *(campo.removeprefix("inscricao__") for campo in regua.ORDEM_DE_DESEMPATE)
     )
@@ -389,6 +390,9 @@ def varrer(
     """
     agora = _agora(momento)
     passada = Passada(lote=lote)
+    from .central import detectar_inatividade, reconciliar_handoffs
+    reconciliar_handoffs(lote=lote)
+    detectar_inatividade(momento=agora, lote=lote)
 
     for inscricao in candidatas(agora)[:lote]:
         passada.examinadas += 1

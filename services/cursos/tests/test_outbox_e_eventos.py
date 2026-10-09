@@ -1,5 +1,5 @@
 """O envelope que sai no fio leva o que deve levar, e a outbox não perde nem
-duplica. Só ids opacos viajam: nenhum link, texto ou nome.
+duplica. Curso e aula viajam pelos campos confirmados do modelo, sem dados do aluno.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def test_o_nome_do_stream_e_eventos_ponto_evento_e_a_versao_vai_no_envelope(no_f
     }
 
 
-def test_o_envio_recebido_leva_o_aluno_no_envelope_e_so_ids_no_data(no_fio):
+def test_o_envio_recebido_leva_aluno_e_contexto_real_do_curso(no_fio):
     envelope = no_fio.um_envelope("envio.recebido")
     envio = no_fio.envio
     assert envelope["ator_id"] == "p_ana"
@@ -64,7 +64,13 @@ def test_o_envio_recebido_leva_o_aluno_no_envelope_e_so_ids_no_data(no_fio):
         "aula_id": str(envio.aula_id),
         "envio_id": str(envio.pk),
         "numero": 1,
+        "produto_id": envio.aula.curso.produto_id,
+        "curso_nome": envio.aula.curso.nome,
+        "curso_slug": envio.aula.curso.slug,
+        "aula_titulo": envio.aula.titulo_exibido,
+        "aula_numero": envio.aula.numero,
     }
+    assert envelope["data"]["produto_id"] != envelope["data"]["curso_id"]
 
 
 def test_o_prazo_estourado_leva_ator_nulo_presente_e_as_horas_de_atraso(no_fio):
@@ -200,7 +206,7 @@ def test_laudo_emitido_leva_o_avaliador_no_envelope_e_so_ids_no_data(
     }
 
 
-def test_aula_concluida_leva_o_aluno_no_envelope_e_e_boss(no_fio_aberto, envio_na_fila):
+def test_aula_concluida_leva_o_aluno_e_contexto_real_da_aula(no_fio_aberto, envio_na_fila):
     envelope = no_fio_aberto.um_envelope("aula.concluida")
     assert envelope["ator_id"] == envio_na_fila.pessoa_id
     assert envelope["data"] == {
@@ -208,6 +214,11 @@ def test_aula_concluida_leva_o_aluno_no_envelope_e_e_boss(no_fio_aberto, envio_n
         "curso_id": str(envio_na_fila.aula.curso_id),
         "aula_id": str(envio_na_fila.aula_id),
         "e_boss": envio_na_fila.aula.e_boss,
+        "produto_id": envio_na_fila.aula.curso.produto_id,
+        "curso_nome": envio_na_fila.aula.curso.nome,
+        "curso_slug": envio_na_fila.aula.curso.slug,
+        "aula_titulo": envio_na_fila.aula.titulo_exibido,
+        "aula_numero": envio_na_fila.aula.numero,
     }
 
 

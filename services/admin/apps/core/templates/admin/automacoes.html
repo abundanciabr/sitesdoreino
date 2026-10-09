@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Central de Automações WhatsApp{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'whatsapp' %}">&larr; WhatsApp do site</a></p>
+  <h1>Central de Automações WhatsApp</h1>
+  <p class="subtitulo">Crie a sequência, acompanhe quem entrou e veja cada envio confirmado pelo serviço.</p>
+  {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
+  {% if recado %}<p class="aviso feito">{{ recado }}</p>{% endif %}
+  {% if site %}
+  <div class="cartao">
+    <h2>Criar automação</h2>
+    <p>Comece de um modelo ou com uma folha em branco. A automação nasce como rascunho.</p>
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="criar">
+      <p><label for="nome">Nome</label><input id="nome" name="nome" maxlength="160" required></p>
+      <p><label for="objetivo">Objetivo</label><textarea id="objetivo" name="objetivo" rows="2" maxlength="1000" required></textarea></p>
+      <p><label for="modelo">Começar com</label><select id="modelo" name="modelo"><option value="">Em branco</option>{% for modelo in modelos %}<option value="{{ modelo.slug }}">{{ modelo.nome|default:modelo.slug }}</option>{% endfor %}</select></p>
+      <button type="submit">Criar rascunho</button>
+    </form>
+  </div>
+  <h2 class="secao">Automações deste site</h2>
+  <div class="tabela-envolucro"><table>
+    <thead><tr><th>Automação e objetivo</th><th>Estado</th><th>Versão</th><th>Próximos envios</th><th></th></tr></thead>
+    <tbody>
+      {% for item in automacoes %}
+      <tr>
+        <td><strong>{{ item.nome }}</strong><br>{{ item.objetivo }}</td>
+        <td>{% if not item.ativa and item.versao_publicada %}Encerrada{% elif not item.ativa %}Rascunho{% elif item.pausada %}Pausada{% elif item.entrada_aberta %}Ativa, recebendo participantes{% else %}Ativa, entrada fechada{% endif %}</td>
+        <td>{% if item.versao_publicada %}{{ item.versao_publicada }}{% else %}Ainda não ativada{% endif %}</td>
+        <td>{% if item.proximos_envios != None %}{{ item.proximos_envios }}{% if item.proximo_envio_em %}<br>Próximo: {{ item.proximo_envio_em }}{% endif %}{% else %}Veja os participantes{% endif %}</td>
+        <td><a href="{% url 'automacao_whatsapp' item.slug %}">Abrir</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="5">Ainda não há automações neste site.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+</div>
+{% endblock %}

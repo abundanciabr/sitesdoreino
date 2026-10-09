@@ -146,6 +146,7 @@ def _atualizar(entrega: Entrega, status: str, erro: str = "") -> None:
 def processar_entrega(*, inscricao_id, passo_id) -> None:
     """Envia ou sincroniza intenção confirmada, sem repetir resultado incerto."""
     from apps.whatsapp.service import consultar_mensagem, enviar_mensagem
+    from . import central
 
     entrega = (
         Entrega.objects.select_related("inscricao", "passo")
@@ -164,6 +165,9 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
         "resultado_desconhecido",
         "enviada",
     }:
+        return
+    if central.e_central(entrega.inscricao.jornada_versao):
+        central.processar_entrega(entrega)
         return
     referencia = _referencia(entrega)
     existente = consultar_mensagem(

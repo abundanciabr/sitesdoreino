@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recuperar acesso</title><style>body{font-family:system-ui,sans-serif;max-width:34rem;margin:3rem auto;padding:0 1rem;line-height:1.5}label{display:block;margin:1rem 0}input{display:block;width:100%;padding:.7rem;box-sizing:border-box}button{padding:.7rem 1.3rem} .erro{color:#a00000}</style></head>
+<body><main><h1>Recuperar acesso</h1>
+{% if valido %}<p>Escolha uma nova senha para entrar no site.</p>
+{% for erro in erros %}<p class="erro">{{ erro }}</p>{% endfor %}
+<p id="sem-link" hidden>Abra o link de recuperação recebido na conversa para continuar.</p>
+<form id="form-recuperacao" method="post" action="/entrar/recuperar/" hidden>{% csrf_token %}
+<input id="recuperacao-token" type="hidden" name="token" value="{{ token|default:'' }}">
+<label>Nova senha<input type="password" name="senha" required minlength="8" autocomplete="new-password"></label>
+<label>Confirme a nova senha<input type="password" name="confirmacao" required minlength="8" autocomplete="new-password"></label>
+<button type="submit">Salvar nova senha</button></form>
+<noscript><p>Ative o JavaScript do navegador para usar este link de recuperação.</p></noscript>
+<script>
+(function () {
+  var campo = document.getElementById('recuperacao-token');
+  if (window.location.hash) {
+    campo.value = window.location.hash.slice(1);
+    window.history.replaceState(null, '', '/entrar/recuperar/');
+  }
+  document.getElementById('form-recuperacao').hidden = !campo.value;
+  document.getElementById('sem-link').hidden = !!campo.value;
+}());
+</script>
+{% else %}<p>Este link expirou ou já foi usado. Peça outro na conversa com a equipe.</p>{% endif %}
+</main></body></html>

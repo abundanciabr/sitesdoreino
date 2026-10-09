@@ -117,3 +117,19 @@ class OutboxEvent(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return f"{self.event}#{self.event_id}"
+
+
+class RecuperacaoSenha(models.Model):
+    """Link de uso único. O segredo em texto nunca é persistido."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    token_hash = models.CharField(max_length=64, unique=True)
+    pedido_key = models.CharField(max_length=64)
+    identidade = models.ForeignKey(Identidade, on_delete=models.CASCADE)
+    expira_em = models.DateTimeField()
+    consumida_em = models.DateTimeField(null=True, blank=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["identidade", "consumida_em"], name="idt_rec_pendente")]
+        constraints = [models.UniqueConstraint(fields=["identidade", "pedido_key"], name="idt_rec_pedido_unico")]

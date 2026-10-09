@@ -458,6 +458,7 @@ def _criar_nova_conversa(request, ator, area, titulo: str, texto: str):
             site_id=site_id, topico=topico, ator_id=ator.pessoa.id_da_plataforma
         )
         eventos.mensagem_criada(
+            host=request.get_host(),
             site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
         )
         transaction.on_commit(relay_apos_commit)
@@ -615,6 +616,7 @@ def responder(request, topico_id: int):
         )
         mensagem.indexar_para_busca()
         eventos.mensagem_criada(
+            host=request.get_host(),
             site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
         )
         transaction.on_commit(relay_apos_commit)

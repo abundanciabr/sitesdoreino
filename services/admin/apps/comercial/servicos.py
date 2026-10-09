@@ -62,6 +62,7 @@ ROTAS = {
     # mensageria (MENSAGERIA_API_URL); `site_id` vai na consulta ou no corpo
     "conversas": ("mensageria", "GET", "/conversas"),
     "conversa": ("mensageria", "GET", "/conversas/{}"),
+    "automacoes_da_conversa": ("mensageria", "GET", "/automacoes/contexto/{}"),
     "mensagens": ("mensageria", "GET", "/conversas/{}/mensagens"),
     "envios_do_pedido": ("mensageria", "GET", "/envios-de-pedido"),
     "abrir_conversa": ("mensageria", "POST", "/conversas"),

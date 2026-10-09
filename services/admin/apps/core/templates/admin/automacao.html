@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% block titulo %}{{ automacao.nome|default:"Automação" }}{% endblock %}
+{% block corpo %}
+<style>
+  .central-previa { max-width: 420px; margin: 12px 0 16px auto; padding: 12px 15px; background: #164234; border-radius: 14px 14px 3px 14px; color: #f5fff9; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .central-opcoes { display: flex; flex-wrap: wrap; gap: 7px; margin: 4px 0 12px auto; max-width: 420px; }
+  .central-opcoes span { border: 1px solid #779d8a; border-radius: 8px; padding: 4px 10px; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'automacoes_whatsapp' %}">&larr; Todas as automações</a></p>
+  <h1>{{ automacao.nome|default:"Automação WhatsApp" }}</h1>
+  <p class="subtitulo">{{ automacao.objetivo }}</p>
+  {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
+  {% if recado == 'salva' %}<p class="aviso feito">Nova versão em rascunho salva. Quem já entrou mantém a versão com que começou.</p>
+  {% elif recado == 'ativar' %}<p class="aviso feito">Automação ativada.</p>
+  {% elif recado == 'fechar_entrada' %}<p class="aviso feito">Entrada fechada. Quem já entrou continua.</p>
+  {% elif recado == 'pausar' %}<p class="aviso feito">Envios pausados.</p>
+  {% elif recado == 'retomar' %}<p class="aviso feito">Envios retomados.</p>
+  {% elif recado == 'encerrar' %}<p class="aviso feito">Automação encerrada.</p>
+  {% elif recado == 'retomar_falhas' %}<p class="aviso feito">Retomada das falhas solicitada. Confira o resultado no histórico.</p>
+  {% elif recado %}<p class="aviso feito">{{ recado }}</p>{% endif %}
+  {% if automacao %}
+  <div class="cartao">
+    <h2>Estado real</h2>
+    <p>{% if not automacao.ativa and automacao.versao_publicada %}Encerrada{% elif not automacao.ativa %}Rascunho{% elif automacao.pausada %}Pausada{% elif automacao.entrada_aberta %}Ativa, recebendo participantes{% else %}Ativa, entrada fechada{% endif %}</p>
+    <p>Versão mais recente: {{ automacao.versao_atual|default:"—" }}. Em uso: {{ automacao.versao_publicada|default:"nenhuma" }}.</p>
+    {% if automacao.proximos_envios != None %}<p>Próximos envios: {{ automacao.proximos_envios }}{% if automacao.proximo_envio_em %}; o próximo está previsto para {{ automacao.proximo_envio_em }}{% endif %}.</p>{% endif %}
+    <p>Ativar coloca a versão mais recente em uso para novas entradas. Quem já entrou termina com sua versão anterior.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="versao" value="{{ automacao.versao_atual }}"><button name="acao" value="ativar">Ativar versão {{ automacao.versao_atual }}</button></form>
+    {% if automacao.ativa and automacao.entrada_aberta %}<p>Fechar a entrada impede novos participantes. Os atuais continuam.</p><form method="post">{% csrf_token %}<button name="acao" value="fechar_entrada">Fechar entrada</button></form>{% endif %}
+    {% if automacao.ativa and not automacao.pausada %}<p>Pausar segura os próximos envios até a retomada.</p><form method="post">{% csrf_token %}<button name="acao" value="pausar">Pausar envios</button></form>{% endif %}
+    {% if automacao.pausada %}<p>Retomar libera os envios pausados.</p><form method="post">{% csrf_token %}<button name="acao" value="retomar">Retomar envios</button></form>{% endif %}
+    {% if automacao.ativa %}<p>Encerrar cancela as próximas mensagens para quem ainda está recebendo.</p><form method="post">{% csrf_token %}<button name="acao" value="encerrar">Encerrar automação</button></form>{% endif %}
+    <p>Retomar falhas tenta novamente apenas envios que o motor registrou como falhados. Consulte o resultado nas entregas.</p><form method="post">{% csrf_token %}<button name="acao" value="retomar_falhas">Retomar falhas recuperáveis</button></form>
+  </div>
+
+  <h2 class="secao">Editar roteiro</h2>
+  <p>Intervalos contam desde a entrada da pessoa. Campos entre chaves aparecem literalmente na prévia até existir uma conversa real com esse dado.</p>
+  {% if campos %}<p>Campos disponíveis no motor: {% for campo in campos %}<code>{% templatetag openvariable %}{{ campo.slug }}{% templatetag closevariable %}</code>{% if not forloop.last %}, {% endif %}{% endfor %}. Um campo sem valor real impede o envio; nenhum dado é inventado.</p>{% endif %}
+  {% if versao_exibida and versao_exibida != automacao.versao_atual %}<p class="aviso">Você está vendo a versão {{ versao_exibida }}. <a href="{% url 'automacao_whatsapp' slug %}">Voltar à versão atual para editar</a>.</p>
+  {% if config_exibida %}<div class="cartao"><h3>Roteiro desta versão</h3><p><b>Nome:</b> {{ config_exibida.nome }}<br><b>Objetivo:</b> {{ config_exibida.objetivo }}<br><b>Gatilho:</b> {{ config_exibida.gatilho }}<br><b>Público:</b> {{ config_exibida.publico }}<br><b>Ao responder:</b> {{ config_exibida.resposta }}</p><p><b>Orientação do agente:</b> {{ config_exibida.roteiro|default:"Sem orientação adicional." }}</p></div>{% endif %}{% endif %}
+  {% if not versao_exibida or versao_exibida == automacao.versao_atual %}
+  <form method="post" class="cartao">
+    {% csrf_token %}<input type="hidden" name="acao" value="salvar"><input type="hidden" name="versao_base" value="{{ automacao.versao_atual }}">
+    <p><label for="nome">Nome</label><input id="nome" name="nome" value="{{ automacao.nome }}" required maxlength="160"></p>
+    <p><label for="objetivo">Objetivo</label><textarea id="objetivo" name="objetivo" required rows="2">{{ automacao.objetivo }}</textarea></p>
+    <p><label for="gatilho">Quando a pessoa entra</label><select id="gatilho" name="gatilho"><option value="">Escolha o gatilho</option>{% for opcao in gatilhos %}<option value="{{ opcao.slug }}" {% if automacao.gatilho == opcao.slug %}selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}</select></p>
+    <p><label for="publico">Público</label><select id="publico" name="publico" required>{% for opcao in opcoes_publico %}<option value="{{ opcao.valor }}" {% if automacao.publico == opcao.valor %}selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}</select></p>
+    <p><label for="resposta">Quando a pessoa responde</label><select id="resposta" name="resposta"><option value="pausar" {% if automacao.resposta == 'pausar' %}selected{% endif %}>Pausar a automação para ela</option><option value="encerrar" {% if automacao.resposta == 'encerrar' %}selected{% endif %}>Encerrar para ela</option><option value="avancar" {% if automacao.resposta == 'avancar' %}selected{% endif %}>Avançar ao próximo passo</option><option value="continuar" {% if automacao.resposta == 'continuar' %}selected{% endif %}>Continuar os envios</option></select></p>
+    <p><label for="roteiro">Roteiro do agente ao receber uma resposta</label><textarea id="roteiro" name="roteiro" rows="5">{{ automacao.roteiro }}</textarea></p>
+    <h3>Mensagens</h3>
+    <p>Preencha as mensagens na ordem. Linhas vazias são ignoradas.</p>
+    {% for passo in passos_form %}
+    <details class="cartao espaco-14" {% if forloop.first or passo.corpo %}open{% endif %}>
+      <summary>Mensagem {{ forloop.counter }}{% if passo.corpo %} — {{ passo.corpo|truncatechars:70 }}{% endif %}</summary>
+      <p><label>Enviar após <input name="passo_atraso" type="number" min="0" value="{{ passo.atraso }}" required></label>
+      <select name="passo_unidade"><option value="minutos" {% if passo.unidade == 'minutos' %}selected{% endif %}>minutos</option><option value="dias" {% if passo.unidade == 'dias' %}selected{% endif %}>dias</option></select> da entrada.</p>
+      <p><label>Texto da mensagem<textarea name="passo_corpo" rows="4">{{ passo.corpo }}</textarea></label></p>
+      <p><label>Condição para enviar<select name="passo_condicao"><option value="">Sem condição extra</option>{% for opcao in condicoes %}<option value="{{ opcao.slug }}" {% if passo.condicao_slug == opcao.slug %}selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}</select></label></p>
+      <p><label>Interação<select name="passo_interacao"><option value="" {% if not passo.interacao %}selected{% endif %}>Somente texto</option><option value="botoes" {% if passo.interacao == 'botoes' %}selected{% endif %}>Botões</option><option value="lista" {% if passo.interacao == 'lista' %}selected{% endif %}>Lista</option><option value="links" {% if passo.interacao == 'links' %}selected{% endif %}>Links</option></select></label></p>
+      <p><label>Modelo oficial aprovado para o primeiro contato<select name="passo_modelo"><option value="">Sem modelo oficial</option>{% for modelo in modelos_oficiais %}<option value="{{ modelo.id }}" {% if passo.modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }} · {{ modelo.idioma }}</option>{% endfor %}</select></label></p>
+      <p class="nota">Prévia do texto escrito no WhatsApp:</p><div class="central-previa">{{ passo.corpo|default:"Escreva a mensagem acima." }}</div>
+      {% if passo.interacao %}<div class="central-opcoes"><span>{{ passo.interacao }}</span></div><p class="nota">O conteúdo das opções depende dos dados reais da conversa.</p>{% endif %}
+    </details>
+    {% endfor %}
+    <p><button type="submit" name="acao" value="prever">Atualizar prévia sem enviar</button> <button type="submit">Salvar nova versão em rascunho</button></p>
+  </form>
+  {% else %}<div class="cartao">{% for passo in passos_form %}{% if passo.corpo %}<h3>Mensagem {{ passo.ordem }}</h3><p>{{ passo.atraso }} {{ passo.unidade }} após entrar</p><div class="central-previa">{{ passo.corpo }}</div>{% endif %}{% endfor %}</div>{% endif %}
+
+  <div class="cartao espaco-28">
+    <h2>Teste em conversa existente</h2>
+    <p>O teste envia pela integração real. Escolha uma conversa existente que autorizou este teste; a aceitação do provedor ainda não comprova entrega.</p>
+    <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="teste"><input type="hidden" name="chave_idempotencia" value="{{ chave_teste }}">
+      <p><label for="conversa_id">Identificador da conversa</label><input id="conversa_id" name="conversa_id" required autocomplete="off"></p>
+      <p><label for="versao">Versão para testar</label><input id="versao" name="versao" type="number" min="1" value="{{ automacao.versao_atual }}"></p>
+      <p><label><input type="checkbox" name="autorizado" value="sim" required> A pessoa desta conversa autorizou o teste.</label></p>
+      <button type="submit">Enviar teste nesta conversa</button>
+    </form>
+    {% if teste %}<p>Estado informado agora: {{ teste.estado_visivel }}{% if teste.mensagem_id %}; mensagem {{ teste.mensagem_id }}{% endif %}. A entrega é confirmada separadamente.</p>{% endif %}
+  </div>
+
+  {% if automacao.gatilho == 'manual' %}
+  <div class="cartao espaco-28">
+    <h2>Inscrever participante</h2>
+    <p>Escolha uma conversa WhatsApp existente. Ao inscrever, os passos seguem os intervalos definidos acima; a primeira mensagem pode ficar agendada para a hora da entrada.</p>
+    {% if automacao.ativa and automacao.entrada_aberta %}
+      {% if conversas_inscricao %}
+      <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="inscrever"><input type="hidden" name="chave_idempotencia" value="{{ chave_inscricao }}">
+        <p><label for="conversa-inscricao">Conversa</label><select id="conversa-inscricao" name="conversa_id" required><option value="">Escolha uma conversa</option>{% for conversa in conversas_inscricao %}<option value="{{ conversa.id }}">{{ conversa.nome }} · {{ conversa.id }}</option>{% endfor %}</select></p>
+        <p><label for="agendado-em">Iniciar em (opcional)</label><input id="agendado-em" name="agendado_em" type="datetime-local"></p>
+        <button type="submit">Inscrever esta pessoa na automação</button>
+      </form>
+      {% elif conversas_lidas %}<p>Nenhuma conversa WhatsApp elegível apareceu nesta lista. <a href="{% url 'crm_conversas' %}?canal=whatsapp">Veja as conversas no CRM</a>.</p>
+      {% else %}<p>Não foi possível consultar as conversas agora.</p>{% endif %}
+    {% else %}<p>Ative a automação e mantenha a entrada aberta para inscrever uma pessoa.</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <h2 class="secao">Histórico</h2>
+  <details class="cartao"><summary>Testes de mensagem ({{ testes|length }})</summary><p>Estes testes constam das mensagens da conversa. As entregas dos passos da automação aparecem em outra seção.</p><div class="tabela-envolucro"><table><thead><tr><th>Quando</th><th>Estado</th><th>Conversa</th><th>Falha</th></tr></thead><tbody>{% for t in testes %}<tr><td>{{ t.ocorrida_em|default:"—" }}</td><td>{{ t.estado_visivel }}</td><td>{% if t.conversa_id %}<a href="{% url 'crm_conversa' t.conversa_id %}">Abrir conversa</a>{% else %}—{% endif %}</td><td>{{ t.erro|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4">Nenhum teste de mensagem registrado nesta automação.</td></tr>{% endfor %}</tbody></table></div></details>
+  <details class="cartao"><summary>Versões ({{ versoes|length }})</summary><ul>{% for versao in versoes %}<li><a href="{% url 'automacao_whatsapp' slug %}?versao={{ versao.numero }}">Versão {{ versao.numero }}</a> — {{ versao.publicada_em|default:"rascunho" }}</li>{% empty %}<li>Ainda não há versões.</li>{% endfor %}</ul></details>
+  <details class="cartao espaco-14"><summary>Participantes ({{ participantes|length }})</summary><div class="tabela-envolucro"><table><thead><tr><th>Participante</th><th>Estado</th><th>Passo</th><th>Próximo envio</th><th>Versão</th></tr></thead><tbody>{% for p in participantes %}<tr><td>{{ p.id }}</td><td>{{ p.estado_visivel }}{% if p.suspensa %} — suspensa{% endif %}</td><td>{{ p.passo_atual|default:"—" }}</td><td>{{ p.proximo_em|default:"nenhum agendado" }}</td><td>{{ p.versao }}</td></tr>{% empty %}<tr><td colspan="5">Ninguém entrou ainda.</td></tr>{% endfor %}</tbody></table></div></details>
+  <details class="cartao espaco-14"><summary>Entregas e falhas ({{ entregas|length }})</summary><div class="tabela-envolucro"><table><thead><tr><th>Previsto para</th><th>Enviado em</th><th>Resultado</th><th>Passo</th><th>Diagnóstico</th></tr></thead><tbody>{% for e in entregas %}<tr><td>{{ e.previsto_para|default:"—" }}</td><td>{{ e.enviado_em|default:"ainda não" }}</td><td>{{ e.resultado_visivel }}</td><td>{{ e.passo }}</td><td>{{ e.motivo|default:"—" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma entrega registrada.</td></tr>{% endfor %}</tbody></table></div></details>
+  <details class="cartao espaco-14"><summary>Respostas ({{ respostas|length }})</summary><div class="tabela-envolucro"><table><thead><tr><th>Quando</th><th>Conversa</th><th>Pedido para sair</th></tr></thead><tbody>{% for r in respostas %}<tr><td>{{ r.ocorrida_em }}</td><td><a href="{% url 'crm_conversa' r.conversa_id %}">Abrir conversa</a></td><td>{% if r.descadastro %}Sim{% else %}Não{% endif %}</td></tr>{% empty %}<tr><td colspan="3">Nenhuma resposta registrada.</td></tr>{% endfor %}</tbody></table></div><p>O conteúdo das respostas fica na conversa; este histórico mostra o evento sem reproduzir dados pessoais.</p></details>
+  {% endif %}
+</div>
+{% endblock %}

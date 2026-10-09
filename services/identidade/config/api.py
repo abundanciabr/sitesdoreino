@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.api import router as sessao_router
 from apps.core.auth import bearerAuth
+from apps.core.recuperacao import router as recuperacao_router
 
 # `servers` aponta para a REDE INTERNA do Docker, nunca para a borda pública —
 # é o endereço que `funil` e `sugestoes` põem no env delas. O caminho
@@ -30,3 +31,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", sessao_router)
+api.add_router("", recuperacao_router)

@@ -10,6 +10,7 @@ from apps.audio.api import router as audio_router
 from apps.links.api import router as links_router
 from apps.whatsapp.api import router as whatsapp_router
 from apps.whatsapp_modelos.api import router as whatsapp_modelos_router
+from apps.jornadas.central_api import router as automacoes_router
 
 # O ENDEREÇO, e a escolha entre os dois formatos que a casa usa.
 #
@@ -72,6 +73,7 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", mensageria_router)
+api.add_router("", automacoes_router)
 api.add_router("whatsapp/", whatsapp_router)
 # Avisos do painel para a equipe, por e-mail (crm-agentes/avisos-equipe).
 api.add_router("", avisos_equipe_router)

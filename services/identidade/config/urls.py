@@ -9,6 +9,7 @@ from apps.core.views import (
     sair,
 )
 from config.api import api
+from apps.core.recuperacao import recuperar_senha
 
 # Esta célula NÃO serve página nenhuma: a tela de entrada do site mora no
 # `funil` (`/{idioma}/login` — lei: DECISAO-onde-mora-a-sessao §6/§7, o guarda
@@ -35,5 +36,6 @@ urlpatterns = [
     path("entrar/google", entrar_google, name="entrar_google"),
     path("entrar/google/retorno", entrar_google_retorno, name="entrar_google_retorno"),
     path("entrar/senha", entrar_senha, name="entrar_senha"),
+    path("entrar/recuperar/", recuperar_senha, name="recuperar_senha"),
     path("entrar/sair", sair, name="sair"),
 ]

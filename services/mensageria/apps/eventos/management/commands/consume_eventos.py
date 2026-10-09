@@ -24,6 +24,7 @@ from apps.consentimentos.handlers import (
     ao_quiz_consentimento,
 )
 from apps.eventos.models import EventoProcessado, FatoDeProvedorVisto
+from apps.jornadas.acontecimentos import encaminhar
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +56,14 @@ STREAMS = {
     "eventos.quiz.completado": ao_quiz_completado,
     "eventos.quiz.captura_parcial": ao_quiz_captura_parcial,
     "eventos.quiz.consentimento": ao_quiz_consentimento,
+    # Cartas endereçadas carregam a pessoa da matrícula/faixa/conquista.
+    "eventos.notificacao.devida": lambda data, event_id, ator_id: None,
+    # Fatos públicos do Fórum: autor do post, resposta aceita e resposta
+    # dirigida ao autor do tópico são identidades diferentes no contrato.
+    "eventos.forum.topico-criado": lambda data, event_id, ator_id: None,
+    "eventos.forum.mensagem-criada": lambda data, event_id, ator_id: None,
+    "eventos.forum.resposta-aceita": lambda data, event_id, ator_id: None,
+    "eventos.forum.resposta-criada": lambda data, event_id, ator_id: None,
 }
 
 # Convenção do LOTE — as 4 células consumidoras usam OS MESMOS nomes e valores
@@ -184,6 +193,7 @@ def processar_envelope(envelope: dict, handler) -> bool:
         # handler que guarda de quem é o envio não tinha como lê-lo. `.get`,
         # porque nem todo contrato desta célula o declara.
         handler(envelope["data"], envelope["event_id"], envelope.get("ator_id"))
+        encaminhar(envelope)
         return True
 
 

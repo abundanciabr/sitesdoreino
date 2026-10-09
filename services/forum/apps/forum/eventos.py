@@ -46,12 +46,33 @@ from typing import Any
 
 from django.db import transaction
 
-from .models import OutboxEvent
+from .models import Area, OutboxEvent, Topico
 
 TOPICO_CRIADO = "forum.topico-criado"
 MENSAGEM_CRIADA = "forum.mensagem-criada"
 RESPOSTA_ACEITA = "forum.resposta-aceita"
 MENSAGEM_REMOVIDA = "forum.mensagem-removida"
+RESPOSTA_CRIADA = "forum.resposta-criada"
+
+
+def _destinatario_pode_ler(area: Area, destinatario) -> bool:
+    """Confere a permissão atual pela mesma função usada pela página."""
+    from apps.core.permissoes import pode_ler
+    from apps.core.sessao import Ator, email_da_equipe
+
+    if area.visibilidade == Area.Visibilidade.PUBLICA:
+        return bool(area.ativa)
+    equipe = email_da_equipe(destinatario.email)
+    aluno = False
+    if not equipe:
+        try:
+            from apps.core.clients import AlunosClient
+
+            aluno = AlunosClient().categoria_de(destinatario.email) == "aluno"
+        except Exception:  # noqa: BLE001 - sem conferência, não emite aviso
+            return False
+    ator = Ator(pessoa=destinatario, eh_aluno=aluno, eh_professor=equipe)
+    return pode_ler(area, ator)
 
 
 class EventoForaDaTransacao(Exception):
@@ -107,7 +128,8 @@ def topico_criado(*, site_id: str, topico, ator_id: str) -> OutboxEvent | None:
     )
 
 
-def mensagem_criada(*, site_id: str, mensagem, ator_id: str) -> OutboxEvent | None:
+def mensagem_criada(*, site_id: str, mensagem, ator_id: str,
+                    host: str = "") -> OutboxEvent | None:
     """Alguém falou.
 
     `caracteres` é o TAMANHO, nunca o texto — e a diferença é o que permite ao
@@ -116,7 +138,7 @@ def mensagem_criada(*, site_id: str, mensagem, ator_id: str) -> OutboxEvent | No
     """
     if not site_id:
         return None
-    return emitir(
+    evento = emitir(
         MENSAGEM_CRIADA,
         {
             "site_id": site_id,
@@ -127,6 +149,45 @@ def mensagem_criada(*, site_id: str, mensagem, ator_id: str) -> OutboxEvent | No
         },
         ator_id=ator_id,
     )
+    # Só uma resposta a tópico de outra pessoa tem destinatário. A primeira
+    # mensagem do tópico e uma fala do próprio autor não avisam ninguém.
+    topico = mensagem.topico
+    destinatario = topico.autor
+    # O host veio do mesmo request que o catálogo usou para obter site_id.
+    # Confirmá-lo outra vez pelo cache impede que um chamador interno monte
+    # link de outro domínio; sem par confirmado, não há link a enviar.
+    host = (host or "").strip().lower()
+    link = ""
+    if host and all(c.isascii() and (c.isalnum() or c in ".-") for c in host):
+        from apps.core.menu import site_id_do_host
+
+        if site_id_do_host(host) == site_id:
+            link = f"https://{host}/forum/t/{topico.pk}#m{mensagem.pk}"
+    if (
+        destinatario is not None
+        and destinatario.id_da_plataforma != ator_id
+        and topico.estado == Topico.Estado.PUBLICADO
+        and topico.area.ativa
+        and mensagem.removida_em is None
+        and link
+        and _destinatario_pode_ler(topico.area, destinatario)
+    ):
+        dados_da_resposta = {
+            "site_id": site_id,
+            "topico_id": str(topico.pk),
+            "mensagem_id": str(mensagem.pk),
+            "area_id": str(topico.area_id),
+            "destinatario_id": destinatario.id_da_plataforma,
+            "link": link,
+        }
+        if topico.area.curso_id:
+            dados_da_resposta["curso_id"] = topico.area.curso_id
+        emitir(
+            RESPOSTA_CRIADA,
+            dados_da_resposta,
+            ator_id=ator_id,
+        )
+    return evento
 
 
 def resposta_aceita(

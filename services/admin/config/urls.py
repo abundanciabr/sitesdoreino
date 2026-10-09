@@ -90,6 +90,7 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.avisos_equipe import aviso_visto, avisos_da_equipe
 from apps.core.whatsapp import whatsapp
+from apps.core.automacoes import automacoes, automacao
 from apps.core.links_rastreados import (
     destinos_rastreados, destinos_rastreados_arquivar, destinos_rastreados_exportar,
     destinos_rastreados_novo, destinos_rastreados_versao,
@@ -346,6 +347,8 @@ urlpatterns = [
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
+    path("whatsapp/automacoes/", automacoes, name="automacoes_whatsapp"),
+    path("whatsapp/automacoes/<slug:slug>/", automacao, name="automacao_whatsapp"),
     path("links/", destinos_rastreados, name="destinos_rastreados"),
     path("links/novo", destinos_rastreados_novo, name="destinos_rastreados_novo"),
     path("links/exportar.csv", destinos_rastreados_exportar, name="destinos_rastreados_exportar"),

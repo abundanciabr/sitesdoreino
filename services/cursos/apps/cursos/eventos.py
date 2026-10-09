@@ -11,10 +11,10 @@ os campos que saem daqui; mudar um campo é mudar também quem o lê.
 lugar só é o que o guarda `tests/test_outbox_e_eventos.py` mira quando valida o
 envelope real contra o JSON Schema do contrato.
 
-**Só ids opacos viajam.** Nenhum `data` carrega link, README, texto da
-autoavaliação, e-mail nem nome: os contratos são `additionalProperties: false`
-justamente para que um campo a mais não passe despercebido. Quem precisar do
-detalhe pergunta a esta célula na hora de mostrar.
+Os fatos de aula e envio levam também o produto, nome do curso e título da
+aula que os próprios modelos confirmam. Nenhum `data` carrega link, README,
+texto da autoavaliação, e-mail ou nome de pessoa. Os demais eventos preservam
+os campos que seus consumidores já conhecem.
 
 Molde: `services/sugestoes/apps/sugestoes/eventos.py`, copiado e nunca importado
 (cada célula com os próprios arquivos). A diferença que importa: aqui `emitir()` já pendura o relay no commit
@@ -137,10 +137,12 @@ def emitir_envio_recebido(envio: Envio) -> OutboxEvent:
     PLATAFORMA (`Pessoa.id_da_plataforma`, a chave primária do espelho), e não
     um id local desta célula: quem consome credita a pessoa certa.
     """
+    aula = envio.aula
+    curso = aula.curso
     return emitir(
         ENVIO_RECEBIDO,
         {
-            "site_id": envio.aula.curso.site_id,
+            "site_id": curso.site_id,
             # str() em todos: o contrato diz `type: string`, e as chaves desta
             # célula são `BigAutoField`. Deixar o inteiro passar faria cada
             # consumidor descobrir o tipo por tentativa.
@@ -148,6 +150,11 @@ def emitir_envio_recebido(envio: Envio) -> OutboxEvent:
             "aula_id": str(envio.aula_id),
             "envio_id": str(envio.pk),
             "numero": envio.numero,
+            "produto_id": curso.produto_id,
+            "curso_nome": curso.nome,
+            "curso_slug": curso.slug,
+            "aula_titulo": aula.titulo_exibido,
+            "aula_numero": aula.numero,
         },
         envelope_extra={"ator_id": envio.pessoa_id},
     )
@@ -197,13 +204,19 @@ def emitir_aula_concluida(aula: Aula, *, ator_id: str) -> OutboxEvent:
     decisão é `aberto` ou `aberto_com_ajuste` ([INV-CUR-P2]: a porta só abre
     por laudo, nunca por data, XP ou pagamento). `ator_id` é o ALUNO, o único
     lugar em que ele viaja neste evento — é a quem a gamificação credita."""
+    curso = aula.curso
     return emitir(
         AULA_CONCLUIDA,
         {
-            "site_id": aula.curso.site_id,
+            "site_id": curso.site_id,
             "curso_id": str(aula.curso_id),
             "aula_id": str(aula.pk),
             "e_boss": aula.e_boss,
+            "produto_id": curso.produto_id,
+            "curso_nome": curso.nome,
+            "curso_slug": curso.slug,
+            "aula_titulo": aula.titulo_exibido,
+            "aula_numero": aula.numero,
         },
         envelope_extra={"ator_id": ator_id},
     )

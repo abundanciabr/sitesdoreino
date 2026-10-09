@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 import secrets
 import string
+from urllib.parse import urlsplit
 from datetime import timezone as fuso
 from urllib.parse import urlsplit
 
@@ -94,6 +95,8 @@ def reescrever(texto: str, *, site_id: str, origem: str, referencia: str, conver
     por_url: dict[str, LinkIndividual] = {}
     for achado in PADRAO_DE_URL.findall(texto or ""):
         url = _limpar(achado)
+        if urlsplit(url).path.startswith("/entrar/recuperar/"):
+            continue
         if not url or url.startswith(base) or url in por_url or len(url) > LIMITE_DA_URL:
             continue
         if e_link_de_compra(url):

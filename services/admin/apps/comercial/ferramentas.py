@@ -130,6 +130,12 @@ _AFIRMACAO_OU_NULO = {"anyOf": [_AFIRMACAO, {"type": "null"}]}
 _LISTA = {"type": "array", "items": {"type": "string"}}
 
 DEFINICOES = {
+    "solicitar_recuperacao_acesso": _ferramenta(
+        "solicitar_recuperacao_acesso",
+        "Envia diretamente à conversa vinculada um link temporário de uso único para a própria "
+        "pessoa escolher sua senha no site. Não aceita destinatário, senha ou credenciais.",
+        {},
+    ),
     "consultar_contato": _ferramenta(
         "consultar_contato",
         "Dados do lead deste trabalho: nome, origem no quiz, etiquetas, "
@@ -589,6 +595,10 @@ def consultar_conversa(ctx: Contexto, args: dict) -> dict:
                                "descadastro", "ocorrida_em")}
         for m in (dados.get("mensagens") or [])[-30:] if isinstance(m, dict)
     ]
+    from .automacoes import ocultar_link_de_recuperacao
+    for mensagem in mensagens:
+        for campo in ("texto", "assunto", "transcricao"):
+            mensagem[campo] = ocultar_link_de_recuperacao(mensagem.get(campo))
     return {
         "conversa_id": conversa_id,
         "canal": conversa.get("canal"),
@@ -1242,7 +1252,15 @@ def _link(ctx: Contexto, args: dict, chave: str) -> dict:
     }
 
 
-ESCRITAS_COM_CHAVE = {"enviar_mensagem": _enviar, "preparar_link_compra": _link}
+def _recuperar_acesso(ctx, args, chave):
+    from .recuperacao_acesso import solicitar_recuperacao_acesso
+    return solicitar_recuperacao_acesso(ctx, args, chave)
+
+
+ESCRITAS_COM_CHAVE = {
+    "enviar_mensagem": _enviar, "preparar_link_compra": _link,
+    "solicitar_recuperacao_acesso": _recuperar_acesso,
+}
 
 ACOES = {
     "consultar_contato": consultar_contato,
@@ -1324,7 +1342,7 @@ def _concluir_escrita(ctx: Contexto, decisao: DecisaoComercial, nome: str, argum
     incerta e grava o desfecho nela."""
     funcao = ESCRITAS_COM_CHAVE[nome]
     try:
-        with (nullcontext() if nome == "enviar_mensagem" else transaction.atomic()):
+        with (nullcontext() if nome in {"enviar_mensagem", "solicitar_recuperacao_acesso"} else transaction.atomic()):
             saida = funcao(ctx, argumentos, decisao.chave_idempotencia)
             resultado = R.FEITO
     except Recusa as recusa:

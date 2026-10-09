@@ -147,6 +147,7 @@ FERRAMENTAS_DO_PAPEL = {
     ),
     P.ATENDIMENTO: (
         "consultar_contato",
+        "solicitar_recuperacao_acesso",
         "consultar_respostas_quiz",
         "consultar_oportunidade",
         "consultar_conhecimento_comercial",
