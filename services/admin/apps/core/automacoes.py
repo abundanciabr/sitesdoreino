@@ -31,7 +31,7 @@ ESTADOS_PARTICIPANTE = {"andando": "Recebendo", "concluida": "Terminou", "saiu":
 ESTADOS_ENTREGA = {"pendente": "Aguardando envio", "enviada": "Enviada, entrega não confirmada",
     "aceita_pelo_gateway": "Aceita pelo provedor, entrega não confirmada", "entregue": "Entrega confirmada",
     "lida": "Leitura confirmada", "falhou": "Falhou", "resultado_desconhecido": "Resultado desconhecido",
-    "barrada_pela_regua": "Aguardando janela de envio", "barrada_por_preferencia": "Não enviada por preferência",
+    "barrada_pela_regua": "Envio impedido pelo horário ou limite do canal", "barrada_por_preferencia": "Não enviada por preferência",
     "pulada": "Passo pulado"}
 ESTADOS_TESTE = {
     "pendente": "Aguardando envio",

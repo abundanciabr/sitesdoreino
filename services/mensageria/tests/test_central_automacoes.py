@@ -1,13 +1,13 @@
 """Cenários que distinguem a Central da jornada legada."""
 import uuid
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from types import SimpleNamespace
 
 import pytest
 from django.utils import timezone
 
 from apps.conversas.models import Conversa, MensagemDaConversa
-from apps.jornadas import central, motor
+from apps.jornadas import central, despacho, motor
 from apps.jornadas import central_api as api
 from apps.jornadas.models import Entrega, Inscricao, Jornada, JornadaVersao, Passo, TextoDoPasso
 
@@ -333,3 +333,41 @@ def test_humano_tambem_usa_episodio_concluido(monkeypatch):
     episodio.refresh_from_db()
     conversa.refresh_from_db()
     assert episodio.central_suspensa and conversa.estado == "pessoa"
+
+
+def test_teto_do_agente_no_motor_aparece_como_espera_pela_regua(monkeypatch,
+                                                                  django_capture_on_commit_callbacks):
+    jornada, versao, passo = automacao(publicada=False)
+    JornadaVersao.objects.filter(pk=versao.pk).update(publicada_em=timezone.now())
+    jornada.ativa = jornada.central_entrada_aberta = True
+    jornada.save(update_fields=["ativa", "central_entrada_aberta"])
+    momento = timezone.make_aware(datetime.combine(timezone.localdate(), time(12, 0)),
+                                  timezone.get_current_timezone())
+    conversa = Conversa.objects.create(site_id="s1", canal="whatsapp", endereco="5511999999999",
+                                       janela_aberta_ate=timezone.now() + timedelta(days=1))
+    for i in range(3):
+        MensagemDaConversa.objects.create(conversa=conversa, direcao="saida", autor="agente",
+            texto="Mensagem anterior", estado_envio="enviado",
+            ocorrida_em=momento - timedelta(minutes=3 - i))
+    monkeypatch.setattr("apps.conversas.envio._agora", lambda: momento)
+    inscricao = motor.inscrever(jornada, destinatario_id=f"conversa:{conversa.id}",
+        site_id="s1", origem_event_id=uuid.uuid4(), momento=momento - timedelta(hours=3))
+    inscricao.central_conversa_id = conversa.id
+    inscricao.save(update_fields=["central_conversa_id"])
+    with django_capture_on_commit_callbacks(execute=False):
+        passada = motor.varrer(momento=momento, despachar=despacho.despachar)
+    assert passada.pendentes == 1
+    entrega = Entrega.objects.get(inscricao=inscricao, passo=passo, canal="whatsapp")
+    assert entrega.resultado == "pendente"
+    central.processar_entrega(entrega)
+    entrega.refresh_from_db()
+    assert entrega.resultado == "pendente" and conversa.mensagens.count() == 3
+    exibida = api.detalhe(None, jornada.slug, "s1")["entregas"][0]
+    assert exibida["resultado"] == "barrada_pela_regua"
+    assert exibida["resultado_registrado"] == "pendente"
+    assert "3 mensagens" in exibida["motivo"]
+    assert api.listar(None, "s1")["automacoes"][0]["proximos_envios"] == 1
+    # A mesma intenção pendente não pode somar como agendamento e entrega.
+    Inscricao.objects.filter(pk=inscricao.pk).update(estado="andando", passo_atual=0,
+                                                     proximo_em=momento)
+    assert api.listar(None, "s1")["automacoes"][0]["proximos_envios"] == 1

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from django.db import transaction
-from django.db.models import Max, Min, Q
+from django.db.models import Exists, Max, Min, OuterRef, Q, Subquery
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router, Schema
@@ -88,12 +88,37 @@ def _iso(valor):
     return valor.isoformat() if valor else None
 
 
+def _resultado_exibido(entrega: Entrega) -> str:
+    """O banco guarda a intenção pendente; a tela distingue espera pela régua."""
+    if entrega.resultado == "pendente" and (
+        entrega.motivo.startswith("o agente ja mandou ")
+        or entrega.motivo.startswith("o agente so envia entre ")
+    ):
+        return "barrada_pela_regua"
+    return entrega.resultado
+
+
 def _resumo(jornada):
     atual = _versao(jornada)
     config = central.configuracao(atual) if atual else {}
     pub = jornada.versoes.filter(central_config__central=True, publicada_em__isnull=False).order_by("-numero").first()
-    pendentes = Inscricao.objects.filter(jornada=jornada, estado="andando", central_suspensa=False,
-                                         proximo_em__isnull=False)
+    intencoes = Entrega.objects.filter(inscricao__jornada=jornada, canal="whatsapp",
+        whatsapp_intencao=True, resultado="pendente", inscricao__central_suspensa=False
+    ).exclude(inscricao__estado__in=("cancelada", "saiu"))
+    proximo_passo = Passo.objects.filter(jornada_versao_id=OuterRef("jornada_versao_id"),
+        ordem__gt=OuterRef("passo_atual")).order_by("ordem").values("pk")[:1]
+    mesma_intencao = Entrega.objects.filter(inscricao_id=OuterRef("pk"),
+        passo_id=OuterRef("proximo_passo_id"), canal="whatsapp",
+        whatsapp_intencao=True, resultado="pendente")
+    agendadas = (Inscricao.objects.filter(jornada=jornada, estado="andando", central_suspensa=False,
+        proximo_em__isnull=False).annotate(proximo_passo_id=Subquery(proximo_passo))
+        .annotate(ja_tem_intencao=Exists(mesma_intencao)).filter(ja_tem_intencao=False))
+    numero_intencoes = intencoes.count()
+    quantidade = numero_intencoes + agendadas.count()
+    proximo = agendadas.aggregate(primeiro=Min("proximo_em"))["primeiro"]
+    if numero_intencoes:
+        agora = timezone.now()
+        proximo = min(proximo, agora) if proximo else agora
     return {"slug": jornada.slug, "nome": config.get("nome") or jornada.central_nome,
             "objetivo": config.get("objetivo") or jornada.central_objetivo,
             "gatilho": config.get("gatilho") or jornada.gatilho,
@@ -102,8 +127,8 @@ def _resumo(jornada):
             "entrada_aberta": jornada.central_entrada_aberta, "pausada": jornada.central_pausada,
             "versao_atual": atual.numero if atual else None,
             "versao_publicada": pub.numero if pub else None,
-            "proximos_envios": pendentes.count(),
-            "proximo_envio_em": _iso(pendentes.aggregate(primeiro=Min("proximo_em"))["primeiro"]),
+            "proximos_envios": quantidade,
+            "proximo_envio_em": _iso(proximo),
             "criada_em": _iso(jornada.criada_em)}
 
 
@@ -213,7 +238,8 @@ def detalhe(request, slug: str, site_id: str, versao: int | None = None):
                                "ancora_em": _iso(p.ancora_em), "proximo_em": _iso(p.proximo_em)}
                               for p in participantes],
             "entregas": [{"id": e.pk, "participante_id": str(e.inscricao_id),
-                          "passo": e.passo.ordem, "resultado": e.resultado, "motivo": e.motivo,
+                          "passo": e.passo.ordem, "resultado": _resultado_exibido(e),
+                          "resultado_registrado": e.resultado, "motivo": e.motivo,
                           "previsto_para": _iso(e.previsto_para), "enviado_em": _iso(e.enviado_em)}
                          for e in entregas],
             "testes": [{"id": str(m.id), "conversa_id": str(m.conversa_id),
