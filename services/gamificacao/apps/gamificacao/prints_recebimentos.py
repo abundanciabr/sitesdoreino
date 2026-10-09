@@ -180,6 +180,24 @@ def mensagem(registro):
     )
 
 
+def _maior_passo_comemorado(j):
+    """Maior passo que a pessoa já viu comemorado (guardado em declaracoes).
+
+    Jornada anterior ao campo: o maior passo_depois das leituras de print que
+    subiram de passo (as que comemoraram) e a comemoração ainda pendente.
+    """
+    guardado = (j.declaracoes or {}).get("maior_passo_comemorado")
+    if isinstance(guardado, int):
+        return guardado
+    maior = (j.celebracao_pendente or {}).get("ordem") or 0
+    for dados in RegistroDaJornada.objects.filter(
+        pessoa_id=j.pessoa_id, site_id=j.site_id, acao="leitura-print"
+    ).values_list("dados", flat=True):
+        if dados.get("passo_depois", 0) > dados.get("passo_antes", 0):
+            maior = max(maior, dados["passo_depois"])
+    return maior
+
+
 def processar(recebimento_id):
     from .jornada import situacao, _registro, reais
 
@@ -223,6 +241,8 @@ def processar(recebimento_id):
         if atual.revisao != revisao or atual.estado != "analisando":
             return False  # Um novo print/correção substituiu a versão que estava em leitura.
         antes = situacao(r.pessoa_id, r.site_id)
+        # Lido antes do registro desta leitura, que entraria na conta do máximo.
+        ja_comemorado = _maior_passo_comemorado(j)
         motivo = None
         if falhou and atual.tentativas >= TENTATIVAS_MAXIMAS:
             motivo = "leitor"
@@ -289,7 +309,12 @@ def processar(recebimento_id):
             },
             antes,
         )
-        if depois["atual"]["ordem"] > antes["atual"]["ordem"]:
+        # Só comemora passo que a pessoa nunca comemorou: se uma correção rejeitada
+        # a fez cair de faixa, voltar ao que já tinha não é conquista nova.
+        if (
+            depois["atual"]["ordem"] > antes["atual"]["ordem"]
+            and depois["atual"]["ordem"] > ja_comemorado
+        ):
             j.celebracao_pendente = {
                 "ordem": depois["atual"]["ordem"],
                 "tipo": (
@@ -298,7 +323,13 @@ def processar(recebimento_id):
                     else "grau"
                 ),
             }
-            j.save(update_fields=["celebracao_pendente", "atualizada_em"])
+            j.declaracoes = {
+                **j.declaracoes,
+                "maior_passo_comemorado": depois["atual"]["ordem"],
+            }
+            j.save(
+                update_fields=["celebracao_pendente", "declaracoes", "atualizada_em"]
+            )
         return atual.estado == "confirmado"
 
 

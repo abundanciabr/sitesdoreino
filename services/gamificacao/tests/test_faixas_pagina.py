@@ -501,3 +501,75 @@ def test_correcao_sobre_esclarecer_do_leitor_mantem_total_e_nao_comemora():
     confirmar(r)
     j.refresh_from_db()
     assert j.celebracao_pendente == {}
+
+
+def _rejeitar_correcao(r, valor):
+    from unittest.mock import patch
+    from apps.gamificacao.prints_recebimentos import processar
+
+    _corrigir_sem_confirmar(r, valor)
+    with patch(
+        "apps.gamificacao.prints_recebimentos.ler_modelo",
+        return_value={"status": "ilegivel"},
+    ):
+        processar(r.pk)
+    r.refresh_from_db()
+    assert r.estado == "esclarecer" and r.leitura["motivo"] == "status"
+
+
+def _limpar_celebracao():
+    j = JornadaPessoal.objects.get()
+    j.celebracao_pendente = {}
+    j.save()
+    return j
+
+
+def test_correcao_rejeitada_e_reconfirmada_nao_comemora_de_novo():
+    gesto("meta", meta="100")
+    receber("100")
+    j = _limpar_celebracao()
+    assert j.declaracoes["maior_passo_comemorado"] == 13
+    r = RecebimentoDeclarado.objects.get()
+    _rejeitar_correcao(r, "100")
+    assert situacao(P, SITE)["atual"]["ordem"] == 1
+    _corrigir_sem_confirmar(r, "100")
+    confirmar(r)
+    assert situacao(P, SITE)["atual"]["ordem"] == 13
+    j.refresh_from_db()
+    assert j.celebracao_pendente == {}
+    assert j.declaracoes["maior_passo_comemorado"] == 13
+
+
+def test_passo_realmente_novo_depois_da_queda_ainda_comemora():
+    gesto("meta", meta="1000")
+    receber("300")
+    j = _limpar_celebracao()
+    maior = j.declaracoes["maior_passo_comemorado"]
+    r = RecebimentoDeclarado.objects.get()
+    _rejeitar_correcao(r, "300")
+    _corrigir_sem_confirmar(r, "300")
+    confirmar(r)
+    j.refresh_from_db()
+    assert j.celebracao_pendente == {}
+    receber("600")
+    j.refresh_from_db()
+    novo = situacao(P, SITE)["atual"]["ordem"]
+    assert novo > maior
+    assert j.celebracao_pendente["ordem"] == novo
+    assert j.declaracoes["maior_passo_comemorado"] == novo
+
+
+def test_jornada_antiga_sem_o_campo_usa_o_historico_de_comemoracoes():
+    gesto("meta", meta="100")
+    receber("100")
+    j = _limpar_celebracao()
+    j.declaracoes = {
+        k: v for k, v in j.declaracoes.items() if k != "maior_passo_comemorado"
+    }
+    j.save()
+    r = RecebimentoDeclarado.objects.get()
+    _rejeitar_correcao(r, "100")
+    _corrigir_sem_confirmar(r, "100")
+    confirmar(r)
+    j.refresh_from_db()
+    assert j.celebracao_pendente == {}
