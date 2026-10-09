@@ -392,6 +392,33 @@ def checar_dependencias(reg, por_id, pilha=None):
     return None
 
 
+def dependencias_primeiro(regs, por_id):
+    """Ordena a passagem sem depender do segundo de recebimento ou do ID.
+
+    Um ciclo continua sendo diagnosticado por checar_dependencias; a visita
+    iterativa só garante que, nas cadeias, a raiz seja processada antes de
+    compor o motivo dos dependentes.
+    """
+    ordenados, vistos, ativos = [], set(), set()
+    for reg in regs:
+        pilha = [(reg, False)]
+        while pilha:
+            atual, fechar = pilha.pop()
+            id_ = atual["id"]
+            if fechar:
+                ativos.discard(id_)
+                if id_ not in vistos:
+                    vistos.add(id_)
+                    ordenados.append(atual)
+            elif id_ not in vistos and id_ not in ativos:
+                ativos.add(id_)
+                pilha.append((atual, True))
+                for dep in reversed(atual.get("depende_de") or []):
+                    if dep in por_id and dep not in vistos and dep not in ativos:
+                        pilha.append((por_id[dep], False))
+    return ordenados
+
+
 def apagar_candidata(reg):
     if resolver("refs/entregas/%s" % reg["id"]):
         git("update-ref", "-d", "refs/entregas/%s" % reg["id"])
@@ -519,7 +546,7 @@ def cmd_integrar(a):
                 reg.pop("promocao", None)
                 definir(reg, "recebida", "o conteúdo da entrega não está mais na main; será combinado de novo")
                 gravar(reg)
-        for reg in regs:
+        for reg in dependencias_primeiro(regs, por_id):
             if reg["estado"] not in ABERTOS:
                 continue
             antes = json.dumps(reg, sort_keys=True)

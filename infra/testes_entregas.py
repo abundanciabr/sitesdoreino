@@ -480,6 +480,12 @@ def test_C11_cadeia_de_tres_elos_aponta_a_raiz_e_segue_depois_de_promover(amb):
     c = amb.entregar("rob-conf", sha_conf)["id"]
     b = amb.entregar("rob-b", amb.ramo("rob-b", {"b.txt": "B\n"}), "--depende-de", c)["id"]
     a = amb.entregar("rob-a", amb.ramo("rob-a", {"a.txt": "A\n"}), "--depende-de", b)["id"]
+    # A ordem de recebimento mais adversa não pode antecipar o motivo da raiz.
+    for ordem, id_ in enumerate((a, b, c)):
+        caminho = amb.plat / "entregas" / (id_ + ".json")
+        reg = json.loads(caminho.read_text(encoding="utf-8"))
+        reg["recebida_em"] = "2026-10-09T00:00:%02d+00:00" % ordem
+        caminho.write_text(json.dumps(reg), encoding="utf-8")
     est = amb.integrar()
     assert est[a]["estado"] == "aguardando dependência" and c in est[a]["motivo"] and "conflito" in est[a]["motivo"]
     # cadeia saudável: dependente segue depois de a dependência ser promovida
