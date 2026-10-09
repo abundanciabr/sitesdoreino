@@ -136,6 +136,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         if r.estado == "confirmado"
         else (r.leitura or {}).get("anterior_cents", 0)
         if r.estado in ESPERANDO_LEITURA
+        or (r.estado == "esclarecer" and (r.leitura or {}).get("motivo") == "leitor")
         else 0
         for r in recebimentos
     )

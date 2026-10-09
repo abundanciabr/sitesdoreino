@@ -229,7 +229,12 @@ def processar(recebimento_id):
             atual.estado = "esclarecer"
             atual.tentar_em = None
             atual.analisada_em = timezone.now()
-            atual.leitura = {"motivo": motivo}
+            # Leitor fora do ar não é rejeição do conteúdo: o valor já
+            # confirmado antes da correção continua valendo.
+            atual.leitura = {
+                "motivo": motivo,
+                "anterior_cents": (atual.leitura or {}).get("anterior_cents", 0),
+            }
         elif falhou:
             atual.estado = "falha"
             atual.tentar_em = timezone.now() + timedelta(
