@@ -14,7 +14,6 @@ from .models import (
     EntregaMarketplace, ArquivoMarketplace, MensagemMarketplace, AjusteMarketplace,
     RecebivelMarketplace,
 )
-from . import faixas_eventos
 from .marketplace import ErroMarketplace, acesso_aluno
 ErroFilaReal = ErroMarketplace
 
@@ -299,9 +298,8 @@ def aceitar(*, site_id, pessoa_id, pedido_id):
         termos = {'titulo': pedido.titulo, 'categoria': pedido.categoria, 'briefing': deepcopy(pedido.briefing),
             'valor_cents': pedido.valor_cents, 'quantidade': 1, 'prazo_horas': 48,
             'ajustes_inclusos': pedido.ajustes_inclusos}
-        acordo = AcordoMarketplace.objects.create(site_id=site_id, pedido=pedido, oferta=oferta, aluno=perfil,
+        AcordoMarketplace.objects.create(site_id=site_id, pedido=pedido, oferta=oferta, aluno=perfil,
             versao_pedido=pedido.versao, termos=termos, aceito_em=agora)
-        faixas_eventos.fila_trabalho_aceito(acordo)  # faixa "primeiro trabalho na Fila do Dólar"
         pedido.aluno, pedido.status = perfil, 'em_producao'
         pedido.producao_iniciada_em, pedido.producao_prazo_ate = agora, agora + timedelta(hours=48)
         pedido.save(update_fields=['aluno', 'status', 'producao_iniciada_em', 'producao_prazo_ate', 'atualizado_em'])
@@ -421,5 +419,4 @@ def aprovar(*, site_id, pessoa_id, pedido_id, entrega_id):
         pedido.fila_cliente.consumido_em = agora
         pedido.fila_cliente.save(update_fields=['consumido_em'])
         # Registrar recebível não emite Pix nem altera o saldo financeiro congelado.
-        faixas_eventos.sincronizar_rendimento(recebivel)
         return pedido

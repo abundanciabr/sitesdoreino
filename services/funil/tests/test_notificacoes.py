@@ -392,22 +392,3 @@ def test_chave_por_variavel_e_chave_que_falta_nao_derrubam_a_pagina():
     texto = modelo.render(Context({"chave": "notificacoes.titulo", "nome": "nao_existe", "vazia": ""}))
 
     assert texto == "[Notifications][notificacoes.nao_existe][]"
-
-
-def test_aviso_de_faixa_diz_a_faixa(client, logado, rede, notificacoes_configurada):
-    _resumo(rede)
-    aviso = _aviso()
-    aviso["assunto"] = "gamificacao.conquista-concedida"
-    aviso["parametros"] = {"conquista_slug": "faixa-amarela", "familia": "carreira"}
-    rede.get(f"{NOTIFICACOES}/avisos").mock(
-        return_value=httpx.Response(200, json={"itens": [aviso], "proximo_cursor": None})
-    )
-
-    resposta = client.get(
-        caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
-    )
-
-    corpo = resposta.content.decode()
-    assert "Você chegou a uma nova faixa" in corpo
-    assert "Você chegou à faixa Amarela." in corpo
-    assert "medalha" not in corpo

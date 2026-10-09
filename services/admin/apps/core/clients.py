@@ -1656,33 +1656,6 @@ class GamificacaoClient:
         """
         return self._mudar("economia/degraus", str(nivel), ativa, "degrau")
 
-    def faixa_do_aluno(self, pessoa_id: str) -> "dict | None":
-        """A faixa atual de UM aluno (`GET faixa-do-aluno?pessoa_id=`). `None` = não deu.
-
-        Mesma autenticação das vizinhas; falha vira `None` e a ficha segue sem a faixa.
-        """
-        config = self._configuracao()
-        if config is None or not pessoa_id:
-            return None
-        base, token = config
-        try:
-            r = http().get(
-                f"{base}/faixa-do-aluno",
-                params={"pessoa_id": pessoa_id},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=self.TIMEOUT,
-            )
-            if r.status_code != 200:
-                logger.error("faixa: a gamificação respondeu HTTP %s", r.status_code)
-                return None
-            corpo = r.json()
-        except (httpx.HTTPError, ValueError) as erro:
-            logger.error("faixa: a gamificação não respondeu: %s", erro)
-            return None
-        if not isinstance(corpo, dict) or not isinstance(corpo.get("atual"), dict):
-            return None
-        return corpo
-
     def _listar(self, caminho: str, rotulo: str) -> "list | None":
         config = self._configuracao()
         if config is None:

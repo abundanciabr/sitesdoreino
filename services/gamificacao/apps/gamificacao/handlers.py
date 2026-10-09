@@ -391,14 +391,6 @@ def ao_portfolio_conferido(envelope: dict) -> None:
     return None
 
 
-from .faixas import (  # noqa: E402
-    ao_fila_trabalho_aceito,
-    ao_item_criado,
-    ao_rendimento_real_confirmado,
-    ao_rendimento_real_revertido,
-    ao_sandbox_trabalho_criado,
-)
-
 HANDLERS = {
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,
@@ -409,12 +401,6 @@ HANDLERS = {
     "forum.resposta-aceita": ao_forum_resposta_aceita,
     "aula.concluida": ao_aula_concluida,
     "pages.portfolio.conferido": ao_portfolio_conferido,
-    # AS FAIXAS (08/10/2026): ver apps/gamificacao/faixas.py
-    "cursos.item-criado": ao_item_criado,
-    "encomendas.sandbox-trabalho-criado": ao_sandbox_trabalho_criado,
-    "encomendas.fila-trabalho-aceito": ao_fila_trabalho_aceito,
-    "encomendas.rendimento-real-confirmado": ao_rendimento_real_confirmado,
-    "encomendas.rendimento-real-revertido": ao_rendimento_real_revertido,
 }
 
 # OS ASSUNTOS QUE CHEGAM E MESMO ASSIM NÃO VIRAM PONTO, declarados aqui porque é
@@ -428,11 +414,6 @@ HANDLERS = {
 # tela continuaria dizendo "não paga" depois de já pagar. Apagar a linha daqui é
 # PARTE de fazer o quiz pagar, e é de propósito que as duas coisas ficam juntas.
 NAO_CREDITAM = {
-    "cursos.item-criado": "progressão de faixa, não paga XP",
-    "encomendas.sandbox-trabalho-criado": "progressão de faixa, não paga XP",
-    "encomendas.fila-trabalho-aceito": "progressão de faixa, não paga XP",
-    "encomendas.rendimento-real-confirmado": "progressão de faixa, não paga XP",
-    "encomendas.rendimento-real-revertido": "progressão de faixa, não paga XP",
     "forum.mensagem-removida": (
         "o estorno precisa achar o lançamento que pagou AQUELA mensagem, e o "
         "ledger guarda o id do EVENTO, não o da mensagem; o fórum já emite o "

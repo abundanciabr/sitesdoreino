@@ -122,10 +122,10 @@ js:
     es: "Toca para ver el escalón que alcanzaste."
 
   conquista_titulo:
-    _fonte: "8661ba"
-    en: "You earned an achievement"
-    pt-br: "Você ganhou uma conquista"
-    es: "Ganaste un logro"
+    _fonte: "40dd6c"
+    en: "You earned a medal"
+    pt-br: "Você ganhou uma medalha"
+    es: "Ganaste una medalla"
 
   conquista_corpo:
     # O nome da medalha não aparece: o aviso do celular não consulta a `gamificacao`.

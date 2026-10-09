@@ -2021,7 +2021,3 @@ from .fila_real_models import (  # noqa: E402,F401
     ClienteFila, PedidoClienteFila, MovimentoOrcamentoFila,
     OrientacaoPrivadaFila, CasoConversaFila, SaqueManualFila, ParcelaSaqueFila,
 )
-
-from .faixas_eventos import ligar_sinais  # noqa: E402
-
-ligar_sinais()

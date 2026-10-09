@@ -112,61 +112,8 @@ def base(request):
     return render(
         request,
         "gamificacao/base.html",
-        {
-            "entrou": True,
-            "escada": escada_de(perfil),
-            "faixas": _faixas_para_tela(pessoa_id, site),
-            **de_fora,
-        },
+        {"entrou": True, "escada": escada_de(perfil), **de_fora},
     )
-
-
-def _reais(cents: int) -> str:
-    """Centavos em 'R$ 1.234,56' (sem dependência de locale)."""
-    inteiro, centavos = divmod(int(cents), 100)
-    return f"R$ {inteiro:,}".replace(",", ".") + f",{centavos:02d}"
-
-
-def _fundo(cores: list[str]) -> str:
-    """Uma cor = cheia; duas = metade e metade."""
-    if len(cores) == 1:
-        return cores[0]
-    return f"linear-gradient(135deg, {cores[0]} 50%, {cores[1]} 50%)"
-
-
-def _faixas_para_tela(pessoa_id: str, site: str) -> dict:
-    """A situação das 13 faixas pronta para o template (sem dado de cliente)."""
-    from django.utils import timezone
-
-    from apps.gamificacao.faixas import situacao_das_faixas
-
-    s = situacao_das_faixas(pessoa_id, site)
-
-    def data(d):
-        return timezone.localtime(d).strftime("%d/%m/%Y") if d else None
-
-    atual = {**s["atual"], "fundo": _fundo(s["atual"]["cores"]),
-             "data": data(s["atual"]["alcancada_em"])}
-    proxima = None
-    if s["proxima"]:
-        p = s["proxima"]
-        proxima = {**p, "fundo": _fundo(p["cores"]), "barra": None}
-        d = p["dinheiro"]
-        if d:
-            proxima["barra"] = {
-                "pct": d["fracao_pct"],
-                "total": _reais(d["total_cents"]),
-                "meta": _reais(d["meta_cents"]),
-                "falta": _reais(d["falta_cents"]),
-                "unica": d["meta_cents"] <= 1,
-            }
-    lista = [
-        {**f, "fundo": _fundo(f["cores"]), "data": data(f["alcancada_em"]),
-         "atual": f["ordem"] == s["atual"]["ordem"]}
-        for f in s["faixas"]
-    ]
-    return {"atual": atual, "proxima": proxima, "lista": lista,
-            "total": _reais(s["total_real_cents"])}
 
 
 @require_GET

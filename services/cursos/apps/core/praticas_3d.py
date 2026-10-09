@@ -127,9 +127,6 @@ def salvar(request,atividade):
             if uso-(existente.tamanho_imagem if existente else 0)+len(imagem)>50*1024*1024:raise ValueError('Sua coleção atingiu o limite de 50 MiB em imagens.')
             p=existente or Projeto3D(id=projeto_id,pessoa=pessoa,curso=a.aula.curso,grupo=a.grupo)
             p.base=base;p.titulo=titulo;p.receita=receita;p.imagem=imagem;p.tamanho_imagem=len(imagem);p.revisao=revisao+1;p.save()
-            if not existente:
-                from apps.cursos import eventos
-                eventos.emitir_item_criado(p,ocorrido_em=timezone.now())
             Tentativa3D.objects.update_or_create(pessoa=pessoa,atividade=a,defaults={'projeto':p,'estado':{'etapa':receita['etapa'],'conferencia':receita['conferencia']}})
             Evento3D.objects.create(pessoa=pessoa,atividade=a,tipo='salvar',etapa=receita['etapa'])
         return JsonResponse({'projeto':personalizacao(p)})
