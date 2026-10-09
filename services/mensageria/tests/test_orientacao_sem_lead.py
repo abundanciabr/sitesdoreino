@@ -9,6 +9,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
+from apps.links.models import LinkIndividual
 from apps.conversas.models import Conversa, Descadastro, MensagemDaConversa, OrientacaoDoSite
 from apps.jornadas.models import OutboxEvent
 from apps.whatsapp.models import ConfiguracaoWhatsApp
@@ -109,7 +110,9 @@ def test_desconhecido_recebe_uma_orientacao_e_a_segunda_fala_em_24h_nao_gera_out
     assert (saidas[0].autor, saidas[0].autor_id) == ("sistema", "orientacao:desconhecida")
     texto = saidas[0].texto
     assert "assistente da equipe" in texto and "Vamos conversar!" in texto
-    assert "https://meusite.exemplo/quiz" in texto and "ajuda@meusite.exemplo" in texto
+    # O endereço do quiz sai como link curto /r/<token>, que leva ao mesmo destino.
+    assert "https://meshcraft.top/r/" in texto and "ajuda@meusite.exemplo" in texto
+    assert LinkIndividual.objects.get().url_original == "https://meusite.exemplo/quiz"
     assert not any(segredo in texto for segredo in SEGREDOS)
     # Segunda fala dentro de 24h: fica na caixa, sem outra orientação.
     _upsert(cliente, texto="Alô?", ident="D2")

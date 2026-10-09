@@ -222,6 +222,66 @@ class LeadsClient:
         return r.json()
 
 
+class MensageriaClient:
+    """Par funil -> mensageria só para registrar o acesso a um link rastreado.
+
+    Devolve o dict `{"destino", "classificacao", "motivo"}` (200), `None` quando
+    a mensageria diz que o link não existe (404) e `SEM_RESPOSTA` para qualquer
+    outra coisa (sem configuração, rede, timeout, status inesperado, corpo fora
+    do contrato). Quem chama decide: 404 honesto contra "tente de novo".
+    O token do link nunca vai por inteiro para o log.
+    """
+
+    TIMEOUT = 3.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Lida NO PONTO DE USO, como na identidade: env faltando não pode virar 500."""
+        base = (os.environ.get("MENSAGERIA_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("MENSAGERIA_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def registrar_acesso(self, token: str, *, metodo: str, user_agent: str, accept: str):
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "link: MENSAGERIA_API_URL/MENSAGERIA_API_TOKEN ausentes no env"
+            )
+            return SEM_RESPOSTA
+        base, bearer = config
+        try:
+            r = http().post(
+                f"{base}/links/{token}/acesso",
+                json={"metodo": metodo, "user_agent": user_agent, "accept": accept},
+                headers={"Authorization": f"Bearer {bearer}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("link %s...: mensageria não respondeu: %s", token[:3], erro)
+            return SEM_RESPOSTA
+        if r.status_code == 404:
+            try:
+                corpo404 = r.json()
+            except ValueError:
+                corpo404 = None
+            if isinstance(corpo404, dict) and corpo404.get("detail") == "link desconhecido":
+                return None
+        if r.status_code != 200:
+            logger.error(
+                "link %s...: mensageria respondeu HTTP %s", token[:3], r.status_code
+            )
+            return SEM_RESPOSTA
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("link %s...: corpo fora do contrato: %s", token[:3], erro)
+            return SEM_RESPOSTA
+        destino = corpo.get("destino") if isinstance(corpo, dict) else None
+        if not isinstance(destino, str) or not destino:
+            logger.error("link %s...: resposta sem destino", token[:3])
+            return SEM_RESPOSTA
+        return corpo
+
+
 class IdentidadeClient:
     """`contracts/identidade.openapi.yaml` — quem é a pessoa, e (desde
     `DECISAO-login-por-senha.md`) o segundo jeito de ela provar quem é.

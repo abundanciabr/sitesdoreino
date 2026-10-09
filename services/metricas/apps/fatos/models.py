@@ -367,3 +367,68 @@ class FatoMensagemRecebida(models.Model):
 
     def __str__(self) -> str:
         return f"mensagem recebida ({self.canal}/{self.tipo}) em {self.recebida_em:%Y-%m-%d}"
+
+
+class FatoLinkEnviado(models.Model):
+    """Um link rastreado que a `mensageria` enviou (`link.enviado`).
+
+    Projeção em colunas para `/api/metricas/links`. O `Evento` cru continua
+    sendo a fonte. Sem telefone, nome ou texto da mensagem: o contrato do
+    evento não os traz e o assunto é protegido contra eles
+    (`consume_eventos.ASSUNTOS_SEM_DADO_PESSOAL`).
+    """
+
+    event_id = models.UUIDField(unique=True)
+    site_id = models.CharField(max_length=100)
+    #: Um link é enviado uma vez; a unicidade impede contar o mesmo link duas
+    #: vezes se a fonte reemitir com outro `event_id`.
+    link_id = models.UUIDField(unique=True)
+    token = models.CharField(max_length=10, blank=True, default="")
+    destino_id = models.CharField(max_length=60, blank=True, default="")
+    destino_nome = models.CharField(max_length=200, blank=True, default="")
+    versao = models.IntegerField(null=True, blank=True)
+    origem = models.CharField(max_length=20, blank=True, default="")
+    #: A campanha é o `jornada_slug` da fonte (vazio fora de jornada).
+    campanha = models.CharField(max_length=100, blank=True, default="")
+    mensagem_id = models.CharField(max_length=60, blank=True, default="")
+    passo_id = models.CharField(max_length=60, blank=True, default="")
+    enviado_em = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["site_id", "enviado_em"]),
+            models.Index(fields=["site_id", "destino_id"]),
+            models.Index(fields=["site_id", "campanha"]),
+        ]
+        ordering = ["enviado_em"]
+
+    def __str__(self) -> str:
+        return f"link enviado {self.token} em {self.enviado_em:%Y-%m-%d}"
+
+
+class FatoLinkAcesso(models.Model):
+    """Um acesso a um link rastreado (`link.acessado`), já classificado.
+
+    Pode chegar ANTES do `link.enviado` correspondente, por isso não há chave
+    estrangeira: `link_id` é só o elo, resolvido na consulta.
+    """
+
+    event_id = models.UUIDField(unique=True)
+    site_id = models.CharField(max_length=100)
+    link_id = models.UUIDField(db_index=True)
+    destino_id = models.CharField(max_length=60, blank=True, default="")
+    versao = models.IntegerField(null=True, blank=True)
+    origem = models.CharField(max_length=20, blank=True, default="")
+    campanha = models.CharField(max_length=100, blank=True, default="")
+    mensagem_id = models.CharField(max_length=60, blank=True, default="")
+    passo_id = models.CharField(max_length=60, blank=True, default="")
+    classificacao = models.CharField(max_length=16, blank=True, default="")
+    metodo = models.CharField(max_length=8, blank=True, default="")
+    ocorrido_em = models.DateTimeField()
+
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "ocorrido_em"])]
+        ordering = ["ocorrido_em"]
+
+    def __str__(self) -> str:
+        return f"acesso {self.classificacao} ao link {self.link_id}"

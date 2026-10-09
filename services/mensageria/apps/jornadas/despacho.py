@@ -173,11 +173,18 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
     )
     if existente is not None and existente.status != "falhou":
         _atualizar(entrega, existente.status, getattr(existente, "erro", ""))
+        from apps.links import servico as links_servico
+
+        # Retomada: o texto guardado já tem os links individuais.
+        links_ret = links_servico.links_do_texto(
+            getattr(existente, "corpo", ""), site_id=entrega.inscricao.site_id)
+        if existente.status in {"aceito", "enviado", "entregue", "lido"}:
+            links_servico.marcar_enviados(links_ret)
         if entrega.inscricao.oportunidade_id:
             try:
                 crm.registrar_na_conversa(
                     entrega, telefone=existente.destinatario, corpo=existente.corpo,
-                    mensagem_whatsapp=existente,
+                    mensagem_whatsapp=existente, links=links_ret,
                 )
             except Exception:  # noqa: BLE001 - histórico; o envio já aconteceu
                 logger.exception("jornada: mensagem enviada não entrou na conversa")
@@ -265,6 +272,12 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
     if not corpo:
         _atualizar(entrega, "falhou", "texto do passo ausente")
         return
+    from apps.links import servico as links_servico
+
+    corpo, links = links_servico.reescrever(
+        corpo, site_id=entrega.inscricao.site_id, origem="jornada", referencia=referencia,
+        jornada_slug=entrega.inscricao.jornada.slug, inscricao_id=entrega.inscricao_id,
+        passo_id=entrega.passo_id)
     mensagem = enviar_mensagem(
         site_id=entrega.inscricao.site_id,
         destinatario=telefone,
@@ -273,10 +286,12 @@ def processar_entrega(*, inscricao_id, passo_id) -> None:
         referencia=referencia,
     )
     _atualizar(entrega, mensagem.status, getattr(mensagem, "erro", ""))
+    if links and mensagem.status in {"aceito", "enviado", "entregue", "lido"}:
+        links_servico.marcar_enviados(links)
     if entrega.inscricao.oportunidade_id:
         try:
             crm.registrar_na_conversa(
-                entrega, telefone=telefone, corpo=corpo, mensagem_whatsapp=mensagem
+                entrega, telefone=telefone, corpo=corpo, mensagem_whatsapp=mensagem, links=links
             )
         except Exception:  # noqa: BLE001 - o envio já aconteceu; não reenviar
             logger.exception("jornada: mensagem enviada não entrou na conversa")

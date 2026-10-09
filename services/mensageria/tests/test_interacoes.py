@@ -4,6 +4,7 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from apps.links.models import LinkIndividual
 from apps.conversas import entrada, envio, interacoes
 from apps.conversas.models import Conversa
 from apps.whatsapp import service
@@ -58,7 +59,9 @@ def test_texto_e_componente_tem_chaves_duraveis_e_nao_repetem(monkeypatch, tipo,
     assert chamadas[1][0] == f"message/{endpoint}/inst"
     if tipo == "lista":
         assert all(row["description"].strip() for row in chamadas[1][1]["sections"][0]["rows"])
-    assert "https://meshcraft.top/cursos/" in saida.mensagem.texto
+    # O link do WhatsApp sai como /r/<token>; o destino guardado é o original.
+    assert "https://meshcraft.top/r/" in saida.mensagem.texto
+    assert LinkIndividual.objects.get().url_original == "https://meshcraft.top/cursos/"
     if tipo != "links":
         assert "1. Conhecer cursos" in saida.mensagem.texto
     assert envio.enviar(**kwargs).resultado == "repetida"

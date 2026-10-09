@@ -504,6 +504,8 @@ def contexto_da_conversa(request, site_id, conversa_id, antes_de=""):
             cursor = min(datadas, key=lambda m: m["momento"])["ocorrida_em"] if datadas else ""
         if cursor:
             anteriores = "?" + urlencode({"antes_de": cursor})
+    from .links_rastreados import links_da_conversa  # import tardio: links_rastreados importa deste módulo
+    links_enviados, links_erro = links_da_conversa(site_id, conversa_id)
     return {
         "admin": request.admin, "erro": "", "recado": "",
         "conversa": conversa,
@@ -515,6 +517,7 @@ def contexto_da_conversa(request, site_id, conversa_id, antes_de=""):
         "oportunidade": oportunidade_do_lead(lead_id),
         "whatsapp": conversa.get("canal") == "whatsapp",
         "referencia": str(uuid.uuid4()),
+        "links_enviados": links_enviados, "links_erro": links_erro,
     }, 200
 
 

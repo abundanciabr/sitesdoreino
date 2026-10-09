@@ -1,0 +1,72 @@
+{% extends "admin/base.html" %}
+{% load nomes_admin %}
+{% block titulo %}Links | Meshcraft{% endblock %}
+{% block corpo %}
+<main class="envolucro">
+  <h1>Links enviados no WhatsApp</h1>
+  <p class="subtitulo">Cada link enviado leva a um destino que você pode trocar sem reenviar. Acesso provável não prova quem tocou: o link pode ter sido encaminhado, e prévias e robôs são contados à parte.</p>
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+  {% if recado %}<p class="recado" role="status">{{ recado }}</p>{% endif %}
+  {% if falha %}<p class="aviso" role="alert">{{ falha }}</p>{% endif %}
+  {% for a in avisos %}<p class="aviso" role="status">{{ a }}</p>{% endfor %}
+  {% if not erro %}
+  <form method="get" class="cartao">
+    {% if arquivados %}<input type="hidden" name="arquivados" value="1">{% endif %}
+    <label>De <input type="date" name="de" value="{{ filtros.de }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ filtros.ate }}"></label>
+    <label>Campanha <input name="campanha" maxlength="100" value="{{ filtros.campanha }}"></label>
+    <label>Destino
+      <select name="destino_id"><option value="">Todos</option>
+        {% for d in destinos %}<option value="{{ d.id }}"{% if d.id == filtros.destino_id %} selected{% endif %}>{{ d.nome }}</option>{% endfor %}
+      </select></label>
+    <label>Situação
+      <select name="situacao">
+        {% for chave, rotulo in situacoes.items %}<option value="{{ chave }}"{% if chave == filtros.situacao or chave == "todos" and not filtros.situacao %} selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+      </select></label>
+    <button class="botao">Filtrar</button>
+    <a href="{{ exportar }}">Baixar CSV</a>
+  </form>
+
+  <section class="cartao"><h2>Resumo por destino ({{ periodo }}; “sem acesso” conta quem não abriu em 24 h)</h2>
+  {% if resumo %}
+    <table><thead><tr><th>Destino</th><th>Enviados</th><th>Com acesso provável</th><th>Sem acesso após 24 h</th><th>Acessos automáticos</th></tr></thead><tbody>
+    {% for g in resumo %}<tr><td>{{ g.rotulo|default:g.chave }}</td><td>{{ g.enviados }}</td><td>{{ g.com_acesso_provavel }}</td><td>{{ g.sem_acesso_apos_horas }}</td><td>{{ g.acessos_automaticos }}</td></tr>
+    {% if g.amostra_insuficiente %}<tr><td colspan="5"><small>Poucos envios: não tire conclusão deste destino.</small></td></tr>{% endif %}
+    {% endfor %}</tbody></table>
+  {% elif resumo is None %}<p class="explica">Resumo indisponível agora.</p>
+  {% else %}<p class="explica">Nenhum envio no período.</p>{% endif %}
+  </section>
+
+  <section class="cartao"><h2>Links enviados</h2>
+  {% if links %}
+    <table><thead><tr><th>Link</th><th>Destino</th><th>Campanha</th><th>Enviado</th><th>Prováveis</th><th>Robôs</th><th>Total</th></tr></thead><tbody>
+    {% for l in links %}<tr><td><span title="{{ l.url_original }}">{{ l.url_curta }}</span></td><td>{{ l.destino.nome }} (v{{ l.versao }})</td><td>{{ l.campanha }}</td><td>{% if l.enviado_em_momento %}{{ l.enviado_em_momento|date:"d/m/Y H:i" }}{% else %}ainda não{% endif %}</td><td>{{ l.acessos.provaveis|default:0 }}{% if l.primeiro_provavel_momento %}<br><small>1º: {{ l.primeiro_provavel_momento|date:"d/m H:i" }}</small>{% endif %}</td><td>{{ l.acessos.automaticos|default:0 }}</td><td>{{ l.acessos.total|default:0 }}</td></tr>
+    {% endfor %}</tbody></table>
+    <p class="explica">Mostrando até {{ limite }} links, os mais novos primeiro. O CSV leva até 5000.</p>
+  {% else %}<p class="explica">Nenhum link encontrado com estes filtros.</p>{% endif %}
+  </section>
+
+  <section class="cartao"><h2>Destinos</h2>
+  <p class="explica"><a href="{{ mais_arquivados }}">{% if arquivados %}Esconder arquivados{% else %}Mostrar arquivados{% endif %}</a></p>
+  {% for d in destinos %}
+    <div class="cartao">
+      <h3>{{ d.nome }}{% if d.arquivado_em %} (arquivado){% endif %}</h3>
+      <p class="explica">Versão {{ d.versao_atual }}: {{ d.url_atual }} · {{ d.links_enviados }} links enviados · {{ d.acessos_provaveis }} acessos prováveis</p>
+      <details><summary>Versões</summary><ul>{% for v in d.versoes %}<li>v{{ v.numero }}: {{ v.url }}</li>{% endfor %}</ul></details>
+      <form method="post" action="{% url 'destinos_rastreados_versao' d.id %}">{% csrf_token %}
+        <label>Novo endereço (vale para os links já enviados) <input name="url" type="url" maxlength="2000" required placeholder="https://"></label>
+        <button class="botao">Gravar nova versão</button></form>
+      <form method="post" action="{% url 'destinos_rastreados_arquivar' d.id %}">{% csrf_token %}
+        <input type="hidden" name="acao" value="{% if d.arquivado_em %}desarquivar{% else %}arquivar{% endif %}">
+        <button class="botao">{% if d.arquivado_em %}Desarquivar{% else %}Arquivar{% endif %}</button></form>
+    </div>
+  {% empty %}<p class="explica">Nenhum destino cadastrado.</p>{% endfor %}
+  <h3>Novo destino</h3>
+  <form method="post" action="{% url 'destinos_rastreados_novo' %}">{% csrf_token %}
+    <label>Nome <input name="nome" maxlength="200" required></label>
+    <label>Endereço <input name="url" type="url" maxlength="2000" required placeholder="https://"></label>
+    <button class="botao">Criar destino</button></form>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

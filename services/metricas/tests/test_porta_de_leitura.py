@@ -120,9 +120,9 @@ def operacoes_da_porta() -> list[tuple[str, str]]:
 # ---------------------------------------------------------------------------
 
 
-def test_o_schema_vivo_tem_as_oito_operacoes():
+def test_o_schema_vivo_tem_as_nove_operacoes():
     """Se este número mudar, o teste de 401 abaixo mudou de escopo junto."""
-    assert len(operacoes_da_porta()) == 8  # a oitava: countCrmFunnel (funil do CRM)
+    assert len(operacoes_da_porta()) == 9  # a nona: countTrackedLinks (links rastreados)
 
 
 @pytest.mark.parametrize("metodo,caminho", operacoes_da_porta())

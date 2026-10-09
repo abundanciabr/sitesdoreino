@@ -98,6 +98,8 @@ SECOES = (
     # software, e não é como ele fala da lista.
     ("contatos", "Contatos"),
     ("whatsapp", "WhatsApp"),
+    # Nome da rota sem "link": a conta do robô recusa url_name com essa palavra.
+    ("destinos_rastreados", "Links"),
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
     ("documentos_admin", "Documentos"),

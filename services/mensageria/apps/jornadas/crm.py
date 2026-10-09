@@ -323,7 +323,7 @@ _ESTADO_NA_CONVERSA = {
 
 
 def registrar_na_conversa(entrega: Entrega, *, telefone: str, corpo: str,
-                          mensagem_whatsapp) -> bool:
+                          mensagem_whatsapp, links=()) -> bool:
     """A mensagem da jornada entra no histórico da conversa do lead."""
     conversas = _caixa_de_conversas()
     endereco = _telefone(telefone)
@@ -359,4 +359,8 @@ def registrar_na_conversa(entrega: Entrega, *, telefone: str, corpo: str,
             mensagem.save(update_fields=["estado_envio", "id_externo"])
         if criada:
             conversas.Conversa.objects.filter(pk=conversa.pk).update(ultima_mensagem_em=agora)
+        if links:
+            from apps.links import servico as links_servico
+
+            links_servico.vincular_conversa(links, conversa.pk, mensagem.pk)
     return True

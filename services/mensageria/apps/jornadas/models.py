@@ -684,9 +684,10 @@ class Efeito(models.Model):
     volta para ser medido.
 
     O QUE ESTA TABELA NÃO É, E FOI ESCOLHA DELE: não há grupo de controle (ele
-    recusou deliberadamente não ajudar parte dos alunos para medir a diferença) e
-    não há rastreio de abertura ou clique — nada de pixel, nada de link
-    reescrito. Consequência aceita e dita: os números mostram CORRELAÇÃO, NÃO
+    recusou deliberadamente não ajudar parte dos alunos para medir a diferença). O
+    e-mail continua sem pixel. Desde 09/10/2026, por decisão do mantenedor, os
+    links de WhatsApp são reescritos para /r/<token> (apps/links) e registram
+    acesso. Consequência aceita e dita: os números mostram CORRELAÇÃO, NÃO
     CAUSA. Quem ler os números depois precisa saber disso, e é por isso que está
     aqui e não só no livro.
     """

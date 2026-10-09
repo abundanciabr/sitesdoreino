@@ -117,6 +117,8 @@ def caminho_mesh(idioma: str, caminho: str = "/") -> str:
     return caminho_publico(CFG_MESH, idioma, caminho)
 
 
+MENSAGERIA = "http://mensageria.teste/api/mensageria"
+
 OFERTA_MESH = {
     "site_id": SITE_MESH["id"],
     "slug": SLUG_MESH,
@@ -135,6 +137,8 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("TOKEN_LEADS", "token-leads-de-teste")
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-funil-identidade")
+    monkeypatch.setenv("MENSAGERIA_API_URL", MENSAGERIA)
+    monkeypatch.setenv("MENSAGERIA_API_TOKEN", "teste")
     limpar_cache_de_sites()  # o cache do CONV-SITE não pode vazar entre testes
     # O da sessão pelo MESMO motivo, e é mais perigoso que o outro: uma sessão
     # que vaze entre testes faz um guarda de "visitante" passar mostrando o nome

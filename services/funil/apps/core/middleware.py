@@ -532,7 +532,16 @@ class AtorDaRequisicao:
 # `/google0e78b54775677e95.html` (31/08/2026) é o arquivo de verificação do
 # Google Search Console: conteúdo fixo, e o Google bate nele sem conhecer o
 # catálogo de sites — mesma razão do /healthz.
-CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js", "/google0e78b54775677e95.html")
+# `/r/` (links rastreados de WhatsApp, 09/10/2026): o token é a identidade do
+# link e o domínio de quem clica não precisa estar cadastrado; também não ganha
+# cookie nem redirect de barra final (`/r/<token>/` é 404).
+CAMINHOS_SEM_SITE = (
+    "/healthz",
+    "/static/",
+    "/sw.js",
+    "/google0e78b54775677e95.html",
+    "/r/",
+)
 
 # Rota de MÁQUINA (D6): precisa do Site — desde a fase 4 os idiomas vêm do
 # catálogo, e o sitemap é feito deles — mas NUNCA se localiza (nenhum prefixo

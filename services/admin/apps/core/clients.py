@@ -2304,6 +2304,26 @@ class FunilCrmClient(MedicaoClient):
             "por_atendente": por_atendente,
         }
 
+    def links_rastreados(
+        self, site_id: str, de: "dt.date | None", ate: "dt.date | None", agrupar: str = "destino", horas: int = 24
+    ) -> "tuple[str, list | None]":
+        """`countTrackedLinks` (`GET /links`): por grupo, quantos links saíram e
+        quantos tiveram acesso provável. Só a medição agrega; o admin não soma
+        nada. Forma torta vira `NAO_RESPONDEU`, nunca zero."""
+        params = {"site_id": site_id, "agrupar": agrupar, "horas": horas, "base": "enviados"}
+        if de:
+            params["de"] = de.isoformat()
+        if ate:
+            params["ate"] = ate.isoformat()
+        desfecho, corpo = self._pedir("/links", params)
+        if desfecho != self.OK:
+            return desfecho, None
+        grupos = corpo.get("grupos") if isinstance(corpo, dict) else None
+        if not isinstance(grupos, list) or not all(isinstance(g, dict) for g in grupos):
+            logger.error("medicao: o resumo dos links veio fora do contrato")
+            return self.NAO_RESPONDEU, None
+        return self.OK, grupos
+
 
 class LeadsClient:
     """services/leads/apps/core/api.py — `listLeads` e `getLead`.

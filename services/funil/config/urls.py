@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from apps.core.links import redirecionar_link
 from apps.core.modelo_flp import (
     modelo_flp_conteudo,
     modelo_flp_imagem,
@@ -61,6 +62,9 @@ urlpatterns = [
     # urlconf não tinha onde entregá-la. Daí o 404 de produção. O porquê de
     # cada detalhe está na docstring da view.
     re_path(r"^static/(?P<path>.*)$", servir_estatico, name="static"),
+    # Link rastreado de WhatsApp: rota de máquina (`/r/` em CAMINHOS_SEM_SITE),
+    # sem Host cadastrado, sem cookie e sem barra final.
+    path("r/<str:token>", redirecionar_link, name="link_rastreado"),
     path("leads", capturar_lead, name="capturar_lead"),
     # Seção vista e clique no botão, mandados pelo script da oferta. Rota de
     # MÁQUINA como o sitemap: resolve o site e nunca se localiza, então o

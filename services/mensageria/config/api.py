@@ -7,6 +7,7 @@ from apps.consentimentos.api import router as consentimentos_router
 from apps.core.auth import bearerAuth
 from apps.eventos.avisos_equipe import router as avisos_equipe_router
 from apps.audio.api import router as audio_router
+from apps.links.api import router as links_router
 from apps.whatsapp.api import router as whatsapp_router
 from apps.whatsapp_modelos.api import router as whatsapp_modelos_router
 
@@ -78,3 +79,5 @@ api.add_router("whatsapp-modelos/", whatsapp_modelos_router)
 api.add_router("", conversas_router)
 api.add_router("", consentimentos_router)
 api.add_router("audio/", audio_router)
+# Links rastreados de WhatsApp (/links...).
+api.add_router("", links_router)

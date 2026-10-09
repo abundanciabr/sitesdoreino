@@ -89,7 +89,9 @@ from .models import Evento as EventoModel
 from .models import EventoMorto as EventoMortoModel
 from .models import Marco as MarcoModel
 from .crm import funil as funil_do_crm
-from .models import dia_em_sao_paulo
+from .links import AGRUPAMENTOS as AGRUPAMENTOS_DE_LINKS
+from .links import contar as contar_links
+from .models import FUSO, dia_em_sao_paulo
 
 router = Router()
 
@@ -835,3 +837,66 @@ def funil_crm(request, site_id: str, desde: dt.date, ate: dt.date):
             f"{JANELA_MAXIMA_EM_DIAS}: peça em pedaços",
         )
     return funil_do_crm(site_id, desde, ate)
+
+
+# ---------------------------------------------------------------------------
+# 9. Os links rastreados de WhatsApp
+# ---------------------------------------------------------------------------
+
+
+class GrupoDeLinks(Schema):
+    chave: str
+    rotulo: str
+    enviados: int
+    com_acesso_provavel: int
+    sem_acesso_apos_horas: int
+    acessos_automaticos: int
+    amostra_insuficiente: bool
+
+
+class LinksRastreados(Schema):
+    base: str
+    horas: int
+    agrupar: str
+    grupos: list[GrupoDeLinks]
+
+
+@router.get("/links", response=LinksRastreados, operation_id="countTrackedLinks")
+def links_rastreados(
+    request,
+    site_id: str,
+    de: dt.date | None = None,
+    ate: dt.date | None = None,
+    agrupar: str = "destino",
+    base: str = "enviados",
+    horas: int = 24,
+):
+    """Links enviados e quantos foram acessados por uma pessoa, por grupo.
+
+    Acesso "automatico" (prévia do WhatsApp, robôs) nunca conta como visita.
+    Só a base `enviados` existe: não há evento de entrega (`apps/fatos/links.py`).
+    """
+    if base != "enviados":
+        raise HttpError(
+            422,
+            "só a base 'enviados' existe hoje: a Mensageria ainda não emite evento de entrega",
+        )
+    if agrupar not in AGRUPAMENTOS_DE_LINKS:
+        raise HttpError(422, f"`agrupar` deve ser um de: {', '.join(AGRUPAMENTOS_DE_LINKS)}")
+    if not 1 <= horas <= 720:
+        raise HttpError(422, "`horas` deve ficar entre 1 e 720")
+    # sem datas (tela do admin sem filtro): os últimos 30 dias, em dias de São Paulo
+    if ate is None:
+        ate = dt.datetime.now(FUSO).date()
+    if de is None:
+        de = ate - dt.timedelta(days=29)
+    if ate < de:
+        raise HttpError(422, "`ate` é anterior a `de`: o intervalo está invertido")
+    dias = (ate - de).days + 1
+    if dias > JANELA_MAXIMA_EM_DIAS:
+        raise HttpError(
+            422,
+            f"o intervalo pedido tem {dias} dias e o teto é "
+            f"{JANELA_MAXIMA_EM_DIAS}: peça em pedaços",
+        )
+    return contar_links(site_id, de, ate, agrupar=agrupar, horas=horas)

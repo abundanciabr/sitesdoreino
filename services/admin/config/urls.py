@@ -90,6 +90,10 @@ from apps.core.parametros_da_fila import (
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.avisos_equipe import aviso_visto, avisos_da_equipe
 from apps.core.whatsapp import whatsapp
+from apps.core.links_rastreados import (
+    destinos_rastreados, destinos_rastreados_arquivar, destinos_rastreados_exportar,
+    destinos_rastreados_novo, destinos_rastreados_versao,
+)
 from apps.core.crm_conversas import crm_conversa, crm_conversas
 from apps.core.crm_agentes import (
     crm_agentes,
@@ -342,6 +346,11 @@ urlpatterns = [
     path("pagamentos/", pagamentos, name="pagamentos"),
     path("pagamentos/devolver", pagamentos_devolver, name="pagamentos_devolver"),
     path("whatsapp/", whatsapp, name="whatsapp"),
+    path("links/", destinos_rastreados, name="destinos_rastreados"),
+    path("links/novo", destinos_rastreados_novo, name="destinos_rastreados_novo"),
+    path("links/exportar.csv", destinos_rastreados_exportar, name="destinos_rastreados_exportar"),
+    path("links/<uuid:destino_id>/versao", destinos_rastreados_versao, name="destinos_rastreados_versao"),
+    path("links/<uuid:destino_id>/arquivar", destinos_rastreados_arquivar, name="destinos_rastreados_arquivar"),
     path("crm/conversas/", crm_conversas, name="crm_conversas"),
     path("crm/conversas/<uuid:conversa_id>/", crm_conversa, name="crm_conversa"),
     path("interno/robo-dos-alunos/gerar", gerar_exemplo_do_aluno, name="gerar_exemplo_do_aluno"),

@@ -116,6 +116,10 @@ class BarraNoFinal:
         if not caminho.endswith("/") or caminho == "/":
             return resposta
 
+        # Link rastreado (`/r/<token>`): o token é exato, `/r/<token>/` é 404.
+        if caminho.startswith("/r/"):
+            return resposta
+
         nu = caminho.rstrip("/")
         if not nu or _resolve(caminho) or not _resolve(nu):
             return resposta

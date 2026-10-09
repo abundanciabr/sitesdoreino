@@ -102,8 +102,16 @@ def envio_manual(request, site_id: str, dados: EnvioEntrada):
     _escrita(request)
     if not dados.referencia.strip():
         raise HttpError(422, "referencia obrigatoria")
-    msg = enviar_mensagem(site_id=_site(site_id), destinatario=dados.destinatario,
-                          corpo=dados.corpo, origem="manual", referencia=dados.referencia)
+    from apps.links import servico as links_servico
+
+    site = _site(site_id)
+    corpo, links = links_servico.reescrever(dados.corpo, site_id=site, origem="manual",
+                                            referencia=dados.referencia)
+    msg = enviar_mensagem(site_id=site, destinatario=dados.destinatario,
+                          corpo=corpo, origem="manual", referencia=dados.referencia)
+    if links and msg.status in {"aceito", "enviado", "entregue", "lido"}:
+        # Pelo corpo gravado: chave repetida com outro texto só marca o que saiu de fato.
+        links_servico.marcar_enviados_no_texto(msg.corpo, site_id=site)
     return _resumo(msg)
 
 

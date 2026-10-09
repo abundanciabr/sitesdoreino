@@ -191,6 +191,9 @@ def _pendente_abandonada(mensagem: MensagemDaConversa) -> bool:
             and mensagem.ocorrida_em < timezone.now() - PENDENTE_ABANDONADA)
 
 
+ESTADOS_ACEITOS = frozenset({"aceito", "enviado", "entregue", "lido"})
+
+
 def _estado_whatsapp(status: str) -> str:
     return status if status in {"desconhecido", "aceito", "enviado", "entregue", "lido", "falhou"} else "desconhecido"
 
@@ -198,13 +201,27 @@ def _estado_whatsapp(status: str) -> str:
 def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: str = "agente",
            autor_id: str = "", modelo: dict | None = None, assunto: str = "",
            interacao: str | None = None) -> Resultado:
-    texto, componente = interacoes.preparar(interacao if not modelo else None, texto)
     chave = chave_idempotencia.strip()
+    links = []
+    if conversa.canal == "whatsapp" and not modelo:
+        # Antes de `preparar`: os botões de link nascem do texto já reescrito.
+        from apps.links import servico as links_servico
+
+        texto, links = links_servico.reescrever(
+            texto, site_id=conversa.site_id, origem="conversa", referencia=f"{conversa.id}:{chave}",
+            conversa_id=conversa.pk)
+    texto, componente = interacoes.preparar(interacao if not modelo else None, texto)
     existente = conversa.mensagens.filter(chave_idempotencia=chave).first()
     retomada = False
     if existente is not None and existente.estado_envio != "falhou":
         if not _pendente_abandonada(existente):
-            return Resultado("repetida", _sincronizar(existente))
+            sincronizada = _sincronizar(existente)
+            if conversa.canal == "whatsapp" and sincronizada.estado_envio in ESTADOS_ACEITOS:
+                # O primeiro resultado pode ter sido "desconhecido" e o webhook confirmou depois.
+                from apps.links import servico as links_servico
+
+                links_servico.marcar_enviados_no_texto(sincronizada.texto, site_id=conversa.site_id)
+            return Resultado("repetida", sincronizada)
         retomada = True
     if autor == "agente" and conversa.estado == "pessoa":
         return Resultado("conversa_com_pessoa", detalhe="uma pessoa da equipe assumiu esta conversa")
@@ -269,7 +286,14 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
         repetida = conversa.mensagens.filter(chave_idempotencia=chave).first()
         return Resultado("repetida", repetida)
     if conversa.canal == "whatsapp":
+        if links:
+            from apps.links import servico as links_servico
+
+            links_servico.vincular_mensagem(links, existente.pk)
         mensagem = _enviar_whatsapp(conversa, existente, modelo)
+        if links and mensagem.estado_envio in ESTADOS_ACEITOS:
+            # Pelo texto gravado: se a chave voltou com outro texto, só vale o que saiu.
+            links_servico.marcar_enviados_no_texto(mensagem.texto, site_id=conversa.site_id)
         if componente and mensagem.estado_envio in {"aceito", "enviado", "entregue", "lido"}:
             from apps.whatsapp.service import enviar_mensagem
 

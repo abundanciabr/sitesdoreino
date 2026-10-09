@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     # critério de morte §10.7 do plano.
     "apps.jornadas",
     "apps.whatsapp_modelos",
+    # Links rastreados de WhatsApp: cada URL enviada vira /r/<token> (09/10/2026).
+    "apps.links",
 ]
 
 MIDDLEWARE = [
@@ -207,3 +209,6 @@ EMAIL_MAX_EMAILS_POR_HORA = limite_de_email("EMAIL_MAX_EMAILS_POR_HORA")
 # enfileira numa, o `run_huey` escuta a outra, e nenhum e-mail sai (ARMADILHAS
 # §4.11). O import é seguro: config/huey.py não é fail-hard (default inofensivo).
 from config.huey import huey as HUEY  # noqa: E402
+
+# Base pública dos links rastreados de WhatsApp (o funil serve /r/<token>).
+LINKS_URL_BASE = os.environ.get("LINKS_URL_BASE", "https://meshcraft.top/r/")

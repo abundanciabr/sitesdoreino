@@ -78,6 +78,7 @@ import redis
 from django.core.management.base import BaseCommand
 
 from apps.fatos.crm import projetar
+from apps.fatos.links import projetar_link
 from apps.fatos.models import EventoMorto
 from apps.fatos.recepcao import GUARDADO, JA_TINHA, MORTO, receber
 
@@ -133,6 +134,11 @@ STREAMS = [
     # vazio e nenhuma resposta seria contada.
     "eventos.crm.oportunidade-atualizada",
     "eventos.mensagem.recebida",
+    # Os links rastreados de WhatsApp (`mensageria`, apps/links): quando o
+    # link foi enviado e cada acesso, ja classificado (pessoa x previa/robo).
+    # Projetados em colunas por `apps/fatos/links.py`.
+    "eventos.link.enviado",
+    "eventos.link.acessado",
 ]
 
 #: Assuntos protegidos contra dado pessoal: nenhum deles pode levar customer,
@@ -152,6 +158,10 @@ ASSUNTOS_SEM_DADO_PESSOAL = frozenset(
         "checkout.pedido-atribuido",
         "checkout.pedido-pago",
         "checkout.iniciado",
+        # Links rastreados: o contrato leva so ids, token, campanha e
+        # classificacao; telefone, nome e texto da mensagem nao vao no evento.
+        "link.enviado",
+        "link.acessado",
     }
 )
 
@@ -255,6 +265,7 @@ def processar(cru: bytes) -> str:
         # A projeção do CRM vem DEPOIS do fato e também na reentrega: se o
         # processo caiu entre gravar e projetar, a próxima entrega completa.
         projetar(objeto)
+        projetar_link(objeto)
     if desfecho == MORTO:
         # ERROR e não WARNING: um evento que a plataforma afirmou e o livro não
         # pôde guardar é um buraco na contagem, e alguém precisa olhar.

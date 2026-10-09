@@ -568,6 +568,9 @@ def _caminhos_de_escrita() -> list[str]:
         rota.replace("{slug}", SLUG).replace("{site_id}", SITE).replace("{audio_id}", "1")
         for rota, operacoes in schema["paths"].items()
         if "post" in operacoes
+        # Registro de acesso de link: POST que aceita token de leitura de propósito
+        # (só acréscimo, sem dado pessoal, sem mudar destino); coberto em test_links_rastreados.
+        and rota != "/links/{token}/acesso"
     ]
     assert caminhos, "a porta nao declarou operacao de escrita nenhuma"
     return caminhos
@@ -866,6 +869,10 @@ CORPOS_DE_ESCRITA = {
     "/conversas/{conversa_id}/encerrar": {"site_id": SITE},
     "/conversas/{conversa_id}/mensagens/{mensagem_id}/transcricao": {"site_id": SITE, "transcricao": "prova"},
     "/consentimentos/whatsapp": {"site_id": SITE, "telefone": "11999999999", "aceito": True},
+    "/links/destinos": {"site_id": SITE, "nome": "Prova", "url": "https://x.y/prova"},
+    "/links/destinos/{destino_id}/versoes": {"site_id": SITE, "url": "https://x.y/prova"},
+    "/links/destinos/{destino_id}/arquivar": {"site_id": SITE},
+    "/links/destinos/{destino_id}/desarquivar": {"site_id": SITE},
 }
 
 
