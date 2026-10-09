@@ -56,6 +56,34 @@ PROJETOS = (
 )
 SLUGS = frozenset(p["slug"] for p in PROJETOS)
 
+# A mesma arte acompanha o projeto na prática e no pedido real. As imagens
+# ficam em duas pranchas; o enquadramento só escolhe o quadrante, sem distorcer.
+ARTES_PROJETOS = {
+    "curso-ak47": ("curso-objetos-v1", "0 0 1 1"),
+    "curso-espada": ("curso-objetos-v1", "1 0 1 1"),
+    "curso-pistola": ("curso-objetos-v1", "0 1 1 1"),
+    "curso-raposa": ("curso-objetos-v1", "1 1 1 1"),
+    "curso-carro": ("curso-modelagem-v1", "0 0 1 1"),
+    "curso-roupa-goku": ("curso-modelagem-v1", "1 0 1 1"),
+    "curso-cabelo-masculino": ("curso-modelagem-v1", "0 1 1 1"),
+    "curso-cabelo-feminino": ("curso-modelagem-v1", "1 1 1 1"),
+}
+ARQUIVOS_ILUSTRACOES = frozenset({"curso-objetos-v1", "curso-modelagem-v1", "curso-categorias-v1"})
+
+
+def arte_projeto(slug):
+    item = ARTES_PROJETOS.get(slug)
+    return {"arquivo": item[0], "enquadramento": item[1], "largura": 2, "altura": 2} if item else None
+
+
+def arte_categoria(chave):
+    if chave == "espadas_objetos":
+        return {"arquivo": "curso-categorias-v1", "enquadramento": "0.02 0.105 0.465 0.38", "largura": 1, "altura": 1}
+    if chave == "cabelos":
+        return {"arquivo": "curso-modelagem-v1", "enquadramento": "0 1 2 1", "largura": 2, "altura": 2}
+    slug = {"pets": "curso-raposa", "carros": "curso-carro", "roupas": "curso-roupa-goku"}.get(chave)
+    return arte_projeto(slug)
+
 
 def projeto(slug):
     return next((deepcopy(p) for p in PROJETOS if p["slug"] == slug), None)
