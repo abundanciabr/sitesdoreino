@@ -93,6 +93,33 @@ def reaproveitar_responsaveis(site_id):
     return total
 
 
+def assunto_da_mensagem(site_id, texto, conversa=None):
+    termos = set(re.findall(r'\w+', texto.casefold()))
+    nomes = {a.nome.casefold(): a for a in Assunto.objects.filter(site_id=site_id)}
+    for nome, assunto in nomes.items():
+        if nome not in ('site', 'cursos', 'comunidade') and nome in texto.casefold():
+            return assunto
+    if termos & {'comunidade', 'fórum', 'forum', 'grupo'}:
+        return nomes['comunidade']
+    if termos & {'curso', 'cursos', 'aula', 'aulas', 'vídeo', 'video', 'professor'}:
+        return nomes['cursos']
+    if conversa:
+        return conversa.assunto
+    return nomes['site']
+
+
+def historico_para_sugestao(conversa):
+    historico = []
+    tamanho = 0
+    for m in conversa.mensagens.order_by('-id')[:60]:
+        texto = publico(m.texto, conversa)
+        if tamanho + len(texto) > 24000:
+            break
+        historico.append({'autor': m.autor, 'texto': texto})
+        tamanho += len(texto)
+    return historico[::-1]
+
+
 def sugerir(conversa, usar_ia=True):
     pergunta = conversa.mensagens.filter(autor='aluno').last()
     if not pergunta:
@@ -108,7 +135,7 @@ def sugerir(conversa, usar_ia=True):
     a = orcamento(c)
     if not usar_ia or not c.ia_ativa or not a or not fontes:
         return resultado
-    historico = [{'autor':m.autor,'texto':publico(m.texto,conversa)} for m in conversa.mensagens.order_by('-id')[:14]][::-1]
+    historico = historico_para_sugestao(conversa)
     try:
         r = modelo.responder(modelo=modelo.conexao().modelo_rapido, instrucoes=INSTRUCOES,
             itens=[{'role':'user','content':json.dumps({'historico':historico,'curso':conversa.curso,'aula':conversa.aula,'base':fontes},ensure_ascii=False)}],

@@ -104,10 +104,13 @@ def _conversar(request, identidade):
                 ref=str(d.get('referencia',''))
                 if not texto or len(texto)>6000 or not re.fullmatch(r'[A-Za-z0-9_-]{8,100}',ref):
                     return resposta({'erro':'Escreva uma mensagem com até 6000 caracteres.'},422)
-                assunto=get_object_or_404(Assunto,site_id=sid,pk=d.get('assunto'))
+                if not conversa:
+                    conversa=Conversa.objects.filter(site_id=sid,pessoa_id=dono).first()
+                assunto=(get_object_or_404(Assunto,site_id=sid,pk=d['assunto']) if d.get('assunto')
+                         else service.assunto_da_mensagem(sid,texto,conversa))
                 with transaction.atomic():
                     if not conversa:
-                        conversa,_=Conversa.objects.get_or_create(pk=cid if id_bruto else uuid.uuid4(),defaults={
+                        conversa,_=Conversa.objects.get_or_create(pk=cid if id_bruto else uuid.uuid5(uuid.NAMESPACE_URL,'meshcraft-suporte:'+sid+':'+dono),defaults={
                             'site_id':sid,'pessoa_id':dono,'nome':str(identidade.get('nome_exibido') or 'Aluno')[:160],
                             'assunto':assunto,'pagina':urlsplit(str(d.get('pagina',''))).path[:500],
                             'curso':str(d.get('curso',''))[:200],'aula':str(d.get('aula',''))[:200],
@@ -115,6 +118,13 @@ def _conversar(request, identidade):
                     conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid,pessoa_id=dono)
                     if conversa.mensagens.filter(referencia=ref).exists():
                         return resposta({'conversa':serializar(conversa),'csrf':get_token(request)})
+                    if not d.get('assunto'):
+                        conversa.assunto=assunto
+                    if d.get('pagina'):
+                        conversa.pagina=urlsplit(str(d['pagina'])).path[:500]
+                    if d.get('curso'):
+                        conversa.curso=str(d['curso'])[:200]
+                        conversa.aula=str(d.get('aula',''))[:200]
                     reabriu=conversa.estado=='encerrado'
                     if reabriu:
                         conversa.rodada+=1
