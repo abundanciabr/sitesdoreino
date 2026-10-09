@@ -60,7 +60,9 @@
       <p><label>Interação<select name="passo_interacao"><option value="" {% if not passo.interacao %}selected{% endif %}>Somente texto</option><option value="botoes" {% if passo.interacao == 'botoes' %}selected{% endif %}>Botões</option><option value="lista" {% if passo.interacao == 'lista' %}selected{% endif %}>Lista</option><option value="links" {% if passo.interacao == 'links' %}selected{% endif %}>Links</option></select></label></p>
       <p><label>Modelo oficial aprovado para o primeiro contato<select name="passo_modelo"><option value="">Sem modelo oficial</option>{% for modelo in modelos_oficiais %}<option value="{{ modelo.id }}" {% if passo.modelo_id == modelo.id|stringformat:'s' %}selected{% endif %}>{{ modelo.nome }} · {{ modelo.idioma }}</option>{% endfor %}</select></label></p>
       <p class="nota">Prévia do texto escrito no WhatsApp:</p><div class="central-previa">{{ passo.corpo|default:"Escreva a mensagem acima." }}</div>
-      {% if passo.interacao %}<div class="central-opcoes"><span>{{ passo.interacao }}</span></div><p class="nota">O conteúdo das opções depende dos dados reais da conversa.</p>{% endif %}
+      {% if passo.interacao == 'botoes' %}<div class="central-opcoes"><span>Conhecer cursos</span><span>Tirar dúvidas</span><span>Já sou aluno</span></div>
+      {% elif passo.interacao == 'lista' %}<div class="central-opcoes"><span>Escolher assunto</span></div><p class="nota">Conhecer cursos · Tirar dúvidas · Já sou aluno · Acesso às aulas · Compra e matrícula · Falar com a equipe</p>
+      {% elif passo.interacao == 'links' %}<p class="nota">Os endereços https desta mensagem aparecem como botões para abrir o link.</p>{% endif %}
     </details>
     {% endfor %}
     <p><button type="submit" name="acao" value="prever">Atualizar prévia sem enviar</button> <button type="submit">Salvar nova versão em rascunho</button></p>
@@ -71,7 +73,8 @@
     <h2>Teste em conversa existente</h2>
     <p>O teste envia pela integração real. Escolha uma conversa existente que autorizou este teste; a aceitação do provedor ainda não comprova entrega.</p>
     <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="teste"><input type="hidden" name="chave_idempotencia" value="{{ chave_teste }}">
-      <p><label for="conversa_id">Identificador da conversa</label><input id="conversa_id" name="conversa_id" required autocomplete="off"></p>
+      <p><label for="conversa_id">Conversa autorizada</label><select id="conversa_id" name="conversa_id" required><option value="">Escolha uma conversa WhatsApp</option>{% for conversa in conversas_inscricao %}<option value="{{ conversa.id }}">{{ conversa.nome }}</option>{% endfor %}</select></p>
+      {% if not conversas_inscricao %}<p>Abra a conversa em <a href="{% url 'crm_conversas' %}?canal=whatsapp">Conversas WhatsApp</a> para ela aparecer aqui.</p>{% endif %}
       <p><label for="versao">Versão para testar</label><input id="versao" name="versao" type="number" min="1" value="{{ automacao.versao_atual }}"></p>
       <p><label><input type="checkbox" name="autorizado" value="sim" required> A pessoa desta conversa autorizou o teste.</label></p>
       <button type="submit">Enviar teste nesta conversa</button>
@@ -86,7 +89,7 @@
     {% if automacao.ativa and automacao.entrada_aberta %}
       {% if conversas_inscricao %}
       <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="inscrever"><input type="hidden" name="chave_idempotencia" value="{{ chave_inscricao }}">
-        <p><label for="conversa-inscricao">Conversa</label><select id="conversa-inscricao" name="conversa_id" required><option value="">Escolha uma conversa</option>{% for conversa in conversas_inscricao %}<option value="{{ conversa.id }}">{{ conversa.nome }} · {{ conversa.id }}</option>{% endfor %}</select></p>
+        <p><label for="conversa-inscricao">Conversa</label><select id="conversa-inscricao" name="conversa_id" required><option value="">Escolha uma conversa</option>{% for conversa in conversas_inscricao %}<option value="{{ conversa.id }}">{{ conversa.nome }}</option>{% endfor %}</select></p>
         <p><label for="agendado-em">Iniciar em (opcional)</label><input id="agendado-em" name="agendado_em" type="datetime-local"></p>
         <button type="submit">Inscrever esta pessoa na automação</button>
       </form>
