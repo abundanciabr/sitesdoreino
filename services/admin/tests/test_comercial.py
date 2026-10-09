@@ -1778,3 +1778,19 @@ def test_modelo_indisponivel_ainda_envia_retorno_em_texto():
     assert envio.call_count == 1 and not openai.called
     assert trabalho.resultado['decisao']['resposta_de_continuidade'] is True
     assert trabalho.resultado['decisao']['modelo_indisponivel'] == 'aguardando_dependencia'
+
+
+@pytest.mark.parametrize("pedido,tipo", [("menu", "botoes"), ("lista", "lista"), ("links", "links")])
+@respx.mock
+def test_menu_interativo_responde_sem_modelo_pago_e_retomada_nao_repete(pedido, tipo, monkeypatch):
+    trabalho = _trabalho(T.ATENDER_MENSAGEM, conversa_id="conv-1", contato_id="", oportunidade_id="",
+                         entrada={"texto": pedido, "canal": "whatsapp", "host": "meshcraft.top"})
+    envio = respx.post(f"{MENSAGERIA}/conversas/conv-1/mensagens").respond(200, json={
+        "resultado": "enviada", "mensagem": {"id": "m-1"}, "conversa": {"canal": "whatsapp"}})
+    monkeypatch.setattr(coordenador, "conversar", lambda *a, **kw: pytest.fail("menu não usa API paga"))
+    monkeypatch.setattr(ferramentas, "_enviar_em_voz", lambda *a: pytest.fail("menu não envia áudio"))
+    assert coordenador._conversar_no_atendimento(trabalho, "pedido")["interacao"] == tipo
+    assert coordenador._conversar_no_atendimento(trabalho, "pedido")["interacao"] == tipo
+    assert envio.call_count == 1
+    assert _corpo(envio.calls[0])["interacao"] == tipo
+    assert trabalho.decisoes.get(call_id="menu-interativo").resultado == R.FEITO

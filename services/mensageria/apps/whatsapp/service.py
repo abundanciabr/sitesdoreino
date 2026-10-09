@@ -164,7 +164,7 @@ def conectar(site_id: str, renovar: bool = False) -> dict:
 
 
 def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str, referencia: str,
-                    modelo: dict | None = None) -> MensagemWhatsApp:
+                    modelo: dict | None = None, interativo: dict | None = None) -> MensagemWhatsApp:
     """Reserva a chave antes do POST. Resultado desconhecido nunca é reenviado às cegas."""
     if connection.in_atomic_block:
         raise RuntimeError("envio WhatsApp exige transacao externa concluida")
@@ -210,7 +210,13 @@ def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str,
         mensagem.save(update_fields=["status", "erro", "atualizado_em"])
         return mensagem
     try:
-        if modelo:
+        if interativo:
+            componente = dict(interativo)
+            tipo = componente.pop("tipo")
+            endpoint = "sendList" if tipo == "lista" else "sendButtons"
+            resposta = _gateway("POST", f"message/{endpoint}/{_instancia(config)}",
+                                {"number": numero, **componente})
+        elif modelo:
             resposta = _gateway("POST", f"message/sendTemplate/{_instancia(config)}", {
                 "number": numero, "name": nome_modelo,
                 "language": str(modelo.get("idioma") or "pt_BR"),

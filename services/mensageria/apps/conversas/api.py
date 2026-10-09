@@ -311,6 +311,7 @@ class EnviarEntrada(Schema):
     autor_id: str = ""
     assunto: str = ""
     modelo: ModeloEntrada | None = None
+    interacao: str | None = None
 
 
 @router.post("/conversas/{conversa_id}/mensagens")
@@ -330,10 +331,12 @@ def enviar_mensagem(request, conversa_id: str, dados: EnviarEntrada):
         raise HttpError(422, "texto obrigatorio")
     if dados.modelo and conversa.canal != "whatsapp":
         raise HttpError(422, "modelo aprovado so existe no WhatsApp")
+    if dados.interacao not in (None, "botoes", "lista", "links"):
+        raise HttpError(422, "interacao deve ser botoes, lista ou links")
     resultado = envio.enviar(
         conversa=conversa, texto=dados.texto, chave_idempotencia=chave, autor=dados.autor,
         autor_id=dados.autor_id, assunto=dados.assunto,
-        modelo=dados.modelo.dict() if dados.modelo else None,
+        modelo=dados.modelo.dict() if dados.modelo else None, interacao=dados.interacao,
     )
     conversa.refresh_from_db()
     return {"resultado": resultado.resultado, "detalhe": resultado.detalhe or None,

@@ -199,6 +199,11 @@ DEFINICOES = {
             "assunto": _texto_ou_nulo("Assunto, para e-mail."),
             "razao": {"type": "string", "description": "Por que esta mensagem agora."},
             "fonte": _texto_ou_nulo("De onde vêm os fatos citados."),
+            "interacao": {"type": ["string", "null"], "enum": ["botoes", "lista", "links", None],
+                          "description": "No WhatsApp: botoes oferece Conhecer cursos/Tirar dúvidas/Já sou aluno; "
+                          "lista oferece assuntos do atendimento; links adiciona botões aos URLs reais do texto. "
+                          "Use quando ajudar a pessoa a escolher ou quando pedir menu/opções. Nulo para conversa livre. "
+                          "A pessoa sempre pode escrever ou enviar áudio e recebe resposta em texto."},
         },
     ),
     "consultar_conversa": _ferramenta(
@@ -1003,7 +1008,9 @@ def _enviar(ctx: Contexto, args: dict, chave: str) -> dict:
         "autor_id": f"agente:{ctx.papel}",
         "assunto": str(args.get("assunto") or "")[:300],
     }
-    dados = _enviar_em_voz(ctx, conversa_id, corpo, canal)
+    if args.get("interacao") in {"botoes", "lista", "links"}:
+        corpo["interacao"] = args["interacao"]
+    dados = None if corpo.get("interacao") else _enviar_em_voz(ctx, conversa_id, corpo, canal)
     if dados is None:
         dados = _resolver(servicos.pedir("enviar_na_conversa", conversa_id, corpo=corpo, site_id=t.site_id),
                           escrita=True)

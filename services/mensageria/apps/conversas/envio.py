@@ -28,7 +28,7 @@ from django.utils import timezone
 from apps.jornadas import regua
 
 from . import descadastro as descadastros
-from . import enderecos
+from . import enderecos, interacoes
 from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
@@ -196,7 +196,9 @@ def _estado_whatsapp(status: str) -> str:
 
 
 def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: str = "agente",
-           autor_id: str = "", modelo: dict | None = None, assunto: str = "") -> Resultado:
+           autor_id: str = "", modelo: dict | None = None, assunto: str = "",
+           interacao: str | None = None) -> Resultado:
+    texto, componente = interacoes.preparar(interacao if not modelo else None, texto)
     chave = chave_idempotencia.strip()
     existente = conversa.mensagens.filter(chave_idempotencia=chave).first()
     retomada = False
@@ -268,6 +270,14 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
         return Resultado("repetida", repetida)
     if conversa.canal == "whatsapp":
         mensagem = _enviar_whatsapp(conversa, existente, modelo)
+        if componente and mensagem.estado_envio in {"aceito", "enviado", "entregue", "lido"}:
+            from apps.whatsapp.service import enviar_mensagem
+
+            # A saída principal continua sendo texto. O componente adicional tem sua própria
+            # intenção durável: confirmação perdida não produz repetição cega.
+            enviar_mensagem(site_id=conversa.site_id, destinatario=conversa.endereco,
+                            corpo=mensagem.texto, origem="conversa-interativa",
+                            referencia=f"{conversa.id}:{chave}", interativo=componente)
     else:
         mensagem = _enviar_email(conversa, existente)
     Conversa.objects.filter(pk=conversa.pk).update(ultima_mensagem_em=mensagem.ocorrida_em)

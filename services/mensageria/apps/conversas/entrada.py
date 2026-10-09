@@ -13,7 +13,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from . import descadastro as descadastros
-from . import enderecos, leads, orientacao
+from . import enderecos, leads, orientacao, interacoes
 from .models import Conversa, MensagemDaConversa
 
 logger = logging.getLogger(__name__)
@@ -264,7 +264,8 @@ def de_evolution(*, site_id: str, instancia: str, item: dict, tipo_do_upsert: st
                        instancia, identificador)
     if not numero or not isinstance(identificador, str) or not identificador:
         return None
-    conteudo = item.get("message") if isinstance(item.get("message"), dict) else {}
+    conteudo = interacoes.desembrulhar(item.get("message") if isinstance(item.get("message"), dict) else {})
+    escolha, citada = interacoes.resposta(conteudo)
     texto = conteudo.get("conversation") or ""
     if not texto and isinstance(conteudo.get("extendedTextMessage"), dict):
         texto = conteudo["extendedTextMessage"].get("text") or ""
@@ -276,10 +277,11 @@ def de_evolution(*, site_id: str, instancia: str, item: dict, tipo_do_upsert: st
                      "mime": str(dados.get("mimetype") or "")}
             texto = texto or str(dados.get("caption") or "")
             break
+    texto = texto or escolha
     if not texto and not midia:
         return None  # reação, enquete, chamada: nada para a conversa
     return Recebida(site_id=site_id, canal="whatsapp", endereco=numero, texto=str(texto),
-                    id_externo=identificador, caixa=instancia, midia=midia,
+                    id_externo=identificador, caixa=instancia, midia=midia, em_resposta_a=citada,
                     ocorrida_em=_momento(item.get("messageTimestamp")),
                     historica=str(tipo_do_upsert or item.get("type") or "").lower() == "append")
 
@@ -306,7 +308,8 @@ def de_cloud(*, site_id: str, numero_id: str, item: dict) -> Recebida | None:
         texto = str(item["button"].get("text") or "")
     elif tipo == "interactive" and isinstance(item.get("interactive"), dict):
         resposta = item["interactive"].get("button_reply") or item["interactive"].get("list_reply") or {}
-        texto = str(resposta.get("title") or "") if isinstance(resposta, dict) else ""
+        texto = (interacoes.TITULOS.get(str(resposta.get("id") or "")) or
+                 str(resposta.get("title") or resposta.get("id") or "")) if isinstance(resposta, dict) else ""
     elif tipo in _MIDIAS_CLOUD and isinstance(item.get(tipo), dict):
         dados = item[tipo]
         midia = {"tipo": _MIDIAS_CLOUD[tipo], "referencia": f"cloud:{dados.get('id') or ''}",
@@ -316,4 +319,5 @@ def de_cloud(*, site_id: str, numero_id: str, item: dict) -> Recebida | None:
         return None
     return Recebida(site_id=site_id, canal="whatsapp", endereco=numero, texto=texto,
                     id_externo=identificador, caixa=numero_id, midia=midia,
+                    em_resposta_a=str((item.get("context") or {}).get("id") or "")[:300],
                     ocorrida_em=_momento(item.get("timestamp")))
