@@ -83,7 +83,11 @@ navegador (até 300 caracteres), classificação e motivo.
   poderia reprovar o envio;
 - e-mail: decisão de não colocar pixel nem trocar endereços;
 - sino (avisos internos): não é mensagem para cliente;
-- áudio: não há texto de link para trocar.
+- áudio: não há texto de link para trocar;
+- link de compra (caminho `/checkout/`): sai cru. O checkout já atribui o
+  pedido pelo `?link=<id>`, e o ciclo comercial
+  (`services/aplicacao/tests/e2e/test_ciclo_comercial.py`, caso 09) confere a
+  URL do checkout byte a byte na mensagem que chega ao gateway.
 
 Endereços que já começam com `https://meshcraft.top/r/` ficam como estão. A
 pontuação no fim (como `.`, `,` ou `)`) e marcas do WhatsApp (`*`, `_`, `~`) ficam

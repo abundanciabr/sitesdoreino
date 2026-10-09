@@ -64,6 +64,20 @@ def test_uma_url_vira_link_curto_com_url_original_byte_a_byte():
     assert link.destino.versao_atual.url == url and link.destino.origem == "automatico"
 
 
+def test_link_de_compra_do_checkout_sai_cru_e_os_outros_sao_reescritos():
+    # O ciclo comercial (services/aplicacao/tests/e2e, caso 09) confere a URL do checkout byte a byte.
+    compra = "https://meshcraft.top/checkout/curso-teste/?link=abc123"
+    outro = "https://meshcraft.top/cursos/"
+    novo, links = _reescrever(f"Aqui está o seu link: {compra} e o curso {outro}")
+    [token] = _tokens(novo)
+    assert novo == f"Aqui está o seu link: {compra} e o curso {BASE}{token}"
+    assert [link.url_original for link in links] == [outro]
+    assert not LinkIndividual.objects.filter(url_original=compra).exists()
+    assert not Destino.objects.filter(nome__contains="/checkout/").exists()
+    assert servico.e_link_de_compra("https://outro.site/checkout/oferta/")
+    assert not servico.e_link_de_compra("https://meshcraft.top/cursos/checkout/")
+
+
 def test_repetir_a_chamada_devolve_os_mesmos_tokens_sem_duplicar():
     primeiro, _ = _reescrever("oi https://x.y/z")
     segundo, _ = _reescrever("oi https://x.y/z")

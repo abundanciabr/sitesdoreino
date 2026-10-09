@@ -5,6 +5,7 @@ import re
 import secrets
 import string
 from datetime import timezone as fuso
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
@@ -21,6 +22,9 @@ LIMITE_DA_URL = 2000  # cabe na coluna da versão; acima disso a URL fica como e
 ALFABETO = string.ascii_lowercase + string.digits
 TAMANHO_DO_TOKEN = 10
 ESTADOS_ACEITOS = frozenset({"aceito", "enviado", "entregue", "lido"})
+# O link de compra sai cru: o checkout já atribui o pedido pelo ?link=<id>, e o ciclo comercial
+# (services/aplicacao/tests/e2e/test_ciclo_comercial.py, caso 09) confere a URL byte a byte na mensagem.
+CAMINHO_DO_CHECKOUT = "/checkout/"
 
 
 def _limpar(achado: str) -> str:
@@ -34,6 +38,10 @@ def _limpar(achado: str) -> str:
     if not re.search(r"[A-Za-z0-9]", url[len("https://"):]):
         return ""
     return url
+
+
+def e_link_de_compra(url: str) -> bool:
+    return urlsplit(url).path.startswith(CAMINHO_DO_CHECKOUT)
 
 
 def url_base() -> str:
@@ -87,6 +95,8 @@ def reescrever(texto: str, *, site_id: str, origem: str, referencia: str, conver
     for achado in PADRAO_DE_URL.findall(texto or ""):
         url = _limpar(achado)
         if not url or url.startswith(base) or url in por_url or len(url) > LIMITE_DA_URL:
+            continue
+        if e_link_de_compra(url):
             continue
         por_url[url] = _link_da_url(
             url, site_id=site_id, origem=origem, referencia=referencia[:200],
