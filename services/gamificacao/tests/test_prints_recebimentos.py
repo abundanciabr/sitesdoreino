@@ -159,3 +159,42 @@ def test_arquivo_que_nao_e_imagem_nao_vira_print():
                 "a.png", b"texto com extensao de imagem", content_type="image/png"
             )
         )
+
+
+def test_imagem_grande_demais_e_recusada_antes_de_carregar():
+    import io
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+    from PIL import Image
+
+    destino = io.BytesIO()
+    Image.new("1", (5000, 4001)).save(destino, format="PNG")
+    with pytest.raises(ValueError, match="grande demais"):
+        preparar(
+            SimpleUploadedFile("a.png", destino.getvalue(), content_type="image/png")
+        )
+
+
+def test_leitura_do_robo_nao_invalida_formulario_aberto():
+    r = enviar()
+    revisao = situacao(P, SITE)["revisao"]
+    with patch(
+        "apps.gamificacao.prints_recebimentos.ler_modelo", return_value=leitura()
+    ):
+        assert processar(r.pk)
+    assert situacao(P, SITE)["revisao"] == revisao
+    assert situacao(P, SITE)["total_cents"] == 5000
+
+
+def test_quinta_falha_seguida_pede_outro_print():
+    r = enviar()
+    RecebimentoDeclarado.objects.filter(pk=r.pk).update(tentativas=4)
+    with patch(
+        "apps.gamificacao.prints_recebimentos.ler_modelo",
+        side_effect=RuntimeError("PROVEDOR-PRIVADO"),
+    ):
+        assert not processar(r.pk)
+    r.refresh_from_db()
+    assert r.estado == "esclarecer" and r.leitura["motivo"] == "leitor"
+    assert r.tentar_em is None and "PROVEDOR-PRIVADO" not in str(r.leitura)
+    assert situacao(P, SITE)["total_cents"] == 0

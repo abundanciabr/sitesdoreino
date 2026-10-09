@@ -33,6 +33,11 @@ Retorne apenas JSON: {"status":"recebido|pendente|nao_recebimento|ilegivel|duvid
 não o saldo nem uma soma de várias entradas. Mais de uma entrada sem indicação clara
 é duvida. Exemplos e simulações devem ser reconhecidos como nao_recebimento."""
 
+# Acima disso a leitura passa de 1 GB de memória por print (medido em 09/10/2026).
+PIXELS_MAXIMOS = 20_000_000
+# Depois disso o print deixa a fila e a pessoa é chamada a enviar outro recorte.
+TENTATIVAS_MAXIMAS = 5
+
 
 def preparar(arquivo):
     if arquivo is None:
@@ -45,6 +50,11 @@ def preparar(arquivo):
         with Image.open(arquivo) as imagem:
             if imagem.format not in ("PNG", "JPEG", "WEBP"):
                 raise ValueError("Envie uma imagem PNG, JPG ou WebP.")
+            largura, altura = imagem.size
+            if largura * altura > PIXELS_MAXIMOS:
+                raise ValueError(
+                    "Essa imagem é grande demais. Envie um recorte menor do print."
+                )
             imagem.load()
             imagem.thumbnail((4096, 4096))
             destino = io.BytesIO()
@@ -151,6 +161,7 @@ def mensagem(registro):
         "moeda": "A moeda do print não corresponde à informada. Confira a moeda e o valor original.",
         "data": "A data do recebimento não ficou clara ou está diferente. Envie a data visível e confira seu registro.",
         "duplicado": "Esse mesmo print já foi confirmado em outro registro seu. Confira se é o mesmo recebimento.",
+        "leitor": "O robô não conseguiu ler esse print depois de várias tentativas. Envie outro recorte com valor, moeda, data e a confirmação do recebimento.",
     }.get(
         motivo,
         "O print ficou incompleto ou ilegível. Envie um recorte com valor, moeda, data e confirmação de recebimento.",
@@ -201,7 +212,13 @@ def processar(recebimento_id):
             return False  # Um novo print/correção substituiu a versão que estava em leitura.
         antes = situacao(r.pessoa_id, r.site_id)
         motivo = None
-        if falhou:
+        if falhou and atual.tentativas >= TENTATIVAS_MAXIMAS:
+            motivo = "leitor"
+            atual.estado = "esclarecer"
+            atual.tentar_em = None
+            atual.analisada_em = timezone.now()
+            atual.leitura = {"motivo": motivo}
+        elif falhou:
             atual.estado = "falha"
             atual.tentar_em = timezone.now() + timedelta(
                 minutes=2 ** min(atual.tentativas, 5)
@@ -239,8 +256,8 @@ def processar(recebimento_id):
                 "atualizado_em",
             ]
         )
-        j.revisao += 1
-        j.save(update_fields=["revisao", "atualizada_em"])
+        # A leitura do robô não mexe em j.revisao: o formulário que a pessoa
+        # deixou aberto continua válido (só as escritas dela avançam a revisão).
         depois = _registro(
             j,
             "leitura-print",
