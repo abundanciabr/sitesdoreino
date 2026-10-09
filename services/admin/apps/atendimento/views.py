@@ -100,13 +100,16 @@ def _conversar(request, identidade):
             if not conversa and Conversa.objects.filter(pk=cid).exists(): raise Http404
         if request.method=='POST':
             acao=d.get('acao','mensagem')
-            if acao=='mensagem':
+            if acao=='novo':
+                conversa=service.novo_atendimento(sid,dono,identidade.get('nome_exibido'),
+                    d['nova_conversa'],d.get('pagina',''),d.get('curso',''),d.get('aula',''))
+            elif acao=='mensagem':
                 texto=str(d.get('texto','')).strip()
                 ref=str(d.get('referencia',''))
                 if not texto or len(texto)>6000 or not re.fullmatch(r'[A-Za-z0-9_-]{8,100}',ref):
                     return resposta({'erro':'Escreva uma mensagem com até 6000 caracteres.'},422)
                 if not conversa:
-                    conversa=Conversa.objects.filter(site_id=sid,pessoa_id=dono).first()
+                    conversa=service.conversa_atual(sid,dono)
                 assunto=(get_object_or_404(Assunto,site_id=sid,pk=d['assunto']) if d.get('assunto')
                          else service.assunto_da_mensagem(sid,texto,conversa))
                 with transaction.atomic():
@@ -171,12 +174,14 @@ def _conversar(request, identidade):
                         conversa.avaliacao=nota;conversa.save(update_fields=['avaliacao'])
                     else: raise ValueError
         elif not conversa and not id_bruto:
-            conversa=Conversa.objects.filter(site_id=sid,pessoa_id=dono).first()
+            conversa=service.conversa_atual(sid,dono)
         return resposta({'csrf':get_token(request),'pessoa':dono,'horario':c.horario,
             'mensagem':c.mensagem,'assuntos':list(Assunto.objects.filter(site_id=sid).values('id','nome')),
             'historico':[{'id':str(i.pk),'assunto':i.assunto.nome,'estado':i.estado,'em':i.atualizada_em.isoformat()}
                         for i in Conversa.objects.filter(site_id=sid,pessoa_id=dono).select_related('assunto')[:50]],
             'conversa':serializar(conversa,int(d.get('depois',0)),int(d.get('antes',0))) if conversa else None})
+    except PermissionError:
+        raise Http404 from None
     except (ValueError,TypeError,KeyError):
         return resposta({'erro':'Confira a mensagem e tente novamente.'},422)
 

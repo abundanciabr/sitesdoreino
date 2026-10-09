@@ -5,6 +5,7 @@ import re
 import threading
 import time
 import contextvars
+import uuid
 from datetime import timedelta
 from urllib.parse import urlsplit
 
@@ -31,6 +32,10 @@ Não peça que o aluno envie, arraste ou anexe uma captura aqui e não afirme qu
 Se houver uma imagem ou erro, peça uma descrição em texto do que aparece e da mensagem
 de erro, sem dados pessoais. Esta capacidade atual prevalece sobre convites antigos
 para enviar imagens no histórico. Continue investigando com os detalhes descritos.
+O botão “Novo atendimento” abre uma conversa vazia, com contexto separado, e guarda
+o histórico anterior na área privada. Para recomeçar, indique esse botão; você não
+limpa a tela nem reinicia a conversa por uma mensagem. Minimizar ou recarregar a
+página mantém o atendimento atual. Não invente menus ou opções adicionais.
 Quando não houver fonte suficiente ou a dúvida persistir, encaminhe para uma pessoa.
 Responda em JSON: {"suficiente":boolean,"resposta":string,"fontes":[IDs da base],
 "alternativas":[strings, apenas quando houver opções reais],"forum_util":boolean}.
@@ -140,6 +145,28 @@ def assunto_da_mensagem(site_id, texto, conversa=None):
     if conversa:
         return conversa.assunto
     return nomes['site']
+
+
+def conversa_atual(site_id, pessoa_id):
+    # Uma atualização tardia da conversa anterior não troca o atendimento atual.
+    return Conversa.objects.filter(site_id=site_id, pessoa_id=pessoa_id).order_by('-criada_em', '-id').first()
+
+
+def novo_atendimento(site_id, pessoa_id, nome, nova_id, pagina='', curso='', aula=''):
+    nova_id = uuid.UUID(str(nova_id))
+    pagina = urlsplit(str(pagina)).path[:500]
+    assunto = assunto_da_mensagem(site_id, 'curso' if curso else 'forum' if pagina.startswith('/forum') else '')
+    with transaction.atomic():
+        conversa, criada = Conversa.objects.get_or_create(pk=nova_id, defaults={
+            'site_id': site_id, 'pessoa_id': pessoa_id, 'nome': str(nome or 'Aluno')[:160],
+            'assunto': assunto, 'pagina': pagina, 'curso': str(curso)[:200], 'aula': str(aula)[:200],
+            'estado': 'aguardando' if assunto.modo == 'assistido' else 'robo'})
+        if conversa.site_id != site_id or conversa.pessoa_id != pessoa_id:
+            raise PermissionError
+        if criada:
+            Conversa.objects.filter(site_id=site_id, pessoa_id=pessoa_id).exclude(pk=conversa.pk).update(
+                estado='encerrado', processar=False)
+        return conversa
 
 
 def historico_para_sugestao(conversa):
