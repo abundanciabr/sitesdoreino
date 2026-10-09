@@ -3,7 +3,8 @@ from django.db import models
 
 
 MODOS = [('assistido', 'Assistido'), ('base', 'Automático pela base'),
-         ('encaminhamento', 'Automático com encaminhamento')]
+         ('encaminhamento', 'Automático com encaminhamento'),
+         ('conversa', 'Assistente que conversa e resolve')]
 
 
 class Configuracao(models.Model):
@@ -51,6 +52,7 @@ class Conversa(models.Model):
     atendente_id = models.CharField(max_length=100, blank=True)
     atendente_nome = models.CharField(max_length=160, blank=True)
     encaminhada = models.BooleanField(default=False)
+    solicitou_pessoa = models.BooleanField(default=False)
     resolvida_robo = models.BooleanField(default=False)
     avaliacao = models.PositiveSmallIntegerField(null=True, blank=True)
     rodada = models.PositiveIntegerField(default=1)

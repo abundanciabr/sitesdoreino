@@ -132,9 +132,15 @@ def _conversar(request, identidade):
                         conversa.atendente_nome=''
                         conversa.estado='robo' if conversa.assunto.modo!='assistido' else 'aguardando'
                         conversa.resolvida_robo=False
+                        conversa.solicitou_pessoa=False
                     ja_respondeu=not reabriu and conversa.mensagens.filter(referencia__startswith='auto-').exists()
                     Mensagem.objects.create(conversa=conversa,referencia=ref,autor='aluno',nome=conversa.nome,texto=texto)
-                    if not conversa.atendente_id and (conversa.assunto.modo=='assistido' or
+                    if conversa.assunto.modo=='conversa':
+                        if not conversa.atendente_id and not conversa.solicitou_pessoa:
+                            conversa.estado='robo'
+                        conversa.processar=not conversa.solicitou_pessoa or bool(conversa.atendente_id)
+                        conversa.save()
+                    elif not conversa.atendente_id and (conversa.assunto.modo=='assistido' or
                             (conversa.assunto.modo=='base' and ja_respondeu) or
                             re.search(r'\b(humano|atendente|pessoa|não resolveu|nao resolveu)\b',texto,re.I)):
                         service.encaminhar(conversa)
@@ -150,7 +156,9 @@ def _conversar(request, identidade):
                     conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid,pessoa_id=dono)
                     if acao=='pessoa':
                         if conversa.estado=='encerrado': conversa.rodada+=1
-                        if not conversa.atendente_id: service.encaminhar(conversa)
+                        if not conversa.atendente_id:
+                            conversa.solicitou_pessoa=True
+                            service.encaminhar(conversa)
                     elif acao=='resolvido':
                         ultima=conversa.mensagens.last()
                         if conversa.estado=='robo' and ultima and ultima.referencia.startswith('auto-'):
@@ -233,6 +241,7 @@ def conversa_admin(request,conversa_id):
                     conversa.estado='encerrado';conversa.processar=False
                 elif acao=='robo':
                     conversa.atendente_id='';conversa.atendente_nome=''
+                    conversa.solicitou_pessoa=False
                     if conversa.assunto.modo=='assistido':
                         conversa.estado='aguardando';conversa.processar=False
                     else:
