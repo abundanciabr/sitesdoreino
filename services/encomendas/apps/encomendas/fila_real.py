@@ -14,11 +14,11 @@ from .models import (
     EntregaMarketplace, ArquivoMarketplace, MensagemMarketplace, AjusteMarketplace,
     RecebivelMarketplace,
 )
-from . import faixas_eventos
+from . import faixas_eventos, catalogo_curso
 from .marketplace import ErroMarketplace, acesso_aluno
 ErroFilaReal = ErroMarketplace
 
-CATEGORIAS = {'espadas_objetos', 'pets', 'cabelos', 'chapeus', 'personagens'}
+CATEGORIAS = catalogo_curso.CHAVES_CATEGORIAS | catalogo_curso.CATEGORIAS_HISTORICAS
 CLIENTES = (('tilon', 'Tilon'), ('paula', 'Paula'), ('anne', 'Anne'))
 ABERTOS = {'rascunho', 'aguardando_pagamento', 'na_fila', 'oferecido'}
 EM_ANDAMENTO = {'em_producao', 'entregue', 'em_ajuste', 'mediacao'}
@@ -126,7 +126,7 @@ def dados_pedido(pedido):
 def detalhe_cliente(*, site_id, slug, pessoa_id='', administrativo=False):
     cliente = _cliente(site_id, slug, pessoa_id, administrativo)
     pedidos = PedidoMarketplace.objects.filter(fila_cliente__cliente=cliente, site_id=site_id).select_related('fila_cliente__cliente').order_by('-criado_em')
-    return {**dados_cliente(cliente), 'cliente': dados_cliente(cliente), 'pedidos': [dados_pedido(p) for p in pedidos],
+    return {**dados_cliente(cliente), 'catalogo_curso': catalogo_curso.dados_publicos(), 'cliente': dados_cliente(cliente), 'pedidos': [dados_pedido(p) for p in pedidos],
         'movimentos': list(cliente.movimentos.order_by('-criado_em').values('tipo', 'valor_cents', 'saldo_apos_cents', 'criado_em')[:50])}
 
 
@@ -145,6 +145,20 @@ def vincular_cliente(*, site_id, slug, pessoa_id):
 
 
 def _dados(dados):
+    dados = dict(dados)
+    modelo = None
+    if dados.get("projeto_curso"):
+        try:
+            modelo = catalogo_curso.retrato(dados["projeto_curso"])
+        except ValueError as erro:
+            raise ErroMarketplace(str(erro)) from erro
+        dados["categoria"] = modelo["categoria"]
+        for campo, valor in (("titulo", modelo["titulo"]), ("descricao", modelo["briefing"]),
+                             ("entregaveis", modelo["entregaveis"]), ("referencias", modelo["referencias"])):
+            if campo == "descricao" and dados.get("briefing"):
+                continue
+            if not dados.get(campo):
+                dados[campo] = deepcopy(valor)
     categoria = dados.get('categoria', 'espadas_objetos')
     titulo = str(dados.get('titulo') or '').strip()
     if categoria not in CATEGORIAS or not titulo or len(titulo) > 200:
@@ -178,6 +192,10 @@ def _dados(dados):
         raise ErroMarketplace('Descreva o item e os arquivos que serão entregues.')
     if not isinstance(briefing['referencias'], (str, list)) or not isinstance(briefing['entregaveis'], list):
         raise ErroMarketplace('Confira as referências e os entregáveis.')
+    if modelo:
+        briefing["catalogo_curso"] = modelo
+        briefing["criterios"] = modelo["criterios"]
+        briefing["tema_curso"] = modelo["tema_curso"]
     return categoria, titulo, valor_cents, ajustes, briefing
 
 

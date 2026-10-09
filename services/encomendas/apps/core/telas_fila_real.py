@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from apps.core import plantao
 from apps.core.telas_marketplace import _entrada
-from apps.encomendas import fila_real, marketplace
+from apps.encomendas import fila_real, marketplace, catalogo_curso
 from apps.encomendas.models import (
     ArquivoMarketplace, CasoConversaFila, EntregaMarketplace, MensagemMarketplace,
 )
@@ -27,13 +27,7 @@ from apps.encomendas.models import (
 ErroFilaReal = fila_real.ErroMarketplace
 
 
-CATEGORIAS = (
-    ("espadas_objetos", "Espadas e objetos", "espadas", "prop-espada"),
-    ("pets", "Pets", "pets", "pet-fantasia"),
-    ("cabelos", "Cabelos", "cabelos", "cabelo-curto"),
-    ("chapeus", "Chapéus", "chapeus", "chapeu-fantasia"),
-    ("personagens", "Personagens", "personagens", "personagem-conceito"),
-)
+CATEGORIAS = tuple((c, t, a, "") for c, t, d, a in catalogo_curso.CATEGORIAS)
 
 
 def _moeda(centavos):
@@ -73,7 +67,11 @@ def _apresentar(pedido):
     pedido.resumo = (pedido.briefing or {}).get("observacoes", "")
     pedido.referencias_exibidas = (pedido.briefing or {}).get("referencias", [])
     pedido.entregaveis_exibidos = (pedido.briefing or {}).get("entregaveis", [])
-    pedido.ilustracao = next((arte for chave, _, _, arte in CATEGORIAS if chave == pedido.categoria), "prop-espada")
+    pedido.do_curso = bool((pedido.briefing or {}).get("catalogo_curso"))
+    pedido.tem_ilustracao = not pedido.do_curso and pedido.categoria in {"espadas_objetos", "pets", "cabelos", "chapeus", "personagens"}
+    pedido.ilustracao = {"espadas_objetos": "prop-espada", "pets": "pet-fantasia",
+                        "cabelos": "cabelo-curto", "chapeus": "chapeu-fantasia",
+                        "personagens": "personagem-conceito"}.get(pedido.categoria, "prop-espada")
     return pedido
 
 
@@ -98,7 +96,7 @@ def catalogo(request):
         "pedidos": pedidos, "trabalhos": trabalhos, "categorias": categorias,
         "trabalho_ativo": dados.get("trabalho_ativo"), "recado": request.GET.get("recado", ""),
         "participou_da_fila": dados.get("participou_da_fila", False),
-        "papel": papel,
+        "papel": papel, "catalogo_curso": catalogo_curso.dados_publicos(),
     })
 
 

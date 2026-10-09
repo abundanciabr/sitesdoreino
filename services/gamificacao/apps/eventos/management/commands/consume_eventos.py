@@ -50,7 +50,9 @@ STREAMS = [
     # `handle`): fatos publicados antes de o grupo existir são lidos mesmo assim.
     "eventos.cursos.item-criado",
     "eventos.encomendas.sandbox-trabalho-criado",
+    "eventos.encomendas.sandbox-trabalho-concluido",
     "eventos.encomendas.fila-trabalho-aceito",
+    "eventos.encomendas.fila-trabalho-concluido",
     "eventos.encomendas.rendimento-real-confirmado",
     "eventos.encomendas.rendimento-real-revertido",
 ]

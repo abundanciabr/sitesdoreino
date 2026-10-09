@@ -19,20 +19,14 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core import sessao, telas_marketplace
 from apps.core.selecionar_marketplace import _matriculas_ativas
-from apps.encomendas import sandbox
+from apps.encomendas import sandbox, catalogo_curso
 from apps.encomendas.models import (ArquivoSandbox, EntregaSandbox, MensagemSandbox,
                                     AjusteSandbox, MovimentoMeshcoin, ParticipacaoSandbox,
                                     ProjetoSandbox)
 
 logger = logging.getLogger(__name__)
 
-CATEGORIAS = (
-    ("espadas_objetos", "Espadas e armas", "Espadas, pistolas e fuzis", "espadas"),
-    ("pets", "Pets", "Animais e criaturas", "pets"),
-    ("cabelos", "Cabelos", "Cabelos e estilos", "cabelos"),
-    ("chapeus", "Chapéus", "Bonés e chapéus", "chapeus"),
-    ("personagens", "Personagens", "Avatares e personagens", "personagens"),
-)
+CATEGORIAS = catalogo_curso.CATEGORIAS
 
 
 ILUSTRACOES = {
@@ -163,7 +157,7 @@ def catalogo(request):
     else:
         aluno_atual = False
     categoria = request.GET.get("categoria", "espadas_objetos")
-    if categoria not in ProjetoSandbox.Categoria.values:
+    if categoria not in catalogo_curso.CHAVES_CATEGORIAS:
         raise Http404
     projetos = list(ProjetoSandbox.objects.filter(site_id=site, ativo=True,
                     categoria=categoria).order_by("titulo"))
@@ -173,8 +167,9 @@ def catalogo(request):
     selecionada = next(c for c in categorias if c["selecionada"])
     trabalho_ativo = next((trabalho for trabalho in trabalhos if trabalho.status != "aprovado"), None)
     for projeto in projetos:
+        projeto.do_curso = projeto.slug in catalogo_curso.SLUGS
         projeto.tem_ilustracao = projeto.slug in ILUSTRACOES
-        projeto.pronto = (projeto.recompensa is not None and bool(projeto.briefing.strip())
+        projeto.pronto = (bool(projeto.briefing.strip())
                           and bool(projeto.criterios.strip()) and bool(projeto.entregaveis))
     return render(request, "sandbox/catalogo.html", {
         "papel": papel, "projetos": projetos, "trabalhos": trabalhos,
@@ -201,10 +196,12 @@ def confirmar_projeto(request, projeto_id):
             _equipe(request)
     except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
         return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
+    projeto.do_curso = projeto.slug in catalogo_curso.SLUGS
+    projeto.livre = projeto.do_curso and projeto.categoria == "livre"
     ativo = ParticipacaoSandbox.objects.filter(site_id=site, pessoa_id=pessoa,
                     status__in=['em_producao', 'em_ajuste', 'entregue']).first()
     return render(request, 'sandbox/confirmar.html', {
-        'projeto': projeto, 'termos_simulacao': sandbox.TERMOS_SIMULACAO,
+        'projeto': projeto, 'termos_simulacao': ('Prática educacional sem pagamento. Concluir o Sandbox concede a faixa Azul e 10.000 XP, uma vez por aluno.' if projeto.do_curso else sandbox.TERMOS_SIMULACAO),
         'aluno_atual': aluno, 'trabalho_ativo': ativo,
         'papel': 'aluno' if aluno else 'equipe',
     })
@@ -229,7 +226,8 @@ def aceitar(request, projeto_id):
         if prazo_horas not in (24, 48, 72):
             raise sandbox.ErroSandbox("Escolha um prazo de 24h, 48h ou 72h na confirmação.")
         participacao = sandbox.aceitar(site_id=site, pessoa_id=pessoa, projeto_id=projeto_id,
-                                       prazo_horas=prazo_horas)
+                                       prazo_horas=prazo_horas, item_livre=request.POST.get("item_livre", ""),
+                                       descricao_livre=request.POST.get("descricao_livre", ""))
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro))
     return _voltar("sandbox_trabalho", participacao.pk, recado="Trabalho iniciado.")
@@ -414,8 +412,8 @@ def salvar_projeto(request, projeto_id=None):
             raise ValueError("Confira a recompensa em Meshcoins.")
         projeto.titulo = titulo
         categoria = request.POST.get("categoria", "")
-        if categoria not in ProjetoSandbox.Categoria.values:
-            raise ValueError("Escolha uma das cinco categorias de prática.")
+        if categoria not in catalogo_curso.CHAVES_CATEGORIAS:
+            raise ValueError("Escolha uma categoria de prática.")
         projeto.categoria = categoria
         projeto.slug = slug
         projeto.briefing = request.POST.get("briefing", "").strip()
@@ -424,7 +422,8 @@ def salvar_projeto(request, projeto_id=None):
         projeto.criterios = request.POST.get("criterios", "").strip()
         projeto.prazo_dias = _opcional_inteiro(request.POST.get("prazo_dias", ""))
         projeto.ajustes_previstos = _opcional_inteiro(request.POST.get("ajustes_previstos", ""))
-        projeto.recompensa = recompensa
+        if "recompensa" in request.POST:
+            projeto.recompensa = recompensa
         projeto.ativo = request.POST.get("ativo") == "sim"
         projeto.full_clean()
         projeto.save()

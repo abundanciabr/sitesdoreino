@@ -106,5 +106,7 @@ def test_aprovacoes_simultaneas_creditam_uma_vez():
         lambda: sandbox.aprovar(site_id="escola-a", participacao_id=p.pk, aprovador_id="equipe-2"),
     ])
     assert [tipo for tipo, _ in resultados] == ["ok", "ok"]
-    assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 1
-    assert sandbox.saldo(site_id="escola-a", pessoa_id="ana") == Decimal("5.00")
+    from apps.encomendas.models import OutboxMarketplace
+    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 1
+    assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
+    assert sandbox.saldo(site_id="escola-a", pessoa_id="ana") == 0

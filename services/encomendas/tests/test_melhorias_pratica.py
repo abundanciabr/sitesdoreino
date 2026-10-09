@@ -61,7 +61,9 @@ def test_fila_compara_snapshot_preserva_escola_e_credito_unico(participacao, mon
     assert participacao.status == 'entregue' and not participacao.aprovado_em
     sandbox.aprovar(site_id=participacao.site_id, participacao_id=participacao.pk, aprovador_id='TESTE-escola')
     sandbox.aprovar(site_id=participacao.site_id, participacao_id=participacao.pk, aprovador_id='TESTE-escola')
-    assert participacao.movimento_meshcoin.valor == 10000
+    from apps.encomendas.models import MovimentoMeshcoin, OutboxMarketplace
+    assert not MovimentoMeshcoin.objects.filter(participacao=participacao).exists()
+    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 1
     assert xp_sandbox.aplicar(participacao,'aprovada',participacao.pk,timezone.now()) == []
 
 
@@ -169,7 +171,7 @@ def test_privacidade_previas_e_tela_enquanto_analisa(participacao,client,monkeyp
     assert 'Análise da versão 1' in response.content.decode()
     assert 'Cliente simulado (IA)' in response.content.decode()
     assert 'Brasília' in response.content.decode()
-    assert 'Nenhum XP' in response.content.decode()
+    assert '10.000 XP' in response.content.decode()
 
 
 def test_formatacao_preserva_endereco_e_nao_executa_html():

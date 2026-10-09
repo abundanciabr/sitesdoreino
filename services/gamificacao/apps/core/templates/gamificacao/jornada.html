@@ -5,6 +5,7 @@
     <div><h1 id="minha-faixa">Faixa {{ faixas.atual.faixa }}</h1><p class="grau">{% if faixas.atual.grau %}{{ faixas.atual.grau }} Grau · {% endif %}Passo {{ faixas.atual.ordem }} de 13</p></div>
   </div>
   <p>{{ faixas.atual.conquista }}</p>
+  <p class="miudo">Cada conquista concede seu bônus de XP uma única vez, somado ao saldo. Concluir o Sandbox e conquistar a faixa Azul correspondem ao mesmo bônus de 10.000 XP.</p>
   {% if jornada_recado == 'cor' %}<p class="celebracao" role="status">Uma nova cor na sua jornada! Você chegou à faixa {{ faixas.atual.faixa }} com um resultado que registrou.</p>
   {% elif jornada_recado == 'grau' %}<p class="celebracao" role="status">Mais um grau alcançado! Veja o resultado e o próximo passo abaixo.</p>
   {% elif jornada_recado == 'salvo' %}<p role="status">Seu registro foi salvo. Sua história acompanha suas escolhas.</p>{% endif %}
@@ -48,7 +49,7 @@
   <div class="grupos-jornada">{% for grupo in faixas.grupos %}<details class="grupo-faixa"{% if grupo.nome == faixas.atual.faixa %} open{% endif %}><summary><span class="fita" style="background: {{ grupo.cor }}" aria-hidden="true"></span><strong>Faixa {{ grupo.nome }}</strong> · {% if grupo.nome == "Preta" %}7 graus{% else %}1 passo{% endif %}</summary>
     <ol>{% for passo in grupo.passos %}<li value="{{ passo.ordem }}" class="passo-jornada{% if passo.alcancada %} alcancado{% endif %}{% if passo.ordem == faixas.atual.ordem %} atual{% endif %}">
       <p><strong>{% if passo.grau %}{{ passo.grau }} Grau{% else %}{{ passo.faixa }}{% endif %}</strong> · Passo {{ passo.ordem }}{% if passo.ordem == faixas.atual.ordem %} <span class="selo">Você está aqui</span>{% elif passo.alcancada %} <span class="selo">Alcançado</span>{% endif %}</p>
-      <p>{{ passo.conquista }}</p>{% if passo.limite %}<p class="miudo">{{ passo.percentual }}% da meta · {{ passo.limite }} acumulados{% if not faixas.meta_escolhida %} (sugestão){% endif %}</p>{% endif %}
+      <p>{{ passo.conquista }}</p><p class="miudo">Bônus único: {{ passo.bonus_xp }} XP</p>{% if passo.limite %}<p class="miudo">{{ passo.percentual }}% da meta · {{ passo.limite }} acumulados{% if not faixas.meta_escolhida %} (sugestão){% endif %}</p>{% endif %}
       {% if passo.ordem >= 2 and passo.ordem <= 4 %}
       {% if passo.ordem == 2 %}<p class="miudo">Crie e finalize um item. Confira a forma e salve os arquivos para mostrar sua criação.</p>
       {% elif passo.ordem == 3 %}<p class="miudo">Entenda o pedido, modele o item, confira os entregáveis e faça a entrega. Use o feedback do tutor e do cliente simulado para melhorar o que precisar. Você reconhece quando concluiu.</p>

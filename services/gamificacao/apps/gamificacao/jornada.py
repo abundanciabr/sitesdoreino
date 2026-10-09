@@ -9,6 +9,7 @@ from decimal import Decimal, InvalidOperation, ROUND_CEILING
 
 from django.db import transaction
 from django.utils import timezone
+from .bonus_faixas import PONTOS
 
 from .models import (
     JornadaPessoal,
@@ -101,6 +102,7 @@ def passos(meta):
                     "nome": f"{nome} · {indice+1}º Grau" if nome == "Preta" else nome,
                     "cor": cor,
                     "cores": [cor],
+                    "bonus_xp": PONTOS[ordem],
                     "conquista": RESULTADOS.get(
                         ordem,
                         f"Alcancei {str(pct).replace('.', ',')}% da minha meta pessoal.",
@@ -243,6 +245,9 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
 
 def _registro(jornada, acao, dados, antes):
     depois = situacao(jornada.pessoa_id, jornada.site_id)
+    alcancadas = {p["ordem"] for p in depois["lista"] if p["alcancada"]}
+    from .bonus_faixas import conceder
+    dados["bonus_xp"] = conceder(jornada.pessoa_id, jornada.site_id, alcancadas)
     dados.update(
         {
             "texto": dados.get("texto", "Registro atualizado."),
@@ -256,6 +261,26 @@ def _registro(jornada, acao, dados, antes):
         pessoa_id=jornada.pessoa_id, site_id=jornada.site_id, acao=acao, dados=dados
     )
     return depois
+
+
+def registrar_conclusao(pessoa_id, site_id, ordem):
+    """A conclusão e a declaração do aluno usam a mesma conquista e o mesmo bônus."""
+    if ordem not in (3, 4):
+        raise ValueError("Conclusão indisponível.")
+    from apps.core.perfil import perfil_de
+    perfil_de(pessoa_id, site_id)
+    with transaction.atomic():
+        JornadaPessoal.objects.get_or_create(pessoa_id=pessoa_id, site_id=site_id)
+        j = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa_id, site_id=site_id)
+        if j.declaracoes.get(str(ordem)):
+            from .bonus_faixas import conceder
+            conceder(pessoa_id, site_id, [p["ordem"] for p in situacao(pessoa_id, site_id)["lista"] if p["alcancada"]])
+            return
+        antes = situacao(pessoa_id, site_id)
+        j.declaracoes = {**j.declaracoes, str(ordem): timezone.now().isoformat()}
+        j.revisao += 1
+        j.save(update_fields=["declaracoes", "revisao", "atualizada_em"])
+        _registro(j, "conclusao", {"passo": ordem, "texto": RESULTADOS[ordem]}, antes)
 
 
 def salvar(pessoa_id, site_id, dados, *, arquivo=None):

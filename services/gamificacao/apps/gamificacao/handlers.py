@@ -399,7 +399,27 @@ from .faixas import (  # noqa: E402
     ao_sandbox_trabalho_criado,
 )
 
+def ao_sandbox_trabalho_concluido(envelope):
+    data = envelope.get("data") or {}
+    pessoa_id = data.get("pessoa_id")
+    site_id = data.get("site_id")
+    if not pessoa_id or not site_id or data.get("historico"):
+        return
+    from .jornada import registrar_conclusao
+    registrar_conclusao(pessoa_id, site_id, 3)
+
+
+def ao_fila_trabalho_concluido(envelope):
+    data = envelope.get("data") or {}
+    if not data.get("pessoa_id") or not data.get("site_id") or data.get("historico"):
+        return
+    from .jornada import registrar_conclusao
+    registrar_conclusao(data["pessoa_id"], data["site_id"], 4)
+
+
 HANDLERS = {
+    "encomendas.sandbox-trabalho-concluido": ao_sandbox_trabalho_concluido,
+    "encomendas.fila-trabalho-concluido": ao_fila_trabalho_concluido,
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,
     "sugestao.voto-adicionado": ao_voto_adicionado,

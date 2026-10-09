@@ -37,6 +37,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 EV_SANDBOX = "encomendas.sandbox-trabalho-criado"
+EV_CONCLUSAO = "encomendas.sandbox-trabalho-concluido"
 EV_FILA = "encomendas.fila-trabalho-aceito"
 EV_CONFIRMADO = "encomendas.rendimento-real-confirmado"
 EV_REVERTIDO = "encomendas.rendimento-real-revertido"
@@ -79,6 +80,16 @@ def sandbox_trabalho_criado(participacao, *, historico=False):
         "pessoa_id": str(participacao.pessoa_id), "trabalho_id": str(participacao.pk),
         "ocorrido_em": _iso(participacao.aceite_em), "historico": historico,
     })
+
+
+def sandbox_trabalho_concluido(participacao):
+    E, O = _modelos()
+    return emitir(E, O, site_id=participacao.site_id, evento=EV_CONCLUSAO,
+                  chave=participacao.pk, dados={
+                      "pessoa_id": str(participacao.pessoa_id),
+                      "trabalho_id": str(participacao.pk),
+                      "ocorrido_em": _iso(participacao.aprovado_em),
+                  })
 
 
 def fila_trabalho_aceito(acordo, *, historico=False):
@@ -231,6 +242,13 @@ def _ao_salvar_recebivel(sender, instance, raw=False, **kwargs):
 def _ao_salvar_pedido(sender, instance, raw=False, **kwargs):
     if not raw:
         sincronizar_do_pedido(instance.pk)
+        if instance.status == "aprovado" and instance.aluno_id and hasattr(instance, "fila_cliente"):
+            E, O = _modelos()
+            emitir(E, O, site_id=instance.site_id, evento="encomendas.fila-trabalho-concluido",
+                   chave=instance.pk, pedido_id=instance.pk, dados={
+                       "pessoa_id": str(instance.aluno.pessoa_id), "pedido_id": str(instance.pk),
+                       "ocorrido_em": _iso(instance.aprovado_em),
+                   })
 
 
 def _ao_salvar_vinculo_da_fila(sender, instance, raw=False, **kwargs):

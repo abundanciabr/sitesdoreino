@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from . import faixas_eventos
+from . import faixas_eventos, catalogo_curso
 from .sandbox_models import (
     AjusteSandbox, ArquivoSandbox, EntregaSandbox, MensagemSandbox,
     MovimentoMeshcoin, ParticipacaoSandbox, ProjetoSandbox,
@@ -17,9 +17,9 @@ from .sandbox_models import (
 TERMOS_SIMULACAO = (
     "Esta atividade é exclusivamente uma simulação educacional de trabalho real, destinada ao aprendizado e à experiência. "
     "Não há contratação remunerada, cobrança, compra, investimento, pagamento, saque ou conversão em dinheiro. "
-    "A recompensa em MESH é um registro virtual de experiência da escola, sem valor financeiro. "
+    "Concluir o Sandbox concede a faixa Azul e 10.000 XP, uma vez por aluno, somados ao saldo de XP. "
     "Eu aceito realizar os entregáveis do briefing no prazo que escolhi e enviar minha entrega para avaliação. "
-    "A recompensa de experiência é concedida uma única vez após aprovação registrada; participar não autoriza a fila remunerada."
+    "A conclusão e a faixa Azul correspondem ao mesmo bônus; participar não autoriza a fila remunerada."
 )
 
 
@@ -126,14 +126,15 @@ def semear_projetos(*, site_id):
 
 
 @transaction.atomic
-def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None):
+def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None, item_livre="", descricao_livre=""):
     projeto = ProjetoSandbox.objects.select_for_update().filter(pk=projeto_id, site_id=site_id, ativo=True, categoria__in=ProjetoSandbox.Categoria.values).first()
     if projeto is None:
         raise ErroSandbox("Projeto indisponível neste site.")
     if prazo_horas is not None and (type(prazo_horas) is not int or prazo_horas not in (24, 48, 72)):
         raise ErroSandbox("Escolha um prazo de 24h, 48h ou 72h.")
-    if projeto.recompensa is None or (prazo_horas is None and projeto.prazo_dias is None):
-        raise ErroSandbox("A escola ainda precisa configurar prazo e recompensa.")
+    do_curso = projeto.slug in catalogo_curso.SLUGS
+    if prazo_horas is None and projeto.prazo_dias is None:
+        raise ErroSandbox("A escola ainda precisa configurar o prazo.")
     duracao = timedelta(hours=prazo_horas) if prazo_horas is not None else timedelta(days=projeto.prazo_dias)
     if ParticipacaoSandbox.objects.filter(site_id=site_id, pessoa_id=pessoa_id,
                                           status__in=["em_producao", "entregue", "em_ajuste"]).exists():
@@ -144,8 +145,24 @@ def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None):
                   criterios=projeto.criterios, prazo_dias=duracao.total_seconds() / 86400,
                   prazo_horas=int(duracao.total_seconds() / 3600),
                   natureza="simulacao_educacional", sem_pagamento=True,
-                  termos_simulacao=TERMOS_SIMULACAO, termos_simulacao_versao="20261006",
+                  termos_simulacao=TERMOS_SIMULACAO, termos_simulacao_versao="20261009",
                   ajustes_previstos=projeto.ajustes_previstos, recompensa=str(projeto.recompensa))
+    if do_curso:
+        termos["catalogo_curso"] = catalogo_curso.retrato(projeto.slug)
+        termos["recompensa_tipo"] = "xp"
+        termos.pop("recompensa", None)
+        termos["termos_simulacao"] = (
+            "Esta é uma prática educacional, sem cobrança ou pagamento. "
+            "Concluir o Sandbox concede a faixa Azul e 10.000 XP, uma vez por aluno. "
+            "O aceite registra o briefing e o prazo escolhido."
+        )
+        termos["termos_simulacao_versao"] = catalogo_curso.VERSAO
+        if projeto.categoria == "livre":
+            item_livre, descricao_livre = item_livre.strip(), descricao_livre.strip()
+            if not item_livre or len(item_livre) > 200 or not descricao_livre:
+                raise ErroSandbox("Descreva o item e o que deseja modelar no projeto livre.")
+            termos["titulo"] = item_livre
+            termos["briefing"] += "\n\nItem escolhido: " + item_livre + "\nDescrição: " + descricao_livre
     try:
         participacao = ParticipacaoSandbox.objects.create(
             site_id=site_id, pessoa_id=pessoa_id, projeto=projeto, termos=termos,
@@ -243,15 +260,13 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     if entrega is None or not entrega.arquivos.exists():
         raise ErroSandbox("Entrega sem arquivos.")
     agora = timezone.now()
-    valor = Decimal(p.termos["recompensa"])
-    MovimentoMeshcoin.objects.create(participacao=p, pessoa_id=p.pessoa_id, site_id=site_id,
-                                     valor=valor, aprovador_id=aprovador_id)
     entrega.aprovada_em = agora
     entrega.save(update_fields=["aprovada_em"])
     p.status = ParticipacaoSandbox.Status.APROVADO
     p.aprovado_em = agora
     p.aprovado_por = aprovador_id
     p.save(update_fields=["status", "aprovado_em", "aprovado_por"])
+    faixas_eventos.sandbox_trabalho_concluido(p)
     return p
 
 

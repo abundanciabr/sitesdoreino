@@ -138,7 +138,7 @@ def _detalhe(request, slug, *, erro=""):
         dados["pedidos"] = [p for p in pedidos if p.get("status") in conjuntos[situacao]]
     return render(request, "admin/cliente_fila.html", {
         "cliente": dados, "administrativo": administrativo, "erro": erro,
-        "situacao": situacao,
+        "situacao": situacao, "catalogo_curso": dados.get("catalogo_curso", {}),
         "mensagem": request.GET.get("mensagem", ""),
     })
 
@@ -180,7 +180,7 @@ def salvar_pedido_cliente_fila(request, slug, pedido_id=None):
     titulo = (request.POST.get("titulo") or "").strip()
     categoria = (request.POST.get("categoria") or "").strip()
     briefing = (request.POST.get("briefing") or "").strip()
-    categorias = {"espadas_objetos", "pets", "cabelos", "chapeus", "personagens"}
+    categorias = {"espadas_objetos", "pets", "cabelos", "chapeus", "personagens", "carros", "roupas", "livre"}
     try:
         valor_reais = Decimal((request.POST.get("valor_reais") or "").strip().replace(",", "."))
         if not valor_reais.is_finite() or valor_reais.as_tuple().exponent < -2:
@@ -193,6 +193,7 @@ def salvar_pedido_cliente_fila(request, slug, pedido_id=None):
         return _detalhe(request, slug, erro="Preencha título, categoria, descrição, entregáveis e valor.")
     dados = {
         "titulo": titulo, "categoria": categoria, "briefing": briefing,
+        "projeto_curso": (request.POST.get("projeto_curso") or "").strip(),
         "referencias": (request.POST.get("referencias") or "").strip(),
         "entregaveis": entregaveis,
         "valor_cents": valor_cents, "quantidade": 1, "prazo_horas": 48,

@@ -35,8 +35,9 @@
 <section class="cartao cliente-painel">
 <h2>Novo pedido</h2><p>Um item por pedido. O aluno terá 48 horas após aceitar.</p>
 <form class="forma cliente-forma" method="post" action="{% url 'criar_pedido_cliente_fila' cliente.slug %}">{% csrf_token %}
+  {% if catalogo_curso.projetos %}<p><label>Projeto do curso <select name="projeto_curso" data-projeto-curso><option value="">Descrever outro pedido</option>{% for projeto in catalogo_curso.projetos %}<option value="{{ projeto.slug }}">{{ projeto.titulo }}</option>{% endfor %}</select></label></p>{% endif %}
   <p><label>Título <input name="titulo" maxlength="200" required></label></p>
-  <p><label>Categoria <select name="categoria" required><option value="espadas_objetos">Espadas e armas</option><option value="pets">Pets</option><option value="cabelos">Cabelos</option><option value="chapeus">Chapéus</option><option value="personagens">Personagens</option></select></label></p>
+  <p><label>Categoria <select name="categoria" required>{% for categoria in catalogo_curso.categorias %}<option value="{{ categoria.chave }}">{{ categoria.titulo }}</option>{% empty %}<option value="espadas_objetos">Armas</option><option value="pets">Animais</option><option value="cabelos">Cabelos</option>{% endfor %}</select></label></p>
   <p><label>Descrição <textarea name="briefing" required></textarea></label></p>
   <p><label>Referências <textarea name="referencias"></textarea></label></p>
   <p><label>Entregáveis <textarea name="entregaveis" required></textarea></label></p>
@@ -70,4 +71,18 @@
     <button type="submit">Enviar orientação</button>
   </form>{% endif %}
 </section>{% empty %}<p>Nenhum pedido ainda.</p>{% endfor %}
-</main>{% endblock %}
+{{ catalogo_curso|json_script:"catalogo-curso" }}
+<script>
+(() => {
+  const catalogo = JSON.parse(document.getElementById('catalogo-curso').textContent);
+  document.querySelectorAll('[data-projeto-curso]').forEach(select => select.addEventListener('change', () => {
+    const projeto = (catalogo.projetos || []).find(p => p.slug === select.value);
+    if (!projeto) return;
+    const form = select.closest('form');
+    for (const [campo, valor] of Object.entries({titulo: projeto.titulo, categoria: projeto.categoria,
+      briefing: projeto.briefing, referencias: projeto.referencias.join('\n'), entregaveis: projeto.entregaveis.join('\n')})) {
+      form.elements[campo].value = valor;
+    }
+  }));
+})();
+</script></main>{% endblock %}

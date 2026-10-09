@@ -77,10 +77,12 @@ def test_rascunho_ajuste_aprovacao_idempotente_e_saldo():
         sandbox.pedir_ajuste(site_id="escola-a", participacao_id=p.pk, autor_id="equipe", texto="Mais um")
     assert sandbox.aprovar(site_id="escola-a", participacao_id=p.pk, aprovador_id="equipe").status == "aprovado"
     sandbox.aprovar(site_id="escola-a", participacao_id=p.pk, aprovador_id="equipe")
-    assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 1
-    assert sandbox.saldo(site_id="escola-a", pessoa_id="ana") == Decimal("12.50")
+    from apps.encomendas.models import OutboxMarketplace
+    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 1
+    assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
+    assert sandbox.saldo(site_id="escola-a", pessoa_id="ana") == 0
     assert sandbox.saldo(site_id="escola-b", pessoa_id="ana") == 0
-    assert list(sandbox.historico(site_id="escola-a", pessoa_id="ana"))[0].valor == Decimal("12.50")
+    assert not sandbox.historico(site_id="escola-a", pessoa_id="ana").exists()
 
 
 @pytest.mark.django_db

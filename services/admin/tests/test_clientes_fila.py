@@ -168,7 +168,7 @@ def test_saques_exclusivos_admin_e_sem_formulario_para_pagos():
     assert resposta.status_code == 200
     assert resposta["Cache-Control"] == "private, no-store"
     assert "Cookie" in resposta["Vary"]
-    assert b"Aluno Exemplo" in resposta.content and b"chave-teste" in resposta.content
+    assert b"<h2>Aluno</h2>" in resposta.content and b"chave-teste" in resposta.content
     assert b"Registrar Pix" not in resposta.content
 
     respx.get("http://encomendas:8000/api/encomendas/clientes-fila/acesso/pessoa-1").mock(
