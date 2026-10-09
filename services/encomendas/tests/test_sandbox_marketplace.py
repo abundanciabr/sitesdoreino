@@ -54,7 +54,7 @@ def test_rascunho_ajuste_aprovacao_idempotente_e_saldo():
     p = sandbox.aceitar(site_id="escola-a", pessoa_id="ana", projeto_id=projeto.pk)
     with pytest.raises(sandbox.ErroSandbox):
         sandbox.entregar(site_id="escola-a", participacao_id=p.pk, pessoa_id="ana", arquivos=[])
-    arquivo = ArquivoSandbox.objects.create(participacao=p, nome="modelo.blend", chave="sb/ana/modelo.blend",
+    arquivo = ArquivoSandbox.objects.create(site_id="escola-a", participacao=p, nome="modelo.blend", chave="sb/ana/modelo.blend",
         sha256="a" * 64, tamanho=150, mime="application/octet-stream")
     with pytest.raises(sandbox.ErroSandbox):
         sandbox.entregar(site_id="escola-a", participacao_id=p.pk, pessoa_id="outra", arquivos=[arquivo.pk])

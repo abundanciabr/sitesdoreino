@@ -295,7 +295,7 @@ def enviar_arquivo(request, participacao_id):
                 resumo.update(bloco)
                 tamanho += len(bloco)
         ArquivoSandbox.objects.create(
-            participacao=trabalho, nome=Path(str(recebido.name).replace("\\", "/")).name[:255],
+            site_id=trabalho.site_id, participacao=trabalho, nome=Path(str(recebido.name).replace("\\", "/")).name[:255],
             chave=chave, sha256=resumo.hexdigest(), tamanho=tamanho,
             mime=(recebido.content_type or "application/octet-stream")[:120])
     except Exception:

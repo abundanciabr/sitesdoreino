@@ -24,12 +24,12 @@ def salvar(path, data):
 
 
 def preparar(entrega):
-    analysis, _ = AnaliseEntregaSandbox.objects.get_or_create(entrega=entrega)
+    analysis, _ = AnaliseEntregaSandbox.objects.get_or_create(entrega=entrega, defaults={'site_id': entrega.site_id})
     for file in entrega.arquivos.all():
         key = hashlib.sha256((entrega.participacao.site_id + ':' + file.sha256 + ':' +
                               Path(file.nome).suffix.lower() + ':v1').encode()).hexdigest()
         AnaliseArquivoSandbox.objects.get_or_create(arquivo=file, defaults={
-            'sha256': file.sha256, 'chave_cache': key})
+            'site_id': file.site_id, 'sha256': file.sha256, 'chave_cache': key})
     return analysis
 
 

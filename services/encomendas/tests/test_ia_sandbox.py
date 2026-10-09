@@ -28,7 +28,7 @@ def participacao(db):
 @pytest.mark.django_db
 def test_orienta_com_retrato_e_historico_sem_alterar_condicoes(participacao, monkeypatch):
     MensagemSandbox.objects.create(
-        participacao=participacao, ator_id="aluno-1", papel="aluno",
+        site_id="escola-a", participacao=participacao, ator_id="aluno-1", papel="aluno",
         texto="Como faço o tronco?",
     )
     captura = {}
@@ -60,7 +60,7 @@ def test_briefing_editado_nao_substitui_snapshot_aceito(participacao, monkeypatc
     projeto = participacao.projeto
     projeto.briefing = "Briefing posterior diferente."
     projeto.save(update_fields=["briefing"])
-    MensagemSandbox.objects.create(participacao=participacao, ator_id="aluno-1",
+    MensagemSandbox.objects.create(site_id="escola-a", participacao=participacao, ator_id="aluno-1",
                                    papel="aluno", texto="Qual é a tarefa?")
     vistos = {}
 
@@ -76,7 +76,7 @@ def test_briefing_editado_nao_substitui_snapshot_aceito(participacao, monkeypatc
 @pytest.mark.django_db
 def test_falha_explicita_preserva_mensagem_do_aluno(participacao, monkeypatch):
     fala = MensagemSandbox.objects.create(
-        participacao=participacao, ator_id="aluno-1", papel="aluno",
+        site_id="escola-a", participacao=participacao, ator_id="aluno-1", papel="aluno",
         texto="Pode aprovar minha entrega?",
     )
 

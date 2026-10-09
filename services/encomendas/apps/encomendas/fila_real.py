@@ -29,7 +29,7 @@ def garantir_clientes(site_id):
         with transaction.atomic():
             cliente, criado = ClienteFila.objects.get_or_create(site_id=site_id, slug=slug, defaults={'nome': nome})
             if criado:
-                MovimentoOrcamentoFila.objects.create(cliente=cliente, chave=f'inicial:{site_id}:{slug}',
+                MovimentoOrcamentoFila.objects.create(site_id=cliente.site_id, cliente=cliente, chave=f'inicial:{site_id}:{slug}',
                     tipo='inicial', valor_cents=500000, saldo_apos_cents=500000)
 
 
@@ -54,7 +54,7 @@ def _reposicao(cliente, chave):
         valor = 500000 - cliente.creditos_cents
         cliente.creditos_cents = 500000
         cliente.save(update_fields=['creditos_cents'])
-        MovimentoOrcamentoFila.objects.create(cliente=cliente, chave='reposicao:' + chave,
+        MovimentoOrcamentoFila.objects.create(site_id=cliente.site_id, cliente=cliente, chave='reposicao:' + chave,
             tipo='reposicao_interna', valor_cents=valor, saldo_apos_cents=500000)
 
 
@@ -68,7 +68,7 @@ def _reserva(cliente, vinculo, valor, chave):
     cliente.save(update_fields=['creditos_cents'])
     vinculo.reservado_cents = valor
     vinculo.save(update_fields=['reservado_cents'])
-    MovimentoOrcamentoFila.objects.create(cliente=cliente, pedido=vinculo.pedido, chave=chave,
+    MovimentoOrcamentoFila.objects.create(site_id=cliente.site_id, cliente=cliente, pedido=vinculo.pedido, chave=chave,
         tipo='reserva', valor_cents=-diferenca, saldo_apos_cents=cliente.creditos_cents)
     _reposicao(cliente, chave)
 
@@ -195,7 +195,7 @@ def criar_pedido(*, site_id, slug=None, pessoa_id='', dados, administrativo=Fals
             cartao='item_simples', nivel='iniciante', moeda='BRL', prazo_quantidade=2,
             prazo_unidade='dias_corridos', ajustes_inclusos=ajustes, ambiente='production',
             status='na_fila', publicado_em=timezone.now())
-        vinculo = PedidoClienteFila.objects.create(pedido=pedido, cliente=cliente)
+        vinculo = PedidoClienteFila.objects.create(site_id=pedido.site_id, pedido=pedido, cliente=cliente)
         _reserva(cliente, vinculo, valor, f'pedido:{pedido.pk}:v1')
         return pedido
 
@@ -326,7 +326,7 @@ def registrar_mensagem(*, site_id, pessoa_id, pedido_id, texto, responde_a=None)
         mensagem = MensagemMarketplace.objects.create(site_id=site_id, pedido=pedido,
             ator_id=pessoa_id, papel=papel, texto=texto)
         if papel == 'aluno':
-            CasoConversaFila.objects.create(pedido=pedido, pergunta=mensagem)
+            CasoConversaFila.objects.create(site_id=pedido.site_id, pedido=pedido, pergunta=mensagem)
         elif papel == 'cliente' and responde_a:
             CasoConversaFila.objects.filter(pedido=pedido, pergunta_id=responde_a, resposta__isnull=True).update(resposta=mensagem)
         return mensagem

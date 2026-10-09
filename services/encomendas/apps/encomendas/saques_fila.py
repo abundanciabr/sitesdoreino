@@ -194,7 +194,7 @@ def solicitar(*, site_id: str, pessoa_id: str, dados: dict) -> dict:
                 break
             fatia = min(restante, sobra)
             if fatia:
-                ParcelaSaqueFila.objects.create(saque=saque, recebivel=recebivel, valor_cents=fatia)
+                ParcelaSaqueFila.objects.create(site_id=saque.site_id, saque=saque, recebivel=recebivel, valor_cents=fatia)
                 restante -= fatia
         return _publico(saque)
 

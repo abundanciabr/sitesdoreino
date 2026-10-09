@@ -171,7 +171,7 @@ def mensagem(*, site_id, participacao_id, ator_id, papel, texto):
         raise ErroSandbox("Participação não encontrada neste site.")
     if papel == "aluno" and ator_id != participacao.pessoa_id:
         raise ErroSandbox("Mensagem de aluno sem autoria correspondente.")
-    return MensagemSandbox.objects.create(participacao=participacao, ator_id=ator_id, papel=papel, texto=texto.strip())
+    return MensagemSandbox.objects.create(site_id=participacao.site_id, participacao=participacao, ator_id=ator_id, papel=papel, texto=texto.strip())
 
 
 @transaction.atomic
@@ -198,12 +198,12 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
     # A participação bloqueada serializa versões; a última versão vale como contador.
     ultima = EntregaSandbox.objects.filter(participacao=p).order_by("-versao").first()
     versao = ultima.versao + 1 if ultima else 1
-    entrega = EntregaSandbox.objects.create(participacao=p, versao=versao, comentario=comentario)
+    entrega = EntregaSandbox.objects.create(site_id=p.site_id, participacao=p, versao=versao, comentario=comentario)
     for arquivo in rascunhos:
         arquivo.entrega = entrega
         arquivo.save(update_fields=["entrega"])
     for item in novos:
-        ArquivoSandbox.objects.create(participacao=p, entrega=entrega, **item)
+        ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, entrega=entrega, **item)
     if p.atraso_em is None and timezone.now() > p.prazo_ate:
         p.atraso_em = timezone.now()
     p.status = ParticipacaoSandbox.Status.ENTREGUE
@@ -222,7 +222,7 @@ def pedir_ajuste(*, site_id, participacao_id, autor_id, texto):
     if limite is not None and AjusteSandbox.objects.filter(participacao=p).count() >= limite:
         raise ErroSandbox("Limite de ajustes atingido.")
     entrega = p.entregas.order_by("-versao").first()
-    ajuste = AjusteSandbox.objects.create(participacao=p, entrega=entrega, texto=texto.strip(), autor_id=autor_id)
+    ajuste = AjusteSandbox.objects.create(site_id=p.site_id, participacao=p, entrega=entrega, texto=texto.strip(), autor_id=autor_id)
     p.status = ParticipacaoSandbox.Status.EM_AJUSTE
     p.save(update_fields=["status"])
     from apps.core.ia_sandbox import enfileirar

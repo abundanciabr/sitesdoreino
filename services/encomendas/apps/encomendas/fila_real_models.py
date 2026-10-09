@@ -23,6 +23,7 @@ class ClienteFila(models.Model):
 
 
 class PedidoClienteFila(models.Model):
+    site_id = models.CharField(max_length=64, db_index=True)
     pedido = models.OneToOneField('encomendas.PedidoMarketplace', on_delete=models.PROTECT, related_name='fila_cliente')
     cliente = models.ForeignKey(ClienteFila, on_delete=models.PROTECT, related_name='pedidos')
     reservado_cents = models.PositiveIntegerField(default=0)
@@ -38,6 +39,7 @@ class PedidoClienteFila(models.Model):
 
 class MovimentoOrcamentoFila(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=64, db_index=True)
     cliente = models.ForeignKey(ClienteFila, on_delete=models.PROTECT, related_name='movimentos')
     pedido = models.ForeignKey('encomendas.PedidoMarketplace', on_delete=models.PROTECT, null=True, blank=True)
     chave = models.CharField(max_length=200, unique=True)
@@ -51,6 +53,7 @@ class MovimentoOrcamentoFila(models.Model):
 
 
 class OrientacaoPrivadaFila(models.Model):
+    site_id = models.CharField(max_length=64, db_index=True)
     pedido = models.ForeignKey('encomendas.PedidoMarketplace', on_delete=models.PROTECT, related_name='orientacoes_privadas')
     pessoa_id = models.CharField(max_length=64, db_index=True)
     pergunta = models.TextField()
@@ -63,6 +66,7 @@ class OrientacaoPrivadaFila(models.Model):
 
 class CasoConversaFila(models.Model):
     """Resolução humana preservada para preparar o robô futuro, sem envio automático."""
+    site_id = models.CharField(max_length=64, db_index=True)
     pedido = models.ForeignKey('encomendas.PedidoMarketplace', on_delete=models.PROTECT)
     pergunta = models.OneToOneField('encomendas.MensagemMarketplace', on_delete=models.PROTECT, related_name='caso_fila')
     resposta = models.ForeignKey('encomendas.MensagemMarketplace', on_delete=models.PROTECT, null=True, blank=True, related_name='casos_resolvidos')
@@ -109,6 +113,7 @@ class ParcelaSaqueFila(models.Model):
     """Fatia imutavel de um recebivel dedicada a um saque, inclusive parcial."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = models.CharField(max_length=64, db_index=True)
     saque = models.ForeignKey(SaqueManualFila, on_delete=models.PROTECT, related_name='parcelas')
     recebivel = models.ForeignKey('encomendas.RecebivelMarketplace', on_delete=models.PROTECT,
         related_name='parcelas_saques_fila')

@@ -24,7 +24,7 @@ def participacao(db):
 
 
 def entrega(p, body=b'imagem', name='TESTE.png'):
-    file = ArquivoSandbox.objects.create(participacao=p, nome=name, chave=uuid.uuid4().hex,
+    file = ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, nome=name, chave=uuid.uuid4().hex,
         sha256=hashlib.sha256(body).hexdigest(), tamanho=len(body), mime='application/octet-stream')
     return sandbox.entregar(site_id=p.site_id, participacao_id=p.pk, pessoa_id=p.pessoa_id, arquivos=[file.pk])
 

@@ -70,6 +70,7 @@ class MensagemSandbox(models.Model):
         CLIENTE = "cliente", "Cliente simulado (IA)"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = site()
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="mensagens")
     ator_id = models.CharField(max_length=64)
     papel = models.CharField(max_length=8, choices=Papel.choices)
@@ -82,6 +83,7 @@ class MensagemSandbox(models.Model):
 
 class EntregaSandbox(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = site()
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="entregas")
     versao = models.PositiveIntegerField()
     comentario = models.TextField(blank=True)
@@ -95,6 +97,7 @@ class EntregaSandbox(models.Model):
 
 class ArquivoSandbox(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = site()
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="arquivos")
     entrega = models.ForeignKey(EntregaSandbox, on_delete=models.PROTECT, related_name="arquivos", null=True, blank=True)
     nome = models.CharField(max_length=255)
@@ -111,6 +114,7 @@ class ArquivoSandbox(models.Model):
 
 class AjusteSandbox(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_id = site()
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="ajustes")
     entrega = models.ForeignKey(EntregaSandbox, on_delete=models.PROTECT, related_name="ajustes")
     texto = models.TextField()
@@ -136,6 +140,7 @@ class MovimentoMeshcoin(models.Model):
 
 
 class AnaliseArquivoSandbox(models.Model):
+    site_id = site()
     arquivo = models.OneToOneField(ArquivoSandbox, on_delete=models.PROTECT, related_name="analise")
     sha256 = models.CharField(max_length=64)
     chave_cache = models.CharField(max_length=64)
@@ -149,6 +154,7 @@ class AnaliseArquivoSandbox(models.Model):
 
 
 class AnaliseEntregaSandbox(models.Model):
+    site_id = site()
     entrega = models.OneToOneField(EntregaSandbox, on_delete=models.PROTECT, related_name="analise")
     estado = models.CharField(max_length=20, default="na_fila")
     resultado = models.JSONField(default=dict)
@@ -162,6 +168,7 @@ class AnaliseEntregaSandbox(models.Model):
 
 
 class RespostaSandbox(models.Model):
+    site_id = site()
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT)
     origem = models.CharField(max_length=100)
     papel = models.CharField(max_length=8)

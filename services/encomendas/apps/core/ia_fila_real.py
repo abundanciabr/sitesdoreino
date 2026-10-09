@@ -44,6 +44,6 @@ def orientar_privadamente(pedido, pessoa_id, papel, pergunta):
         # Falhas do provedor podem conter dados da conta; não exibimos nem logamos.
         resposta = None
     return OrientacaoPrivadaFila.objects.create(
-        pedido=pedido, pessoa_id=pessoa_id, pergunta=pergunta,
+        site_id=pedido.site_id, pedido=pedido, pessoa_id=pessoa_id, pergunta=pergunta,
         resposta=resposta or "A IA está indisponível agora. Pergunte diretamente à outra pessoa no chat humano.",
     )

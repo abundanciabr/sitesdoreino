@@ -149,7 +149,8 @@ explicitamente quando referências não vieram como imagem. Sem nota ou decisão
 def enfileirar(participacao, origem, papel):
     if papel not in ('ia', 'cliente'):
         raise ValueError('Interlocutor desconhecido')
-    return RespostaSandbox.objects.get_or_create(participacao=participacao, origem=origem, papel=papel)[0]
+    return RespostaSandbox.objects.get_or_create(participacao=participacao, origem=origem, papel=papel,
+                                                 defaults={'site_id': participacao.site_id})[0]
 
 
 def processar_resposta(pk):
@@ -184,7 +185,7 @@ def processar_resposta(pk):
             return
         if text:
             # Mensagem e conclusão são atômicas: repetição nunca duplica a fala.
-            msg = MensagemSandbox.objects.create(participacao=p, ator_id=('cliente-simulado-ia' if job.papel == 'cliente' else ATOR_IA),
+            msg = MensagemSandbox.objects.create(site_id=p.site_id, participacao=p, ator_id=('cliente-simulado-ia' if job.papel == 'cliente' else ATOR_IA),
                                                   papel=job.papel, texto=text)
             atual.mensagem = msg
             atual.estado = 'concluida'
