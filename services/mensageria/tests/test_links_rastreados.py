@@ -130,6 +130,7 @@ def test_destino_existente_do_site_e_reaproveitado():
     ("HEAD", "Mozilla/5.0", "text/html", "automatico"),
     ("GET", "WhatsApp/2.23.20 A", "*/*", "automatico"),
     ("GET", "facebookexternalhit/1.1", "text/html", "automatico"),
+    ("GET", "node", "*/*", "automatico"),
     ("GET", "Mozilla/5.0 (iPhone) Safari", "text/html,application/xhtml+xml", "provavel"),
     ("GET", "", "text/html", "indeterminado"),
     ("GET", "Outro/1.0", "text/html", "indeterminado"),

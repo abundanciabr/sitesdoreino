@@ -15,6 +15,9 @@ def classificar(metodo: str, user_agent: str, accept: str) -> tuple[str, str]:
     if not agente:
         return "indeterminado", "sem user-agent"
     minusculo = agente.lower()
+    if minusculo == "node":
+        # A Evolution (Baileys) busca o link para montar a prévia com User-Agent "node", sem mais nada.
+        return "automatico", "user-agent de prévia/robô: node (gateway)"
     for trecho in TRECHOS_DE_ROBO:
         if trecho in minusculo:
             return "automatico", f"user-agent de prévia/robô: {trecho}"
