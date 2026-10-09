@@ -246,13 +246,20 @@ def ao_mensagem_recebida(envelope: dict):
         return None
     lead = data.get("lead")
     contato_id = _texto(lead.get("id") if isinstance(lead, dict) else lead, 80)
-    if data.get("lead_ligacao") != "ligada" or not contato_id:
-        return None  # o robô só atende contato do quiz; o resto fica na caixa para a equipe
-    contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
+    sem_cadastro = (data.get("canal") == "whatsapp"
+                    and data.get("lead_ligacao") in ("desconhecida", "ambigua", "pendente"))
+    if (data.get("lead_ligacao") != "ligada" or not contato_id) and not sem_cadastro:
+        return None
+    if sem_cadastro:
+        # A resposta pertence à conversa recebida; não inventa ficha nem origem de quiz.
+        contato_id = ""
+        contato = {"nome": "", "email": "", "telefone": ""}
+    else:
+        contato = _contato(data) if isinstance(lead, dict) else {"nome": "", "email": "", "telefone": ""}
     if data.get("estado_conversa") == "pessoa":
         return None  # uma pessoa da equipe está atendendo
-    grupo = comparacao.grupo_do_contato_id(site_id, contato_id)
-    if grupo is None and isinstance(lead, dict):
+    grupo = comparacao.grupo_do_contato_id(site_id, contato_id) if contato_id else None
+    if grupo is None and contato_id and isinstance(lead, dict):
         # Lead ainda sem marca e o evento já diz quem ele é: sorteia antes de criar o trabalho.
         grupo = coordenador.sortear_se_ainda_sem_marca(
             site_id, comparacao.quem_e(contato["email"], contato["telefone"]), contato_id,
@@ -260,7 +267,7 @@ def ao_mensagem_recebida(envelope: dict):
     if grupo == comparacao.GRUPO_COMPARACAO:
         return None  # grupo de comparação: a mensagem fica na caixa para a equipe responder
     escopo = interruptor.escopo()
-    if escopo and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
+    if escopo and not sem_cadastro and not TrabalhoComercial.objects.filter(contato_id=contato_id, entrada__quiz__in=escopo).exists():
         return None  # a equipe atua só em alguns quizzes e este contato não veio deles
     midia = data.get("midia") if isinstance(data.get("midia"), dict) else None
     texto = str(data.get("texto") or "")[:4000]
@@ -279,6 +286,7 @@ def ao_mensagem_recebida(envelope: dict):
         nao_antes_de=timezone.now() + ESPERA_DA_TRANSCRICAO if aguarda_transcricao else None,
         entrada={
             "canal": _texto(data.get("canal"), 20),
+            "atendimento_sem_cadastro": sem_cadastro,
             "aguarda_transcricao": aguarda_transcricao,
             # O domínio do site: o checkout e o quiz acham o site por ele.
             "host": _host(data) or servicos.host_do_site(site_id),

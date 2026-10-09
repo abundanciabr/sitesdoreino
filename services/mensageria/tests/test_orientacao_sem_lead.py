@@ -108,7 +108,7 @@ def test_desconhecido_recebe_uma_orientacao_e_a_segunda_fala_em_24h_nao_gera_out
     assert len(saidas) == 1 and len(mundo["posts"]) == 1
     assert (saidas[0].autor, saidas[0].autor_id) == ("sistema", "orientacao:desconhecida")
     texto = saidas[0].texto
-    assert "assistente da equipe" in texto and "quem fez o quiz" in texto
+    assert "assistente da equipe" in texto and "Vamos conversar!" in texto
     assert "https://meusite.exemplo/quiz" in texto and "ajuda@meusite.exemplo" in texto
     assert not any(segredo in texto for segredo in SEGREDOS)
     # Segunda fala dentro de 24h: fica na caixa, sem outra orientação.
@@ -130,7 +130,7 @@ def test_desconhecido_recebe_uma_orientacao_e_a_segunda_fala_em_24h_nao_gera_out
 def test_sem_endereco_cadastrado_a_orientacao_vai_sem_link_e_sem_inventar_contato(mundo):
     _upsert(Client(), ident="S1")
     texto = _saidas()[0].texto
-    assert "http" not in texto and "no nosso site" in texto and "caixa de entrada da equipe" in texto
+    assert "http" not in texto and "no nosso site" in texto and "Pode contar sua dúvida" in texto
 
 
 def test_orientacao_de_madrugada_e_resposta_e_nao_passa_pelo_horario(mundo, monkeypatch):

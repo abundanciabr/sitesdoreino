@@ -197,15 +197,17 @@ def test_mensagem_recebida_vira_atendimento_por_conversa():
 
 
 @pytest.mark.parametrize("ligacao", ["pendente", "desconhecida", "ambigua"])
-def test_mensagem_de_quem_nao_e_contato_do_quiz_fica_na_caixa_sem_robo(ligacao):
+def test_whatsapp_sem_cadastro_recebe_atendimento_sem_inventar_ficha(ligacao):
     data = {"conversa_id": "conv-x", "mensagem_id": "m-x", "canal": "whatsapp", "site_id": "site-1",
             "lead": None, "lead_ligacao": ligacao, "texto": "Oi", "estado_conversa": "agente"}
     eventos.tratar("eventos.mensagem.recebida", _envelope("mensagem.recebida", data))
-    assert not TrabalhoComercial.objects.exists()
-    # Ligada, mas sem o contato no evento: também não tem quem o robô atenda.
+    trabalho = TrabalhoComercial.objects.get()
+    assert trabalho.contato_id == "" and trabalho.oportunidade_id == ""
+    assert trabalho.conversa_id == "conv-x" and trabalho.entrada["atendimento_sem_cadastro"]
+    # Uma ligação marcada como confirmada sem id continua inconsistente.
     eventos.tratar("eventos.mensagem.recebida",
                    _envelope("mensagem.recebida", {**data, "lead_ligacao": "ligada"}))
-    assert not TrabalhoComercial.objects.exists()
+    assert TrabalhoComercial.objects.count() == 1
 
 
 @respx.mock
@@ -220,7 +222,7 @@ def test_mensagem_de_quem_nao_e_do_quiz_leva_o_endereco_do_site_para_a_orientaca
     assert lida.called and gravada.called
     assert json.loads(gravada.calls.last.request.content) == {
         "endereco_quiz": "https://meusite.exemplo/", "atendimento_geral": "ajuda@meusite.exemplo"}
-    assert not TrabalhoComercial.objects.exists()
+    assert TrabalhoComercial.objects.get().entrada["atendimento_sem_cadastro"] is True
 
 
 @respx.mock

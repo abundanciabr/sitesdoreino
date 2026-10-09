@@ -7,8 +7,8 @@ envio passa por `envio.enviar` (descadastro, janela e conversa assumida valem).
 Resposta a quem acabou de falar não passa por horário nem teto (é "resposta"
 na régua do agente; aqui o autor é "sistema", que nunca entra nessa régua).
 
-Quem não veio do quiz NUNCA vira contato nem oportunidade: a conversa só fica na
-caixa da equipe, com a etiqueta "sem origem no quiz".
+Quem não veio do quiz não vira contato nem oportunidade: o atendimento continua
+na própria conversa, com a etiqueta "sem origem no quiz".
 """
 from __future__ import annotations
 
@@ -54,12 +54,12 @@ def texto_para_quem_nao_e_do_quiz(site_id: str) -> str:
     atendimento = (
         f"Para falar com a equipe sobre outro assunto: {geral}."
         if geral else
-        "Sua mensagem ficou na caixa de entrada da equipe, que responde assim que puder."
+        "Pode contar sua dúvida ou o assunto sobre o qual quer conversar."
     )
     return (
-        "Olá! Aqui é o assistente da equipe. O atendimento por este número é para quem "
-        f"fez o quiz do site. Se você ainda não fez, é só responder ao quiz {onde} e a "
-        f"conversa continua por aqui. {atendimento} "
+        "Olá! Aqui é o assistente da equipe. Vamos conversar! "
+        f"Se quiser conhecer o curso mais adequado para você, pode fazer o quiz {onde}. "
+        f"{atendimento} "
         "Se preferir não receber mensagens, responda PARAR."
     )
 

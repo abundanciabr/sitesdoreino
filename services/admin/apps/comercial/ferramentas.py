@@ -1096,6 +1096,13 @@ def _enviar_em_voz(ctx: Contexto, conversa_id: str, corpo: dict, canal: str | No
         if ficha.ok and str(ficha.dados.get("site_id") or "") == str(t.site_id):
             telefone = str(ficha.dados.get("telefone") or "")
     if not telefone:
+        from apps.voz.cliente import MensageriaAudio
+
+        destino = MensageriaAudio().destino_da_conversa(t.site_id, conversa_id)
+        telefone = str((destino or {}).get("telefone") or "")
+        if not telefone and pendente:
+            raise EnvioIncerto("A confirmação do áudio ainda não voltou.")
+    if not telefone:
         return None
     resposta = voz.responder(site_id=t.site_id, telefone=telefone, texto=corpo["texto"],
                              chave_idempotencia=corpo["chave_idempotencia"], conversa_ref=conversa_id,

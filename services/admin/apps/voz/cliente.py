@@ -68,6 +68,9 @@ class MensageriaAudio:
     def formato(self, site_id: str, telefone: str, canal: str = "whatsapp") -> dict | None:
         return self._pedir("POST", f"{self._site(site_id)}/formato", {"telefone": telefone, "canal": canal})
 
+    def destino_da_conversa(self, site_id: str, conversa_ref: str) -> dict | None:
+        return self._pedir("POST", f"{self._site(site_id)}/destino-da-conversa", {"conversa_ref": conversa_ref})
+
     def definir_preferencia(self, site_id: str, telefone: str, modo: str) -> dict | None:
         return self._pedir("POST", f"{self._site(site_id)}/preferencia", {"telefone": telefone, "modo": modo})
 

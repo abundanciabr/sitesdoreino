@@ -72,6 +72,34 @@ def test_atendente_envia_audio_guarda_custo_e_nao_envia_texto(ambiente):
     assert ProcessamentoDeVoz.objects.get().resultado["pedido"]["audio_base64"]
 
 
+def test_audio_de_quem_inicia_sem_cadastro_pode_ser_respondido(ambiente, monkeypatch):
+    from apps.comercial import eventos, servicos
+
+    monkeypatch.setattr(servicos, "garantir_endereco_do_quiz_na_orientacao", lambda *a: None)
+    monkeypatch.setattr(servicos, "host_do_site", lambda *a, **k: "meusite.exemplo")
+    trabalho = eventos.ao_mensagem_recebida({"event_id": "audio-sem-cadastro", "data": {
+        "site_id": "site-a", "conversa_id": "conv-a", "mensagem_id": "audio-recebido",
+        "canal": "whatsapp", "endereco": "5511988887777", "lead_ligacao": "ambigua",
+        "lead": {"id": "outra-ficha", "nome": "Não pode ser exposto"},
+        "estado_conversa": "agente", "texto": "",
+        "midia": {"tipo": "audio"},
+    }})
+    assert trabalho.contato_id == "" and trabalho.entrada["contato"]["nome"] == ""
+    assert trabalho.entrada["aguarda_transcricao"] is True
+    eventos.ao_mensagem_transcrita({"event_id": "audio-transcrito-sem-cadastro", "data": {
+        "site_id": "site-a", "conversa_id": "conv-a", "mensagem_id": "audio-recebido",
+        "transcricao": "Como posso conversar com a equipe?",
+    }})
+    trabalho.refresh_from_db()
+    assert trabalho.nao_antes_de is None
+    assert trabalho.entrada["mensagens"][0]["texto"] == "Como posso conversar com a equipe?"
+    with respx.mock as rede:
+        _, fala, voz, texto = rotas(rede)
+        rede.post(f"{MSG}/audio/site-a/destino-da-conversa").respond(200, json={"telefone": "5511988887777"})
+        assert enviar(trabalho)["mensagem_id"] == "msg-voz"
+    assert fala.called and voz.called and not texto.called
+
+
 @pytest.mark.parametrize("motivo,preferencia", [("lead_mandou_texto", "espelhar"),
                                                ("lead_prefere_texto", "texto")])
 def test_texto_nao_gasta_com_sintese(ambiente, motivo, preferencia):

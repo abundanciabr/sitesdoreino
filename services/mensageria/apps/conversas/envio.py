@@ -71,7 +71,7 @@ def fala_sem_resposta(conversa: Conversa, ignorar_pk=None, **da_fala) -> bool:
     if ultima is None:
         return False
     saidas = conversa.mensagens.filter(direcao="saida", criada_em__gt=ultima.criada_em).exclude(
-        estado_envio="falhou")
+        estado_envio="falhou").exclude(autor_id__startswith="orientacao:")
     if ignorar_pk is not None:
         saidas = saidas.exclude(pk=ignorar_pk)
     return not saidas.exists()
@@ -137,7 +137,8 @@ def _iniciativas_do_agente_no_dia(conversa: Conversa, agora: datetime, ignorar_p
     mensagens = MensagemDaConversa.objects.filter(
         conversa__in=Conversa.objects.filter(mesmo_contato, site_id=conversa.site_id),
         ocorrida_em__gte=inicio - FALA_AO_VIVO, ocorrida_em__lt=fim,
-    ).exclude(direcao="saida", estado_envio="falhou").order_by("conversa_id", "criada_em").values_list(
+    ).exclude(direcao="saida", estado_envio="falhou").exclude(
+        direcao="saida", autor_id__startswith="orientacao:").order_by("conversa_id", "criada_em").values_list(
         "conversa_id", "direcao", "autor", "descadastro", "criada_em", "ocorrida_em", "pk")
     iniciativas, conversa_atual, fala_aberta = 0, None, None
     for conversa_id, direcao, autor, descadastro, criada_em, ocorrida_em, pk in mensagens:

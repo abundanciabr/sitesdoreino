@@ -814,6 +814,21 @@ def test_resposta_exige_a_janela_de_24h_aberta(base):
     assert envio.e_resposta(conversa, agora) is False
 
 
+def test_boas_vindas_do_sistema_nao_impedem_resposta_do_agente_a_noite(base, monkeypatch):
+    conversa = _conversa_ligada(base)
+    posts = []
+    _gateway_aberto(monkeypatch, posts)
+    _relogio(monkeypatch, 21, 30)
+    MensagemDaConversa.objects.create(
+        conversa=conversa, direcao="saida", autor="sistema", autor_id="orientacao:desconhecida",
+        texto="Vamos conversar!", estado_envio="enviado", ocorrida_em=timezone.now(),
+        chave_idempotencia="boas-vindas",
+    )
+    assert _pedir(Client(), conversa, "resposta-depois-da-orientacao")["resultado"] == "enviada"
+    assert envio._iniciativas_do_agente_no_dia(conversa, envio._agora()) == 0
+    assert _pedir(Client(), conversa, "outra-sem-fala")["resultado"] == "fora_do_horario"
+
+
 def test_retomada_de_saida_pendente_de_resposta_tambem_e_resposta(base, monkeypatch):
     conversa = _conversa_ligada(base)
     posts = []

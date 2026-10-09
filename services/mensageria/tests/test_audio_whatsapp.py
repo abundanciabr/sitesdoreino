@@ -67,6 +67,23 @@ def test_webhook_de_audio_exige_token_e_instancia_conhecida(configurado):
     assert not AudioRecebido.objects.exists()
 
 
+def test_destino_para_responder_em_voz_e_privado_e_do_mesmo_site(configurado):
+    from apps.conversas.models import Conversa
+    from apps.jornadas.models import OutboxEvent
+
+    cliente = Client()
+    _webhook(cliente, _upsert())
+    conversa = Conversa.objects.get(site_id="site-a")
+    corpo = json.dumps({"conversa_ref": str(conversa.pk)})
+    def pedir(site, token):
+        return cliente.post(f"/api/mensageria/audio/{site}/destino-da-conversa", corpo,
+                            content_type="application/json", **token)
+    assert pedir("site-a", LEITURA).status_code == 403
+    assert pedir("site-b", ESCRITA).status_code == 404
+    assert pedir("site-a", ESCRITA).json() == {"telefone": "5511988887777"}
+    assert "5511988887777" not in json.dumps(list(OutboxEvent.objects.values_list("payload", flat=True)))
+
+
 def test_midia_e_baixada_pelo_transporte_uma_vez_e_guardada(configurado, monkeypatch):
     _webhook(Client(), _upsert())
     audio = AudioRecebido.objects.get()

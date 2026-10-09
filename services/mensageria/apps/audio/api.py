@@ -7,6 +7,7 @@ dado pessoal, é leitura.
 import base64
 import binascii
 from typing import Optional
+from uuid import UUID
 
 from ninja import Router, Schema
 from ninja.errors import HttpError
@@ -77,6 +78,10 @@ class LeadEntrada(Schema):
 class PreferenciaEntrada(Schema):
     telefone: str
     modo: str
+
+
+class ConversaEntrada(Schema):
+    conversa_ref: UUID
 
 
 class VozEntrada(Schema):
@@ -179,6 +184,18 @@ def preferencia(request, site_id: str, dados: PreferenciaEntrada):
         raise HttpError(422, "modo invalido: texto, audio ou espelhar")
     modo = servico.definir_preferencia(_site(site_id), _telefone(dados.telefone), dados.modo)
     return {"modo": modo}
+
+
+@router.post("/{site_id}/destino-da-conversa")
+def destino_da_conversa(request, site_id: str, dados: ConversaEntrada):
+    """Destino privado para responder na conversa; não vai ao modelo nem aos eventos."""
+    _escrita(request)
+    from apps.conversas.models import Conversa
+
+    conversa = Conversa.objects.filter(pk=dados.conversa_ref, site_id=_site(site_id), canal="whatsapp").first()
+    if conversa is None:
+        raise HttpError(404, "conversa nao encontrada")
+    return {"telefone": conversa.endereco}
 
 
 @router.post("/{site_id}/responder-em-voz")
