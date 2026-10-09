@@ -352,15 +352,6 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     raise ValueError(
                         "Informe um recebimento positivo e onde ele aconteceu."
                     )
-                if (
-                    origem == "fila"
-                    and RecebimentoDeclarado.objects.filter(
-                        pessoa_id=pessoa_id, site_id=site_id, origem="fila"
-                    ).exists()
-                ):
-                    raise ValueError(
-                        "A Fila do Dólar tem uma única participação. Corrija o recebimento já registrado abaixo."
-                    )
                 r = RecebimentoDeclarado.objects.create(
                     pessoa_id=pessoa_id,
                     site_id=site_id,

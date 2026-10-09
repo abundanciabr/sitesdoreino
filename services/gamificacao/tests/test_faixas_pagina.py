@@ -249,8 +249,6 @@ def test_troca_meta_preserva_recebimentos_e_historico():
 
 def test_fila_um_recebimento_corrigivel_e_proxima_acao_forum():
     receber("10", origem="fila")
-    with pytest.raises(ValueError, match="única participação"):
-        receber("20", origem="fila")
     gesto(
         "correcao",
         recebimento=RecebimentoDeclarado.objects.get().pk,
@@ -259,6 +257,16 @@ def test_fila_um_recebimento_corrigivel_e_proxima_acao_forum():
     )
     assert situacao(P, SITE)["total_cents"] == 2000
     assert situacao(P, SITE)["proxima_url"] == "/forum/"
+
+
+def test_dois_pix_da_fila_somam_e_reenvio_nao_duplica():
+    receber("10", origem="fila")
+    chave = str(uuid.uuid4())
+    for _ in range(2):
+        receber("15", origem="fila", chave=chave)
+    assert RecebimentoDeclarado.objects.count() == 2
+    s = situacao(P, SITE)
+    assert s["total_cents"] == 2500 and s["fila_usada"]
 
 
 def test_apoio_muda_orientacao_sem_mudar_criterio():
