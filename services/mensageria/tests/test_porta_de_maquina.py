@@ -856,6 +856,13 @@ CORPOS_DE_ESCRITA = {
         "chave_idempotencia": "prova-sem-envio",
     },
     f"/audio/{SITE}/consumo": {"telefone": "11999999999"},
+    f"/audio/{SITE}/destino-da-conversa": {"conversa_ref": "00000000-0000-0000-0000-000000000000"},
+    "/automacoes": {"site_id": SITE, "nome": "sintetica"},
+    f"/automacoes/{SLUG}": {"site_id": SITE, "versao_base": 1, "nome": "sintetica",
+                            "gatilho": "manual", "passos": []},
+    f"/automacoes/{SLUG}/acao": {"site_id": SITE, "acao": "ativar"},
+    f"/automacoes/{SLUG}/teste": {"site_id": SITE, "conversa_id": "x", "chave_idempotencia": "k"},
+    f"/automacoes/{SLUG}/participantes": {"site_id": SITE, "pessoas": [], "chave_idempotencia": "k"},
     "/whatsapp-modelos/sincronizar": {},
     "/whatsapp-modelos/modelos/mapeamento": {"modelo_id": 1, "mapeamento": {}},
     f"/whatsapp-modelos/{SITE}/enviar": {
