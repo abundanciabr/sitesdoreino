@@ -88,4 +88,19 @@ def consultar_fontes(site_id, email):
             dados["conquistas"] = [dict(i, nome=nomes.get(i.get("slug"), i.get("slug")))
                                      for i in dados.get("conquistas", [])]
         fontes["conquistas"] = {"estado": "ok" if dados else "sem_registro", "dados": dados}
+    # A faixa é um enfeite da ficha: qualquer falha a omite, sem derrubar o resto.
+    try:
+        faixa = GamificacaoClient().faixa_do_aluno(pessoa)
+        atual = faixa.get("atual") if isinstance(faixa, dict) else None
+        if isinstance(atual, dict) and atual.get("nome"):
+            cores = [c for c in (atual.get("cores") or []) if isinstance(c, str)
+                     and len(c) == 7 and c.startswith("#")]
+            if cores:
+                fundo = cores[0] if len(cores) == 1 else (
+                    f"linear-gradient(90deg,{cores[0]} 50%,{cores[1]} 50%)")
+                fontes["faixa"] = {"nome": atual["nome"], "conquista": atual.get("conquista"),
+                                   "alcancada_em": atual.get("alcancada_em"), "fundo": fundo,
+                                   "ordem": atual.get("ordem")}
+    except Exception:
+        pass
     return fontes

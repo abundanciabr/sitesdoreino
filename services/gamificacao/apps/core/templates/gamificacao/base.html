@@ -45,6 +45,74 @@ paga.
 
 {% block conteudo %}
 {% if entrou %}
+  <section class="degrau faixa-atual" aria-labelledby="faixa-atual-titulo">
+    <p class="rotulo">Sua faixa</p>
+    <div class="faixa-cartao">
+      <span class="fita{% if faixas.atual.ordem == 1 %} branca{% endif %}"
+            style="background: {{ faixas.atual.fundo }}" aria-hidden="true"></span>
+      <div>
+        <h2 id="faixa-atual-titulo">Faixa {{ faixas.atual.nome }}</h2>
+        <p class="passo">{{ faixas.atual.conquista }}</p>
+        {% if faixas.atual.data %}<p class="miudo">Desde {{ faixas.atual.data }}</p>{% endif %}
+      </div>
+    </div>
+    {% if faixas.proxima %}
+      <p class="rotulo proxima">Próxima faixa</p>
+      <div class="faixa-cartao">
+        <span class="fita" style="background: {{ faixas.proxima.fundo }}" aria-hidden="true"></span>
+        <div>
+          <h3>Faixa {{ faixas.proxima.nome }}</h3>
+          <p class="passo">{{ faixas.proxima.conquista }}</p>
+          <p class="miudo">{{ faixas.proxima.falta_texto }}</p>
+        </div>
+      </div>
+      {% if faixas.proxima.barra %}
+        <div class="barra" role="img"
+             aria-label="{% if faixas.proxima.barra.unica %}Nenhum pagamento real confirmado ainda{% else %}{{ faixas.proxima.barra.total }} de {{ faixas.proxima.barra.meta }}{% endif %}">
+          <div class="cheio" style="width: {{ faixas.proxima.barra.pct }}%"></div>
+        </div>
+        {% if faixas.proxima.barra.unica %}
+          <p class="passo">Dinheiro real confirmado: <strong>{{ faixas.proxima.barra.total }}</strong>. Falta o primeiro pagamento.</p>
+        {% else %}
+          <p class="passo"><strong>{{ faixas.proxima.barra.total }}</strong> de <strong>{{ faixas.proxima.barra.meta }}</strong> &mdash; faltam <strong>{{ faixas.proxima.barra.falta }}</strong></p>
+        {% endif %}
+      {% endif %}
+    {% else %}
+      <p class="passo">Você chegou à faixa Preta, a última da jornada.</p>
+    {% endif %}
+  </section>
+
+  <section class="aviso jornada" aria-labelledby="jornada-titulo">
+    <h2 id="jornada-titulo">A jornada das 13 faixas</h2>
+    <ol class="faixas-lista">
+      {% for f in faixas.lista %}
+        <li class="faixa-item{% if f.alcancada %} alcancada{% else %} apagada{% endif %}{% if f.atual %} atual{% endif %}">
+          <span class="fita{% if f.ordem == 1 %} branca{% endif %}"
+                style="background: {{ f.fundo }}" aria-hidden="true"></span>
+          <div>
+            <p class="faixa-nome">{{ f.ordem }}. Faixa {{ f.nome }}
+              {% if f.atual %}<span class="selo">Você está aqui</span>{% elif f.alcancada %}<span class="selo">Alcançada</span>{% elif f.estado == 'revertida' %}<span class="selo">Em pausa</span>{% endif %}</p>
+            <p class="miudo">{{ f.conquista }}</p>
+            {% if f.alcancada %}
+              <p class="miudo">{% if f.data %}{{ f.data }} &middot; {% endif %}{{ f.origem }}</p>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <section class="aviso legenda" aria-labelledby="legenda-titulo">
+    <h2 id="legenda-titulo">Como ler cada coisa</h2>
+    <ul class="criterios">
+      <li class="miudo"><strong>Faixa</strong> = suas conquistas reais. Não depende de XP.</li>
+      <li class="miudo"><strong>XP e nível</strong> = sua experiência de estudo.</li>
+      <li class="miudo"><strong>Cristais</strong> = recompensa de esforço, para usar na loja.</li>
+      <li class="miudo"><strong>MESH</strong> = moeda de treino do Sandbox. Não é dinheiro.</li>
+      <li class="miudo"><strong>Dinheiro real</strong> = o que você ganhou de clientes reais, já confirmado.</li>
+    </ul>
+  </section>
+
   <section class="degrau">
     {% if not escada.montada %}
       <p class="rotulo">Suas conquistas</p>

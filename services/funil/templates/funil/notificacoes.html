@@ -66,6 +66,9 @@
             {% elif aviso.tipo == "nivel" %}
               <h2>{% t "notificacoes.nivel_titulo" %}</h2>
               {% if aviso.nivel %}<p>{% t "notificacoes.nivel_corpo" nivel=aviso.nivel %}</p>{% else %}<p>{% t "notificacoes.nivel_corpo_sem_numero" %}</p>{% endif %}
+            {% elif aviso.tipo == "conquista" and aviso.faixa %}
+              <h2>{% t "notificacoes.faixa_titulo" %}</h2>
+              <p>{% t "notificacoes.faixa_corpo" %} {% t "notificacoes.faixa_nome_"|add:aviso.faixa %}.</p>
             {% elif aviso.tipo == "matricula" %}
               <h2>{% t "notificacoes.matricula_titulo" %}</h2>
               <p>{% t "notificacoes.matricula_"|add:aviso.situacao_nova %}</p>

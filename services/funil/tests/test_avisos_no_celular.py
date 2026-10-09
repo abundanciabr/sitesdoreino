@@ -244,9 +244,9 @@ FRASES_ESPERADAS = {
         "es": ("Subiste de nivel", "Toca para ver el escalón que alcanzaste."),
     },
     "gamificacao.conquista-concedida": {
-        "en": ("You earned a medal", "It is already saved in your profile."),
-        "pt-br": ("Você ganhou uma medalha", "Ela já está guardada no seu perfil."),
-        "es": ("Ganaste una medalla", "Ya está guardada en tu perfil."),
+        "en": ("You earned an achievement", "It is already saved in your profile."),
+        "pt-br": ("Você ganhou uma conquista", "Ela já está guardada no seu perfil."),
+        "es": ("Ganaste un logro", "Ya está guardada en tu perfil."),
     },
     "gamificacao.marco-validado": {
         "en": (

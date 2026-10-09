@@ -15,7 +15,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from . import motor, relogio
+from . import faixas_eventos, motor, relogio
 from .models import (
     AcordoMarketplace,
     AjusteMarketplace,
@@ -109,7 +109,7 @@ def configurar_fase(
 def _pedido(site_id: str, pedido_id, *, trava: bool = False) -> PedidoMarketplace:
     consulta = PedidoMarketplace.objects.filter(pk=pedido_id, site_id=site_id, fila_cliente__isnull=True)
     if trava:
-        consulta = consulta.select_for_update()
+        consulta = consulta.select_for_update(of=("self",))  # o join de fila_cliente__isnull é externo
     pedido = consulta.first()
     if pedido is None:
         raise ErroMarketplace("pedido não encontrado neste site")
@@ -486,6 +486,7 @@ def aceitar_oferta(
             site_id=site_id, pedido=pedido, oferta=oferta, aluno=perfil,
             versao_pedido=pedido.versao, termos=termos, aceito_em=agora,
         )
+        faixas_eventos.fila_trabalho_aceito(acordo)  # faixa "primeiro trabalho na Fila do Dólar"
         oferta.status = OfertaMarketplace.Status.ACEITA
         oferta.respondida_em = agora
         oferta.save(update_fields=["status", "respondida_em"])
@@ -756,6 +757,7 @@ def aprovar_entrega(
         _evento(pedido, "marketplace.entrega_aprovada.v1", str(entrega.pk), {
             "entrega_id": str(entrega.pk), "recebivel_id": recebivel.pk,
         })
+        faixas_eventos.sincronizar_rendimento(recebivel)
         return recebivel
 
 
@@ -783,4 +785,5 @@ def registrar_recebimento(
             "status", "valor_liquido_cents", "referencia_repasse", "recebido_em"
         ])
         _evento(pedido, "marketplace.recebimento_confirmado.v1", referencia)
+        faixas_eventos.sincronizar_rendimento(recebivel)
         return recebivel

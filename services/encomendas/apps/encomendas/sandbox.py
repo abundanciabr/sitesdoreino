@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from . import faixas_eventos
 from .sandbox_models import (
     AjusteSandbox, ArquivoSandbox, EntregaSandbox, MensagemSandbox,
     MovimentoMeshcoin, ParticipacaoSandbox, ProjetoSandbox,
@@ -146,12 +147,14 @@ def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None):
                   termos_simulacao=TERMOS_SIMULACAO, termos_simulacao_versao="20261006",
                   ajustes_previstos=projeto.ajustes_previstos, recompensa=str(projeto.recompensa))
     try:
-        return ParticipacaoSandbox.objects.create(
+        participacao = ParticipacaoSandbox.objects.create(
             site_id=site_id, pessoa_id=pessoa_id, projeto=projeto, termos=termos,
             aceite_em=agora, prazo_ate=agora + duracao,
         )
     except IntegrityError as exc:
         raise ErroSandbox("Esta pessoa já tem um projeto em andamento.") from exc
+    faixas_eventos.sandbox_trabalho_criado(participacao)  # faixa "primeiro trabalho no Sandbox"
+    return participacao
 
 
 def registrar_atrasos(*, site_id):
