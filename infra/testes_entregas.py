@@ -497,15 +497,19 @@ def test_C06_ref_da_candidata_sobrescrito_ou_registro_editado_nao_promove(amb):
     a = amb.entregar("rob-a", amb.ramo("rob-a", {"a.txt": "A\n"}))["id"]
     outro = amb.ramo("rob-o", {"o.txt": "O\n"}, de=amb.main())
     amb.integrar()
-    cand = amb.consultar(a)["candidata"]
     sh(amb.origin, "update-ref", "refs/entregas/" + a, outro)
     main_antes = amb.main()
     cod, saida = amb.promover(a)
     assert cod == 2 and amb.main() == main_antes
     # integrar percebe a candidata obsoleta e recombina
     assert amb.integrar()[a]["estado"] == "pronta"
-    nova = amb.consultar(a)["candidata"]
-    assert nova not in (cand, outro) and sh(amb.origin, "rev-parse", "refs/entregas/" + a) == nova
+    reparada = amb.consultar(a)
+    nova = reparada["candidata"]
+    assert nova != outro and sh(amb.origin, "rev-parse", "refs/entregas/" + a) == nova
+    assert sh(amb.origin, "rev-list", "--parents", "-n", "1", nova).split()[1:] == [
+        main_antes, reparada["commit"]]
+    assert sh(amb.origin, "rev-parse", nova + "^{tree}") == sh(
+        amb.origin, "merge-tree", "--write-tree", main_antes, reparada["commit"])
     # registro e ref editados juntos para um commit arbitrario descendente da main
     sh(amb.origin, "update-ref", "refs/entregas/" + a, outro)
     caminho = amb.plat / "entregas" / (a + ".json")
