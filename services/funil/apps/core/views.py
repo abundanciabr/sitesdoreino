@@ -294,9 +294,15 @@ def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA):
     )
 
     query = urlencode(_atribuicao_da_requisicao(request))
+    template = (
+        "funil/desafio_apple.html"
+        if slug == "desafio-como-ganhar-em-dolar-com-roblox"
+        and request.get_host().split(":")[0].lower() == "meshcraft.top"
+        else "funil/oferta.html"
+    )
     resposta = render(
         request,
-        "funil/oferta.html",
+        template,
         {
             "site": site,
             "blocos": blocos,
