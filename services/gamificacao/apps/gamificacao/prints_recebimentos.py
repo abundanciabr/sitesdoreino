@@ -37,6 +37,10 @@ não o saldo nem uma soma de várias entradas. Mais de uma entrada sem indicaç�
 PIXELS_MAXIMOS = 20_000_000
 # Depois disso o print deixa a fila e a pessoa é chamada a enviar outro recorte.
 TENTATIVAS_MAXIMAS = 5
+LADO_MAXIMO = 2048
+BYTES_MAXIMOS_PRINT = 3 * 1024 * 1024
+MAX_RECEBIMENTOS_POR_PESSOA = 30
+MAX_VERSOES_POR_RECEBIMENTO = 10
 
 
 def preparar(arquivo):
@@ -56,10 +60,18 @@ def preparar(arquivo):
                     "Essa imagem é grande demais. Envie um recorte menor do print."
                 )
             imagem.load()
-            imagem.thumbnail((4096, 4096))
+            base = imagem.convert("RGB")
+        conteudo = None
+        for lado in (LADO_MAXIMO, 1600, 1280, 1024):
+            copia = base.copy()
+            copia.thumbnail((lado, lado))
             destino = io.BytesIO()
-            imagem.convert("RGB").save(destino, format="PNG")
-        conteudo = destino.getvalue()
+            copia.save(destino, format="PNG", optimize=True)
+            conteudo = destino.getvalue()
+            if len(conteudo) <= BYTES_MAXIMOS_PRINT:
+                break
+        else:
+            raise ValueError("Essa imagem é pesada demais. Envie um recorte menor do print.")
     except (
         UnidentifiedImageError,
         OSError,

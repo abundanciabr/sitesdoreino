@@ -323,7 +323,31 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
             registro = {"passo": ordem, "texto": texto}
         elif acao in ("recebimento", "correcao"):
             valor = centavos(dados.get("valor", ""))
+            from . import prints_recebimentos as prints
             from .prints_recebimentos import preparar
+
+            if valor and acao == "recebimento":
+                if (
+                    RecebimentoDeclarado.objects.filter(
+                        pessoa_id=pessoa_id, site_id=site_id
+                    ).count()
+                    >= prints.MAX_RECEBIMENTOS_POR_PESSOA
+                ):
+                    raise ValueError(
+                        "Você chegou ao limite de recebimentos registrados. Corrija um dos que já estão lá."
+                    )
+            elif valor and acao == "correcao" and arquivo is not None:
+                alvo = RecebimentoDeclarado.objects.filter(
+                    pessoa_id=pessoa_id, site_id=site_id, pk=dados.get("recebimento")
+                ).first()
+                if (
+                    alvo
+                    and VersaoDoRecebimento.objects.filter(recebimento=alvo).count()
+                    >= prints.MAX_VERSOES_POR_RECEBIMENTO
+                ):
+                    raise ValueError(
+                        "Esse recebimento já teve prints demais. Fale com o suporte."
+                    )
 
             print_bytes, print_sha256 = preparar(arquivo) if valor else (None, "")
             moeda_original = str(dados.get("moeda_original", "BRL")).strip().upper()

@@ -198,3 +198,72 @@ def test_quinta_falha_seguida_pede_outro_print():
     assert r.estado == "esclarecer" and r.leitura["motivo"] == "leitor"
     assert r.tentar_em is None and "PROVEDOR-PRIVADO" not in str(r.leitura)
     assert situacao(P, SITE)["total_cents"] == 0
+
+
+def test_imagem_grande_sai_dentro_do_teto():
+    import os
+    from io import BytesIO
+    from PIL import Image
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    im = Image.frombytes("RGB", (4000, 3000), os.urandom(4000 * 3000 * 3))
+    b = BytesIO()
+    im.save(b, format="PNG")
+    arq = SimpleUploadedFile("g.png", b.getvalue(), content_type="image/png")
+    arq.size = 1024
+    conteudo, _ = preparar(arq)
+    saida = Image.open(BytesIO(conteudo))
+    assert max(saida.size) <= 2048 and len(conteudo) <= 3 * 1024 * 1024
+
+
+def test_imagem_que_nao_cabe_e_recusada(monkeypatch):
+    monkeypatch.setattr("apps.gamificacao.prints_recebimentos.BYTES_MAXIMOS_PRINT", 10)
+    with pytest.raises(ValueError, match="pesada demais"):
+        preparar(imagem())
+
+
+def test_limite_de_recebimentos(monkeypatch):
+    monkeypatch.setattr(
+        "apps.gamificacao.prints_recebimentos.MAX_RECEBIMENTOS_POR_PESSOA", 2
+    )
+    enviar()
+    enviar()
+    with pytest.raises(ValueError, match="limite de recebimentos"):
+        enviar()
+    assert RecebimentoDeclarado.objects.count() == 2
+
+
+def test_limite_de_versoes(monkeypatch):
+    monkeypatch.setattr(
+        "apps.gamificacao.prints_recebimentos.MAX_VERSOES_POR_RECEBIMENTO", 2
+    )
+    r = enviar()
+
+    def corrigir():
+        salvar(
+            P,
+            SITE,
+            {
+                "acao": "correcao",
+                "revisao": situacao(P, SITE)["revisao"],
+                "recebimento": r.pk,
+                "valor": "50",
+                "recebido_em": "2026-10-01",
+            },
+            arquivo=imagem(),
+        )
+
+    corrigir()
+    with pytest.raises(ValueError, match="prints demais"):
+        corrigir()
+    assert VersaoDoRecebimento.objects.count() == 2
+
+
+def test_reenvio_com_mesma_chave_nao_conta_duas_vezes(monkeypatch):
+    monkeypatch.setattr(
+        "apps.gamificacao.prints_recebimentos.MAX_RECEBIMENTOS_POR_PESSOA", 1
+    )
+    chave = str(uuid.uuid4())
+    enviar(chave=chave)
+    enviar(chave=chave)
+    assert RecebimentoDeclarado.objects.count() == 1
