@@ -159,6 +159,102 @@ def test_fonte_extraida_com_umask_restritiva_fica_legivel_sem_mudar_config_priva
     assert segredo.read_bytes() == conteudo_privado
 
 
+@pytest.mark.skipif(os.name != "posix", reason="permissões Unix do ensaio")
+@pytest.mark.parametrize("celula", ["aplicacao", "funil"])
+def test_umask_077_pacote_montado_estaticos_e_projecao_legiveis(
+        tmp_path, monkeypatch, celula):
+    imagem = "sha256:" + "1" * 64
+    entrada = tmp_path / "ensaios/entrada" / A
+    fonte = entrada / "fonte"
+    aplicacao = fonte / "services/aplicacao"
+    (aplicacao / "config").mkdir(parents=True)
+    (fonte / "documentos").mkdir()
+    (aplicacao / "Dockerfile").write_text("RUN python manage.py collectstatic")
+    (aplicacao / "config/settings.py").write_text("CONFIG = 1")
+    (fonte / "documentos/manual.txt").write_text("público")
+    privado = tmp_path / "env/privado.env"
+    privado.parent.mkdir()
+    privado.write_text("MARCADOR=privado")
+    os.chmod(privado.parent, 0o700)
+    os.chmod(privado, 0o600)
+    for arquivo in fonte.rglob("*"):
+        if arquivo.is_file():
+            os.chmod(arquivo, 0o644)
+    (entrada / ".origem-ensaio.json").write_text(json.dumps({
+        "candidata": A, "imagem_base": imagem,
+        "arvore": protecao_publicacao.arvore(fonte)}))
+
+    def legivel(pasta):
+        assert pasta.stat().st_mode & 0o055 == 0o055, str(pasta)
+        for caminho in pasta.rglob("*"):
+            if caminho.is_dir():
+                assert caminho.stat().st_mode & 0o055 == 0o055, str(caminho)
+
+    def montar(bundle, *_args):
+        (bundle / "modules/funil").mkdir(parents=True)
+        arquivo = bundle / "modules/funil/gerado.py"
+        arquivo.write_text("GERADO = 1")
+        os.chmod(arquivo, 0o644)
+
+    def rodar(comando, **_kwargs):
+        if comando[:2] == ["docker", "run"]:
+            bundle = modulo._caminhos(tmp_path, A, celula)[0] / (
+                "bundle" if celula == "funil" else "codigo")
+            legivel(bundle)
+            saida = next(Path(parte.split(":/app/staticfiles:")[0]) for parte in comando
+                         if ":/app/staticfiles:rw" in parte)
+            estatico = saida / "app.css"
+            estatico.write_text("estilo")
+            os.chmod(estatico, 0o644)
+        class Retorno:
+            returncode = 0
+        return Retorno()
+
+    def ensaiar(bundle, _imagem, _ferramentas, evidencias, _registro):
+        legivel(bundle)
+        assert (bundle / "modules/funil/gerado.py").stat().st_mode & 0o777 == 0o644
+        assert (bundle / "staticfiles/app.css").stat().st_mode & 0o777 == 0o644
+        evidencias.mkdir(parents=True, exist_ok=True)
+        (evidencias / "comercial.xml").write_text("<testsuite/>")
+        return {"estado": "comprovado", "casos": 1, "relatorio_sha256": "relatorio"}
+
+    class Funil:
+        def projetar(self, _bundle, codigo, _celula):
+            (codigo / "modules/funil").mkdir(parents=True)
+            arquivo = codigo / "modules/funil/gerado.py"
+            arquivo.write_text("GERADO = 1")
+            os.chmod(arquivo, 0o644)
+
+        def conferir_projecao(self, _bundle, codigo, _celula):
+            legivel(codigo)
+
+        def ensaiar_funil(self, *_args):
+            return {"estado": "comprovado"}
+
+    monkeypatch.setattr(modulo, "_conferir_lancador", lambda: None)
+    monkeypatch.setattr(modulo, "_configuracao", lambda *_args: "config")
+    monkeypatch.setattr(modulo, "_modulo_funil", lambda *_args: Funil())
+    monkeypatch.setattr(modulo, "_snapshot_rota", lambda *_args: None)
+    monkeypatch.setattr(modulo, "identidade_atual", lambda *_args: {
+        "configuracao_base": "config", "imagem": imagem})
+    monkeypatch.setattr(modulo.os, "chown", lambda *_args: None)
+    monkeypatch.setattr(modulo.subprocess, "run", rodar)
+    monkeypatch.setattr(protecao_publicacao, "montar", montar)
+    monkeypatch.setattr(protecao_publicacao, "ensaiar", ensaiar)
+    monkeypatch.setattr(protecao_publicacao, "imagem_id", lambda *_args: imagem)
+    monkeypatch.setattr(protecao_publicacao, "conferir_relatorio", lambda *_args, **_kwargs: {
+        "estado": "comprovado", "casos": 1, "relatorio_sha256": "relatorio"})
+
+    anterior = os.umask(0o077)
+    try:
+        resultado = modulo.executar(tmp_path, A, celula=celula)
+    finally:
+        os.umask(anterior)
+    assert resultado["estado"] == "comprovado"
+    assert privado.parent.stat().st_mode & 0o777 == 0o700
+    assert privado.stat().st_mode & 0o777 == 0o600
+
+
 def test_funil_snapshot_privado_aponta_rota_sem_mudar_origem(tmp_path, monkeypatch):
     plataforma = tmp_path / "plataforma"
     (plataforma / "traefik/dynamic").mkdir(parents=True)

@@ -521,6 +521,25 @@ def _normalizar_fonte(fonte: Path) -> None:
     os.chmod(fonte, 0o755)
 
 
+def _normalizar_diretorios_codigo(codigo: Path) -> None:
+    """Abre travessia do código público ao UID de ensaio, sem alterar arquivos.
+
+    A extração do tar de `montar` e a projeção criam diretórios 0700 sob
+    umask 077. O identificador do pacote inclui os modos dos arquivos, por
+    isso somente diretórios recebem a permissão de leitura/travessia.
+    """
+    if codigo.is_symlink() or not codigo.is_dir():
+        raise RecusaEnsaio("diretório de código inválido")
+    for caminho in sorted(codigo.rglob("*")):
+        if caminho.is_symlink():
+            raise RecusaEnsaio("código contém ligação simbólica")
+        if caminho.is_dir():
+            os.chmod(caminho, caminho.stat().st_mode | 0o055)
+        elif not caminho.is_file():
+            raise RecusaEnsaio("arquivo especial no código")
+    os.chmod(codigo, codigo.stat().st_mode | 0o055)
+
+
 def preparar_entrada(plataforma: Path, candidata: str, imagem_base: str) -> Path:
     """Exporta a candidata para a conta isolada sem dar acesso ao Git/segredos.
 
@@ -682,6 +701,7 @@ def _coletar_estaticos(bundle: Path, base: Path, imagem: str, registro) -> None:
             raise RecusaEnsaio("coleta de estáticos falhou")
         arvore(saida)
         shutil.copytree(saida, bundle / "staticfiles", dirs_exist_ok=True)
+        _normalizar_diretorios_codigo(bundle / "staticfiles")
 
 
 def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMENTAS,
@@ -732,6 +752,7 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
         arvore(fonte)  # recusa links simbólicos também fora da aplicação
         montar(bundle, fonte / "services", imagem, ferramentas / "preparar-aplicacao.py", registro)
         shutil.copytree(fonte / "documentos", bundle / "documentos_embutidos", dirs_exist_ok=True)
+        _normalizar_diretorios_codigo(bundle)
         # O comando é fixado aqui; texto RUN da candidata jamais é interpretado.
         dockerfile = (fonte / "services/aplicacao/Dockerfile").read_text(encoding="utf-8")
         if "collectstatic" in dockerfile:
@@ -741,6 +762,7 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
         if celula == "funil":
             modulo = _modulo_funil(ferramentas)
             modulo.projetar(bundle, codigo, "funil")
+            _normalizar_diretorios_codigo(codigo)
             modulo.conferir_projecao(bundle, codigo, "funil")
             nome_funil = "meshcraft-funil-" + candidata[:12] + "-ensaio"
             _snapshot_rota(plataforma, base, nome_funil, ferramentas)
