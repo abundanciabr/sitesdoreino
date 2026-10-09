@@ -246,23 +246,99 @@ def test_C18_infra_indisponivel_preserva_demais_e_sem_prova_falha_fechado(tmp_pa
         modulo.verificar_prova(tmp_path, A)
 
 
-@pytest.mark.parametrize("formato", ["docker", "oci"])
-def test_imagem_exportada_tem_config_digest_verificado(tmp_path, formato):
-    config = b'{"architecture":"amd64","os":"linux"}'
-    digest = hashlib.sha256(config).hexdigest()
-    arquivo = tmp_path / "imagem.tar"
+def _tar_imagem(arquivo, membros):
     with tarfile.open(arquivo, "w") as tar:
-        def acrescentar(nome, dados):
+        for nome, dados in membros.items():
             item = tarfile.TarInfo(nome)
             item.size = len(dados)
             tar.addfile(item, io.BytesIO(dados))
-        if formato == "docker":
-            acrescentar("manifest.json", json.dumps([{"Config": digest + ".json"}]).encode())
-            acrescentar(digest + ".json", config)
-        else:
-            manifest = json.dumps({"config": {"digest": "sha256:" + digest}}).encode()
-            md = hashlib.sha256(manifest).hexdigest()
-            acrescentar("index.json", json.dumps({"manifests": [{"digest": "sha256:" + md}]}).encode())
-            acrescentar("blobs/sha256/" + md, manifest)
-            acrescentar("blobs/sha256/" + digest, config)
-    assert modulo._imagem_id_tar(arquivo) == "sha256:" + digest
+
+
+def _imagem_de_teste(formato):
+    """Reproduz docker save clássico e OCI com índice interno e atestação."""
+    membros = {}
+    def acrescentar(dados):
+        digest = hashlib.sha256(dados).hexdigest()
+        membros["blobs/sha256/" + digest] = dados
+        return {"digest": "sha256:" + digest, "size": len(dados)}
+    config = b'{"architecture":"amd64","os":"linux"}'
+    config_ref = acrescentar(config)
+    camada_ref = acrescentar(b"camada comprimida")
+    membros["manifest.json"] = json.dumps([{
+        "Config": "blobs/sha256/" + config_ref["digest"][7:],
+        "RepoTags": None,
+        "Layers": ["blobs/sha256/" + camada_ref["digest"][7:]],
+    }]).encode()
+    if formato == "docker":
+        membros[config_ref["digest"][7:] + ".json"] = config
+        membros["manifest.json"] = json.dumps([{
+            "Config": config_ref["digest"][7:] + ".json",
+            "Layers": []}]).encode()
+        return membros, config_ref["digest"]
+    imagem_ref = acrescentar(json.dumps({
+        "schemaVersion": 2,
+        "config": {"mediaType": "application/vnd.oci.image.config.v1+json", **config_ref},
+        "layers": [{"mediaType": "application/vnd.oci.image.layer.v1.tar+gzip", **camada_ref}],
+    }).encode())
+    atestacao_config = acrescentar(b"{}")
+    atestacao_ref = acrescentar(json.dumps({
+        "schemaVersion": 2,
+        "config": {"mediaType": "application/vnd.oci.empty.v1+json", **atestacao_config},
+        "layers": [],
+    }).encode())
+    indice_interno = acrescentar(json.dumps({
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "manifests": [
+            {"mediaType": "application/vnd.oci.image.manifest.v1+json", **imagem_ref,
+             "platform": {"architecture": "amd64", "os": "linux"}},
+            {"mediaType": "application/vnd.oci.image.manifest.v1+json", **atestacao_ref,
+             "platform": {"architecture": "unknown", "os": "unknown"},
+             "annotations": {"vnd.docker.reference.type": "attestation-manifest",
+                             "vnd.docker.reference.digest": imagem_ref["digest"]}},
+        ],
+    }).encode())
+    membros["index.json"] = json.dumps({
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "manifests": [{"mediaType": "application/vnd.oci.image.index.v1+json",
+                       **indice_interno}],
+    }).encode()
+    return membros, indice_interno["digest"]
+
+
+@pytest.mark.parametrize("formato", ["docker", "oci", "oci_puro"])
+def test_imagem_exportada_preserva_id_docker_e_confere_conteudo(tmp_path, formato):
+    membros, esperado = _imagem_de_teste("docker" if formato == "docker" else "oci")
+    if formato == "oci_puro":
+        del membros["manifest.json"]
+    arquivo = tmp_path / "imagem.tar"
+    _tar_imagem(arquivo, membros)
+    assert modulo._imagem_id_tar(arquivo) == esperado
+
+
+@pytest.mark.parametrize("alvo", ["indice", "manifesto", "config", "camada", "docker_config"])
+def test_imagem_oci_recusa_metadado_ou_blob_alterado(tmp_path, alvo):
+    membros, _ = _imagem_de_teste("oci")
+    if alvo == "indice":
+        indice = json.loads(membros["index.json"])
+        indice["manifests"][0]["size"] += 1
+        membros["index.json"] = json.dumps(indice).encode()
+    elif alvo == "docker_config":
+        falso = b'{"architecture":"arm64","os":"linux"}'
+        digest = hashlib.sha256(falso).hexdigest()
+        membros["blobs/sha256/" + digest] = falso
+        manifesto = json.loads(membros["manifest.json"])
+        manifesto[0]["Config"] = "blobs/sha256/" + digest
+        membros["manifest.json"] = json.dumps(manifesto).encode()
+    else:
+        nome = next(nome for nome, dados in membros.items()
+                    if nome.startswith("blobs/") and (
+                        (alvo == "manifesto" and b'"schemaVersion": 2, "config"' in dados)
+                        or (alvo == "config" and b'"architecture":"amd64"' in dados)
+                        or (alvo == "camada" and dados == b"camada comprimida")))
+        membros[nome] += b"!"
+    arquivo = tmp_path / "imagem.tar"
+    _tar_imagem(arquivo, membros)
+    with pytest.raises(modulo.RecusaEnsaio, match="artefato de imagem inválido"):
+        modulo._imagem_id_tar(arquivo)

@@ -104,43 +104,143 @@ def _hash(arquivo: Path) -> str:
 
 
 def _imagem_id_tar(arquivo: Path) -> str:
-    """Lê o digest do config do docker save sem carregar a imagem."""
+    """Confere o docker save e devolve a identidade que o Docker inspeciona.
+
+    No armazenamento clássico o ID é o digest do config. Com o armazenamento
+    OCI, o Docker pode expor como ID o descritor do índice, inclusive quando
+    esse índice contém um manifesto de atestação além da imagem executável.
+    """
     try:
         with tarfile.open(arquivo, "r") as pacote:
-            def json_membro(nome: str):
-                membro = pacote.getmember(nome)
-                if membro.size > 16 * 1024 * 1024 or not membro.isfile():
-                    raise ValueError("manifesto inválido")
-                return json.load(pacote.extractfile(membro))
-            try:
-                manifesto = json_membro("manifest.json")
-                if len(manifesto) != 1:
-                    raise ValueError("manifesto ambíguo")
-                nome = manifesto[0]["Config"]
-                if not re.fullmatch(r"(?:blobs/sha256/)?[0-9a-f]{64}(?:\.json)?", nome):
-                    raise ValueError("config inválido")
-                digest = nome.rsplit("/", 1)[-1].removesuffix(".json")
-            except KeyError:
-                indice = json_membro("index.json")
-                if len(indice["manifests"]) != 1:
-                    raise ValueError("índice OCI ambíguo")
-                referencia = indice["manifests"][0]["digest"]
-                if not re.fullmatch(r"sha256:[0-9a-f]{64}", referencia):
+            membros = {m.name: m for m in pacote.getmembers()}
+            if len(membros) != len(pacote.getmembers()):
+                raise ValueError("nomes duplicados no arquivo de imagem")
+
+            def bytes_membro(nome: str, digest: str | None = None,
+                             tamanho: int | None = None, limite: int | None = None) -> bytes | None:
+                membro = membros[nome]
+                if not membro.isfile() or membro.size < 0 or (tamanho is not None and membro.size != tamanho):
+                    raise ValueError("membro inválido no arquivo de imagem")
+                if limite is not None and membro.size > limite:
+                    raise ValueError("metadado da imagem grande demais")
+                resumo = hashlib.sha256()
+                dados = bytearray() if limite is not None else None
+                with pacote.extractfile(membro) as aberto:
+                    while bloco := aberto.read(1024 * 1024):
+                        resumo.update(bloco)
+                        if dados is not None:
+                            dados.extend(bloco)
+                if digest is not None and resumo.hexdigest() != digest:
+                    raise ValueError("digest de imagem divergente")
+                return bytes(dados) if dados is not None else None
+
+            def objeto_json(dados: bytes) -> dict | list:
+                def sem_chaves_repetidas(pares):
+                    objeto = {}
+                    for chave, valor in pares:
+                        if chave in objeto:
+                            raise ValueError("chave duplicada em metadado da imagem")
+                        objeto[chave] = valor
+                    return objeto
+                return json.loads(dados, object_pairs_hook=sem_chaves_repetidas)
+
+            def json_membro(nome: str, digest: str | None = None,
+                            tamanho: int | None = None):
+                return objeto_json(bytes_membro(nome, digest, tamanho, 16 * 1024 * 1024))
+
+            def sha256(valor: str) -> str:
+                if not isinstance(valor, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", valor):
+                    raise ValueError("digest de imagem inválido")
+                return valor[7:]
+
+            config_digest = None
+            if "manifest.json" in membros:
+                manifesto_docker = json_membro("manifest.json")
+                if not isinstance(manifesto_docker, list) or len(manifesto_docker) != 1:
+                    raise ValueError("manifesto Docker ambíguo")
+                config_docker = manifesto_docker[0]["Config"]
+                if not isinstance(config_docker, str) or not re.fullmatch(
+                        r"(?:blobs/sha256/)?[0-9a-f]{64}(?:\.json)?", config_docker):
+                    raise ValueError("config Docker inválido")
+                config_digest = config_docker.rsplit("/", 1)[-1].removesuffix(".json")
+                config = json_membro(config_docker, config_digest)
+                if not isinstance(config, dict):
+                    raise ValueError("config Docker inválido")
+
+            # docker save clássico não contém index.json; sua identidade é o config.
+            if "index.json" not in membros:
+                if config_digest is None:
+                    raise ValueError("arquivo de imagem sem manifesto")
+                return "sha256:" + config_digest
+
+            indice = json_membro("index.json")
+            if (not isinstance(indice, dict) or indice.get("schemaVersion") != 2
+                    or not isinstance(indice.get("manifests"), list)
+                    or len(indice["manifests"]) != 1):
+                raise ValueError("índice OCI ambíguo")
+            tipos_indice = {"application/vnd.oci.image.index.v1+json",
+                            "application/vnd.docker.distribution.manifest.list.v2+json"}
+            tipos_imagem = {"application/vnd.oci.image.manifest.v1+json",
+                            "application/vnd.docker.distribution.manifest.v2+json"}
+            configs_executaveis = []
+            visitados = set()
+
+            def visitar(descritor: dict, profundidade: int = 0):
+                if not isinstance(descritor, dict) or profundidade > 4:
+                    raise ValueError("descritor OCI inválido")
+                tipo = descritor.get("mediaType")
+                digest = sha256(descritor.get("digest"))
+                tamanho = descritor.get("size")
+                if (tipo not in tipos_indice | tipos_imagem or type(tamanho) is not int
+                        or tamanho < 0 or digest in visitados):
+                    raise ValueError("descritor OCI inválido")
+                visitados.add(digest)
+                objeto = json_membro("blobs/sha256/" + digest, digest, tamanho)
+                if not isinstance(objeto, dict) or objeto.get("schemaVersion") != 2:
                     raise ValueError("manifesto OCI inválido")
-                manifesto_oci = json_membro("blobs/sha256/" + referencia[7:])
-                referencia = manifesto_oci["config"]["digest"]
-                if not re.fullmatch(r"sha256:[0-9a-f]{64}", referencia):
-                    raise ValueError("config OCI inválido")
-                digest = referencia[7:]
-                nome = "blobs/sha256/" + digest
-            membro = pacote.getmember(nome)
-            if membro.size > 16 * 1024 * 1024:
-                raise ValueError("config grande demais")
-            config = pacote.extractfile(membro).read()
-            if hashlib.sha256(config).hexdigest() != digest:
-                raise ValueError("imagem alterada")
-            return "sha256:" + digest
-    except (OSError, KeyError, ValueError, TypeError, tarfile.TarError) as erro:
+                if tipo in tipos_indice:
+                    filhos = objeto.get("manifests")
+                    if not isinstance(filhos, list) or not filhos:
+                        raise ValueError("índice OCI vazio")
+                    for filho in filhos:
+                        visitar(filho, profundidade + 1)
+                    return
+                configuracao = objeto.get("config")
+                camadas = objeto.get("layers")
+                if not isinstance(configuracao, dict) or not isinstance(camadas, list):
+                    raise ValueError("manifesto OCI inválido")
+                for parte in (configuracao, *camadas):
+                    if not isinstance(parte, dict) or not isinstance(parte.get("mediaType"), str):
+                        raise ValueError("blob OCI inválido")
+                    parte_digest = sha256(parte.get("digest"))
+                    parte_tamanho = parte.get("size")
+                    if type(parte_tamanho) is not int or parte_tamanho < 0:
+                        raise ValueError("tamanho de blob OCI inválido")
+                    nome_parte = "blobs/sha256/" + parte_digest
+                    if parte is configuracao:
+                        if not isinstance(json_membro(nome_parte, parte_digest, parte_tamanho), dict):
+                            raise ValueError("config OCI inválido")
+                    else:
+                        bytes_membro(nome_parte, parte_digest, parte_tamanho)
+                plataforma = descritor.get("platform", {})
+                anotacoes = descritor.get("annotations", {})
+                atestacao = (isinstance(anotacoes, dict)
+                            and anotacoes.get("vnd.docker.reference.type") == "attestation-manifest")
+                desconhecida = (isinstance(plataforma, dict)
+                                and plataforma.get("architecture") == "unknown"
+                                and plataforma.get("os") == "unknown")
+                if not atestacao and not desconhecida:
+                    configs_executaveis.append(configuracao["digest"])
+
+            raiz = indice["manifests"][0]
+            visitar(raiz)
+            if (len(configs_executaveis) != 1 or
+                    (config_digest is not None
+                     and configs_executaveis[0] != "sha256:" + config_digest)):
+                raise ValueError("config Docker diverge da imagem OCI")
+            return raiz["digest"]
+    except (OSError, KeyError, ValueError, TypeError, AttributeError,
+            tarfile.TarError, json.JSONDecodeError) as erro:
         raise RecusaEnsaio("artefato de imagem inválido") from erro
 
 
