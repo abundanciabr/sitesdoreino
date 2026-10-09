@@ -167,7 +167,7 @@ class RulesetTests(unittest.TestCase):
             return self.repo
         if endpoint.endswith("/rulesets?includes_parents=false"):
             return [] if self.atual is None else [{"id": self.atual["id"], "name": self.atual["name"]}]
-        if endpoint.endswith("/rulesets/42"):
+        if self.atual is not None and endpoint == f"{D1.REPO}/rulesets/{self.atual['id']}":
             return self.atual
         if endpoint.endswith("/keys"):
             return [{"title": "integrador-vps", "read_only": False}]
@@ -187,6 +187,52 @@ class RulesetTests(unittest.TestCase):
             D1.principal()
             D1.principal()
         self.assertEqual(self.enviados, [("POST", D1.REPO + "/rulesets")])
+
+    def test_resposta_real_omite_update_false_e_reaplicacao_e_idempotente(self):
+        def enviar_com_resposta_da_api(metodo, endpoint, dados):
+            self.enviados.append((metodo, endpoint))
+            self.atual = json.loads(json.dumps(dados))
+            self.atual["id"] = 24822061
+            self.atual["rules"][0] = {"type": "update"}
+            return self.atual
+
+        with (
+            mock.patch.object(D1, "gh", side_effect=self.gh),
+            mock.patch.object(D1, "enviar", side_effect=enviar_com_resposta_da_api),
+            mock.patch.object(sys, "argv", ["d1", "aplicar"]),
+        ):
+            D1.principal()
+            D1.principal()
+        self.assertEqual(self.enviados, [("POST", D1.REPO + "/rulesets")])
+
+    def test_update_true_continua_sendo_divergencia(self):
+        self.atual = json.loads(json.dumps(self.regra))
+        self.atual["id"] = 24822061
+        self.atual["rules"][0]["parameters"]["update_allows_fetch_and_merge"] = True
+        with (
+            mock.patch.object(D1, "gh", side_effect=self.gh),
+            mock.patch.object(D1, "enviar") as enviar,
+            mock.patch.object(sys, "argv", ["d1", "aplicar"]),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "regra existente diverge"):
+                D1.principal()
+            enviar.assert_not_called()
+
+    def test_resposta_com_update_true_nao_confirma_aplicacao(self):
+        def enviar_com_resposta_divergente(metodo, endpoint, dados):
+            self.enviados.append((metodo, endpoint))
+            self.atual = json.loads(json.dumps(dados))
+            self.atual["id"] = 24822061
+            self.atual["rules"][0]["parameters"]["update_allows_fetch_and_merge"] = True
+            return self.atual
+
+        with (
+            mock.patch.object(D1, "gh", side_effect=self.gh),
+            mock.patch.object(D1, "enviar", side_effect=enviar_com_resposta_divergente),
+            mock.patch.object(sys, "argv", ["d1", "aplicar"]),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "resposta não confirmou"):
+                D1.principal()
 
     def test_recusa_duas_deploy_keys_com_escrita(self):
         def gh_com_duas(endpoint, *args, **kwargs):

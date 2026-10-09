@@ -27,7 +27,20 @@ def plano():
 
 
 def normalizar(dados):
-    return {campo: dados.get(campo) for campo in CAMPOS}
+    normalizado = {campo: dados.get(campo) for campo in CAMPOS}
+    regras = normalizado["rules"]
+    if isinstance(regras, list):
+        normalizado["rules"] = []
+        for regra in regras:
+            if isinstance(regra, dict) and regra.get("type") == "update":
+                parametros = regra.get("parameters")
+                # A API omite este parâmetro quando seu valor é o padrão false.
+                if (isinstance(parametros, dict)
+                        and set(parametros) == {"update_allows_fetch_and_merge"}
+                        and parametros["update_allows_fetch_and_merge"] is False):
+                    regra = {chave: valor for chave, valor in regra.items() if chave != "parameters"}
+            normalizado["rules"].append(regra)
+    return normalizado
 
 
 def regra_atual(nome):

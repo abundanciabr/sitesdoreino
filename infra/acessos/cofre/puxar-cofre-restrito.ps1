@@ -66,10 +66,12 @@ function Baixar-Cofre([string]$Acao, [string]$Recurso, [string]$Destino, [string
       [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
     if (-not $processo.Start()) { throw "SSH não iniciou" }
     $iniciado = $true
-    $entrada = if ($Codigos.Count) { $utf8.GetBytes(($Codigos -join "`n") + "`n") } else { [byte[]]@() }
-    $envio = $processo.StandardInput.BaseStream.WriteAsync($entrada, 0, $entrada.Length)
+    [byte[]]$entrada = @()
+    if ($Codigos.Count) { $entrada = $utf8.GetBytes(($Codigos -join "`n") + "`n") }
+    $envio = $null
+    if ($entrada.Length -gt 0) { $envio = $processo.StandardInput.BaseStream.WriteAsync($entrada, 0, $entrada.Length) }
     $recebimento = $processo.StandardOutput.BaseStream.CopyToAsync($arquivo)
-    [void]$envio.GetAwaiter().GetResult()
+    if ($envio) { [void]$envio.GetAwaiter().GetResult() }
     $processo.StandardInput.Close()
     [void]$recebimento.GetAwaiter().GetResult()
     $processo.WaitForExit()

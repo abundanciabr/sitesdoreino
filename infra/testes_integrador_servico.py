@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -8,6 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 import entregas
+import ponte_entregas
 from integrador_servico import Estados, Servico
 from ponte_entregas import Autoridade, ErroPonte
 
@@ -157,14 +159,24 @@ def _git(*args, cwd=None):
                           capture_output=True, text=True).stdout.strip()
 
 
-def test_espelho_importa_objeto_exato_e_recusa_registro_antigo(tmp_path):
+def test_espelho_importa_objeto_exato_e_recusa_registro_antigo(tmp_path, monkeypatch):
     origem, destino = tmp_path / "integrador", tmp_path / "plataforma"
     (origem / "codigo").mkdir(parents=True)
     (destino / "codigo").mkdir(parents=True)
     repo1, repo2 = origem / "codigo/repo.git", destino / "codigo/repo.git"
+    publico = tmp_path / "publico.git"
     _git("init", "--bare", repo1)
     _git("init", "--bare", repo2)
-    _git("--git-dir", repo2, "remote", "add", "integrador", repo1)
+    _git("init", "--bare", publico)
+    monkeypatch.setattr(ponte_entregas, "REPO_PUBLICO", str(publico))
+    comandos = []
+    executar = ponte_entregas.subprocess.run
+
+    def registrar_comando(comando, *args, **kwargs):
+        comandos.append(comando)
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(ponte_entregas.subprocess, "run", registrar_comando)
     trabalho = tmp_path / "trabalho"
     _git("init", trabalho)
     (trabalho / "pagina.txt").write_text("versao", encoding="utf-8")
@@ -179,14 +191,56 @@ def test_espelho_importa_objeto_exato_e_recusa_registro_antigo(tmp_path):
     autoridade = Autoridade(origem, destino, tmp_path / "ferramentas")
     assert autoridade.espelhar(I1, cand)["ok"]
     assert _git("--git-dir", repo2, "rev-parse", cand + "^{commit}") == cand
+    fetch = next(c for c in comandos if "fetch" in c)
+    assert any(a.startswith("--upload-pack=") and
+               shlex.split(a.split("=", 1)[1]) ==
+               ["git", "-c", f"safe.directory={repo1}", "upload-pack"] for a in fetch)
     reg.update(estado=entregas.NA_MAIN, promovida_candidata=cand,
                promocao={"estado": "remota", "candidata": cand, "remoto": "integrador"})
     (origem / "entregas" / (I1 + ".json")).write_text(json.dumps(reg), encoding="utf-8")
+    _git("-C", trabalho, "push", publico, "HEAD:refs/heads/main")
     autoridade.espelhar(I1, cand)
+    assert _git("--git-dir", repo2, "rev-parse", "refs/heads/main") == cand
+    assert not _git("--git-dir", repo2, "remote")
+    assert any(c[0] == "git" and "ls-remote" in c and str(publico) in c for c in comandos)
     reg["promocao"]["estado"] = "intencao"
     (origem / "entregas" / (I1 + ".json")).write_text(json.dumps(reg), encoding="utf-8")
     with pytest.raises(ErroPonte, match="antigo"):
         autoridade.espelhar(I1, cand)
+
+
+def test_espelho_consulta_url_publica_sem_remoto_local_ou_credenciais(tmp_path, monkeypatch):
+    origem, destino = tmp_path / "integrador", tmp_path / "plataforma"
+    repo1, repo2 = origem / "codigo/repo.git", destino / "codigo/repo.git"
+    repo1.mkdir(parents=True)
+    repo2.mkdir(parents=True)
+    (origem / "entregas").mkdir()
+    reg = {"id": I1, "candidata": C1, "estado": entregas.NA_MAIN,
+           "promovida_candidata": C1,
+           "promocao": {"estado": "remota", "candidata": C1, "remoto": "integrador"}}
+    (origem / "entregas" / (I1 + ".json")).write_text(json.dumps(reg), encoding="utf-8")
+    chamadas = []
+
+    def simular_git(comando, **kwargs):
+        chamadas.append((comando, kwargs))
+        if "ls-remote" in comando:
+            return SimpleNamespace(returncode=0, stdout=f"{C1}\trefs/heads/main\n")
+        if "rev-parse" in comando:
+            return SimpleNamespace(returncode=0, stdout=C1 + "\n")
+        return SimpleNamespace(returncode=0, stdout="")
+
+    monkeypatch.setattr(ponte_entregas.subprocess, "run", simular_git)
+    assert Autoridade(origem, destino, tmp_path / "ferramentas").espelhar(I1, C1)["ok"]
+    fetch, remoto = (next((c, kw) for c, kw in chamadas if operacao in c)
+                     for operacao in ("fetch", "ls-remote"))
+    assert any(a.startswith("--upload-pack=") and
+               shlex.split(a.split("=", 1)[1]) ==
+               ["git", "-c", f"safe.directory={repo1}", "upload-pack"] for a in fetch[0])
+    assert ponte_entregas.REPO_PUBLICO in remoto[0]
+    assert "integrador" not in remoto[0]
+    assert remoto[1]["env"]["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert remoto[1]["env"]["GIT_CONFIG_GLOBAL"] == ponte_entregas.os.devnull
+    assert remoto[1]["env"]["GIT_TERMINAL_PROMPT"] == "0"
 
 
 def test_ponte_recusa_caminho_e_acao_arbitraria(tmp_path):

@@ -14,6 +14,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import socket
 import struct
 import subprocess
@@ -24,6 +25,7 @@ SOCKET = "/run/meshcraft-entregas-publicador.sock"
 ORIGEM = Path("/var/lib/meshcraft-integrador")
 PLATAFORMA = Path("/opt/plataforma")
 FERRAMENTAS = Path("/usr/local/lib/meshcraft-publicador/atual")
+REPO_PUBLICO = "https://github.com/abundanciabr/sitesdoreino.git"
 ID = re.compile(r"[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
@@ -105,15 +107,17 @@ class Autoridade:
         self._candidata(reg, candidata)
         origem_repo = self.origem / "codigo/repo.git"
         destino_repo = self.plataforma / "codigo/repo.git"
-        # O repositório de origem pertence a outra conta. A exceção é restrita
-        # a este caminho, sem alterar a configuração global do Git do servidor.
+        # O repositório de origem pertence a outra conta. O fetch local abre um
+        # upload-pack separado; ambos os processos precisam da mesma exceção.
         git = ["git", "-c", f"safe.directory={origem_repo}"]
+        upload_pack = shlex.join(["git", "-c", f"safe.directory={origem_repo}", "upload-pack"])
         for caminho in (origem_repo, destino_repo):
             if caminho.is_symlink() or not caminho.is_dir():
                 raise ErroPonte("repositorio indisponivel", "infra")
         importacao = subprocess.run(
             [*git, "--git-dir", str(destino_repo), "fetch", "--no-tags",
-             "--no-write-fetch-head", str(origem_repo), candidata],
+             "--no-write-fetch-head", f"--upload-pack={upload_pack}",
+             str(origem_repo), candidata],
             capture_output=True, timeout=180, env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
         if importacao.returncode:
             raise ErroPonte("objeto Git da candidata indisponivel", "infra")
@@ -132,12 +136,17 @@ class Autoridade:
                 raise ErroPonte("main do integrador difere da promocao", "recusa")
             if (reg.get("promocao") or {}).get("remoto") != "integrador":
                 raise ErroPonte("remoto de promocao inesperado", "recusa")
+            # O nome "integrador" existe somente no repositório de origem.
+            # Consulta pública sem carregar configuração ou credenciais locais.
+            ambiente_publico = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+            ambiente_publico.update(GIT_TERMINAL_PROMPT="0", GIT_ASKPASS=os.devnull,
+                                    GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
             remoto = subprocess.run(
-                [*git, "--git-dir", str(destino_repo), "ls-remote", "--heads", "integrador", "main"],
-                capture_output=True, text=True, timeout=60,
-                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"})
+                ["git", "-c", "credential.helper=", "ls-remote", "--heads", REPO_PUBLICO, "main"],
+                capture_output=True, text=True, timeout=60, cwd=destino_repo.parent,
+                env=ambiente_publico)
             linhas = remoto.stdout.splitlines()
-            if remoto.returncode or len(linhas) != 1 or linhas[0].split()[0] != candidata:
+            if remoto.returncode or linhas != [f"{candidata}\trefs/heads/main"]:
                 raise ErroPonte("main remota nao confirma a promocao", "infra")
             destino_main = subprocess.run(
                 [*git, "--git-dir", str(destino_repo), "rev-parse", "--verify", "refs/heads/main"],
