@@ -344,7 +344,7 @@ def test_enviado_desconhecido_vira_enviado_na_chamada_repetida(monkeypatch):
     monkeypatch.setattr("apps.whatsapp.service._gateway", gateway)
     conversa = _conversa()
     r = envio.enviar(conversa=conversa, texto="Veja https://x.y/d", chave_idempotencia="kd", autor="pessoa")
-    assert r.resultado == "desconhecido"
+    assert r.mensagem.estado_envio == "desconhecido"
     [link] = LinkIndividual.objects.all()
     assert link.enviado_em is None and OutboxEvent.objects.filter(event="link.enviado").count() == 0
     # O webhook confirma depois: a mensagem passa a "enviado".
