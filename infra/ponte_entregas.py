@@ -9,6 +9,7 @@ ensaio_entregas. Nenhuma acao aceita caminho ou comando fornecido pelo cliente.
 from __future__ import annotations
 
 import argparse
+from diagnostico_entregas import (criar_diagnostico, diagnostico_publico, classificar_erro, RegistroPublicador)
 from contextlib import contextmanager
 import hashlib
 import json
@@ -18,6 +19,7 @@ import re
 import shlex
 import signal
 import socket
+import stat
 import struct
 import subprocess
 import sys
@@ -31,12 +33,26 @@ REPO_PUBLICO = "https://github.com/abundanciabr/sitesdoreino.git"
 ID = re.compile(r"[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
+ETAPA_ACAO = {"espelhar": "espelhamento", "preparar": "preparacao", "registrar": "prova",
+              "verificar-prova": "prova", "conferir-preservacao": "preservacao",
+              "publicar": "ativacao", "reconciliar": "ativacao"}
+
+
+def contexto_pedido(pedido):
+    if (not isinstance(pedido, dict) or set(pedido) != {"acao", "id", "candidata", "celula"}
+            or not isinstance(pedido.get("acao"), str) or pedido["acao"] not in ETAPA_ACAO
+            or not isinstance(pedido.get("id"), str) or not ID.fullmatch(pedido["id"])
+            or not isinstance(pedido.get("candidata"), str) or not SHA.fullmatch(pedido["candidata"])
+            or pedido.get("celula") not in ("aplicacao", "funil")):
+        return "publicador", None
+    return ETAPA_ACAO[pedido["acao"]], pedido["celula"]
 
 
 class ErroPonte(RuntimeError):
-    def __init__(self, motivo, categoria="infra"):
-        super().__init__(motivo)
-        self.categoria = categoria
+    def __init__(self, motivo, categoria="infra", diagnostico=None):
+        self.diagnostico = diagnostico_publico(diagnostico)
+        super().__init__(self.diagnostico["motivo"] if self.diagnostico else motivo)
+        self.categoria = self.diagnostico["categoria"] if self.diagnostico else categoria
 
 
 class PreparacaoInterrompida(BaseException):
@@ -66,20 +82,29 @@ class ClientePonte:
         pedido = {"acao": acao, "id": id_, "candidata": candidata, "celula": celula}
         if not ID.fullmatch(id_) or not SHA.fullmatch(candidata) or celula not in ("aplicacao", "funil"):
             raise ErroPonte("pedido invalido", "recusa")
+        conectado = False
         try:
             with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as conexao:
                 conexao.settimeout(self.timeout)
                 conexao.connect(str(self.caminho))
+                conectado = True
                 conexao.sendall(json.dumps(pedido, separators=(",", ":")).encode() + b"\n")
                 with conexao.makefile("rb") as aberto:
                     linha = aberto.readline(4097)
             if not linha or len(linha) > 4096:
-                raise ErroPonte("resposta ausente ou longa")
+                diag = criar_diagnostico("resposta_perdida", acao, celula)
+                raise ErroPonte(diag["motivo"], diagnostico=diag)
             resposta = json.loads(linha)
         except (OSError, ValueError) as erro:
-            raise ErroPonte("autoridade indisponivel ou resposta perdida") from erro
+            diag = criar_diagnostico("resposta_perdida" if conectado else "autoridade_indisponivel", acao, celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
+        if not isinstance(resposta, dict):
+            raise ErroPonte("resposta perdida", diagnostico=criar_diagnostico("resposta_perdida", acao, celula))
         if resposta.get("ok") is not True:
-            raise ErroPonte(resposta.get("erro", "operacao recusada"), resposta.get("categoria", "recusa"))
+            diag = diagnostico_publico(resposta.get("diagnostico"))
+            if diag is None:
+                diag = criar_diagnostico("falha_operacional", acao, celula)
+            raise ErroPonte(diag["motivo"], diag["categoria"], diagnostico=diag)
         return resposta
 
     def espelhar(self, id_, candidata):
@@ -99,6 +124,9 @@ class ClientePonte:
 
     def publicar(self, id_, candidata, celula):
         return self.pedir("publicar", id_, candidata, celula)
+
+    def reconciliar(self, id_, candidata, celula):
+        return self.pedir("reconciliar", id_, candidata, celula)
 
 
 class Autoridade:
@@ -206,19 +234,23 @@ class Autoridade:
             capture_output=True, timeout=60)
         if mudancas.returncode or posteriores.returncode or not mudancas.stdout:
             raise ErroPonte("comparacao do conteudo indisponivel", "infra")
-        tocados = set(mudancas.stdout.rstrip(b"\0").split(b"\0"))
-        alterados = set(posteriores.stdout.rstrip(b"\0").split(b"\0")) if posteriores.stdout else set()
+        def desta_celula(caminho):
+            return caminho.startswith(b"services/funil/") == (celula == "funil")
+        tocados = {p for p in mudancas.stdout.rstrip(b"\0").split(b"\0") if desta_celula(p)}
+        alterados = {p for p in posteriores.stdout.rstrip(b"\0").split(b"\0") if p and desta_celula(p)}
         if tocados & alterados:
             return {"ok": True, "situacao": "conflito", "sha_aprovada": ativa,
                     "motivo": "versao posterior alterou arquivos desta entrega"}
 
         ensaio = self._ensaio()
+        chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
         try:
-            prova_antiga = ensaio.verificar_prova(self.plataforma, candidata, self.ferramentas, celula)
-            prova_ativa = ensaio.verificar_prova(self.plataforma, ativa, self.ferramentas, celula)
+            prova_antiga = ensaio.verificar_prova_historica(
+                self.plataforma, candidata, self.ferramentas, celula,
+                identidade=(reg.get("promocao") or {}).get(chave))
+            prova_ativa = ensaio.verificar_prova_historica(self.plataforma, ativa, self.ferramentas, celula)
         except ensaio.RecusaEnsaio as erro:
             raise ErroPonte("prova da entrega ou da versao aprovada indisponivel", "recusa") from erro
-        chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
         if ((reg.get("promocao") or {}).get(chave) != prova_antiga.get("identidade")
                 or prova_ativa.get("candidata") != ativa or prova_ativa.get("celula") != celula
                 or aprovada.get("pacote") != prova_ativa.get("pacote_publicador")):
@@ -291,7 +323,37 @@ class Autoridade:
 
     def espelhar(self, id_, candidata):
         reg = self._registro(self.origem, id_)
-        self._candidata(reg, candidata)
+        try:
+            self._candidata(reg, candidata)
+        except ErroPonte as erro:
+            diag = criar_diagnostico("espelho_candidata_divergente", "espelhamento")
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
+        destino = self.plataforma / "entregas"
+        anterior = destino / (id_ + ".json")
+        if anterior.exists():
+            existente = self._registro(self.plataforma, id_)
+            identidade = ("ramo", "commit", "base", "origem")
+            if any(existente.get(chave) != reg.get(chave) for chave in identidade):
+                diag = criar_diagnostico("espelho_identidade_divergente", "espelhamento")
+                raise ErroPonte(diag["motivo"], diagnostico=diag)
+            promocao_antiga = existente.get("promocao") or {}
+            promocao_nova = reg.get("promocao") or {}
+            candidata_antiga = (promocao_antiga.get("candidata") or existente.get("promovida_candidata")
+                                or existente.get("candidata"))
+            protege_promocao = (
+                (promocao_antiga.get("estado") == "intencao"
+                 and (promocao_nova.get("estado") not in ("intencao", "remota")
+                      or candidata_antiga != candidata))
+                or (promocao_antiga.get("estado") == "remota" or existente.get("promovida_candidata")
+                    or existente.get("estado") == "integrada na main")
+                and (promocao_nova.get("estado") != "remota"
+                     or promocao_nova.get("candidata") != candidata_antiga
+                     or reg.get("promovida_candidata") != candidata_antiga
+                     or candidata != candidata_antiga)
+            )
+            if protege_promocao:
+                diag = criar_diagnostico("espelho_promocao_protegida", "espelhamento")
+                raise ErroPonte(diag["motivo"], diagnostico=diag)
         origem_repo = self.origem / "codigo/repo.git"
         destino_repo = self.plataforma / "codigo/repo.git"
         # O repositório de origem pertence a outra conta. O fetch local abre um
@@ -351,15 +413,7 @@ class Autoridade:
                 avanco = subprocess.run(comando, capture_output=True, timeout=30)
                 if avanco.returncode:
                     raise ErroPonte("main local mudou; tente novamente", "infra")
-        destino = self.plataforma / "entregas"
         destino.mkdir(parents=True, exist_ok=True)
-        anterior = destino / (id_ + ".json")
-        if anterior.exists():
-            existente = self._registro(self.plataforma, id_)
-            self._candidata(existente, candidata)
-            if ((existente.get("promocao") or {}).get("estado") == "remota"
-                    and (reg.get("promocao") or {}).get("estado") != "remota"):
-                raise ErroPonte("registro antigo nao substitui promocao confirmada", "recusa")
         fd, nome = tempfile.mkstemp(prefix=".espelho-", dir=destino)
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as aberto:
@@ -426,15 +480,26 @@ class Autoridade:
 
     def registrar(self, id_, candidata, celula):
         self._conferir_espelho(id_, candidata)
-        arquivo = self.plataforma / "ensaios/saida" / (candidata + ("-funil" if celula == "funil" else "")) / "resultado.json"
-        if arquivo.is_symlink() or not arquivo.is_file():
-            raise ErroPonte("resultado do ensaio ausente", "infra")
+        ensaio = self._ensaio()
+        arquivo = ensaio._caminhos(self.plataforma, candidata, celula)[0] / "resultado.json"
+        try:
+            modo = arquivo.lstat().st_mode
+        except FileNotFoundError:
+            diag = criar_diagnostico("resultado_ensaio_ausente", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from None
+        except OSError as erro:
+            raise ErroPonte("resultado do ensaio indisponível", "infra") from erro
+        if not stat.S_ISREG(modo):
+            diag = criar_diagnostico("registro_ilegivel", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag)
         try:
             resultado = json.loads(arquivo.read_text(encoding="utf-8"))
             ensaio = self._ensaio()
             ensaio.registrar_prova(self.plataforma, candidata, resultado, self.ferramentas, celula)
         except (OSError, ValueError) as erro:
-            raise ErroPonte("resultado do ensaio ilegivel", "infra") from erro
+            codigo = "registro_indisponivel" if isinstance(erro, OSError) else "registro_ilegivel"
+            diag = criar_diagnostico(codigo, "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
         except ensaio.RecusaEnsaio as erro:
             raise ErroPonte(str(erro)[:160], "ensaio") from erro
         return self.verificar_prova(id_, candidata, celula)
@@ -442,16 +507,29 @@ class Autoridade:
     def verificar_prova(self, id_, candidata, celula):
         self.espelhar(id_, candidata)  # inclui intencao gravada apos a primeira verificacao
         ensaio = self._ensaio()
+        arquivo = self.plataforma / "entregas/provas" / (candidata + ("-funil" if celula == "funil" else "") + ".json")
+        try:
+            modo = arquivo.lstat().st_mode
+        except FileNotFoundError:
+            diag = criar_diagnostico("prova_ausente", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from None
+        except OSError as erro:
+            raise ErroPonte("prova indisponível", "infra") from erro
+        if not stat.S_ISREG(modo):
+            diag = criar_diagnostico("prova_divergente", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag)
         try:
             prova = ensaio.verificar_prova(self.plataforma, candidata, self.ferramentas, celula)
         except ensaio.RecusaEnsaio as erro:
-            raise ErroPonte("prova ausente ou divergente", "recusa") from erro
+            diag = criar_diagnostico("prova_divergente", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
         pacote = (prova.get("pacote_publicador") or {}).get("id")
         identidade = prova.get("identidade")
         if (prova.get("candidata") != candidata or prova.get("celula") != celula
                 or prova.get("resultado") != "aprovado"
                 or not DIGEST.fullmatch(identidade or "") or not DIGEST.fullmatch(pacote or "")):
-            raise ErroPonte("prova nao corresponde a entrega", "recusa")
+            diag = criar_diagnostico("prova_divergente", "prova", celula)
+            raise ErroPonte(diag["motivo"], diagnostico=diag)
         return {"ok": True, "identidade": identidade, "pacote_id": pacote}
 
     def publicar(self, id_, candidata, celula):
@@ -460,20 +538,113 @@ class Autoridade:
                 or reg.get("promovida_candidata") != candidata
                 or (reg.get("promocao") or {}).get("estado") != "remota"):
             raise ErroPonte("promocao ainda nao confirmada", "recusa")
-        # O publicador confere a prova sob lock na primeira ativacao e reconhece
-        # repeticao ja ativa antes da prova (a rota pode mudar pela propria entrega).
         comando = [sys.executable, str(self.ferramentas / "infra/publicar.py"),
                    "publicar-entrega", id_, celula]
         ambiente = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": "/home/deploy",
-                    "PLATAFORMA_DIR": str(self.plataforma)}
-        proc = subprocess.run(comando, env=ambiente, capture_output=True, timeout=3600)
+                    "PLATAFORMA_DIR": str(self.plataforma), "ENTREGA_CANDIDATA": candidata}
+        # A origem persiste antes de conferir rotas/provas. Este fallback cobre
+        # falha de arranque, timeout e publicador anterior sem protocolo.
+        inicio = RegistroPublicador(self.plataforma / "publicacoes/diagnosticos", id_, candidata, celula)
+        try:
+            proc = subprocess.run(comando, env=ambiente, capture_output=True, timeout=3600)
+        except (OSError, subprocess.TimeoutExpired) as erro:
+            diag = criar_diagnostico("resposta_perdida" if isinstance(erro, subprocess.TimeoutExpired)
+                                    else "autoridade_indisponivel", "publicador", celula)
+            inicio.falhar(ErroPonte(diag["motivo"], diagnostico=diag))
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
         if proc.returncode:
-            raise ErroPonte("publicador nao concluiu; consulte a operacao", "infra")
-        journal = self.plataforma / "publicacoes" / (celula + ".json")
-        estado = json.loads(journal.read_text(encoding="utf-8"))
-        if (estado.get("aprovada") or {}).get("sha") != candidata:
-            raise ErroPonte("ativacao ainda nao confirmada", "infra")
+            diag = None
+            try:
+                salvo = json.loads(inicio.arquivo.read_text(encoding="utf-8"))
+                if (salvo.get("id") == id_ and salvo.get("candidata") == candidata
+                        and salvo.get("celula") == celula and salvo.get("estado") == "falhou"
+                        and salvo.get("tentativa_em", "") >= inicio.dado["tentativa_em"]):
+                    diag = diagnostico_publico(salvo.get("diagnostico"))
+            except (OSError, ValueError, AttributeError):
+                pass
+            if diag is None:
+                # Classifica internamente; nunca devolve nem armazena stdout/stderr brutos.
+                partes = [x.decode("utf-8", errors="replace") if isinstance(x, bytes) else str(x or "")
+                          for x in (proc.stderr, proc.stdout)]
+                diag = classificar_erro(RuntimeError("\n".join(partes)), "publicador", celula)
+                inicio.falhar(ErroPonte(diag["motivo"], diagnostico=diag))
+            raise ErroPonte(diag["motivo"], diagnostico=diag)
+        try:
+            journal = self.plataforma / "publicacoes" / (celula + ".json")
+            estado = json.loads(journal.read_text(encoding="utf-8"))
+            if (estado.get("aprovada") or {}).get("sha") != candidata or estado.get("atual") != candidata:
+                raise ValueError("ativacao ainda nao confirmada")
+        except (OSError, ValueError, AttributeError) as erro:
+            diag = criar_diagnostico("ativacao_nao_confirmada", "verificacao", celula)
+            inicio.falhar(ErroPonte(diag["motivo"], diagnostico=diag))
+            raise ErroPonte(diag["motivo"], diagnostico=diag) from erro
         return {"ok": True, "estado": "ativa"}
+
+    def _container_da_tentativa_existe(self, prova):
+        if prova.get("celula") != "funil":
+            return False
+        resultado = subprocess.run(["docker", "container", "inspect", prova["nome_funil"]],
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+        return resultado.returncode == 0
+
+    def reconciliar(self, id_, candidata, celula):
+        """Converge cada célula para a main já promovida, sem promover outro código.
+
+        Uma entrega independente pode avançar enquanto outra célula falha. A
+        diferença entre a versão realmente aprovada e a main continua sendo a
+        pendência, mesmo depois de um reinício ou de outra promoção.
+        """
+        self.espelhar(id_, candidata)
+        reg = self._conferir_espelho(id_, candidata)
+        if self.conferir_preservacao(id_, candidata, celula)["situacao"] != "publicavel":
+            raise ErroPonte("main mudou durante a retomada", "infra")
+        arquivo = self.plataforma / "publicacoes" / (celula + ".json")
+        if arquivo.is_symlink() or not arquivo.is_file():
+            raise ErroPonte("versao aprovada indisponivel", "infra")
+        journal = json.loads(arquivo.read_text(encoding="utf-8"))
+        ativa = (journal.get("aprovada") or {}).get("sha")
+        if not SHA.fullmatch(ativa or "") or journal.get("atual") != ativa:
+            raise ErroPonte("versao aprovada nao esta no ar", "infra")
+        if ativa == candidata:
+            # Recupera resposta perdida usando a conferência real já existente.
+            return self.publicar(id_, candidata, celula)
+        git = ["git", "--git-dir", str(self.plataforma / "codigo/repo.git")]
+        if subprocess.run([*git, "merge-base", "--is-ancestor", ativa, candidata],
+                          capture_output=True, timeout=30).returncode:
+            raise ErroPonte("main nao preserva a versao ativa", "recusa")
+        diff = subprocess.run([*git, "diff", "--name-only", "-z", ativa, candidata, "--"],
+                              capture_output=True, timeout=60)
+        if diff.returncode:
+            raise ErroPonte("diferenca da celula indisponivel", "infra")
+        if not any(p and (p.startswith(b"services/funil/") == (celula == "funil"))
+                   for p in diff.stdout.split(b"\0")):
+            return {"ok": True, "estado": "sem alteracoes", "sha_aprovada": ativa}
+        ensaio = self._ensaio()
+        try:
+            prova = ensaio.verificar_prova(self.plataforma, candidata, self.ferramentas, celula)
+            if self._container_da_tentativa_existe(prova):
+                raise ensaio.RecusaEnsaio("tentativa anterior já criou o contêiner")
+        except ensaio.RecusaEnsaio:
+            # Nova execução em outro diretório: preserva os bytes e a promoção
+            # anterior, mas exige ensaio atual para qualquer nova ativação.
+            self.preparar(id_, candidata, celula)
+            self.registrar(id_, candidata, celula)
+            prova = ensaio.verificar_prova(self.plataforma, candidata, self.ferramentas, celula)
+        if self.conferir_preservacao(id_, candidata, celula)["situacao"] != "publicavel":
+            raise ErroPonte("main mudou durante a retomada", "infra")
+        chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
+        recibo = {"id": id_, "candidata": candidata, "celula": celula,
+                  "origem_aprovada": ativa, "prova_promocao": (reg.get("promocao") or {}).get(chave),
+                  "identidade": prova["identidade"], "pacote_id": prova["pacote_publicador"]["id"]}
+        destino = self.plataforma / "publicacoes/reconciliacoes" / (candidata + "-" + celula + ".json")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        temporario = destino.with_suffix(".tmp")
+        with temporario.open("w", encoding="utf-8") as aberto:
+            json.dump(recibo, aberto, sort_keys=True)
+            aberto.flush()
+            os.fsync(aberto.fileno())
+        os.replace(temporario, destino)
+        return self.publicar(id_, candidata, celula)
 
     def atender(self, pedido):
         if not isinstance(pedido, dict) or set(pedido) != {"acao", "id", "candidata", "celula"}:
@@ -486,7 +657,7 @@ class Autoridade:
         acoes = {"espelhar": self.espelhar, "conferir-preservacao": self.conferir_preservacao,
                  "preparar": self.preparar,
                  "registrar": self.registrar, "verificar-prova": self.verificar_prova,
-                 "publicar": self.publicar}
+                 "publicar": self.publicar, "reconciliar": self.reconciliar}
         if acao not in acoes:
             raise ErroPonte("acao nao permitida", "recusa")
         if acao == "preparar":
@@ -509,6 +680,7 @@ def servir(autoridade=None, esperado=SOCKET, usuario="integrador"):
     while True:
         conexao, _ = servidor.accept()
         with conexao:
+            pedido = None
             try:
                 _, peer_uid, _ = struct.unpack("3i", conexao.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12))
                 if peer_uid != uid:
@@ -517,15 +689,22 @@ def servir(autoridade=None, esperado=SOCKET, usuario="integrador"):
                     linha = aberto.readline(4097)
                 if not linha or len(linha) > 4096:
                     raise ErroPonte("pedido ausente ou longo", "recusa")
-                resposta = autoridade.atender(json.loads(linha))
+                pedido = json.loads(linha)
+                resposta = autoridade.atender(pedido)
             except PreparacaoInterrompida:
                 return  # a conexão fecha; o cliente pode retomar após novo socket activation
             except ErroPonte as erro:
-                resposta = {"ok": False, "erro": str(erro)[:180], "categoria": erro.categoria}
+                etapa, celula = contexto_pedido(pedido)
+                diag = classificar_erro(erro, etapa, celula)
+                resposta = {"ok": False, "erro": diag["motivo"], "categoria": diag["categoria"], "diagnostico": diag}
             except Exception as erro:
-                resposta = {"ok": False, "erro": "falha da autoridade (" + type(erro).__name__ + ")",
-                            "categoria": "infra"}
-            conexao.sendall(json.dumps(resposta, ensure_ascii=False, separators=(",", ":")).encode() + b"\n")
+                etapa, celula = contexto_pedido(pedido)
+                diag = classificar_erro(erro, etapa, celula)
+                resposta = {"ok": False, "erro": diag["motivo"], "categoria": diag["categoria"], "diagnostico": diag}
+            try:
+                conexao.sendall(json.dumps(resposta, ensure_ascii=False, separators=(",", ":")).encode() + b"\n")
+            except OSError:
+                pass  # O resultado já foi persistido; a próxima conexão pode reconciliar.
 
 
 def main():

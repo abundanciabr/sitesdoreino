@@ -27,6 +27,8 @@ class IntegradorFalso:
         self.fetch_falha = fetch_falha
         self.promocoes = []
         self.perda_promocao = perda_promocao
+        self.main = next((r["promovida_candidata"] for r in reversed(regs)
+                          if r.get("promovida_candidata")), BASE)
 
     def cmd_integrar(self, arg):
         return 0, {}
@@ -38,6 +40,8 @@ class IntegradorFalso:
         return self.regs[id_].copy()
 
     def git(self, *args, **kwargs):
+        if args[0] == "rev-parse":
+            return SimpleNamespace(stdout=self.main)
         if args[0] == "fetch":
             if self.fetch_falha:
                 raise entregas.Recusa("main indisponivel")
@@ -54,6 +58,7 @@ class IntegradorFalso:
             raise entregas.Recusa("resposta remota perdida")
         reg["estado"] = entregas.NA_MAIN
         reg["promovida_candidata"] = reg["candidata"]
+        self.main = reg["candidata"]
         reg["promocao"] = {"estado": "remota", "candidata": reg["candidata"]}
         return 0, reg
 
@@ -101,6 +106,10 @@ class PonteFalsa:
             self.falha_publicar_celula = None
             raise ErroPonte("resposta perdida")
 
+    def reconciliar(self, id_, candidata, celula):
+        self.chamadas.append(("reconciliar", id_, candidata, celula))
+        return {"ok": True, "estado": "ativa"}
+
 
 def entrega(id_, cand, deps=None):
     return {"id": id_, "estado": "pronta", "candidata": cand,
@@ -117,6 +126,7 @@ def test_perda_da_resposta_da_promocao_retoma_sem_reensaiar(tmp_path):
     worker, integ, ponte = servico(tmp_path, [entrega(I1, C1)], perda_promocao=True)
     primeiro = worker.rodada()
     assert primeiro[0]["fase"] == "promoção pendente"
+    assert worker.estados.ler(I1)["diagnostico"]["codigo"] == "resposta_perdida"
     assert integ.regs[I1]["promocao"]["estado"] == "intencao"
     segundo = worker.rodada()
     assert segundo[0]["fase"] == "ativa"
@@ -132,6 +142,155 @@ def test_resposta_perdida_da_publicacao_retoma_o_mesmo_id(tmp_path):
     assert integ.promocoes == [I1]
     assert [c for c in ponte.chamadas if c == ("publicar", I1)] == [
         ("publicar", I1), ("publicar", I1)]
+
+
+def test_causa_da_publicacao_persiste_e_retomada_confirma_progresso(tmp_path):
+    worker, _, _ = servico(tmp_path, [entrega(I1, C1)],
+                           ponte=PonteFalsa(perda_publicar=True))
+    assert worker.rodada()[0]["fase"] == "ativação pendente"
+    pendente = worker.estados.ler(I1)
+    assert pendente["diagnostico"]["codigo"] == "resposta_perdida"
+    assert pendente["ultima_falha"]["codigo"] == "resposta_perdida"
+    assert pendente["em_andamento"] is False
+    assert pendente["progresso_em"]
+    assert pendente["tentativa_em"]
+    assert pendente["tentativas"] == 3  # ensaio, promoção e ativação realmente iniciados
+    assert worker.rodada()[0]["fase"] == "ativa"
+    concluida = worker.estados.ler(I1)
+    assert concluida["diagnostico"] is None
+    assert concluida["ultima_falha"]["codigo"] == "resposta_perdida"
+    assert concluida["tentativas"] == 4
+
+
+def test_dependencia_pendente_guarda_ids_sem_iniciar_tentativas(tmp_path):
+    worker, _, _ = servico(tmp_path, [entrega(I2, C2, [I1])])
+    worker.rodada()
+    estado = worker.estados.ler(I2)
+    assert estado["fase"] == "aguardando dependência"
+    assert estado["dependencias_pendentes"] == [I1]
+    assert estado["diagnostico"]["codigo"] == "dependencia_pendente"
+    assert estado["tentativas"] == 0
+    assert estado["progresso_em"] is None
+
+
+def test_indisponibilidade_do_ensaio_nao_gasta_tentativa_real(tmp_path):
+    class PonteIndisponivel(PonteFalsa):
+        def preparar(self, id_, candidata, celula):
+            self.chamadas.append(("preparar", id_))
+            raise ErroPonte("execução indisponível", "infra")
+
+    ponte = PonteIndisponivel()
+    worker, _, _ = servico(tmp_path, [entrega(I1, C1)], ponte=ponte)
+    assert worker.rodada()[0]["fase"] == "ensaiando"
+    estado = worker.estados.ler(I1)
+    assert estado["diagnostico"]["codigo"] == "ensaio_indisponivel"
+    assert estado["tentativas"] == 0
+    assert estado.get("tentativas_celula", {}).get("aplicacao", 0) == 0
+    assert estado["em_andamento"] is False
+    worker.rodada()
+    estado = worker.estados.ler(I1)
+    assert estado["proxima_tentativa_em"]
+    assert estado["tentativas"] == 0
+    assert worker.rodada()[0]["fase"] == "ensaiando"
+    assert ponte.chamadas.count(("preparar", I1)) == 2
+
+
+def test_falha_do_canal_ao_verificar_ou_registrar_nao_inicia_ensaio(tmp_path):
+    class PonteFalhaProva(PonteFalsa):
+        def verificar_prova(self, id_, candidata, celula):
+            raise ErroPonte("autoridade indisponivel", "infra")
+
+    class PonteFalhaRegistro(PonteFalsa):
+        def registrar(self, id_, candidata, celula):
+            raise ErroPonte("autoridade indisponivel", "infra")
+
+    for ponte in (PonteFalhaProva(), PonteFalhaRegistro()):
+        worker, _, _ = servico(tmp_path / str(type(ponte).__name__), [entrega(I1, C1)], ponte=ponte)
+        worker.rodada()
+        estado = worker.estados.ler(I1)
+        assert estado["diagnostico"]["codigo"] == "autoridade_indisponivel"
+        assert estado["tentativas"] == 0
+        assert ("preparar", I1) not in ponte.chamadas
+
+
+def test_limite_tres_ensaios_reais_preserva_ultima_causa(tmp_path):
+    class PonteSemResultado(PonteFalsa):
+        def registrar(self, id_, candidata, celula):
+            raise ErroPonte("resultado ausente", "infra")
+
+    worker, _, ponte = servico(tmp_path, [entrega(I1, C1)], ponte=PonteSemResultado())
+    for _ in range(3):
+        worker.rodada()
+        estado = worker.estados.ler(I1)
+        assert estado["fase"] == "ensaiando"
+        estado["proxima_tentativa_em"] = "2000-01-01T00:00:00+00:00"
+        worker.estados.salvar(estado)
+    worker.rodada()
+    estado = worker.estados.ler(I1)
+    assert estado["fase"] == "falha no ensaio"
+    assert estado["diagnostico"]["codigo"] == "tentativas_esgotadas"
+    assert estado["ultima_falha"]["codigo"] == "resultado_ensaio_ausente"
+    assert estado["tentativas"] == 3
+    assert estado["tentativas_celula"]["aplicacao"] == 3
+
+
+def test_registro_ilegivel_fica_isolado_e_outra_entrega_ativa(tmp_path):
+    worker, integrador, _ = servico(tmp_path, [entrega(I1, C1), entrega(I2, C2)])
+    ler = integrador.ler
+
+    def ler_com_falha(id_):
+        if id_ == I1:
+            raise entregas.Recusa("registro ilegível /privado/marcador")
+        return ler(id_)
+
+    integrador.ler = ler_com_falha
+    resultados = {r["id"]: r for r in worker.rodada()}
+    assert resultados[I1]["diagnostico"]["codigo"] == "registro_ilegivel"
+    assert "/privado/" not in json.dumps(resultados)
+    assert resultados[I2]["fase"] == "ativa"
+    assert json.loads((worker.estados.pasta / "canal.json").read_text(encoding="utf-8"))["estado"] == "rodada concluída"
+
+
+def test_fase_ilegivel_nao_e_sobrescrita_nem_derruba_a_fila(tmp_path):
+    worker, _, _ = servico(tmp_path, [entrega(I1, C1), entrega(I2, C2)])
+    arquivo = worker.estados.pasta / (I1 + ".json")
+    arquivo.write_text("{", encoding="utf-8")
+    resultados = {r["id"]: r for r in worker.rodada()}
+    assert resultados[I1]["diagnostico"]["codigo"] == "registro_ilegivel"
+    assert arquivo.read_text(encoding="utf-8") == "{"
+    assert resultados[I2]["fase"] == "ativa"
+
+
+def test_dependencia_com_fase_ilegivel_aguarda_e_retoma_apos_reparo(tmp_path):
+    worker, _, ponte = servico(tmp_path, [entrega(I2, C2, [I1])])
+    arquivo = worker.estados.pasta / (I1 + ".json")
+    arquivo.write_text("{", encoding="utf-8")
+    assert worker.rodada()[0]["fase"] == "aguardando dependência"
+    estado = worker.estados.ler(I2)
+    assert estado["diagnostico"]["codigo"] == "registro_ilegivel"
+    assert estado["dependencias_pendentes"] == [I1]
+    assert ("preparar", I2) not in ponte.chamadas
+    worker.estados.salvar({"id": I1, "candidata": C1, "fase": "ativa"})
+    assert worker.rodada()[0]["fase"] == "ativa"
+
+
+def test_espera_invalida_nao_derruba_fila(tmp_path):
+    worker, _, _ = servico(tmp_path, [entrega(I1, C1)])
+    for valor in (None, "sem-data", "2026-10-10T10:00:00"):
+        assert worker._espera_vigente({"proxima_tentativa_em": valor}) is False
+
+
+def test_canal_registra_falha_da_main_e_recuperacao_na_rodada_seguinte(tmp_path):
+    worker, integrador, _ = servico(tmp_path, [entrega(I1, C1)], fetch_falha=True)
+    worker.rodada()
+    canal = json.loads((worker.estados.pasta / "canal.json").read_text(encoding="utf-8"))
+    assert canal["estado"] == "infraestrutura indisponível"
+    assert canal["diagnostico"]["codigo"] == "main_indisponivel"
+    integrador.fetch_falha = False
+    assert worker.rodada()[0]["fase"] == "ativa"
+    canal = json.loads((worker.estados.pasta / "canal.json").read_text(encoding="utf-8"))
+    assert canal["estado"] == "rodada concluída"
+    assert canal["diagnostico"] is None
 
 
 def test_falha_de_uma_entrega_nao_para_independente_e_dependente_aguarda(tmp_path):
@@ -288,8 +447,9 @@ def test_espelho_importa_objeto_exato_e_recusa_registro_antigo(tmp_path, monkeyp
     assert any(c[0] == "git" and "ls-remote" in c and str(publico) in c for c in comandos)
     reg["promocao"]["estado"] = "intencao"
     (origem / "entregas" / (I1 + ".json")).write_text(json.dumps(reg), encoding="utf-8")
-    with pytest.raises(ErroPonte, match="antigo"):
+    with pytest.raises(ErroPonte) as recusada:
         autoridade.espelhar(I1, cand)
+    assert recusada.value.diagnostico["codigo"] == "espelho_promocao_protegida"
 
 
 def test_espelho_consulta_url_publica_sem_remoto_local_ou_credenciais(tmp_path, monkeypatch):
@@ -368,7 +528,7 @@ def test_conciliacao_historica_exige_conteudo_preservado_e_nao_move_main(tmp_pat
     monkeypatch.setattr(ponte_entregas, "REPO_PUBLICO", str(publico))
     autoridade = Autoridade(origem, destino, tmp_path / "ferramentas")
     ensaio = SimpleNamespace(RecusaEnsaio=RuntimeError,
-                             verificar_prova=lambda plataforma, sha, ferramentas, celula: {
+                             verificar_prova_historica=lambda plataforma, sha, ferramentas, celula, **kw: {
                                  "identidade": "d" * 64, "candidata": sha, "celula": celula,
                                  "pacote_publicador": pacote})
     monkeypatch.setattr(autoridade, "_ensaio", lambda: ensaio)
@@ -442,6 +602,9 @@ def test_prova_devolve_so_identificadores_sem_hash_privado(tmp_path, monkeypatch
              "configuracao": "SEGREDO-HASH", "artefato": {"codigo": "/privado"}}
     fake = SimpleNamespace(verificar_prova=lambda *args: prova, RecusaEnsaio=RuntimeError)
     monkeypatch.setattr(autoridade, "_ensaio", lambda: fake)
+    arquivo = autoridade.plataforma / "entregas/provas" / (C1 + "-funil.json")
+    arquivo.parent.mkdir(parents=True)
+    arquivo.write_text(json.dumps(prova), encoding="utf-8")
     resposta = autoridade.verificar_prova(I1, C1, "funil")
     assert set(resposta) == {"ok", "identidade", "pacote_id"}
     assert "SEGREDO-HASH" not in json.dumps(resposta)
