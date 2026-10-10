@@ -5,12 +5,20 @@
 <link rel="stylesheet" href="{% url 'trilha_v4_css' %}"><link rel="stylesheet" href="{% url 'inventario_css' %}">
 <script src="{% url 'inventario_js' %}" defer></script></head>
 <body>{{ trilha|json_script:"trilha-data" }}
+<svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+<symbol id="chevron" viewBox="0 0 24 24"><path d="m8 5 7 7-7 7"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></symbol>
+</svg>
 <header class="masthead"><a class="brand" href="/trilha/"><span class="brand-emblem" aria-hidden="true">M</span><span>MESHCRAFT<span class="brand-sub">ATELIÊ DIGITAL</span></span></a><a class="return" href="/trilha/">← Voltar à trilha</a></header>
-<main class="inventory"><section class="intro"><p class="eyebrow">A JORNADA DO CRIADOR · {{ trilha.aluno.nome }}</p><h1>Meu <em>inventário.</em></h1><p>Suas criações, entregas e conquistas.<br>Um lugar para guardar o que você faz e registrar cada passo.</p></section>
+<main class="inventory"><section class="intro"><p class="eyebrow">A JORNADA DO CRIADOR · {{ trilha.aluno.nome }}</p><h1>Meu <em>inventário.</em></h1><p>Suas criações, entregas e conquistas.<br>Concentre-se na faixa atual.<br>Os próximos requisitos aparecem conforme você avança.</p></section>
 <p id="notice" role="status" aria-live="polite">Consultando seus registros…</p>
 <div id="inventory-content" hidden>
-<div class="inventory-grid"><div class="workspace">
-<section class="inventory-card featured" id="primeiro-item" aria-labelledby="first-title"><p class="eyebrow">01 — MINHA PRIMEIRA CRIAÇÃO <span id="first-state" class="badge"></span></p><h2 id="first-title">Meu primeiro item 3D.</h2>
+<div class="journey-heading"><div><p class="eyebrow">MEU PERCURSO</p><h2 id="current-belt"></h2></div><p class="explore-hint">Seus arquivos e requisitos,<br>uma faixa por vez.</p></div>
+<div class="stage-dock" aria-label="Acesso direto às 13 faixas"><div class="dock-inner" id="inventory-dock"></div></div>
+<ol class="timeline" id="inventory-timeline"></ol>
+<div id="inventory-parts" hidden>
+<section class="inventory-card featured" id="primeiro-item" aria-labelledby="first-title"><p class="eyebrow">MINHA PRIMEIRA CRIAÇÃO <span id="first-state" class="badge"></span></p><h2 id="first-title">Meu primeiro item 3D.</h2>
 <p>Finalize seu item, confira a forma e salve os arquivos para mostrar sua criação.</p>
 <form id="first-form" data-action="declaracao"><input type="hidden" name="acao" value="declaracao"><input type="hidden" name="passo" value="2"><input type="hidden" name="estado" value="feito">
 <label class="upload" for="first-file"><strong>Anexar meu trabalho</strong><span>Modelo 3D, imagem ou ZIP · até 20 MB por arquivo</span><input id="first-file" type="file" name="arquivo" accept=".blend,.glb,.gltf,.obj,.stl,.fbx,.zip,.png,.jpg,.jpeg,.webp" required><span class="formats">BLEND, GLB, GLTF, OBJ, STL, FBX, ZIP, PNG, JPG ou WEBP.</span></label>
@@ -18,12 +26,11 @@
 <p class="fine">A conclusão exige um anexo. Este é um registro seu, sem avaliação de qualidade pelo professor. Seu arquivo fica privado na sua conta.</p>
 <div class="action-row"><button class="primary" id="first-submit" type="submit">Concluí meu item 3D →</button><span>Bônus único<br><strong>5.000 XP · Faixa Amarela</strong></span></div><button class="text-link save-file" type="submit" name="acao" value="anexo">Guardar arquivo sem concluir</button></form>
 <a class="text-link" href="/cursos/">Ainda estou criando: abrir minhas aulas →</a></section>
-<section class="inventory-card"><p class="eyebrow">02 — MINHAS ENTREGAS</p><h2>Da prática ao trabalho.</h2><p>Os registros acompanham sua jornada. Iniciar um trabalho não significa concluí-lo.</p><div id="deliveries"></div></section>
-<section class="inventory-card" id="minha-meta"><p class="eyebrow">03 — MINHA META</p><h2>Onde quero chegar.</h2><p>Escolha sua meta de recebimentos para o 7º grau da faixa-preta.</p>
+<section class="inventory-card" id="minhas-entregas"><p class="eyebrow">MINHAS ENTREGAS</p><h2>Da prática ao trabalho.</h2><p>Os registros acompanham sua jornada. Iniciar um trabalho não significa concluí-lo.</p><div id="deliveries"></div></section>
+<section class="inventory-card" id="minha-meta"><p class="eyebrow">MINHA META</p><h2>Onde quero chegar.</h2><p>Escolha sua meta de recebimentos para o 7º grau da faixa-preta.</p>
 <form id="goal-form"><input type="hidden" name="acao" value="meta"><label for="goal">Minha meta em reais</label><input id="goal" name="meta" type="number" min="100" max="1000" step="0.01" required><label for="purpose">Para que quero esse dinheiro? <span class="fine">Opcional, só você vê</span></label><input id="purpose" name="proposito" maxlength="280"><button class="primary" type="submit">Guardar minha meta</button></form></section>
-<section class="inventory-card" id="recebimentos"><p class="eyebrow">04 — MEUS RECEBIMENTOS</p><h2>O resultado do meu trabalho.</h2><p id="received-total"></p><ul id="receipts" class="files"></ul>
+<section class="inventory-card" id="recebimentos"><p class="eyebrow">MEUS RECEBIMENTOS</p><h2>O resultado do meu trabalho.</h2><p id="received-total"></p><ul id="receipts" class="files"></ul>
 <details><summary>Registrar um recebimento com print</summary><p class="fine">Informe dinheiro que já recebeu por modelagem 3D. O robô lê o print antes de atualizar os passos financeiros; ele não autentica o pagamento. Oculte CPF, contas e dados pessoais desnecessários.</p>
 <form id="receipt-form" enctype="multipart/form-data"><input type="hidden" name="acao" value="recebimento"><label for="amount">Valor recebido em reais (ou equivalente informado por você)</label><input id="amount" type="number" min="0.01" step="0.01" name="valor" required><label for="currency">Moeda que aparece no print</label><input id="currency" name="moeda_original" value="BRL" pattern="[A-Za-z]{3}" maxlength="3" required><label for="original">Valor original, se a moeda não for BRL</label><input id="original" name="valor_original" type="number" min="0.01" step="0.01"><label for="receipt-file">Print privado do recebimento</label><input id="receipt-file" type="file" name="print" accept="image/png,image/jpeg,image/webp" required><label for="receipt-date">Dia do recebimento</label><input id="receipt-date" type="date" name="recebido_em" required><label for="source">Onde aconteceu?</label><select id="source" name="origem"><option value="fora">Cliente fora do site</option><option value="fila">Fila do Dólar</option></select><button class="primary" type="submit">Enviar recebimento para leitura</button></form></details></section>
-<section class="inventory-card"><p class="eyebrow">MINHA HISTÓRIA</p><h2>O caminho que já fiz.</h2><ul id="history" class="history"></ul></section>
-</div><aside class="inventory-card overview"><p class="eyebrow">MINHA JORNADA</p><h2>Passo a passo.</h2><p id="current-belt"></p><ol id="steps"></ol><p class="fine">As conquistas seguem os critérios da jornada. Um arquivo guardado, sozinho, não libera uma faixa.</p></aside></div>
-</div></main><footer class="inventory-footer">MESHCRAFT / ATELIÊ <span>Meu inventário · Registros privados</span></footer></body></html>
+<section class="inventory-card" id="minha-historia"><p class="eyebrow">MINHA HISTÓRIA</p><h2>O caminho que já fiz.</h2><ul id="history" class="history"></ul></section>
+</div></div></main><footer class="inventory-footer">MESHCRAFT / ATELIÊ <span>Meu inventário · Registros privados</span></footer></body></html>
