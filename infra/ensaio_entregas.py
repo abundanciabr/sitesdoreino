@@ -296,6 +296,7 @@ def _ferramentas(ferramentas: Path) -> tuple[str, str]:
         "preparar": _hash(ferramentas / "preparar-aplicacao.py"),
         "provas": __import__("protecao_publicacao").arvore(ferramentas / "provas-aplicacao"),
         "funil": _hash(ferramentas / "infra/execucao-celulas.py"),
+        "armazenamento": _hash(ferramentas / "infra/armazenamento_artefatos.py"),
         "provas_funil": __import__("protecao_publicacao").arvore(ferramentas / "provas-funil"),
     })
     return executor, ensaio
@@ -721,6 +722,8 @@ def preparar_entrada(plataforma: Path, candidata: str, imagem_base: str) -> Path
             raise RecusaEnsaio("exportação da candidata falhou")
         from protecao_publicacao import arvore
         _normalizar_fonte(fonte)
+        from armazenamento_artefatos import consolidar_arvore_nova
+        consolidar_arvore_nova(fonte, plataforma / "ensaios/.objetos-artefatos")
         manifesto = {"candidata": candidata, "imagem_base": imagem_base,
                      "arvore": arvore(fonte)}
         (temporaria / ".origem-ensaio.json").write_text(
@@ -920,15 +923,18 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
         resultado = ensaiar(bundle, imagem, ferramentas, base / "evidencias", registro)
         if resultado.get("estado") != "comprovado":
             raise RecusaEnsaio("ensaio comercial falhou")
-        with tar_imagem.open("wb") as saida:
-            salvo = subprocess.run(["docker", "save", imagem], stdout=saida,
-                                    stderr=registro, timeout=600)
-        if salvo.returncode:
-            tar_imagem.unlink(missing_ok=True)
-            raise RecusaEnsaio("imagem aprovada não pôde ser exportada")
+        from armazenamento_artefatos import consolidar_arvore_nova, exportar_imagem_nova
+        armazenamento = {"imagem": exportar_imagem_nova(
+            imagem, tar_imagem, plataforma / "ensaios/.objetos-artefatos", registro=registro)}
+        # Os ensaios e collectstatic terminaram: a partir daqui estas árvores
+        # são artefatos de leitura, inclusive quando montadas no site.
+        armazenamento["codigo"] = consolidar_arvore_nova(codigo, plataforma / "ensaios/.objetos-artefatos")
+        if bundle != codigo:
+            armazenamento["bundle"] = consolidar_arvore_nova(bundle, plataforma / "ensaios/.objetos-artefatos")
         relatorio = base / "evidencias/comercial.xml"
         resultado = conferir_relatorio(relatorio, registrar_falha_conhecida=True)
     resumo = {"estado": "comprovado", "celula": celula, "casos": resultado["casos"],
+              "armazenamento": armazenamento,
               "relatorio_sha256": resultado["relatorio_sha256"],
               "imagem_id": imagem_id(imagem), "segundos": round(time.monotonic() - inicio, 3)}
     if resultado_funil:

@@ -22,6 +22,9 @@ import tarfile
 import time
 from datetime import datetime, timezone
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from armazenamento_artefatos import criar_snapshot, exportar_imagem_nova
+
 PUB = Path('/usr/local/lib/meshcraft-publicador')
 ATUAL = PUB / 'atual'
 INT = Path('/usr/local/lib/meshcraft-integrador')
@@ -38,6 +41,8 @@ ALVOS = {
     'wrapper',
     'publicador/infra/publicar.py', 'publicador/infra/ponte_entregas.py',
     'publicador/infra/diagnostico_entregas.py', 'publicador/infra/ensaio_entregas.py',
+    'publicador/infra/armazenamento_artefatos.py',
+    'publicador/infra/manutencao_publicador/aplicar_canal.py',
     'integrador/integrador_servico.py', 'integrador/ponte_entregas.py',
     'integrador/diagnostico_entregas.py',
     'acessos/robo_broker.py', 'acessos/robo_comando.py',
@@ -89,6 +94,8 @@ def anchors(release: Path) -> list[Path]:
     fixed = POL.parents[1]
     return ([release / 'infra/publicar.py', release / 'infra/ponte_entregas.py',
              release / 'infra/diagnostico_entregas.py', release / 'infra/ensaio_entregas.py',
+             release / 'infra/armazenamento_artefatos.py',
+             release / 'infra/manutencao_publicador/aplicar_canal.py',
              release / 'infra/docs_somente_admin.py', release / 'docs/politica.json',
              release / 'infra/backup-do-banco.sh',
              release / 'infra/mercadopago_congelado.py',
@@ -399,17 +406,12 @@ def backup(release: Path, inv: dict) -> Path:
         if not cell_images:
             raise RuntimeError(f'imagem aprovada inválida ou ausente: {cell}')
         images.update(cell_images)
-    with tarfile.open(dest / 'estado-antes.tar.gz', 'w:gz') as tar:
-        for source, name in paths:
-            if not source.exists() and not source.is_symlink():
-                if source in (ROOT / 'publicacoes/funil.json',):
-                    continue
-                raise RuntimeError(f'backup incompleto: {source}')
-            tar.add(source, arcname=name, recursive=True)
-    os.chmod(dest / 'estado-antes.tar.gz', 0o600)
-    with tarfile.open(dest / 'estado-antes.tar.gz') as tar:
-        if not tar.getmembers():
-            raise RuntimeError('arquivo de backup vazio')
+    paths = [(source, name) for source, name in paths
+             if source != ROOT / 'publicacoes/funil.json' or source.exists()]
+    # Cada cópia possui seus próprios objetos: recuperar não depende do cache,
+    # de ensaios anteriores ou de outra versão. Backups antigos permanecem intactos.
+    snapshot = dest / 'estado-antes'
+    storage = criar_snapshot(paths, snapshot, ROOT / 'objetos-backups-codigo')
     (dest / 'inventario.json').write_text(json.dumps(inv, ensure_ascii=False, indent=2), encoding='utf-8')
     os.chmod(dest / 'inventario.json', 0o600)
     if not images:
@@ -422,8 +424,7 @@ def backup(release: Path, inv: dict) -> Path:
         if image.startswith('sha256:') and identity != image:
             raise RuntimeError('imagem aprovada não corresponde ao Docker')
         image_path = dest / f'imagem-{number}.tar'
-        run('docker', 'save', '-o', str(image_path), image, timeout=3600)
-        os.chmod(image_path, 0o600)
+        exportar_imagem_nova(identity, image_path, ROOT / 'objetos-backups-codigo')
         if not tarfile.is_tarfile(image_path):
             raise RuntimeError('imagem de backup inválida')
         with tarfile.open(image_path) as archive:
@@ -442,7 +443,9 @@ def backup(release: Path, inv: dict) -> Path:
                 if not matches:
                     raise RuntimeError('identidade da imagem salva diverge')
         image_proof[image] = digest(image_path)
-    proof = {'arquivo_sha256': digest(dest / 'estado-antes.tar.gz'), 'imagens': image_proof,
+    proof = {'formato': 2, 'manifesto_sha256': digest(snapshot / 'manifesto.json'),
+             'restaurador_sha256': digest(snapshot / 'restaurar.py'),
+             'armazenamento': storage, 'imagens': image_proof,
              'dumps': {p.name: digest(p) for p in dumps}}
     (dest / 'prova.json').write_text(json.dumps(proof, sort_keys=True), encoding='utf-8')
     os.chmod(dest / 'prova.json', 0o600)
