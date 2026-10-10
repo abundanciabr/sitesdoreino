@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aula 1 · {{ nome }}</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:#1b1b1b;color:#fff;font-family:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.topo{height:78px;background:#000;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 32px}
+.topo h1{margin:0;font-size:19px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
+.voltar{display:inline-flex;align-items:center;gap:16px;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:0 0 40px}
+.trilha{font-size:14px;color:#e8e8e8;margin:0 0 4px}
+h2{font-size:30px;margin:0 0 40px}
+.relogio{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:720px}
+.relogio div{background:#262626;border:1px solid #333;border-radius:8px;padding:26px 8px;text-align:center}
+.relogio strong{display:block;font-size:56px;font-variant-numeric:tabular-nums;line-height:1}
+.relogio span{display:block;margin-top:10px;color:#bbb;font-size:15px;text-transform:uppercase;letter-spacing:1px}
+.aviso{font-size:18px;line-height:1.8;margin:36px 0 0}
+.liberada{background:#1f3a29;border:1px solid #3ccf6e;border-radius:8px;padding:28px;max-width:720px}
+.liberada p{margin:0 0 20px;font-size:22px;font-weight:700}
+.liberada a{display:inline-block;background:#3ccf6e;color:#06210f;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:6px}
+@media (max-width:600px){
+  .topo{padding:0 14px}
+  h2{font-size:24px}
+  .relogio{gap:8px}
+  .relogio div{padding:18px 4px}
+  .relogio strong{font-size:34px}
+  .relogio span{font-size:11px}
+}
+</style>
+</head>
+<body>
+<header class="topo"><h1>{{ nome }}</h1></header>
+<main>
+  <a class="voltar" href="{% url 'acesso-desafio-roblox' %}">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
+    Voltar
+  </a>
+  <p class="trilha">{{ nome }}</p>
+
+  <section id="contagem" data-alvo="{{ aula_1_iso }}"{% if liberada %} hidden{% endif %}>
+    <h2>A aula 1 será liberada em</h2>
+    <div class="relogio" role="timer" aria-live="off">
+      <div><strong id="dias">{{ dias|stringformat:"02d" }}</strong><span>dias</span></div>
+      <div><strong id="horas">{{ horas|stringformat:"02d" }}</strong><span>horas</span></div>
+      <div><strong id="minutos">{{ minutos|stringformat:"02d" }}</strong><span>minutos</span></div>
+      <div><strong id="segundos">{{ segundos|stringformat:"02d" }}</strong><span>segundos</span></div>
+    </div>
+    <p class="aviso">📌 A aula 1 estará liberada no dia 19/10 às 9h da manhã (horário de Brasília).</p>
+  </section>
+
+  <section class="liberada" id="liberada"{% if not liberada %} hidden{% endif %}>
+    <p>A aula 1 já está liberada!</p>
+    <a href="{% url 'curso' curso %}">Assistir à aula 1</a>
+  </section>
+</main>
+<script>
+(function () {
+  var contagem = document.getElementById("contagem");
+  var alvo = Date.parse(contagem.dataset.alvo);
+  function dois(n) { return (n < 10 ? "0" : "") + n; }
+  function tique() {
+    var resto = Math.max(0, Math.floor((alvo - Date.now()) / 1000));
+    if (resto === 0) {
+      contagem.hidden = true;
+      document.getElementById("liberada").hidden = false;
+      return;
+    }
+    document.getElementById("dias").textContent = dois(Math.floor(resto / 86400));
+    document.getElementById("horas").textContent = dois(Math.floor(resto % 86400 / 3600));
+    document.getElementById("minutos").textContent = dois(Math.floor(resto % 3600 / 60));
+    document.getElementById("segundos").textContent = dois(resto % 60);
+    setTimeout(tique, 1000);
+  }
+  tique();
+})();
+</script>
+</body>
+</html>

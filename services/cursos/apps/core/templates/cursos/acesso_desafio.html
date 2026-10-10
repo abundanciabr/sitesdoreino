@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Informações importantes · {{ nome }}</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<style>
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;background:#1b1b1b;color:#fff;font-family:Inter,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+svg{display:block}
+.topo{position:sticky;top:0;z-index:5;height:78px;background:#000;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 22px 0 32px;gap:30px}
+.topo h1{margin:0;font-size:19px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topo .icones{display:flex;align-items:center;gap:30px}
+.sino{position:relative}
+.sino::after{content:"";position:absolute;top:-3px;right:-4px;width:9px;height:9px;border-radius:50%;background:#e5202b}
+.avatar{width:40px;height:40px;border-radius:50%;border:2px solid #3ccf6e;box-shadow:0 0 0 2px #000 inset;display:grid;place-items:center;background:#2b2b2b;color:#ddd}
+.pagina{display:grid;grid-template-columns:minmax(0,1fr) min(35vw,550px);min-height:calc(100vh - 78px)}
+.pagina.sem-lateral{grid-template-columns:minmax(0,1fr) 0}
+.pagina.sem-lateral .lateral{display:none}
+.aula{padding:0 20px 60px 13px;min-width:0}
+.linha-voltar{display:flex;align-items:center;justify-content:space-between;padding:20px 0 30px}
+.voltar{display:flex;align-items:center;gap:16px;text-decoration:none;font-weight:700;font-size:15px}
+.navegar{display:flex;gap:10px}
+.navegar span{width:45px;height:45px;border-radius:6px;background:#262626;display:grid;place-items:center;color:#8a8a8a}
+.trilha{font-size:14px;color:#e8e8e8;margin:0 0 4px}
+.aula h2.titulo{font-size:30px;font-weight:700;margin:0 0 22px;letter-spacing:.2px}
+.acoes{display:flex;justify-content:flex-end;align-items:center;gap:20px;margin-bottom:42px}
+.estrelas{display:flex;gap:2px}
+.estrelas button{color:#3d3d3d}
+.estrelas button.acesa{color:#f5b70a}
+.concluir{display:flex;align-items:center;gap:10px;border:1px solid #3a3a3a;border-radius:6px;padding:12px 20px;font-weight:700;font-size:19px;background:#1b1b1b}
+.concluir.feita{background:#1f3a29;border-color:#3ccf6e}
+.pontos{display:flex;align-items:center;gap:14px;font-weight:700;font-size:17px}
+.texto{font-size:17px;line-height:2.1;max-width:1000px}
+.texto p{margin:0 0 30px}
+.texto .rotulo{font-weight:700;text-decoration:underline;margin-bottom:56px}
+.texto .secao{margin-top:52px}
+.texto a.link{color:#a78bfa}
+.divisa{border:0;border-top:1px solid #333;margin:6px 0 80px}
+.comentarios h3{margin:0 0 22px;font-size:20px}
+.comentarios h3 span{color:#9a9a9a;font-weight:400}
+.escrever{display:flex;gap:20px;align-items:flex-start}
+.bolinha{flex:0 0 60px;height:60px;border-radius:50%;background:#2b2b2b;display:grid;place-items:center;color:#ddd}
+.escrever textarea{flex:1;min-height:70px;resize:vertical;background:#1b1b1b;border:1px solid #3a3a3a;border-radius:4px;color:#fff;font:inherit;font-size:19px;padding:20px 16px}
+.escrever textarea::placeholder{color:#9a9a9a}
+.aviso-comentario{margin:10px 0 0 80px;color:#bbb;font-size:15px}
+.vazio{text-align:center;padding:20px 0 40px}
+.vazio .circulo{width:196px;height:196px;border-radius:50%;background:#2a2a2a;display:grid;place-items:center;margin:0 auto 22px;color:#1b1b1b}
+.vazio strong{display:block;font-size:26px;margin-bottom:8px}
+.vazio p{margin:0;color:#9a9a9a;font-size:17px}
+.lateral{border-left:1px solid #2a2a2a;min-width:0}
+.lateral-topo{height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 18px 0 16px;border-bottom:1px solid #2a2a2a}
+.lateral-topo .ativo{width:50px;height:50px;border-radius:6px;background:#2d2d2d;display:grid;place-items:center}
+.lateral-topo .direita{display:flex;gap:42px;align-items:center}
+.busca{position:relative;margin:20px 14px 40px 20px}
+.busca input{width:100%;height:52px;background:#1b1b1b;border:1px solid #3a3a3a;border-radius:4px;color:#fff;font:inherit;font-size:19px;padding:0 52px 0 16px}
+.busca input::placeholder{color:#9a9a9a}
+.busca svg{position:absolute;right:12px;top:15px;color:#666}
+.modulo{display:flex;align-items:center;gap:20px;padding:0 24px 0 30px;margin-bottom:22px;width:100%;text-align:left}
+.modulo .numero{flex:0 0 50px;height:50px;border-radius:50%;background:#262626;display:grid;place-items:center;font-size:18px}
+.modulo .info{flex:1;min-width:0}
+.modulo .nome{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modulo .progresso{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;margin-top:4px}
+.modulo .barra{width:168px;height:4px;border-radius:2px;background:#444;overflow:hidden}
+.modulo .barra i{display:block;height:100%;width:0;background:#3ccf6e}
+.modulo .seta{transition:transform .2s}
+.modulo[aria-expanded=false] .seta{transform:rotate(180deg)}
+.aulas{margin:0 16px;padding-bottom:76px;border-bottom:1px solid #333}
+.item{display:flex;align-items:center;gap:12px;background:#262626;border-radius:8px;padding:14px}
+.miniatura{position:relative;flex:0 0 152px;height:86px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#0b1a2b 0%,#163a5c 45%,#d83a2e 100%)}
+.miniatura em{position:absolute;left:8px;top:6px;font-style:normal;font-size:8px;font-weight:800;letter-spacing:.5px;color:#fff;opacity:.85;line-height:1.2}
+.miniatura span{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:14px}
+.item .nome-aula{flex:1;font-size:18px}
+.item .check{color:#ddd}
+.item.feita .check{color:#3ccf6e}
+.nada{color:#9a9a9a;padding:14px;font-size:15px}
+@media (max-width:900px){
+  .topo{padding:0 14px;gap:16px}
+  .topo .icones{gap:18px}
+  .pagina,.pagina.sem-lateral{grid-template-columns:1fr}
+  .lateral{border-left:0;border-top:1px solid #2a2a2a}
+  .pagina.sem-lateral .lateral{display:none}
+  .aula{padding:0 14px 40px}
+  .aula h2.titulo{font-size:25px}
+  .acoes{flex-wrap:wrap;justify-content:flex-start;gap:14px}
+  .texto{font-size:16px;line-height:1.9}
+  .modulo{padding:0 14px}
+  .modulo .barra{width:120px}
+  .miniatura{flex-basis:120px;height:68px}
+}
+</style>
+</head>
+<body>
+<header class="topo">
+  <button type="button" id="abrir-lateral" aria-label="Mostrar ou esconder o conteúdo do curso">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+  </button>
+  <h1>{{ nome }}</h1>
+  <div class="icones">
+    <button type="button" id="ir-para-busca" aria-label="Buscar conteúdo">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    </button>
+    <span class="sino" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+    </span>
+    <span class="avatar" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>
+    </span>
+  </div>
+</header>
+
+<div class="pagina" id="pagina">
+  <main class="aula">
+    <div class="linha-voltar">
+      <a class="voltar" href="{% url 'curso' curso %}">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
+        Voltar
+      </a>
+      <div class="navegar" aria-hidden="true">
+        <span><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.5v14H6zM19 5v14L9 12z"/></svg></span>
+        <span><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 5H18v14h-2.5zM5 5l10 7-10 7z"/></svg></span>
+      </div>
+    </div>
+
+    <p class="trilha">{{ nome }} - Informações do participante</p>
+    <h2 class="titulo">Informações importantes</h2>
+
+    <div class="acoes">
+      <div class="estrelas" id="estrelas" role="radiogroup" aria-label="Avalie a aula">
+        {% for n in "12345" %}<button type="button" data-nota="{{ n }}" role="radio" aria-checked="false" aria-label="{{ n }} de 5"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="m12 2.5 2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg></button>{% endfor %}
+      </div>
+      <button type="button" class="concluir" id="concluir" aria-pressed="false">
+        <span>Concluir</span>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16.5 9.5"/></svg>
+      </button>
+      <span class="pontos">+10
+        <svg width="38" height="26" viewBox="0 0 38 26" aria-hidden="true"><rect x="1" y="3" width="36" height="20" rx="3" fill="#3ccf6e"/><rect x="5" y="7" width="28" height="12" rx="2" fill="none" stroke="#0e5a2a" stroke-width="2"/><circle cx="19" cy="13" r="4.2" fill="none" stroke="#0e5a2a" stroke-width="2"/><circle cx="19" cy="13" r="1.4" fill="#0e5a2a"/></svg>
+      </span>
+    </div>
+
+    <article class="texto">
+      <p class="rotulo">Informações da aula</p>
+
+      <p>Seja muito bem-vindo à área do participante do {{ nome }}!</p>
+
+      <p class="secao">Para aproveitar o evento da melhor maneira, siga exatamente os passos abaixo. Eles são importantes para que você tenha clareza do caminho e consiga aproveitar da melhor maneira possível.</p>
+
+      <p class="secao">📌 Data e horário do evento<br>A aula 1 será liberada no dia 19 de outubro, às 9h da manhã (horário de Brasília).</p>
+
+      <p>📌 Link para acessar o evento: <a class="link" href="{% url 'evento-desafio-roblox' %}">clique aqui</a></p>
+
+      <p class="secao">📌 Suporte Técnico</p>
+
+      <p>Se você tiver qualquer dúvida técnica, pode entrar em contato com o nosso suporte. Você pode enviar dúvidas sobre acesso, pagamentos e área de membros ou perguntas sobre o conteúdo, conceitos e aplicação do método.</p>
+
+      <p class="secao">Nossa equipe vai te orientar da melhor forma possível ou indicar o caminho mais adequado para o seu caso.</p>
+
+      <p>Estamos muito animados em ter você com a gente nessa jornada. Prepare-se para dias de muito aprendizado, prática e transformação!</p>
+
+      <p class="secao">Nos vemos em breve,</p>
+
+      <p class="secao">Equipe {{ nome }}.</p>
+    </article>
+
+    <hr class="divisa">
+
+    <section class="comentarios" aria-labelledby="titulo-comentarios">
+      <h3 id="titulo-comentarios">Comentários <span>0</span></h3>
+      <div class="escrever">
+        <span class="bolinha" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></span>
+        <textarea id="comentario" rows="1" placeholder="Comente algo sobre a aula." aria-label="Comente algo sobre a aula."></textarea>
+      </div>
+      <p class="aviso-comentario" id="aviso-comentario" hidden>Os comentários desta aula abrem em breve.</p>
+      <div class="vazio">
+        <div class="circulo" aria-hidden="true"><svg width="110" height="100" viewBox="0 0 110 100"><rect x="2" y="2" width="106" height="74" rx="10" fill="#1b1b1b"/><path d="M28 76v20l22-20z" fill="#1b1b1b"/><rect x="20" y="20" width="28" height="7" rx="3.5" fill="#2a2a2a"/><rect x="20" y="35" width="70" height="7" rx="3.5" fill="#2a2a2a"/><rect x="20" y="50" width="70" height="7" rx="3.5" fill="#2a2a2a"/></svg></div>
+        <strong>Ainda sem comentários por aqui</strong>
+        <p>Seja a primeira pessoa a comentar algo e inicie um tópico para trocar ideias sobre a aula.</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="lateral" aria-label="Conteúdo do curso">
+    <div class="lateral-topo">
+      <span class="ativo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h8"/></svg></span>
+      <div class="direita">
+        <span aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>
+        <button type="button" id="fechar-lateral" aria-label="Esconder o conteúdo do curso"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5v14M9 12h11M15 6l6 6-6 6"/></svg></button>
+      </div>
+    </div>
+
+    <div class="busca">
+      <input type="search" id="busca" placeholder="Buscar conteúdo" aria-label="Buscar conteúdo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+    </div>
+
+    <button type="button" class="modulo" id="modulo" aria-expanded="true" aria-controls="aulas">
+      <span class="numero">1</span>
+      <span class="info">
+        <span class="nome" title="{{ nome }} - Informações do participante">{{ nome }} - Informações do participante</span>
+        <span class="progresso"><span id="porcento">0%</span><span class="barra"><i id="barra"></i></span></span>
+      </span>
+      <svg class="seta" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>
+    </button>
+
+    <div class="aulas" id="aulas">
+      <div class="item" id="item-aula" data-busca="informações importantes">
+        <span class="miniatura" aria-hidden="true">
+          <em>DESAFIO<br>ROBLOX</em>
+          <span><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 4v16l13-8z"/></svg>Tocando agora</span>
+        </span>
+        <span class="nome-aula">Informações importantes</span>
+        <svg class="check" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16.5 9.5"/></svg>
+      </div>
+      <p class="nada" id="nada" hidden>Nenhum conteúdo encontrado.</p>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function () {
+  var CHAVE = "acesso-desafio-roblox";
+  var salvo = {};
+  try { salvo = JSON.parse(localStorage.getItem(CHAVE)) || {}; } catch (e) {}
+  function guardar() { try { localStorage.setItem(CHAVE, JSON.stringify(salvo)); } catch (e) {} }
+
+  var pagina = document.getElementById("pagina");
+  document.getElementById("abrir-lateral").onclick = function () { pagina.classList.toggle("sem-lateral"); };
+  document.getElementById("fechar-lateral").onclick = function () { pagina.classList.add("sem-lateral"); };
+  document.getElementById("ir-para-busca").onclick = function () {
+    pagina.classList.remove("sem-lateral");
+    document.getElementById("busca").focus();
+  };
+
+  var estrelas = document.querySelectorAll("#estrelas button");
+  function pintar(nota) {
+    estrelas.forEach(function (b) {
+      var acesa = Number(b.dataset.nota) <= nota;
+      b.classList.toggle("acesa", acesa);
+      b.setAttribute("aria-checked", String(Number(b.dataset.nota) === nota));
+    });
+  }
+  estrelas.forEach(function (b) {
+    b.onclick = function () { salvo.nota = Number(b.dataset.nota); guardar(); pintar(salvo.nota); };
+  });
+  pintar(salvo.nota || 0);
+
+  var concluir = document.getElementById("concluir");
+  function marcar(feita) {
+    concluir.classList.toggle("feita", feita);
+    concluir.setAttribute("aria-pressed", String(feita));
+    concluir.querySelector("span").textContent = feita ? "Concluída" : "Concluir";
+    document.getElementById("item-aula").classList.toggle("feita", feita);
+    document.getElementById("porcento").textContent = feita ? "100%" : "0%";
+    document.getElementById("barra").style.width = feita ? "100%" : "0";
+  }
+  concluir.onclick = function () { salvo.feita = !salvo.feita; guardar(); marcar(salvo.feita); };
+  marcar(!!salvo.feita);
+
+  var modulo = document.getElementById("modulo"), aulas = document.getElementById("aulas");
+  modulo.onclick = function () {
+    var aberto = modulo.getAttribute("aria-expanded") === "true";
+    modulo.setAttribute("aria-expanded", String(!aberto));
+    aulas.hidden = aberto;
+  };
+
+  var item = document.getElementById("item-aula"), nada = document.getElementById("nada");
+  document.getElementById("busca").oninput = function (e) {
+    var termo = e.target.value.trim().toLowerCase();
+    var achou = !termo || item.dataset.busca.indexOf(termo) !== -1;
+    item.hidden = !achou;
+    nada.hidden = achou;
+    if (termo) { modulo.setAttribute("aria-expanded", "true"); aulas.hidden = false; }
+  };
+
+  document.getElementById("comentario").onkeydown = function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      document.getElementById("aviso-comentario").hidden = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>
