@@ -131,8 +131,11 @@ def super_equipe_acao(request, melhoria_id):
             raise ValueError()
         agora = timezone.now()
         with transaction.atomic():
-            item = get_object_or_404(MelhoriaSuperEquipe.objects.select_for_update(), pk=melhoria_id)
-            rotina = RotinaSuperEquipe.objects.select_for_update().get(pk=item.rotina_id)
+            referencia = get_object_or_404(MelhoriaSuperEquipe.objects.only("rotina_id"), pk=melhoria_id)
+            # O observador trava rotina antes de melhoria. Manter a mesma
+            # ordem evita impasse quando chegam batimentos durante a coleta.
+            rotina = RotinaSuperEquipe.objects.select_for_update().get(pk=referencia.rotina_id)
+            item = MelhoriaSuperEquipe.objects.select_for_update().get(pk=melhoria_id)
             if acao == "assumir":
                 if not rotina.ativa or item.situacao in ("resolvida", "mantenedor"):
                     return JsonResponse({"erro": "Este trabalho não está disponível para execução."}, status=409)
