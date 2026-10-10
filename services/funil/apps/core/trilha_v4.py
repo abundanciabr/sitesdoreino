@@ -11,8 +11,7 @@ from django.utils.cache import patch_vary_headers
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_safe
 
-from .clients import GamificacaoClient, IdentidadeClient, http
-from .trilha_progresso import validar_progresso
+from .clients import IdentidadeClient, http
 
 
 def _privada(resposta):
@@ -54,26 +53,6 @@ def _sessao(cookie):
     return "ok", dados
 
 
-def _progresso(cookie, pessoa_id, site_id):
-    config = GamificacaoClient()._configuracao()
-    if config is None:
-        return "indisponivel", None
-    base, token = config
-    try:
-        # O dono do progresso confirma a sessão; nenhum seletor da URL viaja.
-        resposta = http().get(base + "/minha-trilha",
-            headers={"Authorization": "Bearer " + token, "Cookie": cookie}, timeout=6)
-        if resposta.status_code == 403:
-            return "visitante", None
-        if resposta.status_code != 200:
-            return "indisponivel", None
-        dados = resposta.json()
-    except (httpx.HTTPError, ValueError):
-        return "indisponivel", None
-    progresso = validar_progresso(dados, pessoa_id, site_id)
-    return ("ok", progresso) if progresso is not None else ("indisponivel", None)
-
-
 @never_cache
 @require_safe
 def trilha_v4(request, arquivo="index.html"):
@@ -93,13 +72,7 @@ def trilha_v4(request, arquivo="index.html"):
         tipo = "text/css" if arquivo == "style.css" else "text/javascript"
         conteudo = Path(__file__).with_name("trilha_v4_assets").joinpath(arquivo).read_bytes()
         return _privada(HttpResponse(conteudo, content_type=tipo + "; charset=utf-8"))
-    site_id = request.site["id"]
-    estado, progresso = _progresso(cookie, sessao["id"], site_id)
-    if estado == "visitante":
-        return _entrada()
-    if estado != "ok":
-        return _indisponivel()
     nome = sessao.get("nome_exibido")
     nome = nome.strip().split()[0][:100] if isinstance(nome, str) and nome.strip() else "Aluno"
-    trilha = {"aluno": {"nome": nome}, "progresso": progresso}
+    trilha = {"aluno": {"nome": nome}, "pessoa_id": sessao["id"], "site_id": request.site["id"]}
     return _privada(render(request, "funil/trilha_v4.html", {"trilha": trilha}))

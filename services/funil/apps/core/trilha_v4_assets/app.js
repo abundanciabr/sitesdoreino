@@ -1,4 +1,5 @@
 'use strict';
+function renderJourney(payload){
 const icons = {arrow:'<svg aria-hidden="true"><use href="#arrow"/></svg>',check:'<svg aria-hidden="true"><use href="#check"/></svg>',chevron:'<svg aria-hidden="true"><use href="#chevron"/></svg>'};
 const belts = [
   {name:'Branca',short:'Branca',category:'O começo de tudo',title:'Toda criação começa com curiosidade.',summary:'Conheça seu ambiente e dê o primeiro passo na modelagem 3D.',color:'#e2e2e7',wash:'#f6f6f8',tone:'#66666d',ink:'#73737a',tasks:[['Prepare seu ambiente','Configure as ferramentas para começar a modelar.'],['Conheça o painel','Encontre os conteúdos que vão acompanhar sua jornada.'],['Comece pelo essencial','Explore os fundamentos da modelagem 3D.']]},
@@ -9,7 +10,6 @@ const belts = [
   {name:'Marrom',short:'Marrom',category:'Consistência',title:'O seu melhor ganha continuidade.',summary:'Transforme a primeira experiência em uma prática que continua evoluindo.',color:'#ae8b73',wash:'#f8f3ef',tone:'#795b46',ink:'#fffbf7',tasks:[['Continue criando','Dê continuidade à prática e aos seus projetos.'],['Acompanhe sua meta','O plano apresenta R$ 25 como marco desta faixa.']],note:'A forma de apuração da meta ainda será definida. Esta prévia não registra faturamento.'},
   ...Array.from({length:7},(_,i)=>({name:`Preta ${i+1}º grau`,short:`${i+1}º grau`,category:i===6?'Mestre modelador':`Maestria · Grau ${String(i+1).padStart(2,'0')}`,title:i===6?'Sua evolução abre novos caminhos.':`Um novo grau. Mais possibilidades.`,summary:i===6?'Um portfólio de alto valor. Um horizonte de novas criações.':`O ${i+1}º grau da Faixa Preta é mais um capítulo da sua jornada na modelagem.`,color:'#49494f',wash:'#f2f2f5',tone:'#585860',ink:'#f6f6fa',tasks:i===6?[['Seu portfólio','O plano propõe domínio de malhas complexas e um portfólio de alto valor.'],['Seu horizonte','A meta apresentada no plano é de R$ 2.000.']]:[['O próximo capítulo','Os critérios específicos deste grau ainda serão definidos para a versão real.']],note:i===6?'A apuração da meta ainda será definida. Metas não garantem renda.':'Esta etapa demonstra a navegação e o visual. Nenhum critério novo de progressão foi estabelecido.'}))
 ];
-const payload = JSON.parse(document.querySelector('#trilha-data').textContent);
 const progress = payload.progresso;
 const current = progress.atual_ordem - 1;
 const money = cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);
@@ -125,3 +125,46 @@ dock.addEventListener('keydown',event=>{
   if(Object.hasOwn(keys,event.key)){event.preventDefault();select(keys[event.key],true);dockButtons[selected].focus({preventScroll:true});}
 });
 select(current,false);
+
+  document.querySelector('#resume').disabled=false;
+  document.querySelector('.hero-object').removeAttribute('aria-busy');
+  document.querySelector('.object-caption').textContent='SEU MOMENTO ATUAL';
+}
+
+function validateProgress(data, context){
+  const integer=value=>Number.isInteger(value)&&value>=0;
+  if(!data||data.pessoa_id!==context.pessoa_id||data.site_id!==context.site_id
+    ||!Array.isArray(data.etapas)||data.etapas.length!==13
+    ||!integer(data.atual_ordem)||data.atual_ordem<1||data.atual_ordem>13
+    ||!integer(data.total_cents)||typeof data.meta_escolhida!=='boolean'
+    ||(data.meta_cents!==null&&!integer(data.meta_cents))
+    ||(data.meta_escolhida&&!(data.meta_cents>0)))throw new Error('Progresso incompleto');
+  const steps=[...data.etapas].sort((a,b)=>a.ordem-b.ordem);
+  if(steps.some((step,index)=>!step||step.ordem!==index+1||typeof step.alcancada!=='boolean'
+      ||typeof step.conquista!=='string'||(step.meta_cents!==null&&!integer(step.meta_cents))
+      ||(index<5&&step.meta_cents!==null)
+      ||(index>=5&&(data.meta_escolhida?step.meta_cents===null:step.meta_cents!==null))
+      ||(step.alcancada_em!==null&&typeof step.alcancada_em!=='string'))
+    ||Math.max(...steps.filter(step=>step.alcancada).map(step=>step.ordem))!==data.atual_ordem)
+    throw new Error('Progresso incompleto');
+  return {...data, etapas:steps};
+}
+
+async function loadJourney(){
+  const context=JSON.parse(document.querySelector('#trilha-data').textContent);
+  try{
+    const response=await fetch('/conquistas/minha-trilha/',{
+      credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}
+    });
+    if(response.status===403){window.location.replace('/login?next=%2Ftrilha%2F');return;}
+    if(!response.ok)throw new Error('Consulta indisponível');
+    const progress=validateProgress(await response.json(),context);
+    renderJourney({...context,progresso:progress});
+  }catch(error){
+    document.querySelector('.hero-object').removeAttribute('aria-busy');
+    document.querySelector('.hero-object').setAttribute('aria-label','Progresso indisponível');
+    document.querySelector('.object-caption').textContent='PROGRESSO INDISPONÍVEL';
+    document.querySelector('.explore-hint').textContent='Não foi possível consultar seu progresso agora. Recarregue a página para tentar novamente.';
+  }
+}
+loadJourney();
