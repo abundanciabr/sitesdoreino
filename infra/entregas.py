@@ -269,6 +269,44 @@ def conteudo_ja_incorporado(main, commit, base):
     return r.returncode == 0 and r.stdout.splitlines()[0].strip() == resolver("%s^{tree}" % main)
 
 
+def promocao_sob_conciliacao(reg):
+    """Uma promoção entregue ao worker não volta à fila por diferença de blobs.
+
+    O worker confere o pacote aprovado e a versão posterior com a ponte. Uma
+    mudança subsequente no mesmo caminho não autoriza apagar essa história.
+    """
+    promocao = reg.get("promocao") or {}
+    cand = reg.get("promovida_candidata")
+    if (promocao.get("estado") == "remota" and promocao.get("candidata") == cand
+            and promocao.get("remoto") and cand):
+        return True  # inclusive ativação pendente: a ponte ainda vai conciliar
+    if not cand:
+        return False
+    fase_arquivo = pasta() / "fases" / (reg["id"] + ".json")
+    if not fase_arquivo.exists():
+        return False
+    try:
+        fase = json.loads(fase_arquivo.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    if not isinstance(fase, dict) or fase.get("id") != reg["id"] or fase.get("candidata") != cand:
+        return False
+    if fase.get("fase") == "ativa":
+        return True
+    if fase.get("fase") != "preservada em versão posterior":
+        return False
+    celulas = fase.get("celulas")
+    provas = fase.get("preservacao")
+    return (isinstance(celulas, list) and bool(celulas) and all(isinstance(c, str) for c in celulas)
+            and isinstance(provas, dict)
+            and set(provas) == set(celulas)
+            and all(isinstance(provas[c], dict)
+                    and re.fullmatch(r"[0-9a-f]{40}", provas[c].get("sha_aprovada") or "")
+                    and re.fullmatch(r"[0-9a-f]{64}", provas[c].get("prova_identidade") or "")
+                    and isinstance(provas[c].get("arquivos_conferidos"), int)
+                    and provas[c]["arquivos_conferidos"] >= 0 for c in celulas))
+
+
 def buscar_remoto(commit, remoto, ramo):
     """Busca o ramo só para FETCH_HEAD (nunca para uma ref nomeada). Devolve nota de falha ou None."""
     if existe_commit(commit) or remoto not in remotos_configurados():
@@ -334,6 +372,7 @@ def cmd_entregar(a):
         existente = ler(id_)
         if existente and existente["estado"] != CORRECAO:
             if (existente["estado"] != NA_MAIN or
+                    promocao_sob_conciliacao(existente) or
                     conteudo_presente(main_atual(), existente["commit"], existente["base"])):
                 return 0, existente
         if existente:
@@ -541,6 +580,7 @@ def cmd_integrar(a):
         por_id = {r["id"]: r for r in regs}
         for reg in regs:  # promoção perdida ou conteúdo revertido: volta a ser recebida
             if (reg["estado"] == NA_MAIN
+                    and not promocao_sob_conciliacao(reg)
                     and not conteudo_presente(main, reg["commit"], reg["base"])):
                 reg["promovida_candidata"] = None
                 reg.pop("promocao", None)

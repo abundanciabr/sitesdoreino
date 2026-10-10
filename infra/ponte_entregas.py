@@ -71,6 +71,9 @@ class ClientePonte:
     def registrar(self, id_, candidata, celula):
         return self.pedir("registrar", id_, candidata, celula)
 
+    def conferir_preservacao(self, id_, candidata, celula):
+        return self.pedir("conferir-preservacao", id_, candidata, celula)
+
     def verificar_prova(self, id_, candidata, celula):
         return self.pedir("verificar-prova", id_, candidata, celula)
 
@@ -101,6 +104,170 @@ class Autoridade:
         if candidata not in (reg.get("candidata"), reg.get("promovida_candidata"),
                              (reg.get("promocao") or {}).get("candidata")):
             raise ErroPonte("candidata difere do registro", "recusa")
+
+    def conferir_preservacao(self, id_, candidata, celula):
+        """Confere entrega superada sem importar objetos, mover refs ou publicar."""
+        reg = self._registro(self.origem, id_)
+        self._candidata(reg, candidata)
+        promocao = reg.get("promocao") or {}
+        if (reg.get("estado") != "integrada na main" or reg.get("promovida_candidata") != candidata
+                or promocao.get("estado") != "remota" or promocao.get("candidata") != candidata
+                or promocao.get("remoto") != "integrador"):
+            raise ErroPonte("promocao historica nao confirmada", "recusa")
+        origem_repo = self.origem / "codigo/repo.git"
+        destino_repo = self.plataforma / "codigo/repo.git"
+        for repo in (origem_repo, destino_repo):
+            if repo.is_symlink() or not repo.is_dir():
+                raise ErroPonte("repositorio indisponivel", "infra")
+        git_origem = ["git", "-c", f"safe.directory={origem_repo}", "--git-dir", str(origem_repo)]
+        git_destino = ["git", "--git-dir", str(destino_repo)]
+        main = subprocess.run([*git_origem, "rev-parse", "--verify", "refs/heads/main"],
+                              capture_output=True, text=True, timeout=30)
+        main_sha = main.stdout.strip()
+        if main.returncode or not SHA.fullmatch(main_sha):
+            raise ErroPonte("main do integrador indisponivel", "infra")
+        ambiente = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        ambiente.update(GIT_TERMINAL_PROMPT="0", GIT_ASKPASS=os.devnull,
+                        GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+        remoto = subprocess.run(
+            ["git", "-c", "credential.helper=", "ls-remote", "--heads", REPO_PUBLICO, "main"],
+            capture_output=True, text=True, timeout=60, cwd=destino_repo.parent, env=ambiente)
+        if remoto.returncode or remoto.stdout.splitlines() != [f"{main_sha}\trefs/heads/main"]:
+            raise ErroPonte("main remota mudou durante a conciliacao", "infra")
+        if main_sha == candidata:
+            return {"ok": True, "situacao": "publicavel"}
+        if subprocess.run([*git_origem, "merge-base", "--is-ancestor", candidata, main_sha],
+                          capture_output=True, timeout=30).returncode:
+            raise ErroPonte("candidata antiga nao pertence a main", "recusa")
+
+        lock = self.plataforma / "publicacoes/.ativacao.lock"
+        if lock.is_symlink() or not lock.is_file():
+            raise ErroPonte("trava da publicacao indisponivel", "infra")
+        with lock.open("rb") as aberto:
+            if os.name == "posix":
+                import fcntl
+                fcntl.flock(aberto, fcntl.LOCK_EX)
+            try:
+                return self._conferir_versao_posterior(reg, candidata, celula, main_sha, git_destino)
+            finally:
+                if os.name == "posix":
+                    fcntl.flock(aberto, fcntl.LOCK_UN)
+
+    def _conferir_versao_posterior(self, reg, candidata, celula, main_sha, git):
+        arquivo = self.plataforma / "publicacoes" / (celula + ".json")
+        if arquivo.is_symlink() or not arquivo.is_file():
+            return {"ok": True, "situacao": "aguardando", "motivo": "versao posterior ainda nao aprovada"}
+        try:
+            journal = json.loads(arquivo.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as erro:
+            raise ErroPonte("journal da publicacao ilegivel", "infra") from erro
+        aprovada = journal.get("aprovada") or {}
+        ativa = aprovada.get("sha")
+        if not SHA.fullmatch(ativa or "") or journal.get("atual") != ativa:
+            return {"ok": True, "situacao": "aguardando", "motivo": "versao aprovada nao esta no ar"}
+        if subprocess.run([*git, "merge-base", "--is-ancestor", candidata, ativa],
+                          capture_output=True, timeout=30).returncode:
+            return {"ok": True, "situacao": "aguardando", "motivo": "versao posterior ainda nao aprovada"}
+        if subprocess.run([*git, "merge-base", "--is-ancestor", ativa, main_sha],
+                          capture_output=True, timeout=30).returncode:
+            raise ErroPonte("versao aprovada nao pertence a main remota", "recusa")
+
+        base = (reg.get("promocao") or {}).get("main_esperada") or reg.get("base_da_candidata")
+        if not SHA.fullmatch(base or ""):
+            return {"ok": True, "situacao": "conflito", "motivo": "base da entrega ausente"}
+        if subprocess.run([*git, "merge-base", "--is-ancestor", base, candidata],
+                          capture_output=True, timeout=30).returncode:
+            return {"ok": True, "situacao": "conflito", "motivo": "base da entrega diverge da candidata"}
+        mudancas = subprocess.run(
+            [*git, "diff", "--no-renames", "--name-only", "-z", base, candidata, "--"],
+            capture_output=True, timeout=60)
+        posteriores = subprocess.run(
+            [*git, "diff", "--no-renames", "--name-only", "-z", candidata, ativa, "--"],
+            capture_output=True, timeout=60)
+        if mudancas.returncode or posteriores.returncode or not mudancas.stdout:
+            raise ErroPonte("comparacao do conteudo indisponivel", "infra")
+        tocados = set(mudancas.stdout.rstrip(b"\0").split(b"\0"))
+        alterados = set(posteriores.stdout.rstrip(b"\0").split(b"\0")) if posteriores.stdout else set()
+        if tocados & alterados:
+            return {"ok": True, "situacao": "conflito", "sha_aprovada": ativa,
+                    "motivo": "versao posterior alterou arquivos desta entrega"}
+
+        ensaio = self._ensaio()
+        try:
+            prova_antiga = ensaio.verificar_prova(self.plataforma, candidata, self.ferramentas, celula)
+            prova_ativa = ensaio.verificar_prova(self.plataforma, ativa, self.ferramentas, celula)
+        except ensaio.RecusaEnsaio as erro:
+            raise ErroPonte("prova da entrega ou da versao aprovada indisponivel", "recusa") from erro
+        chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
+        if ((reg.get("promocao") or {}).get(chave) != prova_antiga.get("identidade")
+                or prova_ativa.get("candidata") != ativa or prova_ativa.get("celula") != celula
+                or aprovada.get("pacote") != prova_ativa.get("pacote_publicador")):
+            raise ErroPonte("prova nao corresponde a promocao e a versao aprovada", "recusa")
+        if celula == "aplicacao":
+            comando = [sys.executable, str(self.ferramentas / "infra/publicacao-local.py"), "conferir-atual"]
+            ambiente = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": "/home/deploy",
+                        "PLATAFORMA_DIR": str(self.plataforma), "CELULA": celula, "TAG": ativa}
+            real = subprocess.run(comando, cwd=self.plataforma, env=ambiente,
+                                  capture_output=True, timeout=90)
+            if real.returncode:
+                raise ErroPonte("container real difere da versao aprovada", "infra")
+            servicos = journal.get("servicos") or []
+            if not isinstance(servicos, list) or not servicos:
+                raise ErroPonte("servicos da versao aprovada ausentes", "infra")
+            ambiente["COMPOSE_FILE"] = (str(self.plataforma / "docker-compose.yml") + ":"
+                                        + str(self.plataforma / "publicacoes/imagens.json"))
+            for servico in servicos:
+                if not isinstance(servico, str) or not re.fullmatch(r"[a-z][a-z0-9_-]*", servico):
+                    raise ErroPonte("servico aprovado invalido", "recusa")
+                container = subprocess.run(["docker", "compose", "ps", "-q", servico],
+                                           cwd=self.plataforma, env=ambiente,
+                                           capture_output=True, text=True, timeout=30)
+                if container.returncode or not container.stdout.strip():
+                    raise ErroPonte("container aprovado indisponivel", "infra")
+                situacao = subprocess.run(
+                    ["docker", "inspect", "--format", "{{json .State}}", container.stdout.strip()],
+                    capture_output=True, text=True, timeout=30)
+                if situacao.returncode:
+                    raise ErroPonte("estado do container aprovado indisponivel", "infra")
+                estado_real = json.loads(situacao.stdout)
+                if (estado_real.get("Running") is not True
+                        or estado_real.get("Health", {}).get("Status", "healthy") != "healthy"):
+                    raise ErroPonte("container aprovado nao esta saudavel", "infra")
+        else:
+            self._conferir_funil_real(aprovada, ativa)
+        if json.loads(arquivo.read_text(encoding="utf-8")) != journal:
+            raise ErroPonte("journal mudou durante a conciliacao", "infra")
+        return {"ok": True, "situacao": "preservada", "sha_aprovada": ativa,
+                "prova_identidade": prova_ativa["identidade"], "arquivos_conferidos": len(tocados)}
+
+    def _conferir_funil_real(self, aprovada, ativa):
+        topo_arquivo = self.plataforma / "protecao-celulas/topologia.json"
+        rota_arquivo = self.plataforma / "traefik/dynamic/plataforma.yml"
+        if any(p.is_symlink() or not p.is_file() for p in (topo_arquivo, rota_arquivo)):
+            raise ErroPonte("topologia do funil indisponivel", "infra")
+        topo = json.loads(topo_arquivo.read_text(encoding="utf-8"))
+        no_ar = (topo.get("celulas") or {}).get("funil") or {}
+        if topo.get("em_troca") or no_ar != aprovada or no_ar.get("sha") != ativa:
+            raise ErroPonte("topologia real do funil difere do journal", "infra")
+        container = no_ar.get("container")
+        if not isinstance(container, str) or not re.fullmatch(r"meshcraft-funil-[a-z0-9-]+", container):
+            raise ErroPonte("container do funil invalido", "recusa")
+        def inspecionar(formato):
+            resultado = subprocess.run(["docker", "inspect", "--format", formato, container],
+                                       capture_output=True, text=True, timeout=30)
+            if resultado.returncode:
+                raise ErroPonte("container do funil indisponivel", "infra")
+            return resultado.stdout.strip()
+        estado = json.loads(inspecionar("{{json .State}}"))
+        imagem = inspecionar("{{.Image}}")
+        montagens = json.loads(inspecionar("{{json .Mounts}}"))
+        codigo = no_ar.get("codigo")
+        if (estado.get("Running") is not True or estado.get("Health", {}).get("Status", "healthy") != "healthy"
+                or imagem != (no_ar.get("pacote") or {}).get("imagem_id")
+                or not any(m.get("Destination") == "/app" and m.get("Source") == codigo
+                           and m.get("RW") is False for m in montagens)
+                or rota_arquivo.read_text(encoding="utf-8").count("http://" + container + ":8000") != 1):
+            raise ErroPonte("container ou rota do funil difere da aprovada", "infra")
 
     def espelhar(self, id_, candidata):
         reg = self._registro(self.origem, id_)
@@ -296,7 +463,8 @@ class Autoridade:
                 or not isinstance(candidata, str) or not SHA.fullmatch(candidata)
                 or celula not in ("aplicacao", "funil")):
             raise ErroPonte("identidade do pedido invalida", "recusa")
-        acoes = {"espelhar": self.espelhar, "preparar": self.preparar,
+        acoes = {"espelhar": self.espelhar, "conferir-preservacao": self.conferir_preservacao,
+                 "preparar": self.preparar,
                  "registrar": self.registrar, "verificar-prova": self.verificar_prova,
                  "publicar": self.publicar}
         if acao not in acoes:

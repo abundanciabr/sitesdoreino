@@ -59,16 +59,22 @@ class IntegradorFalso:
 
 
 class PonteFalsa:
-    def __init__(self, falha_preparar=None, perda_publicar=False, falha_publicar_celula=None):
+    def __init__(self, falha_preparar=None, perda_publicar=False, falha_publicar_celula=None,
+                 conciliacao=None):
         self.chamadas = []
         self.falha_preparar = falha_preparar
         self.perda_publicar = perda_publicar
         self.falha_publicar_celula = falha_publicar_celula
+        self.conciliacao = conciliacao or {}
         self.provas = set()
         self.preparadas = set()
 
     def espelhar(self, id_, candidata):
         self.chamadas.append(("espelhar", id_))
+
+    def conferir_preservacao(self, id_, candidata, celula):
+        self.chamadas.append(("conferir-preservacao", id_))
+        return self.conciliacao.get((id_, celula), {"situacao": "publicavel"})
 
     def preparar(self, id_, candidata, celula):
         self.chamadas.append(("preparar", id_))
@@ -144,6 +150,83 @@ def test_dependencia_sem_estado_local_aguarda_ativacao(tmp_path):
     assert worker.rodada() == [{"id": I2, "fase": "aguardando dependência"}]
     assert integ.promocoes == []
     assert ponte.chamadas == []
+
+
+def test_promocao_superada_preservada_libera_dependente_sem_publicar_antiga(tmp_path):
+    antiga = entrega(I1, C1)
+    antiga.update(estado=entregas.NA_MAIN, promovida_candidata=C1,
+                  promocao={"estado": "remota", "candidata": C1, "remoto": "integrador"})
+    prova = {"situacao": "preservada", "sha_aprovada": C2,
+             "prova_identidade": "d" * 64, "arquivos_conferidos": 2}
+    ponte = PonteFalsa(conciliacao={(I1, "aplicacao"): prova})
+    worker, integ, _ = servico(tmp_path, [antiga, entrega(I2, C2, [I1])], ponte=ponte)
+    worker.estados.salvar({"id": I1, "candidata": C1, "fase": "ativação pendente",
+                           "tentativas": 0, "celulas": ["aplicacao"]})
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[I1]["fase"] == "preservada em versão posterior"
+    assert saida[I1]["versoes_aprovadas"] == {"aplicacao": C2}
+    assert worker.estados.ler(I1)["preservacao"]["aplicacao"] == {
+        "sha_aprovada": C2, "prova_identidade": "d" * 64, "arquivos_conferidos": 2}
+    assert saida[I2]["fase"] == "ativa"
+    assert ("espelhar", I1) not in ponte.chamadas
+    assert ("publicar", I1) not in ponte.chamadas
+
+
+@pytest.mark.parametrize("situacao,fase", [("aguardando", "aguardando versão posterior"),
+                                           ("conflito", "preservação não comprovada")])
+def test_promocao_superada_sem_prova_nao_publica_nem_libera_dependente(tmp_path, situacao, fase):
+    antiga = entrega(I1, C1)
+    antiga.update(estado=entregas.NA_MAIN, promovida_candidata=C1,
+                  promocao={"estado": "remota", "candidata": C1, "remoto": "integrador"})
+    ponte = PonteFalsa(conciliacao={(I1, "aplicacao"): {"situacao": situacao,
+                                                         "motivo": "conteudo ainda nao comprovado"}})
+    worker, _, _ = servico(tmp_path, [antiga, entrega(I2, C2, [I1])], ponte=ponte)
+    worker.estados.salvar({"id": I1, "candidata": C1, "fase": "ativação pendente",
+                           "tentativas": 0, "celulas": ["aplicacao"]})
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[I1]["fase"] == fase
+    assert saida[I2]["fase"] == "aguardando dependência"
+    assert ("espelhar", I1) not in ponte.chamadas
+    assert ("publicar", I1) not in ponte.chamadas
+
+
+def test_dependencia_pendente_e_conferida_antes_de_id_lexicalmente_anterior(tmp_path):
+    anterior = entrega(I2, C2)
+    anterior.update(estado=entregas.NA_MAIN, promovida_candidata=C2,
+                    promocao={"estado": "remota", "candidata": C2, "remoto": "integrador"})
+    ponte = PonteFalsa(conciliacao={(I2, "aplicacao"): {"situacao": "conflito",
+                                                         "motivo": "conteudo da entrega mudou"}})
+    worker, _, _ = servico(tmp_path, [entrega(I1, C1, [I2]), anterior], ponte=ponte)
+    worker.estados.salvar({"id": I2, "candidata": C2, "fase": "ativação pendente",
+                           "tentativas": 0, "celulas": ["aplicacao"]})
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[I2]["fase"] == "preservação não comprovada"
+    assert saida[I1]["fase"] == "aguardando dependência"
+    assert ("publicar", I1) not in ponte.chamadas
+
+
+@pytest.mark.parametrize("fase_final", ["ativa", "preservada em versão posterior"])
+def test_correcao_posterior_nao_reabre_entrega_historicamente_concluida(tmp_path, fase_final):
+    anterior = entrega(I1, C1)
+    anterior.update(estado=entregas.NA_MAIN, promovida_candidata=C1,
+                    promocao={"estado": "remota", "candidata": C1, "remoto": "integrador"})
+    ponte = PonteFalsa(conciliacao={(I1, "aplicacao"): {"situacao": "conflito",
+                                                         "motivo": "correcao posterior no mesmo arquivo"}})
+    worker, _, _ = servico(tmp_path, [anterior, entrega(I2, C2, [I1])], ponte=ponte)
+    estado = {"id": I1, "candidata": C1, "fase": fase_final, "tentativas": 0,
+              "celulas": ["aplicacao"], "ativadas": ["aplicacao"]}
+    if fase_final == "preservada em versão posterior":
+        estado["preservacao"] = {"aplicacao": {"sha_aprovada": C2,
+                                              "prova_identidade": "d" * 64,
+                                              "arquivos_conferidos": 1}}
+    worker.estados.salvar(estado)
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[I1]["fase"] == fase_final
+    assert worker.estados.ler(I1)["fase"] == fase_final
+    assert saida[I2]["fase"] == "ativa"
+    assert ("conferir-preservacao", I1) not in ponte.chamadas
+    assert ("espelhar", I1) not in ponte.chamadas
+    assert ("publicar", I1) not in ponte.chamadas
 
 
 def test_entrega_historica_na_main_nao_dispara_publicacao(tmp_path):
@@ -241,6 +324,85 @@ def test_espelho_consulta_url_publica_sem_remoto_local_ou_credenciais(tmp_path, 
     assert remoto[1]["env"]["GIT_CONFIG_NOSYSTEM"] == "1"
     assert remoto[1]["env"]["GIT_CONFIG_GLOBAL"] == ponte_entregas.os.devnull
     assert remoto[1]["env"]["GIT_TERMINAL_PROMPT"] == "0"
+
+
+def test_conciliacao_historica_exige_conteudo_preservado_e_nao_move_main(tmp_path, monkeypatch):
+    origem, destino = tmp_path / "integrador", tmp_path / "plataforma"
+    repo1, repo2, publico = origem / "codigo/repo.git", destino / "codigo/repo.git", tmp_path / "publico.git"
+    repo1.parent.mkdir(parents=True)
+    repo2.parent.mkdir(parents=True)
+    for repo in (repo1, repo2, publico):
+        _git("init", "--bare", repo)
+    trabalho = tmp_path / "trabalho"
+    _git("init", trabalho)
+
+    def gravar(nome, texto):
+        (trabalho / nome).write_text(texto, encoding="utf-8")
+        _git("-C", trabalho, "add", ".")
+        _git("-C", trabalho, "-c", "user.name=Teste", "-c", "user.email=teste@localhost",
+             "commit", "-m", nome)
+        return _git("-C", trabalho, "rev-parse", "HEAD")
+
+    gravar("site.txt", "antes")
+    base = gravar("outro.txt", "antes")
+    cand = gravar("site.txt", "entrega antiga")
+    nova = gravar("outro.txt", "entrega posterior")
+    for repo in (repo1, publico):
+        _git("-C", trabalho, "push", repo, "HEAD:refs/heads/main")
+    _git("--git-dir", repo2, "fetch", repo1, nova)
+    _git("--git-dir", repo2, "update-ref", "refs/heads/main", nova)
+    (origem / "entregas").mkdir()
+    reg = {"id": I1, "candidata": cand, "promovida_candidata": cand,
+           "estado": entregas.NA_MAIN, "base_da_candidata": base,
+           "promocao": {"estado": "remota", "candidata": cand, "remoto": "integrador",
+                        "prova_identidade": "d" * 64}}
+    (origem / "entregas" / (I1 + ".json")).write_text(json.dumps(reg), encoding="utf-8")
+    publicacoes = destino / "publicacoes"
+    publicacoes.mkdir()
+    (publicacoes / ".ativacao.lock").touch()
+    pacote = {"id": "e" * 64}
+    journal = {"atual": nova, "servicos": ["aplicacao"],
+               "aprovada": {"sha": nova, "pacote": pacote}}
+    arquivo = publicacoes / "aplicacao.json"
+    arquivo.write_text(json.dumps(journal), encoding="utf-8")
+    monkeypatch.setattr(ponte_entregas, "REPO_PUBLICO", str(publico))
+    autoridade = Autoridade(origem, destino, tmp_path / "ferramentas")
+    ensaio = SimpleNamespace(RecusaEnsaio=RuntimeError,
+                             verificar_prova=lambda plataforma, sha, ferramentas, celula: {
+                                 "identidade": "d" * 64, "candidata": sha, "celula": celula,
+                                 "pacote_publicador": pacote})
+    monkeypatch.setattr(autoridade, "_ensaio", lambda: ensaio)
+    executar = ponte_entregas.subprocess.run
+    chamadas = []
+
+    def simular_container(comando, *args, **kwargs):
+        chamadas.append(comando)
+        if comando[-1] == "conferir-atual":
+            return SimpleNamespace(returncode=0)
+        if comando[:4] == ["docker", "compose", "ps", "-q"]:
+            return SimpleNamespace(returncode=0, stdout="container-aprovado\n")
+        if comando[:2] == ["docker", "inspect"]:
+            return SimpleNamespace(returncode=0, stdout='{"Running":true,"Health":{"Status":"healthy"}}')
+        return executar(comando, *args, **kwargs)
+
+    monkeypatch.setattr(ponte_entregas.subprocess, "run", simular_container)
+    resposta = autoridade.conferir_preservacao(I1, cand, "aplicacao")
+    assert resposta["situacao"] == "preservada"
+    assert resposta["sha_aprovada"] == nova
+    assert resposta["arquivos_conferidos"] == 1
+    assert not any("update-ref" in comando for comando in chamadas)
+    assert _git("--git-dir", repo2, "rev-parse", "refs/heads/main") == nova
+
+    posterior = gravar("site.txt", "entrega antiga alterada")
+    for repo in (repo1, publico):
+        _git("-C", trabalho, "push", repo, "HEAD:refs/heads/main")
+    _git("--git-dir", repo2, "fetch", repo1, posterior)
+    arquivo.write_text(json.dumps({"atual": posterior, "servicos": ["aplicacao"],
+                                   "aprovada": {"sha": posterior, "pacote": pacote}}), encoding="utf-8")
+    resposta = autoridade.conferir_preservacao(I1, cand, "aplicacao")
+    assert resposta["situacao"] == "conflito"
+    assert "alterou arquivos" in resposta["motivo"]
+    assert _git("--git-dir", repo2, "rev-parse", "refs/heads/main") == nova
 
 
 def test_ponte_recusa_caminho_e_acao_arbitraria(tmp_path):

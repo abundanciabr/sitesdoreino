@@ -567,6 +567,44 @@ def test_promover_sem_remoto_desfeito_pelo_espelho_volta_a_ser_recebida(amb):
     assert amb.arquivo_na_main("a.txt") == "A"
 
 
+def test_promocao_remota_pendente_nao_reabre_apos_correcao_posterior(amb, tmp_path):
+    github = tmp_path / "github.git"
+    sh(tmp_path, "clone", "-q", "--bare", str(amb.origin), str(github))
+    sh(amb.origin, "remote", "add", "github", str(github))
+    sha = amb.ramo("rob-a", {"a.txt": "A\n"})
+    id_ = amb.entregar("rob-a", sha)["id"]
+    amb.integrar()
+    assert amb.promover(id_, "--remoto", "github")[0] == 0
+    historico = amb.consultar(id_)["promocao"].copy()
+    amb.avancar_main({"a.txt": "correção posterior\n"})
+    assert amb.integrar()[id_]["estado"] == "integrada na main"
+    assert amb.entregar("rob-a", sha)["estado"] == "integrada na main"
+    reg = amb.consultar(id_)
+    assert reg["promocao"] == historico and reg["promovida_candidata"] == historico["candidata"]
+    assert amb.arquivo_na_main("a.txt") == "correção posterior"
+
+
+@pytest.mark.parametrize("fase_final", ["ativa", "preservada em versão posterior"])
+def test_fase_final_validada_nao_reabre_entrega_historica(amb, fase_final):
+    sha = amb.ramo("rob-a", {"a.txt": "A\n"})
+    id_ = amb.entregar("rob-a", sha)["id"]
+    amb.integrar()
+    assert amb.promover(id_)[0] == 0
+    reg = amb.consultar(id_)
+    fases = amb.plat / "entregas" / "fases"
+    fases.mkdir()
+    fase = {"id": id_, "candidata": reg["promovida_candidata"],
+            "fase": fase_final, "celulas": ["aplicacao"],
+            "preservacao": {"aplicacao": {"sha_aprovada": "b" * 40,
+                                          "prova_identidade": "a" * 64,
+                                          "arquivos_conferidos": 1}}}
+    (fases / (id_ + ".json")).write_text(json.dumps(fase), encoding="utf-8")
+    amb.avancar_main({"a.txt": "versão posterior\n"})
+    assert amb.integrar()[id_]["estado"] == "integrada na main"
+    assert amb.consultar(id_)["promocao"]["estado"] == "remota"
+    assert amb.arquivo_na_main("a.txt") == "versão posterior"
+
+
 def test_retomada_com_main_movida_e_ref_com_pais_errados(amb):
     ids = [amb.entregar("rob-%d" % i, amb.ramo("rob-%d" % i, {"f%d.txt" % i: "x\n"}))["id"] for i in range(3)]
     amb.integrar()
