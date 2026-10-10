@@ -14,6 +14,7 @@
       <a href="{{ suporte_prefixo }}/alunos/" {% if '/alunos/' in request.path %}aria-current="page"{% endif %}>♙ <span>Alunos</span></a>
       <a href="{{ suporte_prefixo }}/desempenho/" {% if '/desempenho/' in request.path %}aria-current="page"{% endif %}>▥ <span>Desempenho</span></a>
       <a href="{{ suporte_prefixo }}/base/">▧ <span>Base de apoio</span></a>
+      <a href="{{ suporte_prefixo }}/agenda/" {% if '/agenda/' in request.path %}aria-current="page"{% endif %}>▦ <span>Agenda</span></a>
       {% if not admin.equipe_apenas %}<a href="/admin/atendimento/configuracao/">⚙ <span>Configuração</span></a>{% endif %}
     </nav>
   </aside>

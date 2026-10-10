@@ -178,6 +178,51 @@ def add_tags(request, lead_id: str):
     raise HttpError(501, "não implementado")
 
 
+def _texto_curto(valor, limite: int) -> str:
+    return valor.strip()[:limite] if isinstance(valor, str) else ""
+
+
+@router.post("/leads/{lead_id}/interesses", operation_id="registerInterest")
+def registrar_interesse(request, lead_id: str):
+    """O suporte diz sobre qual produto a pessoa falou: vira histórico e tag.
+
+    A tag `interesse:<produto>` deixa a lista do CRM filtrar quem já perguntou
+    por um produto, para vender depois. Repetir o mesmo produto na mesma
+    conversa não duplica o histórico.
+    """
+    if not _token_do_painel(request):
+        raise HttpError(403, "Acesso exclusivo do painel admin")
+    try:
+        chave = uuid.UUID(str(lead_id))
+        corpo = json.loads(request.body)
+    except ValueError:
+        raise HttpError(422, "envie o produto do interesse")
+    if not isinstance(corpo, dict):
+        raise HttpError(422, "envie o produto do interesse")
+    produto = _texto_curto(corpo.get("produto"), 255)
+    produto_id = _texto_curto(corpo.get("produto_id"), 200)
+    if not produto or not produto_id:
+        raise HttpError(422, "envie o produto do interesse")
+    dados = {"produto": produto, "produto_id": produto_id, "origem": "suporte",
+             "referencia": _texto_curto(corpo.get("referencia"), 200),
+             "autor": _texto_curto(corpo.get("autor"), 200)}
+    tag = "interesse:" + produto_id
+    with transaction.atomic():
+        lead = Lead.objects.select_for_update().filter(id=chave).first()
+        if lead is None:
+            raise HttpError(404, "Lead inexistente")
+        if tag not in lead.tags:
+            lead.tags = [*lead.tags, tag]
+            lead.save(update_fields=["tags", "updated_at"])
+        repetido = lead.timeline.filter(
+            event="interesse.registrado", payload__produto_id=produto_id,
+            payload__referencia=dados["referencia"],
+        ).exists()
+        if not repetido:
+            TimelineEvent.objects.create(lead=lead, event="interesse.registrado", payload=dados)
+    return JsonResponse({"registrado": not repetido, "tag": tag})
+
+
 # ---------------------------------------------------------------------------
 # Consulta (somente leitura): a base da primeira tela de CRM do painel
 # ---------------------------------------------------------------------------
@@ -248,6 +293,18 @@ def _site_da_conta_comercial(request):
 
 def _data(valor) -> str | None:
     return valor.isoformat() if valor else None
+
+
+def _compras_do_contato(lead) -> list:
+    """Os pedidos de verdade da pessoa (sem os de teste), do mais novo ao mais antigo."""
+    return [
+        {"pedido": compra.pedido_id, "produtos": list(compra.produtos or []),
+         "situacao": compra.situacao,
+         "valor_centavos": compra.valor_aprovado_centavos if compra.aprovado_em else compra.valor_pedido_centavos,
+         "criada_em": _data(compra.criada_em), "aprovado_em": _data(compra.aprovado_em),
+         "revertida_em": _data(compra.revertida_em)}
+        for compra in lead.compras.filter(sandbox=False).order_by("-criada_em")[:20]
+    ]
 
 
 _LISTA_LEADS_OPENAPI = {
@@ -485,6 +542,7 @@ def ficha_do_lead(request, lead_id: str, origem: str = ""):
             "quizzes": quizzes_do_lead(lead) if do_painel else [],
             "perfil": resumo_do_perfil(lead) if do_painel else None,
             "matriculas": matriculas_do_contato(lead) if do_painel else [],
+            "compras": _compras_do_contato(lead) if do_painel else [],
             "linha_do_tempo_total": eventos.count(),
             "linha_do_tempo": [
                 {

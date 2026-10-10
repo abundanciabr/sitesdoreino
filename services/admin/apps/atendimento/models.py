@@ -63,11 +63,27 @@ class Conversa(models.Model):
     processar = models.BooleanField(default=False)
     trabalhando_ate = models.DateTimeField(null=True, blank=True)
     sugestao = models.JSONField(default=dict, blank=True)
+    # Produto sobre o qual o aluno fala, confirmado pela equipe: {produto_id, nome, por, em, crm}.
+    interesse = models.JSONField(default=dict, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
     class Meta:
         db_table = 'atendimento_conversa'
         ordering = ['-atualizada_em']
+
+
+class AgendaDoProduto(models.Model):
+    """Quando começa cada produto do catálogo (evento, desafio, turma) e o que a equipe pode dizer."""
+    site_id = models.CharField(max_length=100)
+    produto_id = models.CharField(max_length=100)
+    produto_nome = models.CharField(max_length=255)
+    inicio = models.DateTimeField(null=True, blank=True)
+    detalhes = models.TextField(blank=True)
+    atualizado_por = models.CharField(max_length=160, blank=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+    class Meta:
+        db_table = 'atendimento_agenda_produto'
+        constraints = [models.UniqueConstraint(fields=['site_id', 'produto_id'], name='suporte_agenda_produto_unica')]
 
 
 class Mensagem(models.Model):
