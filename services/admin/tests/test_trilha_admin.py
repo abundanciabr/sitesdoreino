@@ -38,7 +38,7 @@ def test_seletor_lista_identidades_sem_email_na_url(monkeypatch):
     resposta = tela.trilha_v4(pedido("/trilha/?q=ana", {"id": "admin"}))
     corpo = resposta.content.decode()
     assert resposta.status_code == 200
-    assert "Ana" in corpo and "Bia" not in corpo
+    assert "Ana Maria" in corpo and "Bia" not in corpo
     assert "?aluno=mat-ana-1" in corpo
     assert "ana@example.test" not in corpo
     assert resposta["Cache-Control"] == "private, no-store"
