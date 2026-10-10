@@ -37,6 +37,9 @@ from apps.core.views import (
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
 # PLANO-I18N) decapa /en|pt-br|es de path_info ANTES da resolução de URL.
 urlpatterns = [
+    path("trilha/inventario/", trilha_v4, {"arquivo": "inventario.html"}, name="inventario_aluno"),
+    path("trilha/inventario.css", trilha_v4, {"arquivo": "inventario.css"}, name="inventario_css"),
+    path("trilha/inventario.js", trilha_v4, {"arquivo": "inventario.js"}, name="inventario_js"),
     path("trilha/", trilha_v4, name="trilha_v4"),
     path("trilha/style.css", trilha_v4, {"arquivo": "style.css"}, name="trilha_v4_css"),
     path("trilha/app.js", trilha_v4, {"arquivo": "app.js"}, name="trilha_v4_js"),

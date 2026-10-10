@@ -187,6 +187,8 @@ def salvar_jornada(request):
     pessoa_id, site = _pessoa_e_site(request)
     if not pessoa_id or not site:
         return HttpResponseRedirect(settings.URL_DE_ENTRADA)
+    if request.POST.get("acao") == "declaracao" and request.POST.get("passo") == "2" and request.POST.get("estado") == "feito":
+        return HttpResponseRedirect("/trilha/inventario/#primeiro-item", status=303)
     contexto = {"entrou": True, "escada": escada_de(perfil_de(pessoa_id, site)),
                 "faixas": situacao(pessoa_id, site)}
     if request.POST.get("acao") == "preview-meta":

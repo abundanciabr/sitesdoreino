@@ -5,8 +5,11 @@ from apps.core.views import (
 )
 from apps.core.trilha_pessoal import minha_trilha
 from config.api import api
+from apps.core.inventario import inventario, arquivo_do_inventario
 
 urlpatterns = [
+    path("inventario/", inventario, name="inventario"),
+    path("inventario/arquivos/<int:anexo_id>/", arquivo_do_inventario, name="arquivo-inventario"),
     path("minha-trilha/", minha_trilha, name="minha-trilha"),
     path("jornada/salvar", salvar_jornada, name="salvar-jornada"),
     path("jornada/prints/<int:versao_id>", print_recebimento, name="print-recebimento"),

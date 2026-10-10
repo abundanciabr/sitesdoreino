@@ -1875,3 +1875,18 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     def __str__(self) -> str:
         return f"{self.event}:{self.event_id}"
+
+
+class AnexoDaJornada(models.Model):
+    """Arquivo privado enviado pelo próprio aluno; não representa avaliação."""
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    passo = models.PositiveSmallIntegerField()
+    nome = models.CharField(max_length=180)
+    conteudo = models.BinaryField()
+    tamanho = models.PositiveIntegerField()
+    sha256 = models.CharField(max_length=64)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['pessoa', 'site_id', 'passo', 'sha256'], name='anexo_jornada_unico')]

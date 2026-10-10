@@ -175,7 +175,7 @@ function consultedAtLabel(value){
 function safeAction(action){
   if(action===null||action===undefined)return null;
   if(typeof action.rotulo!=='string'||!action.rotulo.trim()||typeof action.url!=='string'
-    ||!/^\/(cursos|encomendas|forum)(?:\/|$)/.test(action.url)
+    ||!/^\/(cursos|encomendas|forum|trilha)(?:\/|$)/.test(action.url)
     ||/[\\\s]/.test(action.url)||action.url.includes('..'))throw new Error('Ação inválida');
   return {rotulo:action.rotulo,url:action.url};
 }
