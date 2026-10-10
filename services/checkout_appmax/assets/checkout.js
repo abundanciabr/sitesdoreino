@@ -98,6 +98,12 @@
     const method = selectedMethod();
     el('reconcile-button').hidden = !state.uncertain;
     button.disabled = state.busy || state.pending || state.tokenizing || state.uncertain || !state.sessionId || !state.appmaxReady || (state.orderId && state.orderMethod !== method);
+    const generatePix = el('generate-pix');
+    button.hidden = method === 'pix' && Boolean(generatePix);
+    if (generatePix) {
+      generatePix.disabled = button.disabled;
+      el('generate-pix-label').textContent = state.busy || state.pending ? 'Aguarde...' : !state.appmaxReady ? 'Carregando pagamento...' : 'Gerar código QR';
+    }
     button.textContent = state.busy || state.pending || state.tokenizing ? 'Aguarde...' : !state.appmaxReady ? 'Carregando pagamento...' : method === 'card' && !state.quote ? 'Continuar' : 'Comprar agora';
   }
   function switchMethod() {
@@ -124,6 +130,7 @@
     if (!pix?.qr_code) return;
     el('pix-payment').hidden = false;
     el('pix-code').value = pix.qr_code;
+    if (el('copy-pix-preview')) el('copy-pix-preview').disabled = false;
     if (pix.qr_code_base64) {
       el('pix-qr').src = `data:image/png;base64,${pix.qr_code_base64}`;
       el('pix-qr').hidden = false;
@@ -372,6 +379,7 @@
     el('copyright-year').textContent = String(new Date().getFullYear());
     ['payment-card', 'payment-pix'].forEach(id => el(id).addEventListener('change', switchMethod));
     el('purchase-button').addEventListener('click', purchase);
+    el('generate-pix')?.addEventListener('click', purchase);
     el('card-form').addEventListener('submit', event => {
       if (state.submitAuthorized) {
         state.submitAuthorized = false;
@@ -383,10 +391,17 @@
     el('installments').addEventListener('change', updateOrderTotal);
     el('reconcile-button').addEventListener('click', () => reconcileSession().catch(() => status('Não foi possível consultar agora. Tente novamente em instantes.', 'error')));
     el('check-payment').addEventListener('click', () => state.orderId ? poll() : reconcileSession().catch(() => status('Não foi possível consultar agora. Tente novamente em instantes.', 'error')));
-    el('copy-pix').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(el('pix-code').value); el('copy-pix').textContent = 'Código copiado'; }
+    const copyPix = async () => {
+      if (!el('pix-code').value) return;
+      try {
+        await navigator.clipboard.writeText(el('pix-code').value);
+        el('copy-pix').textContent = 'Código copiado';
+        if (el('copy-pix-preview')) el('copy-pix-preview').textContent = 'Código copiado';
+      }
       catch (_) { el('pix-code').select(); status('Selecione e copie o código Pix.', 'info'); }
-    });
+    };
+    el('copy-pix').addEventListener('click', copyPix);
+    el('copy-pix-preview')?.addEventListener('click', copyPix);
     [...formIds, ...cardIds].forEach(id => {
       el(id).addEventListener('blur', () => validate(id));
       el(id).addEventListener('input', () => { if (el(id).getAttribute('aria-invalid') === 'true') fieldError(id, ''); });
