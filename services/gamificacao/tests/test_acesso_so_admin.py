@@ -1,4 +1,4 @@
-"""/conquistas/ só para administradores durante a atualização."""
+"""A Base acolhe o aluno; medalhas e ações antigas continuam fechadas."""
 
 import httpx
 import pytest
@@ -16,6 +16,9 @@ ADM = "http://admin:8000/interno"
 
 @pytest.fixture(autouse=True)
 def amb(monkeypatch):
+    # O fixture global pode importar views enquanto acesso.e_admin está simulado.
+    from apps.core.acesso import e_admin
+    monkeypatch.setattr("apps.core.views.e_admin", e_admin)
     monkeypatch.setenv("SITE_ID", "site-de-teste")
     monkeypatch.setenv("IDENTIDADE_API_URL", ID)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "t")
@@ -36,30 +39,36 @@ def get(url):
 
 def test_visitante_ve_o_aviso(monkeypatch):
     como(monkeypatch, None)
-    for nome in ("base", "medalhas"):
-        r = get(reverse(nome))
-        assert r.status_code == 200 and AVISO in r.content.decode()
-        assert "no-cache" in r["Cache-Control"] or "no-store" in r["Cache-Control"]
+    base = get(reverse("base"))
+    assert base.status_code == 200 and "Entrar na escola" in base.content.decode()
+    assert "inicio-jornada" not in base.content.decode()
+    r = get(reverse("medalhas"))
+    assert r.status_code == 200 and AVISO in r.content.decode()
+    assert "no-cache" in r["Cache-Control"] or "no-store" in r["Cache-Control"]
 
 
-def test_aluno_nao_admin_ve_so_o_aviso(monkeypatch):
+def test_aluno_nao_admin_ve_inicio_mas_medalhas_seguem_fechadas(monkeypatch):
     como(monkeypatch, "pes-1")
     with respx.mock:
         respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
         respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": False})
-        corpo = get(reverse("base")).content.decode()
-    assert AVISO in corpo
-    for proibido in ("jornada", "Medalha", "medalha", "escada", "Entrar na escola"):
-        assert proibido not in corpo
+        r = get(reverse("base"))
+        medalhas = get(reverse("medalhas"))
+    corpo = r.content.decode()
+    assert r.status_code == 200 and 'id="inicio-jornada"' in corpo
+    assert "Meu primeiro item" in corpo and AVISO not in corpo
+    assert "private" in r["Cache-Control"]
+    assert AVISO in medalhas.content.decode()
 
 
-def test_equipe_sem_permissao_admin_ve_so_o_aviso(monkeypatch):
+def test_equipe_sem_permissao_admin_ve_base_mas_nao_medalhas(monkeypatch):
     como(monkeypatch, "pes-1")
     monkeypatch.setenv("IDS_DA_EQUIPE", "pes-1")
     with respx.mock:
         respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
         respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": False})
-        assert AVISO in get(reverse("base")).content.decode()
+        assert 'id="inicio-jornada"' in get(reverse("base")).content.decode()
+        assert AVISO in get(reverse("medalhas")).content.decode()
 
 
 def test_admin_pelo_email_ve_a_pagina(monkeypatch):
@@ -82,7 +91,7 @@ def test_admin_fora_do_ar_ou_estranha_vira_aviso_sem_500(monkeypatch):
                 rota.mock(side_effect=resposta)
             else:
                 rota.mock(return_value=resposta)
-            r = get(reverse("base"))
+            r = get(reverse("medalhas"))
         assert r.status_code == 200 and AVISO in r.content.decode()
 
 
@@ -90,7 +99,8 @@ def test_sem_env_da_admin_vira_aviso(monkeypatch):
     como(monkeypatch, "pes-1")
     monkeypatch.delenv("ADMIN_API_URL")
     monkeypatch.delenv("ADMIN_API_TOKEN")
-    assert AVISO in get(reverse("base")).content.decode()
+    assert 'id="inicio-jornada"' in get(reverse("base")).content.decode()
+    assert AVISO in get(reverse("medalhas")).content.decode()
 
 
 def test_post_salvar_de_nao_admin_nao_grava(monkeypatch):
@@ -129,7 +139,7 @@ def test_admin_http_403_fecha_e_registra_aviso(monkeypatch, caplog):
     with respx.mock, caplog.at_level("WARNING"):
         respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
         respx.post(f"{ADM}/administradores/consultar").respond(403)
-        corpo = get(reverse("base")).content.decode()
+        corpo = get(reverse("medalhas")).content.decode()
     assert AVISO in corpo
     assert "admin respondeu HTTP 403" in caplog.text
     assert "a@x.com" not in caplog.text

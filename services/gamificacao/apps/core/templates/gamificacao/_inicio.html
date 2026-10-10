@@ -1,0 +1,87 @@
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=1">
+<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" aria-labelledby="inicio-titulo">
+  <header class="inicio-cabecalho">
+    <p class="inicio-selo"><span aria-hidden="true">◇</span> {% if faixas.atual.ordem == 1 %}Faixa branca · Meu ponto de partida{% else %}Meu ponto de partida · Sempre editável{% endif %}</p>
+    <h1 id="inicio-titulo">Seu começo, do seu jeito.</h1>
+    <p>Escolha o que te move. Dê um pequeno passo. Veja sua criação ganhar forma.</p>
+    <p class="inicio-privado">Seu motivo, seus sonhos e seus arquivos ficam privados na sua conta.</p>
+  </header>
+  <p id="inicio-status" role="status" aria-live="polite">Abrindo seu ponto de partida…</p>
+  <button id="inicio-recarregar" type="button" hidden>Tentar abrir novamente</button>
+  <div id="inicio-conteudo" hidden>
+    <ol class="inicio-passos" aria-label="Os três passos do meu começo">
+      <li><button type="button" data-passo="1" aria-controls="inicio-motivo"><span>1</span> Meu motivo <small data-resumo="1">Escolher</small></button></li>
+      <li><button type="button" data-passo="2" aria-controls="inicio-plano"><span>2</span> Meu objetivo <small data-resumo="2">Planejar</small></button></li>
+      <li><button type="button" data-passo="3" aria-controls="inicio-item"><span>3</span> Meu primeiro item <small data-resumo="3">Criar</small></button></li>
+    </ol>
+    <section id="inicio-obra" class="inicio-obra" hidden aria-labelledby="inicio-obra-titulo">
+      <div><p class="inicio-sobrelinha">O que você já criou</p><h2 id="inicio-obra-titulo">Sua criação, em movimento.</h2><p id="inicio-obra-legenda"></p><button type="button" data-passo="3" class="inicio-secundario">Ver minhas versões</button></div>
+      <div id="inicio-destaque"></div>
+    </section>
+    <section id="inicio-motivo" class="inicio-painel" data-painel="1">
+      <h2 tabindex="-1">O que te trouxe até aqui?</h2>
+      <p>Escolha o caminho que mais combina com você hoje. Você pode mudar de ideia.</p>
+      <form id="inicio-form-motivo">
+        <fieldset class="inicio-motivos"><legend class="inicio-sr">Meu motivo para aprender modelagem 3D</legend><div id="inicio-opcoes"></div></fieldset>
+        <label for="inicio-motivo-pessoal">Por que isso importa para mim? <span>(opcional)</span></label>
+        <textarea id="inicio-motivo-pessoal" name="motivo_pessoal" rows="2" maxlength="280" placeholder="Pode ser algo simples, escrito do seu jeito."></textarea>
+        <div class="inicio-acoes"><button type="submit">Salvar e seguir</button><span>Você pode parar aqui e retomar depois.</span></div>
+      </form>
+    </section>
+    <section id="inicio-plano" class="inicio-painel" data-painel="2" hidden>
+      <h2 tabindex="-1">Um objetivo que cabe no seu momento.</h2>
+      <p>Não precisa decidir a vida inteira. Escolha o próximo trabalho que quer conseguir criar.</p>
+      <form id="inicio-form-plano">
+        <label for="inicio-objetivo">O que quero conseguir criar?</label>
+        <textarea id="inicio-objetivo" name="objetivo" rows="2" maxlength="280" placeholder="Ex.: criar meu primeiro chapéu 3D com um detalhe meu."></textarea>
+        <label for="inicio-quando">Quando posso dar meu próximo passo? <span>(opcional)</span></label>
+        <input id="inicio-quando" name="quando" maxlength="160" placeholder="Ex.: sábado, depois do almoço, por 20 minutos.">
+        <details class="inicio-detalhes"><summary>Meus sonhos e um plano para os dias difíceis <span>opcional · privado</span></summary>
+          <label for="inicio-sonho">O que sonho construir com essa habilidade?</label>
+          <textarea id="inicio-sonho" name="sonho" rows="2" maxlength="500" placeholder="Este espaço é seu. Não entra no pedido de ajuda."></textarea>
+          <label for="inicio-obstaculo">O que pode dificultar meu próximo passo?</label>
+          <input id="inicio-obstaculo" name="obstaculo" maxlength="280" placeholder="Ex.: travar em uma ferramenta.">
+          <label for="inicio-plano-b">Se isso acontecer, o que posso tentar?</label>
+          <input id="inicio-plano-b" name="plano_b" maxlength="280" placeholder="Ex.: salvar a tentativa e pedir ajuda com uma dúvida.">
+        </details>
+        <label for="inicio-apoio">Como quero praticar agora?</label>
+        <select id="inicio-apoio" name="apoio"><option value="guiado">Quero orientação</option><option value="autonomo">Quero tentar sozinho</option><option value="desafio">Quero praticar mais</option></select>
+        <div class="inicio-label-acao"><label for="inicio-compromisso">Meu compromisso comigo</label><button id="inicio-sugestao" class="inicio-texto" type="button">Montar uma sugestão</button></div>
+        <textarea id="inicio-compromisso" name="compromisso" rows="3" maxlength="1200" placeholder="Escreva um compromisso possível. Você pode ajustá-lo quando precisar."></textarea>
+        <p class="inicio-nota">Pausar e voltar também faz parte. Seu compromisso pode mudar junto com você.</p>
+        <div class="inicio-acoes"><button type="submit" name="assumir" value="sim">Assumir meu compromisso</button><button type="submit" class="inicio-secundario" name="assumir" value="nao">Salvar rascunho</button></div>
+        <p id="inicio-confirmacao" class="inicio-nota"></p>
+      </form>
+    </section>
+    <section id="inicio-item" class="inicio-painel" data-painel="3" hidden>
+      <h2 tabindex="-1">Sua primeira criação merece um lugar.</h2>
+      <p>Guarde seu item 3D ou uma imagem dele. Uma tentativa simples já mostra por onde você começou.</p>
+      <form id="inicio-form-item" enctype="multipart/form-data">
+        <label class="inicio-upload" for="inicio-arquivo"><strong>Escolher meu arquivo</strong><span>Modelo 3D, ZIP ou imagem · até 20 MB por arquivo</span><input id="inicio-arquivo" type="file" name="arquivo" accept=".blend,.glb,.gltf,.obj,.stl,.fbx,.zip,.png,.jpg,.jpeg,.webp"></label>
+        <p class="inicio-nota">BLEND, GLB, GLTF, OBJ, STL, FBX, ZIP, PNG, JPG ou WEBP. Arquivos com texturas separadas podem ir juntos em um ZIP.</p>
+        <details class="inicio-detalhes"><summary>Uma nota sobre esta versão <span>opcional · privada</span></summary>
+          <p class="inicio-nota">Ao reenviar o mesmo arquivo, apenas as notas preenchidas são atualizadas. Campos vazios preservam as notas anteriores.</p>
+          <label for="inicio-aprendi">O que aprendi ou consegui melhorar?</label><textarea id="inicio-aprendi" name="aprendi" rows="2" maxlength="500"></textarea>
+          <label for="inicio-duvida">Em que gostaria de receber ajuda?</label><textarea id="inicio-duvida" name="duvida" rows="2" maxlength="500" placeholder="Ex.: como deixar a borda do chapéu mais uniforme?"></textarea>
+        </details>
+        <div class="inicio-acoes"><button type="submit" name="acao" value="anexo">Guardar esta versão</button><button id="inicio-concluir" type="submit" class="inicio-secundario" name="acao" value="declaracao">Concluí meu primeiro item</button></div>
+        <p id="inicio-item-estado" class="inicio-nota">Guardar uma tentativa permite voltar a ela. Quando seu primeiro item estiver concluído, você pode registrar essa conquista.</p>
+      </form>
+      <div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div>
+    </section>
+    <aside id="inicio-proximo" class="inicio-proximo" hidden aria-labelledby="inicio-pratica-titulo">
+      <p class="inicio-sobrelinha">Um próximo passo possível</p><h2 id="inicio-pratica-titulo">Pratique na direção do seu objetivo.</h2>
+      <p id="inicio-objetivo-salvo"></p><p id="inicio-pratica"></p><p id="inicio-apoio-texto"></p>
+      <div class="inicio-acoes"><a class="inicio-botao" href="/cursos/">Continuar minha prática</a><button id="inicio-pedir-ajuda" class="inicio-secundario" type="button" aria-expanded="false" aria-controls="inicio-ajuda">Preparar um pedido de ajuda</button></div>
+      <div id="inicio-ajuda" hidden>
+        <label for="inicio-mensagem">O que quero compartilhar no Fórum</label>
+        <textarea id="inicio-mensagem" rows="5" maxlength="2000"></textarea>
+        <p class="inicio-nota">Revise antes de compartilhar. Seus sonhos, seu motivo pessoal, seu compromisso e seus arquivos não são incluídos.</p>
+        <div class="inicio-acoes"><button id="inicio-copiar" type="button">Copiar pedido</button><a href="/forum/" target="_blank" rel="noopener">Abrir o Fórum em outra aba</a></div>
+        <p class="inicio-nota">No Fórum, cole seu pedido e escolha publicá-lo quando estiver pronto.</p>
+      </div>
+    </aside>
+  </div>
+  <noscript><p>Ative o JavaScript para abrir e salvar seus três passos. Seus registros já salvos continuam na sua conta.</p></noscript>
+</section>
+<script src="{% url 'estatico' 'inicio.js' %}?v=1" defer></script>

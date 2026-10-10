@@ -110,7 +110,6 @@ def healthz(request):
 
 
 @never_cache
-@so_admin()
 @require_GET
 def base(request):
     """A Base: onde o aluno vê em que degrau está.
@@ -151,9 +150,12 @@ def base(request):
             "escada": escada_de(perfil),
             "faixas": faixas,
             "jornada_recado": recado,
+            "jornada_admin": e_admin(request, pessoa_id),
             **de_fora,
         },
     )
+    from .trilha_pessoal import _privada
+    _privada(resposta)
     if faixas and faixas["celebracao"]:
         from apps.gamificacao.models import JornadaPessoal
         JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site, celebracao_pendente=faixas["celebracao"]).update(celebracao_pendente={})
@@ -189,7 +191,7 @@ def salvar_jornada(request):
         return HttpResponseRedirect(settings.URL_DE_ENTRADA)
     if request.POST.get("acao") == "declaracao" and request.POST.get("passo") == "2" and request.POST.get("estado") == "feito":
         return HttpResponseRedirect("/trilha/inventario/#primeiro-item", status=303)
-    contexto = {"entrou": True, "escada": escada_de(perfil_de(pessoa_id, site)),
+    contexto = {"entrou": True, "jornada_admin": True, "escada": escada_de(perfil_de(pessoa_id, site)),
                 "faixas": situacao(pessoa_id, site)}
     if request.POST.get("acao") == "preview-meta":
         try:
