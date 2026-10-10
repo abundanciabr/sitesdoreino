@@ -65,7 +65,7 @@ def _alunos(linhas, q):
         grupo["ids"].append(matricula_id)
     itens = []
     for grupo in grupos.values():
-        nome = _primeiro_nome(grupo["nome"])
+        nome = grupo["nome"] or "Aluno sem nome cadastrado"
         if q and q not in " ".join((grupo["nome"], grupo["site_id"])).casefold():
             continue
         itens.append({"nome": nome, "site_id": grupo["site_id"],
