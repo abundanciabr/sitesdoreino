@@ -36,3 +36,10 @@ def test_evento_conta_ate_a_aula_1_e_depois_libera():
         html = acesso_desafio.evento(RequestFactory().get("/")).content.decode()
     assert 'id="contagem"' in html and "hidden>" in html.split('id="contagem"')[1].split("\n")[0]
     assert 'id="liberada">' in html
+
+
+def test_as_duas_paginas_tem_o_botao_de_suporte():
+    for view in (acesso_desafio.acesso, acesso_desafio.evento):
+        html = view(RequestFactory().get("/")).content.decode()
+        assert "cursos/suporte.js" in html and "cursos/suporte.css" in html
+        assert 'data-curso="desafio-como-ganhar-em-dolar-com-roblox"' in html
