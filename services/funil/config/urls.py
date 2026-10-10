@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.links import redirecionar_link
+from apps.core.trilha_v4 import trilha_v4
 from apps.core.modelo_flp import (
     modelo_flp_conteudo,
     modelo_flp_imagem,
@@ -36,6 +37,9 @@ from apps.core.views import (
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
 # PLANO-I18N) decapa /en|pt-br|es de path_info ANTES da resolução de URL.
 urlpatterns = [
+    path("trilha/", trilha_v4, name="trilha_v4"),
+    path("trilha/style.css", trilha_v4, {"arquivo": "style.css"}, name="trilha_v4_css"),
+    path("trilha/app.js", trilha_v4, {"arquivo": "app.js"}, name="trilha_v4_js"),
     path("healthz", healthz),
     path("sitemap.xml", sitemap_xml, name="sitemap_xml"),  # rota de máquina (D6)
     # Também rotas de máquina, na raiz por convenção: o `robots.txt` é onde todo
