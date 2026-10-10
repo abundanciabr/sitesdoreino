@@ -1,23 +1,26 @@
-<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=1">
-<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" aria-labelledby="inicio-titulo">
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=2">
+<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-conquistas="{% url 'base' %}" data-proxima="{% if inicio_etapa == 1 %}{% url 'inicio-objetivo' %}{% elif inicio_etapa == 2 %}{% url 'inicio-item' %}{% else %}{% url 'base' %}{% endif %}" aria-labelledby="inicio-titulo">
   <header class="inicio-cabecalho">
     <p class="inicio-selo"><span aria-hidden="true">◇</span> {% if faixas.atual.ordem == 1 %}Faixa branca · Meu ponto de partida{% else %}Meu ponto de partida · Sempre editável{% endif %}</p>
-    <h1 id="inicio-titulo">Seu começo, do seu jeito.</h1>
-    <p>Escolha o que te move. Dê um pequeno passo. Veja sua criação ganhar forma.</p>
+    <p class="inicio-sobrelinha">Passo {{ inicio_etapa }} de 3</p>
+    <h1 id="inicio-titulo">{{ inicio_titulo }}</h1>
     <p class="inicio-privado">Seu motivo, seus sonhos e seus arquivos ficam privados na sua conta.</p>
   </header>
   <p id="inicio-status" role="status" aria-live="polite">Abrindo seu ponto de partida…</p>
   <button id="inicio-recarregar" type="button" hidden>Tentar abrir novamente</button>
   <div id="inicio-conteudo" hidden>
     <ol class="inicio-passos" aria-label="Os três passos do meu começo">
-      <li><button type="button" data-passo="1" aria-controls="inicio-motivo"><span>1</span> Meu motivo <small data-resumo="1">Escolher</small></button></li>
-      <li><button type="button" data-passo="2" aria-controls="inicio-plano"><span>2</span> Meu objetivo <small data-resumo="2">Planejar</small></button></li>
-      <li><button type="button" data-passo="3" aria-controls="inicio-item"><span>3</span> Meu primeiro item <small data-resumo="3">Criar</small></button></li>
+      <li><a href="{% url 'inicio-motivo' %}"{% if inicio_etapa == 1 %} aria-current="step"{% endif %}><span>1</span> Meu motivo <small data-resumo="1">Escolher</small></a></li>
+      <li><a href="{% url 'inicio-objetivo' %}"{% if inicio_etapa == 2 %} aria-current="step"{% endif %}><span>2</span> Meu objetivo <small data-resumo="2">Planejar</small></a></li>
+      <li><a href="{% url 'inicio-item' %}"{% if inicio_etapa == 3 %} aria-current="step"{% endif %}><span>3</span> Meu primeiro item <small data-resumo="3">Criar</small></a></li>
     </ol>
+    {% if inicio_etapa == 3 %}
     <section id="inicio-obra" class="inicio-obra" hidden aria-labelledby="inicio-obra-titulo">
-      <div><p class="inicio-sobrelinha">O que você já criou</p><h2 id="inicio-obra-titulo">Sua criação, em movimento.</h2><p id="inicio-obra-legenda"></p><button type="button" data-passo="3" class="inicio-secundario">Ver minhas versões</button></div>
+      <div><p class="inicio-sobrelinha">O que você já criou</p><h2 id="inicio-obra-titulo">Sua criação, em movimento.</h2><p id="inicio-obra-legenda"></p><a href="#inicio-versoes">Ver minhas versões</a></div>
       <div id="inicio-destaque"></div>
     </section>
+    {% endif %}
+    {% if inicio_etapa == 1 %}
     <section id="inicio-motivo" class="inicio-painel" data-painel="1">
       <h2 tabindex="-1">O que te trouxe até aqui?</h2>
       <p>Escolha o caminho que mais combina com você hoje. Você pode mudar de ideia.</p>
@@ -25,10 +28,11 @@
         <fieldset class="inicio-motivos"><legend class="inicio-sr">Meu motivo para aprender modelagem 3D</legend><div id="inicio-opcoes"></div></fieldset>
         <label for="inicio-motivo-pessoal">Por que isso importa para mim? <span>(opcional)</span></label>
         <textarea id="inicio-motivo-pessoal" name="motivo_pessoal" rows="2" maxlength="280" placeholder="Pode ser algo simples, escrito do seu jeito."></textarea>
-        <div class="inicio-acoes"><button type="submit">Salvar e seguir</button><span>Você pode parar aqui e retomar depois.</span></div>
+        <div class="inicio-acoes"><button type="submit" name="destino" value="continuar">Salvar e continuar</button><button type="submit" name="destino" value="pausar" class="inicio-secundario">Salvar para continuar depois</button></div>
       </form>
     </section>
-    <section id="inicio-plano" class="inicio-painel" data-painel="2" hidden>
+    {% elif inicio_etapa == 2 %}
+    <section id="inicio-plano" class="inicio-painel" data-painel="2">
       <h2 tabindex="-1">Um objetivo que cabe no seu momento.</h2>
       <p>Não precisa decidir a vida inteira. Escolha o próximo trabalho que quer conseguir criar.</p>
       <form id="inicio-form-plano">
@@ -49,11 +53,12 @@
         <div class="inicio-label-acao"><label for="inicio-compromisso">Meu compromisso comigo</label><button id="inicio-sugestao" class="inicio-texto" type="button">Montar uma sugestão</button></div>
         <textarea id="inicio-compromisso" name="compromisso" rows="3" maxlength="1200" placeholder="Escreva um compromisso possível. Você pode ajustá-lo quando precisar."></textarea>
         <p class="inicio-nota">Pausar e voltar também faz parte. Seu compromisso pode mudar junto com você.</p>
-        <div class="inicio-acoes"><button type="submit" name="assumir" value="sim">Assumir meu compromisso</button><button type="submit" class="inicio-secundario" name="assumir" value="nao">Salvar rascunho</button></div>
+        <div class="inicio-acoes"><button type="submit" name="assumir" value="sim">Assumir meu compromisso e continuar</button><button type="submit" class="inicio-secundario" name="assumir" value="nao">Salvar para continuar depois</button></div>
         <p id="inicio-confirmacao" class="inicio-nota"></p>
       </form>
     </section>
-    <section id="inicio-item" class="inicio-painel" data-painel="3" hidden>
+    {% elif inicio_etapa == 3 %}
+    <section id="inicio-item" class="inicio-painel" data-painel="3">
       <h2 tabindex="-1">Sua primeira criação merece um lugar.</h2>
       <p>Guarde seu item 3D ou uma imagem dele. Uma tentativa simples já mostra por onde você começou.</p>
       <form id="inicio-form-item" enctype="multipart/form-data">
@@ -69,7 +74,7 @@
       </form>
       <div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div>
     </section>
-    <aside id="inicio-proximo" class="inicio-proximo" hidden aria-labelledby="inicio-pratica-titulo">
+    <aside id="inicio-proximo" class="inicio-proximo" aria-labelledby="inicio-pratica-titulo">
       <p class="inicio-sobrelinha">Um próximo passo possível</p><h2 id="inicio-pratica-titulo">Pratique na direção do seu objetivo.</h2>
       <p id="inicio-objetivo-salvo"></p><p id="inicio-pratica"></p><p id="inicio-apoio-texto"></p>
       <div class="inicio-acoes"><a class="inicio-botao" href="/cursos/">Continuar minha prática</a><button id="inicio-pedir-ajuda" class="inicio-secundario" type="button" aria-expanded="false" aria-controls="inicio-ajuda">Preparar um pedido de ajuda</button></div>
@@ -81,7 +86,9 @@
         <p class="inicio-nota">No Fórum, cole seu pedido e escolha publicá-lo quando estiver pronto.</p>
       </div>
     </aside>
+    {% endif %}
+    <p class="inicio-voltar">{% if inicio_etapa == 2 %}<a href="{% url 'inicio-motivo' %}">← Voltar ao meu motivo</a>{% elif inicio_etapa == 3 %}<a href="{% url 'inicio-objetivo' %}">← Voltar ao meu objetivo</a>{% endif %} <a href="{% url 'base' %}">Voltar às conquistas</a></p>
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar seus três passos. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=1" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=2" defer></script>

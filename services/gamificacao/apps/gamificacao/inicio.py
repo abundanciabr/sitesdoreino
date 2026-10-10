@@ -1,5 +1,8 @@
 """Escolhas privadas e revisáveis; não mudam os critérios ou bônus das faixas."""
 from django.utils import timezone
+from django.urls import reverse
+
+from .models import AnexoDaJornada, JornadaPessoal
 
 MOTIVOS = (
     ('freelancer', 'Criar peças 3D para clientes', 'Experimente um objeto simples a partir de um pedido. Observe forma, proporção e organização dos arquivos.'),
@@ -60,3 +63,29 @@ def para_tela(jornada):
     motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
             'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado'}
+
+
+def resumo_inicio(pessoa_id, site_id, faixas):
+    """Retomada dos três passos a partir dos registros privados já existentes."""
+    jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
+    inicio = jornada.inicio if jornada else {}
+    motivo = bool(inicio.get('motivo'))
+    confirmado = bool(inicio.get('confirmado_em'))
+    arquivos = AnexoDaJornada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, passo=2,
+    ).count()
+    primeiro_item = any(
+        etapa['ordem'] == 2 and etapa['alcancada'] for etapa in faixas['lista']
+    )
+    concluido = motivo and confirmado and primeiro_item
+    passo = 1 if concluido or not motivo else 2 if not confirmado else 3
+    nome_rota = {1: 'inicio-motivo', 2: 'inicio-objetivo', 3: 'inicio-item'}[passo]
+    titulo = {1: 'Meu motivo', 2: 'Meu objetivo e compromisso', 3: 'Meu primeiro item 3D'}[passo]
+    return {
+        'passo': passo,
+        'titulo': titulo,
+        'url': reverse(nome_rota),
+        'iniciado': bool(inicio or arquivos or primeiro_item),
+        'concluido': concluido,
+        'quantidade_arquivos': arquivos,
+    }

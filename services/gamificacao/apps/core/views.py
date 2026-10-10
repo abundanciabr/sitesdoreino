@@ -139,6 +139,7 @@ def base(request):
 
     perfil = perfil_de(pessoa_id, site)
     faixas = _faixas_para_tela(pessoa_id, site) if FAIXAS_PARA_O_ALUNO else None
+    from apps.gamificacao.inicio import resumo_inicio
     recado = request.GET.get("jornada", "")
     if faixas and faixas["celebracao"].get("ordem") == faixas["atual"]["ordem"]:
         recado = faixas["celebracao"].get("tipo", recado)
@@ -149,6 +150,7 @@ def base(request):
             "entrou": True,
             "escada": escada_de(perfil),
             "faixas": faixas,
+            "inicio_resumo": resumo_inicio(pessoa_id, site, faixas or _faixas_para_tela(pessoa_id, site)),
             "jornada_recado": recado,
             "jornada_admin": e_admin(request, pessoa_id),
             **de_fora,
@@ -160,6 +162,33 @@ def base(request):
         from apps.gamificacao.models import JornadaPessoal
         JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site, celebracao_pendente=faixas["celebracao"]).update(celebracao_pendente={})
     return resposta
+
+
+@never_cache
+@require_GET
+def inicio_pagina(request, etapa):
+    """Uma página privada para cada passo, sem alterar o estado no acesso."""
+    titulos = {
+        1: "Meu motivo",
+        2: "Meu objetivo e compromisso",
+        3: "Meu primeiro item 3D",
+    }
+    if etapa not in titulos:
+        raise Http404
+    pessoa_id = quem_e(request)
+    site = site_atual()
+    contexto = {
+        "entrou": bool(pessoa_id and site),
+        "inicio_etapa": etapa,
+        "inicio_titulo": titulos[etapa],
+        "url_de_entrada": settings.URL_DE_ENTRADA,
+        "url_da_capa": settings.URL_DA_CAPA,
+    }
+    if pessoa_id and site:
+        from apps.gamificacao.jornada import situacao
+        contexto["faixas"] = situacao(pessoa_id, site)
+    from .trilha_pessoal import _privada
+    return _privada(render(request, "gamificacao/inicio_pagina.html", contexto))
 
 
 def _reais(cents: int) -> str:
@@ -191,8 +220,10 @@ def salvar_jornada(request):
         return HttpResponseRedirect(settings.URL_DE_ENTRADA)
     if request.POST.get("acao") == "declaracao" and request.POST.get("passo") == "2" and request.POST.get("estado") == "feito":
         return HttpResponseRedirect("/trilha/inventario/#primeiro-item", status=303)
+    from apps.gamificacao.inicio import resumo_inicio
+    faixas = situacao(pessoa_id, site)
     contexto = {"entrou": True, "jornada_admin": True, "escada": escada_de(perfil_de(pessoa_id, site)),
-                "faixas": situacao(pessoa_id, site)}
+                "faixas": faixas, "inicio_resumo": resumo_inicio(pessoa_id, site, faixas)}
     if request.POST.get("acao") == "preview-meta":
         try:
             meta = centavos(request.POST.get("preset") or request.POST.get("meta", ""))

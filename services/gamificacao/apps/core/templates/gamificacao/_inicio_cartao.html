@@ -1,0 +1,15 @@
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=2">
+<section id="inicio-cartao" class="inicio inicio-cartao" aria-labelledby="inicio-cartao-titulo">
+  <p class="inicio-selo"><span aria-hidden="true">◇</span> Meu ponto de partida</p>
+  <h2 id="inicio-cartao-titulo">Seu começo, do seu jeito.</h2>
+  {% if inicio_resumo.concluido %}
+    <p>Seu motivo, seu compromisso e sua primeira criação estão guardados. Volte para editar suas escolhas e acompanhar sua evolução.</p>
+  {% elif inicio_resumo.iniciado %}
+    <p>Seu começo está guardado. O próximo passo é <strong>{{ inicio_resumo.titulo|lower }}</strong>.</p>
+  {% else %}
+    <p>Escolha o que te move, dê forma a um objetivo e guarde sua primeira criação.</p>
+  {% endif %}
+  <p class="inicio-nota">1. Meu motivo <span aria-hidden="true">→</span> 2. Meu objetivo <span aria-hidden="true">→</span> 3. Meu primeiro item</p>
+  {% if inicio_resumo.quantidade_arquivos %}<p class="inicio-nota">{{ inicio_resumo.quantidade_arquivos }} registro{{ inicio_resumo.quantidade_arquivos|pluralize }} do seu primeiro item guardado{{ inicio_resumo.quantidade_arquivos|pluralize }} em privado.</p>{% endif %}
+  <div class="inicio-acoes"><a id="inicio-retomar" class="inicio-botao" href="{{ inicio_resumo.url }}">{% if inicio_resumo.concluido %}Revisitar meu começo{% elif inicio_resumo.iniciado %}Continuar de onde parei{% else %}Começar meus três passos{% endif %}</a><span>Suas escolhas podem mudar com você.</span></div>
+</section>
