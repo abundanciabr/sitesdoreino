@@ -66,7 +66,7 @@ def test_aluno_sem_jornada_tem_branca_sem_meta_simulada_ou_escrita(client):
     dados = resposta.json()
     assert set(dados) == {
         "pessoa_id", "site_id", "atual_ordem", "etapas", "total_cents",
-        "meta_cents", "meta_escolhida",
+        "meta_cents", "meta_escolhida", "consultado_em",
     }
     assert (dados["pessoa_id"], dados["site_id"], dados["atual_ordem"]) == (
         "aluna-v4", SITE, 1,
@@ -77,7 +77,7 @@ def test_aluno_sem_jornada_tem_branca_sem_meta_simulada_ou_escrita(client):
     assert [etapa["alcancada"] for etapa in dados["etapas"]] == [True] + [False] * 12
     assert all(etapa["meta_cents"] is None for etapa in dados["etapas"])
     assert all(set(etapa) == {
-        "ordem", "nome", "alcancada", "conquista", "meta_cents", "alcancada_em",
+        "ordem", "nome", "alcancada", "conquista", "meta_cents", "alcancada_em", "checklist",
     } for etapa in dados["etapas"])
     assert JornadaPessoal.objects.count() == 0
     assert Pessoa.objects.count() == 0

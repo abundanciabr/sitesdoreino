@@ -65,16 +65,26 @@
     </section>
   </main>
   <footer><span class="footer-brand">MESHCRAFT <i>/</i> ATELIÊ</span><span>{{ trilha.aluno.nome }} · Sua jornada</span><span>Consulta de progresso · Somente leitura.</span></footer>
-  <dialog id="detail-dialog" aria-labelledby="dialog-title">
+  <dialog id="detail-dialog" class="live-checklist" aria-labelledby="dialog-title">
     <button class="dialog-close" aria-label="Fechar detalhes"><svg aria-hidden="true"><use href="#close"/></svg></button>
     <div class="dialog-content">
       <span class="dialog-eyebrow" id="dialog-eyebrow"></span>
-      <div class="dialog-medallion" aria-hidden="true"><span id="dialog-number"></span></div>
-      <h2 id="dialog-title"></h2>
+      <h2 id="dialog-title">Seu próximo movimento.</h2>
       <p class="dialog-summary" id="dialog-summary"></p>
-      <ol class="task-list" id="task-list"></ol>
+      <div class="checklist-counts" aria-label="Resumo das etapas">
+        <div><strong id="checklist-done">—</strong><span id="checklist-done-label">concluídas</span></div>
+        <div><strong id="checklist-active">—</strong><span>em andamento</span></div>
+        <div><strong id="checklist-pending">—</strong><span id="checklist-pending-label">pendentes</span></div>
+      </div>
+      <ol class="checklist-path" id="task-list"></ol>
+      <p class="checklist-observation" id="checklist-observation"></p>
+      <div class="checklist-completion" id="checklist-completion">
+        <div class="checklist-meter" role="progressbar" aria-label="Etapas concluídas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="checklist-fill"></span></div>
+        <span id="checklist-fraction"></span>
+      </div>
       <p class="dialog-note" id="dialog-note"></p>
-      <button class="primary" id="back-to-journey">Voltar à trilha <svg aria-hidden="true"><use href="#arrow"/></svg></button>
+      <div class="checklist-update"><span id="checklist-updated" role="status" aria-live="polite"></span><button type="button" id="checklist-refresh">Atualizar</button></div>
+      <button class="checklist-back" id="back-to-journey">Voltar à trilha</button>
     </div>
   </dialog>
 </body>

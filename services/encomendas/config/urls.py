@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real
+from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real, trilha_pessoal
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -37,6 +37,7 @@ from config.api import api
 # que alguém escreveria por instinto. Quem registra "pago pela escola" é o
 # plantão, com autor e data (lei §3.4).
 urlpatterns = [
+    path("minha-trilha/", trilha_pessoal.minha_trilha, name="encomendas_minha_trilha"),
     path('sandbox/arquivos/<uuid:arquivo_id>/previas/<str:nome>/', telas_sandbox.previa_analise, name='sandbox_previa_analise'),
     path('sandbox/trabalhos/<uuid:participacao_id>/analise/<uuid:entrega_id>/repetir/', telas_sandbox.repetir_analise, name='sandbox_repetir_analise'),
     path("sandbox/projetos/<uuid:projeto_id>/confirmar/", telas_sandbox.confirmar_projeto, name="sandbox_confirmar"),

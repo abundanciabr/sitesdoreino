@@ -3,14 +3,34 @@
 from datetime import datetime
 
 from django.http import HttpResponse
+from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
+from apps.gamificacao.checklist_trilha import montar_checklists
 from apps.gamificacao.jornada import situacao
 from .sessao import ConfiguracaoAusente, IdentidadeIndisponivel, _sessao, site_atual
 
 
 router = Router()
+
+
+class AcaoDoChecklist(Schema):
+    rotulo: str
+    url: str
+
+
+class ItemDoChecklist(Schema):
+    id: str
+    titulo: str
+    estado: str
+    detalhe: str
+    acao: AcaoDoChecklist | None
+
+
+class ChecklistDaEtapa(Schema):
+    itens: list[ItemDoChecklist]
+    observacao: str
 
 
 class EtapaDaTrilha(Schema):
@@ -20,6 +40,7 @@ class EtapaDaTrilha(Schema):
     conquista: str
     meta_cents: int | None
     alcancada_em: datetime | None
+    checklist: ChecklistDaEtapa
 
 
 class TrilhaDoAluno(Schema):
@@ -30,6 +51,7 @@ class TrilhaDoAluno(Schema):
     total_cents: int
     meta_cents: int | None
     meta_escolhida: bool
+    consultado_em: datetime
 
 
 @router.get(
@@ -72,6 +94,7 @@ def get_my_journey(request, response: HttpResponse):
 
 def _projecao(response: HttpResponse, pessoa_id: str, site_id: str):
     jornada = situacao(pessoa_id, site_id)
+    checklists = montar_checklists(pessoa_id, site_id, jornada)
     meta_escolhida = jornada["meta_escolhida"]
     response["Cache-Control"] = "private, no-store"
     response["X-Robots-Tag"] = "noindex, nofollow"
@@ -87,10 +110,12 @@ def _projecao(response: HttpResponse, pessoa_id: str, site_id: str):
                 conquista=etapa["conquista"],
                 meta_cents=etapa["meta_cents"] if meta_escolhida else None,
                 alcancada_em=etapa["alcancada_em"],
+                checklist=checklists[etapa["ordem"]],
             )
             for etapa in jornada["lista"]
         ],
         total_cents=jornada["total_cents"],
         meta_cents=jornada["meta_cents"],
         meta_escolhida=meta_escolhida,
+        consultado_em=timezone.now(),
     )
