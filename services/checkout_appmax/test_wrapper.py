@@ -6,7 +6,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from wrapper import BASE, OFFER_SLUG, has_valid_marker, build_app
+from wrapper import BASE, LEGACY_BASE, OFFER_SLUG, has_valid_marker, build_app
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def harness():
                 and bool(markers) and has_valid_marker(markers[0], "private-test-key"))
 
     async def snapshot(value):
-        return {"id": str(value), "offer": {"price_cents": 14700}, "pedido_existente": None}
+        return {"id": str(value), "offer": {"price_cents": 2700}, "pedido_existente": None}
 
     app = build_app(
         approved,
@@ -53,7 +53,7 @@ async def _test_exact_entry_host_and_escaped_public_config(harness):
     app, seen = harness
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app),
                                  base_url="https://meshcraft.top") as client:
-        page = await client.get(BASE + "/")
+        page = await client.get(BASE)
         assert page.status_code == 200
         assert "\\u003cmerchant\\u003e" in page.text
         assert "<merchant>" not in page.text
@@ -63,6 +63,10 @@ async def _test_exact_entry_host_and_escaped_public_config(harness):
             "apiBase": BASE + "/api", "offerSlug": OFFER_SLUG,
         }
         assert (await client.get(BASE + "/assets/checkout.css")).text.strip() == "body{}"
+        for previous in (BASE + "/", LEGACY_BASE, LEGACY_BASE + "/"):
+            redirect = await client.get(previous + "?utm_source=teste")
+            assert redirect.status_code == 308
+            assert redirect.headers["location"] == BASE + "?utm_source=teste"
         assert (await client.get(BASE + "/assets/../server.py")).status_code == 404
         assert (await client.get("/checkout/outro/")).status_code == 404
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app),
