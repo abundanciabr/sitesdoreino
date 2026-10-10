@@ -216,7 +216,13 @@ function journeyChecklist(progress,index,activities){
       return activity?{...item,estado:activity.estado,detalhe:activity.detalhe,acao:activity.acao}:item;
     });
   });
-  return {disponivel:true,itens,observacao:[...notes].join(' ')};
+  let personalGoalShown=false;
+  const uniqueItems=itens.filter(item=>{
+    if(!/^meta-\d+$/.test(item.id))return true;
+    if(personalGoalShown)return false;
+    personalGoalShown=true;return true;
+  });
+  return {disponivel:true,itens:uniqueItems,observacao:[...notes].join(' ')};
 }
 
 function validateProgress(data, context){

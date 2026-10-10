@@ -119,3 +119,14 @@ test('estados ou acoes invalidas no checklist nao sao desenhados',async()=>{
     assert.equal(r.payload,undefined);
   }
 });
+
+
+test('meta pessoal compartilhada entre graus conta uma vez no checklist',async()=>{
+  const data=withChecklist();data.atual_ordem=6;data.meta_escolhida=true;data.meta_cents=10000;data.total_cents=150;
+  data.etapas.forEach((step,i)=>{step.alcancada=i<6;step.meta_cents=i>=5?125*(i-4):null;step.checklist.itens[0].estado=step.alcancada?'concluido':'andamento';});
+  for(const step of data.etapas.slice(5))step.checklist.itens.unshift({id:`meta-${step.ordem}`,titulo:'Escolher minha meta pessoal',estado:'concluido',detalhe:'Meta pessoal escolhida.',acao:null});
+  const r=await load({ok:true,status:200,json:async()=>data});
+  const checklist=r.context.journeyChecklist(r.payload.progresso,5,r.payload.atividades);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['meta-6','criterio-6','criterio-7']);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','concluido','andamento']);
+});
