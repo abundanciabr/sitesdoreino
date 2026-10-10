@@ -20,11 +20,8 @@ o único jeito de o link continuar no idioma em que a pessoa está.
   <p class="descricao">{% t "rodape.descricao" %}</p>{% endif %}{% if rodape.mostra_links %}
   <nav class="links" aria-label="{% t 'rodape.aria_links' %}">
     <a href="{% url_i18n 'landing' %}">{% t "rodape.link_inicio" %}</a>
-    <a href="{% url_i18n 'cadastro' %}">{% t "rodape.link_cadastro" %}</a>
     <a href="{{ rodape.url_do_forum }}">{% t "rodape.link_forum" %}</a>
     <a href="{{ rodape.url_dos_documentos }}">{% t "rodape.link_documentos" %}</a>
   </nav>{% endif %}{% if rodape.mostra_direitos %}
   <p class="direitos">{% t "rodape.direitos" ano=rodape.ano %}</p>{% endif %}
-  <p class="atualizacao"><time datetime="2026-09-17">{% t "rodape.atualizacao" %}</time></p>
-  <p class="atualizacao antigravity"><time datetime="2026-09-17">{% t "rodape.atualizacao_antigravity" %}</time></p>
 </footer>

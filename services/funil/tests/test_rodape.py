@@ -72,7 +72,7 @@ def test_o_rodape_completo_tem_marca_links_e_direitos(client, rede):
     corpo = _corpo(client.get("/pt-br/", HTTP_HOST=HOST_MESH))
     assert "Meshcraft Academy" in corpo
     assert "Todos os direitos reservados" in corpo
-    for rotulo in ("Início", "Cadastro", "Fórum", "Documentos"):
+    for rotulo in ("Início", "Fórum", "Documentos"):
         assert f">{rotulo}</a>" in corpo
 
 
@@ -120,7 +120,11 @@ def test_link_de_dentro_leva_o_idioma_e_link_de_fora_nao(client, rede, idioma):
     no idioma padrão (a versão que se abre para conferir) e joga quem está em
     `/pt-br/` de volta para o inglês, sem erro nenhum na tela."""
     corpo = _corpo(client.get(caminho_mesh(idioma, "/"), HTTP_HOST=HOST_MESH))
-    assert f'href="{caminho_mesh(idioma, "/cadastro")}"' in corpo
+    rodape = corpo.split("<footer", 1)[1].split("</footer>", 1)[0]
+    assert f'href="{caminho_mesh(idioma, "/cadastro")}"' not in rodape
+    assert "atualizacao" not in rodape
+    assert "Codex" not in rodape
+    assert "Antigravity" not in rodape
     # As outras células são monolíngues: prefixá-las morre 404 no gateway.
     assert 'href="/forum/"' in corpo
     assert 'href="/docs/"' in corpo
