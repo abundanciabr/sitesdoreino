@@ -15,7 +15,7 @@ def test_blender_nome_preco_e_checkout(client, rede, desafio, monkeypatch, barra
     assert 'Curso Primeiros Passos com 3d no Blender' in html
     assert 'R$ 27,00' in html
     assert 'https://meshcraft.top/curso-primeiros-passos-no-blender' in html
-    assert '/checkout/desafio-como-ganhar-em-dolar-com-roblox/?utm_source=instagram' in html
+    assert '/checkout/curso-primeiros-passos-no-blender/?utm_source=instagram' in html
     assert 'ganhar em dólar' not in html
     assert 'criação para Roblox' not in html
 

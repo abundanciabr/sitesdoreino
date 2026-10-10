@@ -229,7 +229,7 @@ def _bloco_vazio_da_oferta() -> dict:
 
 
 @require_safe
-def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA):
+def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA, checkout_slug=None):
     """`/oferta`: seções do catálogo e preço da oferta; 404 se a página não
     existe e 503 com `Retry-After` se o catálogo não responde."""
     site = request.site
@@ -313,7 +313,7 @@ def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA):
                 + f",{oferta['price_cents'] % 100:02d}" if oferta else ""
             ),
             "url_checkout": (
-                f"/checkout/{offer_slug}/" + (f"?{query}" if query else "")
+                f"/checkout/{checkout_slug or offer_slug}/" + (f"?{query}" if query else "")
                 if oferta
                 else ""
             ),
@@ -340,7 +340,10 @@ def pagina_de_oferta_blender(request):
     """Novo endereço público; preserva a identidade da oferta e das matrículas."""
     if request.get_host().split(":")[0].lower() != "meshcraft.top":
         raise Http404("página disponível apenas em meshcraft.top")
-    return pagina_de_oferta(request, slug="desafio-como-ganhar-em-dolar-com-roblox")
+    return pagina_de_oferta(
+        request, slug="desafio-como-ganhar-em-dolar-com-roblox",
+        checkout_slug="curso-primeiros-passos-no-blender",
+    )
 
 
 def _braco_na_tela(request, pagina: dict, blocos: list) -> dict:
