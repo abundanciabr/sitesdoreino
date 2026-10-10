@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q, Count, Avg
 from django.http import JsonResponse, Http404, HttpResponseRedirect, FileResponse
@@ -46,7 +47,8 @@ def serializar(conversa, depois=0, antes=0):
     if antes: msgs=msgs.filter(pk__lt=antes)
     lista=list(msgs.order_by('-id')[:100])[::-1]
     return {'id':str(conversa.pk),'estado':conversa.estado,'assunto':conversa.assunto.nome,
-      'atendente':conversa.atendente_nome,'avaliacao':conversa.avaliacao,
+      'atendente':conversa.atendente_nome,'atendente_id':conversa.atendente_id,'avaliacao':conversa.avaliacao,
+      'prioridade':conversa.prioridade,'estado_nome':__import__('apps.atendimento.gestao',fromlist=['ESTADOS']).ESTADOS.get(conversa.estado,conversa.estado),
       'mostrar_avaliacao':service.avaliacao_disponivel(conversa),
       'mensagens':[{'id':m.pk,'autor':m.autor,'nome':primeiro_nome(m.nome) if m.autor == 'aluno' else m.nome,'texto':m.texto,'fontes':m.fontes,
                    'em':m.criada_em.isoformat()} for m in lista],
@@ -75,7 +77,7 @@ def chat_equipe(request):
 @require_http_methods(['GET'])
 def chat_arquivo(request, nome):
     admin(request)
-    tipos = {'suporte.js': 'text/javascript', 'suporte.css': 'text/css'}
+    tipos = {'suporte.js': 'text/javascript', 'suporte.css': 'text/css', 'gerenciamento.js':'text/javascript', 'gerenciamento.css':'text/css'}
     if nome not in tipos:
         raise Http404
     caminho = Path(__file__).resolve().parent / 'static' / 'atendimento' / nome
@@ -134,6 +136,10 @@ def _conversar(request, identidade):
                     reabriu=conversa.estado=='encerrado'
                     if reabriu:
                         conversa.rodada+=1
+                        conversa.rodada_iniciada_em=timezone.now()
+                        conversa.primeira_resposta_em=None
+                        conversa.encerrada_em=None
+                        conversa.avaliacao=None
                         conversa.atendente_id=''
                         conversa.atendente_nome=''
                         conversa.estado='robo' if conversa.assunto.modo!='assistido' else 'aguardando'
@@ -141,6 +147,7 @@ def _conversar(request, identidade):
                         conversa.solicitou_pessoa=False
                     ja_respondeu=not reabriu and conversa.mensagens.filter(referencia__startswith='auto-').exists()
                     Mensagem.objects.create(conversa=conversa,referencia=ref,autor='aluno',nome=conversa.nome,texto=texto)
+                    if conversa.estado=='aguardando_aluno': conversa.estado='andamento' if conversa.atendente_id else 'aguardando'
                     if conversa.assunto.modo=='conversa':
                         if not conversa.atendente_id and not conversa.solicitou_pessoa:
                             conversa.estado='robo'
@@ -169,7 +176,7 @@ def _conversar(request, identidade):
                         ultima=conversa.mensagens.last()
                         if conversa.estado=='robo' and ultima and ultima.referencia.startswith('auto-'):
                             conversa.resolvida_robo=True
-                        conversa.estado='encerrado'; conversa.processar=False; conversa.save()
+                        conversa.estado='encerrado'; conversa.encerrada_em=timezone.now(); conversa.processar=False; conversa.save()
                     elif acao=='avaliar':
                         nota=int(d.get('nota',0))
                         if nota not in range(1,6): raise ValueError
@@ -198,26 +205,23 @@ def contexto(request,sid):
 
 @require_http_methods(['GET'])
 def fila(request):
-    admin(request);sid=site(request);ctx=contexto(request,sid)
-    filtro=request.GET.get('estado','aguardando')
-    q=request.GET.get('q','').strip()[:120]
-    todas=Conversa.objects.filter(site_id=sid)
-    consultas=todas.select_related('assunto')
-    if filtro in ('aguardando','andamento','encerrado','robo'):consultas=consultas.filter(estado=filtro)
-    if q:consultas=consultas.filter(Q(nome__icontains=q)|Q(mensagens__texto__icontains=q)).distinct()
-    ctx.update(conversas=consultas[:100],filtro=filtro,q=q,
-      contagens=list(todas.values('estado').annotate(total=Count('id'))),
-      resolvidas=todas.filter(resolvida_robo=True).count(),encaminhadas=todas.filter(encaminhada=True).count(),
-      nota=todas.aggregate(n=Avg('avaliacao'))['n'],
-      recorrentes=list(todas.values('assunto__nome').annotate(total=Count('id')).order_by('-total')[:8]),
-      duvidas=list(Mensagem.objects.filter(conversa__site_id=sid,autor='aluno').values('texto').annotate(total=Count('id')).filter(total__gt=1).order_by('-total')[:10]))
+    from .gestao import contexto_fila,identidade_atendente
+    admin(request);sid=site(request)
+    ctx=contexto_fila(request,sid)
+    if request.path_info.endswith('/conversas/'):
+        abertas=Conversa.objects.filter(site_id=sid).exclude(estado='encerrado')
+        selecionada=abertas.filter(atendente_id__in=[identidade_atendente(request)[0],str(request.admin['id'])]).first() or abertas.first() or Conversa.objects.filter(site_id=sid).first()
+        if selecionada: return HttpResponseRedirect(prefixo(request)+'/'+str(selecionada.pk)+'/')
+        ctx['entrada_conversas']=True
     return render(request,'admin/atendimento_fila.html',ctx)
 
 
 @require_http_methods(['GET','POST'])
 def conversa_admin(request,conversa_id):
     admin(request);sid=site(request);ctx=contexto(request,sid)
-    conversa=get_object_or_404(Conversa,pk=conversa_id,site_id=sid)
+    conversa=get_object_or_404(Conversa.objects.select_related('assunto').prefetch_related('mensagens'),pk=conversa_id,site_id=sid)
+    from .gestao import contexto_conversa,identidade_atendente,ESTADOS,PRIORIDADES,responsaveis
+    contexto_conversa(request,sid,conversa,ctx)
     recado=''
     if request.method=='POST':
         acao=request.POST.get('acao','')
@@ -233,12 +237,15 @@ def conversa_admin(request,conversa_id):
         else:
             with transaction.atomic():
                 conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid)
-                quem=str(request.admin['id'])
-                if conversa.atendente_id and conversa.atendente_id!=quem:
+                quem,nome_atendente=identidade_atendente(request)
+                if acao!='organizar' and conversa.atendente_id and conversa.atendente_id not in (quem,str(request.admin['id'])):
                     ctx.update(erro='Este atendimento já está com outra pessoa. Peça que ela devolva o atendimento ao robô.',conversa=conversa)
                     return render(request,'admin/atendimento_conversa.html',ctx,status=409)
                 if acao in ('assumir','responder'):
-                    conversa.estado='andamento';conversa.atendente_id=quem;conversa.atendente_nome=request.admin.get('nome','Equipe')[:160]
+                    if conversa.estado=='encerrado':
+                        conversa.rodada+=1;conversa.rodada_iniciada_em=timezone.now();conversa.primeira_resposta_em=None;conversa.avaliacao=None
+                    conversa.encerrada_em=None
+                    conversa.estado='andamento';conversa.atendente_id=quem;conversa.atendente_nome=nome_atendente[:160]
                     # Não envia respostas automáticas depois da tomada humana.
                     conversa.processar=False
                     if acao=='responder':
@@ -247,10 +254,26 @@ def conversa_admin(request,conversa_id):
                         if not texto or len(texto)>6000 or not re.fullmatch(r'[A-Za-z0-9_-]{8,100}',ref):
                             ctx.update(erro='Escreva uma resposta com até 6000 caracteres.',conversa=conversa)
                             return render(request,'admin/atendimento_conversa.html',ctx,status=422)
-                        Mensagem.objects.get_or_create(conversa=conversa,referencia=ref,
+                        mensagem,criada=Mensagem.objects.get_or_create(conversa=conversa,referencia=ref,
                             defaults={'autor':'equipe','nome':conversa.atendente_nome,'texto':texto})
+                        if criada and conversa.primeira_resposta_em is None: conversa.primeira_resposta_em=mensagem.criada_em
                 elif acao=='encerrar':
+                    if conversa.estado!='encerrado': conversa.encerrada_em=timezone.now()
                     conversa.estado='encerrado';conversa.processar=False
+                elif acao=='organizar':
+                    estado=request.POST.get('estado',conversa.estado)
+                    prioridade=request.POST.get('prioridade',conversa.prioridade)
+                    escolhido=request.POST.get('responsavel',conversa.atendente_id)
+                    permitidos={r['id']:r['nome'] for r in responsaveis(request,sid)}
+                    if estado not in ESTADOS or prioridade not in PRIORIDADES or (escolhido and escolhido not in permitidos):
+                        return resposta({'erro':'Confira o status, a prioridade e o responsável.'},422)
+                    if conversa.estado=='encerrado' and estado!='encerrado':
+                        conversa.rodada+=1;conversa.rodada_iniciada_em=timezone.now();conversa.primeira_resposta_em=None;conversa.avaliacao=None
+                    if estado=='encerrado' and conversa.estado!='encerrado': conversa.encerrada_em=timezone.now()
+                    elif estado!='encerrado': conversa.encerrada_em=None
+                    conversa.estado=estado;conversa.prioridade=prioridade
+                    conversa.atendente_id=escolhido;conversa.atendente_nome=permitidos.get(escolhido,'')
+                    conversa.processar=estado!='encerrado' and conversa.assunto.modo=='assistido' and bool(conversa.mensagens.filter(autor='aluno').exists())
                 elif acao=='robo':
                     conversa.atendente_id='';conversa.atendente_nome=''
                     conversa.solicitou_pessoa=False
@@ -265,7 +288,7 @@ def conversa_admin(request,conversa_id):
                 else:raise Http404
                 conversa.save()
             if acao=='avisar':service.avisar(conversa)
-        return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/')
+        return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/'+('?enviado=1' if acao=='responder' else ''))
     conversa.refresh_from_db()
     if conversa.sugestao and not service.fontes_atuais(conversa.sugestao.get('fontes',[])):
         conversa.sugestao={'contexto':conversa.sugestao.get('contexto'),
