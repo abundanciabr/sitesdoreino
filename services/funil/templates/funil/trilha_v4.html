@@ -23,7 +23,7 @@
   <header class="masthead">
     <a class="brand" href="#top" aria-label="Meshcraft, início"><span class="brand-emblem" aria-hidden="true">M</span><span>MESHCRAFT<span class="brand-sub">ATELIÊ DIGITAL</span></span></a>
     <span class="edition">{{ trilha.aluno.nome }} <span class="edition-line"></span> V.04</span>
-    <button class="resume" id="resume">Faixa atual <svg aria-hidden="true"><use href="#arrow"/></svg></button>
+    <button class="resume" id="resume" disabled>Faixa atual <svg aria-hidden="true"><use href="#arrow"/></svg></button>
   </header>
   <main id="top">
     <section class="hero" aria-labelledby="hero-title">
@@ -33,9 +33,9 @@
         <p class="hero-description">O que você cria transforma quem você é.<br>Uma trilha de 13 faixas, construída passo a passo.</p>
         <a class="hero-link" href="#journey">Explore sua jornada <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v16m-6-6 6 6 6-6"/></svg></a>
       </div>
-      <div class="hero-object" aria-label="Sua faixa atual">
+      <div class="hero-object" aria-label="Consultando seu progresso" aria-busy="true">
         <span class="object-corner corner-tl" aria-hidden="true"></span><span class="object-corner corner-tr" aria-hidden="true"></span>
-        <span class="object-caption">SEU MOMENTO ATUAL</span>
+        <span class="object-caption">CARREGANDO SEU PROGRESSO</span>
         <div class="dial" aria-hidden="true">
           <div class="dial-edge"></div><div class="dial-ticks"></div><div class="dial-track"></div>
           <div class="dial-face"><span class="dial-overline">FAIXA</span><span class="dial-number">—</span><span class="dial-name"><i></i> —</span></div>
@@ -56,9 +56,9 @@
       <nav class="stage-dock" aria-label="Acesso direto às 13 faixas"><div class="dock-inner" id="dock"></div></nav>
       <ol class="timeline" id="timeline"></ol>
       <nav class="bottom-nav" aria-label="Navegação entre faixas">
-        <button class="nav-arrow" id="previous" aria-label="Faixa anterior"><svg class="reverse" aria-hidden="true"><use href="#arrow"/></svg><span>Anterior</span></button>
+        <button class="nav-arrow" id="previous" disabled aria-label="Faixa anterior"><svg class="reverse" aria-hidden="true"><use href="#arrow"/></svg><span>Anterior</span></button>
         <div><span id="position">—</span><span class="position-total"> / 13</span><small id="selected-label">—</small></div>
-        <button class="nav-arrow" id="next" aria-label="Próxima faixa"><span>Próxima</span><svg aria-hidden="true"><use href="#arrow"/></svg></button>
+        <button class="nav-arrow" id="next" disabled aria-label="Próxima faixa"><span>Próxima</span><svg aria-hidden="true"><use href="#arrow"/></svg></button>
       </nav>
       <div class="closing"><span aria-hidden="true">✧</span><p>A próxima grande criação<br>começa no <em>próximo passo.</em></p></div>
     </section>

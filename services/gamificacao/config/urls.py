@@ -3,9 +3,11 @@ from apps.core.views import (
     base, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
     interno_reconhecimentos, decidir_reconhecimento,
 )
+from apps.core.trilha_pessoal import minha_trilha
 from config.api import api
 
 urlpatterns = [
+    path("minha-trilha/", minha_trilha, name="minha-trilha"),
     path("jornada/salvar", salvar_jornada, name="salvar-jornada"),
     path("jornada/prints/<int:versao_id>", print_recebimento, name="print-recebimento"),
     path("healthz", healthz),
