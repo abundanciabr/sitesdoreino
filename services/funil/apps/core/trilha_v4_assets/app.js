@@ -1,6 +1,6 @@
 'use strict';
 function renderJourney(payload){
-const icons = {arrow:'<svg aria-hidden="true"><use href="#arrow"/></svg>',check:'<svg aria-hidden="true"><use href="#check"/></svg>',chevron:'<svg aria-hidden="true"><use href="#chevron"/></svg>'};
+const icons = {arrow:'<svg aria-hidden="true"><use href="#arrow"/></svg>',check:'<svg aria-hidden="true"><use href="#check"/></svg>',chevron:'<svg aria-hidden="true"><use href="#chevron"/></svg>',lock:'<svg class="lock-icon" aria-hidden="true"><use href="#lock"/></svg>'};
 const belts = [
   {name:'Branca',short:'Branca',category:'O começo de tudo',title:'Toda criação começa com curiosidade.',summary:'Conheça seu ambiente e dê o primeiro passo na modelagem 3D.',color:'#e2e2e7',wash:'#f6f6f8',tone:'#66666d',ink:'#73737a',tasks:[['Prepare seu ambiente','Configure as ferramentas para começar a modelar.'],['Conheça o painel','Encontre os conteúdos que vão acompanhar sua jornada.'],['Comece pelo essencial','Explore os fundamentos da modelagem 3D.']]},
   {name:'Amarela',short:'Amarela',category:'Seu primeiro modelo',title:'Uma ideia. Sua primeira forma.',summary:'Leve o que aprendeu para o Blender e crie seu primeiro item 3D.',color:'#e9c34b',wash:'#fdf9e9',tone:'#8c6b0b',ink:'#735d17',tasks:[['Escolha seu item','Comece com uma forma simples para colocar os fundamentos em prática.'],['Crie no Blender','Modele seu primeiro item e revise o resultado.'],['Prepare para avaliação','Organize o arquivo para receber orientações.']]},
@@ -13,7 +13,8 @@ const belts = [
 const progress = payload.progresso;
 const current = progress.atual_ordem - 1;
 const money = cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);
-const reached = index=>progress.etapas[index].alcancada;
+const reached = index=>progress.etapas[index]?.alcancada===true;
+const available = progress.etapas.flatMap((step,index)=>step.alcancada?[index]:[]);
 belts.forEach((belt,index)=>{
   const step=progress.etapas[index];
   belt.summary=index>=5
@@ -43,7 +44,8 @@ const stages = [];
 const dockButtons = [];
 let dialogOpener;
 const number = index=>String(index+1).padStart(2,'0');
-const state = index=>index===current?'Faixa atual':reached(index)?'Concluída':index===current+1?'Próxima conquista':'A conquistar';
+const state = index=>index===current?'Faixa atual':reached(index)?'Concluída':'Bloqueada';
+const adjacent = direction=>available[available.indexOf(selected)+direction];
 
 const doneCount=progress.etapas.filter(step=>step.alcancada).length;
 document.querySelector('#completed-count').textContent=String(doneCount).padStart(2,'0');
@@ -59,30 +61,34 @@ const segments=progress.etapas.map((step,index)=>`${index===current?belts[index]
 document.querySelector('.dial-track').style.background=`conic-gradient(from 0deg,${segments.join(',')})`;
 
 belts.forEach((belt,index)=>{
+  const locked=!reached(index);
   const dockButton = document.createElement('button');
-  dockButton.className='dock-button';dockButton.type='button';
+  dockButton.className=`dock-button${locked?' locked':''}`;dockButton.type='button';dockButton.disabled=locked;
   dockButton.style.setProperty('--belt',belt.color);
-  dockButton.setAttribute('aria-label',`${index+1}. Faixa ${belt.name}`);
-  dockButton.title=`${index+1}. Faixa ${belt.name}`;
-  dockButton.innerHTML=`<span class="dock-dot" aria-hidden="true"></span><span class="dock-number" aria-hidden="true">${number(index)}</span><span class="dock-name" aria-hidden="true">${belt.short}</span>`;
+  dockButton.setAttribute('aria-label',`${index+1}. Faixa ${belt.name}${locked?' — bloqueada':''}`);
+  dockButton.title=`${index+1}. Faixa ${belt.name}${locked?' — disponível ao alcançar esta faixa':''}`;
+  dockButton.innerHTML=`${locked?icons.lock:'<span class="dock-dot" aria-hidden="true"></span>'}<span class="dock-number" aria-hidden="true">${number(index)}</span><span class="dock-name" aria-hidden="true">${belt.short}</span>`;
   dockButton.addEventListener('click',()=>select(index,true));
   dock.append(dockButton);dockButtons.push(dockButton);
-  const stage=document.createElement('li');stage.className=`stage ${reached(index)&&index!==current?'done':''}`;stage.id=`faixa-${index+1}`;
+  const stage=document.createElement('li');stage.className=`stage ${locked?'locked':index!==current?'done':''}`;stage.id=`faixa-${index+1}`;
   stage.style.setProperty('--belt',belt.color);stage.style.setProperty('--wash',belt.wash);stage.style.setProperty('--tone',belt.tone);stage.style.setProperty('--swatch-ink',belt.ink);
   if(index===6){const chapter=document.createElement('p');chapter.className='chapter-label';chapter.textContent='FAIXA PRETA. SETE GRAUS DE EVOLUÇÃO.';stage.append(chapter);}
   const mark=document.createElement('span');mark.className='track-mark';mark.setAttribute('aria-hidden','true');mark.innerHTML=reached(index)&&index!==current?icons.check:number(index);if(index===6)mark.style.top='94px';
   stage.append(mark);
   const card=document.createElement('div');card.className='stage-card';
-  card.innerHTML=`<button type="button" class="stage-trigger" aria-expanded="false" aria-controls="panel-${index+1}" id="trigger-${index+1}">
-    <span class="swatch" aria-hidden="true">${number(index)}</span><span class="stage-text"><span class="stage-name">Faixa ${belt.name}</span><span class="stage-category">${belt.category}</span></span><span class="stage-status">${state(index)}</span>${icons.chevron}
-    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}"><div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':reached(index)?'PARTE DA SUA HISTÓRIA':'UM NOVO HORIZONTE'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div></div>`;
-  card.querySelector('.focus-copy p').textContent=belt.summary;
+  card.innerHTML=`<button type="button" class="stage-trigger" ${locked?'disabled':''} aria-expanded="false" aria-controls="panel-${index+1}" id="trigger-${index+1}">
+    <span class="swatch" aria-hidden="true">${number(index)}</span><span class="stage-text"><span class="stage-name">Faixa ${belt.name}</span><span class="stage-category">${belt.category}</span></span><span class="stage-status">${state(index)}</span>${locked?icons.lock:icons.chevron}
+    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}" inert>${locked?'':`<div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div>`}</div>`;
+  if(!locked){
+    card.querySelector('.focus-copy p').textContent=belt.summary;
+    card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
+  }
   card.querySelector('.stage-trigger').addEventListener('click',()=>select(index,false));
-  card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
   stage.append(card);timeline.append(stage);stages.push(stage);
 });
 function select(index,scroll){
-  selected=Math.max(0,Math.min(12,index));
+  if(!reached(index))return;
+  selected=index;
   stages.forEach((stage,i)=>{
     stage.classList.toggle('selected',i===selected);
     stage.querySelector('.stage-trigger').setAttribute('aria-expanded',String(i===selected));
@@ -91,13 +97,14 @@ function select(index,scroll){
   });
   document.querySelector('#position').textContent=number(selected);
   document.querySelector('#selected-label').textContent=`Faixa ${belts[selected].name}`;
-  previous.disabled=selected===0;next.disabled=selected===12;
+  previous.disabled=adjacent(-1)===undefined;next.disabled=adjacent(1)===undefined;
   const box=dockButtons[selected].getBoundingClientRect();
   const frame=dock.parentElement.getBoundingClientRect();
   dock.parentElement.scrollTo({left:dock.parentElement.scrollLeft+box.left-frame.left-(frame.width-box.width)/2,behavior:'auto'});
   if(scroll) stages[selected].scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
 }
 function openDetails(index,opener){
+  if(!reached(index))return;
   const belt=belts[index];dialogOpener=opener;
   dialog.style.setProperty('--accent',belt.color);dialog.style.setProperty('--swatch-ink',belt.ink);
   document.querySelector('#dialog-eyebrow').textContent=`Faixa ${index+1} de 13 · ${state(index)}`;
@@ -118,10 +125,10 @@ document.querySelector('.dialog-close').addEventListener('click',closeDetails);
 document.querySelector('#back-to-journey').addEventListener('click',closeDetails);
 dialog.addEventListener('click',event=>{if(event.target!==dialog)return;const box=dialog.getBoundingClientRect();if(event.clientX<box.left||event.clientX>box.right||event.clientY<box.top||event.clientY>box.bottom)closeDetails();});
 document.querySelector('#resume').addEventListener('click',()=>select(current,true));
-previous.addEventListener('click',()=>select(selected-1,true));
-next.addEventListener('click',()=>select(selected+1,true));
+previous.addEventListener('click',()=>select(adjacent(-1),true));
+next.addEventListener('click',()=>select(adjacent(1),true));
 dock.addEventListener('keydown',event=>{
-  const keys={ArrowRight:Math.min(selected+1,12),ArrowLeft:Math.max(selected-1,0),Home:0,End:12};
+  const keys={ArrowRight:adjacent(1),ArrowLeft:adjacent(-1),Home:available[0],End:available[available.length-1]};
   if(Object.hasOwn(keys,event.key)){event.preventDefault();select(keys[event.key],true);dockButtons[selected].focus({preventScroll:true});}
 });
 select(current,false);
