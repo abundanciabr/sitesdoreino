@@ -9,6 +9,7 @@ import pytest
 from django.conf import settings
 
 from apps.gamificacao.models import JornadaPessoal, Pessoa, RecebimentoDeclarado
+from apps.core.sessao import ConfiguracaoAusente, IdentidadeIndisponivel
 
 
 pytestmark = pytest.mark.django_db
@@ -133,3 +134,66 @@ def test_total_confirmado_pendente_e_correcao_preservada(client, monkeypatch):
     assert dados["etapas"][1]["alcancada"] is False
     assert RecebimentoDeclarado.objects.count() == 6
     assert JornadaPessoal.objects.get(pessoa=aluna, site_id=SITE).revisao == 0
+
+
+def test_minha_trilha_usa_somente_a_sessao_e_o_site_local(client, monkeypatch):
+    a = pessoa("aluna-a")
+    b = pessoa("aluna-b")
+    JornadaPessoal.objects.create(pessoa=a, site_id=SITE, declaracoes={"2": True})
+    JornadaPessoal.objects.create(pessoa=b, site_id=SITE, declaracoes={"3": True})
+    JornadaPessoal.objects.create(pessoa=a, site_id="outro-site", declaracoes={"4": True})
+
+    vistos = []
+
+    def sessao(cookie):
+        vistos.append(cookie)
+        return {"autenticado": True, "id": "aluna-a" if cookie.endswith("=A") else "aluna-b"}
+
+    monkeypatch.setattr("apps.core.trilha_api._sessao", sessao)
+    for cookie, id_esperado, ordem in (("meshcraft_sessao=A", "aluna-a", 2),
+                                       ("meshcraft_sessao=B", "aluna-b", 3)):
+        resposta = client.get(
+            "/api/gamificacao/minha-trilha",
+            {"pessoa_id": "outra-pessoa", "site_id": "outro-site", "aluno": "outro"},
+            HTTP_COOKIE=cookie, HTTP_AUTHORIZATION="Bearer token-v4",
+        )
+        assert resposta.status_code == 200
+        dados = resposta.json()
+        assert (dados["pessoa_id"], dados["site_id"], dados["atual_ordem"]) == (
+            id_esperado, SITE, ordem,
+        )
+        assert resposta["Cache-Control"] == "private, no-store"
+        assert resposta["X-Robots-Tag"] == "noindex, nofollow"
+    assert vistos == ["meshcraft_sessao=A", "meshcraft_sessao=B"]
+    assert JornadaPessoal.objects.count() == 3
+    assert consultar(client, pessoa_id="aluna-a").status_code == 200
+
+
+def test_minha_trilha_fecha_sem_sessao_bearer_ou_identidade(client, monkeypatch):
+    url = "/api/gamificacao/minha-trilha"
+    assert client.get(url, HTTP_AUTHORIZATION="Bearer token-v4").status_code == 403
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A").status_code == 401
+    assert client.get(
+        url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer errado",
+    ).status_code == 401
+
+    monkeypatch.setattr("apps.core.trilha_api._sessao", lambda cookie: {"autenticado": False})
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer token-v4").status_code == 403
+    monkeypatch.setattr("apps.core.trilha_api._sessao", lambda cookie: {"autenticado": True, "id": ""})
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer token-v4").status_code == 403
+
+    def indisponivel(cookie):
+        raise IdentidadeIndisponivel("fora do ar")
+
+    monkeypatch.setattr("apps.core.trilha_api._sessao", indisponivel)
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer token-v4").status_code == 503
+
+    def sem_configuracao(cookie):
+        raise ConfiguracaoAusente("sem configuracao")
+
+    monkeypatch.setattr("apps.core.trilha_api._sessao", sem_configuracao)
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer token-v4").status_code == 503
+
+    monkeypatch.delenv("SITE_ID")
+    assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A", HTTP_AUTHORIZATION="Bearer token-v4").status_code == 503
+    assert JornadaPessoal.objects.count() == 0
