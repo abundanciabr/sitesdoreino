@@ -282,8 +282,24 @@ from apps.core.nps_acoes import arquivo, confirmar_exclusao, excluir
 from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento as andamento_satisfacao, andamento_script as script_satisfacao
 
 from apps.atendimento import views as suporte
+from apps.atendimento import gestao as suporte_gestao
+from apps.atendimento import indicadores as suporte_indicadores
 
 urlpatterns = [
+    path("equipe/atendimento/conversas/", suporte.fila, name="suporte_conversas_equipe"),
+    path("equipe/atendimento/triagem/", suporte_gestao.triagem, name="suporte_triagem_equipe"),
+    path("equipe/atendimento/alunos/", suporte_gestao.alunos, name="suporte_alunos_equipe"),
+    path("equipe/atendimento/desempenho/", suporte_indicadores.desempenho, name="suporte_desempenho_equipe"),
+    path("equipe/atendimento/supervisor/", suporte_indicadores.supervisor, name="suporte_supervisor_equipe"),
+    path("equipe/atendimento/<uuid:conversa_id>/aluno/", suporte_gestao.aluno, name="suporte_aluno_equipe"),
+    path("atendimento/conversas/", suporte.fila, name="suporte_conversas_admin"),
+    path("atendimento/triagem/", suporte_gestao.triagem, name="suporte_triagem_admin"),
+    path("atendimento/alunos/", suporte_gestao.alunos, name="suporte_alunos_admin"),
+    path("atendimento/desempenho/", suporte_indicadores.desempenho, name="suporte_desempenho_admin"),
+    path("atendimento/supervisor/", suporte_indicadores.supervisor, name="suporte_supervisor_admin"),
+    path("atendimento/<uuid:conversa_id>/aluno/", suporte_gestao.aluno, name="suporte_aluno_admin"),
+    path("atendimento/chat/arquivo/<str:nome>", suporte.chat_arquivo, name="suporte_arquivo_admin"),
+
     path("equipe/atendimento/", suporte.fila, name="atendimento_equipe"),
     path("equipe/atendimento/chat/", suporte.chat_equipe, name="atendimento_chat_equipe"),
     path("equipe/atendimento/chat/arquivo/<str:nome>", suporte.chat_arquivo, name="atendimento_chat_arquivo"),

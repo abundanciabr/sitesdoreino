@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% load nomes_admin %}
+{% block titulo %}{% block suporte_titulo %}Suporte{% endblock %}{% endblock %}
+{% block corpo %}
+<link rel="stylesheet" href="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.css?v=2">
+<div class="sg-shell">
+  <aside class="sg-sidebar" aria-label="Menu do suporte">
+    <a class="sg-marca" href="{{ suporte_prefixo }}/">✦ <strong>Meshcraft</strong><small>Suporte interno</small></a>
+    <nav aria-label="Gestão do suporte">
+      <a href="{{ suporte_prefixo }}/supervisor/" {% if '/supervisor/' in request.path %}aria-current="page"{% endif %}>◈ <span>Visão geral</span></a>
+      <a href="{{ suporte_prefixo }}/" {% if request.path == suporte_prefixo|add:'/' %}aria-current="page"{% endif %}>☷ <span>Fila</span></a>
+      <a href="{{ suporte_prefixo }}/triagem/" {% if '/triagem/' in request.path %}aria-current="page"{% endif %}>▤ <span>Triagem</span></a>
+      <a href="{{ suporte_prefixo }}/conversas/" {% if '/conversas/' in request.path or '/aluno/' in request.path %}aria-current="page"{% endif %}>▢ <span>Conversas</span></a>
+      <a href="{{ suporte_prefixo }}/alunos/" {% if '/alunos/' in request.path %}aria-current="page"{% endif %}>♙ <span>Alunos</span></a>
+      <a href="{{ suporte_prefixo }}/desempenho/" {% if '/desempenho/' in request.path %}aria-current="page"{% endif %}>▥ <span>Desempenho</span></a>
+      <a href="{{ suporte_prefixo }}/base/">▧ <span>Base de apoio</span></a>
+      {% if not admin.equipe_apenas %}<a href="/admin/atendimento/configuracao/">⚙ <span>Configuração</span></a>{% endif %}
+    </nav>
+  </aside>
+  <div class="sg-main">
+    <header class="sg-topbar"><a href="/admin/equipe/">← Voltar à equipe</a><span class="sg-online"><i></i> Área interna</span><span>{{ admin.nome|default:'Equipe' }}</span></header>
+    <main class="sg-content">
+      {% if erro %}<div class="sg-alerta" role="alert">{{ erro }}</div>{% endif %}
+      {% block suporte_conteudo %}{% endblock %}
+    </main>
+  </div>
+</div>
+<script defer src="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.js?v=2"></script>
+{% endblock %}
