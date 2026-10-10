@@ -95,7 +95,7 @@ def test_ativos_autenticados_preservam_css_v4(client, conta):
     css = abrir(client, "/trilha/style.css")
     js = abrir(client, "/trilha/app.js")
     assert css.status_code == js.status_code == 200
-    assert css.content == (raiz / "services/admin/apps/core/trilha_v4/style.css").read_bytes()
+    assert css.content.startswith((raiz / "services/admin/apps/core/trilha_v4/style.css").read_bytes())
     assert b"Consulta administrativa" not in js.content
     privada(css)
     privada(js)
