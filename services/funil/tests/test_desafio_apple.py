@@ -25,8 +25,10 @@ def test_landing_e_inscricao_do_mesmo_curso(client,rede,desafio,barra):
     html=r.content.decode()
     assert r.status_code==200
     assert 'desafio-apple/pagina.css' in html
-    assert 'R$ 147,00' in html
-    assert f'href="/checkout/{SLUG}/?utm_source=instagram&amp;utm_campaign=desafio"' in html
+    assert 'R$ 27,00' in html
+    assert 'Curso Primeiros Passos com 3d no Blender' in html
+    assert 'R$ 147,00' not in html
+    assert 'href="/checkout/curso-primeiros-passos-no-blender/?utm_source=instagram&amp;utm_campaign=desafio"' in html
     assert 'id="a-oferta"' in html
     assert 'data-open-video' in html
     assert 'Demonstração de modelagem' in html

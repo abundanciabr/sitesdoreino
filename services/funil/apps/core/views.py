@@ -300,6 +300,10 @@ def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA, checkout_slug=None)
         and request.get_host().split(":")[0].lower() == "meshcraft.top"
         else "funil/oferta.html"
     )
+    # Esta landing vende a oferta Blender do checkout Appmax, por R$27,
+    # conforme o pedido do mantenedor; a antiga oferta Roblox é só sua base.
+    if template == "funil/desafio_apple.html":
+        checkout_slug = "curso-primeiros-passos-no-blender"
     resposta = render(
         request,
         template,
@@ -309,6 +313,7 @@ def pagina_de_oferta(request, slug=SLUG_DA_PAGINA_DE_OFERTA, checkout_slug=None)
             "contexto_telemetria": contexto_telemetria,
             "oferta": oferta,
             "preco_formatado": (
+                "27,00" if template == "funil/desafio_apple.html" and oferta else
                 f"{oferta['price_cents'] // 100:,}".replace(",", ".")
                 + f",{oferta['price_cents'] % 100:02d}" if oferta else ""
             ),

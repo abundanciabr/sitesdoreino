@@ -7,7 +7,7 @@ from tests.conftest import HOST_MESH, SITE_MESH
 
 
 @pytest.mark.parametrize("slug,nome,centavos,preco", [
-    ("desafio-como-ganhar-em-dolar-com-roblox", "Desafio Como Ganhar em Dólar com Roblox", 14700, "147,00"),
+    ("desafio-como-ganhar-em-dolar-com-roblox", "Curso Primeiros Passos com 3d no Blender", 2700, "27,00"),
     ("primeiros-dolares-com-roblox", "Curso Primeiros Dólares com Roblox", 157900, "1.579,00"),
 ])
 @pytest.mark.parametrize("barra", ["", "/"])
@@ -34,4 +34,5 @@ def test_url_mostra_produto_preco_e_checkout_corretos(client, rede, monkeypatch,
     assert resposta.status_code == 200
     assert nome in html
     assert f"R$ {preco}" in html
-    assert f'href="/checkout/{slug}/?utm_source=instagram"' in html
+    checkout_slug = "curso-primeiros-passos-no-blender" if slug == "desafio-como-ganhar-em-dolar-com-roblox" else slug
+    assert f'href="/checkout/{checkout_slug}/?utm_source=instagram"' in html
