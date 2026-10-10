@@ -334,6 +334,15 @@ def pagina_de_oferta_roblox(request, slug):
     return pagina_de_oferta(request, slug=slug)
 
 
+
+@require_safe
+def pagina_de_oferta_blender(request):
+    """Novo endereço público; preserva a identidade da oferta e das matrículas."""
+    if request.get_host().split(":")[0].lower() != "meshcraft.top":
+        raise Http404("página disponível apenas em meshcraft.top")
+    return pagina_de_oferta(request, slug="desafio-como-ganhar-em-dolar-com-roblox")
+
+
 def _braco_na_tela(request, pagina: dict, blocos: list) -> dict:
     """Sorteia o braço do visitante e põe o texto dele no slot em teste.
     Devolve `{experimento_id, variante_id}`, ou `{}` se não há experimento."""
