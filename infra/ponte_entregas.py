@@ -9,12 +9,14 @@ ensaio_entregas. Nenhuma acao aceita caminho ou comando fornecido pelo cliente.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shlex
+import signal
 import socket
 import struct
 import subprocess
@@ -35,6 +37,24 @@ class ErroPonte(RuntimeError):
     def __init__(self, motivo, categoria="infra"):
         super().__init__(motivo)
         self.categoria = categoria
+
+
+class PreparacaoInterrompida(BaseException):
+    """Encerra a preparação pelo desempilhamento dos finally do ensaio."""
+
+
+@contextmanager
+def _cancelamento_preparacao():
+    anterior = signal.getsignal(signal.SIGTERM)
+
+    def interromper(_sinal, _quadro):
+        raise PreparacaoInterrompida()
+
+    signal.signal(signal.SIGTERM, interromper)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, anterior)
 
 
 class ClientePonte:
@@ -469,6 +489,9 @@ class Autoridade:
                  "publicar": self.publicar}
         if acao not in acoes:
             raise ErroPonte("acao nao permitida", "recusa")
+        if acao == "preparar":
+            with _cancelamento_preparacao():
+                return self.preparar(id_, candidata, celula)
         return (self.espelhar(id_, candidata) if acao == "espelhar"
                 else acoes[acao](id_, candidata, celula))
 
@@ -495,6 +518,8 @@ def servir(autoridade=None, esperado=SOCKET, usuario="integrador"):
                 if not linha or len(linha) > 4096:
                     raise ErroPonte("pedido ausente ou longo", "recusa")
                 resposta = autoridade.atender(json.loads(linha))
+            except PreparacaoInterrompida:
+                return  # a conexão fecha; o cliente pode retomar após novo socket activation
             except ErroPonte as erro:
                 resposta = {"ok": False, "erro": str(erro)[:180], "categoria": erro.categoria}
             except Exception as erro:
