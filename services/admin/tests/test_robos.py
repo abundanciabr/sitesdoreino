@@ -348,12 +348,15 @@ def test_simulacao_retomada_nao_repete_a_acao_ja_feita():
     assert execucao.registros.filter(texto__startswith="Retomada no servidor").exists()
 
 
-def test_simulacao_alteracao_com_versao_velha_e_recusada():
+def test_simulacao_alteracao_com_versao_velha_e_recusada(monkeypatch):
     livia = _pessoa("Lívia", LIVIA)
     robo = trabalhos.robo_de(livia)
     tarefa, _ = operacoes.criar_tarefa({"titulo": "Original"}, "Lívia")
     versao_lida = operacoes.versao_de(tarefa)
     # Outra pessoa altera pelo painel depois da leitura do robô.
+    # No Windows duas escritas rápidas podem receber o mesmo instante.
+    depois = tarefa.alterada_em + timedelta(seconds=1)
+    monkeypatch.setattr(operacoes.timezone, "now", lambda: depois)
     operacoes.alterar_tarefa(tarefa.id, {"titulo": "Mudada por outra pessoa"}, "Ryan")
     execucao = Execucao.objects.create(robo=robo, tipo=Execucao.Tipo.CONVERSA, pedido_por_membro_id=livia.id)
     ctx = ferramentas.Contexto(robo=robo, membro=livia, execucao=execucao)

@@ -27,6 +27,7 @@ def test_pedido_deduplicado_e_analise_compartilhada():
     fontes = {"consultado_em": "2026-10-06T12:00:00-03:00", "negocio": {
         "financeiro": {"estado": "medido", "valor": 1},
         "alunos": {"estado": "zero", "valor": 0}, "cursos": {"estado": "medido", "valor": 2}},
+        "robos_ia": {"estado": "medido"},
         "experimentos": {"estado": "medido", "itens": []},
         "paginas_publicas": {"itens": [{"estado": "medido", "http": 200}]}}
     vistos = []
@@ -85,6 +86,24 @@ def test_redacao_e_host():
     assert "ana@example.com" not in super_equipe._sem_dados_pessoais("ana@example.com")
     with pytest.raises(ValueError):
         super_equipe._host_proprio("example.com")
+
+
+@pytest.mark.parametrize("status", [301, 302, 403, 404, 500, None])
+def test_falha_publica_aponta_pagina_e_status(status):
+    fontes = {"experimentos": {"estado": "medido"}, "robos_ia": {"estado": "medido"},
+              "paginas_publicas": {"itens": [{"estado": "medido", "http": status,
+                                               "url": "https://meshcraft.top/"}]}}
+    faltas = super_equipe._pendencias(fontes)
+    assert len(faltas) == 1
+    assert "https://meshcraft.top/" in faltas[0]
+    assert (f"HTTP {status}" if status else "sem resposta") in faltas[0]
+
+
+@pytest.mark.parametrize("fonte", [{}, {"estado": "indisponivel"}])
+def test_fonte_de_ia_ausente_nao_pode_concluir(fonte):
+    fontes = {"experimentos": {"estado": "medido"}, "robos_ia": fonte,
+              "paginas_publicas": {"itens": [{"estado": "medido", "http": 200}]}}
+    assert super_equipe._pendencias(fontes) == ["Robôs de IA: fonte indisponível ou não consultada."]
 
 
 @pytest.mark.django_db

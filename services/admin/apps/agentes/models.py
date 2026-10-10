@@ -454,3 +454,58 @@ class AnaliseSatisfacao(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["site_id", "aluno_id", "avaliacao_id"], name="satisfacao_um_caso")]
+
+
+class RotinaSuperEquipe(models.Model):
+    """Relógio persistente; desligar o navegador não interrompe a observação."""
+
+    host = models.CharField(max_length=100, unique=True)
+    site_id = models.CharField(max_length=100, blank=True, default="")
+    ativa = models.BooleanField(default=True)
+    proxima_em = models.DateTimeField(null=True)
+    observada_em = models.DateTimeField(null=True)
+    posse = models.CharField(max_length=36, blank=True, default="")
+    ocupada_ate = models.DateTimeField(null=True)
+    assinatura = models.CharField(max_length=64, blank=True, default="")
+    ultimo_erro = models.CharField(max_length=300, blank=True, default="")
+    ultimo_trabalho = models.ForeignKey(Execucao, null=True, on_delete=models.SET_NULL)
+    executor_em = models.DateTimeField(null=True)
+
+
+class MelhoriaSuperEquipe(models.Model):
+    class Situacao(models.TextChoices):
+        PENDENTE = "pendente", "Pendente de execução"
+        EXECUTANDO = "executando", "Em execução"
+        PUBLICANDO = "publicando", "Acompanhando publicação"
+        MANTENEDOR = "mantenedor", "Precisa do mantenedor"
+        RESOLVIDA = "resolvida", "Resolvida e conferida"
+
+    rotina = models.ForeignKey(RotinaSuperEquipe, on_delete=models.PROTECT, related_name="melhorias")
+    chave = models.CharField(max_length=64)
+    titulo = models.CharField(max_length=300)
+    prioridade = models.PositiveSmallIntegerField(default=2)
+    situacao = models.CharField(max_length=20, choices=Situacao.choices, default=Situacao.PENDENTE)
+    evidencia = models.JSONField(default=dict)
+    resultado = models.TextField(blank=True, default="")
+    trabalho = models.ForeignKey(Execucao, null=True, on_delete=models.SET_NULL)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    observada_em = models.DateTimeField()
+    resolvida_em = models.DateTimeField(null=True)
+    posse = models.CharField(max_length=36, blank=True, default="")
+    ocupada_ate = models.DateTimeField(null=True)
+    entrega = models.CharField(max_length=12, blank=True, default="")
+    custo_externo_usd = models.DecimalField(max_digits=12, decimal_places=6, null=True)
+
+    class Meta:
+        ordering = ["prioridade", "criada_em", "id"]
+        constraints = [models.UniqueConstraint(fields=["rotina", "chave"], name="super_equipe_uma_melhoria")]
+
+
+class EventoSuperEquipe(models.Model):
+    melhoria = models.ForeignKey(MelhoriaSuperEquipe, on_delete=models.PROTECT, related_name="eventos")
+    momento = models.DateTimeField(auto_now_add=True)
+    situacao = models.CharField(max_length=20)
+    texto = models.TextField()
+
+    class Meta:
+        ordering = ["momento", "id"]
