@@ -45,6 +45,8 @@ paga.
 
 {% block conteudo %}
 {% if entrou %}
+  {% include "gamificacao/_inicio.html" %}
+  {% if jornada_admin %}
   {% if faixas %}{% include "gamificacao/jornada.html" %}{% endif %}
 
   <section class="degrau">
@@ -93,6 +95,9 @@ paga.
       <li class="miudo">Em <a href="{% url 'medalhas' %}">Medalhas</a> cada medalha diz como se ganha e onde você está no caminho até ela.</li>
     </ul>
   </nav>
+  {% else %}
+  <section class="aviso"><h2>Suas conquistas continuam com você</h2><p>Sua faixa atual é {{ faixas.atual.faixa }}{% if faixas.atual.grau %}, {{ faixas.atual.grau }} grau{% endif %}. Seus trabalhos e avanços anteriores permanecem guardados.</p><a class="botao-jornada" href="/trilha/">Ver minha jornada completa</a></section>
+  {% endif %}
 {% else %}
   <section class="convite">
     <h1>Suas conquistas ficam aqui</h1>

@@ -4,7 +4,7 @@ import io
 from pathlib import PurePosixPath
 
 from django.db import transaction
-from django.http import FileResponse, JsonResponse
+from django.http import FileResponse, JsonResponse, HttpResponse
 from django.middleware.csrf import get_token
 from ninja.errors import HttpError
 
@@ -44,13 +44,17 @@ def _arquivo(arquivo):
 
 def _dados(request, pessoa, site):
     jornada = situacao(pessoa, site)
+    from apps.gamificacao.inicio import para_tela
     return {
         'pessoa_id': pessoa, 'site_id': site, 'csrf': get_token(request),
         'revisao': jornada['revisao'], 'atual_ordem': jornada['atual']['ordem'],
         'meta_cents': jornada['meta_cents'], 'proposito': jornada['proposito'],
         'chave': jornada['chave'], 'total': jornada['total'],
+        'inicio': para_tela(JornadaPessoal.objects.filter(pessoa_id=pessoa, site_id=site).first()),
         'etapas': [{k: p[k] for k in ('ordem', 'nome', 'conquista', 'alcancada')} for p in jornada['lista']],
         'anexos': [{'id': a.id, 'passo': a.passo, 'nome': a.nome, 'tamanho': a.tamanho,
+                    'aprendi': a.aprendi, 'duvida': a.duvida,
+                    'previa': f'/conquistas/inventario/arquivos/{a.id}/?previa=1' if PurePosixPath(a.nome).suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'} else None,
                     'criado_em': a.criado_em.isoformat(),
                     'url': f'/conquistas/inventario/arquivos/{a.id}/'}
                    for a in AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site).defer('conteudo').order_by('-id')],
@@ -69,7 +73,7 @@ def inventario(request):
             if request.POST.get('contexto_pessoa', pessoa) != pessoa or request.POST.get('contexto_site', site) != site:
                 raise HttpError(403, 'Sua sessão mudou. Reabra o inventário antes de continuar.')
             acao = request.POST.get('acao')
-            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento'):
+            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento', 'inicio-motivo', 'inicio-plano'):
                 raise ValueError('Escolha um registro do inventário.')
             preparado = None
             if acao in ('anexo', 'declaracao'):
@@ -92,15 +96,32 @@ def inventario(request):
                 perfil_de(pessoa, site)
                 JornadaPessoal.objects.get_or_create(pessoa_id=pessoa, site_id=site)
                 jornada = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa, site_id=site)
+                if acao == 'anexo' and str(jornada.revisao) != request.POST.get('revisao'):
+                    raise ValueError('Seu registro mudou em outra aba. Suas respostas continuam na tela; confira a versão salva antes de tentar novamente.')
+                if acao in ('inicio-motivo', 'inicio-plano'):
+                    from apps.gamificacao.inicio import salvar_inicio
+                    salvar_inicio(jornada, request.POST)
                 if preparado:
+                    from apps.gamificacao.inicio import texto
                     nome, corpo, sha = preparado
-                    AnexoDaJornada.objects.get_or_create(pessoa_id=pessoa, site_id=site, passo=passo, sha256=sha,
-                        defaults={'nome': nome, 'conteudo': corpo, 'tamanho': len(corpo)})
+                    notas = {campo: texto(request.POST, campo, 500) for campo in ('aprendi', 'duvida')}
+                    anexo, criado = AnexoDaJornada.objects.get_or_create(pessoa_id=pessoa, site_id=site, passo=passo, sha256=sha,
+                        defaults={'nome': nome, 'conteudo': corpo, 'tamanho': len(corpo),
+                                  **notas})
+                    if not criado:
+                        atualizadas = [campo for campo, valor in notas.items() if valor and valor != getattr(anexo, campo)]
+                        for campo in atualizadas:
+                            setattr(anexo, campo, notas[campo])
+                        if atualizadas:
+                            anexo.save(update_fields=atualizadas)
+                    if acao == 'anexo' and (criado or atualizadas):
+                        jornada.revisao += 1
+                        jornada.save(update_fields=['revisao', 'atualizada_em'])
                 if acao == 'declaracao' and passo == 2 and not AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).exists():
                     raise ValueError('Anexe seu primeiro item 3D ou uma imagem dele antes de concluir.')
                 # Repetir o clique não cria nova declaração nem novo bônus.
                 repetida = acao == 'declaracao' and bool(jornada.declaracoes.get(str(passo)))
-                if acao != 'anexo' and not repetida:
+                if acao not in ('anexo', 'inicio-motivo', 'inicio-plano') and not repetida:
                     salvar(pessoa, site, request.POST, arquivo=request.FILES.get('print'))
         resposta = JsonResponse(_dados(request, pessoa, site))
     except HttpError as erro:
@@ -119,6 +140,20 @@ def arquivo_do_inventario(request, anexo_id):
     anexo = AnexoDaJornada.objects.filter(id=anexo_id, pessoa_id=pessoa, site_id=site).first()
     if anexo is None:
         return _privada(JsonResponse({'detail': 'Arquivo não encontrado.'}, status=404))
+    if request.GET.get('previa') == '1':
+        from PIL import Image, UnidentifiedImageError
+        try:
+            with Image.open(io.BytesIO(bytes(anexo.conteudo))) as imagem:
+                if imagem.format not in ('PNG', 'JPEG', 'WEBP') or imagem.width * imagem.height > 20_000_000:
+                    raise ValueError
+                imagem.thumbnail((1000, 1000))
+                destino = io.BytesIO()
+                imagem.convert('RGB').save(destino, format='PNG')
+            resposta = HttpResponse(destino.getvalue(), content_type='image/png')
+            resposta['X-Content-Type-Options'] = 'nosniff'
+            return _privada(resposta)
+        except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError, Image.DecompressionBombWarning):
+            return _privada(JsonResponse({'detail': 'Prévia indisponível; seu arquivo continua guardado.'}, status=404))
     resposta = FileResponse(io.BytesIO(bytes(anexo.conteudo)), as_attachment=True,
                             filename=anexo.nome, content_type='application/octet-stream')
     resposta['X-Content-Type-Options'] = 'nosniff'

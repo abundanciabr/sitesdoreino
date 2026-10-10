@@ -1779,6 +1779,7 @@ class JornadaPessoal(models.Model):
     site_id = id_do_site()
     meta_cents = models.PositiveIntegerField(null=True, blank=True)
     proposito = models.CharField(max_length=280, blank=True, default="")
+    inicio = models.JSONField(default=dict, blank=True)
     apoio = models.CharField(max_length=12, default="guiado")
     declaracoes = models.JSONField(default=dict)
     celebracao_pendente = models.JSONField(default=dict)
@@ -1886,6 +1887,8 @@ class AnexoDaJornada(models.Model):
     conteudo = models.BinaryField()
     tamanho = models.PositiveIntegerField()
     sha256 = models.CharField(max_length=64)
+    aprendi = models.CharField(max_length=500, blank=True, default="")
+    duvida = models.CharField(max_length=500, blank=True, default="")
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
