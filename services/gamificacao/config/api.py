@@ -2,6 +2,7 @@
 from ninja import NinjaAPI
 
 from apps.core.api import router as gamificacao_router
+from apps.core.trilha_api import router as trilha_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker — é o endereço que outra célula
@@ -54,3 +55,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", gamificacao_router)
+api.add_router("", trilha_router)

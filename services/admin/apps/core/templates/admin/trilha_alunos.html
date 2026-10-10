@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+
+{% block titulo %}Trilha dos alunos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Administração</a>
+  <h1>Trilha dos alunos</h1>
+  <p class="subtitulo">Escolha um aluno para ver o progresso registrado no site.</p>
+  <form class="peneira" method="get" action="{% url 'trilha_v4' %}">
+    <div class="campo"><label for="trilha-q">Buscar por nome ou escola</label><input id="trilha-q" type="search" name="q" value="{{ q }}" maxlength="120"></div>
+    <button class="sim" type="submit">Buscar</button>
+  </form>
+  {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+  {% if alunos %}
+    <div class="cartoes">
+      {% for aluno in alunos %}
+        <div class="cartao"><div class="rotulo"><a href="{{ aluno.url }}">{{ aluno.nome }}</a></div>
+          <div class="nota">{{ aluno.site_id }} · {{ aluno.matriculas }} matrícula{{ aluno.matriculas|pluralize }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% elif not erro %}<p>Nenhum aluno corresponde à busca.</p>{% endif %}
+</div>
+{% endblock %}
