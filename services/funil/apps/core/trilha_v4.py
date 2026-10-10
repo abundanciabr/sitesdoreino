@@ -21,8 +21,8 @@ def _privada(resposta):
     return resposta
 
 
-def _entrada():
-    return _privada(HttpResponseRedirect(reverse("entrar") + "?" + urlencode({"next": "/trilha/"})))
+def _entrada(destino="/trilha/"):
+    return _privada(HttpResponseRedirect(reverse("entrar") + "?" + urlencode({"next": destino})))
 
 
 def _indisponivel():
@@ -58,21 +58,23 @@ def _sessao(cookie):
 def trilha_v4(request, arquivo="index.html"):
     if request.get_host().split(":")[0].lower() != "meshcraft.top":
         raise Http404
-    if arquivo not in {"index.html", "style.css", "app.js"}:
+    if arquivo not in {"index.html", "style.css", "app.js", "inventario.html", "inventario.css", "inventario.js"}:
         raise Http404
+    destino = "/trilha/inventario/" if arquivo.startswith("inventario") else "/trilha/"
     cookie = request.META.get("HTTP_COOKIE", "")
     if not cookie:
-        return _entrada()
+        return _entrada(destino)
     estado, sessao = _sessao(cookie)
     if estado == "visitante":
-        return _entrada()
+        return _entrada(destino)
     if estado != "ok":
         return _indisponivel()
-    if arquivo != "index.html":
-        tipo = "text/css" if arquivo == "style.css" else "text/javascript"
+    if not arquivo.endswith(".html"):
+        tipo = "text/css" if arquivo.endswith(".css") else "text/javascript"
         conteudo = Path(__file__).with_name("trilha_v4_assets").joinpath(arquivo).read_bytes()
         return _privada(HttpResponse(conteudo, content_type=tipo + "; charset=utf-8"))
     nome = sessao.get("nome_exibido")
     nome = nome.strip().split()[0][:100] if isinstance(nome, str) and nome.strip() else "Aluno"
     trilha = {"aluno": {"nome": nome}, "pessoa_id": sessao["id"], "site_id": request.site["id"]}
-    return _privada(render(request, "funil/trilha_v4.html", {"trilha": trilha}))
+    template = "funil/inventario.html" if arquivo == "inventario.html" else "funil/trilha_v4.html"
+    return _privada(render(request, template, {"trilha": trilha}))

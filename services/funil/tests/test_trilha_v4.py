@@ -36,7 +36,7 @@ def privada(resposta):
 
 @pytest.mark.parametrize("caminho", ["/trilha/", "/trilha/style.css", "/trilha/app.js"])
 def test_visitante_entra_na_conta_e_volta_para_a_trilha(client, rede, caminho):
-    resposta = client.get(caminho, HTTP_HOST=HOST_MESH)
+    resposta = client.get(caminho, HTTP_HOST=HOST_MESH, HTTP_COOKIE="")
     assert resposta.status_code == 302
     assert urlsplit(resposta["Location"]).path == "/login"
     assert parse_qs(urlsplit(resposta["Location"]).query) == {"next": ["/trilha/"]}
@@ -121,3 +121,13 @@ def test_endereco_nao_divulgado_no_site(client, rede, caminho):
 
 def test_nao_altera_progresso(client, conta):
     assert client.post("/trilha/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).status_code == 405
+
+@pytest.mark.parametrize('caminho', ['/trilha/inventario/', '/trilha/inventario.css', '/trilha/inventario.js'])
+def test_inventario_privado_acessivel_apenas_pela_sessao(client, conta, caminho):
+    resposta = abrir(client, caminho)
+    assert resposta.status_code == 200
+    privada(resposta)
+    resposta = client.get(caminho, HTTP_HOST=HOST_MESH, HTTP_COOKIE="")
+    assert resposta.status_code == 302
+    assert parse_qs(urlsplit(resposta['Location']).query) == {'next': ['/trilha/inventario/']}
+    assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404

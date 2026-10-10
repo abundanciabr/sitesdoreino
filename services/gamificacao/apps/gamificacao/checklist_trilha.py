@@ -1,6 +1,6 @@
 """Checklist de leitura da jornada, sem criar nem alterar conquistas."""
 
-from apps.gamificacao.models import FaixaDoAluno, RecebimentoDeclarado
+from apps.gamificacao.models import FaixaDoAluno, RecebimentoDeclarado, AnexoDaJornada
 
 
 def _item(ordem, titulo, estado, detalhe, acao=None, *, sufixo=None):
@@ -24,6 +24,7 @@ def _dinheiro(cents):
 
 def montar_checklists(pessoa_id, site_id, jornada):
     """A conquista vem só de situacao; eventos e registros apenas contextualizam."""
+    tem_anexo = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).exists()
     etapas = {p["ordem"]: p for p in jornada["lista"]}
     faixas = {
         faixa.ordem: faixa
@@ -56,21 +57,21 @@ def montar_checklists(pessoa_id, site_id, jornada):
         elif ordem in (2, 3, 4):
             faixa = faixas.get(ordem)
             origem = {2: "item", 3: "sandbox", 4: "fila"}[ordem]
-            iniciou = bool(faixa and faixa.origem == origem and faixa.estado == "alcancada")
+            iniciou = bool(faixa and faixa.origem == origem and faixa.estado == "alcancada") or (ordem == 2 and tem_anexo)
             titulo = {
                 2: "Concluir meu primeiro item 3D",
                 3: "Concluir e entregar uma prática no Sandbox",
                 4: "Concluir e entregar meu trabalho real na Fila",
             }[ordem]
             detalhe = {
-                2: "Um item 3D foi salvo; a conclusão do primeiro item ainda não foi registrada.",
+                2: "Um arquivo foi guardado no inventário; a conclusão ainda não foi registrada." if tem_anexo else "Um item 3D foi salvo; a conclusão do primeiro item ainda não foi registrada.",
                 3: "Uma prática no Sandbox foi iniciada; a entrega concluída ainda não foi registrada.",
                 4: "Um trabalho da Fila foi aceito; a entrega concluída ainda não foi registrada.",
             }[ordem] if iniciou else "Ainda não há registro de conclusão desta etapa."
             if alcancada:
                 detalhe = "Resultado registrado na jornada."
             acao = None if alcancada else {
-                2: {"rotulo": "Abrir cursos", "url": "/cursos/"},
+                2: {"rotulo": "Registrar meu primeiro item", "url": "/trilha/inventario/#primeiro-item"},
                 3: {"rotulo": "Abrir Sandbox", "url": "/encomendas/sandbox/"},
                 4: {"rotulo": "Abrir Fila", "url": "/encomendas/fila/"},
             }[ordem]
