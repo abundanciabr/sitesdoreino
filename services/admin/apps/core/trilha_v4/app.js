@@ -9,7 +9,30 @@ const belts = [
   {name:'Marrom',short:'Marrom',category:'Consistência',title:'O seu melhor ganha continuidade.',summary:'Transforme a primeira experiência em uma prática que continua evoluindo.',color:'#ae8b73',wash:'#f8f3ef',tone:'#795b46',ink:'#fffbf7',tasks:[['Continue criando','Dê continuidade à prática e aos seus projetos.'],['Acompanhe sua meta','O plano apresenta R$ 25 como marco desta faixa.']],note:'A forma de apuração da meta ainda será definida. Esta prévia não registra faturamento.'},
   ...Array.from({length:7},(_,i)=>({name:`Preta ${i+1}º grau`,short:`${i+1}º grau`,category:i===6?'Mestre modelador':`Maestria · Grau ${String(i+1).padStart(2,'0')}`,title:i===6?'Sua evolução abre novos caminhos.':`Um novo grau. Mais possibilidades.`,summary:i===6?'Um portfólio de alto valor. Um horizonte de novas criações.':`O ${i+1}º grau da Faixa Preta é mais um capítulo da sua jornada na modelagem.`,color:'#49494f',wash:'#f2f2f5',tone:'#585860',ink:'#f6f6fa',tasks:i===6?[['Seu portfólio','O plano propõe domínio de malhas complexas e um portfólio de alto valor.'],['Seu horizonte','A meta apresentada no plano é de R$ 2.000.']]:[['O próximo capítulo','Os critérios específicos deste grau ainda serão definidos para a versão real.']],note:i===6?'A apuração da meta ainda será definida. Metas não garantem renda.':'Esta etapa demonstra a navegação e o visual. Nenhum critério novo de progressão foi estabelecido.'}))
 ];
-const current = 3;
+const payload = JSON.parse(document.querySelector('#trilha-data').textContent);
+const progress = payload.progresso;
+const current = progress.atual_ordem - 1;
+const money = cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);
+const reached = index=>progress.etapas[index].alcancada;
+belts.forEach((belt,index)=>{
+  const step=progress.etapas[index];
+  belt.summary=index>=5
+    ?(progress.meta_escolhida?`Meta desta etapa: ${money(step.meta_cents)} em recebimentos confirmados.`:'A meta pessoal deste aluno ainda não foi definida.')
+    :step.conquista;
+  belt.tasks=[['Resultado desta etapa',step.conquista],['Situação registrada',step.alcancada?'Esta etapa consta como alcançada na jornada do aluno.':'Esta etapa ainda não consta como alcançada.']];
+  if(index>=4){
+    belt.tasks.push(['Recebimentos confirmados',money(progress.total_cents)]);
+    if(index>=5&&progress.meta_escolhida){
+      belt.tasks.push(['Meta desta etapa',money(step.meta_cents)]);
+      belt.tasks.push(['Falta para esta etapa',money(Math.max(0,step.meta_cents-progress.total_cents))]);
+    }
+  }
+  if(step.alcancada_em){
+    const when=new Date(step.alcancada_em);
+    if(!Number.isNaN(when.getTime()))belt.tasks.push(['Data registrada',new Intl.DateTimeFormat('pt-BR',{dateStyle:'medium',timeZone:'America/Sao_Paulo'}).format(when)]);
+  }
+  belt.note='Consulta administrativa da jornada de '+payload.aluno.nome+'. Explorar esta trilha não altera os registros.';
+});
 let selected = current;
 const timeline = document.querySelector('#timeline');
 const dock = document.querySelector('#dock');
@@ -20,7 +43,21 @@ const stages = [];
 const dockButtons = [];
 let dialogOpener;
 const number = index=>String(index+1).padStart(2,'0');
-const state = index=>index<current?'Concluída':index===current?'Você está aqui':index===current+1?'Próxima conquista':'À sua frente';
+const state = index=>index===current?'Faixa atual':reached(index)?'Concluída':index===current+1?'Próxima conquista':'A conquistar';
+
+const doneCount=progress.etapas.filter(step=>step.alcancada).length;
+document.querySelector('#completed-count').textContent=String(doneCount).padStart(2,'0');
+document.querySelector('#remaining-count').textContent=String(13-doneCount).padStart(2,'0');
+document.querySelector('.dial-number').textContent=number(current);
+document.querySelector('#current-position').textContent=number(current);
+document.querySelector('#current-belt').textContent=number(current);
+const indicator=document.createElement('i');indicator.style.background=belts[current].color;
+document.querySelector('.dial-name').replaceChildren(indicator,document.createTextNode(' '+belts[current].name.toLocaleUpperCase('pt-BR')));
+document.querySelector('.object-footer>span').textContent=belts[current].category.toLocaleUpperCase('pt-BR');
+document.querySelector('.hero-object').setAttribute('aria-label',`Faixa atual de ${payload.aluno.nome}: ${current+1} de 13, ${belts[current].name}.`);
+const segments=progress.etapas.map((step,index)=>`${index===current?belts[index].color:step.alcancada?'#4884f6':'#d8e3f1'} ${index*360/13}deg ${(index+1)*360/13}deg`);
+document.querySelector('.dial-track').style.background=`conic-gradient(from 0deg,${segments.join(',')})`;
+
 belts.forEach((belt,index)=>{
   const dockButton = document.createElement('button');
   dockButton.className='dock-button';dockButton.type='button';
@@ -30,15 +67,16 @@ belts.forEach((belt,index)=>{
   dockButton.innerHTML=`<span class="dock-dot" aria-hidden="true"></span><span class="dock-number" aria-hidden="true">${number(index)}</span><span class="dock-name" aria-hidden="true">${belt.short}</span>`;
   dockButton.addEventListener('click',()=>select(index,true));
   dock.append(dockButton);dockButtons.push(dockButton);
-  const stage=document.createElement('li');stage.className=`stage ${index<current?'done':''}`;stage.id=`faixa-${index+1}`;
+  const stage=document.createElement('li');stage.className=`stage ${reached(index)&&index!==current?'done':''}`;stage.id=`faixa-${index+1}`;
   stage.style.setProperty('--belt',belt.color);stage.style.setProperty('--wash',belt.wash);stage.style.setProperty('--tone',belt.tone);stage.style.setProperty('--swatch-ink',belt.ink);
   if(index===6){const chapter=document.createElement('p');chapter.className='chapter-label';chapter.textContent='FAIXA PRETA. SETE GRAUS DE EVOLUÇÃO.';stage.append(chapter);}
-  const mark=document.createElement('span');mark.className='track-mark';mark.setAttribute('aria-hidden','true');mark.innerHTML=index<current?icons.check:number(index);if(index===6)mark.style.top='94px';
+  const mark=document.createElement('span');mark.className='track-mark';mark.setAttribute('aria-hidden','true');mark.innerHTML=reached(index)&&index!==current?icons.check:number(index);if(index===6)mark.style.top='94px';
   stage.append(mark);
   const card=document.createElement('div');card.className='stage-card';
   card.innerHTML=`<button type="button" class="stage-trigger" aria-expanded="false" aria-controls="panel-${index+1}" id="trigger-${index+1}">
     <span class="swatch" aria-hidden="true">${number(index)}</span><span class="stage-text"><span class="stage-name">Faixa ${belt.name}</span><span class="stage-category">${belt.category}</span></span><span class="stage-status">${state(index)}</span>${icons.chevron}
-    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}"><div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SEU MOMENTO AGORA':index<current?'PARTE DA SUA HISTÓRIA':'UM NOVO HORIZONTE'}</span><h3>${belt.title}</h3><p>${belt.summary}</p><button type="button" class="primary detail-button">${index===current?'Ver minha tarefa':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div></div>`;
+    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}"><div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'FAIXA ATUAL DO ALUNO':reached(index)?'PARTE DA SUA HISTÓRIA':'UM NOVO HORIZONTE'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div></div>`;
+  card.querySelector('.focus-copy p').textContent=belt.summary;
   card.querySelector('.stage-trigger').addEventListener('click',()=>select(index,false));
   card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
   stage.append(card);timeline.append(stage);stages.push(stage);
@@ -71,7 +109,7 @@ function openDetails(index,opener){
     const task=document.createElement('li');const n=document.createElement('span');n.className='task-number';n.textContent=i+1;
     const text=document.createElement('div');const heading=document.createElement('strong');heading.textContent=title;const description=document.createElement('p');description.textContent=body;text.append(heading,description);task.append(n,text);tasks.append(task);
   });
-  document.querySelector('#dialog-note').textContent=belt.note||'Prévia local. Nenhum projeto é enviado e nenhuma faixa é concluída nesta demonstração.';
+  document.querySelector('#dialog-note').textContent=belt.note;
   dialog.showModal();dialog.scrollTop=0;
 }
 function closeDetails(){dialog.close();}

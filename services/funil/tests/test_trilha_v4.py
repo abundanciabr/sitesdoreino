@@ -1,30 +1,29 @@
-"""A V4 pública preserva a página aprovada e resolve seus recursos relativos."""
+"""A entrada pública nunca entrega a trilha ou seus dados."""
 
 import pytest
-
-from apps.core.trilha_v4 import ARQUIVOS
 from conftest import HOST_A, HOST_MESH
 
 
-@pytest.mark.parametrize(
-    "caminho,arquivo,tipo",
-    [
-        ("/trilha/", "index.html", "text/html"),
-        ("/trilha/style.css", "style.css", "text/css"),
-        ("/trilha/app.js", "app.js", "text/javascript"),
-    ],
-)
-def test_pagina_e_recursos(client, rede, caminho, arquivo, tipo):
-    resposta = client.get(caminho, HTTP_HOST=HOST_MESH)
-    assert resposta.status_code == 200
-    assert resposta["Content-Type"].startswith(tipo)
-    assert resposta.content == (ARQUIVOS / arquivo).read_bytes()
-    cabecalho = client.head(caminho, HTTP_HOST=HOST_MESH)
-    assert cabecalho.status_code == 200
-    assert cabecalho.content == b""
+def test_entrada_leva_para_porta_do_admin(client, rede):
+    resposta = client.get("/trilha/", {"aluno": "matricula-123"}, HTTP_HOST=HOST_MESH)
+    assert resposta.status_code == 302
+    assert resposta["Location"] == "/admin/trilha/?aluno=matricula-123"
+    assert "no-store" in resposta["Cache-Control"]
+    assert "noindex" in resposta["X-Robots-Tag"]
+    assert b"trilha-data" not in resposta.content
 
 
-def test_barra_preserva_base_dos_recursos_relativos(client, rede):
+@pytest.mark.parametrize("caminho", [
+    "/trilha/style.css", "/trilha/app.js",
+    "/static/funil/trilha-v4/index.html",
+    "/static/funil/trilha-v4/style.css",
+    "/static/funil/trilha-v4/app.js",
+])
+def test_arquivos_nao_existem_na_area_publica(client, rede, caminho):
+    assert client.get(caminho, HTTP_HOST=HOST_MESH).status_code == 404
+
+
+def test_barra_no_endereco(client, rede):
     resposta = client.get("/trilha", HTTP_HOST=HOST_MESH)
     assert resposta.status_code == 301
     assert resposta["Location"] == "/trilha/"

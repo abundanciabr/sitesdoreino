@@ -6,6 +6,7 @@ from apps.core import galeria_aula1
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
+from apps.core.trilha import trilha_v4, trilha_v4_css, trilha_v4_js
 from apps.core.clientes_fila import (
     clientes_fila, cliente_fila, vincular_cliente_fila, salvar_pedido_cliente_fila,
     orientar_pedido_cliente_fila,
@@ -286,6 +287,9 @@ from apps.atendimento import gestao as suporte_gestao
 from apps.atendimento import indicadores as suporte_indicadores
 
 urlpatterns = [
+    path("trilha/", trilha_v4, name="trilha_v4"),
+    path("trilha/style.css", trilha_v4_css, name="trilha_v4_css"),
+    path("trilha/app.js", trilha_v4_js, name="trilha_v4_js"),
     path("equipe/atendimento/conversas/", suporte.fila, name="suporte_conversas_equipe"),
     path("equipe/atendimento/triagem/", suporte_gestao.triagem, name="suporte_triagem_equipe"),
     path("equipe/atendimento/alunos/", suporte_gestao.alunos, name="suporte_alunos_equipe"),
