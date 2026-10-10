@@ -25,7 +25,8 @@ except ImportError:
 
 ID = re.compile(r"[0-9a-f]{12}\Z")
 SHA = re.compile(r"[0-9a-f]{40}\Z")
-FINAL = {"ativa", "falha no ensaio", "precisa de correção", "incompatibilidade"}
+FINAL = {"ativa", "preservada em versão posterior", "falha no ensaio",
+         "precisa de correção", "incompatibilidade"}
 TENTATIVAS = 3
 
 
@@ -135,9 +136,49 @@ class Servico:
     def _dependencias_ativas(self, reg):
         for dep in reg.get("depende_de") or []:
             fase = self.estados.ler(dep)
-            if not fase or fase.get("fase") != "ativa":
+            if not fase:
+                return False
+            if fase.get("fase") == "ativa":
+                continue
+            provas = fase.get("preservacao") or {}
+            celulas = fase.get("celulas") or []
+            if (fase.get("fase") != "preservada em versão posterior" or not celulas
+                    or set(provas) != set(celulas)
+                    or any(not SHA.fullmatch((provas[c].get("sha_aprovada") or ""))
+                           or not re.fullmatch(r"[0-9a-f]{64}", provas[c].get("prova_identidade") or "")
+                           for c in celulas)):
                 return False
         return True
+
+    def _conciliar_promovida(self, reg, estado, celulas):
+        """Nunca tenta publicar uma candidata que ja saiu da main remota."""
+        cand = estado["candidata"]
+        consultas = {celula: self.ponte.conferir_preservacao(reg["id"], cand, celula)
+                     for celula in celulas}
+        situacoes = {r["situacao"] for r in consultas.values()}
+        if situacoes == {"publicavel"}:
+            if estado["fase"] == "ativa":
+                return {"id": reg["id"], "fase": "ativa"}
+            return None
+        if "publicavel" in situacoes or not situacoes <= {"preservada", "aguardando", "conflito"}:
+            raise ErroPonte("conferencia da promocao inconsistente", "recusa")
+        if "conflito" in situacoes:
+            motivo = next(r.get("motivo") for r in consultas.values() if r["situacao"] == "conflito")
+            self._fase(estado, "preservação não comprovada", motivo, preservacao={})
+            return {"id": reg["id"], "fase": estado["fase"], "motivo": motivo}
+        if "aguardando" in situacoes:
+            motivo = next(r.get("motivo") for r in consultas.values() if r["situacao"] == "aguardando")
+            self._fase(estado, "aguardando versão posterior", motivo, preservacao={})
+            return {"id": reg["id"], "fase": estado["fase"], "motivo": motivo}
+        provas = {celula: {"sha_aprovada": r["sha_aprovada"],
+                           "prova_identidade": r["prova_identidade"],
+                           "arquivos_conferidos": r["arquivos_conferidos"]}
+                  for celula, r in consultas.items()}
+        fase = ("ativa" if all(r["sha_aprovada"] == cand for r in consultas.values())
+                else "preservada em versão posterior")
+        self._fase(estado, fase, preservacao=provas)
+        return {"id": reg["id"], "fase": fase,
+                "versoes_aprovadas": {c: p["sha_aprovada"] for c, p in provas.items()}}
 
     def processar(self, reg):
         id_ = reg["id"]
@@ -146,6 +187,11 @@ class Servico:
             return None
         if reg.get("estado") == entregas.NA_MAIN and not self.estados.ler(id_):
             return None  # nao assume entregas historicas como ativacoes suas
+        anterior = self.estados.ler(id_)
+        cand_reg = ((reg.get("promocao") or {}).get("candidata")
+                    or reg.get("promovida_candidata") or reg.get("candidata"))
+        if anterior and anterior.get("candidata") == cand_reg and anterior.get("fase") in FINAL:
+            return {"id": id_, "fase": anterior["fase"]}
         if not self._dependencias_ativas(reg):
             return {"id": id_, "fase": "aguardando dependência"}
         try:
@@ -154,6 +200,10 @@ class Servico:
                 return {"id": id_, "fase": estado["fase"]}
             cand = estado["candidata"]
             celulas = self._celulas(reg, estado)
+            if reg.get("estado") == entregas.NA_MAIN:
+                conciliada = self._conciliar_promovida(reg, estado, celulas)
+                if conciliada is not None:
+                    return conciliada
             self.ponte.espelhar(id_, cand)
             if reg.get("estado") != entregas.NA_MAIN:
                 comprovadas = estado.setdefault("comprovadas", {})
@@ -188,6 +238,9 @@ class Servico:
                 reg = self.integrador.ler(id_)
                 if reg.get("estado") != entregas.NA_MAIN:
                     raise ErroPonte("promoção remota ainda não confirmada")
+                conciliada = self._conciliar_promovida(reg, estado, celulas)
+                if conciliada is not None:
+                    return conciliada
             self.ponte.espelhar(id_, cand)
             ativadas = estado.setdefault("ativadas", [])
             self._fase(estado, "ativação pendente")
@@ -201,7 +254,9 @@ class Servico:
         except ErroPonte as erro:
             if "estado" not in locals():
                 return {"id": id_, "fase": "infraestrutura indisponível", "motivo": str(erro)[:180]}
-            if erro.categoria == "ensaio" and estado["fase"] == "ensaiando":
+            if estado["fase"] in ("ativa", "preservada em versão posterior"):
+                self._fase(estado, "conciliação pendente", str(erro)[:180], preservacao={})
+            elif erro.categoria == "ensaio" and estado["fase"] == "ensaiando":
                 self._fase(estado, "falha no ensaio", str(erro)[:180])
             elif estado["fase"] != "ativação pendente":
                 self._fase(estado, estado["fase"], str(erro)[:180])
@@ -209,13 +264,31 @@ class Servico:
         except (entregas.Recusa, OSError, ValueError, KeyError) as erro:
             if "estado" not in locals():
                 return {"id": id_, "fase": "precisa de correção", "motivo": str(erro)[:180]}
-            fase = "precisa de correção" if isinstance(erro, ValueError) else estado["fase"]
-            self._fase(estado, fase, str(erro)[:180])
+            fase = ("precisa de correção" if isinstance(erro, ValueError) else
+                    "conciliação pendente" if estado["fase"] in ("ativa", "preservada em versão posterior")
+                    else estado["fase"])
+            self._fase(estado, fase, str(erro)[:180],
+                       **({"preservacao": {}} if fase == "conciliação pendente" else {}))
             return {"id": id_, "fase": estado["fase"], "motivo": estado.get("motivo")}
 
     def _sincronizar_main(self):
         self.integrador.git("fetch", "--no-tags", self.remoto_leitura,
                             "main:refs/heads/main", check=True)
+
+    @staticmethod
+    def _ordem_dependencias(registros):
+        """Reconfere cada dependencia antes de processar quem depende dela."""
+        pendentes = {reg["id"]: reg for reg in registros}
+        ordem = []
+        while pendentes:
+            prontos = [id_ for id_, reg in pendentes.items()
+                       if not any(dep in pendentes for dep in reg.get("depende_de") or [])]
+            if not prontos:
+                ordem.extend(pendentes.values())  # ciclo continua aguardando dependencia
+                break
+            for id_ in prontos:
+                ordem.append(pendentes.pop(id_))
+        return ordem
 
     def rodada(self):
         resultados = []
@@ -226,7 +299,7 @@ class Servico:
             except (entregas.Recusa, OSError) as erro:
                 return [{"fase": "infraestrutura indisponível",
                          "motivo": "main remota indisponível; nenhuma candidata promovida"}]
-            for original in self.integrador.todos():
+            for original in self._ordem_dependencias(self.integrador.todos()):
                 reg = self.integrador.ler(original["id"])
                 if reg is None:
                     continue
