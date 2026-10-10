@@ -72,6 +72,7 @@ ROTULOS_DOS_EVENTOS = {
     "lead.upsert": "Deixou o contato",
     "pagamento.reversao_confirmada": "Pagamento devolvido ou contestado",
     "aluno.matricula": "Matrícula na escola",
+    "interesse.registrado": "Interesse registrado no atendimento",
 }
 
 #: Forma de pagamento, como o checkout a manda.

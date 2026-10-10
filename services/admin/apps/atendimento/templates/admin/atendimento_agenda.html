@@ -1,0 +1,14 @@
+{% extends 'admin/atendimento_layout.html' %}
+{% block suporte_titulo %}Agenda dos produtos{% endblock %}
+{% block suporte_conteudo %}
+<div class="sg-head"><div><h1>Agenda dos produtos</h1><p>Quando começa cada evento, desafio ou turma, e o que a equipe pode dizer ao aluno. O robô do suporte lê esta agenda para preparar o atendimento. Horário de Brasília.</p></div></div>
+{% if salvo %}<p class="sg-note" role="status">Agenda salva.</p>{% endif %}
+{% if catalogo_fora %}<section class="sg-card"><p>O catálogo de produtos não respondeu. Tente de novo em instantes.</p></section>{% endif %}
+{% for p in produtos %}<section class="sg-card" id="produto-{{ p.id }}"><h2>{{ p.nome }}</h2>
+{% if p.agenda %}<p class="sg-note">{% if p.agenda.inicio %}Começa em {{ p.agenda.inicio|date:"d/m/Y" }} às {{ p.agenda.inicio|time:"H:i" }}{% else %}Sem data de início{% endif %} · atualizado por {{ p.agenda.atualizado_por|default:'equipe' }} em {{ p.agenda.atualizado_em|date:"d/m/Y" }} às {{ p.agenda.atualizado_em|time:"H:i" }}</p>{% endif %}
+<form method="post">{% csrf_token %}<input type="hidden" name="produto_id" value="{{ p.id }}">
+<label>Começa em<input type="datetime-local" name="inicio" value="{{ p.inicio_local }}"></label>
+<label>Informações para a equipe e o robô (horário, link, como participar)<textarea name="detalhes" rows="3" maxlength="2000">{{ p.agenda.detalhes }}</textarea></label>
+<button>Salvar</button></form></section>
+{% empty %}{% if not catalogo_fora %}<section class="sg-card"><p>Não há produtos ativos no catálogo.</p></section>{% endif %}{% endfor %}
+{% endblock %}

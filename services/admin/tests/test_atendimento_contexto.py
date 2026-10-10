@@ -161,3 +161,79 @@ def test_contexto_da_equipe_fica_fechado_sem_acesso(atendimento, monkeypatch):
     monkeypatch.setattr(views.CatalogoClient, 'site_por_host', lambda *a: {'id': 'outra-escola'})
     with pytest.raises(Http404):
         views.conversa_admin(req, c.pk)
+
+
+PRODUTOS = [{'id': 'prod-desafio', 'name': 'Desafio Como Ganhar em Dólar com Roblox'}, {'id': 'curso-a', 'name': 'Curso A'}]
+
+
+@pytest.fixture
+def com_compra(atendimento, monkeypatch):
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.atendimento.models import AgendaDoProduto
+    c, ficha, _, _ = atendimento
+    ficha['compras'] = [{'pedido': 'p-1', 'produtos': ['prod-desafio'], 'situacao': 'aprovada', 'valor_centavos': 9700,
+        'criada_em': '2026-10-05T11:54:00+00:00', 'aprovado_em': '2026-10-05T11:55:00+00:00'}]
+    monkeypatch.setattr(contexto.CatalogoClient, 'listar_produtos', lambda *a: PRODUTOS)
+    AgendaDoProduto.objects.create(site_id=SID, produto_id='prod-desafio', produto_nome=PRODUTOS[0]['name'],
+        inicio=timezone.now() + timedelta(days=3), detalhes='Ao vivo no YouTube da escola.')
+    Mensagem.objects.create(conversa=c, autor='aluno', referencia='segunda', texto='Quando começa o desafio de ganhar em dólar com Roblox?')
+    return c
+
+
+def test_robo_cruza_compras_matriculas_e_agenda_sem_dados_privados(com_compra, monkeypatch):
+    monkeypatch.setattr(service, 'orcamento', lambda *a: SimpleNamespace(pk=1))
+    monkeypatch.setattr(service.modelo, 'conexao', lambda: SimpleNamespace(modelo_rapido='modelo-teste'))
+    def analisar(**kw):
+        payload = json.loads(kw['itens'][0]['content'])
+        texto = json.dumps(payload, ensure_ascii=False)
+        assert EMAIL not in texto and '11900000000' not in texto and 'NPS' not in texto
+        assert payload['hoje'] and payload['agenda'][0]['falta'] == 'Faltam 3 dias'
+        assert payload['aluno']['compras'][0]['produtos'] == PRODUTOS[0]['name']
+        assert payload['aluno']['matriculas'][0]['curso'] == 'Curso A'
+        return SimpleNamespace(completa=True, texto=json.dumps({'demanda': 'Quer saber quando começa o desafio.',
+            'sabemos': ['Comprou o desafio.'], 'faltando': [], 'passos': [], 'produto_id': 'prod-desafio'}))
+    monkeypatch.setattr(service.modelo, 'responder', analisar)
+    d = contexto.preparar(com_compra)
+    assert d['produto_sugerido']['id'] == 'prod-desafio'
+    com_compra.sugestao = d
+    html = render_to_string('admin/atendimento_contexto.html', {'conversa': com_compra, 'suporte_prefixo': '/equipe/atendimento'})
+    assert 'R$ 97,00' in html and 'Pago' in html and '05/10/2026 às 08:54' in html
+    assert 'Curso A' in html and 'Faltam 3 dias' in html and 'Ao vivo no YouTube' in html
+
+
+def test_sem_ia_sugere_o_produto_citado_na_conversa(com_compra, monkeypatch):
+    monkeypatch.setattr(contexto.CatalogoClient, 'listar_produtos', lambda *a: PRODUTOS + [{'id': 'outro', 'name': 'Mentoria'}])
+    assert contexto.preparar(com_compra)['produto_sugerido']['id'] == 'prod-desafio'
+
+
+def test_equipe_salva_o_produto_no_atendimento_e_no_crm(com_compra, monkeypatch):
+    gravados = []
+    monkeypatch.setattr(contexto.LeadsClient, 'registrar_interesse', lambda self, lead, dados: gravados.append((lead, dados)) or 'ok')
+    monkeypatch.setattr(views.CatalogoClient, 'site_por_host', lambda *a: {'id': SID})
+    def postar(produto):
+        req = RequestFactory().post('/equipe/atendimento/'+str(com_compra.pk)+'/', {'acao': 'interesse', 'produto_id': produto})
+        req.admin = {'id': 'pessoa-equipe', 'nome': 'Lívia'}
+        return views.conversa_admin(req, com_compra.pk)
+    assert postar('nao-existe').status_code == 422 and not gravados
+    assert postar('prod-desafio').status_code == 302
+    interesse = Conversa.objects.get(pk=com_compra.pk).interesse
+    assert interesse['nome'] == PRODUTOS[0]['name'] and interesse['por'] == 'Lívia' and 'Registrado no CRM' in interesse['crm']
+    assert gravados == [(LEAD, {'produto_id': 'prod-desafio', 'produto': PRODUTOS[0]['name'], 'referencia': str(com_compra.pk), 'autor': 'Lívia'})]
+
+
+def test_agenda_grava_inicio_no_horario_de_brasilia(com_compra, monkeypatch):
+    from apps.atendimento.models import AgendaDoProduto
+    monkeypatch.setattr(views.CatalogoClient, 'site_por_host', lambda *a: {'id': SID})
+    def postar(dados):
+        req = RequestFactory().post('/equipe/atendimento/agenda/', dados)
+        req.admin = {'id': 'pessoa-equipe', 'nome': 'Arameu'}
+        return views.agenda(req)
+    assert postar({'produto_id': 'curso-a', 'inicio': 'amanhã'}).status_code == 422
+    assert postar({'produto_id': 'curso-a', 'inicio': '2026-10-15T20:00', 'detalhes': 'Turma de outubro.'}).status_code == 302
+    salva = AgendaDoProduto.objects.get(site_id=SID, produto_id='curso-a')
+    assert salva.inicio.isoformat() == '2026-10-15T23:00:00+00:00' and salva.atualizado_por == 'Arameu'
+    req = RequestFactory().get('/equipe/atendimento/agenda/')
+    req.admin = {'id': 'pessoa-equipe'}
+    html = views.agenda(req).content.decode()
+    assert 'value="2026-10-15T20:00"' in html and 'Turma de outubro.' in html

@@ -18,7 +18,7 @@ from apps.core.clients import CatalogoClient, IdentidadeClient, IdentidadeIndisp
 from apps.core.whatsapp import _pedir as pedir_whatsapp
 from apps.core.templatetags.nomes_admin import primeiro_nome
 from apps.agentes import modelo
-from .models import Configuracao, Assunto, Conhecimento, Conversa, Mensagem, Responsavel, Aviso, PreviaForum, MODOS
+from .models import Configuracao, Assunto, Conhecimento, Conversa, Mensagem, Responsavel, Aviso, PreviaForum, AgendaDoProduto, MODOS
 from . import service
 
 
@@ -234,6 +234,14 @@ def conversa_admin(request,conversa_id):
             Conversa.objects.filter(pk=conversa.pk).update(sugestao=sug)
         elif acao=='guardar_base':
             return HttpResponseRedirect(prefixo(request)+'/base/?conversa='+str(conversa.pk)+'&mensagem='+request.POST.get('mensagem',''))
+        elif acao=='interesse':
+            from .contexto import salvar_interesse
+            try:
+                salvar_interesse(conversa,request.POST.get('produto_id',''),identidade_atendente(request)[1])
+            except ValueError:
+                ctx.update(erro='Escolha um produto do catálogo.',conversa=conversa)
+                return render(request,'admin/atendimento_conversa.html',ctx,status=422)
+            return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/')
         else:
             with transaction.atomic():
                 conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid)
@@ -308,7 +316,39 @@ def conversa_admin(request,conversa_id):
       avisos=Aviso.objects.filter(conversa=conversa).select_related('responsavel'),
       sem_responsaveis=not Responsavel.objects.filter(site_id=sid,ativo=True).exists(),
       previas=PreviaForum.objects.filter(conversa=conversa),recado=recado)
+    from .contexto import catalogo
+    escolhido=conversa.interesse.get('produto_id','')
+    ctx.update(produtos=catalogo(),
+      produto_marcado=escolhido or ((conversa.sugestao or {}).get('produto_sugerido') or {}).get('id',''),
+      agenda_do_interesse=AgendaDoProduto.objects.filter(site_id=sid,produto_id=escolhido).first() if escolhido else None)
     return render(request,'admin/atendimento_conversa.html',ctx)
+
+
+@require_http_methods(['GET','POST'])
+def agenda(request):
+    from datetime import datetime
+    from .contexto import catalogo
+    from .gestao import identidade_atendente
+    admin(request);sid=site(request);ctx=contexto(request,sid)
+    produtos=catalogo()
+    if request.method=='POST':
+        nomes={p['id']:p['nome'] for p in produtos or []}
+        produto_id=request.POST.get('produto_id','');bruto=request.POST.get('inicio','').strip();detalhes=request.POST.get('detalhes','').strip()
+        try:
+            if produto_id not in nomes or len(detalhes)>2000: raise ValueError
+            inicio=datetime.fromisoformat(bruto) if bruto else None
+            if inicio and timezone.is_naive(inicio): inicio=timezone.make_aware(inicio)
+        except ValueError:
+            ctx['erro']='Confira o produto, a data e as informações (até 2000 caracteres).'
+        else:
+            AgendaDoProduto.objects.update_or_create(site_id=sid,produto_id=produto_id,defaults={'produto_nome':nomes[produto_id],
+                'inicio':inicio,'detalhes':detalhes,'atualizado_por':identidade_atendente(request)[1][:160]})
+            return HttpResponseRedirect(prefixo(request)+'/agenda/?salvo=1#produto-'+produto_id)
+    salvas={a.produto_id:a for a in AgendaDoProduto.objects.filter(site_id=sid)}
+    ctx.update(salvo=request.GET.get('salvo')=='1',catalogo_fora=produtos is None,
+      produtos=[dict(p,agenda=salvas.get(p['id']),inicio_local=timezone.localtime(salvas[p['id']].inicio).strftime('%Y-%m-%dT%H:%M')
+        if p['id'] in salvas and salvas[p['id']].inicio else '') for p in produtos or []])
+    return render(request,'admin/atendimento_agenda.html',ctx,status=422 if ctx.get('erro') else 200)
 
 
 PERGUNTAS={'Site':['Como o aluno entra e recupera o acesso à conta?','O que fazer quando uma página ou recurso do site não funciona?','Como o aluno acompanha o atendimento e recebe a resposta?'],

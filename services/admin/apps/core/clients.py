@@ -2330,8 +2330,8 @@ class LeadsClient:
 
     A `leads` é a MEMÓRIA DE QUEM É CADA PESSOA: contato, de onde veio e o que
     fez na casa. Como célula não lê banco de outra, o Admin não abre o banco
-    dela; pergunta por aqui, com o Bearer do par provisionado. Só LEITURA: nada
-    desta classe grava contato, tag ou histórico.
+    dela; pergunta por aqui, com o Bearer do par provisionado. Quase só LEITURA:
+    a única escrita é `registrar_interesse`, do suporte.
 
     FALHA ABERTA, como a `MedicaoClient`, e pelo mesmo motivo: a tela de
     contatos é consulta, e derrubá-la porque a `leads` não respondeu trocaria um
@@ -2465,6 +2465,27 @@ class LeadsClient:
             logger.error("contatos: o lead veio fora do contrato")
             return self.NAO_RESPONDEU, None
         return self.OK, corpo
+
+    def registrar_interesse(self, lead_id: "uuid.UUID | str", dados: dict) -> str:
+        """A ÚNICA escrita desta classe: o suporte grava sobre qual produto a
+        pessoa falou (histórico `interesse.registrado` e tag `interesse:<id>`)."""
+        config = self._configuracao()
+        if config is None:
+            return self.SEM_CONFIGURACAO
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/leads/{quote(str(lead_id), safe='')}/interesses",
+                json=dados,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("contatos: a leads não gravou o interesse: %s", erro)
+            return self.NAO_RESPONDEU
+        if r.status_code == 404:
+            return self.NAO_EXISTE
+        return self.OK if r.status_code == 200 else self.NAO_RESPONDEU
 
 
 class MensageriaClient:
