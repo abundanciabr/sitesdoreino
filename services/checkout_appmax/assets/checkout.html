@@ -63,7 +63,17 @@
                   </form>
                 </div>
               </div>
-              <div class="payment-option" id="pix-option"><label class="payment-heading" for="payment-pix"><input id="payment-pix" name="payment_method" type="radio" value="pix" aria-controls="pix-fields" aria-expanded="false"><svg class="payment-icon pix-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 4.2 4.2L12 10.4 7.8 6.2 12 2Zm5.8 5.8L22 12l-4.2 4.2-4.2-4.2 4.2-4.2ZM12 13.6l4.2 4.2L12 22l-4.2-4.2 4.2-4.2ZM6.2 7.8l4.2 4.2-4.2 4.2L2 12l4.2-4.2Z"/></svg><span>Pix</span></label><div class="payment-panel pix-panel" id="pix-fields" hidden><p>Após confirmar a compra, você receberá um código Pix para pagar.</p></div></div>
+              <div class="payment-option" id="pix-option">
+                <label class="payment-heading" for="payment-pix"><input id="payment-pix" name="payment_method" type="radio" value="pix" aria-controls="pix-fields" aria-expanded="false"><svg class="payment-icon pix-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 4.2 4.2L12 10.4 7.8 6.2 12 2Zm5.8 5.8L22 12l-4.2 4.2-4.2-4.2 4.2-4.2ZM12 13.6l4.2 4.2L12 22l-4.2-4.2 4.2-4.2ZM6.2 7.8l4.2 4.2-4.2 4.2L2 12l4.2-4.2Z"/></svg><span>Pix</span></label>
+                <div class="payment-panel pix-panel" id="pix-fields" hidden>
+                  <div class="pix-instructions">
+                    <p class="pix-notice"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 12 6 6L21 6"/></svg><span>Após o pagamento, você receberá por e-mail as informações de acesso à sua compra.</span></p>
+                    <button id="generate-pix" class="pix-generate" type="button" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="15" y="2" width="7" height="7" rx="1"/><rect x="2" y="15" width="7" height="7" rx="1"/><path d="M5 5h1v1H5zM18 5h1v1h-1zM5 18h1v1H5zM15 15h3v3h4M15 22v-3M22 15v1M21 22h1"/></svg><span id="generate-pix-label">Gerar código QR</span></button>
+                    <button id="copy-pix-preview" class="pix-copy" type="button" title="Disponível após gerar o código Pix" disabled>Copiar código Pix</button>
+                  </div>
+                  <svg class="pix-placeholder" viewBox="0 0 128 128" aria-hidden="true"><rect x="8" y="8" width="42" height="42" rx="9"/><rect x="78" y="8" width="42" height="42" rx="9"/><rect x="8" y="78" width="42" height="42" rx="9"/><path d="M78 120V78h20v24h22V78"/><g class="pix-placeholder-dots"><rect x="22" y="22" width="14" height="14" rx="5"/><rect x="92" y="22" width="14" height="14" rx="5"/><rect x="22" y="92" width="14" height="14" rx="5"/><rect x="92" y="112" width="12" height="12" rx="4"/><rect x="112" y="112" width="12" height="12" rx="4"/></g></svg>
+                </div>
+              </div>
             </div>
           </section>
           <div class="submit-wrap"><button id="purchase-button" class="purchase-button" type="button" disabled>Carregando oferta...</button><p class="secure-caption"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10V7a5.5 5.5 0 0 1 11 0v3M5 10h14v11H5z"/></svg> Seus dados são usados para processar esta compra com segurança.</p><div class="form-status" id="checkout-status" role="status" aria-live="polite" tabindex="-1" hidden></div><button id="reconcile-button" type="button" class="secondary-button" hidden>Consultar pedido</button></div>

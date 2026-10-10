@@ -50,14 +50,30 @@ h1{font-size:20px;line-height:1.2;margin:0 0 7px;font-weight:700}
 .payment-heading input[type="radio"]:checked:after{content:"";width:10px;height:10px;background:#222;border-radius:50%}
 .payment-heading input[type="radio"]:focus-visible{outline:3px solid #8fcfb1;outline-offset:3px}
 .payment-icon{width:23px;height:23px;fill:none;stroke:#303232;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
-.pix-icon{fill:#606665;stroke:none}
+.pix-icon{fill:#28b9af;stroke:none}
 .payment-panel{background:#f5f3f0;padding:20px 18px 23px}
 .payment-panel[hidden]{display:none}
-.pix-panel{font-size:14px;line-height:1.5;color:#4c4c4c}
+.pix-panel{display:grid;grid-template-columns:minmax(0,1fr) 184px;align-items:center;gap:30px;padding:34px 22px 38px;font-size:16px;line-height:1.4;color:#171717}
 .pix-panel p{margin:0}
+.pix-instructions{min-width:0;display:grid;gap:20px}
+.pix-notice{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px!important}
+.pix-notice svg{width:24px;height:24px;flex:none;fill:none;stroke:#898780;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pix-generate,.pix-copy{width:100%;min-height:54px;border-radius:8px;font:inherit;cursor:pointer}
+.pix-generate{display:flex;align-items:center;justify-content:center;gap:11px;border:1px solid #00aa38;background:#00b43c;color:#fff;font-size:21px;font-weight:700;padding:11px}
+.pix-generate svg{width:25px;height:25px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.pix-generate:hover{background:#009d34}
+.pix-generate:disabled{background:#6fa786;border-color:#6fa786;cursor:wait}
+.pix-copy{background:transparent;border:1px solid #c6c2bb;color:#008b30;font-size:19px;padding:11px}
+.pix-copy:disabled{color:#579869;cursor:default}
+.pix-generate:focus-visible,.pix-copy:focus-visible{outline:3px solid #9bdbba;outline-offset:3px}
+.pix-placeholder{width:100%;max-width:184px;color:#c5c1b9;fill:none;stroke:currentColor;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}
+.pix-placeholder-dots{fill:currentColor;stroke:none}
+@media(max-width:600px){.pix-panel{grid-template-columns:minmax(0,1fr) 104px;gap:18px;padding:24px 14px}.pix-instructions{gap:15px}.pix-notice{font-size:14px;gap:9px}.pix-notice svg{width:20px;height:20px}.pix-generate{font-size:17px;gap:7px}.pix-copy{font-size:16px}.pix-placeholder{max-width:104px}}
+@media(max-width:430px){.pix-panel{grid-template-columns:1fr}.pix-placeholder{grid-row:1;justify-self:center;max-width:116px;margin:2px 0 7px}.pix-notice{margin-bottom:2px!important}.pix-generate{font-size:19px}.pix-copy{font-size:18px}}
 .hint{display:inline-flex;align-items:center;justify-content:center;border:1px solid #888;width:15px;height:15px;border-radius:50%;font-size:10px;color:#666;cursor:help;vertical-align:1px}
 .submit-wrap{margin:0 0 38px}
 .purchase-button{display:block;width:100%;min-height:54px;background:#168557;border:1px solid #087b4b;color:white;border-radius:6px;font-size:17px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 #0d6943;transition:background-color .15s,transform .15s,box-shadow .15s}
+.purchase-button[hidden]{display:none}
 .purchase-button:hover{background:#0d7249}
 .purchase-button:focus-visible{outline:3px solid #9bdbba;outline-offset:3px}
 .purchase-button:active{transform:translateY(2px);box-shadow:0 1px 0 #0d6943}
