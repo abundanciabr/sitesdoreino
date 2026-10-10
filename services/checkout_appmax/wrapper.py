@@ -16,8 +16,9 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 
-BASE = "/checkout/comprar-desafio-como-ganhar-em-dolar-com-roblox"
-OFFER_SLUG = "desafio-como-ganhar-em-dolar-com-roblox"
+BASE = "/checkout/curso-primeiros-passos-no-blender"
+LEGACY_BASE = "/checkout/comprar-desafio-como-ganhar-em-dolar-com-roblox"
+OFFER_SLUG = "curso-primeiros-passos-no-blender"
 HOST = "meshcraft.top"
 MAX_BODY = 65_536
 _UUID = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
@@ -53,7 +54,7 @@ async def _reply(send, status: int, body: bytes = b"", content_type: str = "text
 
 
 async def _redirect(send, query: bytes):
-    location = BASE + "/" + (("?" + query.decode("ascii")) if query else "")
+    location = BASE + (("?" + query.decode("ascii")) if query else "")
     await send({"type": "http.response.start", "status": 308, "headers": [
         (b"location", location.encode("ascii")), (b"cache-control", b"no-store"),
     ]})
@@ -139,10 +140,10 @@ def build_app(
             return
         path = scope.get("path", "")
         method = scope.get("method", "GET").upper()
-        if path == BASE and method == "GET":
+        if path in (BASE + "/", LEGACY_BASE, LEGACY_BASE + "/") and method == "GET":
             await _redirect(send, scope.get("query_string", b""))
             return
-        if path == BASE + "/" and method == "GET":
+        if path == BASE and method == "GET":
             template = (asset_root / "checkout.html").read_text(encoding="utf-8")
             if template.count("__CHECKOUT_CONFIG__") != 1:
                 await _reply(send, 500)
