@@ -197,7 +197,7 @@ from apps.core.contatos import contato, contato_atendimento, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
-from apps.agentes.views_super_equipe import super_equipe, super_equipe_trabalho
+from apps.agentes.views_super_equipe import super_equipe, super_equipe_trabalho, super_equipe_fila, super_equipe_acao
 from apps.core.pagamentos import pagamentos, pagamentos_devolver
 from apps.core.gestao_do_placar import gestao_do_placar
 from apps.core.resultado_do_experimento import resultado_do_experimento
@@ -870,6 +870,8 @@ urlpatterns = [
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
     path("placar/", placar, name="placar"),
     path("super-equipe/", super_equipe, name="super_equipe"),
+    path("super-equipe/fila/", super_equipe_fila, name="super_equipe_fila"),
+    path("super-equipe/melhorias/<int:melhoria_id>/", super_equipe_acao, name="super_equipe_acao"),
     path("super-equipe/<int:trabalho_id>/", super_equipe_trabalho, name="super_equipe_trabalho"),
     path("placar/editar/", gestao_do_placar, name="gestao_do_placar"),
     # O CALENDÁRIO DO CICLO (`apps/core/ciclo.py`, 04/09/2026) — as 12

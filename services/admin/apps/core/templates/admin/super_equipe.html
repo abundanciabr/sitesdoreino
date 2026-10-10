@@ -3,7 +3,30 @@
 {% block corpo %}
 <main class="envolucro copy">
   <h1>Equipe de especialistas técnicos</h1>
-  <p class="subtitulo">Peça uma análise do site. O servidor consulta as fontes atuais, chama as especialidades escolhidas e guarda os resultados. Você pode fechar esta página.</p>
+  <p class="subtitulo">A equipe acompanha as fontes do site, identifica problemas e mantém as melhorias na fila. Análises, ações executadas e publicações têm acompanhamento separado.</p>
+  <section class="cartao">
+    <h2>Acompanhamento automático</h2>
+    {% if rotina %}
+      <p><b>{% if rotina.ativa %}Ligado{% else %}Pausado{% endif %}</b> · consulta a cada 15 minutos no servidor.</p>
+      <p>Última observação: {{ rotina.observada_em|date:"d/m/Y H:i"|default:"aguardando" }} · próxima: {{ rotina.proxima_em|date:"d/m/Y H:i"|default:"aguardando" }}.</p>
+      <p>Último contato do executor de melhorias: {{ rotina.executor_em|date:"d/m/Y H:i"|default:"ainda não conectado" }}. Sem contato recente, as pendências continuam guardadas.</p>
+      {% if rotina.ultimo_erro %}<p class="aviso">{{ rotina.ultimo_erro }}</p>{% endif %}
+      <form method="post">{% csrf_token %}<button class="botao" name="acao" value="{% if rotina.ativa %}pausar{% else %}retomar{% endif %}">{% if rotina.ativa %}Pausar acompanhamento{% else %}Retomar acompanhamento{% endif %}</button></form>
+    {% else %}<p>Aguardando o primeiro ciclo no servidor.</p>{% endif %}
+    <p>As consultas e a correção de ressalvas não usam IA paga. As análises usam o orçamento já autorizado, com consumo registrado por trabalho. Custo externo não informado não é contado como zero.</p>
+  </section>
+  <h2>Melhorias e pendências</h2>
+  {% for melhoria in melhorias %}
+    <section class="cartao" id="melhoria-{{ melhoria.pk }}">
+      <h3>{{ melhoria.titulo }}</h3>
+      <p><b>{{ melhoria.get_situacao_display }}</b> · prioridade {{ melhoria.prioridade }} · observada em {{ melhoria.observada_em|date:"d/m/Y H:i" }}</p>
+      {% if melhoria.trabalho_id %}<p><a href="{% url 'super_equipe_trabalho' melhoria.trabalho_id %}">Ver análise e consumo de IA</a></p>{% endif %}
+      <p style="white-space:pre-wrap">{{ melhoria.resultado|default:"Aguardando execução ou nova conferência." }}</p>
+      {% if melhoria.entrega %}<p>Entrega do publicador: {{ melhoria.entrega }}.</p>{% endif %}
+      <p>Custo externo: {% if melhoria.custo_externo_usd != None %}US$ {{ melhoria.custo_externo_usd }}{% else %}não informado{% endif %}.</p>
+      <details><summary>Histórico das ações</summary>{% for evento in melhoria.eventos.all %}<p>{{ evento.momento|date:"d/m/Y H:i:s" }} — {{ evento.texto }}</p>{% endfor %}</details>
+    </section>
+  {% empty %}<p>Nenhuma melhoria registrada até agora.</p>{% endfor %}
   {% if erro %}<p class="aviso borda-vermelha">{{ erro }}</p>{% endif %}
   <section class="cartao">
     <h2>Novo trabalho</h2>

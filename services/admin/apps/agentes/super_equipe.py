@@ -202,9 +202,17 @@ def _pendencias(fontes: dict) -> list[str]:
         pendentes.append("Pelo menos uma janela do funil está sem dados verificáveis.")
     if fontes.get("experimentos", {}).get("estado") != "medido":
         pendentes.append("Resultados dos experimentos indisponíveis.")
-    if any(p.get("estado") != "medido" or p.get("http", 0) >= 500
-           for p in fontes.get("paginas_publicas", {}).get("itens", [])):
-        pendentes.append("Uma verificação pública falhou.")
+    if fontes.get("robos_ia", {}).get("estado") != "medido":
+        pendentes.append("Robôs de IA: fonte indisponível ou não consultada.")
+    for pagina in fontes.get("paginas_publicas", {}).get("itens", []):
+        status = pagina.get("http")
+        if (pagina.get("estado") != "medido" or not isinstance(status, int)
+                or not 200 <= status < 300):
+            # As sondas não seguem redirecionamento: 3xx também não comprova
+            # que a página solicitada abriu. A URL vem da sonda, não da IA.
+            url = pagina.get("url", "Página pública")
+            detalhe = f"HTTP {status}" if isinstance(status, int) else "sem resposta verificável"
+            pendentes.append(f"{url}: {detalhe}.")
     if not fontes.get("paginas_publicas", {}).get("itens"):
         pendentes.append("As páginas públicas não foram verificadas.")
     return pendentes
