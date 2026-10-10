@@ -401,13 +401,11 @@ def test_canonical_usa_o_host_canonico_do_site_nunca_o_da_requisicao(
     assert HOST_PREVIEW not in conteudo
 
 
-def test_toda_url_do_hreflang_aparece_como_ancora_real(client, rede, com_i18n):
-    # D5: seletor de idioma é <a href> real — versão sem link rastreável pode
-    # nunca ser descoberta. O seletor cobre TODOS os idiomas habilitados, e o
-    # link do padrão é a raiz nua (mesma regra do canonical, mesma função).
+def test_seletor_de_idiomas_nao_aparece_na_interface(client, rede, com_i18n):
     conteudo = client.get("/", HTTP_HOST=HOST_A).content.decode()
+    assert '<nav class="idiomas"' not in conteudo
     for codigo in IDIOMAS_TESTE:
-        assert f'<a href="{url_de(codigo)}"' in conteudo
+        assert client.get(url_de(codigo), HTTP_HOST=HOST_A).status_code == 200
 
 
 # ---------------------------------------------------------------------------

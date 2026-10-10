@@ -103,22 +103,21 @@ def test_o_aluno_ve_o_caminho_da_caixa(client, com_email):
     assert CAIXA in _abrir(client)
 
 
-def test_o_aluno_ve_o_caminho_da_prancheta(client, com_email):
-    """AC-20: o aluno chega à Prancheta
-    sem digitar endereço — o link mora na home, pronto para o clique."""
+def test_a_home_do_aluno_nao_mostra_meu_portfolio(client, com_email):
     _situacao(com_email, "aluno")
     html = _abrir(client)
-    assert PRANCHETA in html
-    assert "Meu portfólio" in html
+    assert PRANCHETA not in html
+    assert "Meu portfólio" not in html
+    assert CAIXA in html
 
 
-def test_endereco_legado_configurado_leva_ao_portfolio_atual(
+def test_endereco_legado_nao_reintroduz_o_botao_na_home(
     client, com_email, monkeypatch
 ):
     monkeypatch.setenv("URL_DA_PRANCHETA", "/pages/")
     _situacao(com_email, "aluno")
     html = _abrir(client)
-    assert 'href="/portfolio/"' in html
+    assert 'href="/portfolio/"' not in html
     assert 'href="/pages/"' not in html
 
 

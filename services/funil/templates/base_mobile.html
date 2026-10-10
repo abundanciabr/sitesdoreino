@@ -89,15 +89,13 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
     .rodape .links a { color: #52525b; text-decoration: none; }
     .rodape .links a:hover, .rodape .links a:focus { text-decoration: underline; }
     .rodape .direitos { margin: 0; opacity: .8; }
-    .rodape .atualizacao { margin: .75rem 0 0; font-size: .75rem; color: #71717a; }
-    .rodape .atualizacao.antigravity { margin: .25rem 0 0; font-size: .7rem; color: #a1a1aa; }{% endif %}
+    {% endif %}
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 <body>{% if itens_do_menu %}
   <div class="barra-do-site"><nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
-  <div class="wrap">{% if request.i18n_seo %}
-    <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
+  <div class="wrap">
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
     {% include "funil/_instalar_o_app.html" %}{% endif %}{% if avisos_no_celular %}
     {% include "funil/_avisos_no_celular.html" %}{% endif %}{% if rodape %}
