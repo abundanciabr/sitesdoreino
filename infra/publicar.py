@@ -21,6 +21,7 @@ O banco nunca é restaurado sozinho.
 from __future__ import annotations
 
 import hashlib
+from diagnostico_entregas import RegistroPublicador
 import json
 import os
 import re
@@ -382,12 +383,74 @@ def publicar(celula: str, sha: str, pedido_em: str | None = None) -> int:
         return _publicar_travado(celula, sha, pedido_em)
 
 
+_diagnostico_entrega = None
+
+
+def etapa_entrega(etapa):
+    if _diagnostico_entrega is not None:
+        _diagnostico_entrega.etapa(etapa)
+
+
 def publicar_entrega(id_entrega: str, celula: str) -> int:
+    """Preserva a causa mesmo antes da criação da intenção de ativação."""
+    global _diagnostico_entrega
+    if not re.fullmatch(r"[0-9a-f]{12}", id_entrega) or celula not in ("aplicacao", "funil"):
+        raise ValueError("entrega ou célula inválida")
+    anterior = _diagnostico_entrega
+    reg = None
+    try:
+        # Identidade tipada da ponte, usada só para diagnóstico; todas as
+        # verificações da promoção/ambiente continuam em _publicar_entrega.
+        candidata = os.environ.get("ENTREGA_CANDIDATA", "")
+        if not re.fullmatch(r"[0-9a-f]{40}", candidata):
+            caminho = RAIZ / "entregas" / (id_entrega + ".json")
+            if caminho.is_symlink():
+                raise ValueError("entrega aceita ausente")
+            entrega = json.loads(caminho.read_text(encoding="utf-8"))
+            candidata = entrega.get("promovida_candidata", "")
+        with trava_ativacao():
+            reg = RegistroPublicador(PUBLICACOES / "diagnosticos", id_entrega, candidata, celula)
+            _diagnostico_entrega = reg
+            try:
+                resultado = _publicar_entrega(id_entrega, celula)
+                if resultado:
+                    raise RuntimeError("ativacao nao confirmada")
+                reg.concluir()
+                return 0
+            except Exception as erro:
+                diag = reg.falhar(erro)
+                print("DIAGNOSTICO-ENTREGA: " + json.dumps({"id": id_entrega,
+                      "candidata": candidata, "celula": celula, "diagnostico": diag}, ensure_ascii=True), flush=True)
+                raise
+    finally:
+        _diagnostico_entrega = anterior
+
+
+def _conferir_prova_promovida(id_entrega, sha, celula, promocao, prova):
+    chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
+    if promocao.get(chave) == prova.get("identidade"):
+        return
+    # A autoridade pode repetir o ensaio da mesma main quando o contexto muda
+    # ou levar uma célula pendente à main mais recente. A promoção é imutável.
+    caminho = PUBLICACOES / "reconciliacoes" / (sha + "-" + celula + ".json")
+    if caminho.is_symlink() or not caminho.is_file():
+        raise ValueError("promoção se refere a outra prova de ensaio")
+    recibo = json.loads(caminho.read_text(encoding="utf-8"))
+    esperado = {"id": id_entrega, "candidata": sha, "celula": celula,
+                "prova_promocao": promocao.get(chave), "identidade": prova["identidade"],
+                "pacote_id": prova["pacote_publicador"]["id"]}
+    if any(recibo.get(k) != v for k, v in esperado.items()):
+        raise ValueError("retomada não corresponde à prova atual")
+
+
+def _publicar_entrega(id_entrega: str, celula: str) -> int:
     """Ativa o artefato isolado de uma promoção remota já reconciliada."""
     if not re.fullmatch(r"[0-9a-f]{12}", id_entrega) or celula not in ("aplicacao", "funil"):
         raise ValueError("entrega ou célula inválida")
     with trava_ativacao():
+        etapa_entrega("recuperacao")
         retomar_pendencia(celula)
+        etapa_entrega("verificacao")
         registro_entrega = RAIZ / "entregas" / (id_entrega + ".json")
         if registro_entrega.is_symlink() or not registro_entrega.is_file():
             raise ValueError("entrega aceita ausente")
@@ -433,9 +496,9 @@ def publicar_entrega(id_entrega: str, celula: str) -> int:
                     sincronizar_diretorio(caminho_operacao.parent)
             return 0
         from ensaio_entregas import verificar_prova
+        etapa_entrega("prova")
         prova = verificar_prova(RAIZ, sha, FERRAMENTAS)
-        if promocao.get("prova_identidade") != prova.get("identidade"):
-            raise ValueError("promoção se refere a outra prova de ensaio")
+        _conferir_prova_promovida(id_entrega, sha, celula, promocao, prova)
         relatorio = Path(prova["artefato"]["comercial_xml"])
         resumo = conferir_relatorio(relatorio, registrar_falha_conhecida=True)
         if any(prova["cobertura"].get(chave) != valor for chave, valor in resumo.items()):
@@ -444,13 +507,16 @@ def publicar_entrega(id_entrega: str, celula: str) -> int:
         imagem_tar = Path(prova["artefato"]["imagem_tar"])
         imagem = prova["pacote_publicador"]["imagem_id"]
         # A prova confere os bytes do tar; o daemon de produção recebe somente a imagem comprovada.
+        etapa_entrega("imagem")
         rodar("docker", "load", "-i", imagem_tar)
         if imagem_id(imagem) != imagem:
             raise ValueError("imagem carregada difere da imagem ensaiada")
         conferir_codigo_docs(codigo)
+        etapa_entrega("mercadopago")
         politica = politica_mercadopago()
         conferir_ambiente(RAIZ, politica)
         conferir_mp_pacote(codigo, imagem, politica)
+        etapa_entrega("verificacao")
         if identificar(codigo, imagem, RAIZ / "docker-compose.yml") != prova["pacote_publicador"]:
             raise ValueError("pacote mudou depois do ensaio isolado")
         pasta_operacoes = PUBLICACOES / "operacoes"
@@ -474,6 +540,7 @@ def publicar_entrega(id_entrega: str, celula: str) -> int:
             "PUBLICACAO_LOCAL": str(FERRAMENTAS / "infra/publicacao-local.py")}
         LOGS.mkdir(parents=True, exist_ok=True)
         with (LOGS / f"entrega-{id_entrega}.log").open("a", encoding="utf-8") as registro:
+            etapa_entrega("ativacao")
             retorno, saida = executar_roteiro(FERRAMENTAS / "infra/deploy-celula-na-vps.sh", ambiente, registro)
             if retorno == 0 and f"ENTREGA-CONCLUIDA: {celula}" in saida:
                 registrar("concluida")
@@ -481,10 +548,13 @@ def publicar_entrega(id_entrega: str, celula: str) -> int:
             if (journal(celula) or {}).get("atual") == sha:
                 recuperar_versao(celula, registro, "entrega falhou", sha)
             registrar("falhou")
-            return 1
+            if "a cópia de segurança do banco não saiu" in saida:
+                etapa_entrega("backup")
+            raise RuntimeError("roteiro de ativacao falhou")
 
 
 def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: dict) -> int:
+    etapa_entrega("recuperacao")
     celulas = carregar_celulas()
     celulas.retomar_troca()
     estado = journal("funil") or {}
@@ -521,20 +591,23 @@ def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: d
                 sincronizar_diretorio(caminho_intencao.parent)
         return 0
     from ensaio_entregas import verificar_prova
+    etapa_entrega("prova")
     prova = verificar_prova(RAIZ, sha, FERRAMENTAS, celula="funil")
-    if promocao.get("prova_funil_identidade") != prova.get("identidade"):
-        raise ValueError("promoção funil se refere a outra prova")
+    _conferir_prova_promovida(id_entrega, sha, "funil", promocao, prova)
     artefato = prova["artefato"]
     codigo = Path(artefato["codigo"])
     bundle = Path(artefato["bundle"])
     imagem = prova["pacote_publicador"]["imagem_id"]
     nome = prova["nome_funil"]
+    etapa_entrega("imagem")
     rodar("docker", "load", "-i", artefato["imagem_tar"])
     if imagem_id(imagem) != imagem:
         raise ValueError("imagem funil carregada difere da ensaiada")
+    etapa_entrega("mercadopago")
     politica = politica_mercadopago()
     conferir_ambiente(RAIZ, politica)
     conferir_mp_pacote(bundle, imagem, politica)
+    conferir_ambiente(Path(artefato["configuracao_final"]), politica)
     conferir_codigo_docs(bundle)
     # O snapshot privado representa a rota final. A configuração real ainda é a base ensaiada.
     if identificar(codigo, imagem, Path(artefato["configuracao_final"]) / "docker-compose.yml") != prova["pacote_publicador"]:
@@ -555,6 +628,7 @@ def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: d
         sincronizar_diretorio(caminho_intencao.parent)
     with (LOGS / f"entrega-funil-{id_entrega}.log").open("a", encoding="utf-8") as registro:
         registrar("ativacao_iniciada")
+        etapa_entrega("backup")
         subprocess.run(["bash", str(FERRAMENTAS / "infra/backup-do-banco.sh"),
                         "funil-" + sha[:12]], cwd=RAIZ,
                        env=ambiente_base() | {"PRESERVAR_COPIAS": "1"},
@@ -565,6 +639,7 @@ def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: d
         if verificar_prova(RAIZ, sha, FERRAMENTAS, celula="funil")["identidade"] != prova["identidade"]:
             raise ValueError("prova funil mudou durante o backup")
         registrar("configurando")
+        etapa_entrega("ativacao")
         try:
             celulas.ativar(codigo, imagem, sha, prova["pacote_publicador"], nome=nome)
         except BaseException:

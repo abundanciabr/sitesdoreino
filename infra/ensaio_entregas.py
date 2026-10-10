@@ -23,9 +23,10 @@ import tarfile
 import tempfile
 import time
 import uuid
+from xml.etree.ElementTree import ParseError, parse as ler_xml
 
 SHA = re.compile(r"[0-9a-f]{40}\Z")
-VERSAO = 1
+VERSAO = 2
 RAIZ_FERRAMENTAS = Path(__file__).resolve().parents[1]
 
 
@@ -303,8 +304,32 @@ def _ferramentas(ferramentas: Path) -> tuple[str, str]:
 def _caminhos(plataforma: Path, candidata: str, celula: str = "aplicacao") -> tuple[Path, Path, Path]:
     if celula not in ("aplicacao", "funil"):
         raise RecusaEnsaio("célula sem ensaio isolado")
-    base = plataforma / "ensaios/saida" / (candidata + ("-funil" if celula == "funil" else ""))
+    chave = candidata + ("-funil" if celula == "funil" else "")
+    base = plataforma / "ensaios/saida" / chave
+    seletor = plataforma / "ensaios/selecionadas" / (chave + ".json")
+    if seletor.exists() or seletor.is_symlink():
+        if seletor.is_symlink():
+            raise RecusaEnsaio("seletor de ensaio inválido")
+        tentativa = json.loads(seletor.read_text(encoding="utf-8")).get("tentativa")
+        if not isinstance(tentativa, str) or not re.fullmatch(r"[0-9a-f]{32}", tentativa):
+            raise RecusaEnsaio("seletor de ensaio inválido")
+        base = plataforma / "ensaios/execucoes" / chave / tentativa
+    if base.is_symlink():
+        raise RecusaEnsaio("artefato de ensaio inválido")
     return base, base / "codigo", base / "imagem.tar"
+
+
+def _nova_tentativa(plataforma: Path, candidata: str, celula: str) -> None:
+    """Uma repetição não sobrescreve artefatos, inclusive os montados no site."""
+    chave = _sha(candidata) + ("-funil" if celula == "funil" else "")
+    seletor = plataforma / "ensaios/selecionadas" / (chave + ".json")
+    seletor.parent.mkdir(parents=True, exist_ok=True)
+    temporario = seletor.with_suffix(".tmp")
+    with temporario.open("w", encoding="utf-8") as aberto:
+        json.dump({"tentativa": uuid.uuid4().hex}, aberto)
+        aberto.flush()
+        os.fsync(aberto.fileno())
+    os.replace(temporario, seletor)
 
 
 def _modulo_funil(ferramentas: Path):
@@ -313,6 +338,13 @@ def _modulo_funil(ferramentas: Path):
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)
     return modulo
+
+
+def _nome_funil(candidata: str, tentativa: str = "") -> str:
+    """O nome ensaiado já é o destino final aceito pelo verificador congelado."""
+    candidata = _sha(candidata)
+    sufixo = hashlib.sha256(("funil:" + candidata + ":" + tentativa).encode()).hexdigest()[:8]
+    return "meshcraft-funil-" + candidata[:12] + "-" + sufixo
 
 
 def _snapshot_rota(plataforma: Path, base: Path, nome_funil: str,
@@ -387,7 +419,7 @@ def identidade_atual(plataforma: Path, candidata: str,
         if configuracao_final.is_symlink() or not configuracao_final.is_dir():
             raise RecusaEnsaio("configuração final da rota indisponível")
         configuracao = _configuracao(configuracao_final, ferramentas)
-        nome_funil = "meshcraft-funil-" + candidata[:12] + "-ensaio"
+        nome_funil = _nome_funil(candidata, base.name)
         rota = (configuracao_final / "traefik/dynamic/plataforma.yml").read_text(encoding="utf-8")
         if rota.count("http://" + nome_funil + ":8000") != 1:
             raise RecusaEnsaio("rota final não corresponde à candidata")
@@ -415,6 +447,9 @@ def identidade_atual(plataforma: Path, candidata: str,
         identidade["artefato"]["bundle"] = str(bundle.resolve())
         identidade["artefato"]["configuracao_final"] = str(configuracao_final.resolve())
         identidade["artefato"]["funil_xml"] = str((base / "evidencias/funil.xml").resolve())
+    identidade["relatorios"] = {nome: _hash(Path(caminho))
+                               for nome, caminho in identidade["artefato"].items()
+                               if nome.endswith("_xml")}
     return identidade
 
 
@@ -460,6 +495,18 @@ def registrar_prova(plataforma: Path, candidata: str, resultado: dict,
         prova["cobertura_funil"] = funil
     destino = Path(plataforma) / "entregas/provas" / (candidata + ("-funil" if celula == "funil" else "") + ".json")
     destino.parent.mkdir(parents=True, exist_ok=True)
+    if destino.exists():
+        anterior = json.loads(destino.read_text(encoding="utf-8"))
+        identidade_anterior = anterior.get("identidade")
+        if not isinstance(identidade_anterior, str) or not re.fullmatch(r"[0-9a-f]{64}", identidade_anterior):
+            raise RecusaEnsaio("prova anterior ilegível; histórico preservado")
+        historico = destino.parent / "historico" / destino.stem / (identidade_anterior + ".json")
+        historico.parent.mkdir(parents=True, exist_ok=True)
+        if historico.exists():
+            if historico.read_bytes() != destino.read_bytes():
+                raise RecusaEnsaio("histórico de prova divergente")
+        else:
+            shutil.copy2(destino, historico)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=destino.parent,
                                      delete=False) as aberto:
         json.dump(prova, aberto, sort_keys=True, ensure_ascii=False)
@@ -471,6 +518,103 @@ def registrar_prova(plataforma: Path, candidata: str, resultado: dict,
     finally:
         temporario.unlink(missing_ok=True)
     return prova
+
+
+def verificar_prova_historica(plataforma: Path, candidata: str,
+                              ferramentas: Path = RAIZ_FERRAMENTAS,
+                              celula: str = "aplicacao", identidade: str | None = None) -> dict:
+    """Confere a evidência selada; nunca autoriza uma nova ativação.
+
+    Configuração de origem e ferramentas são o contexto do ensaio registrado.
+    Compará-las com o servidor atual faria a própria ativação invalidar a prova.
+    O chamador ancora a identidade na promoção ou no journal confiável.
+    """
+    candidata = _sha(candidata)
+    if celula not in ("aplicacao", "funil"):
+        raise RecusaEnsaio("célula sem ensaio isolado")
+    chave = candidata + ("-funil" if celula == "funil" else "")
+    arquivo = Path(plataforma) / "entregas/provas" / (chave + ".json")
+    try:
+        if arquivo.is_symlink():
+            raise RecusaEnsaio("prova histórica inválida")
+        prova = json.loads(arquivo.read_text(encoding="utf-8"))
+        if identidade is not None and prova.get("identidade") != identidade:
+            if not re.fullmatch(r"[0-9a-f]{64}", identidade):
+                raise RecusaEnsaio("identidade histórica inválida")
+            arquivo = arquivo.parent / "historico" / chave / (identidade + ".json")
+            if arquivo.is_symlink():
+                raise RecusaEnsaio("prova histórica inválida")
+            prova = json.loads(arquivo.read_text(encoding="utf-8"))
+        campos = ("candidata", "celula", "codigo_git", "codigo", "imagem",
+                  "imagem_tar_sha256", "configuracao", "configuracao_base", "executor",
+                  "ensaio", "pacote_publicador", "artefato")
+        if celula == "funil":
+            campos += ("nome_funil", "bundle_sha256")
+        if prova.get("versao") == 2:
+            campos += ("relatorios",)
+        registrada = {k: prova[k] for k in campos}
+        if (prova.get("versao") not in (1, 2) or prova.get("resultado") != "aprovado"
+                or prova.get("candidata") != candidata or prova.get("celula") != celula
+                or prova.get("identidade") != _json_hash(registrada)
+                or (identidade is not None and prova["identidade"] != identidade)):
+            raise RecusaEnsaio("prova histórica divergiu da identidade registrada")
+        artefato = prova["artefato"]
+        codigo = Path(artefato["codigo"])
+        base = codigo.parent
+        legado = Path(plataforma) / "ensaios/saida" / chave
+        execucoes = Path(plataforma) / "ensaios/execucoes" / chave
+        if (base != legado and (base.parent != execucoes
+                                or not re.fullmatch(r"[0-9a-f]{32}", base.name))):
+            raise RecusaEnsaio("artefato histórico fora do ensaio")
+        esperados = {"codigo": base / "codigo", "imagem_tar": base / "imagem.tar",
+                     "comercial_xml": base / "evidencias/comercial.xml"}
+        if celula == "funil":
+            esperados.update(bundle=base / "bundle", configuracao_final=base / "configuracao-final",
+                             funil_xml=base / "evidencias/funil.xml")
+        for nome, caminho in esperados.items():
+            if Path(artefato[nome]) != caminho or caminho.is_symlink() or not caminho.exists():
+                raise RecusaEnsaio("artefato histórico indisponível")
+        from protecao_publicacao import arvore
+        if (arvore(codigo) != prova["codigo"]
+                or _hash(esperados["imagem_tar"]) != prova["imagem_tar_sha256"]
+                or _imagem_id_tar(esperados["imagem_tar"]) != prova["imagem"]
+                or _git(Path(plataforma) / "codigo/repo.git", "rev-parse", candidata + "^{tree}") != prova["codigo_git"]):
+            raise RecusaEnsaio("bytes históricos mudaram")
+        pacote = {"codigo_sha256": prova["codigo"], "imagem_id": prova["imagem"],
+                  "configuracao_sha256": prova["configuracao"]}
+        pacote["id"] = hashlib.sha256(json.dumps(pacote, sort_keys=True).encode()).hexdigest()
+        if pacote != prova["pacote_publicador"]:
+            raise RecusaEnsaio("pacote histórico divergiu")
+        def relatorio(nome, cobertura):
+            caminho = esperados[nome]
+            digest = _hash(caminho)
+            if (cobertura.get("estado") != "comprovado"
+                    or cobertura.get("relatorio_sha256") != digest
+                    or (prova["versao"] == 2 and prova["relatorios"].get(nome) != digest)):
+                raise RecusaEnsaio("relatório histórico mudou")
+            casos = list(ler_xml(caminho).getroot().iter("testcase"))
+            pendencias = []
+            for caso in casos:
+                skipped = caso.find("skipped")
+                if (nome == "comercial_xml" and caso.get("name") == "test_20_conversa_do_contato_de_teste_liga_sozinha"
+                        and skipped is not None and skipped.get("type") == "pytest.xfail"
+                        and caso.find("error") is None and caso.find("failure") is None):
+                    pendencias.append({"caso": caso.get("name"), "estado": "falhou",
+                                      "causa": "contato de teste oculto pela API de produção"})
+                elif any(caso.find(tag) is not None for tag in ("skipped", "error", "failure")):
+                    raise RecusaEnsaio("relatório histórico não aprovado")
+            if (not casos or len(casos) - len(pendencias) != cobertura.get("casos")
+                    or pendencias != cobertura.get("falhas_conhecidas_nao_aprovadas", [])):
+                raise RecusaEnsaio("cobertura histórica divergiu")
+        relatorio("comercial_xml", prova["cobertura"])
+        if celula == "funil":
+            if (arvore(esperados["bundle"]) != prova["bundle_sha256"]
+                    or _configuracao(esperados["configuracao_final"], ferramentas) != prova["configuracao"]):
+                raise RecusaEnsaio("artefatos históricos do funil mudaram")
+            relatorio("funil_xml", prova["cobertura_funil"])
+        return prova
+    except (OSError, ValueError, TypeError, KeyError, ParseError) as erro:
+        raise RecusaEnsaio("prova histórica indisponível ou corrompida") from erro
 
 
 def verificar_prova(plataforma: Path, candidata: str,
@@ -720,6 +864,9 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
     ferramentas = Path(ferramentas)
     entrada = plataforma / "ensaios/entrada" / candidata
     base, codigo, tar_imagem = _caminhos(plataforma, candidata, celula)
+    if base.exists():
+        _nova_tentativa(plataforma, candidata, celula)
+        base, codigo, tar_imagem = _caminhos(plataforma, candidata, celula)
     if entrada.is_symlink() or not entrada.is_dir():
         raise RecusaEnsaio("entrada da candidata indisponível")
     from protecao_publicacao import arvore, montar, ensaiar, imagem_id, conferir_relatorio
@@ -764,7 +911,7 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
             modulo.projetar(bundle, codigo, "funil")
             _normalizar_diretorios_codigo(codigo)
             modulo.conferir_projecao(bundle, codigo, "funil")
-            nome_funil = "meshcraft-funil-" + candidata[:12] + "-ensaio"
+            nome_funil = _nome_funil(candidata, base.name)
             _snapshot_rota(plataforma, base, nome_funil, ferramentas)
             resultado_funil = modulo.ensaiar_funil(fonte / "services/funil", imagem,
                                                   ferramentas, base / "evidencias")

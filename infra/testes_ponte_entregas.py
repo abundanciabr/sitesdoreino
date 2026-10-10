@@ -1,4 +1,5 @@
 import io
+from unittest import mock
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,65 @@ import ponte_entregas as ponte
 
 PEDIDO = {"acao": "preparar", "id": "1" * 12, "candidata": "a" * 40,
           "celula": "aplicacao"}
+
+
+def _reg_espelho(candidata, base_candidata="c" * 40):
+    return {"id": "1" * 12, "ramo": "codex/entrega/prova", "commit": "d" * 40,
+            "base": "e" * 40, "origem": "codex", "estado": "pronta",
+            "candidata": candidata, "base_da_candidata": base_candidata}
+
+
+def _ambiente_espelho(tmp_path, novo, antigo):
+    origem, destino = tmp_path / "origem", tmp_path / "plataforma"
+    for raiz in (origem, destino):
+        (raiz / "codigo/repo.git").mkdir(parents=True)
+        (raiz / "entregas").mkdir()
+    (origem / "entregas" / (novo["id"] + ".json")).write_text(json.dumps(novo), encoding="utf-8")
+    (destino / "entregas" / (antigo["id"] + ".json")).write_text(json.dumps(antigo), encoding="utf-8")
+    return ponte.Autoridade(origem=origem, plataforma=destino), destino
+
+
+def test_espelho_aceita_candidata_recomposta_da_mesma_entrega(tmp_path, monkeypatch):
+    anterior = _reg_espelho("a" * 40, "f" * 40)
+    atual = _reg_espelho("b" * 40, "c" * 40)
+    autoridade, destino = _ambiente_espelho(tmp_path, atual, anterior)
+    def executar(comando, **_):
+        return SimpleNamespace(returncode=0, stdout=atual["candidata"] + "\n"
+                               if "rev-parse" in comando else "")
+    monkeypatch.setattr(ponte.subprocess, "run", executar)
+    assert autoridade.espelhar(atual["id"], atual["candidata"]) == {"ok": True, "estado": "pronta"}
+    salvo = json.loads((destino / "entregas" / (atual["id"] + ".json")).read_text())
+    assert salvo == atual
+
+
+def test_espelho_recusa_pedido_de_candidata_desatualizada(tmp_path):
+    atual = _reg_espelho("b" * 40)
+    autoridade, _ = _ambiente_espelho(tmp_path, atual, _reg_espelho("a" * 40))
+    with mock.patch.object(ponte.subprocess, "run") as executar:
+        with pytest.raises(ponte.ErroPonte) as erro:
+            autoridade.espelhar(atual["id"], "a" * 40)
+        executar.assert_not_called()
+    assert erro.value.diagnostico["codigo"] == "espelho_candidata_divergente"
+
+
+@pytest.mark.parametrize("modificacao,codigo", [
+    ({"base": "f" * 40}, "espelho_identidade_divergente"),
+    ({"promocao": {"estado": "intencao", "candidata": "a" * 40}}, "espelho_promocao_protegida"),
+    ({"estado": "integrada na main", "promovida_candidata": "a" * 40,
+      "promocao": {"estado": "remota", "candidata": "a" * 40, "remoto": "integrador"}},
+     "espelho_promocao_protegida"),
+])
+def test_espelho_recusa_identidade_ou_promocao_sem_fetch(tmp_path, monkeypatch, modificacao, codigo):
+    anterior = _reg_espelho("a" * 40)
+    anterior.update(modificacao)
+    atual = _reg_espelho("b" * 40)
+    autoridade, destino = _ambiente_espelho(tmp_path, atual, anterior)
+    with mock.patch.object(ponte.subprocess, "run") as executar:
+        with pytest.raises(ponte.ErroPonte) as erro:
+            autoridade.espelhar(atual["id"], atual["candidata"])
+        executar.assert_not_called()
+    assert erro.value.diagnostico["codigo"] == codigo
+    assert json.loads((destino / "entregas" / (atual["id"] + ".json")).read_text()) == anterior
 
 
 def test_sigterm_na_preparacao_executa_limpeza_e_restaura_handler():
