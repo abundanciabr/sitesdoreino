@@ -152,6 +152,36 @@ class PublicacaoRetomada(unittest.TestCase):
                 publicador.main(["publicar", "aplicacao", self.nova])
         antigo.assert_not_called()
 
+    def test_main_remota_publica_usa_https_sem_remoto_local_nem_credencial(self):
+        publicador = carregar("publicador_consulta_publica", "publicar.py")
+        consulta = Mock(returncode=0, stdout=self.nova + "\trefs/heads/main\n")
+        with patch.object(publicador.subprocess, "run", return_value=consulta) as executar:
+            self.assertEqual(publicador.main_remota_publica(), self.nova)
+        comando = executar.call_args.args[0]
+        ambiente = executar.call_args.kwargs["env"]
+        self.assertEqual(comando, ["git", "-c", "credential.helper=", "ls-remote",
+                                  "--heads", "https://github.com/abundanciabr/sitesdoreino.git", "main"])
+        self.assertNotIn("integrador", comando)
+        self.assertEqual(ambiente["GIT_CONFIG_NOSYSTEM"], "1")
+        self.assertEqual(ambiente["GIT_CONFIG_GLOBAL"], os.devnull)
+        self.assertEqual(ambiente["GIT_TERMINAL_PROMPT"], "0")
+
+    def test_publicacao_recusa_remoto_de_promocao_diferente(self):
+        publicador = carregar("publicador_remoto_divergente", "publicar.py")
+        publicador.RAIZ = self.raiz
+        publicador.PUBLICACOES = self.mod.PASTA
+        (self.raiz / "entregas").mkdir()
+        (self.raiz / "entregas" / (("a" * 12) + ".json")).write_text(json.dumps({
+            "id": "a" * 12, "estado": "integrada na main", "promovida_candidata": self.nova,
+            "promocao": {"estado": "remota", "candidata": self.nova, "remoto": "origin"}}))
+        with patch.object(publicador, "git", return_value=self.nova), \
+             patch.object(publicador, "main_remota_publica") as consultar, \
+             patch.object(publicador, "rodar") as docker:
+            with self.assertRaisesRegex(ValueError, "remoto da promoção inesperado"):
+                publicador.publicar_entrega("a" * 12, "aplicacao")
+        consultar.assert_not_called()
+        docker.assert_not_called()
+
     def test_promocao_com_prova_trocada_nao_carrega_imagem(self):
         publicador = carregar("publicador_prova", "publicar.py")
         publicador.RAIZ = self.raiz
@@ -160,9 +190,10 @@ class PublicacaoRetomada(unittest.TestCase):
         (self.raiz / "entregas" / (("a" * 12) + ".json")).write_text(json.dumps({
             "id": "a" * 12, "estado": "integrada na main", "promovida_candidata": self.nova,
             "promocao": {"estado": "remota", "candidata": self.nova,
-                         "remoto": "origin", "prova_identidade": "prova-original"}}))
+                         "remoto": "integrador", "prova_identidade": "prova-original"}}))
         import ensaio_entregas
-        with patch.object(publicador, "git", side_effect=lambda *args: self.nova if args[0] == "rev-parse" else self.nova + "\trefs/heads/main"), \
+        with patch.object(publicador, "git", return_value=self.nova), \
+             patch.object(publicador, "main_remota_publica", return_value=self.nova), \
              patch.object(publicador, "journal", return_value=None), \
              patch.object(publicador, "rodar") as docker, \
              patch.object(ensaio_entregas, "verificar_prova", return_value={"identidade": "prova-trocada"}):
@@ -229,11 +260,12 @@ class PublicacaoRetomada(unittest.TestCase):
         (self.raiz / "entregas" / (("a" * 12) + ".json")).write_text(json.dumps({
             "id": "a" * 12, "estado": "integrada na main", "promovida_candidata": self.nova,
             "promocao": {"estado": "remota", "candidata": self.nova,
-                         "remoto": "origin", "prova_funil_identidade": "original"}}))
+                         "remoto": "integrador", "prova_funil_identidade": "original"}}))
         modulo_funil = Mock()
         modulo_funil.topologia.return_value = {"celulas": {}}
         import ensaio_entregas
-        with patch.object(publicador, "git", side_effect=lambda *args: self.nova if args[0] == "rev-parse" else self.nova + "\trefs/heads/main"), \
+        with patch.object(publicador, "git", return_value=self.nova), \
+             patch.object(publicador, "main_remota_publica", return_value=self.nova), \
              patch.object(publicador, "journal", return_value=None), \
              patch.object(publicador, "carregar_celulas", return_value=modulo_funil), \
              patch.object(publicador, "rodar") as docker, \

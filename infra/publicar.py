@@ -44,6 +44,7 @@ except ImportError:  # só existe na VPS
 RAIZ = Path(os.environ.get("PLATAFORMA_DIR", "/opt/plataforma"))
 FERRAMENTAS = Path(__file__).resolve().parents[1]
 REPO = RAIZ / "codigo" / "repo.git"
+REPO_PUBLICO = "https://github.com/abundanciabr/sitesdoreino.git"
 VERSOES = RAIZ / "versoes"
 PUBLICACOES = RAIZ / "publicacoes"
 TRABALHO = PUBLICACOES / "trabalho"
@@ -130,6 +131,22 @@ def rodar(*args, saida=True, **kwargs) -> str:
 
 def git(*args) -> str:
     return rodar("git", "-C", REPO, *args)
+
+
+def main_remota_publica() -> str:
+    """Lê a main publicada sem depender dos remotos ou credenciais do publicador."""
+    ambiente = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    ambiente.update(GIT_TERMINAL_PROMPT="0", GIT_ASKPASS=os.devnull,
+                    GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    consulta = subprocess.run(
+        ["git", "-c", "credential.helper=", "ls-remote", "--heads", REPO_PUBLICO, "main"],
+        cwd=REPO.parent, env=ambiente, capture_output=True, text=True, timeout=60)
+    if consulta.returncode:
+        raise RuntimeError("main remota indisponível")
+    linhas = consulta.stdout.splitlines()
+    if len(linhas) != 1 or not re.fullmatch(r"[0-9a-f]{40}\trefs/heads/main", linhas[0]):
+        raise ValueError("resposta da main remota inválida")
+    return linhas[0].split("\t", 1)[0]
 
 
 def journal(celula: str) -> dict | None:
@@ -381,11 +398,9 @@ def publicar_entrega(id_entrega: str, celula: str) -> int:
                 or promocao.get("estado") != "remota" or promocao.get("candidata") != sha
                 or not SHA.fullmatch(sha or "") or git("rev-parse", "refs/heads/main") != sha):
             raise ValueError("entrega sem promoção remota reconciliada na main atual")
-        remoto = promocao.get("remoto")
-        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,80}", remoto or ""):
-            raise ValueError("remoto da promoção inválido")
-        resposta = git("ls-remote", "--heads", remoto, "main").split()
-        if not resposta or resposta[0] != sha:
+        if promocao.get("remoto") != "integrador":
+            raise ValueError("remoto da promoção inesperado")
+        if main_remota_publica() != sha:
             raise ValueError("promoção remota não corresponde à candidata")
         estado = journal(celula) or {}
         ativa = (estado.get("aprovada") or {}).get("sha")
