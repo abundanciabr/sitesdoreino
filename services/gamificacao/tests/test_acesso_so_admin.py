@@ -41,7 +41,7 @@ def test_visitante_ve_o_aviso(monkeypatch):
     como(monkeypatch, None)
     base = get(reverse("base"))
     assert base.status_code == 200 and "Entrar na escola" in base.content.decode()
-    assert "inicio-jornada" not in base.content.decode()
+    assert "inicio-cartao" not in base.content.decode()
     r = get(reverse("medalhas"))
     assert r.status_code == 200 and AVISO in r.content.decode()
     assert "no-cache" in r["Cache-Control"] or "no-store" in r["Cache-Control"]
@@ -55,8 +55,8 @@ def test_aluno_nao_admin_ve_inicio_mas_medalhas_seguem_fechadas(monkeypatch):
         r = get(reverse("base"))
         medalhas = get(reverse("medalhas"))
     corpo = r.content.decode()
-    assert r.status_code == 200 and 'id="inicio-jornada"' in corpo
-    assert "Meu primeiro item" in corpo and AVISO not in corpo
+    assert r.status_code == 200 and 'id="inicio-cartao"' in corpo
+    assert 'id="inicio-retomar"' in corpo and AVISO not in corpo
     assert "private" in r["Cache-Control"]
     assert AVISO in medalhas.content.decode()
 
@@ -67,7 +67,7 @@ def test_equipe_sem_permissao_admin_ve_base_mas_nao_medalhas(monkeypatch):
     with respx.mock:
         respx.get(f"{ID}/sessao/completa").respond(json={"autenticado": True, "email": "a@x.com"})
         respx.post(f"{ADM}/administradores/consultar").respond(json={"e_administrador": False})
-        assert 'id="inicio-jornada"' in get(reverse("base")).content.decode()
+        assert 'id="inicio-cartao"' in get(reverse("base")).content.decode()
         assert AVISO in get(reverse("medalhas")).content.decode()
 
 
@@ -99,7 +99,7 @@ def test_sem_env_da_admin_vira_aviso(monkeypatch):
     como(monkeypatch, "pes-1")
     monkeypatch.delenv("ADMIN_API_URL")
     monkeypatch.delenv("ADMIN_API_TOKEN")
-    assert 'id="inicio-jornada"' in get(reverse("base")).content.decode()
+    assert 'id="inicio-cartao"' in get(reverse("base")).content.decode()
     assert AVISO in get(reverse("medalhas")).content.decode()
 
 

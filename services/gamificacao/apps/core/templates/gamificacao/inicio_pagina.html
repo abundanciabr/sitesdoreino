@@ -1,0 +1,14 @@
+{% extends "gamificacao/moldura.html" %}
+{% block titulo %}{{ inicio_titulo }}{% endblock %}
+{% block faixa %}<a href="{% url 'base' %}">← Voltar às conquistas</a>{% endblock %}
+{% block conteudo %}
+{% if entrou %}
+  {% include "gamificacao/_inicio.html" %}
+{% else %}
+  <section class="convite">
+    <h1>{{ inicio_titulo }}</h1>
+    <p>Entre na sua conta para abrir este passo e continuar com seus registros privados.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+  </section>
+{% endif %}
+{% endblock %}

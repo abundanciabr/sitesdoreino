@@ -182,9 +182,10 @@ def test_duas_abas_com_revisao_antiga_nao_sobrescrevem_nota_nem_criam_arquivo(cl
 def test_inicio_continua_editavel_depois_da_faixa_branca(client, monkeypatch):
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: P)
     antes = client.get(reverse("base")).content.decode()
-    assert "Faixa branca · Meu ponto de partida" in antes
+    assert 'id="inicio-cartao"' in antes
+    assert 'id="inicio-retomar"' in antes
     assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
     assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
     depois = client.get(reverse("base")).content.decode()
-    assert "Meu ponto de partida · Sempre editável" in depois
-    assert 'id="inicio-jornada"' in depois
+    assert 'id="inicio-cartao"' in depois
+    assert 'id="inicio-retomar"' in depois
