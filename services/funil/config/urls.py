@@ -23,6 +23,7 @@ from apps.core.views import (
     notificacoes,
     pagina_de_oferta,
     pagina_de_oferta_roblox,
+    pagina_de_oferta_blender,
     robots_txt,
     service_worker,
     servir_estatico,
@@ -95,6 +96,7 @@ urlpatterns = [
     # (`ci/tests/test_rotas_sem_forma_de_locale.py`).
     path("oferta", pagina_de_oferta, name="pagina_de_oferta"),
     path("flp-0", redirecionar_flp_antiga, name="pagina_flp_antiga"),
+    re_path(r"^curso-primeiros-passos-no-blender/?$", pagina_de_oferta_blender, name="oferta_primeiros_passos_blender"),
     re_path(
         r"^(?P<slug>desafio-como-ganhar-em-dolar-com-roblox)/?$",
         pagina_de_oferta_roblox,
