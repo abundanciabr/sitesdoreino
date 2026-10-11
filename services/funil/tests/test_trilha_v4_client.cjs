@@ -180,6 +180,34 @@ test('aluno amarelo com quatro requisitos concluidos continua vendo a pratica se
   assert.equal(checklist.itens.find(item=>item.estado==='pendente').acao.url,'/encomendas/sandbox/');
   assert.equal(r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades).itens.length,4);
 });
+test('avaliacao do Sandbox preserva a explicacao e mostra resultado legivel',async()=>{
+  const data=withChecklist();data.atual_ordem=2;
+  data.etapas.forEach(step=>step.alcancada=step.ordem<=2);
+  data.avaliacoes_sandbox=[{trabalho_id:'trabalho-1',entrega_id:'entrega-2',analise_id:'analise-2',
+    versao:2,atual:true,historico:false,estado:'concluida',resultado:'atende',
+    explicacao:'<script>texto da análise</script>',justificativa:'Peça examinada.',
+    proxima_acao:'Aguarde o registro da conquista.',url:'/encomendas/sandbox/trabalhos/trabalho-1/',
+    reconhecimento:{estado:'aguardando_sequencia',texto:'A sequência da jornada ainda está pendente.'}}];
+  const r=await load({ok:true,status:200,json:async()=>data});mountPanel(r.context);
+  const card=r.context.sandboxEvaluationPanel(r.payload.progresso.avaliacoes_sandbox);
+  const all=descendants(card);
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-explanation').textContent,'<script>texto da análise</script>');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-result').textContent,'Atende ao pedido');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-version').textContent,'Versão 2 · Atual neste trabalho');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-next').textContent,'Aguarde o registro da conquista.');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-recognition').textContent,'A sequência da jornada ainda está pendente.');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-link').href,'/encomendas/sandbox/trabalhos/trabalho-1/');
+  assert.equal(all.find(n=>n.className==='sandbox-evaluation-explanation').innerHTML,undefined);
+});
+test('avaliacao ausente ou link inseguro nao inventa conquista nem cria link',async()=>{
+  const r=await load({ok:true,status:200,json:async()=>withChecklist()});mountPanel(r.context);
+  const missing=r.context.sandboxEvaluationPanel(undefined);
+  assert.match(descendants(missing).find(n=>n.className==='sandbox-evaluations-empty').textContent,/Não foi possível consultar/);
+  const item={versao:1,atual:false,historico:true,estado:'pendente',resultado:'',explicacao:'Entrega recebida.',justificativa:'',proxima_acao:'',url:'https://example.test/',reconhecimento:{estado:'aguardando_analise',texto:'A análise não terminou.'}};
+  const card=r.context.sandboxEvaluationPanel([item]);
+  assert.equal(descendants(card).filter(n=>n.tag==='a').length,0);
+  assert.equal(descendants(card).find(n=>n.className==='sandbox-evaluation-recognition').textContent,'A análise não terminou.');
+});
 test('estados ou acoes invalidas no checklist nao sao desenhados',async()=>{
   for(const change of [d=>d.etapas[0].checklist.itens[0].estado='suposto',d=>d.etapas[0].checklist.itens[0].acao={rotulo:'Falso',url:'javascript:alert(1)'},d=>d.etapas[0].checklist.itens.push(d.etapas[0].checklist.itens[0])]){
     const data=withChecklist();change(data);

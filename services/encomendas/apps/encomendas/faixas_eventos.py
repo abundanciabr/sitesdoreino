@@ -38,6 +38,7 @@ from django.utils import timezone
 
 EV_SANDBOX = "encomendas.sandbox-trabalho-criado"
 EV_CONCLUSAO = "encomendas.sandbox-trabalho-concluido"
+EV_AVALIACAO = "encomendas.sandbox-avaliacao-atualizada"
 EV_FILA = "encomendas.fila-trabalho-aceito"
 EV_CONFIRMADO = "encomendas.rendimento-real-confirmado"
 EV_REVERTIDO = "encomendas.rendimento-real-revertido"
@@ -93,6 +94,61 @@ def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None, entrega=None):
                       "trabalho_id": str(participacao.pk),
                       "ocorrido_em": _iso(ocorrido_em or participacao.aprovado_em),
                   })
+
+
+def sandbox_avaliacao_atualizada(analise, *, historico=False):
+    """Publica um retrato idempotente da avaliação, sem atribuir conquista aqui."""
+    if analise.entrega.teste_mantenedor:
+        return None, False
+    from .devolutiva_sandbox import lacunas
+
+    entrega = analise.entrega
+    participacao = entrega.participacao
+    atual = not participacao.entregas.filter(teste_mantenedor=False, versao__gt=entrega.versao).exists()
+    estado = ('concluida' if analise.estado == 'concluida' else
+              'falha' if analise.estado in ('falha', 'falha_ia') else
+              'em_analise' if analise.estado in ('comparando', 'examinando') else 'pendente')
+    avaliacao = analise.resultado.get('avaliacao') or {} if estado == 'concluida' else {}
+    resultado = avaliacao.get('resultado', '')
+    if resultado not in ('atende', 'precisa_ajustes', 'inconclusiva'):
+        resultado = ''
+    if estado == 'concluida' and (lacunas(analise.resultado) or not resultado):
+        resultado = 'inconclusiva'
+    justificativa = str(avaliacao.get('justificativa') or '') if estado == 'concluida' else ''
+    rotulo = resultado if estado == 'concluida' and resultado else ('inconclusiva' if estado == 'concluida' else estado)
+    proxima_acao = {
+        'pendente': 'Aguarde a análise dos arquivos enviados.',
+        'em_analise': 'Aguarde o resultado da avaliação automática.',
+        'falha': 'Tente novamente a análise desta versão ou peça ajuda ao suporte.',
+        'atende': 'Confira o resultado e siga a sequência da jornada.',
+        'precisa_ajustes': 'Confira os pontos indicados, ajuste o trabalho e envie uma nova versão.',
+        'inconclusiva': 'Confira as evidências e os arquivos não examinados; envie nova versão ou peça ajuda ao suporte.',
+    }[rotulo]
+    explicacao = {
+        'pendente': f'A versão {entrega.versao} foi recebida e aguarda avaliação.',
+        'em_analise': f'A versão {entrega.versao} está em análise.',
+        'falha': f'A análise da versão {entrega.versao} não terminou por falha técnica; isto não reprova o trabalho.',
+        'atende': f'A avaliação automática da versão {entrega.versao} terminou: a realização atende ao briefing.',
+        'precisa_ajustes': f'A avaliação automática da versão {entrega.versao} terminou: a realização precisa de ajustes.',
+        'inconclusiva': f'A avaliação automática da versão {entrega.versao} terminou sem evidência suficiente para reconhecer a realização.',
+    }[rotulo]
+    if not atual:
+        explicacao = f'A avaliação da versão {entrega.versao} está no histórico; uma versão mais recente substituiu esta entrega.'
+        proxima_acao = 'Confira a avaliação da versão mais recente.'
+    atualizado_em = _iso(analise.atualizada_em)
+    dados = {
+        'pessoa_id': str(participacao.pessoa_id), 'trabalho_id': str(participacao.pk),
+        'entrega_id': str(entrega.pk), 'analise_id': str(analise.pk), 'versao': int(entrega.versao),
+        'entrega_criada_em': _iso(entrega.criada_em),
+        'atualizado_em': atualizado_em, 'ocorrido_em': atualizado_em,
+        'estado': estado, 'resultado': resultado, 'explicacao': explicacao,
+        'justificativa': justificativa, 'proxima_acao': proxima_acao,
+        'url': f'/encomendas/sandbox/trabalhos/{participacao.pk}/', 'historico': bool(historico),
+        'atual': atual,
+    }
+    chave = f'{analise.pk}:{atualizado_em}:{estado}'
+    return emitir(*_modelos(), site_id=participacao.site_id, evento=EV_AVALIACAO,
+                  chave=chave, dados=dados)
 
 
 def fila_trabalho_aceito(acordo, *, historico=False):

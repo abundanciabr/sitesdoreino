@@ -155,6 +155,19 @@ def _faixa(conversa):
             'nome': atual.get('nome'), 'conquista': atual.get('conquista'), 'alcancada_em': atual.get('alcancada_em')}
 
 
+def _jornada_sandbox(conversa):
+    pessoa = conversa.pessoa_id.removeprefix('equipe-admin-')
+    if pessoa.startswith('equipe-membro-') or pessoa == 'conta-do-robo':
+        return {'estado': 'Sem aluno identificado para consultar o Sandbox.', 'avaliacoes': []}
+    dados = GamificacaoClient().jornada_sandbox(conversa.site_id, pessoa)
+    if not isinstance(dados, dict) or not isinstance(dados.get('avaliacoes'), list):
+        return {'estado': 'A jornada do Sandbox está indisponível nesta consulta; não presuma conclusão.',
+                'avaliacoes': []}
+    return {'estado': 'Jornada do Sandbox consultada.' if dados['avaliacoes'] else
+            'Nenhuma avaliação do Sandbox registrada nesta jornada.',
+            'avaliacoes': dados['avaliacoes']}
+
+
 def catalogo():
     """Os produtos ativos do catálogo, `[{id, nome}]`, ou `None` se ele não respondeu."""
     lista = CatalogoClient().listar_produtos()

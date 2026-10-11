@@ -127,6 +127,7 @@ def _soma_anterior(r):
 
 
 def situacao(pessoa_id, site_id, *, meta_simulada=None):
+    from .sandbox_avaliacoes import resumo as resumo_sandbox
     jornada = JornadaPessoal.objects.filter(
         pessoa_id=pessoa_id, site_id=site_id
     ).first()
@@ -225,6 +226,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         "dica": APOIOS.get(jornada.apoio if jornada else "guiado", APOIOS["guiado"])[1],
         "revisao": jornada.revisao if jornada else 0,
         "recebimentos": recebimentos,
+        "sandbox_avaliacoes": resumo_sandbox(pessoa_id, site_id)["avaliacoes"],
         "historico": RegistroDaJornada.objects.filter(
             pessoa_id=pessoa_id, site_id=site_id
         )[:20],
@@ -262,9 +264,32 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
     }
 
 
+def _ordens_de_bonus(pessoa_id, site_id, ordens):
+    """Bônus azul novo exige reconhecimento da análise; crédito antigo segue intacto."""
+    ordens = set(ordens)
+    if 3 not in ordens:
+        return ordens
+    from .models import AvaliacaoSandboxProjetada, LancamentoDeXP
+    reconhecida = AvaliacaoSandboxProjetada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, reconhecida_em__isnull=False,
+    ).exists()
+    ja_creditado = LancamentoDeXP.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, regra_slug="bonus-faixa-azul",
+    ).exists()
+    if not reconhecida and not ja_creditado:
+        ordens.remove(3)
+    return ordens
+
+
 def _registro(jornada, acao, dados, antes):
+    if acao == "declaracao" and dados.get("passo") == 2:
+        from .sandbox_avaliacoes import reconhecer_pendentes
+        reconhecer_pendentes(jornada)
     depois = situacao(jornada.pessoa_id, jornada.site_id)
-    alcancadas = {p["ordem"] for p in depois["lista"] if p["alcancada"]}
+    alcancadas = _ordens_de_bonus(
+        jornada.pessoa_id, jornada.site_id,
+        (p["ordem"] for p in depois["lista"] if p["alcancada"]),
+    )
     from .bonus_faixas import conceder
     dados["bonus_xp"] = conceder(jornada.pessoa_id, jornada.site_id, alcancadas)
     dados.update(
@@ -284,7 +309,7 @@ def _registro(jornada, acao, dados, antes):
 
 def registrar_conclusao(pessoa_id, site_id, ordem):
     """A conclusão e a declaração do aluno usam a mesma conquista e o mesmo bônus."""
-    if ordem not in (3, 4):
+    if ordem != 4:
         raise ValueError("Conclusão indisponível.")
     from apps.core.perfil import perfil_de
     perfil_de(pessoa_id, site_id)
@@ -293,7 +318,10 @@ def registrar_conclusao(pessoa_id, site_id, ordem):
         j = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa_id, site_id=site_id)
         if j.declaracoes.get(str(ordem)):
             from .bonus_faixas import conceder
-            conceder(pessoa_id, site_id, [p['ordem'] for p in situacao(pessoa_id, site_id)['lista'] if p['alcancada']])
+            conceder(pessoa_id, site_id, _ordens_de_bonus(
+                pessoa_id, site_id,
+                (p['ordem'] for p in situacao(pessoa_id, site_id)['lista'] if p['alcancada']),
+            ))
             return
         antes = situacao(pessoa_id, site_id)
         predecessor_alcancado = antes["lista"][ordem - 2]["alcancada"]
@@ -363,6 +391,8 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 raise ValueError(
                     "Esse passo acompanha seus recebimentos automaticamente."
                 )
+            if ordem == 3:
+                raise ValueError("A prática do Sandbox é reconhecida pela análise da entrega.")
             declaracoes = dict(j.declaracoes)
             confirmacoes = dict(j.confirmacoes_sequenciais)
             if dados.get("estado") == "feito":

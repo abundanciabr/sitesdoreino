@@ -1683,6 +1683,63 @@ class GamificacaoClient:
             return None
         return corpo
 
+    def jornada_sandbox(self, site_id: str, pessoa_id: str) -> "dict | None":
+        """Avaliações da jornada de uma pessoa, lidas da projeção da gamificação."""
+        config = self._configuracao()
+        if config is None or not site_id or not pessoa_id:
+            return None
+        base, token = config
+        try:
+            resposta = http().get(
+                f"{base}/jornada-sandbox/{quote(site_id, safe='')}/{quote(pessoa_id, safe='')}",
+                headers={"Authorization": f"Bearer {token}"}, timeout=self.TIMEOUT,
+            )
+            if resposta.status_code != 200:
+                logger.warning("jornada sandbox: gamificação respondeu HTTP %s", resposta.status_code)
+                return None
+            corpo = resposta.json()
+        except (httpx.HTTPError, ValueError) as erro:
+            logger.warning("jornada sandbox: gamificação não respondeu: %s", erro)
+            return None
+        if (not isinstance(corpo, dict) or corpo.get("fonte") != "gamificacao"
+                or str(corpo.get("site_id")) != site_id
+                or str(corpo.get("pessoa_id")) != pessoa_id
+                or not isinstance(corpo.get("avaliacoes"), list)):
+            return None
+        avaliacoes = []
+        for item in corpo["avaliacoes"][:20]:
+            if not isinstance(item, dict) or item.get("estado") not in {
+                    "pendente", "em_analise", "falha", "concluida"}:
+                continue
+            reconhecimento = item.get("reconhecimento") or {}
+            if not isinstance(reconhecimento, dict):
+                reconhecimento = {}
+            url = item.get("url")
+            if not isinstance(url, str) or not url.startswith("/encomendas/sandbox/trabalhos/") or url.startswith("//"):
+                url = ""
+            avaliacoes.append({
+                "trabalho_id": str(item.get("trabalho_id") or "")[:100],
+                "entrega_id": str(item.get("entrega_id") or "")[:100],
+                "analise_id": str(item.get("analise_id") or "")[:100],
+                "versao": item.get("versao") if type(item.get("versao")) is int else None,
+                "atualizado_em": str(item.get("atualizado_em") or "")[:100],
+                "ocorrido_em": str(item.get("ocorrido_em") or "")[:100],
+                "atual": item.get("atual") is True,
+                "estado": item["estado"],
+                "resultado": str(item.get("resultado") or "")[:100],
+                "explicacao": str(item.get("explicacao") or "")[:4000],
+                "justificativa": str(item.get("justificativa") or "")[:4000],
+                "proxima_acao": str(item.get("proxima_acao") or "")[:1000],
+                "historico": item.get("historico") is True,
+                "url": url,
+                "reconhecimento": {
+                    "estado": str(reconhecimento.get("estado") or "")[:100],
+                    "texto": str(reconhecimento.get("texto") or "")[:1000],
+                },
+            })
+        return {"fonte": "gamificacao", "site_id": site_id,
+                "pessoa_id": pessoa_id, "avaliacoes": avaliacoes}
+
     def _listar(self, caminho: str, rotulo: str) -> "list | None":
         config = self._configuracao()
         if config is None:

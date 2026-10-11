@@ -29,7 +29,7 @@ def _fonte(url, token, caminho):
 
 def consultar_fontes(site_id, email):
     fontes = {nome: {"estado": "sem_identidade", "dados": None} for nome in
-              ("portfolio", "conquistas", "fila", "pecas", "comunidade", "pratica")}
+              ("portfolio", "conquistas", "fila", "pecas", "comunidade", "pratica", "jornada_sandbox")}
     config = IdentidadeClient()._configuracao()
     estado, identidade = (_pedir(*config, "/pessoas/por-email", metodo="POST", corpo={"email": email})
                            if config else ("sem_configuracao", None))
@@ -52,6 +52,12 @@ def consultar_fontes(site_id, email):
     fontes["nps"] = {"estado": estado_nps, "dados": dados_nps}
     if not pessoa:
         return fontes
+    jornada = GamificacaoClient().jornada_sandbox(site_id, pessoa)
+    fontes["jornada_sandbox"] = (
+        {"estado": "ok" if jornada["avaliacoes"] else "sem_registro", "dados": jornada}
+        if isinstance(jornada, dict) and isinstance(jornada.get("avaliacoes"), list)
+        else {"estado": "indisponivel", "dados": None}
+    )
     site, pid = quote(site_id, safe=""), quote(pessoa, safe="")
     consultas = {
         "portfolio": ("PAGES_API_URL", "PAGES_API_TOKEN", f"/portfolios/{site}/{pid}"),

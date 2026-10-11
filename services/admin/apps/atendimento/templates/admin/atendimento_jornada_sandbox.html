@@ -1,0 +1,16 @@
+<section class="sg-card" aria-label="Avaliações do Sandbox nesta jornada">
+  <h2>Avaliações do Sandbox na jornada</h2>
+  <p class="sg-note">Fonte: gamificação do site. Confira a análise e o reconhecimento antes de responder.</p>
+  <p>{{ jornada_sandbox.estado }}</p>
+  {% for item in jornada_sandbox.avaliacoes %}
+  <div class="sg-note">
+    <p><b>Versão {{ item.versao|default:'não informada' }}</b> · {{ item.estado }}{% if item.resultado %} · {{ item.resultado }}{% endif %}</p>
+    <p>Trabalho {{ item.trabalho_id }}{% if item.entrega_id %} · entrega {{ item.entrega_id }}{% endif %}{% if item.analise_id %} · análise {{ item.analise_id }}{% endif %}{% if item.atualizado_em %} · atualizado em {{ item.atualizado_em }}{% endif %}</p>
+    {% if item.explicacao %}<p>{{ item.explicacao }}</p>{% endif %}
+    {% if item.justificativa and item.justificativa != item.explicacao %}<p>{{ item.justificativa }}</p>{% endif %}
+    {% if item.reconhecimento.texto %}<p>Reconhecimento: {{ item.reconhecimento.texto }}</p>{% endif %}
+    {% if item.proxima_acao %}<p>Próximo passo: {{ item.proxima_acao }}</p>{% endif %}
+    {% if item.url %}<p><a href="{{ item.url }}">Abrir trabalho</a></p>{% endif %}
+  </div>
+  {% endfor %}
+</section>

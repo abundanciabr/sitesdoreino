@@ -10,6 +10,8 @@ from apps.core.perfil import perfil_de
 from apps.core.trilha_api import _projecao
 from apps.gamificacao.jornada import registrar_conclusao, salvar, situacao
 from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal, RecebimentoDeclarado, RegistroDaJornada
+from apps.gamificacao.handlers import ao_sandbox_avaliacao_atualizada
+from tests.test_conclusao_sandbox_xp import avaliacao
 
 
 pytestmark = pytest.mark.django_db
@@ -48,6 +50,11 @@ def registro_legado(*, declaracoes=None, com_anexo=True, total=0, inicio=None):
 
 
 def declarar(ordem, estado="feito"):
+    if ordem == 3:
+        if estado != "feito" or not situacao(P, SITE)["lista"][1]["alcancada"]:
+            raise ValueError("A análise aguarda a etapa anterior.")
+        ao_sandbox_avaliacao_atualizada(avaliacao(P, SITE))
+        return
     return salvar(P, SITE, {
         "acao": "declaracao", "passo": str(ordem), "estado": estado,
         "revisao": situacao(P, SITE)["revisao"],
@@ -115,20 +122,18 @@ def test_sem_predecessora_ninguem_confirma_passo_3_ou_4():
 
 def test_conclusao_automatica_preserva_fato_sem_confirmar_faixa_superior():
     jornada = registro_legado(declaracoes={"2": "antiga"}, total=10000)
-    registrar_conclusao(P, SITE, 3)
+    ao_sandbox_avaliacao_atualizada(avaliacao(P, SITE))
     registrar_conclusao(P, SITE, 4)
     jornada.refresh_from_db()
-    assert jornada.declaracoes.get("3") and jornada.declaracoes.get("4")
+    assert not jornada.declaracoes.get("3") and jornada.declaracoes.get("4")
     assert jornada.confirmacoes_sequenciais == {}
     assert ordem() == 1
     creditar_tres_tarefas()
     declarar(2)
-    assert ordem() == 2
-    assert RegistroDaJornada.objects.filter(acao="conclusao").count() == 2
-    registrar_conclusao(P, SITE, 3)
+    assert ordem() == 3
+    assert RegistroDaJornada.objects.filter(acao="conclusao").count() == 1
+    ao_sandbox_avaliacao_atualizada(avaliacao(P, SITE))
     registrar_conclusao(P, SITE, 4)
-    assert ordem() == 2
-    declarar(3)
     assert ordem() == 3
     declarar(4)
     assert ordem() == 13
@@ -138,7 +143,7 @@ def test_conclusao_automatica_nova_avanca_quando_predecessora_ja_vale():
     registro_legado(declaracoes={"2": "antiga"}, total=10000)
     creditar_tres_tarefas()
     declarar(2)
-    registrar_conclusao(P, SITE, 3)
+    ao_sandbox_avaliacao_atualizada(avaliacao(P, SITE))
     assert ordem() == 3
     registrar_conclusao(P, SITE, 4)
     assert ordem() == 13
@@ -152,7 +157,7 @@ def test_requisito_anterior_invalido_regrede_sem_apagar_fatos_ou_confirmacoes():
         declarar(passo)
     assert ordem() == 13
     inicio = dict(jornada.inicio)
-    inicio["confirmado_em"] = None
+    inicio["motivo"] = ""
     jornada.inicio = inicio
     jornada.save(update_fields=["inicio"])
     assert ordem() == 1
@@ -160,7 +165,7 @@ def test_requisito_anterior_invalido_regrede_sem_apagar_fatos_ou_confirmacoes():
     assert set(jornada.confirmacoes_sequenciais) == {"2", "3", "4"}
     assert set(jornada.declaracoes) == {"2", "3", "4"}
     assert RecebimentoDeclarado.objects.count() == AnexoDaJornada.objects.count() == 1
-    inicio["confirmado_em"] = "2026-10-10T11:00:00-03:00"
+    inicio["motivo"] = "ugc"
     jornada.inicio = inicio
     jornada.save(update_fields=["inicio"])
     assert ordem() == 13
@@ -219,7 +224,8 @@ def test_post_declaracao_reconfirma_legado_na_ordem(client, monkeypatch):
     assert ordem() == 2
     assert postar(4).status_code == 400
     assert ordem() == 2
-    assert postar(3).status_code == 200
+    assert postar(3).status_code == 400
+    ao_sandbox_avaliacao_atualizada(avaliacao(P, SITE))
     assert ordem() == 3
     assert postar(4).status_code == 200
     assert ordem() == 4
