@@ -3,7 +3,7 @@
 - **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (cópia local; versão no Git em `https://github.com/abundanciabr/sitesdoreino/blob/main/ROTEIRO-SUPORTE-EM-ESCALA-20261011.md`; sem publicação como página).
 - **Plano que ele executa:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md`. O plano diz **o quê e por quê**; este roteiro diz **em que ordem, com que prova e onde marcar**.
 - **Código:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\` (ramo de trabalho). Entregar o código é pelo integrador: execução de `entregar` por `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\infra\robo.py` com ramo `codex/entrega/suporte-escala-20261011`; a main é protegida.
-- **Criado em 11/10/2026.** Última atualização: 11/10/2026 15:40 (entrega `0311edf43715` ativa; conferência autenticada concluída; medição de 14 dias pendente).
+- **Criado em 11/10/2026.** Última atualização: 11/10/2026 16:01 (decisões expressas D1–D6 registradas; autonomia desligada; E1.4 e valores de D2 pendentes).
 
 ---
 
@@ -15,7 +15,7 @@
 4. **Travou?** Escreva na seção 8 (pendências) o que travou, por quê e o que falta, e **passe ao próximo passo que não depende dele**. Nunca fique parado num passo nem pule para o fim.
 5. **Mudou o plano?** O plano-mestre é a fonte. Se um passo aqui contradiz o plano, corrija este roteiro, não o plano, e anote na seção 8.
 6. **Nunca faça fora do roteiro:** gerar Pix ou link de pagamento, usar `resetar_senha`, usar `matricular_aluno`, publicar aviso no site ou tópico no fórum em nome do robô, escrever em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\checkout`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\pagamentos`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\aplicacao`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\site_errors`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\outbox-relay` (Mercado Pago congelado, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\AGENTS.md`).
-7. **Decisões do mantenedor (D1 a D6)** só ele responde. Até responder, faça só os passos marcados "não depende de decisão". Não invente a resposta.
+7. **Decisões do mantenedor:** as respostas D1–D6 estão registradas no fim deste roteiro. Não voltar a tratá-las como perguntas em aberto. D2 adiou os valores até a medição; D1 planejou somente tipos 1 e 16, com ativação dependente de novo pedido. Não invente valor, condição comercial nem autorização de ativação.
 8. **E2 começa após E1.1 e o histórico necessário de E1.2.** A medição E1.4 de 14 dias não bloqueia rascunhos assistidos; bloqueia a ampliação da autonomia da E4. O plano todo termina com a seção 7 (testes finais). A seção 7 encerra o plano completo E1–E7; esta entrega se encerra com as provas do escopo E1 e dos rascunhos/caixa da E2. Medição e etapas futuras ficam separadas.
 9. **Teste por etapa:** rode só os testes do que mudou (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento*.py` e o que o passo citar), com o Postgres da sessão por `DATABASE_URL` (ver memória "Testes paralelos da mesma célula"). Antes de publicar, rode a suíte do admin inteira uma vez.
 10. **Economia:** sem ajudantes ou workflows adicionais; usar o navegador para a conferência no site prevista nesta entrega. Respostas curtas ao mantenedor, em português simples.
@@ -27,10 +27,10 @@
 | Campo | Valor |
 |---|---|
 | Etapa atual | E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10 entregues e conferidos no site |
-| Passo atual | E1.4: aguardar a janela real até 25/10/2026 15:39 (Brasília); decisões do mantenedor e etapas futuras separadas |
+| Passo atual | E1.4: aguardar a janela real até 25/10/2026 15:39 (Brasília), depois definir valores de D2. Demais escolhas registradas; piloto e WhatsApp continuam como implementação futura |
 | Último commit publicado do suporte | `df6430f6ae1a8710f665c8871194ed389c5e4ee9` (entrega `0311edf43715`, ativa) |
-| Decisões respondidas | D5 parcial: expediente vigente, segunda a sexta, 14h–18h de Brasília; prazo humano pendente. D1–D4 e D6 abertas |
-| Pendências abertas (seção 8) | Medição de 14 dias; decisões D1–D6; E2.7/E2.8 e E3–E7 fora do escopo |
+| Decisões respondidas | D1 definido como piloto futuro restrito, sem ativação; D3, D4, D5 e D6 confirmadas. D2: valores adiados até a medição de 14 dias |
+| Pendências abertas (seção 8) | E1.4 e valores de D2 após 25/10/2026 às 15h39; implementação futura do WhatsApp escolhido e do piloto restrito; ativação depende de novo pedido. E2.7/E2.8 e E3–E7 não executadas nesta rodada |
 | Auditorias feitas (seção 6) | Implementação de E1.1–E1.3 e escopo assistido da E2 conferidos em 11/10/2026; E1.4 e itens fora do escopo não concluídos |
 
 ---
@@ -86,17 +86,17 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 - [ ] **Medição da E3:** 30 dias depois, pedidos por 100 alunos ativos caíram 30%? Número antes: ______ depois: ______
 - [ ] **Auditoria da E3** (seção 6) feita em: ______
 
-### E4: robô responde os verdes (depende de D1, D2, D3, E1.4 e E2)
+### E4: piloto futuro apenas dos tipos 1 e 16 (D1), sem ativação autorizada
 
-- [ ] **E4.0** D1, D2 e D3 respondidas e a tabela da seção 2 refeita (E1.4). Sem isso, não começar. Data: ______
+- [ ] **E4.0** Concluir a medição E1.4 e obter os valores de D2. D1 e D3 estão registradas; D1 limita o piloto aos tipos 1 e 16 e exige novo pedido do mantenedor para ativar. Data de eventual ativação: ______
 - [ ] **E4.1** Cor ligada ou desligada por tipo em `Configuracao`. Prova: teste.
-- [ ] **E4.2** Resposta automática só com tipo verde, fonte encontrada e confiança alta; senão amarelo com rascunho. Prova: teste dos três casos de falta.
+- [ ] **E4.2** No piloto futuro, resposta automática apenas dos tipos 1 e 16, com tipo verde, fonte encontrada e confiança alta; senão amarelo com rascunho. Prova: teste dos três casos de falta.
 - [ ] **E4.3** "Resolveu?" depois da resposta do robô; "não" reabre com prioridade. Prova: teste.
 - [ ] **E4.4** Sorteio de 5% mais todas as mal avaliadas vão à caixa de decisões. Prova: teste com semente fixa.
 - [ ] **E4.5** Botão de desligar por tipo. Prova: teste desliga tipo 1 e o robô para de responder só o tipo 1.
 - [ ] **E4.6** Teto diário: ao bater, IA para e os tipos de texto fixo continuam respondidos pelo sistema; o resto vira amarelo. Prova: teste com teto zero mostra tipo 1 respondido sem IA e tipo 10 amarelo.
 - [ ] **E4.7** Tela de Regras lida pelo robô. Prova: teste mostra a regra na instrução.
-- [ ] **E4.8** Abertura aos poucos: só tipos 1 e 16 no primeiro dia. Os demais abrem um por vez conforme E1.3. Registro de qual abriu quando: ______
+- [ ] **E4.8** Implementar o piloto planejado só dos tipos 1 e 16. Os demais não estão autorizados. Ativação depende de novo pedido do mantenedor; a medição não a dispara. Registro de eventual autorização e ativação: ______
 - [ ] **Ensaio da E4:** verdes respondidos em menos de 1 min, vermelhos nunca, sorteio na caixa, teto zero mantém texto fixo. Prova: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_automatico.py` (arquivo previsto para E4, ainda não criado).
 - [ ] **Auditoria da E4** (seção 6) feita em: ______
 
@@ -113,7 +113,7 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 
 ### E6: canais (depende de D4)
 
-- [ ] **E6.0** D4 respondida. Número: ______
+- [x] **E6.0** D4 respondida em 11/10/2026: reaproveitar o número comercial já conectado. A conexão existente será identificada na implementação; nenhum número foi inventado ou copiado para este documento. E6.1–E6.4 continuam pendentes.
 - [ ] **E6.1** Conversas de suporte da mensageria entram na fila do atendimento com o mesmo robô. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas\entrada.py` e `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`. Prova: teste manda WhatsApp e aparece na fila com tipo e cor.
 - [ ] **E6.2** Mesmo histórico por e-mail e telefone do CRM. Prova: teste.
 - [ ] **E6.3** Aprovar pelo celular ("1 = aprovar" no WhatsApp da equipe). Prova: teste.
@@ -147,9 +147,9 @@ Repetir ao fim de cada etapa, nesta ordem:
 
 | Referência | Antes de | Pergunta ao mantenedor, em português simples |
 |---|---|---|
-| G1 | E4.0 | "D1: o robô pode responder sozinho os verdes? D2: quanto por mês e por dia? D3: quais regras escritas?" |
+| G1 | E4.0 | D1: piloto planejado só de tipos 1/16, sem ativação. D3 confirmada. Falta definir valores de D2 após a medição e receber novo pedido para ativar. |
 | G2 | E5.4b | "Duas semanas sem erro na matrícula recuperada. Pode virar verde?" |
-| G3 | E6.0 | "D4: qual número de WhatsApp atende o suporte?" |
+| G3 | E6.0 | D4 respondida: reutilizar o número comercial conectado. Não pedir novamente a escolha do canal; a integração permanece futura. |
 | G4 | qualquer passo que toque dinheiro, apague dado ou exponha segredo | pedir a palavra, sempre |
 
 As decisões acima não impedem o trabalho já autorizado de E1 e da caixa assistida da E2.
@@ -191,7 +191,8 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 |---|---|---|---|---|
 | 11/10/2026 | E1.4 | Coleta desde 11/10/2026 15:39, Brasília | Medir ao completar a janela em 25/10/2026 15:39, Brasília | Pendente |
 | 11/10/2026 | Suíte geral | Testes antigos de documentos falham também na main diante da publicação manual | Registro separado; proteção preservada | Confirmado na main |
-| 11/10/2026 | E2.7/E2.8; E3–E7 | Fora desta entrega | Nova execução no escopo correspondente; D1–D6 quando aplicáveis | Não iniciado |
+| 11/10/2026 | E2.7/E2.8; E3–E7 | Fora desta entrega | Decisões desta rodada registradas; implementação futura em seu escopo; valores D2 após medição e novo pedido antes da ativação | Não iniciado |
+| 11/10/2026 | Decisões D1–D6 | Respostas expressas recebidas e registradas | Valores D2 deliberadamente adiados até a medição; nenhuma outra escolha desta rodada ficou sem resposta | 11/10/2026 |
 
 ---
 
@@ -200,6 +201,7 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 | Data | Começou em | Terminou em | Commits | Observação |
 |---|---|---|---|---|
 | 11/10/2026 | Preparação e leitura | 11/10/2026 15:40 | `db7036d81`, `4da8a98fb`, `df6430f6ae1a8710f665c8871194ed389c5e4ee9` | Plano ajustado, implementação, 165 testes de suporte, migrações e conferência no site; documentos versionados sem virar páginas |
+| 11/10/2026 | Definição das escolhas do mantenedor | Decisões D1–D6 registradas | Entrega documental desta rodada | Piloto futuro restrito sem ativação; orçamento adiado; orientação, WhatsApp comercial, prazo interno e cores confirmados; sem mudança de código ou configuração |
 
 
 ## Execução autorizada em 11/10/2026 — correções e alcance
@@ -208,7 +210,7 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 - Entrega atual: E1.1–E1.3 e E2.1–E2.6/E2.10 (rascunhos, prioridade, prazo e caixa de decisões). E2.9 aproveita a confirmação de resolução. E2.7/E2.8 não são necessários à caixa: permanecem explicitamente pendentes, sem ligar lembretes ao aluno, encerramento por silêncio nem oportunidades automáticas.
 - Classificação sem chamada de IA. Sem evidência suficiente, amarelo e revisão individual. Vermelhos não entram em envio em lote. A cor não concede autonomia.
 - O lote mostra o texto que será enviado; mensagens novas, troca de responsável, produto, agenda ou base exigem rever o grupo. Não há geração de IA depois do clique.
-- Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1–D4 e D6 continuam sem decisão nova; em D5, falta o prazo humano, preservando o expediente vigente. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
+- Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1 definido como piloto futuro restrito, sem ativação; D3, D4, D5 e D6 confirmadas. D2: valores adiados até a medição de 14 dias. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
 - E1.4: coleta desde 11/10/2026 15:39; completar 14 dias em 25/10/2026 15:39, Brasília. E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
@@ -237,7 +239,7 @@ A main avançou durante a preparação para `dcc01be3edb23e72e9c9722f05c412f1fa7
 
 Após a combinação, os **165 testes de suporte passaram**. As duas migrações 0005 foram unidas pela migração 0006; aplicação, reversão e reaplicação em banco isolado passaram, e `makemigrations --check` não encontrou mudanças. A comparação das falhas antigas foi feita contra a main `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; não é apresentada como uma execução integral sobre a main posterior.
 
-A conferência autenticada em `https://meshcraft.top/admin/atendimento/configuracao/` encontrou Comunidade, Cursos e Site em modo Assistido, expediente ativo de segunda a sexta das 14h às 18h (Brasília), sábado e domingo fechado, e o orçamento existente de US$ 10/mês. Nenhuma configuração foi salva pela tarefa. D5 ainda precisa do prazo de resposta humana; 24h permanece apenas um destaque interno provisório, sem promessa e sem cálculo de horas úteis.
+A conferência autenticada em `https://meshcraft.top/admin/atendimento/configuracao/` encontrou Comunidade, Cursos e Site em modo Assistido, expediente ativo de segunda a sexta das 14h às 18h (Brasília), sábado e domingo fechado, e o orçamento existente de US$ 10/mês. Nenhuma configuração foi salva pela tarefa. D5 foi confirmada: manter 24h como destaque interno, sem prometer prazo ao aluno e sem cálculo de horas úteis.
 
 
 ## Entrega no site e medição real
@@ -247,5 +249,21 @@ A conferência autenticada em `https://meshcraft.top/admin/atendimento/configura
 - Conferência autenticada em 11/10/2026 15:40: fila `https://meshcraft.top/admin/atendimento/`, caixa `https://meshcraft.top/admin/atendimento/decisoes/` e medição `https://meshcraft.top/admin/atendimento/desempenho/?periodo=14`. Resultado detalhado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-site.json` (somente neste PC). Nenhuma mensagem foi enviada a aluno real na conferência; o envio em lote foi provado com destinatários fictícios no banco isolado.
 - Coleta registrada no painel desde **11/10/2026 15:39 (Brasília)**; primeira revisão de 14 dias em **25/10/2026 15:39 (Brasília)**. E1.4 permanece pendente até a janela terminar. Não substituir hipóteses por estimativas apresentadas como números reais. O painel diferencia resolução confirmada e inferida, informa amostras e limitações; retorno em sete dias só entra na taxa após uma janela completa. Para atendimentos fechados perto do fim dos 14 dias, a janela de retorno termina depois da primeira revisão.
 - E3: os 30 dias de comparação começam somente após implementar a prevenção; ainda não iniciados. E5.4b: as duas semanas sem erro começam somente após implementar a recuperação de matrícula; ainda não iniciadas. Não há evidência para declarar a meta final de 85% alcançada.
-- Decisões ainda do mantenedor: **D1** eventual autonomia dos verdes; **D2** orçamento mensal e diário de escala; **D3** orientações de atendimento sobre reembolso, garantia, troca de turma e promessas; **D4** número do WhatsApp; **D5** prazo humano (o expediente vigente já é segunda a sexta, 14h–18h); **D6** ajuste das cores por tipo e degrau. Nenhuma decisão pendente foi presumida. O teto existente de US$ 10/mês e os três modos Assistidos foram preservados.
+- Decisões atualizadas nesta rodada: As decisões de 11/10/2026 mantêm toda resposta em modo Assistido. O primeiro piloto planejado fica limitado a cumprimentos (16) e datas confirmadas na agenda (1), com ativação somente após novo pedido do mantenedor. O orçamento de escala será definido após a medição; o teto atual de US$ 10/mês permanece. WhatsApp: reaproveitar o comercial conectado, com integração à fila ainda futura. Prazo: apenas destaque interno de 24h corridas, sem promessa ao aluno. Orientações de atendimento e matriz de cores foram confirmadas conforme o registro de decisões.
 - Escopo entregue: E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10. E2.7/E2.8 e E3–E7 continuam fora desta entrega. Os documentos foram versionados no Git; não foram publicados como páginas em `https://meshcraft.top/docs/` nem em outro espaço público do site.
+
+
+## Decisões confirmadas pelo mantenedor — 11/10/2026
+
+Registro atualizado em 11/10/2026 16:01, Brasília. As seis escolhas vieram das respostas expressas nesta conversa; nenhuma opção pré-selecionada foi tratada como consentimento.
+
+- **D1 — autonomia futura:** planejar primeiro um piloto só de cumprimentos e datas confirmadas na agenda, tipos 16 e 1. **Ativação depende de novo pedido do mantenedor.** Os outros tipos verdes não fazem parte desse piloto. Os três assuntos continuam Assistidos.
+- **D2 — orçamento:** definir valores mensal e diário depois da medição de 14 dias, a partir de **25/10/2026 às 15h39, Brasília**. Mantido o teto existente de US$ 10/mês; teto diário ainda não implementado. Não foi autorizado um novo valor nem decidido o custo do WhatsApp.
+- **D3 — orientação:** reembolso, garantia e troca de turma seguem com reunião dos dados do caso, consulta às condições já informadas na compra e decisão da equipe. Não inventar elegibilidade, prazo, desconto ou promessa de resultado. As condições comerciais existentes são a referência; esta decisão não cria condições novas.
+- **D4 — WhatsApp:** reaproveitar o número comercial já conectado. A escolha encerra a pergunta sobre canal, mas a integração do WhatsApp à fila de suporte é trabalho futuro da E6. Nenhum número privado ou credencial é reproduzido nestes documentos.
+- **D5 — prazo humano:** manter o destaque interno de 24h corridas, sem prometer prazo ao aluno. Preservar o expediente de segunda a sexta, 14h–18h de Brasília. Nenhuma promessa pública de resposta ou resolução foi publicada.
+- **D6 — cores:** verde para tipos 1, 2, 3, 4, 5, 7, 9, 11 e 16; amarelo para 0, 6, 8, 10 e 12; vermelho para 13, 14 e 15. Tipo 1 sem data confirmada na agenda fica amarelo; pedido de gerar cobrança fica vermelho. A cor apenas classifica, sem conceder autonomia.
+
+Conferência nesta rodada em `https://meshcraft.top/admin/atendimento/configuracao/`: Comunidade, Cursos e Site Assistidos; teto de US$ 10/mês; expediente ativo de 14h a 18h. A página foi apenas lida. Nenhum código de atendimento, pagamento, configuração de envio ou dado de aluno foi alterado por esta rodada; somente os dois documentos foram versionados, sem publicação como páginas.
+
+Respostas e prova da conferência, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\decisoes-suporte-20261011\decisoes-confirmadas.json`. Cópias anteriores dos documentos preservadas, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\decisoes-suporte-20261011\documentos-antes`. A medição E1.4 continua aberta; nenhuma medição futura foi declarada concluída.
