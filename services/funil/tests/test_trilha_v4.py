@@ -140,4 +140,4 @@ def test_formulario_branca_oferece_tres_passos_e_envio_separado(client, conta):
     assert re.findall(r'href="([^"]+)"', bloco) == []
     assert bloco.count('aria-disabled="true"') == 4
     assert bloco.count('class="primary white-belt-action"') == 4
-    assert 'Meu objetivo e compromisso' in bloco
+    assert 'Meu compromisso' in bloco

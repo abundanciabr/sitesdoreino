@@ -3,16 +3,50 @@ window.iniciarJornada = (scope = document, host = {}) => {
   const root = scope.getElementById('inicio-jornada');
   if (!root) return;
   const $ = id => scope.getElementById(`inicio-${id}`);
-  const forms = {motivo: $('form-motivo'), plano: $('form-plano'), criacao: $('form-criacao'), item: $('form-item')};
+  const forms = {motivo: $('form-motivo'), plano: $('form-plano'), compromisso: $('form-compromisso'), criacao: $('form-criacao'), item: $('form-item')};
   const dirty = new Set();
   let data = null;
   let busy = false;
   let motivoStep = 1;
+  let compromissoStep = 1;
   const motivoJaConcluido = () => Boolean(data?.inicio.etapas?.some(etapa => etapa.etapa === 1 && etapa.xp_recebido > 0));
   const motivoReturnLabel = () => motivoJaConcluido() ? 'Voltar' : 'Depois eu faço isso';
   const embedded = Boolean(host.close);
   const lifecycle = new AbortController();
   const navigate = destination => host.navigate ? host.navigate(destination) : window.location.assign(destination);
+  function showCompromissoStep(step, focus = false) {
+    compromissoStep = step;
+    for (let index = 1; index <= 3; index++) $(`compromisso-${index}`).hidden = index !== step;
+    $('compromisso-progresso').setAttribute('aria-valuenow', String(step));
+    $('compromisso-progresso').setAttribute('aria-valuetext', step === 3 ? 'Compromisso assumido' : `Ação ${step} de 2`);
+    $('compromisso-progresso').dataset.etapa = String(step);
+    host.scrollTop?.();
+    if (focus) $(`compromisso-titulo-${step}`).focus();
+  }
+  function renderCompromisso() {
+    const start = data.inicio;
+    const choice = start.motivos.find(motivo => motivo.valor === start.motivo)?.nome || '';
+    const motive = start.motivo === 'outro' && start.motivo_outro ? start.motivo_outro : choice;
+    const dreams = (start.sonhos_opcoes || []).filter(sonho => (start.motivo_sonhos || []).includes(sonho.valor));
+    root.querySelectorAll('[data-compromisso-motivos]').forEach(card => {
+      card.replaceChildren();
+      const label = document.createElement('p'); label.className = 'inicio-sobrelinha'; label.textContent = card.dataset.rotulo;
+      const reason = document.createElement('p'); reason.className = 'compromisso-razao'; reason.textContent = motive;
+      card.append(label, reason);
+      if (start.motivo_pessoal) {
+        const reflection = document.createElement('p'); reflection.className = 'compromisso-reflexao'; reflection.textContent = start.motivo_pessoal; card.append(reflection);
+      }
+      if (dreams.length) {
+        const caption = document.createElement('p'); caption.className = 'compromisso-sonhos-label'; caption.textContent = 'O que eu quero construir';
+        const list = document.createElement('ul'); list.className = 'compromisso-sonhos';
+        dreams.forEach(dream => { const item = document.createElement('li'); item.textContent = dream.nome; list.append(item); });
+        card.append(caption, list);
+      }
+    });
+    const xp = $('compromisso-xp');
+    xp.hidden = !data.conquista_xp;
+    xp.textContent = data.conquista_xp ? `+${data.conquista_xp} XP recebidos. Meu compromisso está registrado.` : '';
+  }
   function showMotivoStep(step, focus = false) {
     motivoStep = step;
     if (!$('motivo-escolha')) return;
@@ -28,6 +62,12 @@ window.iniciarJornada = (scope = document, host = {}) => {
   async function leaveMotivo() {
     if (busy) return;
     if (dirty.size && !await save(forms.motivo, 'inicio-motivo', {concluir: 'nao', motivo_etapa: String(motivoStep)})) return;
+    if (embedded) host.close();
+    else navigate('/trilha/');
+  }
+  async function leaveInicio() {
+    if (forms.motivo) return leaveMotivo();
+    if (busy) return;
     if (embedded) host.close();
     else navigate('/trilha/');
   }
@@ -78,6 +118,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   }
   function render() {
     const start = data.inicio;
+    if (forms.compromisso) renderCompromisso();
     if (forms.motivo) {
       for (const id of ['motivo-depois-1', 'motivo-depois-2', 'motivo-depois-3']) {
         if ($(id)) $(id).textContent = `← ${motivoReturnLabel()}`;
@@ -145,6 +186,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
         forms.plano.elements[key].value = data.inicio[key] || '';
       });
     }
+    if (forms.compromisso) showCompromissoStep(data.inicio.compromisso_curso_em ? 3 : data.inicio.compromisso_etapa === 2 ? 2 : 1);
   }
   async function request(body) {
     const response = await fetch(root.dataset.api, {method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', headers: body ? {'X-CSRFToken': data.csrf} : {}, ...(body ? {body} : {})});
@@ -188,7 +230,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
         announce('Sua versão salva está abaixo. Suas respostas continuam nos campos; revise-as antes de salvar novamente.');
       } else {
         data = result; fill(); render();
-        announce(data.inicio.salvo_em ? `Salvo na sua conta em ${date(data.inicio.salvo_em)}. Continue de onde parou.` : 'Comece com o que faz sentido para você hoje.');
+        announce(forms.compromisso ? '' : data.inicio.salvo_em ? `Salvo na sua conta em ${date(data.inicio.salvo_em)}. Continue de onde parou.` : 'Comece com o que faz sentido para você hoje.');
       }
       $('conteudo').hidden = false;
       if (forms.criacao && data.inicio.item_pronto && location.hash === '#inicio-form-item') {
@@ -256,6 +298,26 @@ window.iniciarJornada = (scope = document, host = {}) => {
     const assumir = event.submitter?.value || 'nao';
     if (await save(forms.plano, 'inicio-plano', {assumir})) navigate(assumir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas);
   });
+  forms.compromisso?.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (busy || !data) return;
+    if (compromissoStep === 1) {
+      if (await save(forms.compromisso, 'inicio-compromisso', {compromisso_etapa: '2'})) {
+        showCompromissoStep(2, true); announce('');
+      }
+    } else if (compromissoStep === 2 && event.submitter?.value === 'assumir') {
+      if (await save(forms.compromisso, 'inicio-compromisso', {assumir: 'sim'})) {
+        showCompromissoStep(3, true); announce('');
+      }
+    }
+  });
+  for (const id of ['compromisso-voltar', 'compromisso-concluido']) $(id)?.addEventListener('click', leaveInicio);
+  $('compromisso-anterior')?.addEventListener('click', async () => {
+    if (await save(forms.compromisso, 'inicio-compromisso', {compromisso_etapa: '1'})) {
+      showCompromissoStep(1, true); announce('');
+    }
+  });
+  $('compromisso-reler')?.addEventListener('click', () => { if (!busy) showCompromissoStep(1, true); });
   forms.criacao?.addEventListener('submit', async event => {
     event.preventDefault();
     if (await save(forms.criacao, 'inicio-item')) navigate(data.conquista_url || root.dataset.conquistas);
@@ -311,6 +373,6 @@ window.iniciarJornada = (scope = document, host = {}) => {
   window.addEventListener('beforeunload', event => { if (dirty.size) { event.preventDefault(); event.returnValue = ''; } }, {signal: lifecycle.signal});
   window.addEventListener('pageshow', event => { if (event.persisted) open(); }, {signal: lifecycle.signal});
   open();
-  return {close: leaveMotivo, destroy: () => lifecycle.abort()};
+  return {close: leaveInicio, destroy: () => lifecycle.abort()};
 };
 window.iniciarJornada();

@@ -75,7 +75,7 @@ def inventario(request):
             if request.POST.get('contexto_pessoa', pessoa) != pessoa or request.POST.get('contexto_site', site) != site:
                 raise HttpError(403, 'Sua sessão mudou. Reabra o inventário antes de continuar.')
             acao = request.POST.get('acao')
-            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento', 'inicio-motivo', 'inicio-plano', 'inicio-item', 'inicio-envio'):
+            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento', 'inicio-motivo', 'inicio-plano', 'inicio-compromisso', 'inicio-item', 'inicio-envio'):
                 raise ValueError('Escolha um registro do inventário.')
             preparado = None
             if acao in ('anexo', 'declaracao', 'inicio-envio'):
@@ -101,13 +101,13 @@ def inventario(request):
                 from apps.gamificacao.bonus_inicio import recebido, recebido_faixa_amarela, conceder, comprovante
                 faixa_antes = recebido_faixa_amarela(pessoa, site) if acao in ('inicio-envio', 'declaracao') else 0
                 tarefa_do_post = (1 if acao == 'inicio-motivo' else
-                                  2 if acao == 'inicio-plano' else
+                                  2 if acao in ('inicio-plano', 'inicio-compromisso') else
                                   3 if acao == 'inicio-item' else
                                   4 if acao == 'inicio-envio' or acao == 'declaracao' and passo == 2 else None)
                 tarefa_antes = recebido(pessoa, site, tarefa_do_post) if tarefa_do_post else 0
                 if acao in ('anexo', 'inicio-envio') and str(jornada.revisao) != request.POST.get('revisao'):
                     raise ValueError('Seu registro mudou em outra aba. Suas respostas continuam na tela; confira a versão salva antes de tentar novamente.')
-                if acao in ('inicio-motivo', 'inicio-plano', 'inicio-item'):
+                if acao in ('inicio-motivo', 'inicio-plano', 'inicio-compromisso', 'inicio-item'):
                     from apps.gamificacao.inicio import salvar_inicio
                     salvar_inicio(jornada, request.POST)
                 if acao == 'inicio-envio' or acao == 'anexo' and passo == 2:
@@ -117,7 +117,7 @@ def inventario(request):
                 if acao == 'inicio-envio':
                     requisitos = requisitos_branca(jornada, True)
                     if not all(requisitos.values()):
-                        raise ValueError('Conclua seu motivo, objetivo, compromisso e primeiro item antes de enviar.')
+                        raise ValueError('Conclua seu motivo, compromisso e primeiro item antes de enviar.')
                     if not preparado and not AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).exists():
                         raise ValueError('Escolha um arquivo do seu item 3D ou uma imagem dele.')
                 if preparado:
@@ -152,13 +152,15 @@ def inventario(request):
                         jornada.save(update_fields=['revisao', 'atualizada_em'])
                 # Repetir o clique não cria nova declaração nem novo bônus.
                 repetida = acao == 'declaracao' and situacao(pessoa, site)['lista'][passo - 1]['alcancada']
-                if acao not in ('anexo', 'inicio-motivo', 'inicio-plano', 'inicio-item', 'inicio-envio') and not repetida:
+                if acao not in ('anexo', 'inicio-motivo', 'inicio-plano', 'inicio-compromisso', 'inicio-item', 'inicio-envio') and not repetida:
                     salvar(pessoa, site, request.POST, arquivo=request.FILES.get('print'))
                 etapa_concluida = (
                     1 if acao == 'inicio-motivo' and request.POST.get('concluir') == 'sim' and
                          jornada.inicio.get('motivo') and not jornada.inicio.get('motivo_rascunho') else
                     2 if acao == 'inicio-plano' and request.POST.get('assumir') == 'sim' and
                          jornada.inicio.get('confirmado_em') else
+                    2 if acao == 'inicio-compromisso' and request.POST.get('assumir') == 'sim' and
+                         jornada.inicio.get('compromisso_curso_em') else
                     3 if acao == 'inicio-item' and jornada.inicio.get('item_pronto_em') else
                     4 if (acao == 'inicio-envio' or
                           acao == 'declaracao' and passo == 2 and request.POST.get('estado') == 'feito') and

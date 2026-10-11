@@ -1,11 +1,19 @@
-<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=5">
-<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=6">
+<section id="inicio-jornada" class="inicio{% if inicio_etapa == 2 %} inicio-compromisso{% endif %}" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
+  {% if inicio_etapa == 2 %}
+  <header class="compromisso-cabecalho">
+    <p class="inicio-selo"><span aria-hidden="true">◇</span> Faixa branca · Meu compromisso</p>
+    <h1 id="inicio-titulo" class="inicio-sr">Meu compromisso</h1>
+    <div id="inicio-compromisso-progresso" class="compromisso-progresso" role="progressbar" aria-label="Etapas do meu compromisso" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1"><span></span></div>
+  </header>
+  {% else %}
   <header class="inicio-cabecalho">
     <p class="inicio-selo"><span aria-hidden="true">◇</span> {% if faixas.atual.ordem == 1 %}Faixa branca · Meu ponto de partida{% else %}Meu ponto de partida · Sempre editável{% endif %}</p>
     <p class="inicio-sobrelinha">{% if inicio_etapa == 1 %}Meus motivos · <span id="inicio-motivo-contagem">Etapa 1 de 3</span>{% else %}Etapa {{ inicio_etapa }} de 4 · Uma coisa de cada vez{% endif %}</p>
     <h1 id="inicio-titulo">{% if inicio_etapa == 1 %}Meus motivos{% else %}{{ inicio_titulo }}{% endif %}</h1>
     <p class="inicio-privado">{% if inicio_etapa == 1 %}Esta resposta é só sua. Você pode mudá-la depois.{% elif inicio_etapa == 2 %}Seus sonhos e seu compromisso ficam privados na sua conta.{% elif inicio_etapa == 3 %}Uma criação simples já é um começo. Faça no seu ritmo.{% else %}Seu arquivo fica privado na sua conta.{% endif %}</p>
   </header>
+  {% endif %}
   <p id="inicio-status" role="status" aria-live="polite">Abrindo seu ponto de partida…</p>
   <button id="inicio-recarregar" type="button" hidden>Tentar abrir novamente</button>
   <div id="inicio-conteudo" hidden>
@@ -53,31 +61,53 @@
       </form>
     </section>
     {% elif inicio_etapa == 2 %}
-    <section id="inicio-plano" class="inicio-painel" data-painel="2">
-      <h2 tabindex="-1">Um objetivo que cabe no seu momento.</h2>
-      <p>Não precisa decidir a vida inteira. Escolha o próximo trabalho que quer conseguir criar.</p>
-      <form id="inicio-form-plano">
-        <label for="inicio-objetivo">O que quero conseguir criar?</label>
-        <textarea id="inicio-objetivo" name="objetivo" rows="2" maxlength="280" placeholder="Ex.: criar meu primeiro chapéu 3D com um detalhe meu."></textarea>
-        <label for="inicio-quando">Quando posso dar meu próximo passo? <span>(opcional)</span></label>
-        <input id="inicio-quando" name="quando" maxlength="160" placeholder="Ex.: sábado, depois do almoço, por 20 minutos.">
-        <details class="inicio-detalhes"><summary>Meus sonhos e um plano para os dias difíceis <span>opcional · privado</span></summary>
-          <label for="inicio-sonho">O que sonho construir com essa habilidade?</label>
-          <textarea id="inicio-sonho" name="sonho" rows="2" maxlength="500" placeholder="Este espaço é seu. Não entra no pedido de ajuda."></textarea>
-          <label for="inicio-obstaculo">O que pode dificultar meu próximo passo?</label>
-          <input id="inicio-obstaculo" name="obstaculo" maxlength="280" placeholder="Ex.: travar em uma ferramenta.">
-          <label for="inicio-plano-b">Se isso acontecer, o que posso tentar?</label>
-          <input id="inicio-plano-b" name="plano_b" maxlength="280" placeholder="Ex.: salvar a tentativa e pedir ajuda com uma dúvida.">
-        </details>
-        <label for="inicio-apoio">Como quero praticar agora?</label>
-        <select id="inicio-apoio" name="apoio"><option value="guiado">Quero orientação</option><option value="autonomo">Quero tentar sozinho</option><option value="desafio">Quero praticar mais</option></select>
-        <div class="inicio-label-acao"><label for="inicio-compromisso">Meu compromisso comigo</label><button id="inicio-sugestao" class="inicio-texto" type="button">Montar uma sugestão</button></div>
-        <textarea id="inicio-compromisso" name="compromisso" rows="3" maxlength="1200" placeholder="Escreva um compromisso possível. Você pode ajustá-lo quando precisar."></textarea>
-        <p class="inicio-nota">Pausar e voltar também faz parte. Seu compromisso pode mudar junto com você.</p>
-        <div class="inicio-acoes"><button type="submit" name="assumir" value="sim">Assumir meu compromisso</button><button type="submit" class="inicio-secundario" name="assumir" value="nao">Salvar para continuar depois</button></div>
-        <p id="inicio-confirmacao" class="inicio-nota"></p>
-      </form>
-    </section>
+    <form id="inicio-form-compromisso" data-painel="2">
+      <section id="inicio-compromisso-1" class="compromisso-tela">
+        <div class="compromisso-copy">
+          <p class="inicio-sobrelinha">Assuma o compromisso · A sua constância</p>
+          <h2 id="inicio-compromisso-titulo-1" tabindex="-1">Eu sei por que comecei.</h2>
+          <p class="compromisso-subtitulo">Eu escolhi algo que importa para mim.<br>Meu compromisso começa com essa decisão.</p>
+          <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="Meu motivo"></div>
+          <p class="compromisso-frase">Esse motivo merece o meu compromisso.</p>
+          <div class="inicio-acoes"><button type="submit" value="continuar">É por isso que vou até o fim <span aria-hidden="true">→</span></button><button type="button" class="inicio-secundario" id="inicio-compromisso-voltar">Voltar</button></div>
+        </div>
+        <div class="compromisso-visual"><img src="{% url 'estatico' 'compromisso-motivo.png' %}" alt="" width="1024" height="1024"><p>O motivo que você definiu no passo anterior.</p></div>
+      </section>
+      <section id="inicio-compromisso-2" class="compromisso-tela" hidden>
+        <div class="compromisso-copy">
+          <p class="inicio-sobrelinha">Assuma o compromisso · A sua constância</p>
+          <h2 id="inicio-compromisso-titulo-2" tabindex="-1">Eu vou até o fim.</h2>
+          <p class="compromisso-subtitulo">Pelo que eu mesmo decidi que é importante para mim.</p>
+          <div class="compromisso-declaracao">
+            <p>Eu assumo o compromisso de concluir todas as etapas deste curso.</p>
+            <p>Vou assistir às aulas, praticar e terminar os trabalhos.</p>
+            <p>Vou enfrentar os desafios, buscar ajuda e seguir em frente.</p>
+            <p>Vou transformar o motivo que escolhi em ação até concluir o curso.</p>
+            <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="O motivo que sustenta minha decisão"></div>
+          </div>
+          <p class="compromisso-frase">Meu compromisso é com a minha decisão.</p>
+          <div class="inicio-acoes"><button type="submit" value="assumir">Eu assumo. Vou até o fim. <span aria-hidden="true">→</span></button><button type="button" class="inicio-secundario" id="inicio-compromisso-anterior">Voltar</button></div>
+        </div>
+        <div class="compromisso-visual"><img src="{% url 'estatico' 'compromisso-caminho.png' %}" alt="" width="1024" height="1024" loading="lazy"><p>Este compromisso fica privado na sua conta.</p></div>
+      </section>
+      <section id="inicio-compromisso-3" class="compromisso-tela" hidden>
+        <div class="compromisso-copy">
+          <p class="inicio-sobrelinha">Assuma o compromisso · A sua constância</p>
+          <h2 id="inicio-compromisso-titulo-3" tabindex="-1">Meu compromisso está assumido.</h2>
+          <p class="compromisso-subtitulo">Eu vou até o fim deste curso.</p>
+          <div class="compromisso-confirmacao">
+            <p class="inicio-sobrelinha">Meu compromisso</p>
+            <p>Concluir o curso. Praticar. Terminar os trabalhos.<br>Enfrentar os desafios. Buscar ajuda. Seguir em frente.</p>
+            <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="Pelo meu motivo"></div>
+            <p class="compromisso-frase">Eu escolhi. Eu assumo. Eu vou até o fim.</p>
+          </div>
+          <p id="inicio-compromisso-xp" class="inicio-nota" hidden></p>
+          <div class="inicio-acoes"><button type="button" id="inicio-compromisso-concluido">Voltar à faixa <span aria-hidden="true">→</span></button></div>
+          <button type="button" id="inicio-compromisso-reler" class="inicio-texto">Reler minha decisão</button>
+        </div>
+        <div class="compromisso-visual"><img src="{% url 'estatico' 'compromisso-assumido.png' %}" alt="" width="1024" height="1024" loading="lazy"><p>Você pode reler este compromisso na sua faixa.</p></div>
+      </section>
+    </form>
     {% elif inicio_etapa == 3 %}
     <section id="inicio-item" class="inicio-painel" data-painel="3">
       <h2 tabindex="-1">Dê forma à sua primeira criação.</h2>
@@ -116,8 +146,8 @@
       <details id="inicio-historico" class="inicio-detalhes" hidden><summary>Meus arquivos já enviados</summary><div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div></details>
     </section>
     {% endif %}
-    {% if inicio_etapa != 1 %}<p class="inicio-voltar"><a href="{% url 'base' %}">Sair e retomar depois</a></p>{% endif %}
+    {% if inicio_etapa > 2 %}<p class="inicio-voltar"><a href="{% url 'base' %}">Sair e retomar depois</a></p>{% endif %}
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=11" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=12" defer></script>

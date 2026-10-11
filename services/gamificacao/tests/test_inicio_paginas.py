@@ -59,8 +59,22 @@ def test_cada_etapa_tem_rota_pagina_e_formulario_proprios(client, ordem, nome):
     assert corpo.count("<form") == 1
     assert "private" in r["Cache-Control"] and "no-store" in r["Cache-Control"]
     assert r["X-Robots-Tag"] == "noindex, nofollow"
-    assert ("name=\"sonho\"" in corpo) is (ordem == 2)
+    assert 'name="sonho"' not in corpo
+    assert ('id="inicio-form-compromisso"' in corpo) is (ordem == 2)
     assert ("id=\"inicio-pedir-ajuda\"" in corpo) is (ordem == 3)
+
+
+def test_compromisso_embutido_tem_duas_acoes_e_confirmacao_privada(client):
+    assert guardar(client, 'inicio-motivo', motivo='jogo').status_code == 200
+    resposta = client.get(reverse('inicio-objetivo') + '?embutido=1')
+    assert resposta.status_code == 200
+    assert 'gamificacao/inicio_embutido.html' in [t.name for t in resposta.templates]
+    corpo = resposta.content.decode()
+    for texto in ('Eu sei por que comecei.', 'Eu vou até o fim.', 'Meu compromisso está assumido.', 'Eu assumo. Vou até o fim.'):
+        assert texto in corpo
+    assert 'name="objetivo"' not in corpo and 'name="obstaculo"' not in corpo
+    assert 'private' in resposta['Cache-Control'] and 'no-store' in resposta['Cache-Control']
+    assert not JornadaPessoal.objects.get().inicio.get('compromisso_curso_em')
 
 
 def test_visitante_encontra_convite_sem_dados_privados(client, monkeypatch):

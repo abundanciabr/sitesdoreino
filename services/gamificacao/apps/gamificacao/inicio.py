@@ -15,6 +15,13 @@ MOTIVOS = (
     ('outro', 'Tenho outro motivo', 'Escolha uma peça pequena relacionada à sua ideia. Comece pela forma principal e peça ajuda sobre uma dificuldade por vez.'),
 )
 
+COMPROMISSO_CURSO = (
+    'Eu assumo o compromisso de concluir todas as etapas deste curso.\n'
+    'Vou assistir às aulas, praticar e terminar os trabalhos.\n'
+    'Vou enfrentar os desafios, buscar ajuda e seguir em frente.\n'
+    'Vou transformar o motivo que escolhi em ação até concluir o curso.'
+)
+
 
 SONHOS = (
     ('autonomo', 'Trabalhar por conta própria'),
@@ -90,6 +97,19 @@ def salvar_inicio(jornada, dados):
             inicio['motivo_sonhos'] = list(dict.fromkeys(sonhos))
         if dados.get('motivo_etapa') in ('1', '2', '3'):
             inicio['motivo_etapa'] = int(dados['motivo_etapa'])
+    elif dados['acao'] == 'inicio-compromisso':
+        if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
+            raise ValueError('Conclua seu motivo e receba o XP antes de assumir o compromisso.')
+        if dados.get('compromisso_etapa') in ('1', '2'):
+            inicio['compromisso_etapa'] = int(dados['compromisso_etapa'])
+        if dados.get('assumir') == 'sim':
+            # O novo compromisso não substitui o plano e as respostas anteriores.
+            if not inicio.get('compromisso_curso_em'):
+                inicio['compromisso_curso'] = COMPROMISSO_CURSO
+                inicio['compromisso_curso_em'] = timezone.now().isoformat()
+                inicio['compromisso_motivos'] = {chave: inicio.get(chave) for chave in
+                    ('motivo', 'motivo_outro', 'motivo_pessoal', 'motivo_sonhos')}
+            inicio['compromisso_etapa'] = 3
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
             raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')
@@ -112,7 +132,7 @@ def salvar_inicio(jornada, dados):
         inicio.update(plano)
     elif dados['acao'] == 'inicio-item':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[2]['liberada']:
-            raise ValueError('Conclua seu objetivo e compromisso e receba o XP antes de criar o item.')
+            raise ValueError('Assuma seu compromisso e receba o XP antes de criar o item.')
         inicio.setdefault('item_pronto_em', timezone.now().isoformat())
     else:
         raise ValueError('Escolha uma etapa do começo da jornada.')
@@ -141,10 +161,14 @@ def requisitos_branca(jornada, tem_anexo):
         from .bonus_inicio import recebido
         # Reconhece revisões antigas afetadas sem reescrever respostas ou o ledger.
         motivo_concluido = recebido(jornada.pessoa_id, jornada.site_id, 1) > 0
+    from .bonus_inicio import recebido
+    compromisso_concluido = bool(inicio.get('compromisso_curso_em') or
+        preenchido('compromisso') and inicio.get('confirmado_em') or
+        jornada and recebido(jornada.pessoa_id, jornada.site_id, 2) > 0)
     return {
         'motivo': motivo_concluido,
-        'objetivo': preenchido('objetivo'),
-        'compromisso': preenchido('compromisso') and bool(inicio.get('confirmado_em')),
+        'objetivo': preenchido('objetivo') or compromisso_concluido,
+        'compromisso': compromisso_concluido,
         'item': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
         'envio': bool(tem_anexo),
     }
@@ -166,7 +190,7 @@ def etapas_inicio(pessoa_id, site_id, jornada, tem_anexo=None):
                requisitos['objetivo'] and requisitos['compromisso'],
                requisitos['item'], requisitos['envio'] and declarada)
     em_andamento = (bool(inicio.get('motivo')),
-                    any(inicio.get(k) for k in ('sonho', 'objetivo', 'compromisso')),
+                    any(inicio.get(k) for k in ('sonho', 'objetivo', 'compromisso', 'compromisso_etapa')),
                     requisitos['item'], bool(tem_anexo or (jornada and jornada.declaracoes.get('2'))))
     etapas = []
     anteriores_concluidas = True
@@ -193,7 +217,7 @@ def resumo_inicio(pessoa_id, site_id, faixas):
     concluido = etapas[3]['concluida']
     passo = next((etapa['etapa'] for etapa in etapas if not etapa['concluida']), 1)
     nome_rota = {1: 'inicio-motivo', 2: 'inicio-objetivo', 3: 'inicio-item', 4: 'inicio-envio'}[passo]
-    titulo = {1: 'Meu motivo', 2: 'Meu objetivo e compromisso', 3: 'Meu primeiro item 3D', 4: 'Enviar meu 3D'}[passo]
+    titulo = {1: 'Meu motivo', 2: 'Meu compromisso', 3: 'Meu primeiro item 3D', 4: 'Enviar meu 3D'}[passo]
     return {
         'passo': passo,
         'titulo': titulo,

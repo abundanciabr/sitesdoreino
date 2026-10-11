@@ -376,7 +376,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     if not all(requisitos_branca(j, tem_anexo).values()):
                         raise ValueError(
                             "Para concluir o primeiro item, escolha seu motivo, "
-                            "defina seu objetivo, assuma seu compromisso e envie seu arquivo."
+                            "assuma seu compromisso e envie seu arquivo."
                         )
                     if not etapas_inicio(pessoa_id, site_id, j, tem_anexo)[2]['concluida']:
                         raise ValueError('Conclua as três tarefas anteriores e receba seus XP antes de enviar.')

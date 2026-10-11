@@ -180,9 +180,9 @@ def test_reassumir_objetivo_preserva_item_arquivo_e_historico(client):
     assert post(client, 'inicio-envio', arquivo=arquivo()).status_code == 200
     anexo_id = AnexoDaJornada.objects.get().id
     assert post(client, 'inicio-plano', objetivo='Nova forma', compromisso='Praticarei', assumir='nao').status_code == 200
-    assert situacao(PESSOA, SITE)['atual']['ordem'] == 1
-    assert client.get(reverse('inicio-envio')).url == reverse('inicio-objetivo')
-    assert checklist() == ['concluido', 'andamento', 'pendente', 'pendente']
+    assert situacao(PESSOA, SITE)['atual']['ordem'] == 2
+    assert client.get(reverse('inicio-envio')).status_code == 200
+    assert checklist() == ['concluido'] * 4
     assert JornadaPessoal.objects.get().inicio['item_pronto_em']
     assert AnexoDaJornada.objects.get().id == anexo_id
     assert RegistroDaJornada.objects.filter(acao='declaracao').count() == 1

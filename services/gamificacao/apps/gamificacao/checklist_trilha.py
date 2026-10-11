@@ -63,7 +63,7 @@ def montar_checklists(pessoa_id, site_id, jornada):
         elif ordem == 2:
             faixa = faixas.get(2)
             iniciou_item = requisitos['item'] or bool(faixa and faixa.origem == "item" and faixa.estado == "alcancada")
-            titulos_inicio = ("Meu motivo", "Meu objetivo e compromisso", "Meu primeiro item 3D", "Enviar meu 3D")
+            titulos_inicio = ("Meu motivo", "Meu compromisso", "Meu primeiro item 3D", "Enviar meu 3D")
             def detalhe_inicio(indice, texto):
                 return (f"Disponível após {titulos_inicio[indice - 1]}."
                         if inicio_etapas[indice]['bloqueada'] else texto)
@@ -78,10 +78,10 @@ def montar_checklists(pessoa_id, site_id, jornada):
                       "Escolha seu motivo e conclua a tarefa para receber XP.",
                       {"rotulo": "Definir meus motivos", "url": "/conquistas/inicio/motivo/"},
                       sufixo="motivo", bloqueado=inicio_etapas[0]['bloqueada']),
-                _item(2, "Meu objetivo e compromisso", inicio_etapas[1]['estado'],
-                      detalhe_inicio(1, "Objetivo e compromisso concluídos com XP." if inicio_etapas[1]['concluida'] else
-                                     "Defina seu objetivo e assuma seu compromisso para receber XP."),
-                      {"rotulo": "Abrir meu objetivo e compromisso", "url": "/conquistas/inicio/objetivo/"},
+                _item(2, "Meu compromisso", inicio_etapas[1]['estado'],
+                      detalhe_inicio(1, "Compromisso assumido e XP recebido." if inicio_etapas[1]['concluida'] else
+                                     "Pelos seus motivos, assuma o compromisso de concluir o curso."),
+                      {"rotulo": "Assumir meu compromisso", "url": "/conquistas/inicio/objetivo/"},
                       sufixo="plano", bloqueado=inicio_etapas[1]['bloqueada']),
                 _item(2, "Meu primeiro item 3D", inicio_etapas[2]['estado'],
                       detalhe_inicio(2, detalhe_item),
