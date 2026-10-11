@@ -185,7 +185,8 @@ class Servico:
             if nome == "ensaio" and isinstance(resultado, dict):
                 estado.setdefault("ensaios", {})[celula] = {
                     "tempos": resultado.get("tempos", {}),
-                    "reaproveitado": resultado.get("reaproveitado") is True}
+                    "reaproveitado": resultado.get("reaproveitado") is True,
+                    "reaproveitado_de": resultado.get("reaproveitado_de")}
             return resultado
         finally:
             chave = nome + ("_" + celula if celula else "")

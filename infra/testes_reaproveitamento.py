@@ -123,11 +123,13 @@ def test_acompanhamento_grava_operacao_em_curso_e_tempos_sem_repetir(tmp_path):
             assert atual['operacao_atual']['nome'] == 'ensaio'
             assert atual['operacao_atual']['celula'] == celula
             super().preparar(id_, candidata, celula)
-            return {'tempos': {'montagem': 2, 'testes_comerciais': 3}, 'reaproveitado': False}
+            return {'tempos': {'montagem': 2, 'testes_comerciais': 3},
+                    'reaproveitado': True, 'reaproveitado_de': 'b' * 40}
     worker, _, ponte = servico(tmp_path, [entrega(I1, C1)], ponte=Ponte())
     assert worker.rodada()[0]['fase'] == 'ativa'
     r = worker.estados.ler(I1)
     assert r['tempos']['ensaio_aplicacao'] >= 0
     assert r['ensaios']['aplicacao']['tempos']['montagem'] == 2
+    assert r['ensaios']['aplicacao']['reaproveitado_de'] == 'b' * 40
     assert 'operacao_atual' not in r
     assert 'concluida_em' in r

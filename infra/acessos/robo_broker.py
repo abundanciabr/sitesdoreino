@@ -153,6 +153,10 @@ def _tempos_publicos(fase):
                     "tempos_segundos": {k: v for k, v in valor["tempos"].items()
                                          if k in ETAPAS_ENSAIO and _segundos(v)},
                     "reaproveitado": valor.get("reaproveitado") is True}
+                origem = valor.get("reaproveitado_de")
+                if (valor.get("reaproveitado") is True and isinstance(origem, str)
+                        and re.fullmatch(r"[0-9a-f]{40}", origem)):
+                    saida["ensaios"][celula]["reaproveitado_de"] = origem
     atual = fase.get("operacao_atual")
     if (isinstance(atual, dict) and isinstance(atual.get("nome"), str)
             and atual["nome"] in OPERACOES_TEMPO and atual.get("celula") in (*CELULAS, None)):
