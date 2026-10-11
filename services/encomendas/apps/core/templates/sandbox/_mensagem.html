@@ -1,0 +1,2 @@
+{% load sandbox_texto %}
+<div data-mensagem="{{ mensagem.pk }}" class="message {% if mensagem.papel == 'ia' %}ai{% elif mensagem.papel == 'cliente' %}client{% endif %}"><strong>{% if mensagem.ator_id == 'analise-automatica' %}Análise automática{% elif mensagem.papel == 'ia' %}Tutor de IA{% elif mensagem.papel == 'cliente' %}Cliente simulado (IA){% elif mensagem.papel == 'equipe' %}Equipe da escola{% else %}Aluno{% endif %}</strong> <span class="tiny">{{ mensagem.criada_em|date:'d/m/Y H:i' }}</span><div class="formatted">{{ mensagem.texto|conversa }}</div></div>
