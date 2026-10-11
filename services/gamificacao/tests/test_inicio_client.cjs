@@ -38,7 +38,7 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   const root=add('jornada');root.dataset={api:'/conquistas/inventario/',conquistas:'/conquistas/',envio:'/conquistas/inicio/envio/'};
   const summaries=[new Element('small'),new Element('small'),new Element('small')];
   root.querySelector=selector=>summaries[Number(selector.match(/\d/)[0])-1];
-  root.querySelectorAll=selector=>nodes.filter(node=>selector==='[data-compromisso-motivos]'?node.dataset.rotulo:selector==='input[name="motivo_sonhos"]:checked'?node.name==='motivo_sonhos'&&node.checked:selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
+  root.querySelectorAll=selector=>nodes.filter(node=>selector.includes('name="compromisso_checks"')?node.name==='compromisso_checks'&&(!selector.includes(':checked')||node.checked):selector==='[data-compromisso-motivos]'?node.dataset.rotulo:selector==='input[name="motivo_sonhos"]:checked'?node.name==='motivo_sonhos'&&node.checked:selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
   if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior','motivo-sonhos','motivo-sonhos-titulo','motivo-depois-3','sonhos-anterior','sonhos-opcoes'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
   const form=add('form-'+step,'form');form.elements={};
   const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:['criacao','compromisso'].includes(step)?[]:['arquivo','aprendi','duvida'];
@@ -48,6 +48,7 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   if(step==='motivo'){const options=add('opcoes');form.append(options);}
   if(step==='plano'){add('confirmacao');add('sugestao','button');}
   if(step==='compromisso'){
+    for(const value of ['curso','aulas','desafios','motivo']){const check=add('check-'+value,'input');check.name='compromisso_checks';check.type='checkbox';check.value=value;form.append(check);}
     ['compromisso-1','compromisso-2','compromisso-3','compromisso-progresso','compromisso-titulo-1','compromisso-titulo-2','compromisso-titulo-3','compromisso-xp','compromisso-voltar','compromisso-anterior','compromisso-concluido','compromisso-reler'].forEach(id=>add(id));
     for(let i=1;i<=3;i++){const card=add('motivos-'+i);card.dataset.rotulo='Meu motivo';}
   }
@@ -77,6 +78,20 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
     submit:async value=>fire(form,'submit',{submitter:{value}}),
   };
 }
+
+test('checks retomam, salvam ao fechar e falha de salvamento mantém painel e marcações',async()=>{
+ const initial=record();initial.inicio.compromisso_etapa=2;initial.inicio.compromisso_checks=['curso','desafios'];
+ const ui=await page('compromisso',initial,'',false,true);
+ assert.deepEqual(ui.checkboxes().filter(n=>n.checked).map(n=>n.value),['curso','desafios']);
+ ui.byId('check-aulas').checked=true;await ui.fire(ui.form,'input');
+ ui.fail({ok:false,status:400,json:async()=>({detail:'Seu registro mudou em outra aba.'})});
+ await ui.close();assert.deepEqual(ui.panelEvents,[]);assert.equal(ui.byId('check-aulas').checked,true);
+ await ui.fire(ui.byId('recarregar'),'click');assert.equal(ui.byId('check-aulas').checked,true);
+ await ui.close();assert.deepEqual(ui.panelEvents,['fechado']);
+ assert.equal(ui.calls.at(-1).options.body.get('compromisso_checks'),'["curso","aulas","desafios"]');
+ assert.equal(ui.calls.at(-1).options.body.get('compromisso_etapa'),'2');
+ assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
+});
 
 test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem trocar de página',async()=>{
  const initial=record(); initial.inicio.motivo_sonhos=['pc_gamer'];

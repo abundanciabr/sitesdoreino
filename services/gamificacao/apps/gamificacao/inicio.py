@@ -21,6 +21,7 @@ COMPROMISSO_CURSO = (
     'Vou enfrentar os desafios, buscar ajuda e seguir em frente.\n'
     'Vou transformar o motivo que escolhi em ação até concluir o curso.'
 )
+COMPROMISSO_CHECKS = ('curso', 'aulas', 'desafios', 'motivo')
 
 
 SONHOS = (
@@ -102,6 +103,14 @@ def salvar_inicio(jornada, dados):
             raise ValueError('Conclua seu motivo e receba o XP antes de assumir o compromisso.')
         if dados.get('compromisso_etapa') in ('1', '2'):
             inicio['compromisso_etapa'] = int(dados['compromisso_etapa'])
+        if 'compromisso_checks' in dados:
+            try:
+                escolhas = json.loads(texto(dados, 'compromisso_checks', 200))
+            except (ValueError, TypeError):
+                raise ValueError('Confira as marcações do seu compromisso.') from None
+            if not isinstance(escolhas, list) or any(valor not in COMPROMISSO_CHECKS for valor in escolhas):
+                raise ValueError('Confira as marcações do seu compromisso.')
+            inicio['compromisso_checks'] = [valor for valor in COMPROMISSO_CHECKS if valor in escolhas]
         if dados.get('assumir') == 'sim':
             # O novo compromisso não substitui o plano e as respostas anteriores.
             if not inicio.get('compromisso_curso_em'):

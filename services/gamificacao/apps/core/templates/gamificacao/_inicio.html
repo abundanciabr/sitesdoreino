@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=6">
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=7">
 <section id="inicio-jornada" class="inicio{% if inicio_etapa == 2 %} inicio-compromisso{% endif %}" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
   {% if inicio_etapa == 2 %}
   <header class="compromisso-cabecalho">
@@ -79,10 +79,11 @@
           <h2 id="inicio-compromisso-titulo-2" tabindex="-1">Eu vou até o fim.</h2>
           <p class="compromisso-subtitulo">Pelo que eu mesmo decidi que é importante para mim.</p>
           <div class="compromisso-declaracao">
-            <p>Eu assumo o compromisso de concluir todas as etapas deste curso.</p>
-            <p>Vou assistir às aulas, praticar e terminar os trabalhos.</p>
-            <p>Vou enfrentar os desafios, buscar ajuda e seguir em frente.</p>
-            <p>Vou transformar o motivo que escolhi em ação até concluir o curso.</p>
+            <p class="compromisso-check-ajuda">Marque cada frase para reforçar sua decisão.</p>
+            <label class="compromisso-check"><input type="checkbox" name="compromisso_checks" value="curso"><span>Eu assumo o compromisso de concluir todas as etapas deste curso.</span></label>
+            <label class="compromisso-check"><input type="checkbox" name="compromisso_checks" value="aulas"><span>Vou assistir às aulas, praticar e terminar os trabalhos.</span></label>
+            <label class="compromisso-check"><input type="checkbox" name="compromisso_checks" value="desafios"><span>Vou enfrentar os desafios, buscar ajuda e seguir em frente.</span></label>
+            <label class="compromisso-check"><input type="checkbox" name="compromisso_checks" value="motivo"><span>Vou transformar o motivo que escolhi em ação até concluir o curso.</span></label>
             <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="O motivo que sustenta minha decisão"></div>
           </div>
           <p class="compromisso-frase">Meu compromisso é com a minha decisão.</p>
@@ -150,4 +151,4 @@
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=12" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=13" defer></script>

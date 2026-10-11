@@ -7,8 +7,10 @@ from apps.core.trilha_pessoal import minha_trilha
 from config.api import api
 from apps.core.inventario import inventario, arquivo_do_inventario
 from apps.core.reinicio_faixas import relatorio_reinicio
+from apps.core.teste_branca import teste_branca
 
 urlpatterns = [
+    path("interno/teste-faixa-branca/", teste_branca, name="teste-faixa-branca"),
     path("interno/reinicio-faixas/", relatorio_reinicio, name="relatorio-reinicio-faixas"),
     path("inicio/motivo/", inicio_pagina, {"etapa": 1}, name="inicio-motivo"),
     path("inicio/objetivo/", inicio_pagina, {"etapa": 2}, name="inicio-objetivo"),
