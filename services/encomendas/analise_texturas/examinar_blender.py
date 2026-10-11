@@ -122,6 +122,7 @@ try:
                 finding('faces_sem_material','Esta parte não tem material atribuído',f'“{obj.name}” tem {missing} faces sem material.',
                     [f'Selecione “{obj.name}” e abra Material Properties (ícone de esfera).','Em Edit Mode, selecione as faces, escolha o material correto e use Assign.','Confira em Material Preview e salve uma cópia para reenviar.'],obj.name,'encontrado')
             needs_uv,uncertain,used_images,map_names=False,False,[],set()
+            material_uv_images={}
             for mid in sorted({p.material_index for p in mesh.polygons}):
                 if mid>=len(mesh.materials) or not mesh.materials[mid]:continue
                 material=mesh.materials[mid]
@@ -131,6 +132,8 @@ try:
                 for node,uv_based in nodes:
                     needs_uv|=uv_based
                     image=node.image
+                    if uv_based and image:
+                        material_uv_images.setdefault(mid,set()).add(image.name)
                     present=available(image) if image else False
                     used_images.append({'material':material.name,'imagem':image.name if image else '', 'disponivel':present})
                     if present is False:
@@ -155,7 +158,8 @@ try:
                 if any(not all(math.isfinite(c) for c in p) for _,tri in triangles for p in tri):
                     report['limites'].append(f'Não foi possível ler o mapa “{layer.name}” de “{obj.name}”.')
                     continue
-                overlap=sobreposicoes(triangles)
+                groups={int(p.index):material_uv_images.get(p.material_index,set()) for p in mesh.polygons}
+                overlap=sobreposicoes(triangles,groups=groups)
                 diagram=uv_diagram(index*100+layer_index,layer,triangles,set(overlap['faces']))
                 stats.append({'nome':layer.name,'faces_sobrepostas':len(overlap['faces']),'faces_sem_area':len(overlap['degeneradas']),'completa':overlap['completa'],'imagem':diagram,'exemplos_faces':[[a+1,b+1] for a,b in overlap['exemplos']]})
                 if not overlap['completa']:report['limites'].append(f'A busca de sobreposições em “{obj.name}” foi parcial devido à complexidade da malha.')

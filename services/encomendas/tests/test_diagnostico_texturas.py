@@ -34,6 +34,13 @@ def test_uv_leitura_parcial_e_explicita():
     assert result['completa'] is False
 
 
+def test_uv_igual_em_imagens_diferentes_nao_repete_a_pintura():
+    tri=[(0,0),(1,0),(0,1)]
+    result=geometry.sobreposicoes([(0,tri),(1,tri)],groups={0:{'imagem-a'},1:{'imagem-b'}})
+    assert result['faces']==[]
+    assert geometry.sobreposicoes([(0,tri),(1,tri)],groups={0:{'mesma'},1:{'mesma'}})['faces']==[0,1]
+
+
 def test_duplicacao_exige_geometria_no_mesmo_lugar():
     tri=[[(0,0,0),(1,0,0),(0,1,0)]]
     assert geometry.assinatura_geometria(tri)==geometry.assinatura_geometria([list(reversed(tri[0]))])

@@ -59,7 +59,7 @@ def main():
           '--background','--factory-startup','--disable-autoexec','--threads','2','--python-exit-code','2']
     run(args+['--python','/ferramenta/criar_amostras.py','--','/prova'],stdout=subprocess.DEVNULL)
     proofs={}
-    for name,expected in [('uv-repetida','uv_compartilhada'),('uv-separada',None),('peca-duplicada','geometria_sobreposta'),('imagem-ausente','imagem_indisponivel'),('no-nao-usado',None),('sem-uv','sem_uv')]:
+    for name,expected in [('uv-repetida','uv_compartilhada'),('uv-separada',None),('imagens-diferentes',None),('peca-duplicada','geometria_sobreposta'),('imagem-ausente','imagem_indisponivel'),('no-nao-usado',None),('sem-uv','sem_uv')]:
         output=samples/name
         output.mkdir(mode=0o777)
         output.chmod(0o777)

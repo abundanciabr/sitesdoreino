@@ -23,6 +23,16 @@ tex.image=image
 mat.node_tree.links.new(tex.outputs['Color'],mat.node_tree.nodes.get('Principled BSDF').inputs['Base Color'])
 mesh.materials.append(mat)
 bpy.ops.wm.save_as_mainfile(filepath=str(out/'uv-repetida.blend'))
+other_image=bpy.data.images.new('Outra imagem',width=32,height=32)
+other_image.pack()
+other_mat=mat.copy()
+other_mat.name='Outro material'
+other_mat.node_tree.nodes.get(tex.name).image=other_image
+mesh.materials.append(other_mat)
+mesh.polygons[1].material_index=1
+bpy.ops.wm.save_as_mainfile(filepath=str(out/'imagens-diferentes.blend'))
+mesh.polygons[1].material_index=0
+mesh.materials.pop(index=1)
 for i,point in enumerate(left+right):uv.data[i].uv=point
 bpy.ops.wm.save_as_mainfile(filepath=str(out/'uv-separada.blend'))
 copy=obj.copy()
