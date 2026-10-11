@@ -10,6 +10,7 @@ promoção; uma prova antiga nunca vale para insumos diferentes.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
@@ -848,6 +849,57 @@ def _coletar_estaticos(bundle: Path, base: Path, imagem: str, registro) -> None:
         _normalizar_diretorios_codigo(bundle / "staticfiles")
 
 
+class TemposEnsaio:
+    def __init__(self, base):
+        self.base = base
+        self.etapas = {}
+
+    @contextmanager
+    def medir(self, nome):
+        inicio = time.monotonic()
+        try:
+            yield
+        finally:
+            self.etapas[nome] = round(time.monotonic() - inicio, 3)
+
+
+def reaproveitar_celula(plataforma, candidata, ferramentas, celula, imagem, bundle, evidencias):
+    """Reusa somente o pacote já comprovado da mesma candidata e mesmos insumos.
+
+    Mantém cópia independente: nenhuma escrita na projeção ou no novo ensaio
+    pode alterar a versão anterior. A prova existente é reconferida integralmente.
+    """
+    outra = "aplicacao" if celula == "funil" else "funil"
+    arquivo = plataforma / "entregas/provas" / (candidata + ("-funil" if outra == "funil" else "") + ".json")
+    if not arquivo.exists() and not arquivo.is_symlink():
+        return None
+    if arquivo.is_symlink():
+        raise RecusaEnsaio("prova de origem inválida")
+    contexto = json.loads(arquivo.read_text(encoding="utf-8"))
+    executor, ensaio = _ferramentas(ferramentas)
+    if (contexto.get("imagem") != imagem
+            or contexto.get("configuracao_base") != _configuracao(plataforma, ferramentas)
+            or contexto.get("executor") != executor or contexto.get("ensaio") != ensaio):
+        return None
+    prova = verificar_prova(plataforma, candidata, ferramentas, outra)
+    if prova["imagem"] != imagem:
+        return None
+    from protecao_publicacao import arvore, conferir_relatorio
+    origem = Path(prova["artefato"]["bundle" if outra == "funil" else "codigo"])
+    esperado = prova["bundle_sha256" if outra == "funil" else "codigo"]
+    if origem.is_symlink() or arvore(origem) != esperado:
+        raise RecusaEnsaio("pacote de origem mudou antes do reaproveitamento")
+    shutil.copytree(origem, bundle)
+    if arvore(bundle) != esperado:
+        raise RecusaEnsaio("cópia do pacote comprovado divergiu")
+    evidencias.mkdir(parents=True, exist_ok=True)
+    relatorio = evidencias / "comercial.xml"
+    shutil.copy2(Path(prova["artefato"]["comercial_xml"]), relatorio)
+    if conferir_relatorio(relatorio, registrar_falha_conhecida=True) != prova["cobertura"]:
+        raise RecusaEnsaio("relatório reaproveitado divergiu")
+    return {"celula": outra, "identidade": prova["identidade"], "codigo": esperado}
+
+
 def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMENTAS,
              celula: str = "aplicacao") -> dict:
     """Roda só após o integrador exportar a candidata para uma entrada legível.
@@ -895,37 +947,55 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
             raise InfraIndisponivel("imagem de apoio ausente no Docker local")
     with (base / "execucao.log").open("w", encoding="utf-8") as registro:
         bundle = base / "bundle" if celula == "funil" else codigo
-        shutil.copytree(fonte / "services/aplicacao", bundle, dirs_exist_ok=True, symlinks=True)
-        arvore(fonte)  # recusa links simbólicos também fora da aplicação
-        montar(bundle, fonte / "services", imagem, ferramentas / "preparar-aplicacao.py", registro)
-        shutil.copytree(fonte / "documentos", bundle / "documentos_embutidos", dirs_exist_ok=True)
-        _normalizar_diretorios_codigo(bundle)
-        # O comando é fixado aqui; texto RUN da candidata jamais é interpretado.
-        dockerfile = (fonte / "services/aplicacao/Dockerfile").read_text(encoding="utf-8")
-        if "collectstatic" in dockerfile:
-            _coletar_estaticos(bundle, base, imagem, registro)
+        tempos = TemposEnsaio(base)
+        with tempos.medir("reaproveitamento"):
+            reuso = reaproveitar_celula(plataforma, candidata, ferramentas, celula,
+                                       imagem, bundle, base / "evidencias")
+        if reuso is None:
+            with tempos.medir("montagem"):
+                shutil.copytree(fonte / "services/aplicacao", bundle, dirs_exist_ok=True, symlinks=True)
+                montar(bundle, fonte / "services", imagem, ferramentas / "preparar-aplicacao.py", registro)
+                shutil.copytree(fonte / "documentos", bundle / "documentos_embutidos", dirs_exist_ok=True)
+                _normalizar_diretorios_codigo(bundle)
+            dockerfile = (fonte / "services/aplicacao/Dockerfile").read_text(encoding="utf-8")
+            if "collectstatic" in dockerfile:
+                with tempos.medir("estaticos"):
+                    _coletar_estaticos(bundle, base, imagem, registro)
         # A imagem base é previamente aprovada e carregada pelo mantenedor.
         # Nunca executamos Dockerfile candidato nem rede de build.
         if celula == "funil":
             modulo = _modulo_funil(ferramentas)
-            modulo.projetar(bundle, codigo, "funil")
-            _normalizar_diretorios_codigo(codigo)
-            modulo.conferir_projecao(bundle, codigo, "funil")
+            with tempos.medir("projecao"):
+                modulo.projetar(bundle, codigo, "funil")
+                _normalizar_diretorios_codigo(codigo)
+                modulo.conferir_projecao(bundle, codigo, "funil")
             nome_funil = _nome_funil(candidata, base.name)
             _snapshot_rota(plataforma, base, nome_funil, ferramentas)
-            resultado_funil = modulo.ensaiar_funil(fonte / "services/funil", imagem,
-                                                  ferramentas, base / "evidencias")
+            with tempos.medir("testes_funil"):
+                resultado_funil = modulo.ensaiar_funil(fonte / "services/funil", imagem,
+                                                      ferramentas, base / "evidencias")
         else:
             resultado_funil = None
-        resultado = ensaiar(bundle, imagem, ferramentas, base / "evidencias", registro)
-        if resultado.get("estado") != "comprovado":
-            raise RecusaEnsaio("ensaio comercial falhou")
-        with tar_imagem.open("wb") as saida:
-            salvo = subprocess.run(["docker", "save", imagem], stdout=saida,
-                                    stderr=registro, timeout=600)
-        if salvo.returncode:
-            tar_imagem.unlink(missing_ok=True)
-            raise RecusaEnsaio("imagem aprovada não pôde ser exportada")
+        if reuso is None:
+            with tempos.medir("testes_comerciais"):
+                resultado = ensaiar(bundle, imagem, ferramentas, base / "evidencias", registro)
+            if resultado.get("estado") != "comprovado":
+                raise RecusaEnsaio("ensaio comercial falhou")
+        from armazenamento_codigo import image_archive, snapshot
+        armazenamento = plataforma / "objetos-de-codigo"
+        with tempos.medir("imagem"):
+            espaco_imagem = image_archive(armazenamento, imagem, tar_imagem,
+                                         _imagem_id_tar, registro)
+        backups = plataforma / "backups-de-codigo" / "ensaios"
+        backups.mkdir(mode=0o700, parents=True, exist_ok=True)
+        raizes = {"codigo": codigo}
+        if bundle != codigo:
+            raizes["bundle"] = bundle
+        with tempos.medir("backup_codigo"):
+            espaco_codigo = snapshot(armazenamento, raizes,
+                                    backups / (candidata + "-" + celula + "-" + uuid.uuid4().hex + ".json"),
+                                    {"candidata": candidata, "celula": celula, "imagem_id": imagem,
+                                     "imagem_tar": str(tar_imagem)})
         relatorio = base / "evidencias/comercial.xml"
         resultado = conferir_relatorio(relatorio, registrar_falha_conhecida=True)
     resumo = {"estado": "comprovado", "celula": celula, "casos": resultado["casos"],
@@ -933,6 +1003,9 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
               "imagem_id": imagem_id(imagem), "segundos": round(time.monotonic() - inicio, 3)}
     if resultado_funil:
         resumo["funil"] = resultado_funil
+    resumo["tempos"] = tempos.etapas
+    resumo["reaproveitamento"] = reuso
+    resumo["armazenamento"] = {"imagem": espaco_imagem, "backup_codigo": espaco_codigo}
     identidade = identidade_atual(plataforma, candidata, ferramentas, celula)
     if identidade["configuracao_base"] != configuracao_inicio or identidade["imagem"] != resumo["imagem_id"]:
         raise RecusaEnsaio("insumos mudaram durante o ensaio")

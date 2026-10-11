@@ -142,6 +142,8 @@ class Servico:
     def _fase(self, estado, fase, motivo=None, *, diagnostico=None, progresso=False, **dados):
         estado.update(dados)
         estado["fase"] = fase
+        if fase in ("ativa", "preservada em versão posterior"):
+            estado.setdefault("concluida_em", agora())
         if diagnostico:
             publico = diagnostico_publico(diagnostico)
             estado["diagnostico"] = publico
@@ -172,6 +174,25 @@ class Servico:
         if progresso:
             estado["progresso_em"] = agora()
         self.estados.salvar(estado)
+
+    def _operar(self, estado, nome, executar, *args, celula=None):
+        inicio = time.monotonic()
+        estado["operacao_atual"] = {"nome": nome, "celula": celula, "iniciada_em": agora()}
+        estado.setdefault("iniciada_em", agora())
+        self.estados.salvar(estado)
+        try:
+            resultado = executar(*args)
+            if nome == "ensaio" and isinstance(resultado, dict):
+                estado.setdefault("ensaios", {})[celula] = {
+                    "tempos": resultado.get("tempos", {}),
+                    "reaproveitado": resultado.get("reaproveitado") is True}
+            return resultado
+        finally:
+            chave = nome + ("_" + celula if celula else "")
+            tempos = estado.setdefault("tempos", {})
+            tempos[chave] = round(tempos.get(chave, 0) + time.monotonic() - inicio, 3)
+            estado.pop("operacao_atual", None)
+            self.estados.salvar(estado)
 
     def _falha(self, estado, fase, erro, etapa, celula=None, **dados):
         diagnostico = (getattr(erro, "diagnostico", None)
@@ -335,7 +356,7 @@ class Servico:
                 if conciliada is not None:
                     return conciliada
             etapa = "espelhamento"
-            self.ponte.espelhar(id_, cand)
+            self._operar(estado, "espelhamento", self.ponte.espelhar, id_, cand)
             if reg.get("estado") != entregas.NA_MAIN:
                 comprovadas = estado.setdefault("comprovadas", {})
                 tentativas = estado.setdefault("tentativas_celula", {})
@@ -343,21 +364,21 @@ class Servico:
                     celula_atual = celula
                     if celula in comprovadas:
                         etapa = "prova"
-                        prova = self.ponte.verificar_prova(id_, cand, celula)
+                        prova = self._operar(estado, "conferencia", self.ponte.verificar_prova, id_, cand, celula, celula=celula)
                         if prova["identidade"] != comprovadas[celula]:
                             raise ErroPonte("prova da candidata mudou", "recusa")
                         continue
                     # Consulta antes de executar cobre perda de resposta do ensaio/registro.
                     try:
                         etapa = "prova"
-                        prova = self.ponte.verificar_prova(id_, cand, celula)
+                        prova = self._operar(estado, "conferencia", self.ponte.verificar_prova, id_, cand, celula, celula=celula)
                     except ErroPonte as erro:
                         if not self._ausencia_esperada(erro):
                             raise
                         try:
                             etapa = "prova"
-                            self.ponte.registrar(id_, cand, celula)
-                            prova = self.ponte.verificar_prova(id_, cand, celula)
+                            self._operar(estado, "registro", self.ponte.registrar, id_, cand, celula, celula=celula)
+                            prova = self._operar(estado, "conferencia", self.ponte.verificar_prova, id_, cand, celula, celula=celula)
                         except ErroPonte as erro:
                             if not self._ausencia_esperada(erro):
                                 raise
@@ -371,7 +392,7 @@ class Servico:
                             self._fase(estado, "ensaiando")
                             self._inicio_tentativa(estado)
                             try:
-                                self.ponte.preparar(id_, cand, celula)
+                                self._operar(estado, "ensaio", self.ponte.preparar, id_, cand, celula, celula=celula)
                             except ErroPonte as erro:
                                 if erro.categoria == "ensaio":
                                     self._tentativa(estado)
@@ -382,8 +403,8 @@ class Servico:
                             tentativas[celula] = tentativas.get(celula, 0) + 1
                             self.estados.salvar(estado)
                             etapa = "prova"
-                            self.ponte.registrar(id_, cand, celula)
-                            prova = self.ponte.verificar_prova(id_, cand, celula)
+                            self._operar(estado, "registro", self.ponte.registrar, id_, cand, celula, celula=celula)
+                            prova = self._operar(estado, "conferencia", self.ponte.verificar_prova, id_, cand, celula, celula=celula)
                     comprovadas[celula] = prova["identidade"]
                     self._fase(estado, "ensaio aprovado", progresso=True)
                 celula_atual = None
@@ -391,7 +412,7 @@ class Servico:
                 # Registra intencao antes do push e reconcilia resposta remota perdida.
                 etapa = "promocao"
                 self._tentativa(estado)
-                self.integrador.cmd_promover(SimpleNamespace(id=id_, remoto=self.remoto_promocao))
+                self._operar(estado, "promocao", self.integrador.cmd_promover, SimpleNamespace(id=id_, remoto=self.remoto_promocao))
                 reg = self.integrador.ler(id_)
                 if reg.get("estado") != entregas.NA_MAIN:
                     raise ErroPonte("promoção remota ainda não confirmada")
@@ -401,7 +422,7 @@ class Servico:
                 if conciliada is not None:
                     return conciliada
             etapa = "espelhamento"
-            self.ponte.espelhar(id_, cand)
+            self._operar(estado, "espelhamento", self.ponte.espelhar, id_, cand)
             ativadas = estado.setdefault("ativadas", [])
             self._fase(estado, "ativação pendente")
             for celula in celulas:  # aplicacao antes de funil; nunca declara parcial como ativa
@@ -409,7 +430,7 @@ class Servico:
                     celula_atual = celula
                     etapa = "ativacao"
                     self._tentativa(estado)
-                    self.ponte.publicar(id_, cand, celula)
+                    self._operar(estado, "ativacao", self.ponte.publicar, id_, cand, celula, celula=celula)
                     ativadas.append(celula)
                     self._fase(estado, "ativação pendente", progresso=True)
             self._fase(estado, "ativa", progresso=True)

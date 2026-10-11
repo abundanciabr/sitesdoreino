@@ -242,6 +242,9 @@ def test_umask_077_pacote_montado_estaticos_e_projecao_legiveis(
     monkeypatch.setattr(protecao_publicacao, "montar", montar)
     monkeypatch.setattr(protecao_publicacao, "ensaiar", ensaiar)
     monkeypatch.setattr(protecao_publicacao, "imagem_id", lambda *_args: imagem)
+    import armazenamento_codigo
+    monkeypatch.setattr(armazenamento_codigo, "image_archive", lambda *_args: {"reused": True})
+    monkeypatch.setattr(armazenamento_codigo, "snapshot", lambda *_args: {"new_bytes": 0})
     monkeypatch.setattr(protecao_publicacao, "conferir_relatorio", lambda *_args, **_kwargs: {
         "estado": "comprovado", "casos": 1, "relatorio_sha256": "relatorio"})
 

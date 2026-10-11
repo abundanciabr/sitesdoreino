@@ -476,7 +476,9 @@ class Autoridade:
             raise ErroPonte(str(erro)[:160], "ensaio") from erro
         if resultado.get("estado") != "comprovado":
             raise ErroPonte("ensaio nao comprovado", "ensaio")
-        return {"ok": True, "estado": "comprovado", "casos": resultado.get("casos")}
+        return {"ok": True, "estado": "comprovado", "casos": resultado.get("casos"),
+                "tempos": resultado.get("tempos", {}),
+                "reaproveitado": bool(resultado.get("reaproveitamento"))}
 
     def registrar(self, id_, candidata, celula):
         self._conferir_espelho(id_, candidata)
