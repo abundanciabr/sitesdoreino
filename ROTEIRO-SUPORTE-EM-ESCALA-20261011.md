@@ -1,9 +1,9 @@
 # Roteiro de execução do suporte em escala (checklist vivo do robô)
 
-- **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (cópia local; documento em versionamento nesta entrega, sem publicação como página).
+- **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (cópia local; versão no Git em `https://github.com/abundanciabr/sitesdoreino/blob/main/ROTEIRO-SUPORTE-EM-ESCALA-20261011.md`; sem publicação como página).
 - **Plano que ele executa:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md`. O plano diz **o quê e por quê**; este roteiro diz **em que ordem, com que prova e onde marcar**.
-- **Código:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\` (ramo de trabalho). Entregar o código é pelo integrador: `infra/robo.py entregar` com ramo `codex/entrega/suporte-escala-20261011`; a main é protegida.
-- **Criado em 11/10/2026.** Última atualização: 11/10/2026 (execução autorizada; base atual 8ec12125d99875945f84eccad4c5771115dd440c; código implementado e provas locais registradas; conferência no site pendente).
+- **Código:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\` (ramo de trabalho). Entregar o código é pelo integrador: execução de `entregar` por `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\infra\robo.py` com ramo `codex/entrega/suporte-escala-20261011`; a main é protegida.
+- **Criado em 11/10/2026.** Última atualização: 11/10/2026 15:40 (entrega `0311edf43715` ativa; conferência autenticada concluída; medição de 14 dias pendente).
 
 ---
 
@@ -26,21 +26,21 @@
 
 | Campo | Valor |
 |---|---|
-| Etapa atual | E1.1–E1.3 e rascunhos/caixa da E2 implementados e testados; entrega em preparação |
-| Passo atual | Entrega pelo integrador e conferência autenticada no site |
-| Último commit publicado do suporte | `b72bf7ce8` (contexto com compras, agenda e interesse no CRM, 10/10/2026) |
+| Etapa atual | E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10 entregues e conferidos no site |
+| Passo atual | E1.4: aguardar a janela real até 25/10/2026 15:39 (Brasília); decisões do mantenedor e etapas futuras separadas |
+| Último commit publicado do suporte | `df6430f6ae1a8710f665c8871194ed389c5e4ee9` (entrega `0311edf43715`, ativa) |
 | Decisões respondidas | D5 parcial: expediente vigente, segunda a sexta, 14h–18h de Brasília; prazo humano pendente. D1–D4 e D6 abertas |
 | Pendências abertas (seção 8) | Medição de 14 dias; decisões D1–D6; E2.7/E2.8 e E3–E7 fora do escopo |
-| Auditorias feitas (seção 6) | nenhuma |
+| Auditorias feitas (seção 6) | Implementação de E1.1–E1.3 e escopo assistido da E2 conferidos em 11/10/2026; E1.4 e itens fora do escopo não concluídos |
 
 ---
 
 ## 2. Antes de começar (uma vez)
 
-- [x] **P0.1** Conferir que o ramo de trabalho está em dia com a main: em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\`, `git fetch` e `git log --oneline -1 origin/main`. Prova: main conferida e incorporada: `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; merge local `b0d9a429173ee669210cdfe46e5ca085e429b730`
+- [x] **P0.1** Conferir que o ramo de trabalho está em dia com a main: em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\`, `git fetch` e `git log --oneline -1 origin/main`. Prova: main conferida e incorporada: `dcc01be3edb23e72e9c9722f05c412f1fa76fe5c`; merge local `4da8a98fb5994ca41265caf94b533bec0486053a`; o integrador combina a main vigente antes de ativar
 - [x] **P0.2** PostgreSQL isolado da sessão em 127.0.0.1:61921, sem tocar nos bancos de produção. O teste antigo de streaming fechava a conexão da transação; foi corrigido consumindo o streaming pelo cliente Django. Prova final: 165 testes do suporte aprovados.
 - [x] **P0.3** Ler `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py` uma vez e anotar aqui achados: os campos de primeira resposta e encerramento já existiam; a recepção automática não é resposta de mérito; reabrir apagava o estado da rodada anterior sem histórico próprio
-- [x] **P0.4** Confirmar que não há migração pendente em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\migrations` fora da main. Prova: `python manage.py makemigrations --check --dry-run atendimento` sem saída.
+- [x] **P0.4** Confirmar que não há migração pendente em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\migrations` fora da main. Prova: `makemigrations --check --dry-run atendimento` por `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\manage.py` sem saída.
 
 ---
 
@@ -56,9 +56,9 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 - [x] **E1.2a** Três estados separados: `primeira_resposta_em` e `encerrada_em` existentes, mais `resolvida_em` em `Conversa`, e modelo `Reabertura` (conversa, quando, motivo, quem). Migração. Prova: teste cria conversa, responde, encerra, reabre; os três campos e a reabertura ficam gravados e distintos.
 - [x] **E1.2b** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`: responder mantém `primeira_resposta_em` existente; encerrar mantém `encerrada_em` existente; resolvido só por "sim" do aluno ou 7 dias sem volta; qualquer mensagem nova depois de encerrado cria `Reabertura` e limpa `resolvida_em`. Prova: teste cobre os quatro caminhos.
 - [x] **E1.3a** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py`: fatia por tipo, tempo da pessoa por tipo (do primeiro clique da equipe ao envio), tempo até a primeira resposta e até resolvido, reaberturas em 7 dias, satisfação, custo de IA por pedido, pedidos por 100 alunos ativos. Prova: teste com dados fixos confere cada número.
-- [ ] **E1.3b** Tela de números em `https://meshcraft.top/admin/atendimento/` (aba ou página). Prova: teste de view; conferir no site depois de publicar.
-- [ ] **E1.4** Depois de 2 semanas no ar: refazer a tabela da seção 2 do plano com os números medidos. Prova: tabela nova no plano com a data da medição. Data prevista: ______
-- [ ] **Auditoria da E1** (seção 6) feita em: ______
+- [x] **E1.3b** Tela de números em `https://meshcraft.top/admin/atendimento/desempenho/?periodo=14`. Prova: teste de view e conferência autenticada em 11/10/2026 15:40.
+- [ ] **E1.4** Depois de 2 semanas no ar: refazer a tabela da seção 2 do plano com os números medidos. Prova: tabela nova no plano com a data da medição. Data prevista: 25/10/2026 15:39 (Brasília)
+- [ ] **Auditoria da E1:** implementação E1.1–E1.3 conferida em 11/10/2026; encerramento da etapa depende da medição real E1.4.
 
 ### E2: rascunhos e caixa de decisões (ND, depende de E1.1)
 
@@ -71,9 +71,9 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 - [ ] **E2.7** Próximo passo com prazo e responsável; lembrete por `Aviso` quando vence; lembrete ao aluno; encerramento por falta de resposta **sem** marcar resolvido. Prova: teste com relógio avançado.
 - [ ] **E2.8** Resumo no CRM ao encerrar e `Oportunidade` quando há interesse em produto não comprado. Prova: teste confere o histórico do lead e a oportunidade criada.
 - [x] **E2.9** "Resolveu?" ao encerrar, ligado a `avaliacao_disponivel`. "Sim" marca resolvido; "não" cria `Reabertura` com prioridade. Prova: teste dos dois caminhos.
-- [x] **E2.10** Atalhos de teclado na caixa de decisões. Prova: conferir no site.
+- [x] **E2.10** Atalhos de teclado na caixa de decisões. Prova: atalhos exercitados no navegador com destinatários fictícios; página e instruções conferidas no site.
 - [x] **Ensaio da E2:** 200 pedidos de ensaio, um grupo de 30 aprovado com um clique, zero IA por aluno, nada enviado sem clique. Prova: `test_ensaio_200_30_em_um_clique_zero_ia_e_repeticao_idempotente` em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_escala.py`.
-- [ ] **Auditoria da E2** (seção 6) feita em: ______
+- [ ] **Auditoria da E2:** escopo E2.1–E2.6/E2.9/E2.10 conferido em 11/10/2026; E2.7/E2.8 fora da entrega atual.
 
 ### E3: prevenção (ND, depende da agenda e de E1.3)
 
@@ -97,7 +97,7 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 - [ ] **E4.6** Teto diário: ao bater, IA para e os tipos de texto fixo continuam respondidos pelo sistema; o resto vira amarelo. Prova: teste com teto zero mostra tipo 1 respondido sem IA e tipo 10 amarelo.
 - [ ] **E4.7** Tela de Regras lida pelo robô. Prova: teste mostra a regra na instrução.
 - [ ] **E4.8** Abertura aos poucos: só tipos 1 e 16 no primeiro dia. Os demais abrem um por vez conforme E1.3. Registro de qual abriu quando: ______
-- [ ] **Ensaio da E4:** verdes respondidos em menos de 1 min, vermelhos nunca, sorteio na caixa, teto zero mantém texto fixo. Prova: `test_atendimento_automatico.py`.
+- [ ] **Ensaio da E4:** verdes respondidos em menos de 1 min, vermelhos nunca, sorteio na caixa, teto zero mantém texto fixo. Prova: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_automatico.py` (arquivo previsto para E4, ainda não criado).
 - [ ] **Auditoria da E4** (seção 6) feita em: ______
 
 ### E5: ações automáticas (depende de E4 e D3)
@@ -133,13 +133,13 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 
 Repetir ao fim de cada etapa, nesta ordem:
 
-- [ ] Suíte do admin inteira verde localmente (`pytest services/admin/tests -q`). Resultado: ______
-- [ ] `makemigrations --check` sem saída.
-- [ ] `grep -rn "resetar_senha\|matricular_aluno" services/admin/apps/atendimento/` vazio.
-- [ ] `git diff --stat origin/main -- services/checkout services/pagamentos services/aplicacao packages/site_errors packages/outbox-relay` vazio (congelado intacto).
-- [ ] Commit no ramo `codex/entrega/suporte-escala-20261011` e `infra/robo.py entregar`. Hash: ______
-- [ ] `infra/robo.py estado` mostra a entrega aplicada e o site respondendo. Conferir a tela nova no site logado. Hora: ______
-- [ ] Atualizar seção 1 deste roteiro e a seção 11 do plano-mestre.
+- [ ] Suíte do admin inteira verde localmente (`pytest services/admin/tests -q`). Não ficou verde: execução integral e comparação das falhas antigas registradas abaixo. Suporte após integração: 165 aprovados. Nenhuma proteção foi removida para mudar os resultados.
+- [x] `makemigrations --check`: sem mudanças; migrações aplicadas, revertidas e reaplicadas no banco isolado.
+- [x] Busca por `resetar_senha` e `matricular_aluno` na implementação do atendimento vazia.
+- [x] Diff nas cinco árvores congeladas vazio contra a main incorporada e contra a referência `425b82504028db3b7721ae32b776995915280bdb`.
+- [x] Commit no ramo `codex/entrega/suporte-escala-20261011` e entrega pelo mecanismo existente. Hash de trabalho: `4da8a98fb5994ca41265caf94b533bec0486053a`.
+- [x] Consulta `0311edf43715` mostra entrega integrada e ativa; telas conferidas no site logado em 11/10/2026 15:40.
+- [x] Estado e checklist dos dois documentos atualizados; períodos reais pendentes mantidos separados.
 
 ---
 
@@ -158,15 +158,15 @@ As decisões acima não impedem o trabalho já autorizado de E1 e da caixa assis
 
 ## 6. Auditoria de etapa (conferências existentes por etapa)
 
-Marcar as sete linhas antes de começar a etapa seguinte. Anotar a data em "Auditoria da E<n> feita em".
+Conferências do escopo implementado, registradas em 11/10/2026. E1.4 e itens fora desta entrega continuam pendentes; não bloqueiam os rascunhos assistidos já autorizados.
 
-1. [ ] **Cada passo da etapa tem prova gravada** (hash de commit ou nome do teste) neste roteiro.
-2. [ ] **Nada proibido entrou:** os quatro `grep` da seção 4 vazios.
-3. [ ] **Nenhuma mensagem sai sem clique** nos modos assistido e amarelo: teste que conta envios com zero cliques dá zero.
-4. [ ] **Vermelhos nunca respondidos pelo robô:** teste com os tipos 13, 14 e 15.
-5. [ ] **Privacidade:** o robô continua sem receber e-mail, telefone, CPF ou nota de satisfação (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`, teste existente de 10/10).
-6. [ ] **Números da E1.3 continuam batendo** depois da etapa (teste de indicadores verde).
-7. [ ] **Plano-mestre e este roteiro estão iguais** quanto ao que foi feito; divergência vai para a seção 8.
+1. [x] **Cada passo implementado nesta entrega tem prova gravada** (hash de commit ou nome do teste) neste roteiro.
+2. [x] **Nada proibido entrou:** congelado sem diferenças, sem criação de cobrança ou matrícula e sem redefinição de senha na implementação do suporte.
+3. [x] **Nenhuma mensagem sai sem clique** nos modos assistido e amarelo: teste que conta envios com zero cliques dá zero.
+4. [x] **Vermelhos nunca respondidos pelo robô:** teste com os tipos 13, 14 e 15.
+5. [x] **Privacidade:** o robô continua sem receber e-mail, telefone, CPF ou nota de satisfação (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`, teste existente de 10/10).
+6. [x] **Números da E1.3 continuam batendo** depois da etapa (teste de indicadores verde).
+7. [x] **Plano-mestre e este roteiro estão iguais** quanto ao que foi feito; divergência vai para a seção 8.
 
 ---
 
@@ -189,7 +189,7 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 
 | Data | Passo | O que aconteceu | O que falta | Resolvido em |
 |---|---|---|---|---|
-| 11/10/2026 | E1.4 | Exige 14 dias reais após ativação | Registrar o início visto no painel e medir ao completar a janela | Pendente |
+| 11/10/2026 | E1.4 | Coleta desde 11/10/2026 15:39, Brasília | Medir ao completar a janela em 25/10/2026 15:39, Brasília | Pendente |
 | 11/10/2026 | Suíte geral | Testes antigos de documentos falham também na main diante da publicação manual | Registro separado; proteção preservada | Confirmado na main |
 | 11/10/2026 | E2.7/E2.8; E3–E7 | Fora desta entrega | Nova execução no escopo correspondente; D1–D6 quando aplicáveis | Não iniciado |
 
@@ -199,7 +199,7 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 
 | Data | Começou em | Terminou em | Commits | Observação |
 |---|---|---|---|---|
-| 11/10/2026 | — | — | — | Plano revisado com o Codex e roteiro escrito; nenhum código |
+| 11/10/2026 | Preparação e leitura | 11/10/2026 15:40 | `db7036d81`, `4da8a98fb`, `df6430f6ae1a8710f665c8871194ed389c5e4ee9` | Plano ajustado, implementação, 165 testes de suporte, migrações e conferência no site; documentos versionados sem virar páginas |
 
 
 ## Execução autorizada em 11/10/2026 — correções e alcance
@@ -210,12 +210,12 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 - O lote mostra o texto que será enviado; mensagens novas, troca de responsável, produto, agenda ou base exigem rever o grupo. Não há geração de IA depois do clique.
 - Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1–D4 e D6 continuam sem decisão nova; em D5, falta o prazo humano, preservando o expediente vigente. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
-- E1.4: 14 dias reais a partir da ativação comprovada (data ainda pendente). E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
+- E1.4: coleta desde 11/10/2026 15:39; completar 14 dias em 25/10/2026 15:39, Brasília. E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
 
 ## Provas da implementação — 11/10/2026
 
-- Código: `db7036d81`; main atual incorporada em `b0d9a429173ee669210cdfe46e5ca085e429b730`. A publicação pelo integrador ainda precisa ser confirmada no registro abaixo.
+- Código inicial: `db7036d81`; integração com o expediente em `4da8a98fb5994ca41265caf94b533bec0486053a`; versão `df6430f6ae1a8710f665c8871194ed389c5e4ee9` ativada pela entrega `0311edf43715`, conforme registro abaixo.
 - Suporte: **165 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
 - Migração nova aplicada, revertida e reaplicada em banco vazio; sem migração de atendimento faltando. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\migracao-comprovada.txt`.
 - Testes antigos de documentos na main: 12 falhas e 16 aprovações, sem alterações desta tarefa. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-base-main.txt`. Suíte geral completa: 2.837 aprovados, 101 falhas, 51 erros e 1 pulado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-admin-completo.txt`. Não é apresentada como verde.
@@ -238,3 +238,14 @@ A main avançou durante a preparação para `dcc01be3edb23e72e9c9722f05c412f1fa7
 Após a combinação, os **165 testes de suporte passaram**. As duas migrações 0005 foram unidas pela migração 0006; aplicação, reversão e reaplicação em banco isolado passaram, e `makemigrations --check` não encontrou mudanças. A comparação das falhas antigas foi feita contra a main `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; não é apresentada como uma execução integral sobre a main posterior.
 
 A conferência autenticada em `https://meshcraft.top/admin/atendimento/configuracao/` encontrou Comunidade, Cursos e Site em modo Assistido, expediente ativo de segunda a sexta das 14h às 18h (Brasília), sábado e domingo fechado, e o orçamento existente de US$ 10/mês. Nenhuma configuração foi salva pela tarefa. D5 ainda precisa do prazo de resposta humana; 24h permanece apenas um destaque interno provisório, sem promessa e sem cálculo de horas úteis.
+
+
+## Entrega no site e medição real
+
+- Entrega `0311edf43715`, commit de trabalho `4da8a98fb5994ca41265caf94b533bec0486053a`, versão integrada e ativada `df6430f6ae1a8710f665c8871194ed389c5e4ee9`. Entrega inicial `89d486d85206` recusada por conflito com o expediente que entrou na main; conflito resolvido preservando as duas implementações e reenviado pelo mesmo mecanismo. Registro da entrega: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\consulta-codigo.json` (somente neste PC).
+- O mecanismo existente realizou o backup antes da ativação, executou o ensaio e registrou a prova. A proteção do Mercado Pago permaneceu ativa e as cinco árvores congeladas têm diff vazio contra a referência. Não houve restauração de banco nem ativação de resposta autônoma.
+- Conferência autenticada em 11/10/2026 15:40: fila `https://meshcraft.top/admin/atendimento/`, caixa `https://meshcraft.top/admin/atendimento/decisoes/` e medição `https://meshcraft.top/admin/atendimento/desempenho/?periodo=14`. Resultado detalhado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-site.json` (somente neste PC). Nenhuma mensagem foi enviada a aluno real na conferência; o envio em lote foi provado com destinatários fictícios no banco isolado.
+- Coleta registrada no painel desde **11/10/2026 15:39 (Brasília)**; primeira revisão de 14 dias em **25/10/2026 15:39 (Brasília)**. E1.4 permanece pendente até a janela terminar. Não substituir hipóteses por estimativas apresentadas como números reais. O painel diferencia resolução confirmada e inferida, informa amostras e limitações; retorno em sete dias só entra na taxa após uma janela completa. Para atendimentos fechados perto do fim dos 14 dias, a janela de retorno termina depois da primeira revisão.
+- E3: os 30 dias de comparação começam somente após implementar a prevenção; ainda não iniciados. E5.4b: as duas semanas sem erro começam somente após implementar a recuperação de matrícula; ainda não iniciadas. Não há evidência para declarar a meta final de 85% alcançada.
+- Decisões ainda do mantenedor: **D1** eventual autonomia dos verdes; **D2** orçamento mensal e diário de escala; **D3** orientações de atendimento sobre reembolso, garantia, troca de turma e promessas; **D4** número do WhatsApp; **D5** prazo humano (o expediente vigente já é segunda a sexta, 14h–18h); **D6** ajuste das cores por tipo e degrau. Nenhuma decisão pendente foi presumida. O teto existente de US$ 10/mês e os três modos Assistidos foram preservados.
+- Escopo entregue: E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10. E2.7/E2.8 e E3–E7 continuam fora desta entrega. Os documentos foram versionados no Git; não foram publicados como páginas em `https://meshcraft.top/docs/` nem em outro espaço público do site.
