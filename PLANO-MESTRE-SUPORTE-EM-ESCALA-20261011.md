@@ -1,7 +1,7 @@
 # Plano-mestre: suporte em escala com uma pessoa (11/10/2026)
 
-- **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md` (cópia local; documento em versionamento nesta entrega, sem publicação como página).
-- **Estado:** plano escrito e **revisado em 11/10/2026 com os 9 pontos da revisão do Codex** (todos conferidos no código). Executado até agora: contexto com compras, agenda e interesse no CRM (`b72bf7ce8`). E1 e os rascunhos e a caixa de decisões da E2 foram expressamente autorizados em 11/10/2026. E3–E7 não fazem parte desta entrega.
+- **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md` (cópia local; versão no Git em `https://github.com/abundanciabr/sitesdoreino/blob/main/PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md`; sem publicação como página).
+- **Estado:** plano escrito e **revisado em 11/10/2026 com os 9 pontos da revisão do Codex** (todos conferidos no código). Entregue e conferido no site: E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10, entrega `0311edf43715`, versão `df6430f6ae1a8710f665c8871194ed389c5e4ee9`. E1.4 aguarda os 14 dias reais. E1 e os rascunhos e a caixa de decisões da E2 foram expressamente autorizados em 11/10/2026. E3–E7 não fazem parte desta entrega.
 - **Roteiro de execução (checklist vivo do robô):** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (versionado no repositório; não publicado como página). Toda sessão de trabalho começa lendo o roteiro: ele diz o passo atual, a prova de cada passo, a auditoria por etapa e os testes finais. Este plano diz o quê e por quê; o roteiro diz como e em que ordem.
 - **Cópia principal local:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\` e foram conferidos na main de 11/10/2026 (`b72bf7ce8` ou posterior). O trabalho do suporte acontece em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\`.
 
@@ -73,7 +73,7 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 
 | O que existe | Onde | Para que serve hoje |
 |---|---|---|
-| Chat do aluno no site e fila de atendimento | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento` (`views.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`) | Conversa privada entre aluno e equipe |
+| Chat do aluno no site e fila de atendimento | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento` (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\views.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`) | Conversa privada entre aluno e equipe |
 | Quatro modos por assunto: assistido, automático pela base, automático com encaminhamento, assistente que conversa e resolve | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py` (`MODOS`) | Autonomia por assunto. Hoje o uso é "assistido" (a equipe responde) |
 | Robô trabalhando em segundo plano | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py` (`processar_uma`, `rodar_para_sempre`) | Processa as conversas marcadas para processar |
 | Contexto para a equipe: CRM, compras, matrículas, faixa, NPS, atendimentos anteriores, agenda e data de hoje | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py` | Entrou em 10/10/2026 (`b72bf7ce8`) |
@@ -83,8 +83,8 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 | Prévia para o fórum | `PreviaForum` | Dúvida vira tópico público |
 | Aviso à equipe por WhatsApp | `Responsavel`, `Aviso`, `service.avisar` | Avisa quem atende |
 | Triagem, alunos, desempenho, visão geral | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py` | Gestão da fila |
-| Teto de gasto de IA | `apps/agentes` (`AutorizacaoDeGasto`), `service.orcamento` | Limite de gasto do robô |
-| Conversas de WhatsApp e e-mail que chegam | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas` (`entrada.py`, `envio.py`, `api.py`) | Hoje são do comercial, separadas do suporte |
+| Teto de gasto de IA | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\agentes` (`AutorizacaoDeGasto`), `service.orcamento` | Limite de gasto do robô |
+| Conversas de WhatsApp e e-mail que chegam | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas` (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas\entrada.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas\envio.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas\api.py`) | Hoje são do comercial, separadas do suporte |
 | Jornadas e envios programados | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\jornadas`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\notificacoes` | Mensagens automáticas |
 | Progresso nas aulas | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\cursos` (`Progresso`) | Onde o aluno parou |
 | Pagamentos e compras | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\pagamentos` (`Intent`, `PaymentAttempt`), `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\leads` (`CompraDaOportunidade`) | Situação do pagamento |
@@ -130,7 +130,7 @@ Tudo o que mexe com dinheiro (cobrar, devolver, contestar) é vermelho ou está 
 | # | Tipo | Exemplo | Cor | O que o robô faz | De onde tira |
 |---|---|---|---|---|---|
 | 1 | Data e horário de evento ou desafio | "Quando começa?" | Verde se a agenda tem a data; senão, amarelo | Responde com a data, quanto falta e as informações | Agenda |
-| 2 | Entrar na conta ou esqueci a senha | "Não consigo entrar" | Verde | Pede a recuperação por link que já existe (`recuperacao_acesso.py`); o link vai ao destino cadastrado e o robô não vê senha nem escolhe destinatário | Identidade, pela recuperação por link |
+| 2 | Entrar na conta ou esqueci a senha | "Não consigo entrar" | Verde | Pede a recuperação por link que já existe (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\comercial\recuperacao_acesso.py`); o link vai ao destino cadastrado e o robô não vê senha nem escolhe destinatário | Identidade, pela recuperação por link |
 | 3 | Onde está a aula ou continuar de onde parou | "Cadê a aula 3?" | Verde | Manda o link da aula onde ele parou | Cursos |
 | 4 | Não recebi o e-mail ou o WhatsApp de acesso | "Não chegou nada" | Verde | Confere o envio e reenvia | Notificações e mensageria |
 | 5 | Situação do pagamento | "Meu pagamento passou?" | Verde (consultar) | Diz a situação, só leitura | Leads e pagamentos |
@@ -154,7 +154,7 @@ Tudo o que mexe com dinheiro (cobrar, devolver, contestar) é vermelho ou está 
 | D2 | Qual o orçamento de IA por mês e o teto por dia? É gasto real. Ao bater o teto o robô segue com texto fixo (seção 9). | E4 em volume |
 | D3 | Quais são as regras escritas para o robô seguir? Reembolso e garantia, troca de turma e o que nunca prometer. A equipe confere o caso; o rascunho não presume elegibilidade nem prazo. | E4; qualquer coisa ligada a dinheiro |
 | D4 | Qual número de WhatsApp atende o suporte: o mesmo do comercial ou outro? | E6 |
-| D5 | Qual o prazo prometido de resposta humana e qual o horário de atendimento? Até ele decidir, o plano usa 24 h. | Ajusta E2.4 e E2.7 |
+| D5 | Qual o prazo prometido de resposta humana? O expediente já configurado é segunda a sexta, 14h–18h (Brasília). Até a decisão sobre prazo, 24h é somente destaque interno provisório, sem promessa ao aluno. | Ajusta E2.4 e E2.7 |
 | D6 | As cores da tabela da seção 5 estão certas, com os três degraus (consultar, mostrar, cobrar) da seção 4? | Ajusta E1.1 e E4 |
 
 ## 7. Etapas, na nova ordem
@@ -340,7 +340,7 @@ O detalhe passo a passo, com prova e auditoria, está no roteiro `C:\Users\davia
 - [ ] E4.8 abertura aos poucos (tipos 1 e 16 primeiro)
 
 **E5: ações automáticas**
-- [ ] E5.1 recuperação de acesso por link (`recuperacao_acesso.py`)
+- [ ] E5.1 recuperação de acesso por link (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\comercial\recuperacao_acesso.py`)
 - [ ] E5.2 reenviar acesso
 - [ ] E5.3 Pix vencido: só apontar o checkout (nenhuma cobrança nova)
 - [ ] E5.4 compra aprovada sem matrícula: recuperar a matrícula da compra original
@@ -370,12 +370,12 @@ E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e sã
 - O lote mostra o texto que será enviado; mensagens novas, troca de responsável, produto, agenda ou base exigem rever o grupo. Não há geração de IA depois do clique.
 - Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1–D4 e D6 continuam sem decisão nova; em D5, falta o prazo humano, preservando o expediente vigente. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
-- E1.4: 14 dias reais a partir da ativação comprovada (data ainda pendente). E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
+- E1.4: coleta desde 11/10/2026 15:39; completar 14 dias em 25/10/2026 15:39, Brasília. E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
 
 ## Provas da implementação — 11/10/2026
 
-- Código: `db7036d81`; main atual incorporada em `b0d9a429173ee669210cdfe46e5ca085e429b730`. A publicação pelo integrador ainda precisa ser confirmada no registro abaixo.
+- Código inicial: `db7036d81`; integração com o expediente em `4da8a98fb5994ca41265caf94b533bec0486053a`; versão `df6430f6ae1a8710f665c8871194ed389c5e4ee9` ativada pela entrega `0311edf43715`, conforme registro abaixo.
 - Suporte: **165 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
 - Migração nova aplicada, revertida e reaplicada em banco vazio; sem migração de atendimento faltando. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\migracao-comprovada.txt`.
 - Testes antigos de documentos na main: 12 falhas e 16 aprovações, sem alterações desta tarefa. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-base-main.txt`. Suíte geral completa: 2.837 aprovados, 101 falhas, 51 erros e 1 pulado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-admin-completo.txt`. Não é apresentada como verde.
@@ -398,3 +398,14 @@ A main avançou durante a preparação para `dcc01be3edb23e72e9c9722f05c412f1fa7
 Após a combinação, os **165 testes de suporte passaram**. As duas migrações 0005 foram unidas pela migração 0006; aplicação, reversão e reaplicação em banco isolado passaram, e `makemigrations --check` não encontrou mudanças. A comparação das falhas antigas foi feita contra a main `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; não é apresentada como uma execução integral sobre a main posterior.
 
 A conferência autenticada em `https://meshcraft.top/admin/atendimento/configuracao/` encontrou Comunidade, Cursos e Site em modo Assistido, expediente ativo de segunda a sexta das 14h às 18h (Brasília), sábado e domingo fechado, e o orçamento existente de US$ 10/mês. Nenhuma configuração foi salva pela tarefa. D5 ainda precisa do prazo de resposta humana; 24h permanece apenas um destaque interno provisório, sem promessa e sem cálculo de horas úteis.
+
+
+## Entrega no site e medição real
+
+- Entrega `0311edf43715`, commit de trabalho `4da8a98fb5994ca41265caf94b533bec0486053a`, versão integrada e ativada `df6430f6ae1a8710f665c8871194ed389c5e4ee9`. Entrega inicial `89d486d85206` recusada por conflito com o expediente que entrou na main; conflito resolvido preservando as duas implementações e reenviado pelo mesmo mecanismo. Registro da entrega: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\consulta-codigo.json` (somente neste PC).
+- O mecanismo existente realizou o backup antes da ativação, executou o ensaio e registrou a prova. A proteção do Mercado Pago permaneceu ativa e as cinco árvores congeladas têm diff vazio contra a referência. Não houve restauração de banco nem ativação de resposta autônoma.
+- Conferência autenticada em 11/10/2026 15:40: fila `https://meshcraft.top/admin/atendimento/`, caixa `https://meshcraft.top/admin/atendimento/decisoes/` e medição `https://meshcraft.top/admin/atendimento/desempenho/?periodo=14`. Resultado detalhado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-site.json` (somente neste PC). Nenhuma mensagem foi enviada a aluno real na conferência; o envio em lote foi provado com destinatários fictícios no banco isolado.
+- Coleta registrada no painel desde **11/10/2026 15:39 (Brasília)**; primeira revisão de 14 dias em **25/10/2026 15:39 (Brasília)**. E1.4 permanece pendente até a janela terminar. Não substituir hipóteses por estimativas apresentadas como números reais. O painel diferencia resolução confirmada e inferida, informa amostras e limitações; retorno em sete dias só entra na taxa após uma janela completa. Para atendimentos fechados perto do fim dos 14 dias, a janela de retorno termina depois da primeira revisão.
+- E3: os 30 dias de comparação começam somente após implementar a prevenção; ainda não iniciados. E5.4b: as duas semanas sem erro começam somente após implementar a recuperação de matrícula; ainda não iniciadas. Não há evidência para declarar a meta final de 85% alcançada.
+- Decisões ainda do mantenedor: **D1** eventual autonomia dos verdes; **D2** orçamento mensal e diário de escala; **D3** orientações de atendimento sobre reembolso, garantia, troca de turma e promessas; **D4** número do WhatsApp; **D5** prazo humano (o expediente vigente já é segunda a sexta, 14h–18h); **D6** ajuste das cores por tipo e degrau. Nenhuma decisão pendente foi presumida. O teto existente de US$ 10/mês e os três modos Assistidos foram preservados.
+- Escopo entregue: E1.1–E1.3 e E2.1–E2.6/E2.9/E2.10. E2.7/E2.8 e E3–E7 continuam fora desta entrega. Os documentos foram versionados no Git; não foram publicados como páginas em `https://meshcraft.top/docs/` nem em outro espaço público do site.
