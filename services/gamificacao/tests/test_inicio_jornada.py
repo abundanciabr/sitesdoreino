@@ -225,3 +225,41 @@ def test_outro_motivo_e_etapa_sao_privados_retomaveis_sem_credito_no_rascunho(cl
     assert guardar(client, 'inicio-motivo', motivo='outro', concluir='sim').json()['conquista_xp'] == 0
     monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': 'outra-conta'})
     assert 'Meu motivo privado' not in str(abrir(client).json())
+
+
+@pytest.mark.parametrize("etapa", (1, 2))
+@pytest.mark.parametrize("faixa_completa", (False, True))
+def test_revisar_motivo_e_voltar_preserva_conclusao_pontos_e_faixa(client, etapa, faixa_completa):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
+    if faixa_completa:
+        liberar_envio(client)
+        assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
+        assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
+    antes = abrir(client).json()
+    xp_antes = PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total
+    resposta = guardar(client, "inicio-motivo", motivo="jogo", motivo_pessoal="Meu novo motivo",
+                       motivo_etapa=str(etapa), concluir="nao")
+    assert resposta.status_code == 200
+    dados = resposta.json()
+    assert dados["inicio"]["motivo"] == "jogo"
+    assert dados["inicio"]["motivo_pessoal"] == "Meu novo motivo"
+    assert dados["inicio"]["etapas"][0]["concluida"] is True
+    assert dados["inicio"]["etapas"][1]["liberada"] is True
+    assert dados["atual_ordem"] == antes["atual_ordem"]
+    assert "conquista_url" not in dados
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == xp_antes
+    assert abrir(Client()).json()["inicio"]["etapas"][0]["concluida"] is True
+
+
+def test_motivo_com_xp_e_marcacao_antiga_de_rascunho_reconhece_conclusao_sem_reescrever_dados(client):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
+    jornada = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE)
+    jornada.inicio.update(motivo="jogo", motivo_rascunho=True, motivo_etapa=2)
+    jornada.save(update_fields=["inicio"])
+    inicio_antes, revisao_antes = dict(jornada.inicio), jornada.revisao
+    dados = abrir(client).json()
+    assert dados["inicio"]["etapas"][0]["concluida"] is True
+    assert dados["inicio"]["etapas"][1]["liberada"] is True
+    jornada.refresh_from_db()
+    assert jornada.inicio == inicio_antes and jornada.revisao == revisao_antes
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100

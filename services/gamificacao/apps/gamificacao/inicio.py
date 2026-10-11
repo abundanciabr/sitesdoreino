@@ -33,8 +33,12 @@ def salvar_inicio(jornada, dados):
         motivo = texto(dados, 'motivo', 20)
         if motivo and motivo not in {m[0] for m in MOTIVOS}:
             raise ValueError('Escolha um dos caminhos ou escreva seu próprio motivo.')
+        from .bonus_inicio import recebido
+
+        ja_concluido = recebido(jornada.pessoa_id, jornada.site_id, 1) > 0
         mudou = inicio.get('motivo') != motivo
-        if dados.get('concluir') == 'sim':
+        # Revisar uma escolha não desfaz a tarefa cujo XP já foi recebido.
+        if dados.get('concluir') == 'sim' or ja_concluido:
             if not motivo:
                 raise ValueError('Escolha seu motivo para concluir esta etapa.')
             inicio['motivo_rascunho'] = False
@@ -91,8 +95,13 @@ def requisitos_branca(jornada, tem_anexo):
     """Dados obrigatórios do começo; a jornada aplica a progressão sequencial."""
     inicio = jornada.inicio if jornada else {}
     preenchido = lambda chave: bool(str(inicio.get(chave) or '').strip())
+    motivo_concluido = preenchido('motivo') and not bool(inicio.get('motivo_rascunho'))
+    if preenchido('motivo') and inicio.get('motivo_rascunho') and jornada:
+        from .bonus_inicio import recebido
+        # Reconhece revisões antigas afetadas sem reescrever respostas ou o ledger.
+        motivo_concluido = recebido(jornada.pessoa_id, jornada.site_id, 1) > 0
     return {
-        'motivo': preenchido('motivo') and not bool(inicio.get('motivo_rascunho')),
+        'motivo': motivo_concluido,
         'objetivo': preenchido('objetivo'),
         'compromisso': preenchido('compromisso') and bool(inicio.get('confirmado_em')),
         'item': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
