@@ -124,5 +124,5 @@ def test_executor_existente_recebe_prompt_sem_ferramentas(monkeypatch):
     assert chamadas["modelo"] == "modelo-configurado"
     assert chamadas["autorizacao_id"] == 7
     assert chamadas["ferramentas"] is None
-    assert "Não aprove entregas" in chamadas["instrucoes"]
+    assert "não invente aprovação sem evidências" in chamadas["instrucoes"]
     assert "prazo" in chamadas["itens"][0]["content"]

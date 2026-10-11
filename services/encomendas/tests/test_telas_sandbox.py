@@ -79,7 +79,7 @@ def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, proj
     [conclusao] = OutboxMarketplace.objects.filter(event=faixas_eventos.EV_CONCLUSAO)
     assert conclusao.event_id == faixas_eventos.event_id(faixas_eventos.EV_CONCLUSAO, p.pk)
     assert conclusao.payload == {"site_id": p.site_id, "pessoa_id": p.pessoa_id,
-                                 "trabalho_id": str(p.pk), "ocorrido_em": p.aprovado_em.isoformat()}
+                                 "trabalho_id": str(p.pk), "ocorrido_em": p.entregas.get(versao=1).criada_em.isoformat()}
     assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
     assert sandbox.saldo(site_id="escola-a", pessoa_id=p.pessoa_id) == Decimal("0.00")
     assert p.entregas.count() == 2 and p.arquivos.count() == 2

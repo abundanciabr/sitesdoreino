@@ -82,13 +82,13 @@ def sandbox_trabalho_criado(participacao, *, historico=False):
     })
 
 
-def sandbox_trabalho_concluido(participacao):
+def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None):
     E, O = _modelos()
     return emitir(E, O, site_id=participacao.site_id, evento=EV_CONCLUSAO,
                   chave=participacao.pk, dados={
                       "pessoa_id": str(participacao.pessoa_id),
                       "trabalho_id": str(participacao.pk),
-                      "ocorrido_em": _iso(participacao.aprovado_em),
+                      "ocorrido_em": _iso(ocorrido_em or participacao.aprovado_em),
                   })
 
 

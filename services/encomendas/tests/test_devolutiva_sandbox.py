@@ -47,6 +47,7 @@ def concluir(e, monkeypatch):
     monkeypatch.setattr(ia_sandbox, 'avaliar_entrega', lambda *args: {
         'requisitos': [{'id': '1', 'encontrado': False, 'nao_encontrado': False,
                         'inconclusivo': True, 'evidencias': ['guia.pdf não examinado']}],
+        'avaliacao': {'resultado': 'inconclusiva', 'justificativa': 'PDF não examinado.'},
         'interpretacao_visual_ia': 'Sem imagem examinável.'})
     analises.processar_entrega(e.analise.pk)
     return AnaliseEntregaSandbox.objects.get(entrega=e)

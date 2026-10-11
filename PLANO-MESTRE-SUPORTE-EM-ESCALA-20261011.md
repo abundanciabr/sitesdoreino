@@ -300,7 +300,7 @@ O detalhe passo a passo, com prova e auditoria, está no roteiro `C:\Users\davia
 - [ ] D2 orçamento de IA por mês e teto por dia
 - [ ] D3 regras escritas (reembolso, garantia, troca de turma, o que nunca prometer)
 - [ ] D4 número de WhatsApp do suporte
-- [ ] D5 prazo de resposta humana e horário
+- [ ] D5 prazo de resposta humana; expediente vigente de segunda a sexta, 14h–18h de Brasília, já configurado no site
 - [ ] D6 cores da seção 5 com os três degraus
 
 **E1: números**
@@ -360,7 +360,7 @@ O detalhe passo a passo, com prova e auditoria, está no roteiro `C:\Users\davia
 
 ## 12. Continuação do plano
 
-E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e são executados nesta entrega. A tabela de hipóteses só será substituída depois de 14 dias reais de coleta. D1–D6 continuam abertas; nenhuma delas é presumida pelo código. E2.7/E2.8 e E3–E7 permanecem fora desta entrega. Novas respostas autônomas, novos canais e ações financeiras não são ativados.
+E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e são executados nesta entrega. A tabela de hipóteses só será substituída depois de 14 dias reais de coleta. D1–D4 e D6 continuam abertas; em D5, falta o prazo de resposta humana. O expediente já configurado no site é preservado. E2.7/E2.8 e E3–E7 permanecem fora desta entrega. Novas respostas autônomas, novos canais e ações financeiras não são ativados.
 
 ## Execução autorizada em 11/10/2026 — correções e alcance
 
@@ -368,7 +368,7 @@ E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e sã
 - Entrega atual: E1.1–E1.3 e E2.1–E2.6/E2.10 (rascunhos, prioridade, prazo e caixa de decisões). E2.9 aproveita a confirmação de resolução. E2.7/E2.8 não são necessários à caixa: permanecem explicitamente pendentes, sem ligar lembretes ao aluno, encerramento por silêncio nem oportunidades automáticas.
 - Classificação sem chamada de IA. Sem evidência suficiente, amarelo e revisão individual. Vermelhos não entram em envio em lote. A cor não concede autonomia.
 - O lote mostra o texto que será enviado; mensagens novas, troca de responsável, produto, agenda ou base exigem rever o grupo. Não há geração de IA depois do clique.
-- Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1–D6 continuam sem decisão nova. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
+- Custos de execução estão autorizados; D2 é o orçamento do atendimento em produção. D1–D4 e D6 continuam sem decisão nova; em D5, falta o prazo humano, preservando o expediente vigente. Prazo de 24 h é referência interna provisória, nunca promessa ao aluno.
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
 - E1.4: 14 dias reais a partir da ativação comprovada (data ainda pendente). E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
@@ -376,7 +376,7 @@ E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e sã
 ## Provas da implementação — 11/10/2026
 
 - Código: `db7036d81`; main atual incorporada em `b0d9a429173ee669210cdfe46e5ca085e429b730`. A publicação pelo integrador ainda precisa ser confirmada no registro abaixo.
-- Suporte: **150 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
+- Suporte: **165 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
 - Migração nova aplicada, revertida e reaplicada em banco vazio; sem migração de atendimento faltando. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\migracao-comprovada.txt`.
 - Testes antigos de documentos na main: 12 falhas e 16 aprovações, sem alterações desta tarefa. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-base-main.txt`. Suíte geral completa: 2.837 aprovados, 101 falhas, 51 erros e 1 pulado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-admin-completo.txt`. Não é apresentada como verde.
 - Diff das cinco árvores congeladas vazio tanto contra a main como contra `425b82504028db3b7721ae32b776995915280bdb`. Nenhuma configuração de autonomia foi alterada. No site, Comunidade, Cursos e Site estavam assistidos antes da entrega; o teto existente de US$ 10/mês permanece, sem presumir a decisão D2 de escala.
@@ -389,3 +389,12 @@ A suíte geral não ficou verde. A falha do teste de streaming do suporte foi co
 Após retirar o lembrete novo de prazo (E2.7 está fora desta entrega), os **47 testes da etapa** passaram novamente: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-escala-final.txt`. Permanecem apenas os avisos já existentes; nenhum lembrete novo ao aluno foi ativado.
 
 Os atalhos Alt+N, Alt+P, Alt+A e Alt+E foram exercitados no navegador com o template real e destinatários fictícios. O servidor estático recebeu o POST de ensaio sem backend de envio e a navegação individual; os testes Django comprovam o processamento real. Prova somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-teclado.json`. Nenhuma mensagem foi enviada a um aluno real durante a conferência.
+
+
+### Integração do expediente vigente
+
+A main avançou durante a preparação para `dcc01be3edb23e72e9c9722f05c412f1fa76fe5c`, incluindo o expediente do suporte e outra entrega de Sandbox. As duas foram preservadas. A entrega inicial `89d486d85206` foi sucedida pela candidata que incorpora essa main. Os três widgets existentes (admin, cursos e fórum) preservam o expediente e recebem a confirmação de resolução; nenhum conteúdo foi publicado no fórum.
+
+Após a combinação, os **165 testes de suporte passaram**. As duas migrações 0005 foram unidas pela migração 0006; aplicação, reversão e reaplicação em banco isolado passaram, e `makemigrations --check` não encontrou mudanças. A comparação das falhas antigas foi feita contra a main `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; não é apresentada como uma execução integral sobre a main posterior.
+
+A conferência autenticada em `https://meshcraft.top/admin/atendimento/configuracao/` encontrou Comunidade, Cursos e Site em modo Assistido, expediente ativo de segunda a sexta das 14h às 18h (Brasília), sábado e domingo fechado, e o orçamento existente de US$ 10/mês. Nenhuma configuração foi salva pela tarefa. D5 ainda precisa do prazo de resposta humana; 24h permanece apenas um destaque interno provisório, sem promessa e sem cálculo de horas úteis.

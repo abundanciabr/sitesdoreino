@@ -1,4 +1,5 @@
 import uuid
+from datetime import time
 from django.db import models
 
 
@@ -10,6 +11,9 @@ MODOS = [('assistido', 'Assistido'), ('base', 'Automático pela base'),
 class Configuracao(models.Model):
     site_id = models.CharField(max_length=100, unique=True)
     horario = models.CharField(max_length=200, blank=True)
+    expediente_ativo = models.BooleanField(default=False)
+    expediente_inicio = models.TimeField(default=time(14))
+    expediente_fim = models.TimeField(default=time(18))
     mensagem = models.TextField(default='Sua dúvida ficou registrada para a equipe. Você pode continuar por aqui; a resposta aparecerá nesta conversa.')
     ia_ativa = models.BooleanField(default=True)
     autorizacao_id = models.PositiveIntegerField(null=True, blank=True)

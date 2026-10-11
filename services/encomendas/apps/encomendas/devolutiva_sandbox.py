@@ -47,28 +47,41 @@ def registrar(entrega, evento, texto):
 
 
 def recebimento(entrega):
+    if entrega.teste_mantenedor:
+        return registrar(entrega, 'recebimento',
+            f'Recebemos a versão {entrega.versao} como teste do mantenedor. A análise automática entrou na fila. '
+            'Este envio não substitui a entrega do aluno, não altera sua faixa nem concede XP.')
     return registrar(entrega, 'recebimento',
         f'Recebemos a versão {entrega.versao} e seus arquivos. A análise automática entrou na fila. '
         'O resultado aparecerá neste trabalho e você receberá uma resposta nesta conversa. '
-        'O horário de envio já está registrado; aguardar a análise não altera esse horário.')
+        'O horário e a conquista de envio já estão registrados. Os XP e a progressão seguem a jornada, '
+        'sem aprovação manual e sem repetir bônus. A fila não altera o horário de entrega.')
 
 
 def conclusao(analise):
+    avaliacao = analise.resultado.get('avaliacao') or {}
+    titulos = {'atende': 'atende ao briefing', 'precisa_ajustes': 'precisa de ajustes',
+               'inconclusiva': 'inconclusiva'}
+    resultado = titulos.get(avaliacao.get('resultado'), 'comparação concluída')
+    teste = analise.entrega.teste_mantenedor
+    texto = (f'Avaliação automática da versão {analise.entrega.versao}: {resultado}. '
+             + str(avaliacao.get('justificativa') or '')).strip()
     pendencias = lacunas(analise.resultado)
     if pendencias:
-        texto = (f'A análise automática da versão {analise.entrega.versao} terminou incompleta. '
-            'Não foi possível examinar integralmente estes arquivos:\n'
-            + '\n'.join('- ' + nome for nome in pendencias[:12])
-            + '\nIsso não é uma reprovação do seu trabalho. Confira o motivo na análise abaixo. '
-            'Para um modelo 3D, o leitor atual abre .blend ou .glb e imagens PNG/JPG; '
-            'você pode enviá-los diretamente ou em um ZIP com as texturas e a apresentação '
-            'previstas no seu briefing. Guarde os arquivos e use “Enviar trabalho concluído” '
-            'para registrar uma nova versão. O envio anterior permanece no histórico.')
+        texto += ('\nLeitura incompleta. Não foi possível examinar integralmente:\n'
+                  + '\n'.join('- ' + nome for nome in pendencias[:12])
+                  + '\nArquivos não examinados não foram considerados aprovados. '
+                  'Uma falha do leitor não é uma reprovação do trabalho.')
+    if teste:
+        texto += ('\nTeste do mantenedor: este resultado se refere às amostras de teste, '
+                  'não ao trabalho original do aluno. Não altera sua faixa nem concede XP.')
     else:
-        texto = (f'A análise automática da versão {analise.entrega.versao} foi concluída. '
-            'A comparação com o briefing está no histórico de entregas, com as evidências '
-            'e os pontos que puderam ou não ser verificados. A aprovação da escola é uma etapa separada.')
-    return registrar(analise.entrega, 'resultado-automatico', texto)
+        texto += ('\nEste é o resultado da avaliação, sem aprovação manual posterior. '
+                  'Se discordar, peça ajuda ao suporte. Confira as evidências no histórico. '
+                  'Você pode corrigir os pontos indicados e enviar uma nova versão quando necessário. '
+                  'O histórico e o reconhecimento do envio permanecem preservados.')
+    revisao = len(analise.historico)
+    return registrar(analise.entrega, f'resultado-automatico-v2-{revisao}', texto)
 
 
 def indisponivel(analise):
@@ -85,7 +98,11 @@ def situacao(analise):
     if analise.estado == 'concluida':
         if lacunas(analise.resultado):
             return 'Análise incompleta · confira os arquivos e envie uma nova versão'
-        return 'Análise automática concluída · aguardando aprovação da escola'
+        avaliacao = analise.resultado.get('avaliacao') or {}
+        return {'atende': 'Avaliação automática: atende ao briefing',
+                'precisa_ajustes': 'Avaliação automática: precisa de ajustes',
+                'inconclusiva': 'Avaliação automática inconclusiva · confira as evidências'}.get(
+                    avaliacao.get('resultado'), 'Análise automática concluída · confira o resultado')
     if analise.estado in ('falha', 'falha_ia'):
         return 'Análise indisponível · arquivos recebidos e nova tentativa pendente'
     if analise.estado == 'comparando':
