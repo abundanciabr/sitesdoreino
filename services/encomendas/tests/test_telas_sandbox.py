@@ -76,10 +76,13 @@ def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, proj
     for _ in range(2):
         assert client.post(reverse("sandbox_avaliar", args=[p.pk, "aprovar"])).status_code == 302
     p.refresh_from_db()
-    [conclusao] = OutboxMarketplace.objects.filter(event=faixas_eventos.EV_CONCLUSAO)
-    assert conclusao.event_id == faixas_eventos.event_id(faixas_eventos.EV_CONCLUSAO, p.pk)
-    assert conclusao.payload == {"site_id": p.site_id, "pessoa_id": p.pessoa_id,
-                                 "trabalho_id": str(p.pk), "ocorrido_em": p.entregas.get(versao=1).criada_em.isoformat()}
+    conclusoes = OutboxMarketplace.objects.filter(event=faixas_eventos.EV_CONCLUSAO)
+    assert conclusoes.count() == 2
+    for entrega in p.entregas.all():
+        conclusao = conclusoes.get(event_id=faixas_eventos.event_id(
+            faixas_eventos.EV_CONCLUSAO, f'{p.pk}:envio:{entrega.pk}'))
+        assert conclusao.payload == {"site_id": p.site_id, "pessoa_id": p.pessoa_id,
+            "trabalho_id": str(p.pk), "ocorrido_em": entrega.criada_em.isoformat()}
     assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
     assert sandbox.saldo(site_id="escola-a", pessoa_id=p.pessoa_id) == Decimal("0.00")
     assert p.entregas.count() == 2 and p.arquivos.count() == 2

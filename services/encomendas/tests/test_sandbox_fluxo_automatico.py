@@ -72,8 +72,9 @@ def test_teste_preserva_aluno_status_credito_e_contexto(p, monkeypatch):
     assert eventos().count() == 1
     assert all(p.mensagens.filter(pk=pk, texto=texto).exists() for pk, texto in antes)
     assert p.mensagens.filter(texto__contains='Teste do mantenedor:').exists()
-    enviar(p)
-    assert eventos().count() == 1
+    nova = enviar(p)
+    assert eventos().count() == 2
+    assert eventos().filter(payload__ocorrido_em=nova.criada_em.isoformat()).exists()
 
 def test_teste_sem_entrega_original_nao_concede_xp(p, monkeypatch):
     e = enviar(p, teste=True)
@@ -147,3 +148,16 @@ def test_migracao_identifica_somente_testes_confirmados_sem_reescrever(p):
     mig.registrar_envio_original(apps, SimpleNamespace(connection=connection))
     assert eventos().count() == 1
     assert eventos().get().payload['ocorrido_em'] == p.entregas.get(versao=1).criada_em.isoformat()
+
+
+def test_envio_novo_nao_e_suprimido_por_conclusao_anterior_ao_reinicio(p):
+    from datetime import timedelta
+    from django.utils import timezone
+    from apps.encomendas import faixas_eventos
+    antiga = timezone.now() - timedelta(days=7)
+    faixas_eventos.sandbox_trabalho_concluido(p, ocorrido_em=antiga)
+    e = enviar(p)
+    faixas_eventos.sandbox_trabalho_concluido(p, ocorrido_em=e.criada_em, entrega=e)
+    assert eventos().count() == 2
+    assert eventos().filter(payload__ocorrido_em=antiga.isoformat()).count() == 1
+    assert eventos().filter(payload__ocorrido_em=e.criada_em.isoformat()).count() == 1

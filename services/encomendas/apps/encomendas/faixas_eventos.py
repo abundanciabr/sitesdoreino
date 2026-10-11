@@ -82,10 +82,13 @@ def sandbox_trabalho_criado(participacao, *, historico=False):
     })
 
 
-def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None):
+def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None, entrega=None):
     E, O = _modelos()
+    # Cada envio tem seu fato. A gamificação concede cada bônus uma única vez;
+    # um evento antigo ignorado pelo reinício não pode suprimir um envio novo.
+    chave = f'{participacao.pk}:envio:{entrega.pk}' if entrega else participacao.pk
     return emitir(E, O, site_id=participacao.site_id, evento=EV_CONCLUSAO,
-                  chave=participacao.pk, dados={
+                  chave=chave, dados={
                       "pessoa_id": str(participacao.pessoa_id),
                       "trabalho_id": str(participacao.pk),
                       "ocorrido_em": _iso(ocorrido_em or participacao.aprovado_em),

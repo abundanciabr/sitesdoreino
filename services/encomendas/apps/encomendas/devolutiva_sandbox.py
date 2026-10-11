@@ -96,13 +96,14 @@ def situacao(analise):
     if analise is None:
         return 'Entrega recebida · na fila de análise'
     if analise.estado == 'concluida':
-        if lacunas(analise.resultado):
-            return 'Análise incompleta · confira os arquivos e envie uma nova versão'
         avaliacao = analise.resultado.get('avaliacao') or {}
-        return {'atende': 'Avaliação automática: atende ao briefing',
+        if lacunas(analise.resultado) and not avaliacao:
+            return 'Análise incompleta · confira os arquivos e envie uma nova versão'
+        texto = {'atende': 'Avaliação automática: atende ao briefing',
                 'precisa_ajustes': 'Avaliação automática: precisa de ajustes',
                 'inconclusiva': 'Avaliação automática inconclusiva · confira as evidências'}.get(
                     avaliacao.get('resultado'), 'Análise automática concluída · confira o resultado')
+        return texto + (' · leitura incompleta' if lacunas(analise.resultado) else '')
     if analise.estado in ('falha', 'falha_ia'):
         return 'Análise indisponível · arquivos recebidos e nova tentativa pendente'
     if analise.estado == 'comparando':
