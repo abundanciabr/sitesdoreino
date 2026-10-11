@@ -169,3 +169,93 @@ def test_montagem_rascunho_ajax_publicacao_pdf_e_bytes_selecionados(
     assert visitante.get(reverse("imagem_portfolio", kwargs={"imagem_id": principal.pk})).status_code == 404
     assert visitante.get(reverse("imagem_portfolio", kwargs={"imagem_id": privado.pk})).status_code == 200
     assert visitante.get(url_pdf).status_code == 200
+
+
+def test_preparo_na_montagem_atualiza_so_o_rascunho_e_volta_sem_perder_historico(
+    aluna, site_declarado, criar_portfolio, criar_peca
+):
+    portfolio = criar_portfolio(ANA["id"])
+    peca = criar_peca(portfolio, legenda="Meu objeto", titulo="Nome original")
+    outra = criar_peca(portfolio, ordem=2, legenda="Outro trabalho", titulo="Outro nome")
+    cliente = Client()
+    assert cliente.post(preparo_url(peca), {
+        "acao": "enviar", "categoria": "render", "principal": "1",
+        "arquivos": [imagem("original.png", "red")],
+    }, **como_aluna()).status_code == 302
+    material = peca.materiais.get()
+    dados = montagem_dados(peca, [material], "Minha apresentação", acao="publicar")
+    conteudo = json.loads(dados["conteudo_json"])
+    conteudo["pagina"]["legendas"] = [
+        {"peca_id": str(peca.pk), "titulo": "Título na página", "texto": "Texto na página"},
+        {"peca_id": str(outra.pk), "titulo": "Outro título", "texto": "Outro texto"},
+    ]
+    dados["conteudo_json"] = json.dumps(conteudo)
+    assert cliente.post(reverse("apresentacao_publica"), dados, **como_aluna()).status_code == 302
+    portfolio.refresh_from_db()
+    publicacao_antes = portfolio.publicacao_comercial
+    url = preparo_url(peca) + "?voltar=apresentacao"
+    tela = cliente.get(url, **como_aluna())
+    assert "Título na página" in tela.content.decode()
+    assert "Texto na página" in tela.content.decode()
+    salvo = cliente.post(url, {
+        "acao": "salvar", "titulo": "Título revisado", "descricao": "Texto revisado",
+        "checklist": ["nome_descricao"], "concluir": "1", "voltar": "apresentacao",
+    }, **como_aluna())
+    assert salvo.status_code == 302
+    assert salvo["Location"] == reverse("apresentacao_publica") + "#escolher-trabalhos"
+    portfolio.refresh_from_db()
+    peca.refresh_from_db()
+    outra.refresh_from_db()
+    material.refresh_from_db()
+    assert portfolio.publicacao_comercial == publicacao_antes
+    assert portfolio.apresentacao_comercial["pagina"]["legendas"] == [
+        {"peca_id": str(peca.pk), "titulo": "Título revisado", "texto": "Texto revisado"},
+        {"peca_id": str(outra.pk), "titulo": "Outro título", "texto": "Outro texto"},
+    ]
+    assert peca.titulo == "Título revisado"
+    assert outra.titulo == "Outro nome"
+    assert peca.materiais.count() == 1 and material.bytes
+    assert not material.substituido_por_id
+    assert sum(item["marcado"] for item in peca.checklist_preparacao) == 1
+    retomada = cliente.get(reverse("apresentacao_publica"), **como_aluna()).content.decode()
+    assert "Título revisado" in retomada and "Texto revisado" in retomada
+    publicada = Client().get(reverse("vitrine", kwargs={"apelido": "ana-3d"})).content.decode()
+    assert "Título na página" in publicada and "Título revisado" not in publicada
+
+
+def test_upload_no_preparo_mantem_retorno_para_montagem(
+    aluna, site_declarado, criar_portfolio, criar_peca
+):
+    peca = criar_peca(criar_portfolio(ANA["id"]), legenda="Modelo")
+    cliente = Client()
+    resposta = cliente.post(preparo_url(peca), {
+        "acao": "enviar", "voltar": "apresentacao", "categoria": "vistas",
+        "arquivos": [imagem("detalhe.png", "blue")],
+    }, **como_aluna())
+    assert resposta.status_code == 302
+    assert resposta["Location"] == preparo_url(peca) + "?voltar=apresentacao"
+    tela = cliente.get(resposta["Location"], **como_aluna()).content.decode()
+    assert "Salvar e voltar à apresentação" in tela
+    assert "Voltar à seleção" in tela
+
+
+def test_previa_da_equipe_e_somente_leitura_sem_criar_dados(da_equipe, site_declarado):
+    cliente = Client()
+    url = reverse("previa_portfolio_equipe")
+    antes = (Portfolio.objects.count(), Peca.objects.count(), MaterialDaPeca.objects.count())
+    for tela in ("montagem", "preparo", "resultado"):
+        resposta = cliente.get(url, {"tela": tela}, **como_aluna())
+        assert resposta.status_code == 200
+        assert resposta["Cache-Control"] == "no-store"
+        assert resposta["X-Robots-Tag"] == "noindex, nofollow"
+        if tela != "resultado":
+            assert "Somente leitura" in resposta.content.decode()
+            assert b"<fieldset disabled" in resposta.content
+    assert cliente.post(url, {"acao": "publicar"}, **como_aluna()).status_code == 405
+    assert (Portfolio.objects.count(), Peca.objects.count(), MaterialDaPeca.objects.count()) == antes
+
+
+def test_previa_da_equipe_recusa_quem_nao_e_admin(fora_da_equipe, site_declarado):
+    resposta = Client().get(reverse("previa_portfolio_equipe"), **como_aluna())
+    assert resposta.status_code == 403
+    assert b"Cabelo Cascata" not in resposta.content
