@@ -201,7 +201,7 @@ def confirmar_projeto(request, projeto_id):
     ativo = ParticipacaoSandbox.objects.filter(site_id=site, pessoa_id=pessoa,
                     status__in=['em_producao', 'em_ajuste', 'entregue']).first()
     return render(request, 'sandbox/confirmar.html', {
-        'projeto': projeto, 'termos_simulacao': ('Prática educacional sem pagamento. Concluir o Sandbox concede a faixa Azul e 10.000 XP, uma vez por aluno.' if projeto.do_curso else sandbox.TERMOS_SIMULACAO),
+        'projeto': projeto, 'termos_simulacao': sandbox.TERMOS_SIMULACAO,
         'aluno_atual': aluno, 'trabalho_ativo': ativo,
         'papel': 'aluno' if aluno else 'equipe',
     })
@@ -233,6 +233,14 @@ def aceitar(request, projeto_id):
     return _voltar("sandbox_trabalho", participacao.pk, recado="Trabalho iniciado.")
 
 
+def _pode_testar(request):
+    try:
+        telas_marketplace._equipe(request)
+        return True
+    except Http404:
+        return False
+
+
 @require_GET
 def trabalho(request, participacao_id):
     participacao, _, papel = _trabalho(request, participacao_id)
@@ -242,7 +250,7 @@ def trabalho(request, participacao_id):
     participacao.refresh_from_db()
     from apps.encomendas.devolutiva_sandbox import situacao
     from apps.encomendas.sandbox_models import AnaliseEntregaSandbox
-    ultima = participacao.entregas.order_by('-versao').first()
+    ultima = sandbox.ultima_entrega_do_aluno(participacao)
     analise = AnaliseEntregaSandbox.objects.filter(entrega=ultima).first() if ultima else None
     return render(request, "sandbox/trabalho.html", {
         "papel": papel, "trabalho": participacao, "agora": timezone.now(),
@@ -252,6 +260,7 @@ def trabalho(request, participacao_id):
         "ajustes": AjusteSandbox.objects.filter(participacao=participacao).order_by("-criado_em"),
         "respostas_pendentes": participacao.respostasandbox_set.exclude(estado='concluida'),
         "situacao_analise": situacao(analise), "pode_entregar": sandbox.pode_entregar(participacao),
+        "pode_testar": _pode_testar(request), "ultima_entrega_aluno": ultima,
         "recado": request.GET.get("recado", ""),
     })
 
@@ -282,7 +291,7 @@ def enviar_arquivo(request, participacao_id):
     trabalho, pessoa, papel = _trabalho(request, participacao_id)
     if trabalho is None:
         return _login(request)
-    if papel != "aluno" or trabalho.status == "aprovado":
+    if (papel != "aluno" or trabalho.status == "aprovado") and not _pode_testar(request):
         raise Http404
     recebido = request.FILES.get("arquivo")
     if not recebido:
@@ -334,16 +343,17 @@ def entregar(request, participacao_id):
     trabalho, pessoa, papel = _trabalho(request, participacao_id)
     if trabalho is None:
         return _login(request)
-    if papel != "aluno":
+    teste = request.POST.get("teste_mantenedor") == "sim"
+    if (teste and not _pode_testar(request)) or (not teste and papel != "aluno"):
         raise Http404
     try:
         arquivos = [uuid.UUID(chave) for chave in request.POST.getlist("arquivos")]
         sandbox.entregar(site_id=trabalho.site_id, participacao_id=trabalho.pk,
-                         pessoa_id=pessoa, comentario=request.POST.get("comentario", "").strip(),
-                         arquivos=arquivos)
+                         pessoa_id=trabalho.pessoa_id, comentario=request.POST.get("comentario", "").strip(),
+                         arquivos=arquivos, teste_mantenedor=teste)
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro))
-    return _voltar("sandbox_trabalho", trabalho.pk, recado="Nova versão enviada à escola.")
+    return _voltar("sandbox_trabalho", trabalho.pk, recado=("Teste do mantenedor recebido; análise automática na fila, sem alterar a conquista do aluno." if teste else "Envio concluído e conquista registrada. Análise automática na fila; XP e progressão seguem a jornada."))
 
 
 @require_POST

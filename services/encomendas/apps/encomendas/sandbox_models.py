@@ -90,6 +90,7 @@ class EntregaSandbox(models.Model):
     participacao = models.ForeignKey(ParticipacaoSandbox, on_delete=models.PROTECT, related_name="entregas")
     versao = models.PositiveIntegerField()
     comentario = models.TextField(blank=True)
+    teste_mantenedor = models.BooleanField(default=False)
     criada_em = models.DateTimeField(auto_now_add=True)
     aprovada_em = models.DateTimeField(null=True, blank=True)
 
@@ -161,6 +162,7 @@ class AnaliseEntregaSandbox(models.Model):
     entrega = models.OneToOneField(EntregaSandbox, on_delete=models.PROTECT, related_name="analise")
     estado = models.CharField(max_length=20, default="na_fila")
     resultado = models.JSONField(default=dict)
+    historico = models.JSONField(default=list)
     falha = models.TextField(blank=True)
     tentativas = models.PositiveIntegerField(default=0)
     tentar_em = models.DateTimeField(null=True)
