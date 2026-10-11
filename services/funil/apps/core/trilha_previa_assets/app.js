@@ -339,7 +339,7 @@ async function refreshJourney(){
         document.querySelector('#timeline').replaceChildren();document.querySelector('#dock').replaceChildren();
         document.querySelector('#resume').disabled=true;journeyController=null;journeyFingerprint=null;
         if(error.invalidIdentity){document.querySelector('main').hidden=true;window.location.replace(previa);return;}
-        if(error.status===403){window.location.replace('/login?next=%2Ftrilha%2F');return;}
+        if(error.status===403){window.location.replace('/login?next='+encodeURIComponent(previa));return;}
       }
       if(!journeyController){
         document.querySelector('.hero-object').removeAttribute('aria-busy');

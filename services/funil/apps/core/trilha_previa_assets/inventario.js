@@ -64,7 +64,7 @@ function render(){
   const preserved=data.etapas.length===7&&['ugc','jogo','aprender'].includes(data.caminho)?data.graus_historicos:[];
   if(preserved.length){const note=el('li','');const detail=el('small',`Graus anteriores preservados: ${preserved.map(g=>`Grau ${roman[g.ordem-7]} · +${g.bonus_xp.toLocaleString('pt-BR')} XP · ${new Date(g.conquistada_em).toLocaleDateString('pt-BR')}`).join(' | ')}`);detail.className='fine';note.append(detail);q('#history').append(note);}
   // A faixa atual não esconde os arquivos que a pessoa já guardou.
-  data.anexos.forEach(a=>{if(!/^\/trilha\/inventario\/arquivos\/[0-9]+\/$/.test(a.url))return;const li=el('li','');const link=el('a',a.nome);link.href=a.url;li.append(link,el('small','Arquivo privado preservado'));q('#history').append(li);});
+  data.anexos.forEach(a=>{if(!new RegExp('^'+previa+'inventario/arquivos/[0-9]+/$').test(a.url))return;const li=el('li','');const link=el('a',a.nome);link.href=a.url;li.append(link,el('small','Arquivo privado preservado'));q('#history').append(li);});
   q('#deliveries').replaceChildren();
   if(data.caminho==='freelancer'){
     [5,6].filter(ordem=>shownSteps.includes(ordem)).forEach(ordem=>{const etapa=data.etapas.find(e=>e.ordem===ordem);if(!etapa)return;const details=document.createElement('details');details.append(el('summary',`${ordem===5?'Minha prática no Sandbox':'Meu trabalho real na Fila'} · ${etapa.alcancada?'Concluído':'Pendente'}`));
