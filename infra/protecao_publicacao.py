@@ -133,7 +133,7 @@ def montar(codigo: Path, fontes: Path, imagem: str, preparar: Path, registro) ->
     comando = ['docker', 'create', '--name', nome, '--network', 'none',
                '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
                '--user', '65532:65532', '--memory', '1024m', '--cpus', '1',
-               '--pids-limit', '96', '--tmpfs', '/tmp:rw,nosuid,nodev,size=256m',
+               '--pids-limit', '96', '--tmpfs', '/tmp:rw,nosuid,nodev,size=512m',
                '-v', f'{fontes}:/fontes:ro', '-v', f'{preparar}:/ferramentas/preparar.py:ro',
                '--entrypoint', 'python', imagem]
     # A saída é copiada enquanto o processo permanece vivo. O comando fixo
