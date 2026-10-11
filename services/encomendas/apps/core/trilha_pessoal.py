@@ -26,6 +26,8 @@ def _privada(resposta, metodo):
 
 def _url_do_trabalho(nome, identificador):
     url = reverse(nome, args=[identificador])
+    if url.startswith("/trilha/previa/encomendas/"):
+        return url
     prefixo = (settings.FORCE_SCRIPT_NAME or "").rstrip("/")
     if prefixo and not (url == prefixo or url.startswith(prefixo + "/")):
         return prefixo + url

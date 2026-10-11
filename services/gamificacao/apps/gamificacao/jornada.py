@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 from .bonus_faixas import PONTOS, SLUGS
 from .historico_reinicio import marcos_anteriores
+from .url_trilha import url_trilha
 
 from .models import (
     AnexoDaJornada,
@@ -309,7 +310,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         "falta": reais(falta),
         "chave": str(uuid.uuid4()),
         "celebracao": jornada.celebracao_pendente if jornada else {},
-        "proxima_url": proxima_url,
+        "proxima_url": url_trilha(proxima_url) if proxima_url else "",
         "proxima_acao": proxima_acao,
     }
 

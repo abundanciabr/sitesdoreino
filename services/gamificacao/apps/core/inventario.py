@@ -57,9 +57,9 @@ def _dados(request, pessoa, site):
         'etapas': [{k: p[k] for k in ('ordem', 'nome', 'conquista', 'alcancada')} for p in jornada['lista']],
         'anexos': [{'id': a.id, 'passo': a.passo, 'nome': a.nome, 'tamanho': a.tamanho,
                     'aprendi': a.aprendi, 'duvida': a.duvida,
-                    'previa': f'/trilha/inventario/arquivos/{a.id}/?previa=1' if PurePosixPath(a.nome).suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'} else None,
+                    'previa': reverse('arquivo-inventario', args=[a.id]) + '?previa=1' if PurePosixPath(a.nome).suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'} else None,
                     'criado_em': a.criado_em.isoformat(),
-                    'url': f'/trilha/inventario/arquivos/{a.id}/'}
+                    'url': reverse('arquivo-inventario', args=[a.id])}
                    for a in AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site).defer('conteudo').order_by('-id')],
         'caminho': jornada.get('caminho'), 'graus_historicos': jornada.get('graus_historicos', []), 'faixa_nome': jornada['atual']['nome'],
         'avaliacoes': [{'ordem': a.ordem, 'resultado': a.resultado, 'feedback': a.feedback, 'criada_em': a.criada_em.isoformat()} for a in AvaliacaoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site).order_by('-id')[:20]],

@@ -152,3 +152,157 @@ def test_servico_isolado_falha_fechado_e_outro_host_nao_serve(aplicacao):
             fabrica.get("/trilha/inicio/motivo/", HTTP_HOST="outro.example"),
             "inicio/motivo/",
         )
+
+
+def test_previa_tem_csrf_proprio_e_restaura_cookie_do_funil(aplicacao):
+    from django.http import JsonResponse
+    from django.middleware.csrf import get_token
+    from django.test import RequestFactory
+    from django.urls import get_script_prefix, get_urlconf, reverse, set_script_prefix, set_urlconf
+    from config.runtime import current_service, serving
+    from modules.funil.apps.core.trilha_faixas import servir_view_da_celula
+    from modules.gamificacao.config import trilha_urls
+
+    padrao = next(p for p in trilha_urls.urlpatterns if p.name == "inventario")
+    original = padrao.callback
+
+    def view(request):
+        assert current_service() == "gamificacao"
+        assert get_script_prefix() == "/trilha/previa/"
+        assert reverse("inventario") == "/trilha/previa/inventario/api/"
+        return JsonResponse({"csrf": get_token(request)})
+
+    padrao.callback = view
+    fabrica = RequestFactory()
+    prefixo = "/trilha/previa/"
+    try:
+        with serving("funil"):
+            set_script_prefix("/")
+            set_urlconf("modules.funil.config.urls")
+
+            def chamar(request):
+                return servir_view_da_celula(request, "inventario/api/", prefixo_publico=prefixo)
+
+            get = fabrica.get(prefixo + "inventario/api/", HTTP_HOST="meshcraft.top")
+            resposta = chamar(get)
+            assert resposta.status_code == 200
+            assert "gamificacao_csrf" not in resposta.cookies
+            assert resposta.cookies["trilha_previa_gamificacao_csrf"]["path"] == prefixo
+            privado = resposta.cookies["trilha_previa_gamificacao_csrf"].value
+
+            velho = fabrica.get("/trilha/", HTTP_HOST="meshcraft.top")
+            token_velho = get_token(velho)
+            velho_cookie = velho.META["CSRF_COOKIE"]
+            sem_privado = fabrica.post(prefixo + "inventario/api/", data={},
+                HTTP_HOST="meshcraft.top", HTTP_COOKIE="gamificacao_csrf=" + velho_cookie,
+                HTTP_X_CSRFTOKEN=token_velho)
+            sem_privado.META["CSRF_COOKIE"] = velho_cookie
+            assert chamar(sem_privado).status_code == 403
+            assert sem_privado.META["CSRF_COOKIE"] == velho_cookie
+
+            com_privado = fabrica.post(prefixo + "inventario/api/", data={},
+                HTTP_HOST="meshcraft.top", HTTP_COOKIE="trilha_previa_gamificacao_csrf=" + privado,
+                HTTP_X_CSRFTOKEN=privado)
+            assert chamar(com_privado).status_code == 200
+            assert get_script_prefix() == "/"
+            assert get_urlconf() == "modules.funil.config.urls"
+            assert com_privado.path_info == prefixo + "inventario/api/"
+    finally:
+        padrao.callback = original
+        set_script_prefix("/")
+        set_urlconf(None)
+
+
+def test_previa_autorizacao_vazia_e_rotas_sensiveis_negadas(aplicacao):
+    from django.http import Http404
+    from django.test import RequestFactory
+    from modules.funil.apps.core import trilha_previa
+
+    fabrica = RequestFactory()
+    pedido = fabrica.get("/trilha/previa/autorizar/", HTTP_HOST="meshcraft.top")
+    for identidade, codigo in ((True, 204), (False, 403), (None, 503)):
+        with patch.object(trilha_previa, "_administrador_real", return_value=identidade):
+            resposta = trilha_previa.trilha_previa(pedido, "autorizar/")
+        assert resposta.status_code == codigo
+        assert resposta.content == b""
+        assert "no-store" in resposta["Cache-Control"]
+    assert trilha_previa._encomenda_permitida("sandbox/")
+    assert trilha_previa._encomenda_permitida("minha-trilha/")
+    for caminho in ("cliente/carteira/", "cliente/recarregar/", "fila/sacar/",
+                    "cliente/novo/", "cliente/pedidos/00000000-0000-0000-0000-000000000000/cobrar/"):
+        assert not trilha_previa._encomenda_permitida(caminho)
+    with pytest.raises(Http404):
+        trilha_previa.trilha_previa(
+            fabrica.get("/trilha/previa/autorizar/", HTTP_HOST="outro.example"), "autorizar/"
+        )
+
+
+def test_urls_de_dados_da_previa_respeitam_contexto(aplicacao):
+    from django.urls import set_script_prefix
+    from modules.gamificacao.apps.gamificacao.url_trilha import url_cursos, url_trilha
+
+    try:
+        set_script_prefix("/trilha/previa/")
+        assert url_trilha("/trilha/inicio/motivo/") == "/trilha/previa/inicio/motivo/"
+        assert url_trilha("/trilha/sandbox/") == "/trilha/previa/sandbox/"
+        assert url_cursos() == "/trilha/previa/cursos/"
+        set_script_prefix("/conquistas/")
+        assert url_trilha("/trilha/inicio/motivo/") == "/trilha/inicio/motivo/"
+        assert url_cursos() == "/cursos/"
+    finally:
+        set_script_prefix("/")
+
+
+def test_autorizar_consulta_sessao_completa_e_admin_reais(aplicacao):
+    from django.test import RequestFactory
+    from modules.funil.apps.core import trilha_previa
+    from modules.gamificacao.apps.core import sessao
+
+    class Resposta:
+        status_code = 200
+
+        def __init__(self, corpo):
+            self.corpo = corpo
+
+        def json(self):
+            return self.corpo
+
+    class Cliente:
+        def __init__(self, admin):
+            self.admin = admin
+
+        def get(self, url, *, headers, timeout):
+            assert url == "http://identidade.test/sessao/completa"
+            assert headers["Cookie"] == "meshcraft_sessao=opaco"
+            return Resposta({"autenticado": True, "id": "pessoa-real", "email": "admin@example.test"})
+
+        def post(self, url, *, headers, json, timeout):
+            assert url == "http://admin.test/administradores/consultar"
+            assert json == {"email": "admin@example.test"}
+            return Resposta({"e_administrador": self.admin})
+
+    pedido = RequestFactory().get("/trilha/previa/autorizar/", HTTP_HOST="meshcraft.top",
+                                  HTTP_COOKIE="meshcraft_sessao=opaco")
+    env = {"IDENTIDADE_API_URL": "http://identidade.test", "IDENTIDADE_API_TOKEN": "token",
+           "ADMIN_API_URL": "http://admin.test", "ADMIN_API_TOKEN": "token"}
+    with patch.dict(os.environ, env), patch.object(trilha_previa, "_sessao", return_value=("ok", {"id": "pessoa-real"})):
+        for admin, codigo in ((True, 204), (False, 403)):
+            with patch.object(sessao, "http", return_value=Cliente(admin)):
+                assert trilha_previa.trilha_previa(pedido, "autorizar/").status_code == codigo
+
+
+def test_links_de_trabalhos_nao_duplicam_prefixo_encomendas(aplicacao):
+    from uuid import UUID
+    from django.urls import set_script_prefix, set_urlconf
+    from config.runtime import serving
+    from modules.encomendas.apps.core.trilha_pessoal import _url_do_trabalho
+
+    try:
+        with serving("encomendas"):
+            set_urlconf("modules.encomendas.config.urls")
+            set_script_prefix("/trilha/previa/encomendas/")
+            url = _url_do_trabalho("sandbox_trabalho", UUID("00000000-0000-0000-0000-000000000001"))
+            assert url == "/trilha/previa/encomendas/sandbox/trabalhos/00000000-0000-0000-0000-000000000001/"
+    finally:
+        set_script_prefix("/")
+        set_urlconf(None)

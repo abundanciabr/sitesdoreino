@@ -28,7 +28,7 @@
       <span class="credito-confirmado" aria-hidden="true">✓</span>
     </section>
     {% if conquista_xp_faixa %}<div class="bonus-faixa"><span aria-hidden="true">🏅</span><div><strong>Faixa {{ faixa_conquistada }} conquistada!</strong><p>{{ conquista_xp_tarefa }} XP da tarefa + {{ conquista_xp_faixa }} XP da nova faixa.</p></div></div>{% endif %}
-    <a class="voltar-faixa" href="/trilha/">Voltar à minha faixa <span aria-hidden="true">→</span></a>
+    <a class="voltar-faixa" href="{% url 'base' %}">Voltar à minha faixa <span aria-hidden="true">→</span></a>
     <p class="ritmo">Comemore este passo. Você escolhe quando continuar.</p>
   </main>
   <footer>Uma criação de cada vez.</footer>

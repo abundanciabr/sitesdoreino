@@ -1,7 +1,7 @@
 {% extends "gamificacao/trilha_moldura.html" %}
 {% block titulo %}Minha Trilha · Recebimentos{% endblock %}
 {% block conteudo %}
-<p><a href="/trilha/">Voltar à minha Trilha</a></p>
+<p><a href="{% url 'base' %}">Voltar à minha Trilha</a></p>
 {% if jornada_erro %}<p role="alert">{{ jornada_erro }}</p>{% endif %}
 {% if entrou %}{% include "gamificacao/jornada.html" %}{% endif %}
 {% endblock %}

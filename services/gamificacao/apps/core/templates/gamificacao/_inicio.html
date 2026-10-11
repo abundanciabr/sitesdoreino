@@ -123,7 +123,7 @@
         <label for="inicio-item-acao">Uma ação que realizei nele</label><textarea id="inicio-item-acao" name="item_acao" maxlength="1000" rows="3" required></textarea>
         <label for="inicio-relato-imagem">Imagem da criação (opcional)</label><input id="inicio-relato-imagem" type="file" name="arquivo" accept=".png,.jpg,.jpeg,.webp">
         <p id="inicio-criacao-estado" class="inicio-nota"></p>
-        <div class="inicio-acoes"><button type="submit">Avaliar meu relato</button><a href="/cursos/">Abrir minha prática</a></div>
+        <div class="inicio-acoes"><button type="submit">Avaliar meu relato</button><a href="{{ url_cursos }}">Abrir minha prática</a></div>
       </form>
       <details class="inicio-detalhes"><summary>Preciso de ajuda nesta criação</summary>
         <button id="inicio-pedir-ajuda" class="inicio-texto" type="button" aria-expanded="false" aria-controls="inicio-ajuda">Preparar minha dúvida</button>
@@ -131,7 +131,7 @@
           <label for="inicio-mensagem">Minha dúvida sobre esta criação</label>
           <textarea id="inicio-mensagem" rows="5" maxlength="2000"></textarea>
           <p class="inicio-nota">Você escolhe o que compartilhar. Só a criação e a dúvida entram neste rascunho.</p>
-          <div class="inicio-acoes"><button id="inicio-copiar" type="button">Copiar pedido</button><a href="/forum/" target="_blank" rel="noopener">Abrir o Fórum</a></div>
+          <div class="inicio-acoes"><button id="inicio-copiar" type="button">Copiar pedido</button>{% if not request.previa_trilha_url %}<a href="/forum/" target="_blank" rel="noopener">Abrir o Fórum</a>{% endif %}</div>
         </div>
       </details>
     </section>

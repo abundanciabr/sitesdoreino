@@ -63,8 +63,8 @@
   <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="apoio"><input type="hidden" name="revisao" value="{{ faixas.revisao }}">
   <label for="apoio">Minha preferência</label><select id="apoio" name="apoio">{% for opcao in faixas.apoios %}<option value="{{ opcao.valor }}"{% if opcao.selecionado %} selected{% endif %}>{{ opcao.nome }}</option>{% endfor %}</select><button type="submit">Usar este apoio</button></form>
   <p class="dica-apoio">{{ faixas.dica }}</p>
-  <p>No <a href="/forum/">Fórum</a>, peça ajuda aos agentes e troque experiências com colegas. Apresente seu portfólio, discuta como encontrar trabalhos no Fiverr, no X, nas redes sociais e em comunidades. Compartilhe o que tentou e o que funcionou.</p>
-  <p>A professora acompanha você pelas aulas e cria novas aulas a pedido dos alunos na <a href="/forms/sugestoes/">Caixa de Sugestões</a>.</p>
+  {% if not request.previa_trilha_url %}<p>No <a href="/forum/">Fórum</a>, peça ajuda aos agentes e troque experiências com colegas. Apresente seu portfólio, discuta como encontrar trabalhos no Fiverr, no X, nas redes sociais e em comunidades. Compartilhe o que tentou e o que funcionou.</p>
+  <p>A professora acompanha você pelas aulas e cria novas aulas a pedido dos alunos na <a href="/forms/sugestoes/">Caixa de Sugestões</a>.</p>{% endif %}
 </section>
 
 {% if faixas.caminho == "freelancer" or faixas.recebimentos %}<section class="aviso" aria-labelledby="recebimentos"><h2 id="recebimentos">Recebi dinheiro por modelagem 3D</h2><p>Registre o que já recebeu, dentro ou fora do site. Envie um recorte com o valor, a moeda, a data e a confirmação de que o dinheiro entrou. Oculte nomes, CPF, dados de conta e outros dados pessoais que não ajudam nessa leitura. Você declara e envia o print; o robô confere o conteúdo visível. Se estiver incompleto ou ilegível, ele pede esclarecimento. A escola não precisa aprovar. MESH, XP, Cristais, propostas e pagamentos ainda esperados não são recebimentos. O leitor reconhece o que aparece na imagem; ele não autentica o pagamento.</p>

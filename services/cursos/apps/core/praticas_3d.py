@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Sum,Count
 from django.http import JsonResponse,HttpResponse,Http404
 from django.shortcuts import get_object_or_404,render
-from django.urls import reverse
+from django.urls import get_script_prefix, reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET,require_http_methods,require_POST
 from django.utils import timezone
@@ -17,6 +17,9 @@ from .sessao import quem_e,site_atual
 
 DESAFIO='desafio-como-ganhar-em-dolar-com-roblox'
 EVENTOS={'inicio','escolha','primeira_mudanca','salvar','recuperar','concluir','abandono','falha_salvar','compreensao'}
+
+def _url_trilha():
+    return '/trilha/previa/' if get_script_prefix().startswith('/trilha/previa/') else '/trilha/'
 
 def atividade_de(aula):
     return Atividade3D.objects.filter(aula=aula,ativa=True).first()
@@ -210,7 +213,7 @@ def contexto(aula,pessoa,request,atividade=None):
     conferencia={5:'Vou conferir se você mudou a cor de uma parte e salvou o item.',
                  6:'Vou comparar a proporção do mesmo item com a versão anterior salva.',
                  7:'A IA vai examinar a imagem salva, o nome e sua explicação do item.'}.get(ordem,'')
-    return {'atividade':str(a.id),'dia':a.dia,'pitch':a.dia in (4,5,6) or a.configuracao.get('complementar',False),'configuracao':a.configuracao,'modelos':modelos,'projeto':projeto,'salvar':reverse('salvar-item-3d',args=[a.id]),'eventos':reverse('evento-item-3d',args=[a.id]),'meus_itens':reverse('meus-itens-3d'),'conferencia':conferencia,'ordem_faixa':ordem,'url_trilha':'/trilha/'}
+    return {'atividade':str(a.id),'dia':a.dia,'pitch':a.dia in (4,5,6) or a.configuracao.get('complementar',False),'configuracao':a.configuracao,'modelos':modelos,'projeto':projeto,'salvar':reverse('salvar-item-3d',args=[a.id]),'eventos':reverse('evento-item-3d',args=[a.id]),'meus_itens':reverse('meus-itens-3d'),'conferencia':conferencia,'ordem_faixa':ordem,'url_trilha':_url_trilha()}
 
 def _porta(request,atividade):
     from .views import _porta_aberta
@@ -268,7 +271,7 @@ def salvar(request,atividade):
                            and r.get('revisao')==existente.revisao),None)
             return JsonResponse({'projeto':personalizacao(existente),
                                  'avaliacao':_avaliar_salvamento(existente,a,registro.get('antes') if registro else None),
-                                 'url_trilha':'/trilha/'})
+                                 'url_trilha':_url_trilha()})
         anterior=None
         with transaction.atomic():
             # Owner lock serializes quota checks and retries for newly generated UUIDs.
@@ -297,7 +300,7 @@ def salvar(request,atividade):
                 'etapa':receita['etapa'],'conferencia':receita['conferencia'],'historico':historico}})
             Evento3D.objects.create(pessoa=pessoa,atividade=a,tipo='salvar',etapa=receita['etapa'])
         return JsonResponse({'projeto':personalizacao(p),'avaliacao':_avaliar_salvamento(p,a,anterior),
-                             'url_trilha':'/trilha/'})
+                             'url_trilha':_url_trilha()})
     except (ValueError,TypeError,json.JSONDecodeError,OverflowError) as e:
         return JsonResponse({'erro':str(e) if isinstance(e,ValueError) else 'Não foi possível guardar o item. Tente novamente.'},status=400)
 

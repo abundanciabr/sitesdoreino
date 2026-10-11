@@ -2,9 +2,12 @@
 
 from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal, RecebimentoDeclarado
 from apps.gamificacao.inicio import etapas_inicio
+from apps.gamificacao.url_trilha import url_trilha
 
 
 def _item(ordem, titulo, estado, detalhe, acao=None, *, sufixo=None, bloqueado=False):
+    if acao and acao.get("url", "").startswith("/trilha/"):
+        acao = {**acao, "url": url_trilha(acao["url"])}
     return {
         "id": f"criterio-{ordem}" if sufixo is None else f"{sufixo}-{ordem}",
         "titulo": titulo,

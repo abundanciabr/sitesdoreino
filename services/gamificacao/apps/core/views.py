@@ -175,6 +175,8 @@ def inicio_pagina(request, etapa):
         "url_de_entrada": settings.URL_DE_ENTRADA,
         "url_da_capa": settings.URL_DA_CAPA,
     }
+    from apps.gamificacao.url_trilha import url_cursos
+    contexto["url_cursos"] = url_cursos()
     if pessoa_id and site:
         from apps.gamificacao.jornada import situacao
         from apps.gamificacao.inicio import resumo_inicio
@@ -564,8 +566,10 @@ def ciclo_pagina(request):
         return HttpResponseRedirect(faixas['proxima_url'])
     j = JornadaPessoal.objects.filter(pessoa_id=pessoa, site_id=site).first()
     from .trilha_pessoal import _privada
+    from apps.gamificacao.url_trilha import url_cursos
     return _privada(render(request, 'gamificacao/ciclo.html', {
         'entrou': True, 'faixas': faixas, 'ordem': ordem,
+        'url_cursos': url_cursos(),
         'item_nome': (j.inicio or {}).get('item_nome', ''),
         'url_de_entrada': settings.URL_DE_ENTRADA, 'url_da_capa': settings.URL_DA_CAPA,
     }))
