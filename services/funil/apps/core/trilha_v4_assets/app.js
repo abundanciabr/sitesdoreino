@@ -213,7 +213,8 @@ function journeyChecklist(progress,index,activities){
   const notes=new Set();
   const itens=sources.flatMap(step=>{
     if(step.checklist.observacao)notes.add(step.checklist.observacao);
-    return step.checklist.itens.map(item=>{
+    const relevantItems=index>0&&step.ordem===2?step.checklist.itens.filter(item=>!['motivo-2','plano-2','envio-2'].includes(item.id)):step.checklist.itens;
+    return relevantItems.map(item=>{
       if(step.alcancada||![3,4].includes(step.ordem)||item.id!==`criterio-${step.ordem}`)return item;
       if(!activities?.disponivel){notes.add('Não foi possível consultar os trabalhos agora. O estado abaixo considera somente os registros da jornada.');return item;}
       const activity=activities.itens.find(activity=>activity.ordem===step.ordem);
