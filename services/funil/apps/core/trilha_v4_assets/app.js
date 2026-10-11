@@ -1,26 +1,26 @@
 'use strict';
 function renderJourney(payload,view={}){
 const icons = {arrow:'<svg aria-hidden="true"><use href="#arrow"/></svg>',check:'<svg aria-hidden="true"><use href="#check"/></svg>',chevron:'<svg aria-hidden="true"><use href="#chevron"/></svg>',lock:'<svg class="lock-icon" aria-hidden="true"><use href="#lock"/></svg>'};
-const belts = [
-  {name:'Branca',short:'Branca',category:'O começo de tudo',title:'Toda criação começa com curiosidade.',summary:'Conheça seu ambiente e dê o primeiro passo na modelagem 3D.',color:'#e2e2e7',wash:'#f6f6f8',tone:'#66666d',ink:'#73737a'},
-  {name:'Amarela',short:'Amarela',category:'Seu primeiro modelo',title:'Uma ideia. Sua primeira forma.',summary:'Leve o que aprendeu para o Blender e crie seu primeiro item 3D.',color:'#e9c34b',wash:'#fdf9e9',tone:'#8c6b0b',ink:'#735d17'},
-  {name:'Azul',short:'Azul',category:'Prática no Sandbox',title:'Experimente. Ajuste. Evolua.',summary:'Um espaço para testar seu modelo e descobrir o que pode ficar melhor.',color:'#6299de',wash:'#eef5fc',tone:'#2b65a6',ink:'#f9fcff'},
-  {name:'Vermelha',short:'Vermelha',category:'Trabalho real',title:'Sua criação encontra o mundo.',summary:'Um projeto real. Um novo desafio. A hora de transformar prática em entrega.',color:'#dc6263',wash:'#fdf0ef',tone:'#b44348',ink:'#fff9f9'},
-  {name:'Verde',short:'Verde',category:'Primeiro dinheiro',title:'O primeiro resultado tem outro valor.',summary:'Seu primeiro trabalho aprovado e o primeiro pagamento recebido.',color:'#65af88',wash:'#eef8f2',tone:'#317150',ink:'#f5fff9'},
-  {name:'Marrom',short:'Marrom',category:'Consistência',title:'O seu melhor ganha continuidade.',summary:'Transforme a primeira experiência em uma prática que continua evoluindo.',color:'#ae8b73',wash:'#f8f3ef',tone:'#795b46',ink:'#fffbf7'},
-  ...Array.from({length:7},(_,i)=>({name:`Preta ${i+1}º grau`,short:`${i+1}º grau`,category:i===6?'Mestre modelador':`Maestria · Grau ${String(i+1).padStart(2,'0')}`,title:i===6?'Sua evolução abre novos caminhos.':`Um novo grau. Mais possibilidades.`,summary:i===6?'Um portfólio de alto valor. Um horizonte de novas criações.':`O ${i+1}º grau da Faixa Preta é mais um capítulo da sua jornada na modelagem.`,color:'#49494f',wash:'#f2f2f5',tone:'#585860',ink:'#f6f6fa'}))
-];
 const progress = payload.progresso;
+const totalStages=progress.etapas.length;
+const palette=[
+  {color:'#e2e2e7',wash:'#f6f6f8',tone:'#66666d',ink:'#73737a'},
+  {color:'#e9c34b',wash:'#fdf9e9',tone:'#8c6b0b',ink:'#735d17'},
+  {color:'#6299de',wash:'#eef5fc',tone:'#2b65a6',ink:'#f9fcff'},
+  {color:'#dc6263',wash:'#fdf0ef',tone:'#b44348',ink:'#fff9f9'},
+  {color:'#65af88',wash:'#eef8f2',tone:'#317150',ink:'#f5fff9'},
+  {color:'#ae8b73',wash:'#f8f3ef',tone:'#795b46',ink:'#fffbf7'},
+  {color:'#49494f',wash:'#f2f2f5',tone:'#585860',ink:'#f6f6fa'}
+];
+const belts=progress.etapas.map((step,index)=>{
+  const theme=palette[Math.min(index,palette.length-1)];
+  const name=step.nome||step.conquista;
+  const short=totalStages===7?name:name.replace(/^Preta\s*[·-]?\s*/i,'').replace(/\s*Grau/i,'');
+  return {name,short,category:step.conquista,title:name,summary:step.feedback||step.conquista,color:theme.color,wash:theme.wash,tone:theme.tone,ink:theme.ink};
+});
 const current = progress.atual_ordem - 1;
-const money = cents=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(cents/100);
 const reached = index=>progress.etapas[index]?.alcancada===true;
 const available = progress.etapas.flatMap((step,index)=>step.alcancada?[index]:[]);
-belts.forEach((belt,index)=>{
-  const step=progress.etapas[index];
-  belt.summary=index>=5
-    ?(progress.meta_escolhida?`Meta desta etapa: ${money(step.meta_cents)} em recebimentos confirmados.`:'Sua meta pessoal ainda não foi definida.')
-    :step.conquista;
-});
 let selected = view.selected===view.current?current:reached(view.selected)?view.selected:current;
 const timeline = document.querySelector('#timeline');
 const dock = document.querySelector('#dock');
@@ -37,15 +37,20 @@ const adjacent = direction=>available[available.indexOf(selected)+direction];
 
 const doneCount=progress.etapas.filter(step=>step.alcancada).length;
 document.querySelector('#completed-count').textContent=String(doneCount).padStart(2,'0');
-document.querySelector('#remaining-count').textContent=String(13-doneCount).padStart(2,'0');
+document.querySelector('#remaining-count').textContent=String(totalStages-doneCount).padStart(2,'0');
+document.querySelectorAll('.stage-total').forEach(node=>node.textContent=String(totalStages));
 document.querySelector('.dial-number').textContent=number(current);
 document.querySelector('#current-position').textContent=number(current);
 document.querySelector('#current-belt').textContent=number(current);
+document.querySelectorAll('[data-dial-position]').forEach(node=>{
+  const position=Number(node.dataset.dialPosition);
+  node.textContent=number(Math.floor(totalStages*position/4));
+});
 const indicator=document.createElement('i');indicator.style.background=belts[current].color;
 document.querySelector('.dial-name').replaceChildren(indicator,document.createTextNode(' '+belts[current].name.toLocaleUpperCase('pt-BR')));
 document.querySelector('.object-footer>span').textContent=belts[current].category.toLocaleUpperCase('pt-BR');
-document.querySelector('.hero-object').setAttribute('aria-label',`Faixa atual de ${payload.aluno.nome}: ${current+1} de 13, ${belts[current].name}.`);
-const segments=progress.etapas.map((step,index)=>`${index===current?belts[index].color:step.alcancada?'#4884f6':'#d8e3f1'} ${index*360/13}deg ${(index+1)*360/13}deg`);
+document.querySelector('.hero-object').setAttribute('aria-label',`Faixa atual de ${payload.aluno.nome}: ${current+1} de ${totalStages}, ${belts[current].name}.`);
+const segments=progress.etapas.map((step,index)=>`${index===current?belts[index].color:step.alcancada?'#4884f6':'#d8e3f1'} ${index*360/totalStages}deg ${(index+1)*360/totalStages}deg`);
 document.querySelector('.dial-track').style.background=`conic-gradient(from 0deg,${segments.join(',')})`;
 
 belts.forEach((belt,index)=>{
@@ -60,13 +65,13 @@ belts.forEach((belt,index)=>{
   dock.append(dockButton);dockButtons.push(dockButton);
   const stage=document.createElement('li');stage.className=`stage ${locked?'locked':index!==current?'done':''}`;stage.id=`faixa-${index+1}`;
   stage.style.setProperty('--belt',belt.color);stage.style.setProperty('--wash',belt.wash);stage.style.setProperty('--tone',belt.tone);stage.style.setProperty('--swatch-ink',belt.ink);
-  if(index===6){const chapter=document.createElement('p');chapter.className='chapter-label';chapter.textContent='FAIXA PRETA. SETE GRAUS DE EVOLUÇÃO.';stage.append(chapter);}
-  const mark=document.createElement('span');mark.className='track-mark';mark.setAttribute('aria-hidden','true');mark.innerHTML=reached(index)&&index!==current?icons.check:number(index);if(index===6)mark.style.top='94px';
+  if(totalStages===13&&index===6){const chapter=document.createElement('p');chapter.className='chapter-label';chapter.textContent='FAIXA PRETA. SETE GRAUS DE EVOLUÇÃO.';stage.append(chapter);}
+  const mark=document.createElement('span');mark.className='track-mark';mark.setAttribute('aria-hidden','true');mark.innerHTML=reached(index)&&index!==current?icons.check:number(index);if(totalStages===13&&index===6)mark.style.top='94px';
   stage.append(mark);
   const card=document.createElement('div');card.className='stage-card';
   card.innerHTML=`<button type="button" class="stage-trigger" ${locked?'disabled':''} aria-expanded="false" aria-controls="panel-${index+1}" id="trigger-${index+1}">
     <span class="swatch" aria-hidden="true">${number(index)}</span><span class="stage-text"><span class="stage-name">Faixa ${belt.name}</span><span class="stage-category">${belt.category}</span></span><span class="stage-status">${state(index)}</span>${locked?icons.lock:icons.chevron}
-    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}" inert>${locked?'':`<div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div>`}</div>`;
+    </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}" inert>${locked?'':`<div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA'}</span><h3>${belt.title}</h3><p>${belt.summary}</p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div>`}</div>`;
   if(!locked){
     const inner=card.querySelector('.expanded-inner');
     inner.replaceChildren(beltPanel(index));
@@ -141,7 +146,7 @@ function consultedAtLabel(value){
 function safeAction(action){
   if(action===null||action===undefined)return null;
   if(typeof action.rotulo!=='string'||!action.rotulo.trim()||typeof action.url!=='string'
-    ||!/^\/(cursos|encomendas|forum|trilha|conquistas)(?:\/|$)/.test(action.url)
+    ||!/^\/(cursos|encomendas|forum|trilha)(?:\/|$)/.test(action.url)
     ||/[\\\s]/.test(action.url)||action.url.includes('..'))throw new Error('Ação inválida');
   return {rotulo:action.rotulo,url:action.url};
 }
@@ -163,7 +168,7 @@ function validateActivities(data,context){
     ||!Array.isArray(data.atividades)||data.atividades.length>2)throw new Error('Atividade indisponível');
   const seen=new Set();
   return data.atividades.map(item=>{
-    if(!item||![3,4].includes(item.ordem)||seen.has(item.ordem)
+    if(!item||![5,6].includes(item.ordem)||seen.has(item.ordem)
       ||!['andamento','pendente'].includes(item.estado)||typeof item.detalhe!=='string')throw new Error('Atividade indisponível');
     seen.add(item.ordem);return {...item,acao:safeAction(item.acao)};
   });
@@ -176,9 +181,9 @@ function journeyChecklist(progress,index,activities){
   const notes=new Set();
   const itens=sources.flatMap(step=>{
     if(step.checklist.observacao)notes.add(step.checklist.observacao);
-    const relevantItems=index>0&&step.ordem===2?step.checklist.itens.filter(item=>!['motivo-2','plano-2','envio-2'].includes(item.id)):step.checklist.itens;
+    const relevantItems=step.checklist.itens;
     return relevantItems.map(item=>{
-      if(step.alcancada||![3,4].includes(step.ordem)||item.id!==`criterio-${step.ordem}`)return item;
+      if(step.alcancada||progress.caminho!=='freelancer'||![5,6].includes(step.ordem)||item.id!==`criterio-${step.ordem}`)return item;
       if(!activities?.disponivel){notes.add('Não foi possível consultar os trabalhos agora. O estado abaixo considera somente os registros da jornada.');return item;}
       const activity=activities.itens.find(activity=>activity.ordem===step.ordem);
       return activity?{...item,estado:activity.estado,detalhe:activity.detalhe,acao:activity.acao}:item;
@@ -218,7 +223,7 @@ function createProgressPanel(details,options){
   copy.append(node('span','dialog-eyebrow',`FAIXA ${options.name.toLocaleUpperCase('pt-BR')} · SEU PROGRESSO`),title,summary);
   const badge=node('div','progress-badge');badge.setAttribute('aria-hidden','true');badge.append(node('span','',options.number));
   header.append(copy,badge);panel.append(header);
-  const available=details.disponivel&&(!options.white||details.itens.length===4);
+  const available=details.disponivel&&(!options.white||details.itens.length>0);
   if(!available){panel.append(node('p','checklist-observation','Não foi possível consultar suas etapas agora. Atualize em instantes.'));return panel;}
   const total=details.itens.length,done=details.itens.filter(item=>item.estado==='concluido'&&!item.bloqueado).length;
   const percent=total?Math.round(done*100/total):0;
@@ -244,8 +249,8 @@ function createProgressPanel(details,options){
     if(item.acao&&!blocked){
       const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
       action.href=item.acao.url;
-      if (['/conquistas/inicio/motivo/', '/conquistas/inicio/objetivo/'].includes(item.acao.url)) {
-        if (state !== 'concluido' && item.acao.url === '/conquistas/inicio/motivo/') action.textContent = 'Definir meus motivos';
+      if (['/trilha/inicio/motivo/', '/trilha/inicio/objetivo/'].includes(item.acao.url)) {
+        if (state !== 'concluido' && item.acao.url === '/trilha/inicio/motivo/') action.textContent = 'Definir meus motivos';
         action.addEventListener('click', event => {
           if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
           event.preventDefault(); openMotivo(action);
@@ -271,16 +276,16 @@ function validateProgress(data, context){
   if(data&&(data.pessoa_id!==context.pessoa_id||data.site_id!==context.site_id)){const error=new Error('Sessão alterada');error.invalidIdentity=true;throw error;}
   const integer=value=>Number.isInteger(value)&&value>=0;
   if(!data||data.pessoa_id!==context.pessoa_id||data.site_id!==context.site_id
-    ||!Array.isArray(data.etapas)||data.etapas.length!==13
-    ||!integer(data.atual_ordem)||data.atual_ordem<1||data.atual_ordem>13
+    ||!Array.isArray(data.etapas)||![7,13].includes(data.etapas.length)
+    ||!integer(data.atual_ordem)||data.atual_ordem<1||data.atual_ordem>data.etapas.length
     ||!integer(data.total_cents)||typeof data.meta_escolhida!=='boolean'
     ||(data.meta_cents!==null&&!integer(data.meta_cents))
     ||(data.meta_escolhida&&!(data.meta_cents>0)))throw new Error('Progresso incompleto');
   const steps=[...data.etapas].sort((a,b)=>a.ordem-b.ordem);
   if(steps.some((step,index)=>!step||step.ordem!==index+1||typeof step.alcancada!=='boolean'
-      ||typeof step.conquista!=='string'||(step.meta_cents!==null&&!integer(step.meta_cents))
-      ||(index<5&&step.meta_cents!==null)
-      ||(index>=5&&(data.meta_escolhida?step.meta_cents===null:step.meta_cents!==null))
+      ||(step.nome!==undefined&&typeof step.nome!=='string')||typeof step.conquista!=='string'||(step.feedback!==undefined&&typeof step.feedback!=='string')
+      ||(step.meta_cents!==null&&!integer(step.meta_cents))
+      ||(step.ordem>=8&&(data.meta_escolhida?step.meta_cents===null:step.meta_cents!==null))
       ||(step.alcancada_em!==null&&typeof step.alcancada_em!=='string'))
     ||steps.some(step=>step.alcancada!==(step.ordem<=data.atual_ordem)))
     throw new Error('Progresso incompleto');
@@ -309,7 +314,7 @@ async function refreshJourney(){
   pendingRefresh=(async()=>{
     try{
       const [journeyResult,activityResult]=await Promise.allSettled([
-        requestJson('/conquistas/minha-trilha/'),requestJson('/encomendas/minha-trilha/')
+        requestJson('/trilha/minha-trilha/'),requestJson('/encomendas/minha-trilha/')
       ]);
       if(journeyResult.status==='rejected')throw journeyResult.reason;
       const progress=validateProgress(journeyResult.value,context);
@@ -375,9 +380,9 @@ async function loadMotivo(url) {
     const page = new DOMParser().parseFromString(await response.text(), 'text/html');
     const form = page.querySelector('#inicio-jornada'), receipt = page.querySelector('.celebracao');
     if (!form && !receipt) throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');
-    await loadMotivoScript(form ? '/conquistas/static/inicio.js?v=12' : '/conquistas/static/inicio_conquista.js?v=3');
+    await loadMotivoScript(form ? '/trilha/faixas-static/inicio.js?v=14' : '/trilha/faixas-static/inicio_conquista.js?v=3');
     if (currentLoad !== motivoLoad || !motivoDialog.open) return;
-    const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/conquistas/static/'));
+    const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/trilha/faixas-static/'));
     const base = document.createElement('style');
     base.textContent = ':host{display:block;color:#172b48;font:16px/1.6 system-ui,sans-serif} .motivo-recibo{--papel:#f8faf5;--escuro:#253923;--cinza:#667363;--verde:#58ae17;color:var(--escuro);background:var(--papel);min-height:100%;padding:16px 0;font-family:Nunito,system-ui,sans-serif} .motivo-recibo .celebracao{margin-top:0}@media(prefers-color-scheme:dark){.motivo-recibo{--papel:#151e19;--escuro:#f2f7ec;--cinza:#afbaaa}}';
     const wrapper = document.createElement('div'); wrapper.className = form ? 'inicio-embutido' : 'motivo-recibo ' + page.body.className;
@@ -416,7 +421,7 @@ function openMotivo(opener) {
     motivoDialog.append(close, motivoContent); document.body.append(motivoDialog);
   }
   motivoOpener = opener;
-  const compromisso = opener.getAttribute('href') === '/conquistas/inicio/objetivo/';
+  const compromisso = opener.getAttribute('href') === '/trilha/inicio/objetivo/';
   motivoDialog.classList.toggle('compromisso-dialog', compromisso);
   motivoDialog.setAttribute('aria-label', compromisso ? 'Meu compromisso' : 'Definir meus motivos');
   motivoDialog.querySelector('.motivo-close').setAttribute('aria-label', compromisso ? 'Fechar meu compromisso' : 'Fechar meus motivos');

@@ -36,6 +36,34 @@ def _aprovado(real=True, valor="50,00", pessoa_id="aluno-autorizado"):
     return pedido
 
 
+def test_fila_concluida_exige_aceite_do_cliente(cenario, monkeypatch):
+    from apps.core import plantao
+    pedido = fila_real.criar_pedido(site_id=SITE, slug='tilon', pessoa_id='cliente-tilon', dados=_dados())
+    fila_real.aceitar(site_id=SITE, pessoa_id='aluno-autorizado', pedido_id=pedido.pk)
+    arquivo = fila_real.adicionar_arquivo(site_id=SITE, pessoa_id='aluno-autorizado',
+        pedido_id=pedido.pk, nome='pet.blend', chave=f't/{uuid.uuid4()}.blend')
+    entrega = fila_real.entregar(site_id=SITE, pessoa_id='aluno-autorizado',
+        pedido_id=pedido.pk, arquivos_ids=[arquivo.pk])
+    assert not saidas('encomendas.fila-trabalho-concluido')
+    monkeypatch.setattr(plantao, 'e_do_plantao', lambda pessoa_id: pessoa_id == 'equipe-teste')
+    fila_real.aprovar(site_id=SITE, pessoa_id='equipe-teste', pedido_id=pedido.pk,
+        entrega_id=entrega.pk)
+    assert not saidas('encomendas.fila-trabalho-concluido')
+
+
+def test_fila_aceite_cliente_emite_evidencia_uma_vez(cenario):
+    pedido = _aprovado()
+    [evento] = saidas('encomendas.fila-trabalho-concluido')
+    assert evento.payload['resultado'] == 'reconhecida'
+    assert evento.payload['evidencia']['avaliador_papel'] == 'cliente'
+    assert evento.payload['evidencia']['pedido_id'] == str(pedido.pk)
+    assert evento.payload['feedback'].startswith('O cliente aprovou a versão')
+    entrega = pedido.entregas.latest('versao')
+    fila_real.aprovar(site_id=SITE, pessoa_id='cliente-tilon', pedido_id=pedido.pk,
+        entrega_id=entrega.pk)
+    assert len(saidas('encomendas.fila-trabalho-concluido')) == 1
+
+
 def test_aceite_na_fila_emite_fato_do_aluno_e_nao_do_cliente(cenario):
     pedido = fila_real.criar_pedido(site_id=SITE, slug="tilon", pessoa_id="cliente-tilon", dados=_dados())
     assert saidas(fe.EV_FILA) == []  # o pedido do cliente não é fato do aluno

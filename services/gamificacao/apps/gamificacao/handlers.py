@@ -408,8 +408,10 @@ def ao_sandbox_trabalho_concluido(envelope):
     from .reinicio import evento_anterior_ao_reinicio
     if evento_anterior_ao_reinicio(site_id, envelope):
         return
-    from .jornada import registrar_conclusao
-    registrar_conclusao(pessoa_id, site_id, 3)
+    if data.get("resultado") != "reconhecida" or not data.get("feedback") or not isinstance(data.get("evidencia"), dict):
+        return
+    from .jornada import registrar_avaliacao
+    registrar_avaliacao(pessoa_id, site_id, 5, "reconhecida", data["feedback"], data["evidencia"])
 
 
 def ao_fila_trabalho_concluido(envelope):
@@ -419,8 +421,13 @@ def ao_fila_trabalho_concluido(envelope):
     from .reinicio import evento_anterior_ao_reinicio
     if evento_anterior_ao_reinicio(data["site_id"], envelope):
         return
-    from .jornada import registrar_conclusao
-    registrar_conclusao(data["pessoa_id"], data["site_id"], 4)
+    evidencia = data.get("evidencia")
+    if (data.get("resultado") != "reconhecida" or not data.get("feedback")
+        or not isinstance(evidencia, dict) or evidencia.get("avaliador_papel") != "cliente"):
+        return
+    from .jornada import registrar_avaliacao
+    registrar_avaliacao(data["pessoa_id"], data["site_id"], 6,
+                        "reconhecida", data["feedback"], evidencia)
 
 
 HANDLERS = {

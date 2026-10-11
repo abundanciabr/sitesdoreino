@@ -36,8 +36,7 @@ def pessoa(identificador):
 
 def item(dados, ordem):
     itens = dados["etapas"][ordem - 1]["checklist"]["itens"]
-    # A etapa 2 tem um item histórico de criação, além do envio do arquivo.
-    return itens[2] if ordem == 2 else itens[-1]
+    return itens[-1]
 
 
 def test_vazio_mostra_pendencias_sem_inventar_modelagem(client):
@@ -67,7 +66,7 @@ def test_item_salvo_e_eventos_antigos_nao_promovem_conclusao(client):
     assert [item(dados, n)["estado"] for n in (2, 3, 4)] == [
         "pendente", "pendente", "pendente",
     ]
-    assert "Disponível após" in item(dados, 2)["detalhe"]
+    assert "compromisso" in item(dados, 2)["detalhe"]
     assert item(dados, 2)["bloqueado"] is True
     assert consultar(client, "b")["etapas"][1]["alcancada"] is False
 
@@ -76,6 +75,7 @@ def test_confirmado_pendente_e_meta_sem_simulacao(client, monkeypatch):
     monkeypatch.setitem(sys.modules, "apps.gamificacao.prints_recebimentos",
                         SimpleNamespace(mensagem=lambda registro: ""))
     a = pessoa("a")
+    JornadaPessoal.objects.create(pessoa=a, site_id=SITE, inicio={"motivo": "freelancer"})
     RecebimentoDeclarado.objects.create(
         pessoa=a, site_id=SITE, chave=uuid4(), valor_cents=400,
         valor_original_cents=400, origem="fora", estado="pendente",
@@ -83,10 +83,10 @@ def test_confirmado_pendente_e_meta_sem_simulacao(client, monkeypatch):
     )
     dados = consultar(client)
     assert dados["total_cents"] == 0
-    assert item(dados, 5)["estado"] == "andamento"
+    assert item(dados, 7)["estado"] == "andamento"
     assert item(dados, 6)["estado"] == "pendente"
-    assert dados["etapas"][5]["meta_cents"] is None
-    JornadaPessoal.objects.create(pessoa=a, site_id=SITE, meta_cents=10000)
+    assert dados["etapas"][7]["meta_cents"] is None
+    JornadaPessoal.objects.filter(pessoa=a, site_id=SITE).update(meta_cents=10000)
     RecebimentoDeclarado.objects.create(
         pessoa=a, site_id=SITE, chave=uuid4(), valor_cents=150,
         valor_original_cents=150, origem="fora", estado="confirmado",
@@ -94,17 +94,18 @@ def test_confirmado_pendente_e_meta_sem_simulacao(client, monkeypatch):
     )
     dados = consultar(client)
     assert dados["total_cents"] == 150
-    assert item(dados, 5)["estado"] == "andamento"
-    assert item(dados, 6)["estado"] == "andamento"
-    assert dados["etapas"][5]["checklist"]["itens"][0]["estado"] == "concluido"
+    assert item(dados, 7)["estado"] == "andamento"
+    assert item(dados, 8)["estado"] == "pendente"
+    assert dados["etapas"][7]["checklist"]["itens"][0]["estado"] == "concluido"
 
 
 
-@pytest.mark.parametrize("estado,valor", [("anulado", 400), ("pendente", 0), ("falha", 400), ("esclarecer", 400)])
-def test_recebimentos_sem_confirmacao_ativa_ficam_pendentes(client, monkeypatch, estado, valor):
+@pytest.mark.parametrize("estado,valor,esperado", [("anulado", 400, "pendente"), ("pendente", 0, "andamento"), ("falha", 400, "andamento"), ("esclarecer", 400, "andamento")])
+def test_recebimentos_sem_confirmacao_ativa_ficam_pendentes(client, monkeypatch, estado, valor, esperado):
     monkeypatch.setitem(sys.modules, "apps.gamificacao.prints_recebimentos",
                         SimpleNamespace(mensagem=lambda registro: ""))
     a = pessoa("a")
+    JornadaPessoal.objects.create(pessoa=a, site_id=SITE, inicio={"motivo": "freelancer"})
     RecebimentoDeclarado.objects.create(
         pessoa=a, site_id=SITE, chave=uuid4(), valor_cents=valor,
         valor_original_cents=valor, origem="fora", estado=estado,
@@ -112,13 +113,14 @@ def test_recebimentos_sem_confirmacao_ativa_ficam_pendentes(client, monkeypatch,
     )
     dados = consultar(client)
     assert dados["total_cents"] == 0
-    assert item(dados, 5)["estado"] == "pendente"
+    assert item(dados, 7)["estado"] == esperado
 
 
 def test_releitura_preserva_valor_confirmado_da_jornada(client, monkeypatch):
     monkeypatch.setitem(sys.modules, "apps.gamificacao.prints_recebimentos",
                         SimpleNamespace(mensagem=lambda registro: ""))
     a = pessoa("a")
+    JornadaPessoal.objects.create(pessoa=a, site_id=SITE, inicio={"motivo": "freelancer"})
     RecebimentoDeclarado.objects.create(
         pessoa=a, site_id=SITE, chave=uuid4(), valor_cents=900,
         valor_original_cents=900, origem="fora", estado="analisando",
@@ -126,4 +128,4 @@ def test_releitura_preserva_valor_confirmado_da_jornada(client, monkeypatch):
     )
     dados = consultar(client)
     assert dados["total_cents"] == 400
-    assert item(dados, 5)["estado"] == "andamento"
+    assert item(dados, 7)["estado"] == "andamento"

@@ -371,7 +371,7 @@ def entregar(request, participacao_id):
                          arquivos=arquivos, teste_mantenedor=teste)
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro), papel=papel, trabalho=trabalho)
-    return _voltar("sandbox_trabalho", trabalho.pk, recado=("Teste do mantenedor recebido; análise automática na fila, sem alterar a conquista do aluno." if teste else "Envio concluído e conquista registrada. Análise automática na fila; XP e progressão seguem a jornada."))
+    return _voltar("sandbox_trabalho", trabalho.pk, recado=("Teste do mantenedor recebido; análise automática na fila, sem alterar a conquista do aluno." if teste else "Entrega recebida. A análise automática examinará os arquivos e os critérios; faixa e XP dependem do resultado."))
 
 
 @require_POST

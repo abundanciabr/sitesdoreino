@@ -54,8 +54,8 @@ def recebimento(entrega):
     return registrar(entrega, 'recebimento',
         f'Recebemos a versão {entrega.versao} e seus arquivos. A análise automática entrou na fila. '
         'O resultado aparecerá neste trabalho e você receberá uma resposta nesta conversa. '
-        'O horário e a conquista de envio já estão registrados. Os XP e a progressão seguem a jornada, '
-        'sem aprovação manual e sem repetir bônus. A fila não altera o horário de entrega.')
+        'O horário da entrega ficou registrado. A faixa e seu bônus de XP dependem do resultado '
+        'da avaliação do trabalho, sem aprovação manual posterior. A fila não altera o horário de entrega.')
 
 
 def conclusao(analise):
@@ -79,7 +79,8 @@ def conclusao(analise):
         texto += ('\nEste é o resultado da avaliação, sem aprovação manual posterior. '
                   'Se discordar, peça ajuda ao suporte. Confira as evidências no histórico. '
                   'Você pode corrigir os pontos indicados e enviar uma nova versão quando necessário. '
-                  'O histórico e o reconhecimento do envio permanecem preservados.')
+                  'A faixa e o bônus de XP chegam somente quando a análise reconhece a realização. '
+                  'O histórico e os arquivos permanecem preservados.')
     revisao = len(analise.historico)
     return registrar(analise.entrega, f'resultado-automatico-v2-{revisao}', texto)
 

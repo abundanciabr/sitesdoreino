@@ -5,8 +5,14 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../apps/core/trilha_v4_assets/app.js'), 'utf8');
 const bootstrap = {aluno:{nome:'Ana'},pessoa_id:'aluna-a',site_id:'mesh'};
-function progress(){return {pessoa_id:'aluna-a',site_id:'mesh',atual_ordem:3,total_cents:0,meta_cents:null,meta_escolhida:false,
-  etapas:Array.from({length:13},(_,i)=>({ordem:i+1,alcancada:i<3,conquista:'Registrada',meta_cents:null,alcancada_em:null}))};}
+function progress(current=3,caminho='freelancer'){
+  const names=['Branca','Amarela','Azul','Vermelha','Verde','Marrom','Preta'];
+  const total=caminho==='freelancer'?13:7;
+  return {pessoa_id:'aluna-a',site_id:'mesh',caminho,graus_historicos:[],atual_ordem:current,
+    total_cents:0,meta_cents:null,meta_escolhida:false,
+    etapas:Array.from({length:total},(_,i)=>({ordem:i+1,nome:names[i]||`Preta ${i-5} Grau`,
+      alcancada:i<current,conquista:'Realização avaliada',meta_cents:null,alcancada_em:null}))};
+}
 async function load(response, activityResponse){
   const nodes = new Map();
   const result = {};
@@ -33,7 +39,7 @@ test('carrega a jornada propria sem depender da ponte de rede do funil',async()=
   const data=progress();
   const r=await load({ok:true,status:200,json:async()=>data});
   assert.deepEqual(r.payload.progresso,{...data,etapas:data.etapas.map(step=>({...step,checklist:null}))});
-  assert.equal(r.request.url,'/conquistas/minha-trilha/');
+  assert.equal(r.request.url,'/trilha/minha-trilha/');
   assert.equal(r.request.options.credentials,'same-origin');
   assert.equal(r.request.options.cache,'no-store');
   assert.equal(r.redirect,undefined);
@@ -64,38 +70,50 @@ test('falhas da rede e do servidor nao viram progresso ficticio',async()=>{
   }
 });
 
-function withChecklist(){
-  const data=progress();data.consultado_em='2026-10-10T19:00:00Z';
-  data.etapas.forEach(step=>step.checklist={itens:[{id:`criterio-${step.ordem}`,titulo:step.conquista,estado:step.alcancada?'concluido':'pendente',detalhe:'Registro real',acao:null}],observacao:''});
+function withChecklist(current=3,caminho='freelancer'){
+  const data=progress(current,caminho);data.consultado_em='2026-10-10T19:00:00Z';
+  const item=(id,titulo,estado,acao=null,bloqueado=false)=>({id,titulo,estado,detalhe:'Registro real',acao,bloqueado});
+  data.etapas.forEach(step=>{
+    const estado=step.alcancada?'concluido':'pendente';
+    const ordem=step.ordem;
+    const itens=ordem===1?[item('criterio-1','Começar minha jornada','concluido')]
+      :ordem===2?[item('motivo-2','Meu motivo',estado,{rotulo:'Escolher meu caminho',url:'/trilha/inicio/motivo/'}),
+                   item('plano-2','Meu compromisso',estado,{rotulo:'Assumir meu compromisso',url:'/trilha/inicio/objetivo/'})]
+      :ordem===3?[item('item-3','Relatar meu primeiro item 3D',estado,{rotulo:'Descrever meu item',url:'/trilha/inicio/item/'})]
+      :ordem===4?[item('envio-4','Apresentar meu item para análise',estado,{rotulo:'Apresentar meu item',url:'/trilha/inicio/envio/'})]
+      :[item(`criterio-${ordem}`,ordem===5&&caminho==='freelancer'?'Concluir prática no Sandbox':ordem===6&&caminho==='freelancer'?'Entregar trabalho da Fila':step.conquista,estado,
+        {rotulo:'Abrir atividade',url:caminho==='freelancer'&&ordem===5?'/trilha/sandbox/':caminho==='freelancer'&&ordem===6?'/trilha/fila/':'/trilha/ciclo/'})];
+    step.checklist={itens,observacao:''};
+  });
   return data;
 }
 function ownActivities(items){return {pessoa_id:'aluna-a',site_id:'mesh',atividades:items};}
 test('atividade real enriquece o proximo criterio sem promover a faixa',async()=>{
-  const data=withChecklist();
-  const activity={ordem:4,estado:'andamento',detalhe:'Trabalho aceito, produção iniciada.',acao:{rotulo:'Retomar trabalho',url:'/encomendas/fila/'}};
+  const data=withChecklist(5);
+  const activity={ordem:6,estado:'andamento',detalhe:'Trabalho aceito, produção iniciada.',acao:{rotulo:'Retomar trabalho',url:'/encomendas/fila/'}};
   const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>ownActivities([activity])});
-  const checklist=r.context.journeyChecklist(r.payload.progresso,2,r.payload.atividades);
+  const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
   assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','andamento']);
   assert.equal(checklist.itens[1].detalhe,activity.detalhe);
-  assert.equal(r.payload.progresso.etapas[3].alcancada,false);
-  assert.equal(r.payload.progresso.atual_ordem,3);
+  assert.equal(r.payload.progresso.etapas[5].alcancada,false);
+  assert.equal(r.payload.progresso.atual_ordem,5);
 });
 test('outra conta, falso concluido e acao externa nao entram no checklist',async()=>{
-  for(const change of [d=>d.pessoa_id='outra',d=>d.site_id='outro',d=>d.atividades[0].estado='concluido',d=>d.atividades[0].acao.url='https://example.test',d=>d.atividades[0].acao.url='/admin/trilha/']){
-    const data=withChecklist();
-    const activity=ownActivities([{ordem:4,estado:'andamento',detalhe:'NÃO MOSTRAR',acao:{rotulo:'Retomar',url:'/encomendas/fila/'}}]);change(activity);
+  for(const change of [d=>d.pessoa_id='outra',d=>d.site_id='outro',d=>d.atividades[0].estado='concluido',d=>d.atividades[0].acao.url='https://example.test',d=>d.atividades[0].acao.url='/admin/trilha/',d=>d.atividades[0].acao.url='/conquistas/']){
+    const data=withChecklist(5);
+    const activity=ownActivities([{ordem:6,estado:'andamento',detalhe:'NÃO MOSTRAR',acao:{rotulo:'Retomar',url:'/encomendas/fila/'}}]);change(activity);
     const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>activity});
-    const checklist=r.context.journeyChecklist(r.payload.progresso,2,r.payload.atividades);
+    const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
     assert.equal(checklist.itens[1].estado,'pendente');
     assert.doesNotMatch(JSON.stringify(checklist),/NÃO MOSTRAR/);
     assert.match(checklist.observacao,/Não foi possível consultar/);
   }
 });
 test('trabalho cancelado retorna pendente e uma conquista registrada permanece concluida',async()=>{
-  const data=withChecklist();
-  const activities=ownActivities([{ordem:3,estado:'andamento',detalhe:'Outro trabalho iniciado',acao:null},{ordem:4,estado:'pendente',detalhe:'Trabalho cancelado.',acao:null}]);
+  const data=withChecklist(5);
+  const activities=ownActivities([{ordem:5,estado:'andamento',detalhe:'Outro trabalho iniciado',acao:null},{ordem:6,estado:'pendente',detalhe:'Trabalho cancelado.',acao:null}]);
   const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>activities});
-  const checklist=r.context.journeyChecklist(r.payload.progresso,2,r.payload.atividades);
+  const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
   assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','pendente']);
   assert.equal(checklist.itens[1].detalhe,'Trabalho cancelado.');
   assert.equal(checklist.itens[0].detalhe,'Registro real');
@@ -104,8 +122,8 @@ test('consulta de faixa passada mostra apenas seus criterios e nao a meta da atu
   const data=withChecklist();
   const r=await load({ok:true,status:200,json:async()=>data});
   const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
-  assert.equal(checklist.itens.length,1);
-  assert.equal(checklist.itens[0].id,'criterio-2');
+  assert.equal(checklist.itens.length,2);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2']);
 });
 
 function mountPanel(context){
@@ -117,39 +135,39 @@ function mountPanel(context){
 }
 function descendants(node){return [node,...(node.children||[]).flatMap(descendants)];}
 
-test('branca libera somente a proxima tarefa e revisao das concluidas nos estados de zero a quatro',async()=>{
-  for(let done=0;done<=4;done++){
-    const data=withChecklist();data.atual_ordem=done===4?2:1;
+test('branca libera somente motivo e compromisso em sequencia',async()=>{
+  for(let done=0;done<=2;done++){
+    const data=withChecklist();data.atual_ordem=done===2?2:1;
     data.etapas.forEach(step=>step.alcancada=step.ordem<=data.atual_ordem);
-    const urls=['/conquistas/inicio/motivo/','/conquistas/inicio/objetivo/','/conquistas/inicio/item/','/conquistas/inicio/envio/'];
-    data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu objetivo e compromisso','Meu primeiro item 3D','Enviar meu 3D'][i],estado:i<done?'concluido':i===done?'andamento':'pendente',bloqueado:i>done,detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
+    const urls=['/trilha/inicio/motivo/','/trilha/inicio/objetivo/'];
+    data.etapas[1].checklist.itens=['motivo-2','plano-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu compromisso'][i],estado:i<done?'concluido':i===done?'andamento':'pendente',bloqueado:i>done,detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
     const r=await load({ok:true,status:200,json:async()=>data});
     const checklist=r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades);
-    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2','item-2','envio-2']);
+    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2']);
     assert.deepEqual(Array.from(checklist.itens,item=>item.acao.url),urls);
     // Executa o gerador dos botões com nós mínimos, sem substituir sua lógica.
     mountPanel(r.context);
     const block=r.context.whiteBeltActions(r.payload.progresso);
     const list=block.children.find(node=>node.tag==='ol');
-    assert.equal(list.children.length,4);
-    assert.deepEqual(descendants(list).filter(node=>node.tag==='a').map(node=>node.href),urls.slice(0,Math.min(done+1,4)));
-    assert.equal(descendants(list).filter(node=>node.className==='primary checklist-action').length,done===4?0:1);
+    assert.equal(list.children.length,2);
+    assert.deepEqual(descendants(list).filter(node=>node.tag==='a').map(node=>node.href),urls.slice(0,Math.min(done+1,2)));
+    assert.equal(descendants(list).filter(node=>node.className==='primary checklist-action').length,done===2?0:1);
     list.children.forEach((row,i)=>{
       if(i>done){assert.equal(row.attributes['aria-disabled'],'true');assert.equal(descendants(row).filter(node=>node.href).length,0);assert.match(row.children[2].innerHTML,/#lock/);assert.equal(row.children[2].textContent,'Pendente');}
     });
-    assert.equal(descendants(block).find(node=>node.className==='checklist-percent').textContent,`${done*25}%`);
-    assert.equal(descendants(block).find(node=>node.attributes?.role==='progressbar').attributes['aria-valuenow'],String(done*25));
+    assert.equal(descendants(block).find(node=>node.className==='checklist-percent').textContent,`${done*50}%`);
+    assert.equal(descendants(block).find(node=>node.attributes?.role==='progressbar').attributes['aria-valuenow'],String(done*50));
     assert.ok(block.children.indexOf(block.children.find(node=>node.className==='checklist-completion'))<block.children.indexOf(list));
   }
 });
 
 test('registros antigos nao liberam tarefas posteriores quando falta um passo anterior',async()=>{
   const data=withChecklist();
-  data.etapas[1].checklist.itens=Array.from({length:4},(_,i)=>({id:`passo-${i}`,titulo:`Passo ${i+1}`,estado:i===0?'pendente':'concluido',detalhe:'Legado',acao:{rotulo:'Abrir',url:'/conquistas/inicio/item/'}}));
+  data.etapas[1].checklist.itens=['motivo-2','plano-2'].map((id,i)=>({id,titulo:`Passo ${i+1}`,estado:i===0?'pendente':'concluido',detalhe:'Legado',acao:{rotulo:'Abrir',url:'/trilha/inicio/objetivo/'}}));
   const r=await load({ok:true,status:200,json:async()=>data});
   const details=r.context.journeyChecklist(r.payload.progresso,0);
-  assert.deepEqual(Array.from(details.itens,item=>item.bloqueado),[false,true,true,true]);
-  assert.deepEqual(Array.from(details.itens,item=>item.estado),['pendente','pendente','pendente','pendente']);
+  assert.deepEqual(Array.from(details.itens,item=>item.bloqueado),[false,true]);
+  assert.deepEqual(Array.from(details.itens,item=>item.estado),['pendente','pendente']);
 });
 
 test('o mesmo painel atende todas as faixas com numeros reais e sem criar tarefas',async()=>{
@@ -168,20 +186,20 @@ test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=
   assert.equal(checklist.disponivel,false);assert.equal(checklist.itens.length,0);
 });
 
-test('aluno amarelo com quatro requisitos concluidos continua vendo a pratica seguinte',async()=>{
-  const data=withChecklist();data.atual_ordem=2;
+test('aluno amarelo conserva motivo e compromisso e ve o relato do item como proximo passo',async()=>{
+  const data=withChecklist(2);
   data.etapas.forEach(step=>step.alcancada=step.ordem<=2);
-  data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map(id=>({id,titulo:id,estado:'concluido',detalhe:'Requisito concluído',acao:{rotulo:'Abrir',url:'/conquistas/inicio/motivo/'}}));
+  data.etapas[1].checklist.itens=['motivo-2','plano-2'].map((id,i)=>({id,titulo:id,estado:'concluido',detalhe:'Requisito concluído',acao:{rotulo:'Abrir',url:i===0?'/trilha/inicio/motivo/':'/trilha/inicio/objetivo/'}}));
   data.etapas[2].checklist.itens[0].estado='pendente';
-  data.etapas[2].checklist.itens[0].acao={rotulo:'Abrir Sandbox',url:'/encomendas/sandbox/'};
+  data.etapas[2].checklist.itens[0].acao={rotulo:'Descrever meu item',url:'/trilha/inicio/item/'};
   const r=await load({ok:true,status:200,json:async()=>data});
   const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['item-2','criterio-3']);
-  assert.equal(checklist.itens.find(item=>item.estado==='pendente').acao.url,'/encomendas/sandbox/');
-  assert.equal(r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades).itens.length,4);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2','item-3']);
+  assert.equal(checklist.itens.find(item=>item.estado==='pendente').acao.url,'/trilha/inicio/item/');
+  assert.equal(r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades).itens.length,2);
 });
 test('estados ou acoes invalidas no checklist nao sao desenhados',async()=>{
-  for(const change of [d=>d.etapas[0].checklist.itens[0].estado='suposto',d=>d.etapas[0].checklist.itens[0].acao={rotulo:'Falso',url:'javascript:alert(1)'},d=>d.etapas[0].checklist.itens.push(d.etapas[0].checklist.itens[0])]){
+  for(const change of [d=>d.etapas[0].checklist.itens[0].estado='suposto',d=>d.etapas[0].checklist.itens[0].acao={rotulo:'Falso',url:'javascript:alert(1)'},d=>d.etapas[0].checklist.itens[0].acao={rotulo:'Falso',url:'/conquistas/'},d=>d.etapas[0].checklist.itens.push(d.etapas[0].checklist.itens[0])]){
     const data=withChecklist();change(data);
     const r=await load({ok:true,status:200,json:async()=>data});
     assert.equal(r.payload,undefined);
@@ -190,11 +208,24 @@ test('estados ou acoes invalidas no checklist nao sao desenhados',async()=>{
 
 
 test('meta pessoal compartilhada entre graus conta uma vez no checklist',async()=>{
-  const data=withChecklist();data.atual_ordem=6;data.meta_escolhida=true;data.meta_cents=10000;data.total_cents=150;
-  data.etapas.forEach((step,i)=>{step.alcancada=i<6;step.meta_cents=i>=5?125*(i-4):null;step.checklist.itens[0].estado=step.alcancada?'concluido':'andamento';});
-  for(const step of data.etapas.slice(5))step.checklist.itens.unshift({id:`meta-${step.ordem}`,titulo:'Escolher minha meta pessoal',estado:'concluido',detalhe:'Meta pessoal escolhida.',acao:null});
+  const data=withChecklist(8);data.meta_escolhida=true;data.meta_cents=10000;data.total_cents=150;
+  data.etapas.forEach((step,i)=>{step.meta_cents=i>=7?125*(i-6):null;step.checklist.itens[0].estado=step.alcancada?'concluido':'andamento';});
+  for(const step of data.etapas.slice(7))step.checklist.itens.unshift({id:`meta-${step.ordem}`,titulo:'Escolher minha meta pessoal',estado:'concluido',detalhe:'Meta pessoal escolhida.',acao:null});
   const r=await load({ok:true,status:200,json:async()=>data});
-  const checklist=r.context.journeyChecklist(r.payload.progresso,5,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['meta-6','criterio-6','criterio-7']);
+  const checklist=r.context.journeyChecklist(r.payload.progresso,7,r.payload.atividades);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['meta-8','criterio-8','criterio-9']);
   assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','concluido','andamento']);
+});
+
+test('caminhos curtos usam sete faixas e não herdam Sandbox ou Fila do freelancer',async()=>{
+  for(const caminho of ['ugc','jogo','aprender']){
+    const data=withChecklist(5,caminho);
+    const externa=ownActivities([{ordem:6,estado:'andamento',detalhe:'NÃO MOSTRAR',acao:{rotulo:'Fila',url:'/encomendas/fila/'}}]);
+    const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>externa});
+    assert.equal(r.payload.progresso.etapas.length,7);
+    const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
+    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['criterio-5','criterio-6']);
+    assert.equal(checklist.itens[1].acao.url,'/trilha/ciclo/');
+    assert.doesNotMatch(JSON.stringify(checklist),/NÃO MOSTRAR/);
+  }
 });

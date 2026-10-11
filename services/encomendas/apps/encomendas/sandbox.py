@@ -233,7 +233,6 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
             p.atraso_em = timezone.now()
         p.status = ParticipacaoSandbox.Status.ENTREGUE
         p.save(update_fields=["status", "atraso_em"])
-        faixas_eventos.sandbox_trabalho_concluido(p, ocorrido_em=entrega.criada_em, entrega=entrega)
     from .analises_sandbox import preparar
     preparar(entrega)
     return entrega
@@ -284,6 +283,13 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     entrega = ultima_entrega_do_aluno(p)
     if entrega is None or not entrega.arquivos.exists():
         raise ErroSandbox("Entrega sem arquivos.")
+    from .sandbox_models import AnaliseEntregaSandbox
+    from .devolutiva_sandbox import lacunas
+    analise = AnaliseEntregaSandbox.objects.filter(entrega=entrega, estado='concluida').first()
+    if (aprovador_id != 'analise-automatica' or analise is None
+            or analise.resultado.get('avaliacao', {}).get('resultado') != 'atende'
+            or lacunas(analise.resultado)):
+        raise ErroSandbox("A conclusão depende da avaliação automática fundamentada desta versão.")
     agora = timezone.now()
     entrega.aprovada_em = agora
     entrega.save(update_fields=["aprovada_em"])
@@ -291,6 +297,9 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     p.aprovado_em = agora
     p.aprovado_por = aprovador_id
     p.save(update_fields=["status", "aprovado_em", "aprovado_por"])
+    faixas_eventos.sandbox_trabalho_concluido(
+        p, ocorrido_em=agora, entrega=entrega, analise=analise,
+        feedback=analise.resultado['avaliacao']['justificativa'])
     return p
 
 

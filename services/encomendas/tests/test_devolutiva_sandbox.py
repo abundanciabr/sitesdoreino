@@ -24,8 +24,8 @@ def p(db):
 
 
 def enviar(p):
-    arquivo = ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, nome='modelo.zip',
-        chave=uuid.uuid4().hex, sha256='a' * 64, tamanho=100, mime='application/zip')
+    arquivo = ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, nome='modelo.glb',
+        chave=uuid.uuid4().hex, sha256='a' * 64, tamanho=100, mime='model/gltf-binary')
     return sandbox.entregar(site_id=p.site_id, participacao_id=p.pk,
                             pessoa_id=p.pessoa_id, arquivos=[arquivo.pk])
 
@@ -34,8 +34,8 @@ def resultado_incompleto(e):
     f = e.arquivos.get().analise
     f.estado = 'concluida'
     f.resultado = {'arquivos': [
-        {'arquivo': 'modelo.zip', 'estado': 'concluida', 'medidas': {}, 'imagens': []},
-        {'arquivo': 'modelo.zip / guia.pdf', 'estado': 'nao_examinado',
+        {'arquivo': 'modelo.glb', 'estado': 'concluida', 'medidas': {}, 'imagens': []},
+        {'arquivo': 'modelo.glb / guia.pdf', 'estado': 'nao_examinado',
          'falha': 'Formato sem leitor disponível.', 'imagens': []},
     ]}
     f.save()

@@ -127,13 +127,21 @@ def comparar(analysis):
         row = answers.get(req['id'], {})
         rows.append({**req, 'encontrado': devolutiva.texto_campo(row.get('encontrado'), 'encontrado'),
                      'nao_encontrado': devolutiva.texto_campo(row.get('nao_encontrado'), 'nao_encontrado'),
-                     'inconclusivo': devolutiva.texto_campo(row.get('inconclusivo', 'Sem evidência suficiente.'), 'inconclusivo'),
+                     'inconclusivo': devolutiva.texto_campo(row.get('inconclusivo'), 'inconclusivo'),
                      'evidencias': row.get('evidencias', [])})
     avaliacao = answer.get('avaliacao') or {}
     if avaliacao.get('resultado') not in ('atende', 'precisa_ajustes', 'inconclusiva') or not isinstance(avaliacao.get('justificativa'), str) or not avaliacao['justificativa'].strip():
         raise ValueError('Avaliação automática sem conclusão fundamentada')
-    if avaliacao['resultado'] == 'atende' and (devolutiva.lacunas({'medidas_programas': found}) or set(answers) != {r['id'] for r in reqs}):
-        avaliacao = {'resultado': 'inconclusiva', 'justificativa': 'Não foi possível examinar todos os arquivos ou comparar todos os requisitos. Confira as evidências antes de reenviar.'}
+    sem_exame = (not found or devolutiva.lacunas({'medidas_programas': found})
+                  or not any(item.get('conteudo', {}).get('arquivos') for item in found))
+    arquivos_lidos = [item['arquivo'] for item in found if item.get('estado') == 'concluida']
+    sem_prova = (not reqs or set(answers) != {r['id'] for r in reqs}
+                 or any(not row['encontrado'] or row['nao_encontrado'] or row['inconclusivo']
+                        or not isinstance(row['evidencias'], list) or not row['evidencias']
+                        or not any(nome in str(prova) for prova in row['evidencias'] for nome in arquivos_lidos)
+                        for row in rows))
+    if avaliacao['resultado'] == 'atende' and (sem_exame or sem_prova):
+        avaliacao = {'resultado': 'inconclusiva', 'justificativa': 'A leitura ou as evidências dos requisitos ficaram incompletas. Nenhuma conquista foi concedida; tente analisar novamente.'}
     return {'avaliacao': avaliacao, 'versao': entrega.versao, 'entrega_id': str(entrega.pk), 'requisitos': rows,
             'tem_falhas': bool(devolutiva.lacunas({'medidas_programas': found})),
             'medidas_programas': found, 'interpretacao_visual_ia': str(answer.get('interpretacao_visual_ia', '')),
@@ -213,7 +221,7 @@ def rodada():
 def repetir(entrega):
     with transaction.atomic():
         a = AnaliseEntregaSandbox.objects.select_for_update().get(entrega=entrega)
-        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and a.resultado.get('avaliacao') and not a.resultado.get('tem_falhas') and not devolutiva.lacunas(a.resultado)):
+        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and a.resultado.get('avaliacao', {}).get('resultado') in ('atende', 'precisa_ajustes') and not a.resultado.get('tem_falhas') and not devolutiva.lacunas(a.resultado)):
             return
         a.historico = [*a.historico, {'estado': a.estado, 'resultado': a.resultado, 'falha': a.falha,
             'atualizada_em': a.atualizada_em.isoformat(), 'medidas_programas': evidencias(entrega)[0]}]

@@ -442,6 +442,8 @@ def aprovar(*, site_id, pessoa_id, pedido_id, entrega_id):
             perfil.mudar_disponibilidade(PerfilProfissional.Disponibilidade.DISPONIVEL)
         pedido.fila_cliente.consumido_em = agora
         pedido.fila_cliente.save(update_fields=['consumido_em'])
+        if papel == 'cliente':
+            faixas_eventos.fila_trabalho_concluido_por_cliente(pedido, entrega)
         # Registrar recebível não emite Pix nem altera o saldo financeiro congelado.
         faixas_eventos.sincronizar_rendimento(recebivel)
         return pedido

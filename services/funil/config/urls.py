@@ -1,7 +1,9 @@
 from django.urls import path, re_path
+from django.views.generic import RedirectView
 
 from apps.core.links import redirecionar_link
 from apps.core.trilha_v4 import trilha_v4
+from apps.core.trilha_faixas import trilha_faixas
 from apps.core.modelo_flp import (
     modelo_flp_conteudo,
     modelo_flp_imagem,
@@ -37,6 +39,13 @@ from apps.core.views import (
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
 # PLANO-I18N) decapa /en|pt-br|es de path_info ANTES da resolução de URL.
 urlpatterns = [
+    re_path(
+        r"^trilha/(?P<destino>inicio/(?:motivo|objetivo|item|envio)/|inicio/conquista/[0-9]+/|ciclo/|inventario/api/|inventario/arquivos/[0-9]+/|minha-trilha/|recebimentos/|recebimentos/prints/[0-9]+/|medalhas/|faixas-static/.+)$",
+        trilha_faixas,
+        name="trilha_faixas",
+    ),
+    path("trilha/sandbox/", RedirectView.as_view(url="/encomendas/sandbox/", permanent=False)),
+    path("trilha/fila/", RedirectView.as_view(url="/encomendas/fila/", permanent=False)),
     path("trilha/inventario/", trilha_v4, {"arquivo": "inventario.html"}, name="inventario_aluno"),
     path("trilha/inventario.css", trilha_v4, {"arquivo": "inventario.css"}, name="inventario_css"),
     path("trilha/inventario.js", trilha_v4, {"arquivo": "inventario.js"}, name="inventario_js"),

@@ -11,10 +11,10 @@ function record(overrides={}){
     inicio:{motivo:'ugc',motivo_pessoal:'Motivo reservado',sonho:'SONHO PRIVADO',objetivo:'Criar um chapéu',
       compromisso:'COMPROMISSO PRIVADO',confirmado_em:'2026-10-10T12:00:00Z',apoio:'guiado',
       pratica:'Comece com uma forma simples.',sonhos_opcoes:[{valor:'pc_gamer',nome:'Comprar um PC Gamer'},{valor:'viagens',nome:'Viajar e conhecer novos lugares'}],motivos:[{valor:'ugc',nome:'Itens próprios'}]},
-    etapas:[{ordem:1,alcancada:true},{ordem:2,alcancada:false}],anexos:[],...overrides};
+    etapas:[{ordem:1,alcancada:true},{ordem:2,alcancada:false}],avaliacoes:[],anexos:[],...overrides};
 }
 function file(overrides={}){
-  return {id:1,passo:2,nome:'obra.obj',url:'/conquistas/inventario/arquivos/1/',
+  return {id:1,passo:2,nome:'obra.obj',url:'/trilha/inventario/arquivos/1/',
     criado_em:'2026-10-10T12:00:00Z',aprendi:'Minha tentativa',duvida:'Como suavizar a borda?',...overrides};
 }
 
@@ -35,13 +35,13 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
     scrollIntoView(){this.scrolledWhileVisible=!nodes.find(node=>node.id==='inicio-conteudo').hidden;}
   }
   const add=(id,tag='div')=>new Element(tag,'inicio-'+id);
-  const root=add('jornada');root.dataset={api:'/conquistas/inventario/',conquistas:'/conquistas/',envio:'/conquistas/inicio/envio/'};
+  const root=add('jornada');root.dataset={api:'/trilha/inventario/api/',conquistas:'/trilha/',envio:'/trilha/inicio/envio/'};
   const summaries=[new Element('small'),new Element('small'),new Element('small')];
   root.querySelector=selector=>summaries[Number(selector.match(/\d/)[0])-1];
   root.querySelectorAll=selector=>nodes.filter(node=>selector==='[data-compromisso-motivos]'?node.dataset.rotulo:selector==='input[name="motivo_sonhos"]:checked'?node.name==='motivo_sonhos'&&node.checked:selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
   if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior','motivo-sonhos','motivo-sonhos-titulo','motivo-depois-3','sonhos-anterior','sonhos-opcoes'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
   const form=add('form-'+step,'form');form.elements={};
-  const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:['criacao','compromisso'].includes(step)?[]:['arquivo','aprendi','duvida'];
+  const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?['item_nome','item_acao']:step==='compromisso'?['proximo_passo']:['arquivo','aprendi','duvida'];
   fields.forEach(name=>{const node=add(name,name==='arquivo'?'input':'textarea');node.name=name;form.elements[name]=node;form.append(node);});
   form.reset=()=>Object.values(form.elements).forEach(node=>{node.value='';node.files=[];});
   ['status','conteudo','recarregar','comparacao'].filter(id=>id!=='comparacao').forEach(id=>add(id,id==='recarregar'?'button':'div'));
@@ -67,7 +67,7 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
     document:{getElementById:id=>nodes.find(node=>node.id===id&&!node.removed)||null,createElement:tag=>new Element(tag),createTextNode:text=>{const node=new Element('#text');node.textContent=text;return node;}},
     window:{__testHost:embedded?{close:()=>panelEvents.push('fechado'),navigate:dest=>panelEvents.push(dest)}:{},location:{assign:dest=>redirects.push(dest)},addEventListener:(type,handler)=>{windowEvents[type]=handler;}},
     navigator:{clipboard:{writeText:async text=>copied.push(text)}},
-    fetch:async(url,options)=>{calls.push({url,options});if(nextError){const error=nextError;nextError=null;if(error instanceof Error)throw error;return error;}const result=structuredClone(current);if(options.method==='POST')result.conquista_url='/conquistas/inicio/conquista/'+({motivo:1,plano:2,criacao:3,item:4}[step])+'/?comprovante=teste';return {ok:true,status:200,json:async()=>result};}
+    fetch:async(url,options)=>{calls.push({url,options});if(nextError){const error=nextError;nextError=null;if(error instanceof Error)throw error;return error;}const result=structuredClone(current);if(options.method==='POST'&&!Object.hasOwn(result,'conquista_url'))result.conquista_url='/trilha/inicio/conquista/'+({motivo:1,plano:2,criacao:3,item:4}[step])+'/?comprovante=teste';return {ok:true,status:200,json:async()=>result};}
   });
   vm.runInContext(source.replace('window.iniciarJornada();','window.testController = window.iniciarJornada(document, window.__testHost);'),context);await tick();
   const fire=async(node,type,values={})=>{for(const handler of node.events[type]||[])await handler({preventDefault(){},...values});await tick();};
@@ -91,9 +91,11 @@ test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem t
  assert.equal(ui.calls.at(-1).options.body.get('compromisso_etapa'),'2');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
  assert.equal(ui.byId('compromisso-2').hidden,false);
- const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.conquista_xp=100;ui.setRecord(saved);
+ const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];saved.conquista_xp=100;ui.setRecord(saved);
+ ui.form.elements.proximo_passo.value='criar_item';
  await ui.submit('assumir');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),'sim');
+ assert.equal(ui.calls.at(-1).options.body.get('proximo_passo'),'criar_item');
  assert.equal(ui.calls.at(-1).options.body.get('objetivo'),undefined);
  assert.equal(ui.byId('compromisso-3').hidden,false);
  assert.match(ui.byId('compromisso-xp').textContent,/100 XP/);
@@ -102,7 +104,7 @@ test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem t
 });
 
 test('compromisso retoma a declaração e falha mantém decisão sem confirmação fictícia',async()=>{
- const saved=record();saved.inicio.compromisso_etapa=2;
+ const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';
  const ui=await page('compromisso',saved,'',false,true);
  assert.equal(ui.byId('compromisso-2').hidden,false);
  ui.fail({ok:false,status:400,json:async()=>({detail:'Seu registro mudou em outra aba.'})});
@@ -113,7 +115,7 @@ test('compromisso retoma a declaração e falha mantém decisão sem confirmaç�
 });
 
 test('compromisso assumido reabre a confirmação e sair não faz um novo POST',async()=>{
- const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';
+ const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];
  const ui=await page('compromisso',saved,'',false,true);
  assert.equal(ui.byId('compromisso-3').hidden,false);
  assert.equal(ui.byId('compromisso-xp').hidden,true);
@@ -137,17 +139,17 @@ test('motivo salvo é retomado e concluir leva à recompensa depois de salvar co
  assert.equal(post.options.headers['X-CSRFToken'],'csrf-teste');
  assert.equal(post.options.credentials,'same-origin');
  assert.equal(post.options.cache,'no-store');
- assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/1/?comprovante=teste']);
+ assert.deepEqual(ui.redirects,['/trilha/inicio/conquista/1/?comprovante=teste']);
 });
 
 test('salvar motivo como rascunho não abre celebração nem a próxima tarefa',async()=>{
  const ui=await page('motivo');await ui.submit('pausar');
  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
- assert.deepEqual(ui.redirects,['/conquistas/']);
+ assert.deepEqual(ui.redirects,['/trilha/']);
 });
 
 test('plano permite rascunho e compromisso com destinos separados',async()=>{
- for(const [assumir,url] of [['nao','/conquistas/'],['sim','/conquistas/inicio/conquista/2/?comprovante=teste']]){
+ for(const [assumir,url] of [['nao','/trilha/'],['sim','/trilha/inicio/conquista/2/?comprovante=teste']]){
   const ui=await page('plano');await ui.submit(assumir);
   const post=ui.calls.find(call=>call.options.method==='POST');
   assert.equal(post.options.body.get('assumir'),assumir);
@@ -174,7 +176,7 @@ test('envio exige arquivo, rejeita tamanho excessivo e permite confirmar arquivo
  await ui.submit();assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-envio');
  assert.equal(ui.calls.at(-1).options.body.get('passo'),'2');
  assert.equal(ui.calls.at(-1).options.body.get('sonho'),undefined);
- assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/4/?comprovante=teste']);
+ assert.deepEqual(ui.redirects,['/trilha/inicio/conquista/4/?comprovante=teste']);
 });
 
 test('pedido de ajuda usa objetivo e dúvida sem incluir sonho, motivo pessoal ou compromisso',async()=>{
@@ -187,9 +189,9 @@ test('pedido de ajuda usa objetivo e dúvida sem incluir sonho, motivo pessoal o
 
 test('reabrir após requisito invalidado retira mensagem antiga de conquista concluída',async()=>{
  const ui=await page('item',record({etapas:[{ordem:1,alcancada:true},{ordem:2,alcancada:true}],anexos:[file()]}));
- assert.equal(ui.byId('enviar').textContent,'Enviar uma nova versão');
+ assert.equal(ui.byId('enviar').textContent,'Avaliar esta versão ou uma nova');
  const updated=record({anexos:[file()]});updated.inicio.confirmado_em=null;ui.setRecord(updated);await ui.reopen();
- assert.equal(ui.byId('enviar').textContent,'Confirmar meu envio e concluir');
+ assert.equal(ui.byId('enviar').textContent,'Avaliar esta versão ou uma nova');
  assert.doesNotMatch(ui.byId('item-estado').textContent,/Envio concluído/);
 });
 
@@ -224,14 +226,14 @@ test('criação é confirmada sem upload e abre sua recompensa, sem pular para a
  await ui.submit();
  assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-item');
  assert.equal(ui.calls.at(-1).options.body.get('arquivo'),undefined);
- assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/3/?comprovante=teste']);
+ assert.deepEqual(ui.redirects,['/trilha/inicio/conquista/3/?comprovante=teste']);
 });
 
 test('link antigo para envio encaminha para a quarta tela somente quando a criação está pronta',async()=>{
  for(const pronta of [false,true]){
   const dados=record();dados.inicio.item_pronto=pronta;
   const ui=await page('criacao',dados,'#inicio-form-item');
-  assert.deepEqual(ui.redirects,pronta?['/conquistas/inicio/envio/']:[]);
+  assert.deepEqual(ui.redirects,pronta?['/trilha/inicio/envio/']:[]);
  }
 });
 
@@ -283,7 +285,7 @@ test('painel direto conclui e fecha sem trocar a pagina da trilha',async()=>{
  const ui=await page('motivo',record(),'',true,true);
  await ui.submit('proxima');await ui.submit('proxima');await ui.submit('continuar');
  assert.deepEqual(ui.redirects,[]);
- assert.deepEqual(ui.panelEvents,['/conquistas/inicio/conquista/1/?comprovante=teste&embutido=1']);
+ assert.deepEqual(ui.panelEvents,['/trilha/inicio/conquista/1/?comprovante=teste&embutido=1']);
  const draft=await page('motivo',record(),'',true,true);
  draft.form.elements.motivo_pessoal.value='Minha reflexão';await draft.fire(draft.form,'input');
  await draft.close();assert.deepEqual(draft.redirects,[]);assert.deepEqual(draft.panelEvents,['fechado']);
@@ -325,7 +327,7 @@ test('concluir revisão salva e retorna à trilha; primeira conclusão mantém a
   await ui.submit('continuar');
   assert.equal(ui.calls.at(-1).options.body.get('concluir'),'sim');
   assert.equal(ui.calls.at(-1).options.body.get('motivo_pessoal'),'Minha reflexão atualizada');
-  const receipt='/conquistas/inicio/conquista/1/?comprovante=teste';
+  const receipt='/trilha/inicio/conquista/1/?comprovante=teste';
   assert.deepEqual(ui.redirects,embedded?[]:[jaRecebida?'/trilha/':receipt]);
   assert.deepEqual(ui.panelEvents,embedded?[jaRecebida?'fechado':receipt+'&embutido=1']:[]);
  }
@@ -340,7 +342,7 @@ test('revisar sempre abre a escolha; rascunho continua retomando a segunda etapa
   assert.equal(ui.byId('motivo-reflexao').hidden,concluido);
   assert.equal(ui.form.elements.motivo_pessoal.value,'Motivo reservado');
   assert.equal(ui.form.elements.motivo_outro.value,'Texto preservado');
-  assert.equal(ui.byId('outro-campo').hidden,true);
+  assert.equal(ui.byId('outro-campo').hidden,false);
   assert.equal(ui.calls.filter(call=>call.options.method==='POST').length,0);
   if(concluido) {
    await ui.submit('proxima');
@@ -378,4 +380,29 @@ test('sonhos permitem várias escolhas, desmarcação, retomada e saída segura 
  const review=await page('motivo',initial,'',true,true);
  assert.equal(review.byId('motivo-escolha').hidden,false);assert.equal(review.byId('motivo-sonhos').hidden,true);
  assert.deepEqual(review.checkboxes().map(check=>check.checked),[true,false]);
+});
+
+test('resultado atual incompleto prevalece sobre avaliação histórica e não celebra',async()=>{
+ const atual=record({conquista_url:null,
+   avaliacoes:[{ordem:3,resultado:'reconhecida',feedback:'Uma versão antiga foi aceita.'}],
+   avaliacao_atual:{ordem:3,resultado:'incompleta',feedback:'Descreva a ação feita nesta versão.',conquistada:false}});
+ const ui=await page('criacao',atual);
+ ui.form.elements.item_nome.value='Boné';ui.form.elements.item_acao.value='';
+ await ui.submit();
+ assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-item');
+ assert.deepEqual(ui.redirects,[]);
+ assert.match(ui.byId('status').textContent,/Descreva a ação feita nesta versão/);
+ assert.doesNotMatch(ui.byId('status').textContent,/versão antiga/);
+});
+
+test('retorno obsoleto durante análise não abre comprovante de outra versão',async()=>{
+ const atual=record({conquista_url:null,
+   avaliacoes:[{ordem:4,resultado:'reconhecida',feedback:'A versão anterior foi aceita.'}],
+   avaliacao_atual:{ordem:4,resultado:'falha',feedback:'Seu caminho mudou durante a análise. Tente novamente.',conquistada:false}});
+ const ui=await page('item',atual);
+ ui.byId('arquivo').files=[{size:300,name:'nova.obj'}];
+ await ui.submit();
+ assert.deepEqual(ui.redirects,[]);
+ assert.match(ui.byId('status').textContent,/caminho mudou/);
+ assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-envio');
 });

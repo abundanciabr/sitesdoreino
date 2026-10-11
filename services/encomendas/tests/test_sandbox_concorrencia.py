@@ -97,7 +97,7 @@ def test_entregas_simultaneas_criam_uma_versao():
 
 
 @pytest.mark.django_db(transaction=True)
-def test_aprovacoes_simultaneas_creditam_uma_vez():
+def test_aprovacoes_manuais_simultaneas_nao_creditam():
     p = sandbox.aceitar(site_id="escola-a", pessoa_id="ana", projeto_id=_projeto().pk)
     sandbox.entregar(site_id="escola-a", participacao_id=p.pk, pessoa_id="ana",
         arquivos=[dict(nome="a.png", chave="sb/a.png", sha256="a" * 64, tamanho=1, mime="image/png")])
@@ -105,8 +105,8 @@ def test_aprovacoes_simultaneas_creditam_uma_vez():
         lambda: sandbox.aprovar(site_id="escola-a", participacao_id=p.pk, aprovador_id="equipe-1"),
         lambda: sandbox.aprovar(site_id="escola-a", participacao_id=p.pk, aprovador_id="equipe-2"),
     ])
-    assert [tipo for tipo, _ in resultados] == ["ok", "ok"]
+    assert [tipo for tipo, _ in resultados] == ["recusado", "recusado"]
     from apps.encomendas.models import OutboxMarketplace
-    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 1
+    assert not OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").exists()
     assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
     assert sandbox.saldo(site_id="escola-a", pessoa_id="ana") == 0

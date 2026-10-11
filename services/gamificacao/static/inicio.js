@@ -44,8 +44,9 @@ window.iniciarJornada = (scope = document, host = {}) => {
       }
     });
     const xp = $('compromisso-xp');
-    xp.hidden = !data.conquista_xp;
-    xp.textContent = data.conquista_xp ? `+${data.conquista_xp} XP recebidos. Meu compromisso está registrado.` : '';
+    const result = data.avaliacao_atual?.ordem === 2 ? data.avaliacao_atual : data.avaliacoes.find(a => a.ordem === 2);
+    xp.hidden = !(data.conquista_xp || result?.feedback);
+    xp.textContent = `${result?.feedback || 'Meu compromisso está registrado.'}${result?.conquistada ? ' Faixa amarela conquistada.' : ''}${data.conquista_xp ? ` +${data.conquista_xp.toLocaleString('pt-BR')} XP recebidos.` : ''}`;
   }
   function showMotivoStep(step, focus = false) {
     motivoStep = step;
@@ -57,7 +58,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
     if (focus) $(['motivo-escolha-titulo', 'motivo-reflexao-titulo', 'motivo-sonhos-titulo'][step - 1]).focus();
   }
   function otherMotivo() {
-    if ($('outro-campo')) $('outro-campo').hidden = !root.querySelector('input[name="motivo"][value="outro"]:checked');
+    if ($('outro-campo')) $('outro-campo').hidden = false;
   }
   async function leaveMotivo() {
     if (busy) return;
@@ -125,21 +126,18 @@ window.iniciarJornada = (scope = document, host = {}) => {
       }
     }
     const savedFiles = files();
-    const completed = data.etapas.some(etapa => etapa.ordem === 2 && etapa.alcancada);
+    const completed = data.etapas.some(etapa => etapa.ordem === 4 && etapa.alcancada);
+    if ($('caminho-antigo')) $('caminho-antigo').hidden = !start.caminho_antigo;
     if ($('confirmacao')) $('confirmacao').textContent = start.confirmado_em ? `Compromisso assumido em ${date(start.confirmado_em)}. Você pode revisá-lo aqui.` : 'O rascunho fica guardado; você assume o compromisso quando fizer sentido para você.';
     if (forms.criacao) {
       $('objetivo-salvo').textContent = start.objetivo ? `Minha criação: ${start.objetivo}` : 'Escolha uma pequena criação para começar.';
       $('pratica').textContent = start.pratica;
       $('apoio-texto').textContent = ({guiado: 'Comece pela forma principal. Se travar, prepare uma dúvida para pedir orientação.', autonomo: 'Tente uma versão com o que já sabe. Depois escolha um ajuste.', desafio: 'Experimente uma segunda versão com uma mudança intencional e observe o que aprendeu.'})[start.apoio];
-      $('criacao-estado').textContent = start.item_pronto ? 'Você já marcou sua criação como pronta. Pode continuar quando quiser.' : 'Quando sua peça estiver pronta, confirme abaixo.';
+      $('criacao-estado').textContent = data.avaliacoes.find(a => a.ordem === 3)?.feedback || 'Conte o que criou e a ação que realizou. A imagem é opcional.';
     }
     if (!forms.item) return;
-    $('enviar').textContent = completed ? 'Enviar uma nova versão' : savedFiles.length ? 'Confirmar meu envio e concluir' : 'Enviar meu 3D e concluir';
-    $('item-estado').textContent = completed
-      ? 'Envio concluído. Seu arquivo está guardado em privado. Novas versões preservam os registros anteriores.'
-      : savedFiles.length
-        ? 'Seu arquivo anterior continua guardado. Você pode confirmar esse envio ou escolher uma nova versão.'
-        : 'O envio só acontece quando você confirma no botão acima.';
+    $('enviar').textContent = savedFiles.length ? 'Avaliar esta versão ou uma nova' : 'Enviar para avaliação';
+    $('item-estado').textContent = data.avaliacoes.find(a => a.ordem === 4)?.feedback || (data.analises_pendentes?.['4'] ? 'A avaliação desta versão ainda está pendente. Você pode solicitar nova análise.' : savedFiles.length ? 'O anexo anterior está guardado e pode ser usado na avaliação.' : 'A conquista chega quando a avaliação reconhece seu material.');
     $('historico').hidden = !savedFiles.length;
     $('versoes').replaceChildren();
     if (savedFiles.length) {
@@ -186,7 +184,14 @@ window.iniciarJornada = (scope = document, host = {}) => {
         forms.plano.elements[key].value = data.inicio[key] || '';
       });
     }
-    if (forms.compromisso) showCompromissoStep(data.inicio.compromisso_curso_em ? 3 : data.inicio.compromisso_etapa === 2 ? 2 : 1);
+    if (forms.criacao) {
+      forms.criacao.elements.item_nome.value = data.inicio.item_nome || '';
+      forms.criacao.elements.item_acao.value = data.inicio.item_acao || '';
+    }
+    if (forms.compromisso) {
+      forms.compromisso.elements.proximo_passo.value = data.inicio.proximo_passo_resposta || '';
+      showCompromissoStep(data.inicio.etapas?.[1]?.concluida ? 3 : data.inicio.compromisso_curso_em ? 2 : 1);
+    }
   }
   async function request(body) {
     const response = await fetch(root.dataset.api, {method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', headers: body ? {'X-CSRFToken': data.csrf} : {}, ...(body ? {body} : {})});
@@ -260,7 +265,9 @@ window.iniciarJornada = (scope = document, host = {}) => {
       render();
       $('recarregar').hidden = true;
       $('comparacao')?.remove();
-      announce('Salvo na sua conta. Você pode sair e retomar quando quiser.');
+      const evaluatedOrder = {'inicio-compromisso': 2, 'inicio-item': 3, 'inicio-envio': 4}[action];
+      const evaluated = evaluatedOrder ? data.avaliacao_atual : null;
+      announce(evaluated ? `${evaluated.feedback}${data.conquista_xp ? ` +${data.conquista_xp} XP registrados nesta ação.` : ''}` : 'Salvo na sua conta. Você pode sair e retomar quando quiser.', evaluated?.resultado === 'falha');
       return true;
     } catch (error) {
       announce(error.message, true);
@@ -307,7 +314,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
       }
     } else if (compromissoStep === 2 && event.submitter?.value === 'assumir') {
       if (await save(forms.compromisso, 'inicio-compromisso', {assumir: 'sim'})) {
-        showCompromissoStep(3, true); announce('');
+        if (data.inicio.etapas?.[1]?.concluida && !(data.avaliacao_atual?.ordem === 2 && data.avaliacao_atual.resultado !== 'reconhecida')) showCompromissoStep(3, true);
       }
     }
   });
@@ -320,7 +327,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   $('compromisso-reler')?.addEventListener('click', () => { if (!busy) showCompromissoStep(1, true); });
   forms.criacao?.addEventListener('submit', async event => {
     event.preventDefault();
-    if (await save(forms.criacao, 'inicio-item')) navigate(data.conquista_url || root.dataset.conquistas);
+    if (await save(forms.criacao, 'inicio-item') && data.conquista_url) navigate(data.conquista_url);
   });
   $('sugestao')?.addEventListener('click', () => {
     if (forms.plano.elements.compromisso.value.trim()) {
@@ -343,7 +350,6 @@ window.iniciarJornada = (scope = document, host = {}) => {
     const hasNotes = Boolean($('aprendi').value.trim() || $('duvida').value.trim());
     if (await save(forms.item, 'inicio-envio', {passo: '2', estado: 'feito'})) {
       forms.item.reset();
-      announce(files().length === count ? (hasNotes ? 'Envio confirmado. Suas notas foram atualizadas e o arquivo foi preservado.' : 'Envio confirmado. Seu arquivo continua guardado em privado.') : 'Envio concluído. Seu 3D está guardado em privado e sua conquista foi registrada.');
       if (data.conquista_url) navigate(data.conquista_url);
     }
   });

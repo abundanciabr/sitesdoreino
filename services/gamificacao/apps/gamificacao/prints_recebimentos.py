@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import unicodedata
+
 import base64
 import hashlib
 import importlib
@@ -27,9 +29,12 @@ expectativa, processamento ou texto ilegível não confirmam recebimento real.
 Não deduza recebimento apenas da palavra 'concluído'; identifique a direção.
 Não invente moeda, valor ou data que não estejam visíveis. Não converta moedas.
 Não transcreva nomes, CPF, e-mail, dados de conta, códigos, chaves ou saldos.
+Se houver um identificador não pessoal do trabalho de modelagem 3D ligado à
+entrada, transcreva apenas esse identificador; senão, null. Não invente vínculo.
 Retorne apenas JSON: {"status":"recebido|pendente|nao_recebimento|ilegivel|duvida",
 "valor_cents":numero_inteiro_ou_null,"moeda":"BRL|USD|EUR|outro_codigo_ou_null",
-"data":"AAAA-MM-DD_ou_null"}. O valor é o da entrada individual mostrada,
+"data":"AAAA-MM-DD_ou_null","identificador_trabalho":"texto_curto_ou_null"}.
+O valor é o da entrada individual mostrada,
 não o saldo nem uma soma de várias entradas. Mais de uma entrada sem indicação clara
 é duvida. Exemplos e simulações devem ser reconhecidos como nao_recebimento."""
 
@@ -138,6 +143,7 @@ def ler_modelo(conteudo):
             dados.get("moeda"),
             dados.get("data"),
         )
+        identificador = dados.get("identificador_trabalho")
         # Só os campos esperados são persistidos. Nenhuma transcrição de dados pessoais.
         return {
             "status": dados["status"],
@@ -154,12 +160,16 @@ def ler_modelo(conteudo):
                 if isinstance(data, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", data)
                 else None
             ),
+            "identificador_trabalho": (
+                identificador.strip()[:120]
+                if isinstance(identificador, str) and identificador.strip() else None
+            ),
         }
 
 
 def mensagem(registro):
     if registro.estado == "confirmado":
-        return "O robô leu o recebimento no print. Esse valor está na sua progressão."
+        return "O robô conferiu valor, data e identificação do trabalho no print. A leitura visual não autentica o pagamento."
     if registro.estado == "anulado":
         return "Você anulou este registro. A história ficou guardada."
     if registro.estado == "falha":
@@ -173,11 +183,21 @@ def mensagem(registro):
         "moeda": "A moeda do print não corresponde à informada. Confira a moeda e o valor original.",
         "data": "A data do recebimento não ficou clara ou está diferente. Envie a data visível e confira seu registro.",
         "duplicado": "Esse mesmo print já foi confirmado em outro registro seu. Confira se é o mesmo recebimento.",
+        "trabalho": "Não consegui ligar o recebimento ao trabalho informado. Envie material que mostre o identificador do trabalho junto ao valor e à data.",
         "leitor": "O robô não conseguiu ler esse print depois de várias tentativas. Envie outro recorte com valor, moeda, data e a confirmação do recebimento.",
     }.get(
         motivo,
         "O print ficou incompleto ou ilegível. Envie um recorte com valor, moeda, data e confirmação de recebimento.",
     )
+
+
+def _mesmo_trabalho(referencia, identificador):
+    """A referência livre fica local; só um identificador específico coincide."""
+    normalizar = lambda valor: re.sub(r"[^a-z0-9]", "", unicodedata.normalize("NFKD", (valor or "").casefold()))
+    a, b = normalizar(referencia), normalizar(identificador)
+    return bool(a) and a == b and a not in {
+        "modelagem3d", "trabalho3d", "pagamento", "transferencia", "pixrecebido",
+    }
 
 
 def _maior_passo_comemorado(j):
@@ -229,6 +249,9 @@ def processar(recebimento_id):
         revisao, conteudo = r.revisao, bytes(r.print_bytes)
     try:
         leitura = ler_modelo(conteudo)
+        identificador = leitura.pop("identificador_trabalho", None)
+        leitura["correspondencia_trabalho"] = _mesmo_trabalho(
+            r.referencia_trabalho, identificador)
         falhou = False
     except Exception:
         # Respostas do provedor e anexos nunca vão ao log ou à tela.
@@ -269,6 +292,8 @@ def processar(recebimento_id):
                 motivo = "moeda"
             elif leitura.get("data") != atual.recebido_em.isoformat():
                 motivo = "data"
+            elif leitura.get("correspondencia_trabalho") is not True:
+                motivo = "trabalho"
             elif (
                 RecebimentoDeclarado.objects.filter(
                     pessoa_id=r.pessoa_id,
@@ -310,6 +335,10 @@ def processar(recebimento_id):
             },
             antes,
         )
+        if (atual.estado == "confirmado" and atual.referencia_trabalho
+            and (j.inicio or {}).get("motivo") == "freelancer"):
+            from .jornada import reconciliar_recebimentos
+            reconciliar_recebimentos(atual.pessoa_id, atual.site_id)
         # Só comemora passo que a pessoa nunca comemorou: se uma correção rejeitada
         # a fez cair de faixa, voltar ao que já tinha não é conquista nova.
         if (

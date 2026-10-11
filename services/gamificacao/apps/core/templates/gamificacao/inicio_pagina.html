@@ -1,6 +1,6 @@
-{% extends "gamificacao/moldura.html" %}
+{% extends "gamificacao/trilha_moldura.html" %}
 {% block titulo %}{{ inicio_titulo }}{% endblock %}
-{% block faixa %}<a href="{% url 'base' %}">← Voltar às conquistas</a>{% endblock %}
+{% block faixa %}<a href="{% url 'base' %}">← Voltar à minha Trilha</a>{% endblock %}
 {% block conteudo %}
 {% if entrou %}
   {% include "gamificacao/_inicio.html" %}

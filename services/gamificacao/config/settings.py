@@ -137,7 +137,7 @@ CSRF_COOKIE_NAME = "gamificacao_csrf"
 # O token de CSRF protege os `<form>` DESTA célula, que vivem todos sob o
 # prefixo dela. Diferente da SESSÃO (que é do site inteiro e mora na
 # `identidade`), ele não tem por que viajar para "/".
-CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
+CSRF_COOKIE_PATH = "/trilha/"
 CSRF_COOKIE_SECURE = not DEBUG
 
 # ---------------------------------------------------------------------------
