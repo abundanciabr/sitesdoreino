@@ -1,0 +1,27 @@
+{% extends 'sandbox/base.html' %}
+{% block title %}Limpar testes{% endblock %}
+{% block body %}
+<section class="card" style="max-width:680px;margin:0 auto">
+  <p class="eyebrow">Confirmação {{ etapa }} de 2</p>
+  <h1>{% if etapa == 1 %}Limpar testes deste trabalho?{% else %}Apagar definitivamente?{% endif %}</h1>
+  <p class="lead">{{ trabalho.termos.titulo }}</p>
+  <p>A limpeza apaga todos os dados enviados neste trabalho, incluindo a primeira versão:</p>
+  <ul>
+    <li>{{ resumo.entregas }} entrega{{ resumo.entregas|pluralize:"s" }} e suas avaliações;</li>
+    <li>{{ resumo.arquivos }} arquivo{{ resumo.arquivos|pluralize:"s" }} e suas análises;</li>
+    <li>{{ resumo.mensagens }} mensage{{ resumo.mensagens|pluralize:"m,ns" }} da conversa.</li>
+  </ul>
+  <div class="notice warn"><strong>Sem backup e sem desfazer.</strong> Os testes serão apagados definitivamente.</div>
+  <p>O trabalho ficará vazio, em produção, com o prazo reiniciado. O briefing, os XP e as conquistas já registrados serão mantidos.</p>
+  {% if etapa == 2 %}<p><strong>Esta é a segunda e última confirmação. Você realmente quer apagar esses dados?</strong></p>{% endif %}
+  <form method="post" action="{% url 'sandbox_limpar_testes' trabalho.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="etapa" value="{{ etapa }}">
+    <input type="hidden" name="confirmacao" value="{{ confirmacao }}">
+    <div class="actions">
+      <button {% if etapa == 2 %}style="background:#ad2831;color:#fff"{% endif %}>{% if etapa == 1 %}Sim, quero limpar este trabalho{% else %}Apagar os testes definitivamente{% endif %}</button>
+      <a class="btn secondary" href="{% url 'sandbox_trabalho' trabalho.pk %}">Cancelar e voltar</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

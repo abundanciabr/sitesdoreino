@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real, trilha_pessoal
+from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real, trilha_pessoal, telas_limpeza_sandbox
 from apps.core.views import dar_titulo, healthz, plantao
 from config.api import api
 
@@ -49,6 +49,7 @@ urlpatterns = [
     path("sandbox/escola/projetos/<uuid:projeto_id>/salvar/", telas_sandbox.salvar_projeto, name="sandbox_salvar_projeto"),
     path("sandbox/projetos/<uuid:projeto_id>/aceitar/", telas_sandbox.aceitar, name="sandbox_aceitar"),
     path("sandbox/trabalhos/<uuid:participacao_id>/", telas_sandbox.trabalho, name="sandbox_trabalho"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/limpar-testes/", telas_limpeza_sandbox.limpar_testes, name="sandbox_limpar_testes"),
     path("sandbox/trabalhos/<uuid:participacao_id>/mensagem/", telas_sandbox.mensagem, name="sandbox_mensagem"),
     path("sandbox/trabalhos/<uuid:participacao_id>/conversa/limpar/", telas_sandbox.limpar_conversa, name="sandbox_limpar_conversa"),
     path("sandbox/trabalhos/<uuid:participacao_id>/arquivo/", telas_sandbox.enviar_arquivo, name="sandbox_arquivo"),

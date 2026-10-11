@@ -32,6 +32,8 @@ def registrar(entrega, evento, texto):
     """Mensagem e comprovante únicos na mesma transação da entrega/resultado."""
     with transaction.atomic():
         p = ParticipacaoSandbox.objects.select_for_update().get(pk=entrega.participacao_id)
+        if not p.entregas.filter(pk=entrega.pk).exists():
+            return None  # A pessoa apagou este teste enquanto a análise terminava.
         registro, _ = RespostaSandbox.objects.get_or_create(
             participacao=p, origem=f'{evento}:{entrega.pk}', papel='ia',
             defaults={'site_id': p.site_id})

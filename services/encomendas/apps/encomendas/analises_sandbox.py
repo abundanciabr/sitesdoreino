@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .sandbox_models import AnaliseArquivoSandbox, AnaliseEntregaSandbox, EntregaSandbox
+from .sandbox_models import AnaliseArquivoSandbox, AnaliseEntregaSandbox, EntregaSandbox, ParticipacaoSandbox
 from . import devolutiva_sandbox as devolutiva
 
 
@@ -143,7 +143,13 @@ def comparar(analysis):
 
 def processar_entrega(identificador):
     with transaction.atomic():
-        a = AnaliseEntregaSandbox.objects.select_for_update().select_related('entrega__participacao').get(pk=identificador)
+        participacao_id = AnaliseEntregaSandbox.objects.filter(pk=identificador).values_list('entrega__participacao_id', flat=True).first()
+        if participacao_id is None:
+            return
+        ParticipacaoSandbox.objects.select_for_update().get(pk=participacao_id)
+        a = AnaliseEntregaSandbox.objects.select_for_update().select_related('entrega__participacao').filter(pk=identificador).first()
+        if a is None:
+            return
         if a.estado == 'concluida' or (a.tentar_em and a.tentar_em > timezone.now()):
             return
         if a.estado == 'comparando' and timezone.now() - a.atualizada_em < timedelta(minutes=8):
@@ -164,9 +170,10 @@ def processar_entrega(identificador):
     except Exception:
         result = None
     with transaction.atomic():
-        from .sandbox_models import ParticipacaoSandbox
         p = ParticipacaoSandbox.objects.select_for_update().get(pk=a.entrega.participacao_id)
-        atual = AnaliseEntregaSandbox.objects.select_for_update().get(pk=a.pk)
+        atual = AnaliseEntregaSandbox.objects.select_for_update().filter(pk=a.pk).first()
+        if atual is None:
+            return  # A limpeza cancelou esta análise enquanto a IA respondia.
         if result is None:
             atual.estado = 'falha_ia'
             atual.falha = 'A comparação por IA está indisponível. As medidas dos arquivos continuam disponíveis. Tente novamente.'
@@ -204,9 +211,9 @@ def rodada():
         try:
             processar_entrega(a.pk)
         except Exception:
-            AnaliseEntregaSandbox.objects.filter(pk=a.pk).update(
+            existente = AnaliseEntregaSandbox.objects.filter(pk=a.pk).update(
                 estado='falha', falha='Não foi possível processar esta versão. Tente novamente.', atualizada_em=timezone.now())
-            if not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
+            if existente and not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
                 devolutiva.indisponivel(a)
 
 
