@@ -309,7 +309,8 @@ def print_recebimento(request, versao_id):
     pessoa_id, site = _pessoa_e_site(request)
     if not pessoa_id or not site:
         raise Http404
-    versao = VersaoDoRecebimento.objects.filter(pk=versao_id, pessoa_id=pessoa_id, site_id=site).first()
+    versao = VersaoDoRecebimento.objects.filter(pk=versao_id, pessoa_id=pessoa_id, site_id=site,
+                                              recebimento__fora_da_progressao=False).first()
     if versao is None:
         raise Http404
     resposta = HttpResponse(bytes(versao.print_bytes), content_type="image/png")

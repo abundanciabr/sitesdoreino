@@ -405,6 +405,9 @@ def ao_sandbox_trabalho_concluido(envelope):
     site_id = data.get("site_id")
     if not pessoa_id or not site_id or data.get("historico"):
         return
+    from .reinicio import evento_anterior_ao_reinicio
+    if evento_anterior_ao_reinicio(site_id, envelope):
+        return
     from .jornada import registrar_conclusao
     registrar_conclusao(pessoa_id, site_id, 3)
 
@@ -412,6 +415,9 @@ def ao_sandbox_trabalho_concluido(envelope):
 def ao_fila_trabalho_concluido(envelope):
     data = envelope.get("data") or {}
     if not data.get("pessoa_id") or not data.get("site_id") or data.get("historico"):
+        return
+    from .reinicio import evento_anterior_ao_reinicio
+    if evento_anterior_ao_reinicio(data["site_id"], envelope):
         return
     from .jornada import registrar_conclusao
     registrar_conclusao(data["pessoa_id"], data["site_id"], 4)

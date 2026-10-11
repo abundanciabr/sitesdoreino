@@ -41,7 +41,8 @@ def montar_checklists(pessoa_id, site_id, jornada):
     }
     recebimentos = list(
         RecebimentoDeclarado.objects.filter(
-            pessoa__id_da_plataforma=pessoa_id, site_id=site_id
+            pessoa__id_da_plataforma=pessoa_id, site_id=site_id,
+            fora_da_progressao=False,
         ).values("estado", "valor_cents", "leitura")
     )
     em_leitura = any(
