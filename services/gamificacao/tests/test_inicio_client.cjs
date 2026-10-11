@@ -237,3 +237,20 @@ test('painel direto conclui e fecha sem trocar a pagina da trilha',async()=>{
  assert.equal(draft.calls.at(-1).options.body.get('motivo_pessoal'),'Minha reflexão');
  assert.equal(draft.calls.at(-1).options.body.get('concluir'),'nao');
 });
+
+
+test('voltar aparece nas duas etapas somente depois do XP recebido e preserva a revisão',async()=>{
+ for(const xp of [0,100]) for(const etapa of [1,2]) {
+  const initial=record();initial.inicio.motivo_etapa=etapa;
+  initial.inicio.etapas=[{etapa:1,xp_recebido:xp,concluida:xp>0}];
+  const ui=await page('motivo',initial,'',true,true);
+  const label=xp?'← Voltar':'← Depois eu faço isso';
+  for(const n of [1,2]) assert.equal(ui.byId('motivo-depois-'+n).textContent,label);
+  ui.form.elements.motivo_pessoal.value='Motivo revisto';await ui.fire(ui.form,'input');
+  assert.match(ui.byId('status').textContent,xp?/Voltar/:/Depois eu faço isso/);
+  await ui.fire(ui.byId('motivo-depois-'+etapa),'click');
+  assert.equal(ui.calls.at(-1).options.body.get('motivo_pessoal'),'Motivo revisto');
+  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
+  assert.deepEqual(ui.panelEvents,['fechado']);
+ }
+});

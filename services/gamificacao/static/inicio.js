@@ -8,6 +8,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   let data = null;
   let busy = false;
   let motivoStep = 1;
+  const motivoReturnLabel = () => data?.inicio.etapas?.some(etapa => etapa.etapa === 1 && etapa.xp_recebido > 0) ? 'Voltar' : 'Depois eu faço isso';
   const embedded = Boolean(host.close);
   const lifecycle = new AbortController();
   const navigate = destination => host.navigate ? host.navigate(destination) : window.location.assign(destination);
@@ -75,6 +76,11 @@ window.iniciarJornada = (scope = document, host = {}) => {
   }
   function render() {
     const start = data.inicio;
+    if (forms.motivo) {
+      for (const id of ['motivo-depois-1', 'motivo-depois-2']) {
+        if ($(id)) $(id).textContent = `← ${motivoReturnLabel()}`;
+      }
+    }
     const savedFiles = files();
     const completed = data.etapas.some(etapa => etapa.ordem === 2 && etapa.alcancada);
     if ($('confirmacao')) $('confirmacao').textContent = start.confirmado_em ? `Compromisso assumido em ${date(start.confirmado_em)}. Você pode revisá-lo aqui.` : 'O rascunho fica guardado; você assume o compromisso quando fizer sentido para você.';
@@ -204,7 +210,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
     } finally { setBusy(false); }
   }
   root.querySelectorAll('a').forEach(link => link.addEventListener('click', event => { if (busy) { event.preventDefault(); announce('Seu registro está sendo guardado. Aguarde um instante.'); } }));
-  Object.values(forms).filter(Boolean).forEach(form => form.addEventListener('input', () => { dirty.add(form.id); announce(forms.motivo ? 'Você pode continuar ou usar “Depois eu faço isso” para guardar e voltar à faixa.' : 'Há alterações nesta tela. Use o botão de salvar para retomá-las depois.'); }));
+  Object.values(forms).filter(Boolean).forEach(form => form.addEventListener('input', () => { dirty.add(form.id); announce(forms.motivo ? `Você pode continuar ou usar “${motivoReturnLabel()}” para guardar e voltar à faixa.` : 'Há alterações nesta tela. Use o botão de salvar para retomá-las depois.'); }));
   forms.motivo?.addEventListener('submit', async event => {
     event.preventDefault();
     if (busy) return;
