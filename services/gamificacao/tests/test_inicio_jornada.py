@@ -1,5 +1,6 @@
 """A primeira escolha, o plano e as versões são privados e revisáveis."""
 
+import json
 from io import BytesIO
 
 import pytest
@@ -227,7 +228,7 @@ def test_outro_motivo_e_etapa_sao_privados_retomaveis_sem_credito_no_rascunho(cl
     assert 'Meu motivo privado' not in str(abrir(client).json())
 
 
-@pytest.mark.parametrize("etapa", (1, 2))
+@pytest.mark.parametrize("etapa", (1, 2, 3))
 @pytest.mark.parametrize("faixa_completa", (False, True))
 def test_revisar_motivo_e_voltar_preserva_conclusao_pontos_e_faixa(client, etapa, faixa_completa):
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
@@ -263,3 +264,47 @@ def test_motivo_com_xp_e_marcacao_antiga_de_rascunho_reconhece_conclusao_sem_ree
     jornada.refresh_from_db()
     assert jornada.inicio == inicio_antes and jornada.revisao == revisao_antes
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
+
+
+def test_sonhos_multiplos_retomam_em_privado_e_nao_antecipam_xp(client, monkeypatch):
+    sonhos = ['pc_gamer', 'ajudar_pais', 'jogo_roblox']
+    dados = dict(motivo='ugc', motivo_pessoal='Meu motivo', motivo_sonhos=json.dumps(sonhos), motivo_etapa='3')
+    resposta = guardar(client, 'inicio-motivo', concluir='nao', **dados)
+    assert resposta.status_code == 200
+    assert 'conquista_xp' not in resposta.json()
+    assert resposta.json()['inicio']['etapas'][1]['bloqueada'] is True
+    inicio = abrir(Client()).json()['inicio']
+    assert inicio['motivo_sonhos'] == sonhos and inicio['motivo_etapa'] == 3
+    assert len(inicio['sonhos_opcoes']) == 25
+    assert 'motivo_sonhos' not in _projecao(HttpResponse(), P, SITE).model_dump_json()
+    concluida = guardar(client, 'inicio-motivo', concluir='sim', **dados).json()
+    assert concluida['conquista_xp'] == 100
+    assert guardar(client, 'inicio-motivo', concluir='sim', **dados).json()['conquista_xp'] == 0
+    monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': 'outra-conta'})
+    assert not abrir(client).json()['inicio'].get('motivo_sonhos')
+    monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': P})
+    monkeypatch.setenv('SITE_ID', 'outra-escola')
+    assert not abrir(client).json()['inicio'].get('motivo_sonhos')
+
+
+def test_sonhos_editaveis_e_cliente_antigo_preserva_escolhas_e_sonho_anterior(client):
+    assert guardar(client, 'inicio-motivo', motivo='ugc', motivo_sonhos='["pc_gamer", "pc_gamer", "viagens"]').status_code == 200
+    assert guardar(client, 'inicio-plano', sonho='Meu sonho escrito anteriormente').status_code == 200
+    assert guardar(client, 'inicio-motivo', motivo='jogo', concluir='nao').status_code == 200
+    inicio = abrir(client).json()['inicio']
+    assert inicio['motivo_sonhos'] == ['pc_gamer', 'viagens']
+    assert inicio['sonho'] == 'Meu sonho escrito anteriormente'
+    resposta = guardar(client, 'inicio-motivo', motivo='jogo', motivo_sonhos='[]', motivo_etapa='3', concluir='nao')
+    assert resposta.status_code == 200
+    assert resposta.json()['inicio']['motivo_sonhos'] == []
+    assert resposta.json()['inicio']['etapas'][0]['concluida'] is True
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
+
+
+@pytest.mark.parametrize('valor', ['{', '{}', '["inexistente"]', '[{}]'])
+def test_sonhos_invalidos_nao_sobrescrevem_registro(client, valor):
+    assert guardar(client, 'inicio-motivo', motivo='ugc', motivo_sonhos='["pc_gamer"]').status_code == 200
+    resposta = guardar(client, 'inicio-motivo', motivo='jogo', motivo_sonhos=valor)
+    assert resposta.status_code == 400
+    inicio = abrir(client).json()['inicio']
+    assert inicio['motivo'] == 'ugc' and inicio['motivo_sonhos'] == ['pc_gamer']

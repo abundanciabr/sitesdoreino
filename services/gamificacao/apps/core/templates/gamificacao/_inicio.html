@@ -1,8 +1,8 @@
-<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=4">
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=5">
 <section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
   <header class="inicio-cabecalho">
     <p class="inicio-selo"><span aria-hidden="true">◇</span> {% if faixas.atual.ordem == 1 %}Faixa branca · Meu ponto de partida{% else %}Meu ponto de partida · Sempre editável{% endif %}</p>
-    <p class="inicio-sobrelinha">{% if inicio_etapa == 1 %}Meus motivos · <span id="inicio-motivo-contagem">Etapa 1 de 2</span>{% else %}Etapa {{ inicio_etapa }} de 4 · Uma coisa de cada vez{% endif %}</p>
+    <p class="inicio-sobrelinha">{% if inicio_etapa == 1 %}Meus motivos · <span id="inicio-motivo-contagem">Etapa 1 de 3</span>{% else %}Etapa {{ inicio_etapa }} de 4 · Uma coisa de cada vez{% endif %}</p>
     <h1 id="inicio-titulo">{% if inicio_etapa == 1 %}Meus motivos{% else %}{{ inicio_titulo }}{% endif %}</h1>
     <p class="inicio-privado">{% if inicio_etapa == 1 %}Esta resposta é só sua. Você pode mudá-la depois.{% elif inicio_etapa == 2 %}Seus sonhos e seu compromisso ficam privados na sua conta.{% elif inicio_etapa == 3 %}Uma criação simples já é um começo. Faça no seu ritmo.{% else %}Seu arquivo fica privado na sua conta.{% endif %}</p>
   </header>
@@ -37,9 +37,18 @@
           </ul>
           <label for="inicio-motivo-pessoal">Minha resposta <span>(opcional)</span></label>
           <textarea id="inicio-motivo-pessoal" name="motivo_pessoal" rows="3" maxlength="280" aria-describedby="inicio-reflexao-ajuda" placeholder="Isso importa para mim porque…"></textarea>
-          <p id="inicio-reflexao-ajuda" class="inicio-nota">Esta resposta fica só na sua conta. Você pode deixar em branco, concluir agora e voltar para escrever ou editar depois.</p>
-          <div class="inicio-acoes"><button type="submit" name="destino" value="continuar">Concluir meu motivo</button><button type="button" id="inicio-motivo-depois-2" class="inicio-secundario">← Depois eu faço isso</button></div>
+          <p id="inicio-reflexao-ajuda" class="inicio-nota">Esta resposta fica só na sua conta. Você pode deixar em branco, continuar e voltar para escrever ou editar depois.</p>
+          <div class="inicio-acoes"><button type="submit" name="destino" value="proxima">Continuar</button><button type="button" id="inicio-motivo-depois-2" class="inicio-secundario">← Depois eu faço isso</button></div>
           <button type="button" id="inicio-motivo-anterior" class="inicio-texto">← Voltar à escolha do motivo</button>
+        </div>
+        <div id="inicio-motivo-sonhos" hidden>
+          <h2 id="inicio-motivo-sonhos-titulo" tabindex="-1">O que eu quero conseguir no futuro com esse trabalho de modelagem?</h2>
+          <p>O que sonho construir no futuro trabalhando com modelagem 3D?</p>
+          <p><strong>Este espaço é seu.</strong> Marque quantas opções quiser. Pense no que gostaria de alcançar usando suas criações no Blender ou no Roblox. Você pode mudar suas escolhas depois.</p>
+          <fieldset class="inicio-motivos" aria-describedby="inicio-sonhos-ajuda"><legend class="inicio-sr">Meus sonhos para o futuro — escolha quantos quiser</legend><div id="inicio-sonhos-opcoes"></div></fieldset>
+          <p id="inicio-sonhos-ajuda" class="inicio-nota">Estas escolhas ficam só na sua conta. Se ainda estiver descobrindo seus sonhos, pode concluir e voltar depois.</p>
+          <div class="inicio-acoes"><button type="submit" name="destino" value="continuar">Concluir meu motivo</button><button type="button" id="inicio-motivo-depois-3" class="inicio-secundario">← Depois eu faço isso</button></div>
+          <button type="button" id="inicio-sonhos-anterior" class="inicio-texto">← Voltar à minha resposta</button>
         </div>
       </form>
     </section>
@@ -111,4 +120,4 @@
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=10" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=11" defer></script>

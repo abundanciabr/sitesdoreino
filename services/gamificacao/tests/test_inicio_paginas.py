@@ -139,13 +139,17 @@ def test_links_entre_paginas_respeitam_prefixo_publico(client):
         set_script_prefix(prefixo_anterior)
 
 
-def test_motivo_embutido_tem_duas_etapas_sem_saida_antiga_e_comprovante_no_mesmo_painel(client):
+def test_motivo_embutido_tem_tres_etapas_sem_saida_antiga_e_comprovante_no_mesmo_painel(client):
     resposta = client.get(reverse('inicio-motivo') + '?embutido=1')
     html = resposta.content.decode()
     assert resposta.status_code == 200
     assert 'gamificacao/inicio_embutido.html' in [t.name for t in resposta.templates]
     assert 'data-embutido="sim"' in html
     assert 'id="inicio-motivo-reflexao" hidden' in html
+    assert 'id="inicio-motivo-sonhos" hidden' in html
+    assert 'Etapa 1 de 3' in html
+    assert html.count('>Continuar</button>') == 2
+    assert html.count('>Concluir meu motivo</button>') == 1
     assert 'name="motivo_outro"' in html
     assert 'Depois eu faço isso' in html
     assert 'Sair e retomar depois' not in html

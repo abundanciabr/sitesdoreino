@@ -1,4 +1,6 @@
 """Escolhas privadas e revisáveis e requisitos do começo da jornada."""
+import json
+
 from django.utils import timezone
 from django.urls import reverse
 
@@ -11,6 +13,35 @@ MOTIVOS = (
     ('estudio', 'Preparar meu futuro estúdio', 'Conclua uma peça pequena e organize as partes e os arquivos. Imagine como explicaria sua criação a um colaborador.'),
     ('descobrir', 'Experimentar e descobrir meu caminho', 'Escolha um objeto que desperte sua curiosidade. Faça uma versão simples e observe qual parte mais gostou de criar.'),
     ('outro', 'Tenho outro motivo', 'Escolha uma peça pequena relacionada à sua ideia. Comece pela forma principal e peça ajuda sobre uma dificuldade por vez.'),
+)
+
+
+SONHOS = (
+    ('autonomo', 'Trabalhar por conta própria'),
+    ('tempo_livre', 'Ter mais tempo livre'),
+    ('pc_gamer', 'Comprar um PC Gamer'),
+    ('notebook', 'Comprar um Notebook'),
+    ('iphone', 'Comprar um iPhone'),
+    ('celular', 'Comprar um Celular'),
+    ('carro_moto', 'Comprar um carro/moto'),
+    ('qualidade_vida', 'Usufruir de qualidade de vida'),
+    ('renda_extra', 'Ganhar uma renda extra'),
+    ('ajudar_pessoas', 'Ajudar pessoas'),
+    ('seguranca_familia', 'Garantir mais segurança para você e sua família'),
+    ('ajudar_pais', 'Ajudar meus pais'),
+    ('faculdade', 'Pagar a faculdade'),
+    ('jogo_roblox', 'Criar meu próprio jogo no Roblox'),
+    ('colecao_ugc', 'Lançar minha coleção de itens UGC'),
+    ('estudio', 'Montar meu próprio estúdio de criação'),
+    ('casa', 'Trabalhar de casa'),
+    ('internacional', 'Trabalhar com pessoas de outros países'),
+    ('viagens', 'Viajar e conhecer novos lugares'),
+    ('espaco_criacao', 'Ter meu próprio espaço para estudar e criar'),
+    ('independencia', 'Conquistar minha independência financeira'),
+    ('economizar', 'Guardar dinheiro para realizar meus planos'),
+    ('cursos', 'Investir em cursos e aprender novas habilidades'),
+    ('portfolio', 'Criar um portfólio de que eu me orgulhe'),
+    ('equipe_jogos', 'Participar de uma equipe de criação de jogos'),
 )
 
 
@@ -48,7 +79,16 @@ def salvar_inicio(jornada, dados):
         # Clientes anteriores não apagam os novos campos privados.
         if 'motivo_outro' in dados:
             inicio['motivo_outro'] = texto(dados, 'motivo_outro', 280)
-        if dados.get('motivo_etapa') in ('1', '2'):
+        if 'motivo_sonhos' in dados:
+            try:
+                sonhos = json.loads(texto(dados, 'motivo_sonhos', 2000))
+            except (ValueError, TypeError):
+                raise ValueError('Confira suas escolhas de futuro antes de salvar.') from None
+            opcoes = {valor for valor, nome in SONHOS}
+            if not isinstance(sonhos, list) or any(not isinstance(valor, str) or valor not in opcoes for valor in sonhos):
+                raise ValueError('Escolha os sonhos na lista apresentada.')
+            inicio['motivo_sonhos'] = list(dict.fromkeys(sonhos))
+        if dados.get('motivo_etapa') in ('1', '2', '3'):
             inicio['motivo_etapa'] = int(dados['motivo_etapa'])
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
@@ -86,6 +126,7 @@ def para_tela(jornada):
     inicio = dict(jornada.inicio) if jornada else {}
     motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
+            'sonhos_opcoes': [{'valor': valor, 'nome': nome} for valor, nome in SONHOS],
             'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado',
             'item_pronto': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
             'etapas': etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada) if jornada else etapas_inicio(None, None, None)}
