@@ -1,12 +1,12 @@
 import pytest
 from django.urls import reverse
 from apps.core import telas_sandbox, sessao
-from apps.encomendas import sandbox
+from apps.encomendas import catalogo_curso
 
 @pytest.mark.django_db
-@pytest.mark.parametrize('categoria', ['espadas_objetos', 'pets', 'cabelos', 'chapeus', 'personagens'])
+@pytest.mark.parametrize('categoria', [chave for chave, *_ in catalogo_curso.CATEGORIAS])
 def test_referencias_acompanham_categoria(client, monkeypatch, categoria):
-    sandbox.semear_projetos(site_id='escola-imagens')
+    catalogo_curso.preparar_projetos(site_id='escola-imagens', ativar=True)
     monkeypatch.setattr(sessao, 'quem_e', lambda req: 'aluno')
     monkeypatch.setattr(sessao, 'site_desta_instalacao', lambda: 'escola-imagens')
     monkeypatch.setattr(telas_sandbox, '_aluno_atual', lambda *args: True)
@@ -15,13 +15,18 @@ def test_referencias_acompanham_categoria(client, monkeypatch, categoria):
     assert r.status_code == 200
     html = r.content.decode()
     projetos = r.context['projetos']
-    assert html.count('class="project-illustration"') == len(projetos)
+    assert {p.slug for p in projetos} == {p['slug'] for p in catalogo_curso.PROJETOS if p['categoria'] == categoria}
     assert html.count('class="reference-figure"') == len(projetos)
     for projeto in projetos:
-        assert reverse('sandbox_ilustracao', args=[projeto.slug]) in html
-    for slug, _, outra_categoria, *_ in sandbox._PROJETOS:
-        if outra_categoria != categoria:
-            assert reverse('sandbox_ilustracao', args=[slug]) not in html
+        assert f'data-reference-project="{projeto.slug}"' in html
+        arte = catalogo_curso.arte_projeto(projeto.slug)
+        if arte:
+            assert reverse('sandbox_ilustracao', args=[arte['arquivo']]) in html
+        else:
+            assert 'class="course-free"' in html
+    for projeto in catalogo_curso.PROJETOS:
+        if projeto['categoria'] != categoria:
+            assert f'data-reference-project="{projeto["slug"]}"' not in html
 
 @pytest.mark.django_db
 def test_imagens_publicas_apenas_arquivos_ilustrativos(client):

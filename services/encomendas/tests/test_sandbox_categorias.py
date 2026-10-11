@@ -6,7 +6,7 @@ from django.apps import apps
 from django.db import connection
 from django.urls import reverse
 
-from apps.encomendas import sandbox
+from apps.encomendas import catalogo_curso, sandbox
 from apps.encomendas.models import ProjetoSandbox, ParticipacaoSandbox
 from apps.core import telas_sandbox, sessao
 
@@ -30,17 +30,18 @@ def test_cinco_categorias_onze_projetos_e_preservacao_de_trabalho_antigo():
 
 @pytest.mark.django_db
 def test_catalogo_mostra_apenas_categoria_escolhida_e_nao_aceita_animacao(client,monkeypatch):
-    sandbox.semear_projetos(site_id='escola-a')
+    catalogo_curso.preparar_projetos(site_id='escola-a', ativar=True)
     monkeypatch.setattr(sessao,'quem_e',lambda req:'aluno-teste')
     monkeypatch.setattr(sessao,'site_desta_instalacao',lambda:'escola-a')
     monkeypatch.setattr(telas_sandbox,'_aluno_atual',lambda req,pessoa,site:True)
     monkeypatch.setenv('IDS_DO_PLANTAO','equipe')
-    resposta=client.get(reverse('sandbox_catalogo'),{'categoria':'chapeus'})
+    resposta=client.get(reverse('sandbox_catalogo'),{'categoria':'carros'})
     assert resposta.status_code==200
-    assert set(p.categoria for p in resposta.context['projetos'])=={'chapeus'}
-    assert len(resposta.context['categorias'])==5
-    assert 'Chapéus' in resposta.content.decode()
+    assert set(p.categoria for p in resposta.context['projetos'])=={'carros'}
+    assert len(resposta.context['categorias'])==6
+    assert 'Carros' in resposta.content.decode()
     assert 'Ciclo de corrida' not in resposta.content.decode()
+    assert client.get(reverse('sandbox_catalogo'),{'categoria':'chapeus'}).status_code==404
     assert client.get(reverse('sandbox_catalogo'),{'categoria':'animacoes'}).status_code==404
 
 @pytest.mark.django_db
