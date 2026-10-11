@@ -30,7 +30,7 @@ def main():
     backup=ROOT/'backups-de-codigo'/('diagnostico-texturas-'+stamp)
     backup.mkdir(mode=0o700,parents=True)
     with (backup/'bancos.log').open('w') as log:run([str(ROOT/'bin/plataforma'),'backup'],stdout=log,stderr=subprocess.STDOUT)
-    with tarfile.open(backup/'codigo-configuracoes.tar.gz','w:gz') as tar:
+    with tarfile.open(backup/'codigo-configuracoes.tar','w') as tar:
         for path in [ROOT/'env',ROOT/'publicacoes',TARGET,UNIT]:
             if path.exists():tar.add(path,arcname=str(path).lstrip('/'))
     print('BACKUP_OK',str(backup),flush=True)
