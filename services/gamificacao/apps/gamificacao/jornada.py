@@ -137,11 +137,12 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
     )
     declaracoes = jornada.declaracoes if jornada else {}
     confirmacoes = jornada.confirmacoes_sequenciais if jornada else {}
-    from .inicio import requisitos_branca
+    from .inicio import requisitos_branca, etapas_inicio
     tem_anexo = AnexoDaJornada.objects.filter(
         pessoa_id=pessoa_id, site_id=site_id, passo=2,
     ).exists()
     requisitos = requisitos_branca(jornada, tem_anexo)
+    inicio_concluido = etapas_inicio(pessoa_id, site_id, jornada, tem_anexo)[3]['concluida']
     recebimentos = list(
         RecebimentoDeclarado.objects.filter(pessoa_id=pessoa_id, site_id=site_id)
         .defer("print_bytes")
@@ -163,7 +164,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
             criterio = True
         elif ordem == 2:
             criterio = (bool(confirmacoes.get("2")) and bool(declaracoes.get("2"))
-                        and all(requisitos.values()))
+                        and all(requisitos.values()) and inicio_concluido)
         elif ordem in (3, 4):
             criterio = bool(confirmacoes.get(str(ordem))) and bool(declaracoes.get(str(ordem)))
         elif ordem == 5:
@@ -366,7 +367,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 if not antes["lista"][ordem - 2]["alcancada"]:
                     raise ValueError("Conclua a faixa anterior antes de confirmar esta etapa.")
                 if ordem == 2:
-                    from .inicio import requisitos_branca
+                    from .inicio import requisitos_branca, etapas_inicio
                     tem_anexo = AnexoDaJornada.objects.filter(
                         pessoa_id=pessoa_id, site_id=site_id, passo=2,
                     ).exists()
@@ -375,13 +376,21 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                             "Para concluir o primeiro item, escolha seu motivo, "
                             "defina seu objetivo, assuma seu compromisso e envie seu arquivo."
                         )
-                if confirmacoes.get(str(ordem)) and declaracoes.get(str(ordem)):
+                    if not etapas_inicio(pessoa_id, site_id, j, tem_anexo)[2]['concluida']:
+                        raise ValueError('Conclua as três tarefas anteriores e receba seus XP antes de enviar.')
+                    # O quarto crédito entra antes de situacao calcular a faixa.
+                    # Se a regra não pagar, a declaração fica guardada, mas não promove.
+                    from .bonus_inicio import conceder as conceder_inicio
+                    novo_inicio_xp = conceder_inicio(pessoa_id, site_id, 4)
+                else:
+                    novo_inicio_xp = 0
+                if confirmacoes.get(str(ordem)) and declaracoes.get(str(ordem)) and not novo_inicio_xp:
                     return antes, antes, False
                 agora = timezone.now().isoformat()
                 declaracoes.setdefault(str(ordem), agora)
                 if not declaracoes[str(ordem)]:
                     declaracoes[str(ordem)] = agora
-                confirmacoes[str(ordem)] = agora
+                confirmacoes.setdefault(str(ordem), agora)
                 texto = RESULTADOS[ordem]
             elif dados.get("estado") == "corrigir":
                 confirmacoes.pop(str(ordem), None)

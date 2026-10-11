@@ -65,9 +65,10 @@ def test_item_salvo_e_eventos_antigos_nao_promovem_conclusao(client):
     dados = consultar(client)
     assert [e["alcancada"] for e in dados["etapas"][:4]] == [True, False, False, False]
     assert [item(dados, n)["estado"] for n in (2, 3, 4)] == [
-        "andamento", "pendente", "pendente",
+        "pendente", "pendente", "pendente",
     ]
-    assert "Marque" in item(dados, 2)["detalhe"]
+    assert "Disponível após" in item(dados, 2)["detalhe"]
+    assert item(dados, 2)["bloqueado"] is True
     assert consultar(client, "b")["etapas"][1]["alcancada"] is False
 
 

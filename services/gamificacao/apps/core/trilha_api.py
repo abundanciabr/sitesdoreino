@@ -26,6 +26,7 @@ class ItemDoChecklist(Schema):
     estado: str
     detalhe: str
     acao: AcaoDoChecklist | None
+    bloqueado: bool = False
 
 
 class ChecklistDaEtapa(Schema):

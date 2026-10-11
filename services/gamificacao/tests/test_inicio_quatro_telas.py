@@ -38,6 +38,110 @@ def checklist():
     return [item['estado'] for item in montar_checklists(PESSOA, SITE, situacao(PESSOA, SITE))[2]['itens']]
 
 
+def estados(client):
+    return client.get(reverse('inventario'), HTTP_COOKIE='meshcraft_sessao=A').json()['inicio']['etapas']
+
+
+def test_cadeados_seguem_quatro_creditos_reais(client):
+    itens = montar_checklists(PESSOA, SITE, situacao(PESSOA, SITE))[2]['itens']
+    assert [item['bloqueado'] for item in itens] == [False, True, True, True]
+    assert [item['estado'] for item in itens] == ['pendente'] * 4
+    assert itens[1]['detalhe'].startswith('Disponível após Meu motivo')
+    assert [etapa['bloqueada'] for etapa in estados(client)] == [False, True, True, True]
+    for nome in ('inicio-objetivo', 'inicio-item', 'inicio-envio'):
+        assert client.get(reverse(nome)).url == reverse('inicio-motivo')
+    assert client.get(reverse('inicio-conquista', args=[2])).url == reverse('inicio-motivo')
+    assert post(client, 'anexo', passo='2', arquivo=arquivo()).status_code == 400
+    assert post(client, 'declaracao', passo='2', estado='feito').status_code == 400
+    assert AnexoDaJornada.objects.count() == 0
+
+    assert post(client, 'inicio-motivo', motivo='ugc', concluir='nao').status_code == 200
+    assert [etapa['estado'] for etapa in estados(client)] == ['andamento', 'pendente', 'pendente', 'pendente']
+    assert client.get(reverse('inicio-objetivo')).url == reverse('inicio-motivo')
+    assert post(client, 'inicio-plano', objetivo='Peça', compromisso='Praticarei', assumir='sim').status_code == 400
+
+    assert post(client, 'inicio-motivo', motivo='ugc', concluir='sim').json()['conquista_xp'] == 100
+    assert [etapa['bloqueada'] for etapa in estados(client)] == [False, False, True, True]
+    assert post(client, 'inicio-plano', objetivo='Peça', compromisso='Praticarei', assumir='nao').status_code == 200
+    assert [etapa['estado'] for etapa in estados(client)] == ['concluido', 'andamento', 'pendente', 'pendente']
+    assert post(client, 'inicio-item').status_code == 400
+
+    assert post(client, 'inicio-plano', objetivo='Peça', compromisso='Praticarei', assumir='sim').json()['conquista_xp'] == 100
+    assert [etapa['bloqueada'] for etapa in estados(client)] == [False, False, False, True]
+    assert post(client, 'inicio-item').json()['conquista_xp'] == 100
+    assert [etapa['bloqueada'] for etapa in estados(client)] == [False, False, False, False]
+    assert post(client, 'inicio-envio', arquivo=arquivo()).json()['conquista_xp_tarefa'] == 100
+    assert [etapa['concluida'] for etapa in estados(client)] == [True] * 4
+
+
+@pytest.mark.parametrize('regra', ['inativa', 'pendente'])
+def test_sem_xp_definitivo_proxima_tarefa_permanece_bloqueada(client, regra):
+    configurar_tarefas(SITE)
+    alteracao = {'ativa': False} if regra == 'inativa' else {'quarentena_horas': 24}
+    RegraDePontuacao.objects.filter(site_id=SITE, slug='bonus-inicio-etapa-1').update(**alteracao)
+    resposta = post(client, 'inicio-motivo', motivo='ugc')
+    assert resposta.status_code == 200 and resposta.json()['conquista_xp'] == 0
+    assert estados(client)[0]['dados_validos'] is True
+    assert estados(client)[0]['concluida'] is False
+    assert estados(client)[1]['bloqueada'] is True
+    assert client.get(reverse('inicio-objetivo')).url == reverse('inicio-motivo')
+    assert post(client, 'inicio-plano', objetivo='Peça', compromisso='Praticarei', assumir='sim').status_code == 400
+
+
+def test_quarta_tarefa_sem_xp_nao_promove_e_retentativa_conclui(client):
+    configurar_faixas(SITE)
+    configurar_tarefas(SITE)
+    assert post(client, 'inicio-motivo', motivo='ugc').json()['conquista_xp'] == 100
+    assert post(client, 'inicio-plano', objetivo='Peça', compromisso='Praticarei', assumir='sim').json()['conquista_xp'] == 100
+    assert post(client, 'inicio-item').json()['conquista_xp'] == 100
+    RegraDePontuacao.objects.filter(site_id=SITE, slug='bonus-inicio-etapa-4').update(ativa=False)
+    envio = post(client, 'inicio-envio', arquivo=arquivo())
+    assert envio.status_code == 200 and 'conquista_xp' not in envio.json()
+    assert estados(client)[3]['dados_validos'] is True
+    assert estados(client)[3]['concluida'] is False
+    assert situacao(PESSOA, SITE)['atual']['ordem'] == 1
+    assert AnexoDaJornada.objects.count() == 1
+
+    RegraDePontuacao.objects.filter(site_id=SITE, slug='bonus-inicio-etapa-4').update(ativa=True)
+    repeticao = post(client, 'inicio-envio')
+    assert repeticao.status_code == 200
+    assert repeticao.json()['conquista_xp_tarefa'] == 100
+    assert repeticao.json()['conquista_xp_faixa'] == 5000
+    assert situacao(PESSOA, SITE)['atual']['ordem'] == 2
+    assert AnexoDaJornada.objects.count() == 1
+    assert post(client, 'inicio-envio').json()['conquista_xp'] == 0
+    assert LancamentoDeXP.objects.count() == 5
+
+
+def test_legado_preservado_so_libera_depois_de_confirmar_xp_na_ordem(client):
+    from apps.core.perfil import perfil_de
+    perfil_de(PESSOA, SITE)
+    JornadaPessoal.objects.create(
+        pessoa_id=PESSOA, site_id=SITE,
+        inicio={'motivo': 'ugc', 'objetivo': 'Peça antiga', 'compromisso': 'Praticarei',
+                'confirmado_em': '2026-10-01T10:00:00-03:00',
+                'item_pronto_em': '2026-10-01T11:00:00-03:00'},
+        declaracoes={'2': '2026-10-01T12:00:00-03:00'},
+        confirmacoes_sequenciais={'2': '2026-10-01T12:00:00-03:00'},
+    )
+    AnexoDaJornada.objects.create(pessoa_id=PESSOA, site_id=SITE, passo=2,
+                                  nome='obra.obj', conteudo=b'v 0 0 0\n', tamanho=8, sha256='legado')
+    assert [etapa['bloqueada'] for etapa in estados(client)] == [False, True, True, True]
+    assert situacao(PESSOA, SITE)['atual']['ordem'] == 1
+    assert post(client, 'inicio-envio').status_code == 400
+    assert post(client, 'declaracao', passo='2', estado='feito').status_code == 400
+    assert AnexoDaJornada.objects.count() == 1
+    assert JornadaPessoal.objects.get().declaracoes.get('2')
+
+    assert post(client, 'inicio-motivo', motivo='ugc').json()['conquista_xp'] == 100
+    assert post(client, 'inicio-plano', objetivo='Peça antiga', compromisso='Praticarei', assumir='sim').json()['conquista_xp'] == 100
+    assert post(client, 'inicio-item').json()['conquista_xp'] == 100
+    envio = post(client, 'inicio-envio')
+    assert envio.status_code == 200 and envio.json()['conquista_xp_tarefa'] == 100
+    assert situacao(PESSOA, SITE)['atual']['ordem'] == 2
+    assert AnexoDaJornada.objects.count() == 1
+
+
 def test_quatro_gestos_separados_e_sem_salto(client):
     assert reverse('inicio-envio') == '/inicio/envio/'
     assert client.get(reverse('inicio-envio')).url == reverse('inicio-motivo')
@@ -78,7 +182,7 @@ def test_reassumir_objetivo_preserva_item_arquivo_e_historico(client):
     assert post(client, 'inicio-plano', objetivo='Nova forma', compromisso='Praticarei', assumir='nao').status_code == 200
     assert situacao(PESSOA, SITE)['atual']['ordem'] == 1
     assert client.get(reverse('inicio-envio')).url == reverse('inicio-objetivo')
-    assert checklist() == ['concluido', 'pendente', 'concluido', 'andamento']
+    assert checklist() == ['concluido', 'andamento', 'pendente', 'pendente']
     assert JornadaPessoal.objects.get().inicio['item_pronto_em']
     assert AnexoDaJornada.objects.get().id == anexo_id
     assert RegistroDaJornada.objects.filter(acao='declaracao').count() == 1
@@ -95,6 +199,8 @@ def test_declaracao_antiga_supre_item_pronto_sem_publicar_arquivo(client, monkey
     jornada.save(update_fields=['declaracoes'])
     inventario = client.get(reverse('inventario'), HTTP_COOKIE='meshcraft_sessao=A').json()
     assert inventario['inicio']['item_pronto'] is True
+    assert client.get(reverse('inicio-envio')).url == reverse('inicio-item')
+    assert post(client, 'inicio-item').status_code == 200
     assert client.get(reverse('inicio-envio')).status_code == 200
     assert post(client, 'inicio-envio', arquivo=arquivo()).status_code == 200
     anexo = AnexoDaJornada.objects.get()

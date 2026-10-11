@@ -58,6 +58,12 @@ def ordem():
     return situacao(P, SITE)["atual"]["ordem"]
 
 
+def creditar_tres_tarefas():
+    from apps.gamificacao.bonus_inicio import conceder
+    for etapa in (1, 2, 3):
+        assert conceder(P, SITE, etapa) == 100
+
+
 def test_legado_com_todos_os_fatos_e_renda_recomeca_branca_sem_perder_registros():
     from apps.gamificacao.faixas import situacao_das_faixas
 
@@ -74,6 +80,7 @@ def test_legado_com_todos_os_fatos_e_renda_recomeca_branca_sem_perder_registros(
     assert AnexoDaJornada.objects.get(pk=anexo_id).aprendi == "NOTA-PRIVADA-ALFA"
     assert RecebimentoDeclarado.objects.get(pk=recebimento_id).valor_cents == 10000
 
+    creditar_tres_tarefas()
     for passo in (2, 3, 4):
         declarar(passo)
         assert ordem() == passo if passo < 4 else ordem() == 13
@@ -94,6 +101,7 @@ def test_sem_predecessora_ninguem_confirma_passo_3_ou_4():
 
     jornada.inicio = {**jornada.inicio, "item_pronto_em": "2026-10-11T10:00:00-03:00"}
     jornada.save(update_fields=["inicio"])
+    creditar_tres_tarefas()
     declarar(2)
     assert ordem() == 2
     with pytest.raises(ValueError):
@@ -113,6 +121,7 @@ def test_conclusao_automatica_preserva_fato_sem_confirmar_faixa_superior():
     assert jornada.declaracoes.get("3") and jornada.declaracoes.get("4")
     assert jornada.confirmacoes_sequenciais == {}
     assert ordem() == 1
+    creditar_tres_tarefas()
     declarar(2)
     assert ordem() == 2
     assert RegistroDaJornada.objects.filter(acao="conclusao").count() == 2
@@ -127,6 +136,7 @@ def test_conclusao_automatica_preserva_fato_sem_confirmar_faixa_superior():
 
 def test_conclusao_automatica_nova_avanca_quando_predecessora_ja_vale():
     registro_legado(declaracoes={"2": "antiga"}, total=10000)
+    creditar_tres_tarefas()
     declarar(2)
     registrar_conclusao(P, SITE, 3)
     assert ordem() == 3
@@ -137,6 +147,7 @@ def test_conclusao_automatica_nova_avanca_quando_predecessora_ja_vale():
 
 def test_requisito_anterior_invalido_regrede_sem_apagar_fatos_ou_confirmacoes():
     jornada = registro_legado(total=10000)
+    creditar_tres_tarefas()
     for passo in (2, 3, 4):
         declarar(passo)
     assert ordem() == 13
@@ -157,6 +168,7 @@ def test_requisito_anterior_invalido_regrede_sem_apagar_fatos_ou_confirmacoes():
 
 def test_correcao_e_estorno_baixam_a_primeira_etapa_incompleta():
     jornada = registro_legado(total=10000)
+    creditar_tres_tarefas()
     for passo in (2, 3, 4):
         declarar(passo)
     assert ordem() == 13
@@ -183,6 +195,7 @@ def test_api_do_aluno_reflete_mesma_ordem_sem_vazar_dados_privados():
     assert resposta.atual_ordem == ordem() == 1
     for privado in ("SONHO-PRIVADO-ALFA", "NOTA-PRIVADA-ALFA"):
         assert privado not in resposta.model_dump_json()
+    creditar_tres_tarefas()
     declarar(2)
     resposta = _projecao(HttpResponse(), P, SITE)
     assert resposta.atual_ordem == ordem() == 2
@@ -201,6 +214,7 @@ def test_post_declaracao_reconfirma_legado_na_ordem(client, monkeypatch):
                            HTTP_COOKIE="meshcraft_sessao=A")
 
     assert client.get(url, HTTP_COOKIE="meshcraft_sessao=A").json()["atual_ordem"] == 1
+    creditar_tres_tarefas()
     assert postar(2).status_code == 200
     assert ordem() == 2
     assert postar(4).status_code == 400

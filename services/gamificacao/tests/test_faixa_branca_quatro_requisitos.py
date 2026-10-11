@@ -75,13 +75,13 @@ def test_cada_requisito_bloqueia_declaracao_nova_no_nucleo_e_na_rota(client, fal
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 300
 
 
-def test_rascunho_e_anexo_sao_permitidos_antes_dos_quatro_requisitos(client):
+def test_rascunho_nao_libera_envio_antes_dos_tres_xp(client):
     assert post(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert post(client, "inicio-plano", objetivo="Uma peça", compromisso="Vou tentar",
                 assumir="nao").status_code == 200
-    assert post(client, "anexo", passo="2", arquivo=arquivo()).status_code == 200
+    assert post(client, "anexo", passo="2", arquivo=arquivo()).status_code == 400
     assert post(client, "declaracao", passo="2", estado="feito").status_code == 400
-    assert AnexoDaJornada.objects.count() == 1
+    assert AnexoDaJornada.objects.count() == 0
     assert JornadaPessoal.objects.get().inicio["confirmado_em"] is None
     assert situacao(P, SITE)["atual"]["ordem"] == 1
 
@@ -101,7 +101,7 @@ def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_regride_sem_apaga
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio["confirmado_em"] is None
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == [
-        "concluido", "pendente", "concluido", "andamento",
+        "concluido", "andamento", "pendente", "pendente",
     ]
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5400
@@ -127,7 +127,7 @@ def test_declaracao_legada_sem_inicio_nem_anexo_recomeca_branca_sem_ser_apagada(
     perfil_de(P, SITE)
     JornadaPessoal.objects.create(pessoa_id=P, site_id=SITE, declaracoes={"2": "2026-10-01T10:00:00-03:00"})
     assert situacao(P, SITE)["atual"]["ordem"] == 1
-    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == ["pendente", "pendente", "concluido", "pendente"]
+    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == ["pendente"] * 4
     assert post(client, "inicio-motivo", motivo="jogo").status_code == 200
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
@@ -146,7 +146,7 @@ def test_checklist_tem_quatro_itens_e_nao_exporta_respostas_privadas(client):
     assert post(client, "inicio-plano", objetivo="OBJETIVO-PRIVADO-ALFA",
                 compromisso="COMPROMISSO-PRIVADO-ALFA", sonho="SONHO-PRIVADO-ALFA",
                 assumir="nao").status_code == 200
-    assert [i["estado"] for i in itens()] == ["concluido", "pendente", "pendente", "pendente"]
+    assert [i["estado"] for i in itens()] == ["concluido", "andamento", "pendente", "pendente"]
     assert post(client, "inicio-plano", objetivo="OBJETIVO-PRIVADO-ALFA",
                 compromisso="COMPROMISSO-PRIVADO-ALFA", sonho="SONHO-PRIVADO-ALFA",
                 assumir="sim").status_code == 200

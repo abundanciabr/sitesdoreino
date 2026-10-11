@@ -90,6 +90,9 @@ def preparar_primeiras_etapas(ate=4):
         "item_pronto_em": "2026-10-10T11:00:00-03:00",
     }
     j.save(update_fields=["inicio"])
+    from apps.gamificacao.bonus_inicio import conceder as conceder_inicio
+    for etapa in (1, 2, 3):
+        assert conceder_inicio(P, SITE, etapa) == 100
     AnexoDaJornada.objects.create(
         pessoa_id=P, site_id=SITE, passo=2, nome="obra.obj",
         conteudo=b"v 0 0 0\n", tamanho=8, sha256="preparo",

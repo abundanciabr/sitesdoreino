@@ -24,6 +24,9 @@ def preparar_ate(pessoa="aluno-concluiu", site="escola-teste", passo=2):
                 "confirmado_em": "2026-10-10T10:00:00-03:00",
                 "item_pronto_em": "2026-10-10T11:00:00-03:00"}
     j.save(update_fields=["inicio"])
+    from apps.gamificacao.bonus_inicio import conceder as conceder_inicio
+    for etapa in (1, 2, 3):
+        assert conceder_inicio(pessoa, site, etapa) == 100
     AnexoDaJornada.objects.create(pessoa_id=pessoa, site_id=site, passo=2,
                                   nome="obra.obj", conteudo=b"v 0 0 0\n", tamanho=8, sha256="preparo")
     for ordem in range(2, passo + 1):
@@ -52,7 +55,7 @@ def test_ativar_bonus_depois_da_conquista_nao_perde_nem_duplica_credito(monkeypa
     jornada.salvar("aluno-concluiu", "escola-teste", {"acao": "declaracao", "passo": 3,
         "estado": "feito", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"]})
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
-    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15000
+    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15400
 
 
 @pytest.mark.django_db
@@ -63,12 +66,12 @@ def test_bonus_configurado_depois_de_conclusao_valida_chega_no_replay_sem_duplic
     preparar_ate()
     evento = envelope()
     ao_sandbox_trabalho_concluido(evento)
-    assert LancamentoDeXP.objects.count() == 0
+    assert LancamentoDeXP.objects.count() == 4
     bonus_faixas.configurar("escola-teste")
     ao_sandbox_trabalho_concluido(evento)
     ao_sandbox_trabalho_concluido(evento)
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
-    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15000
+    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15400
 
 
 @pytest.mark.django_db
@@ -84,7 +87,7 @@ def test_pontuacao_configurada_uma_unica_vez_no_aluno_correto(monkeypatch):
     ao_sandbox_trabalho_concluido(e)
     lancamentos = LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul")
     assert lancamentos.count() == 1 and lancamentos.get().pessoa.id_da_plataforma == "aluno-concluiu"
-    assert PerfilJogador.objects.get(pessoa__id_da_plataforma="aluno-concluiu").xp_total == 15000
+    assert PerfilJogador.objects.get(pessoa__id_da_plataforma="aluno-concluiu").xp_total == 15400
     jornada.salvar("aluno-concluiu", "escola-teste", {
         "acao": "declaracao", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"],
         "passo": 3, "estado": "feito",
