@@ -146,7 +146,7 @@ def super_equipe_executor(request):
         return JsonResponse({"erro": "Contato inválido."}, status=400)
 
 
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def super_equipe_acao(request, melhoria_id):
     """Posse e resultado do executor autenticado, sem comando remoto arbitrário."""
     impedimento = _admin(request)
@@ -154,12 +154,18 @@ def super_equipe_acao(request, melhoria_id):
         return impedimento
     from .super_equipe import _sem_dados_pessoais
     from .super_equipe_automatica import evento
+    from .super_equipe_recuperacao import conferir, registrar_conferencia
+    if request.method == "GET":
+        item = get_object_or_404(MelhoriaSuperEquipe, pk=melhoria_id)
+        resposta = JsonResponse(conferir(item))
+        resposta["Cache-Control"] = "no-store"
+        return resposta
     try:
         dados = json.loads(request.body) if request.content_type == "application/json" else request.POST
         if not isinstance(dados, dict) or len(request.body) > 16000:
             raise ValueError()
         acao = dados.get("acao")
-        if acao not in ("assumir", "batimento", "resultado"):
+        if acao not in ("assumir", "batimento", "resultado", "conferir_recuperacao"):
             raise ValueError()
         agora = timezone.now()
         with transaction.atomic():
@@ -168,6 +174,14 @@ def super_equipe_acao(request, melhoria_id):
             # ordem evita impasse quando chegam batimentos durante a coleta.
             rotina = RotinaSuperEquipe.objects.select_for_update().get(pk=referencia.rotina_id)
             item = MelhoriaSuperEquipe.objects.select_for_update().get(pk=melhoria_id)
+            if acao == "conferir_recuperacao":
+                if item.situacao != "mantenedor" or (item.ocupada_ate and item.ocupada_ate > agora):
+                    return JsonResponse({"erro": "Trabalho não está interrompido para conferência."}, status=409)
+                conferencia = conferir(item)
+                if dados.get("assinatura") != conferencia["assinatura"]:
+                    return JsonResponse({"erro": "Os registros mudaram; consulte novamente."}, status=409)
+                registrar_conferencia(item, conferencia)
+                return JsonResponse({**_serializar(item), "conferencia": conferencia})
             if acao == "assumir":
                 if not rotina.ativa or item.situacao in ("resolvida", "mantenedor"):
                     return JsonResponse({"erro": "Este trabalho não está disponível para execução."}, status=409)
