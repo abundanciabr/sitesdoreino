@@ -7,6 +7,18 @@ from django.utils.safestring import mark_safe
 register = template.Library()
 
 
+@register.filter
+def campo_analise(valor, campo):
+    from apps.encomendas.devolutiva_sandbox import texto_campo
+    return texto_campo(valor, campo)
+
+
+@register.filter
+def analise_incompleta(resultado):
+    from apps.encomendas.devolutiva_sandbox import lacunas
+    return bool(lacunas(resultado))
+
+
 def inline(text):
     text = str(escape(text))
     text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)

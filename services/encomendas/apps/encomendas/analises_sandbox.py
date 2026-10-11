@@ -7,9 +7,11 @@ from pathlib import Path
 import re
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .sandbox_models import AnaliseArquivoSandbox, AnaliseEntregaSandbox, EntregaSandbox
+from . import devolutiva_sandbox as devolutiva
 
 
 def pasta():
@@ -24,12 +26,14 @@ def salvar(path, data):
 
 
 def preparar(entrega):
-    analysis, _ = AnaliseEntregaSandbox.objects.get_or_create(entrega=entrega, defaults={'site_id': entrega.site_id})
+    analysis, criada = AnaliseEntregaSandbox.objects.get_or_create(entrega=entrega, defaults={'site_id': entrega.site_id})
     for file in entrega.arquivos.all():
         key = hashlib.sha256((entrega.participacao.site_id + ':' + file.sha256 + ':' +
                               Path(file.nome).suffix.lower() + ':v1').encode()).hexdigest()
         AnaliseArquivoSandbox.objects.get_or_create(arquivo=file, defaults={
             'site_id': file.site_id, 'sha256': file.sha256, 'chave_cache': key})
+    if criada:
+        devolutiva.recebimento(entrega)
     return analysis
 
 
@@ -121,13 +125,12 @@ def comparar(analysis):
     rows = []
     for req in reqs:
         row = answers.get(req['id'], {})
-        rows.append({**req, 'encontrado': str(row.get('encontrado', '')),
-                     'nao_encontrado': str(row.get('nao_encontrado', '')),
-                     'inconclusivo': str(row.get('inconclusivo', 'Sem evidência suficiente.')),
+        rows.append({**req, 'encontrado': devolutiva.texto_campo(row.get('encontrado'), 'encontrado'),
+                     'nao_encontrado': devolutiva.texto_campo(row.get('nao_encontrado'), 'nao_encontrado'),
+                     'inconclusivo': devolutiva.texto_campo(row.get('inconclusivo', 'Sem evidência suficiente.'), 'inconclusivo'),
                      'evidencias': row.get('evidencias', [])})
     return {'versao': entrega.versao, 'entrega_id': str(entrega.pk), 'requisitos': rows,
-            'tem_falhas': any(item['estado'] == 'falha' or any(m.get('estado') == 'falha' or m.get('aviso')
-                for m in item.get('conteudo', {}).get('arquivos', [])) for item in found),
+            'tem_falhas': bool(devolutiva.lacunas({'medidas_programas': found})),
             'medidas_programas': found, 'interpretacao_visual_ia': str(answer.get('interpretacao_visual_ia', '')),
             'imagens_examinadas': [{k: v for k, v in im.items() if k != 'caminho'} for im in images[:12]],
             'imagens_nao_enviadas_ia': max(0, len(images) - 12)}
@@ -167,6 +170,12 @@ def processar_entrega(identificador):
             atual.resultado = result
             atual.tentar_em = None
         atual.save()
+        atual.entrega = a.entrega
+        if not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
+            if result is None:
+                devolutiva.indisponivel(atual)
+            else:
+                devolutiva.conclusao(atual)
     if result is not None and not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
         from apps.core.ia_sandbox import enfileirar
         enfileirar(a.entrega.participacao, 'entrega:' + str(a.entrega_id), 'cliente')
@@ -176,21 +185,27 @@ def rodada():
     # Inclui versões anteriores ainda sem análise sem tocar registros existentes.
     for entrega in EntregaSandbox.objects.filter(analise__isnull=True).order_by('criada_em')[:10]:
         preparar(entrega)
-    for a in AnaliseEntregaSandbox.objects.exclude(estado='concluida').order_by('atualizada_em')[:10]:
+    agora = timezone.now()
+    prontas = (AnaliseEntregaSandbox.objects.exclude(estado='concluida')
+        .filter(Q(tentar_em__isnull=True) | Q(tentar_em__lte=agora))
+        .exclude(estado='comparando', atualizada_em__gt=agora - timedelta(minutes=8)))
+    for a in prontas.order_by('atualizada_em', 'pk')[:10]:
         try:
             processar_entrega(a.pk)
         except Exception:
             AnaliseEntregaSandbox.objects.filter(pk=a.pk).update(
                 estado='falha', falha='Não foi possível processar esta versão. Tente novamente.', atualizada_em=timezone.now())
+            if not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
+                devolutiva.indisponivel(a)
 
 
 def repetir(entrega):
     with transaction.atomic():
         a = AnaliseEntregaSandbox.objects.select_for_update().get(entrega=entrega)
-        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and not a.resultado.get('tem_falhas')):
+        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and not a.resultado.get('tem_falhas') and not devolutiva.lacunas(a.resultado)):
             return
         for f in AnaliseArquivoSandbox.objects.filter(arquivo__entrega=entrega):
-            if f.estado != 'falha' and not any(m.get('estado') == 'falha' or m.get('aviso') for m in f.resultado.get('arquivos', [])):
+            if f.estado != 'falha' and not any(m.get('estado') != 'concluida' or m.get('aviso') for m in f.resultado.get('arquivos', [])):
                 continue
             directory = pasta() / f.chave_cache
             # Preserva arquivos e resultados: somente renomeia o estado da tentativa.
