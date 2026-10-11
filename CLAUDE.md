@@ -7,3 +7,9 @@ REGRA DE FERRO DO MANTENEDOR (vale antes das regras abaixo): o Claude Code só c
 5. Não crie nem proponha regra, portão, processo ou validação. Só o mantenedor cria regra, e para entrar uma terceira coisa uma das duas primeiras sai.
 6. Todo trabalho é no site.
 7. Entregue funcionando no site.
+
+## Referência de faixas e XP pedida pelo mantenedor em 11/10/2026
+
+Antes de trabalhar com faixas, graus, XP, Sandbox, Fila do Dólar, MESH ou alunos, leia `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`. A referência compartilhada no repositório é `https://github.com/abundanciabr/sitesdoreino/blob/main/REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`; em outro checkout, use a cópia desse arquivo na raiz do repositório.
+
+A decisão de 11/10/2026 é: a análise automática do Sandbox determina o resultado; concluir o envio concede a progressão de faixa e os XP previstos; discordâncias seguem pelo suporte; MESH não é mais recompensa vigente. Preserve a progressão sequencial e o histórico. Aprovação manual obrigatória da escola e recompensa dependente dela são comportamentos antigos a atualizar, não decisões vigentes. Leia a referência completa antes de interpretar código, testes ou mensagens antigas como regra do produto.
