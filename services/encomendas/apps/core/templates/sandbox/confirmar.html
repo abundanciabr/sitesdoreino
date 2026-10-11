@@ -12,7 +12,7 @@
 <p><strong>Conclusão:</strong> faixa Verde e 20.000 XP após a análise reconhecer o trabalho no Sandbox, uma vez por aluno.</p></section>
 <section class="card"><h2>Simulação para aprender</h2><div class="notice"><strong>Sem dinheiro, cobrança ou pagamento.</strong><p class="preserve">{{ termos_simulacao }}</p></div>
 {% if trabalho_ativo %}<p>Você já tem um projeto em andamento.</p><a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho</a>
-{% elif aluno_atual %}
+{% elif aluno_atual or papel == 'admin_previa' %}
 <form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}
 {% if projeto.livre %}<label>Item escolhido<input name="item_livre" required maxlength="200" placeholder="O que você quer modelar?"></label><label>Descrição e referência<textarea name="descricao_livre" required placeholder="Descreva o objeto e a referência escolhida."></textarea></label>{% endif %}
 <fieldset class="prazo-opcoes" style="border:0;padding:0"><legend><strong>Escolha seu prazo de entrega</strong></legend>

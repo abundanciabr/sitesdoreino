@@ -19,17 +19,18 @@ CSS sai de `{% url 'estatico' %}` e nunca de `{% static %}` (`armadilhas/102`).
 <link rel="stylesheet" href="{% url 'estatico' 'cursos/sala.css' %}">
 </head>
 <body>
+{% if request.previa_trilha_url %}<div role="status" style="background:#1f4060;color:white;padding:10px 16px;text-align:center;font:700 14px system-ui,sans-serif">Prévia administrativa — progresso separado</div>{% endif %}
 {% comment %}
 A BARRA DO SITE vem antes da faixa desta área (decisão do mantenedor de
 31/08/2026). Tudo numa linha, com as tags coladas (`armadilhas/033`): solta,
 cada tag põe uma linha em branco a mais na página de quem NÃO tem menu.
-{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+{% endcomment %}{% if menu_do_topo and not request.previa_trilha_url %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">{% block faixa %}
   <a href="{% url 'catalogo' %}">Cursos</a>
 {% endblock %}</div>
 
 <main{% block atributos_principal %}{% endblock %}>{% block conteudo %}{% endblock %}</main>
-{% if rodape %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+{% if rodape and not request.previa_trilha_url %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
   <p class="marca">Meshcraft Academy</p>
   <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
   <nav class="links" aria-label="Links úteis">

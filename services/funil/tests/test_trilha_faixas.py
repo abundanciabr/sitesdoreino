@@ -342,6 +342,30 @@ def test_paginas_renderizadas_da_previa_so_carregam_rotas_privadas(aplicacao):
         set_urlconf(None)
 
 
+def test_marca_de_admin_privado_so_existe_durante_ponte_autorizada(aplicacao):
+    from django.http import Http404, HttpResponse
+    from django.test import RequestFactory
+    from config.runtime import serving
+    from modules.funil.apps.core import trilha_previa
+
+    pedido = RequestFactory().get("/trilha/previa/encomendas/sandbox/", HTTP_HOST="meshcraft.top")
+    vistas = []
+
+    def servir(request, *args, **kwargs):
+        vistas.append((request.previa_trilha_admin, args, kwargs))
+        return HttpResponse("ok")
+
+    with serving("funil"), patch.object(trilha_previa, "_administrador_real", return_value=True), \
+            patch.object(trilha_previa, "servir_view_da_celula", side_effect=servir):
+        assert trilha_previa.trilha_previa(pedido, "encomendas/sandbox/").status_code == 200
+    assert vistas[0][0] is True
+    assert not hasattr(pedido, "previa_trilha_admin")
+    with serving("funil"), patch.object(trilha_previa, "_administrador_real", return_value=False):
+        with pytest.raises(Http404):
+            trilha_previa.trilha_previa(pedido, "encomendas/sandbox/")
+    assert not hasattr(pedido, "previa_trilha_admin")
+
+
 def test_post_privado_atravessa_middleware_funil_e_exige_csrf_da_celula(aplicacao):
     from django.http import JsonResponse
     from django.middleware.csrf import get_token

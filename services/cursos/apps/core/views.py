@@ -242,6 +242,12 @@ def _recusar(request, motivo: str, *, status: int, curso: Curso | None = None, *
     )
 
 
+def _admin_previa(request) -> bool:
+    """A ponte privada conferiu o admin real; não transforma a conta em aluno."""
+    return (getattr(request, "previa_trilha_admin", False) is True
+            and getattr(request, "previa_trilha_url", None) == "/trilha/previa/")
+
+
 def _recusa_de_curso(ator, curso: Curso) -> str:
     """`""` quando esta pessoa entra NESTE curso; o motivo da recusa quando não.
 
@@ -319,6 +325,14 @@ def _sala(request, slug: str | None = None):
     curso = enderecos.curso_do_site(site, slug) if site and slug is not None else None
     if not ator.autenticado:
         return None, None, _recusar(request, "entrar", status=200, curso=curso)
+    if _admin_previa(request):
+        if not site:
+            return None, None, _recusar(request, "sem-curso", status=200)
+        if curso is None:
+            return None, None, _recusar(request, "curso-desconhecido", status=404,
+                                        slug_pedido=slug)
+        praticas_3d.preparar_jornada(ator.pessoa, curso)
+        return ator.pessoa, curso, None
     if not ator.eh_aluno:
         motivo = "sem-matricula" if ator.matricula_conferida else "sem-resposta"
         return None, None, _recusar(request, motivo, status=403, curso=curso)
@@ -579,7 +593,7 @@ def _aulas_abertas(curso: Curso) -> int:
     return curso.aulas.filter(estado=Aula.Estado.PUBLICADA).count()
 
 
-def _cartao_do_catalogo(ator, curso: Curso) -> dict:
+def _cartao_do_catalogo(ator, curso: Curso, *, admin_previa=False) -> dict:
     """Um curso do site, visto pela pessoa da sessão.
 
     O catálogo MOSTRA todos os cursos; quem decide quem entra é a porta
@@ -589,7 +603,9 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
     matrícula não deu para conferir não ganha botão nenhum, porque nesta
     célula não conseguir conferir nunca é "pode entrar".
     """
-    if not ator.autenticado:
+    if admin_previa and ator.autenticado:
+        situacao = "previa-admin"
+    elif not ator.autenticado:
         situacao = "visitante"
     elif not ator.matricula_conferida:
         situacao = "sem-resposta"
@@ -600,7 +616,7 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         "url": reverse("curso", args=[curso.slug]),
         "aulas_abertas": _aulas_abertas(curso),
         "total_aulas": curso.aulas.count(),
-        "entra": situacao in ("visitante", "seu"),
+        "entra": situacao in ("visitante", "seu", "previa-admin"),
         "situacao": situacao,
     }
     if situacao == "seu":
@@ -608,6 +624,8 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         cartao["acao"] = (
             "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
         )
+    elif situacao == "previa-admin":
+        cartao["acao"] = "Abrir prévia do curso"
     return cartao
 
 
@@ -650,7 +668,7 @@ def catalogo(request):
     ator = quem_e(request)
     site = site_atual()
     cartoes = [
-        _cartao_do_catalogo(ator, curso)
+        _cartao_do_catalogo(ator, curso, admin_previa=_admin_previa(request))
         for curso in (enderecos.cursos_do_site(site) if site else [])
     ]
     return render(
@@ -658,7 +676,7 @@ def catalogo(request):
         "cursos/catalogo.html",
         {
             "cursos": cartoes,
-            "aviso": _aviso_do_catalogo(ator, cartoes),
+            "aviso": "" if _admin_previa(request) else _aviso_do_catalogo(ator, cartoes),
             "visitante": not ator.autenticado,
             **_de_fora(),
         },

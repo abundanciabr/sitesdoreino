@@ -103,6 +103,21 @@ def trilha_previa(request, destino=""):
     if estado_admin is not True:
         raise Http404
 
+    # A marca nasce somente após a sessão e a lista administrativa reais.
+    # Células privadas podem oferecer o fluxo de ensaio sem alterar a matrícula.
+    admin_anterior = getattr(request, "previa_trilha_admin", None)
+    request.previa_trilha_admin = True
+    try:
+        return _trilha_previa_admin(request, destino)
+    finally:
+        if admin_anterior is None:
+            request.__dict__.pop("previa_trilha_admin", None)
+        else:
+            request.previa_trilha_admin = admin_anterior
+
+
+def _trilha_previa_admin(request, destino):
+
     if destino in ARQUIVOS and request.method not in ("GET", "HEAD"):
         raise Http404
     if destino in ("app.js", "inventario.js"):

@@ -69,6 +69,12 @@ def _entrada(request):
         raise Http404
 
 
+def _admin_previa(request):
+    """Prática do administrador já conferido na entrada privada da Trilha."""
+    return (getattr(request, "previa_trilha_admin", False) is True
+            and getattr(request, "previa_trilha_url", None) == "/trilha/previa/")
+
+
 def _email_da_conta(request, pessoa):
     """Consulta o e-mail da identidade apenas nesta requisição, sem persistir."""
     base = sessao.exigir("IDENTIDADE_API_URL").rstrip("/")
@@ -126,7 +132,7 @@ def _trabalho(request, participacao_id):
     if not participacao:
         raise Http404
     if participacao.pessoa_id == pessoa:
-        return participacao, pessoa, "aluno"
+        return participacao, pessoa, "admin_previa" if _admin_previa(request) else "aluno"
     try:
         telas_marketplace._equipe(request)
     except Http404:
@@ -139,11 +145,14 @@ def catalogo(request):
     site, pessoa = _entrada(request)
     if not pessoa:
         return _login(request)
-    try:
-        _, _ = telas_marketplace._equipe(request)
-        papel = "equipe"
-    except Http404:
-        papel = "aluno"
+    if _admin_previa(request):
+        papel = "admin_previa"
+    else:
+        try:
+            _, _ = telas_marketplace._equipe(request)
+            papel = "equipe"
+        except Http404:
+            papel = "aluno"
     trabalhos = list(ParticipacaoSandbox.objects.filter(site_id=site, pessoa_id=pessoa)
                     .select_related("projeto").order_by("-aceite_em"))
     if papel == "aluno":
@@ -191,12 +200,16 @@ def confirmar_projeto(request, projeto_id):
                                             categoria__in=ProjetoSandbox.Categoria.values).first()
     if projeto is None:
         raise Http404
-    try:
-        aluno = _aluno_atual(request, pessoa, site)
-        if not aluno:
-            _equipe(request)
-    except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
-        return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
+    admin_previa = _admin_previa(request)
+    if admin_previa:
+        aluno = False
+    else:
+        try:
+            aluno = _aluno_atual(request, pessoa, site)
+            if not aluno:
+                _equipe(request)
+        except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
+            return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
     projeto.do_curso = projeto.slug in catalogo_curso.SLUGS
     projeto.livre = projeto.do_curso and projeto.categoria == "livre"
     ativo = ParticipacaoSandbox.objects.filter(site_id=site, pessoa_id=pessoa,
@@ -204,7 +217,7 @@ def confirmar_projeto(request, projeto_id):
     return render(request, 'sandbox/confirmar.html', {
         'projeto': projeto, 'termos_simulacao': sandbox.TERMOS_SIMULACAO,
         'aluno_atual': aluno, 'trabalho_ativo': ativo,
-        'papel': 'aluno' if aluno else 'equipe',
+        'papel': 'admin_previa' if admin_previa else 'aluno' if aluno else 'equipe',
     })
 
 
@@ -215,11 +228,12 @@ def aceitar(request, projeto_id):
         return _login(request)
     if not ProjetoSandbox.objects.filter(pk=projeto_id, site_id=site, ativo=True).exists():
         raise Http404
-    try:
-        if not _aluno_atual(request, pessoa, site):
-            raise Http404
-    except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
-        return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
+    if not _admin_previa(request):
+        try:
+            if not _aluno_atual(request, pessoa, site):
+                raise Http404
+        except (sessao.VizinhaIndisponivel, sessao.ConfiguracaoAusente):
+            return _falha(request, "Não foi possível confirmar sua matrícula agora. Tente novamente.", 503)
     if request.POST.get("aceito_termos") != "sim":
         return _falha(request, "Leia os termos e marque o aceite para começar.")
     try:
@@ -235,6 +249,8 @@ def aceitar(request, projeto_id):
 
 
 def _pode_testar(request):
+    if _admin_previa(request):
+        return True
     try:
         telas_marketplace._equipe(request)
         return True
@@ -276,10 +292,10 @@ def mensagem(request, participacao_id):
     texto = request.POST.get("texto", "").strip()
     try:
         fala = sandbox.mensagem(site_id=trabalho.site_id, participacao_id=trabalho.pk,
-                         ator_id=pessoa, papel=papel, texto=texto)
+                         ator_id=pessoa, papel="equipe" if papel == "admin_previa" else papel, texto=texto)
     except (ValueError, sandbox.ErroSandbox) as erro:
         return _falha(request, str(erro), papel=papel)
-    if papel == "aluno":
+    if papel in ("aluno", "admin_previa"):
         from apps.core.ia_sandbox import enfileirar
         destino = request.POST.get('destino', 'ia')
         if destino not in ('ia', 'cliente', 'ambos'):
@@ -352,7 +368,7 @@ def entregar(request, participacao_id):
     if trabalho is None:
         return _login(request)
     teste = request.POST.get("teste_mantenedor") == "sim"
-    if (teste and not _pode_testar(request)) or (not teste and papel != "aluno"):
+    if (teste and not _pode_testar(request)) or (not teste and papel not in ("aluno", "admin_previa")):
         raise Http404
     try:
         arquivos = [uuid.UUID(chave) for chave in request.POST.getlist("arquivos")]
