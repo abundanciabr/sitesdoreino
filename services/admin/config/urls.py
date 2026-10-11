@@ -286,6 +286,7 @@ from apps.agentes.satisfacao import solicitar as solicitar_satisfacao, andamento
 from apps.atendimento import views as suporte
 from apps.atendimento import gestao as suporte_gestao
 from apps.atendimento import indicadores as suporte_indicadores
+from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
     path("trilha/", trilha_v4, name="trilha_v4"),
@@ -312,6 +313,8 @@ urlpatterns = [
     path("equipe/atendimento/agenda/", suporte.agenda, name="atendimento_agenda_equipe"),
     path("equipe/atendimento/<uuid:conversa_id>/", suporte.conversa_admin, name="atendimento_conversa_equipe"),
     path("equipe/atendimento/<uuid:conversa_id>/forum/", suporte.previa_forum, name="atendimento_forum_equipe"),
+    path("atendimento/decisoes/", suporte_caixa, name="suporte_decisoes"),
+    path("equipe/atendimento/decisoes/", suporte_caixa, name="suporte_decisoes_equipe"),
     path("atendimento/", suporte.fila, name="atendimento"),
     path("atendimento/base/", suporte.base, name="atendimento_base"),
     path("atendimento/agenda/", suporte.agenda, name="atendimento_agenda"),

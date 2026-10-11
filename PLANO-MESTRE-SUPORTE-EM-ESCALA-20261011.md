@@ -2,14 +2,14 @@
 
 - **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md` (cópia local; documento em versionamento nesta entrega, sem publicação como página).
 - **Estado:** plano escrito e **revisado em 11/10/2026 com os 9 pontos da revisão do Codex** (todos conferidos no código). Executado até agora: contexto com compras, agenda e interesse no CRM (`b72bf7ce8`). E1 e os rascunhos e a caixa de decisões da E2 foram expressamente autorizados em 11/10/2026. E3–E7 não fazem parte desta entrega.
-- **Roteiro de execução (checklist vivo do robô):** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (só neste PC). Toda sessão de trabalho começa lendo o roteiro: ele diz o passo atual, a prova de cada passo, a auditoria por etapa e os testes finais. Este plano diz o quê e por quê; o roteiro diz como e em que ordem.
-- **Caminhos de código** abaixo são relativos à raiz `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\` e foram conferidos na main de 11/10/2026 (`b72bf7ce8` ou posterior). O trabalho do suporte acontece em `C:\Users\davia\abundanciabr\wt-suporte-20261010\services\admin\apps\atendimento\`.
+- **Roteiro de execução (checklist vivo do robô):** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (versionado no repositório; não publicado como página). Toda sessão de trabalho começa lendo o roteiro: ele diz o passo atual, a prova de cada passo, a auditoria por etapa e os testes finais. Este plano diz o quê e por quê; o roteiro diz como e em que ordem.
+- **Cópia principal local:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\` e foram conferidos na main de 11/10/2026 (`b72bf7ce8` ou posterior). O trabalho do suporte acontece em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\`.
 
 **O que a revisão do Codex mudou neste plano (11/10/2026):**
 
-1. Troca de senha usa a **recuperação por link** que já existe (`services/admin/apps/comercial/recuperacao_acesso.py`, `solicitar_recuperacao_acesso`), não `resetar_senha`, que gera senha nova. (E5.1)
+1. Troca de senha usa a **recuperação por link** que já existe (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\comercial\recuperacao_acesso.py`, `solicitar_recuperacao_acesso`), não `resetar_senha`, que gera senha nova. (E5.1)
 2. Compra aprovada sem matrícula **recupera a matrícula da compra original**, não cria matrícula nova com `matricular_aluno`. (E5.4)
-3. **Gerar Pix novo fica fora do automático.** O Mercado Pago está congelado (`AGENTS.md`, "Mercado Pago congelado", 07/10/2026): checkout e pagamentos são somente leitura. O robô manda o aluno ao checkout que já existe; não cria cobrança. (tipo 6, E3.2, E5.3)
+3. **Gerar Pix novo fica fora do automático.** O Mercado Pago está congelado (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\AGENTS.md`, "Mercado Pago congelado", 07/10/2026): checkout e pagamentos são somente leitura. O robô manda o aluno ao checkout que já existe; não cria cobrança. (tipo 6, E3.2, E5.3)
 4. A **conta é calculada por tipo**, não por um 85% chutado, e a revisão por sorteio **entra na soma** do tempo da pessoa. (seção 2)
 5. **Nova ordem das etapas:** números → rascunhos → prevenção → respostas → ações → canais → base. Medir antes de automatizar; cortar volume antes de responder. (seção 7)
 6. **Respondido, encerrado e resolvido são três coisas diferentes**, e cada reabertura fica guardada. (E1.2, E1.3)
@@ -31,7 +31,7 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 | Tempo útil da pessoa | 6 h = 360 min |
 | Se ela tocar em todos | 21 segundos por pedido: **impossível** |
 
-**A conta é por tipo, não por um número único.** Cada tipo da seção 5 tem uma fatia estimada do volume, uma cor e um tempo da pessoa. A soma dá o dia dela. Os percentuais abaixo são hipótese inicial; a etapa E1 (números) mede os reais e esta tabela é refeita com dados.
+**A conta é por tipo, não por um número único. A tabela original soma 96%; os 4% restantes ainda não têm tipo nem tempo estimados e ficam explicitamente fora da parcela conhecida.** Cada tipo da seção 5 tem uma fatia estimada do volume, uma cor e um tempo da pessoa. A soma dá o dia dela. Os percentuais abaixo são hipótese inicial; a etapa E1 (números) mede os reais e esta tabela é refeita com dados.
 
 | Tipo (seção 5) | Fatia do volume | Cor | Tempo da pessoa por pedido |
 |---|---|---|---|
@@ -56,15 +56,16 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 
 | Parcela | Conta | Minutos |
 |---|---|---|
-| Verdes (76%) | 760 pedidos × 0 min | 0 |
-| Revisão por sorteio dos verdes (5%) | 38 pedidos × 1 min | 38 |
+| Verdes (72%) | 720 pedidos × 0 min | 0 |
+| Revisão por sorteio dos verdes (5%) | 36 pedidos × 1 min | 36 |
 | Amarelos (21%) | 60 × 1 + 50 × 2 + 60 × 3 + 40 × 2 | 420 |
 | Vermelhos (3%) | 20 × 6 + 5 × 15 + 5 × 10 | 245 |
-| **Total** | | **703 min ≈ 11,7 h: não cabe** |
+| Ainda sem estimativa (4%) | 40 pedidos × tempo ainda não medido | Pendente |
+| **Total conhecido: 96%** | 36 + 420 + 245 | **701 min + os 4% pendentes: não cabe** |
 
-**Com a prevenção (E3 na nova ordem) cortando 30% do volume, 1.000 viram 700:** os mesmos números caem a cerca de **492 min ≈ 8,2 h**. Ainda não cabe em 6 h.
+**Com a prevenção (E3 na nova ordem) cortando 30% do volume, 1.000 viram 700:** a parcela conhecida cai a **490,7 min ≈ 8,2 h, mais o tempo dos 4% pendentes**. Ainda não cabe em 6 h.
 
-**Para caber em 6 h (360 min)** precisa de mais uma das duas coisas: os amarelos 6, 8 e 12 virarem verdes depois de 2 semanas sem erro (tira uns 170 min) **ou** o volume real ser menor que a hipótese. A conta mostra que **a prevenção e a passagem de amarelo para verde valem mais que a IA respondendo**; por isso a ordem das etapas mudou (seção 7).
+**Para caber em 6 h (360 min)** precisa de mais uma das duas coisas: a redução adicional do trabalho humano nos tipos 6, 8 e 12, se os números reais e a autorização futura permitirem **ou** o volume real ser menor que a hipótese. A conta mostra que **a prevenção e a passagem de amarelo para verde valem mais que a IA respondendo**; por isso a ordem das etapas mudou (seção 7).
 
 **O que a conta deixa claro:** o sorteio custa tempo e entra na soma; os vermelhos, mesmo sendo 3%, levam um terço do dia; e a pessoa só cabe no dia se os números medidos na E1 confirmarem ou melhorarem a hipótese.
 
@@ -72,25 +73,25 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 
 | O que existe | Onde | Para que serve hoje |
 |---|---|---|
-| Chat do aluno no site e fila de atendimento | `services/admin/apps/atendimento/` (`views.py`, `service.py`, `models.py`) | Conversa privada entre aluno e equipe |
-| Quatro modos por assunto: assistido, automático pela base, automático com encaminhamento, assistente que conversa e resolve | `atendimento/models.py` (`MODOS`) | Autonomia por assunto. Hoje o uso é "assistido" (a equipe responde) |
-| Robô trabalhando em segundo plano | `atendimento/service.py` (`processar_uma`, `rodar_para_sempre`) | Processa as conversas marcadas para processar |
-| Contexto para a equipe: CRM, compras, matrículas, faixa, NPS, atendimentos anteriores, agenda e data de hoje | `atendimento/contexto.py` | Entrou em 10/10/2026 (`b72bf7ce8`) |
-| Produto do atendimento salvo no CRM | `contexto.salvar_interesse` e `POST /leads/{id}/interesses` em `services/leads/apps/core/api.py` | Interesse vira histórico e tag `interesse:<id>` |
-| Agenda dos produtos | `/admin/atendimento/agenda/` (`AgendaDoProduto`) | Datas de início e informações de cada produto |
-| Base de perguntas e respostas, com revisão | `Conhecimento`, `/admin/atendimento/base/` | Fonte das respostas |
+| Chat do aluno no site e fila de atendimento | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento` (`views.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`) | Conversa privada entre aluno e equipe |
+| Quatro modos por assunto: assistido, automático pela base, automático com encaminhamento, assistente que conversa e resolve | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py` (`MODOS`) | Autonomia por assunto. Hoje o uso é "assistido" (a equipe responde) |
+| Robô trabalhando em segundo plano | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py` (`processar_uma`, `rodar_para_sempre`) | Processa as conversas marcadas para processar |
+| Contexto para a equipe: CRM, compras, matrículas, faixa, NPS, atendimentos anteriores, agenda e data de hoje | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py` | Entrou em 10/10/2026 (`b72bf7ce8`) |
+| Produto do atendimento salvo no CRM | `contexto.salvar_interesse` e `POST /leads/{id}/interesses` em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\leads\apps\core\api.py` | Interesse vira histórico e tag `interesse:<id>` |
+| Agenda dos produtos | `https://meshcraft.top/admin/atendimento/agenda/` (`AgendaDoProduto`) | Datas de início e informações de cada produto |
+| Base de perguntas e respostas, com revisão | `Conhecimento`, `https://meshcraft.top/admin/atendimento/base/` | Fonte das respostas |
 | Prévia para o fórum | `PreviaForum` | Dúvida vira tópico público |
 | Aviso à equipe por WhatsApp | `Responsavel`, `Aviso`, `service.avisar` | Avisa quem atende |
-| Triagem, alunos, desempenho, visão geral | `atendimento/gestao.py`, `atendimento/indicadores.py` | Gestão da fila |
+| Triagem, alunos, desempenho, visão geral | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py` | Gestão da fila |
 | Teto de gasto de IA | `apps/agentes` (`AutorizacaoDeGasto`), `service.orcamento` | Limite de gasto do robô |
-| Conversas de WhatsApp e e-mail que chegam | `services/mensageria/apps/conversas/` (`entrada.py`, `envio.py`, `api.py`) | Hoje são do comercial, separadas do suporte |
-| Jornadas e envios programados | `services/mensageria/apps/jornadas/`, `services/notificacoes/` | Mensagens automáticas |
-| Progresso nas aulas | `services/cursos/` (`Progresso`) | Onde o aluno parou |
-| Pagamentos e compras | `services/pagamentos/` (`Intent`, `PaymentAttempt`), `services/leads/` (`CompraDaOportunidade`) | Situação do pagamento |
-| Recuperação de acesso por link | `services/admin/apps/comercial/recuperacao_acesso.py` (`solicitar_recuperacao_acesso`), já usada pelo robô comercial no WhatsApp | Manda link de recuperação; o robô não escolhe destinatário, e-mail nem texto. É isto que o suporte reaproveita, **não** `IdentidadeClient.resetar_senha`, que gera senha nova |
+| Conversas de WhatsApp e e-mail que chegam | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\conversas` (`entrada.py`, `envio.py`, `api.py`) | Hoje são do comercial, separadas do suporte |
+| Jornadas e envios programados | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\mensageria\apps\jornadas`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\notificacoes` | Mensagens automáticas |
+| Progresso nas aulas | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\cursos` (`Progresso`) | Onde o aluno parou |
+| Pagamentos e compras | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\pagamentos` (`Intent`, `PaymentAttempt`), `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\leads` (`CompraDaOportunidade`) | Situação do pagamento |
+| Recuperação de acesso por link | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\comercial\recuperacao_acesso.py` (`solicitar_recuperacao_acesso`), já usada pelo robô comercial no WhatsApp | Manda link de recuperação; o robô não escolhe destinatário, e-mail nem texto. É isto que o suporte reaproveita, **não** `IdentidadeClient.resetar_senha`, que gera senha nova |
 | Matrículas | `AlunosClient.prontuario`; a matrícula nasce da compra (`CompraDaOportunidade` → aluno) | Ver e **recuperar a matrícula da compra original**. `matricular_aluno` cria matrícula nova e não é o caminho do suporte |
-| Checkout e pagamentos congelados | `AGENTS.md`, "Mercado Pago congelado" (07/10/2026): `services/checkout`, `services/pagamentos`, `services/aplicacao`, `packages/site_errors`, `packages/outbox-relay` são somente leitura | O suporte só **lê** e manda o aluno ao checkout que existe; nenhuma cobrança nova é criada pelo robô |
-| Oportunidade com próximo passo e prazo | `services/leads/` (`Oportunidade`: `passo_descricao`, `passo_executar_ate`) | Sequência comercial |
+| Checkout e pagamentos congelados | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\AGENTS.md`, "Mercado Pago congelado" (07/10/2026): `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\checkout`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\pagamentos`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\aplicacao`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\site_errors`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\outbox-relay` são somente leitura | O suporte só **lê** e manda o aluno ao checkout que existe; nenhuma cobrança nova é criada pelo robô |
+| Oportunidade com próximo passo e prazo | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\leads` (`Oportunidade`: `passo_descricao`, `passo_executar_ate`) | Sequência comercial |
 | Erros vistos no site | `site_errors` (código `ERR-...`) | Erro por página |
 
 **O que falta hoje:**
@@ -108,7 +109,7 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 
 ## 4. Como o robô e a pessoa dividem o trabalho
 
-- **Verde: o robô resolve e registra.** A pessoa só vê por sorteio.
+- **Verde, no desenho futuro da E4: o robô resolve e registra.** Nesta entrega a cor apenas classifica; a equipe continua enviando cada resposta.
 - **Amarelo: o robô prepara tudo** (resposta e ação), e a pessoa aprova com um clique, em lote.
 - **Vermelho: a pessoa decide.** O robô entrega o caso montado e um rascunho, e nunca responde sozinho.
 
@@ -140,7 +141,7 @@ Tudo o que mexe com dinheiro (cobrar, devolver, contestar) é vermelho ou está 
 | 10 | Dúvida técnica de modelagem ou Roblox | "Como exporto o modelo?" | Amarelo | Responde pela base ou pelo fórum; se não houver resposta, vai à pessoa e vira **rascunho** de tópico, que ela publica | Base e fórum |
 | 11 | Quer comprar outro produto | "Tem curso avançado?" | Verde | Informa e registra interesse e oportunidade | Catálogo e CRM |
 | 12 | Problema no site (página com erro, vídeo não abre) | "O vídeo não carrega" | Amarelo; vira "problema geral" se forem muitos | Confere o erro registrado, orienta e agrupa. O aviso público no site sai só como rascunho para a pessoa | `site_errors` (só leitura) |
-| 13 | Reembolso ou arrependimento | "Quero meu dinheiro de volta" | Vermelho | Monta o caso (data da compra, prazo de 7 dias, uso) e um rascunho | Leads, pagamentos e regras |
+| 13 | Reembolso ou arrependimento | "Quero meu dinheiro de volta" | Vermelho | Monta o caso (data da compra, histórico e regras aplicáveis) e um rascunho | Leads, pagamentos e regras |
 | 14 | Contestação no cartão, ameaça de processo, reclamação forte | "Vou no Procon" | Vermelho, prioridade máxima | Monta o caso | Tudo |
 | 15 | Pedido sobre dados pessoais (LGPD) | "Apaguem meus dados" | Vermelho | Monta o caso | CRM |
 | 16 | Cumprimento sem assunto | "Oi" | Verde | Pergunta como ajudar e mostra atalhos | — |
@@ -151,7 +152,7 @@ Tudo o que mexe com dinheiro (cobrar, devolver, contestar) é vermelho ou está 
 |---|---|---|
 | D1 | O robô pode responder sozinho aos pedidos verdes? Hoje a regra é "a equipe envia a resposta". | E4 |
 | D2 | Qual o orçamento de IA por mês e o teto por dia? É gasto real. Ao bater o teto o robô segue com texto fixo (seção 9). | E4 em volume |
-| D3 | Quais são as regras escritas para o robô seguir? Reembolso e garantia (o Código de Defesa do Consumidor dá 7 dias de arrependimento em compra on-line), troca de turma, o que nunca prometer. | E4; qualquer coisa ligada a dinheiro |
+| D3 | Quais são as regras escritas para o robô seguir? Reembolso e garantia, troca de turma e o que nunca prometer. A equipe confere o caso; o rascunho não presume elegibilidade nem prazo. | E4; qualquer coisa ligada a dinheiro |
 | D4 | Qual número de WhatsApp atende o suporte: o mesmo do comercial ou outro? | E6 |
 | D5 | Qual o prazo prometido de resposta humana e qual o horário de atendimento? Até ele decidir, o plano usa 24 h. | Ajusta E2.4 e E2.7 |
 | D6 | As cores da tabela da seção 5 estão certas, com os três degraus (consultar, mostrar, cobrar) da seção 4? | Ajusta E1.1 e E4 |
@@ -164,18 +165,18 @@ A ordem mudou com a revisão do Codex: **números → rascunhos → prevenção 
 
 **Objetivo:** trocar a hipótese da seção 2 por números medidos antes de automatizar qualquer coisa. **Depende de:** nada; pode começar já.
 
-- **E1.1 Tipo e cor na chegada.** O robô marca o tipo (seção 5), a cor pelo degrau (consultar, mostrar, cobrar), a urgência e o humor do aluno. Onde: campos de classificação em `Conversa`; reaproveitar `prioridade` para urgência; classificação em `contexto.py`.
-- **E1.2 Três estados separados: respondido, encerrado e resolvido.** Respondido é "alguém escreveu". Encerrado é "a conversa fechou". Resolvido é "o aluno confirmou ou não voltou em 7 dias". Cada reabertura fica guardada com data e motivo (`Reabertura` ligada à `Conversa`). Onde: `models.py`, `service.py`.
-- **E1.3 Painel de números** (`indicadores.py`): fatia por tipo, tempo da pessoa por tipo, tempo até a primeira resposta e até resolver, quem volta a pedir em 7 dias, reaberturas, satisfação, custo de IA por pedido, pedidos por 100 alunos ativos.
+- **E1.1 Tipo e cor na chegada.** O robô marca o tipo (seção 5), a cor pelo degrau (consultar, mostrar, cobrar), a urgência e o humor do aluno. Onde: campos de classificação em `Conversa`; reaproveitar `prioridade` para urgência; classificação em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`.
+- **E1.2 Três estados separados: respondido, encerrado e resolvido.** Respondido é "alguém escreveu". Encerrado é "a conversa fechou". Resolvido é "o aluno confirmou ou não voltou em 7 dias". Cada reabertura fica guardada com data e motivo (`Reabertura` ligada à `Conversa`). Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`.
+- **E1.3 Painel de números** (`C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py`): fatia por tipo, tempo da pessoa por tipo, tempo até a primeira resposta e até resolver, quem volta a pedir em 7 dias, reaberturas, satisfação, custo de IA por pedido, pedidos por 100 alunos ativos.
 - **E1.4 Tabela da seção 2 refeita com os números medidos** depois de 2 semanas. Essa tabela decide quais tipos vão para a E4 e a E5.
 
 **Como saber que ficou pronto:** cada pedido mostra tipo e cor; a tela de números mostra fatia e tempo por tipo com dados reais; um pedido reaberto aparece como reaberto, não como novo.
 
 ### E2: rascunhos e caixa de decisões (a pessoa rende de 3 a 5 vezes mais)
 
-**Objetivo:** a pessoa para de abrir conversa por conversa e passa a aprovar respostas prontas, em grupos. **Depende de:** E1.1.
+**Objetivo:** a pessoa para de abrir conversa por conversa e passa a aprovar respostas prontas, em grupos. **Depende de:** classificação E1.1 e histórico de reaberturas E1.2. A janela de 14 dias da E1.4 não impede os rascunhos assistidos.
 
-- **E2.1 Resposta pronta em todo pedido.** No modo assistido, o robô passa a escrever o rascunho no espaço da resposta, e a equipe só confere e envia. Ele não envia nada sozinho. Onde: `contexto.py` (`preparar`, campo `resposta`).
+- **E2.1 Resposta pronta em todo pedido.** No modo assistido, o robô passa a escrever o rascunho no espaço da resposta, e a equipe só confere e envia. Ele não envia nada sozinho. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py` (`preparar`, campo `resposta`).
 - **E2.2 Rascunho sem IA quando dá.** Para os tipos de consultar e mostrar (1 a 5, 7, 9, 16) o rascunho é **texto fixo por tipo com os dados preenchidos pelo sistema** (nome, data, situação, link do checkout que existe). A IA só escreve quando o texto fixo não cobre. Isso baixa o custo e é o mesmo caminho usado quando o teto de gasto bate (E4.6).
 - **E2.3 Prioridade automática.** Vermelho, aluno muito irritado, comprador dos últimos 7 dias e pedido reaberto sobem para prioridade alta.
 - **E2.4 Fila por prazo.** Cada pedido mostra "sem resposta há X" e fica destacado quando passa do prazo (D5). Onde: `gestao.contexto_fila`.
@@ -224,7 +225,7 @@ A ordem mudou com a revisão do Codex: **números → rascunhos → prevenção 
 
 **Depende de:** E4 e D3. Toda ação aqui usa o que já existe; nada é criado no checkout ou nos pagamentos.
 
-- **E5.1 Recuperação de acesso por link.** Reaproveita `solicitar_recuperacao_acesso` de `services/admin/apps/comercial/recuperacao_acesso.py`: o robô pede a recuperação, o link vai ao destino cadastrado, e o robô não escolhe destinatário, e-mail, senha nem texto. **Não usa `resetar_senha`.** Verde (mostrar).
+- **E5.1 Recuperação de acesso por link.** Reaproveita `solicitar_recuperacao_acesso` de `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\comercial\recuperacao_acesso.py`: o robô pede a recuperação, o link vai ao destino cadastrado, e o robô não escolhe destinatário, e-mail, senha nem texto. **Não usa `resetar_senha`.** Verde (mostrar).
 - **E5.2 Reenviar o acesso ou o e-mail de boas-vindas:** verde.
 - **E5.3 Pix vencido:** o robô só aponta o checkout que existe (já feito na E3.2 e no tipo 6). **Não há ação de gerar cobrança**; o Mercado Pago está congelado e isso é "cobrar" (seção 4).
 - **E5.4 Compra aprovada sem matrícula: recuperar a matrícula da compra original.** O robô acha a compra (`CompraDaOportunidade`, `Intent`), confere que está aprovada e refaz a matrícula ligada a essa compra, com o mesmo produto e turma. **Não usa `matricular_aluno`** para criar matrícula nova. Amarelo no começo; verde depois de 2 semanas sem erro.
@@ -265,7 +266,7 @@ A ordem mudou com a revisão do Codex: **números → rascunhos → prevenção 
 
 ## 9. Custo de IA (para a decisão D2)
 
-- **Custo por mês** ≈ pedidos no mês que **precisam de IA** × chamadas por pedido × preço por chamada do modelo rápido. Os tipos de texto fixo (E2.2) não entram: classificar é 1 chamada barata, e o rascunho sai do sistema.
+- **Custo por mês** ≈ pedidos no mês que **precisam de IA** × chamadas por pedido × preço por chamada do modelo rápido. Os tipos de texto fixo (E2.2) não entram: a classificação e o texto fixo usam zero chamadas de IA.
 - **Medir antes de abrir volume:** o custo real por pedido é medido na E1.3 e aparece no painel.
 - **Teto diário (E4.6): o suporte não para quando a IA para.** Ao bater o teto, o robô segue com texto fixo e dados preenchidos pelo sistema para os tipos de consultar e mostrar; o resto vira amarelo com rascunho fixo. Nenhum pedido se perde e nenhuma chamada passa do teto.
 - **Lote sem IA por aluno:** na caixa de decisões a pessoa aprova um texto e o sistema preenche os dados de cada aluno. Um lote de 38 custa 0 chamadas, não 38.
@@ -274,7 +275,7 @@ A ordem mudou com a revisão do Codex: **números → rascunhos → prevenção 
 ## 10. Riscos e cuidados
 
 - **Robô errando em escala:** o "resolveu?" (E4.3), o sorteio (E4.4), o botão de desligar por tipo e a abertura aos poucos (E4.8).
-- **Mexer no congelado por engano:** nenhuma etapa escreve em `services/checkout`, `services/pagamentos`, `services/aplicacao`, `packages/site_errors` ou `packages/outbox-relay`. O suporte só lê e aponta o checkout que existe. Gerar Pix ou link novo está fora do plano até o mantenedor descongelar.
+- **Mexer no congelado por engano:** nenhuma etapa escreve em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\checkout`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\pagamentos`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\aplicacao`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\site_errors` ou `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\packages\outbox-relay`. O suporte só lê e aponta o checkout que existe. Gerar Pix ou link novo está fora do plano até o mantenedor descongelar.
 - **Ordens escondidas nas mensagens dos alunos:** mensagem é dado, nunca ordem; isso já está nas instruções do robô. Nenhuma ação acontece só porque o texto pediu.
 - **Privacidade:** o robô não recebe e-mail, telefone, CPF nem nota de satisfação. Já é assim desde 10/10. A recuperação por link mantém isso: o robô não escolhe destinatário nem vê senha.
 - **Ação no aluno errado:** a ação confere o dono pelo acesso, e o código de confirmação vale para WhatsApp e e-mail (E5). Matrícula recuperada sempre nasce de uma compra aprovada do próprio aluno.
@@ -283,7 +284,7 @@ A ordem mudou com a revisão do Codex: **números → rascunhos → prevenção 
 - **Custo disparado:** teto diário com texto fixo (E4.6).
 - **Contar "respondido" como "resolvido":** os três estados são separados desde a E1.2, e a reabertura fica guardada.
 - **WhatsApp:** janela de 24 h, modelos aprovados e descadastro.
-- **Lei:** arrependimento em 7 dias (Código de Defesa do Consumidor, art. 49) e pedidos sobre dados pessoais (LGPD) são sempre vermelhos.
+- **Casos para decisão humana:** reembolso, contestação e pedidos sobre dados pessoais são sempre vermelhos; nenhuma decisão jurídica é presumida pelo rascunho.
 
 ## 11. Checklist vivo
 
@@ -357,12 +358,9 @@ O detalhe passo a passo, com prova e auditoria, está no roteiro `C:\Users\davia
 - [ ] E7.2 relatório semanal das causas, com reaberturas
 - [ ] E7.3 dúvidas técnicas viram rascunho de tópico
 
-## 12. Próxima ação
+## 12. Continuação do plano
 
-1. O mantenedor responde D1 a D6. Pode ser só "sim", "não" e números.
-2. Enquanto isso, E1 (números) e E2 (rascunhos) não dependem das decisões e podem começar com "PLANO DE EXECUÇÃO: E1" ou "PLANO DE EXECUÇÃO: E1 e E2".
-3. Gerar Pix novo pelo suporte só entra no plano se o mantenedor descongelar o Mercado Pago, com pedido expresso que reconheça a mudança (`AGENTS.md`).
-
+E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e são executados nesta entrega. A tabela de hipóteses só será substituída depois de 14 dias reais de coleta. D1–D6 continuam abertas; nenhuma delas é presumida pelo código. E2.7/E2.8 e E3–E7 permanecem fora desta entrega. Novas respostas autônomas, novos canais e ações financeiras não são ativados.
 
 ## Execução autorizada em 11/10/2026 — correções e alcance
 

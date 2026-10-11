@@ -1,15 +1,17 @@
 """Consultas da área privada de suporte, sempre limitadas ao site da sessão."""
 import hashlib
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, Max
+from django.db.models import Q, Count, Max, Case, When, Value, OuterRef, Subquery, DateTimeField
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 from apps.core.models import MembroDaEquipe
-from .models import Conversa
+from .models import Conversa, Mensagem
+from .escala import TIPOS
+from datetime import timedelta
 
 ESTADOS = {'aguardando':'Aguardando', 'andamento':'Em atendimento',
-           'aguardando_aluno':'Aguardando aluno', 'encerrado':'Concluído', 'robo':'Com o robô'}
+           'aguardando_aluno':'Aguardando aluno', 'encerrado':'Encerrado', 'robo':'Com o robô'}
 PRIORIDADES = {'baixa':'Baixa', 'normal':'Normal', 'alta':'Alta'}
 
 def identidade_atendente(request):
@@ -40,6 +42,8 @@ def preparar_linhas(consultas):
         c.espera = ('%dh %02dmin'%divmod(minutos,60) if minutos>=60 else str(minutos)+' min') if c.espera_desde and c.estado!='encerrado' else '—'
         c.estado_nome = ESTADOS.get(c.estado,c.estado)
         c.prioridade_nome = PRIORIDADES.get(c.prioridade,'Normal')
+        c.tipo_nome = TIPOS.get(c.tipo, TIPOS[0])
+        c.vencido = bool(c.espera_desde and c.estado != 'encerrado' and minutos >= 24*60)
     return linhas
 
 def contexto_fila(request, sid):
@@ -59,7 +63,14 @@ def contexto_fila(request, sid):
     elif responsavel: consulta = consulta.filter(atendente_id=responsavel)
     if prioridade in PRIORIDADES: consulta = consulta.filter(prioridade=prioridade)
     if curso: consulta = consulta.filter(curso=curso)
-    consulta = consulta.order_by('criada_em')
+    ultima_equipe = Mensagem.objects.filter(conversa_id=OuterRef('pk'),autor='equipe').order_by('-pk').values('pk')[:1]
+    from django.db.models.functions import Coalesce
+    consulta = consulta.annotate(_equipe=Coalesce(Subquery(ultima_equipe),Value(0)))
+    pendente = Mensagem.objects.filter(conversa_id=OuterRef('pk'),autor='aluno',pk__gt=OuterRef('_equipe')).order_by('pk').values('criada_em')[:1]
+    consulta = consulta.annotate(_espera=Subquery(pendente,output_field=DateTimeField())).annotate(
+        _ordem=Case(When(cor='vermelho',then=Value(0)),
+            When(~Q(estado='encerrado') & Q(_espera__lt=timezone.now()-timedelta(hours=24)),then=Value(1)),
+            When(prioridade='alta',then=Value(2)),default=Value(3))).order_by('_ordem','criada_em')
     pagina = Paginator(consulta,25).get_page(request.GET.get('pagina'))
     numeros = {e:0 for e in ESTADOS}
     numeros.update({i['estado']:i['total'] for i in todas.values('estado').annotate(total=Count('id'))})

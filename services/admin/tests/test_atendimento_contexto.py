@@ -41,7 +41,7 @@ def test_contexto_reune_crm_nps_zero_faixa_e_historico(atendimento):
     anterior = Conversa.objects.create(site_id=SID, pessoa_id=c.pessoa_id, assunto=c.assunto, estado='encerrado')
     Conversa.objects.create(site_id=SID, pessoa_id='outra-pessoa', assunto=c.assunto)
     d = contexto.preparar(c)
-    assert d['resposta'] == '' and d['contexto']['crm']['email'] == EMAIL
+    assert bool(d['resposta']) and d['contexto']['crm']['email'] == EMAIL
     assert d['contexto']['nps']['avaliacoes'][0]['nota'] == 0
     assert d['contexto']['faixa']['nome'] == 'Branca'
     assert [a['id'] for a in d['contexto']['anteriores']] == [str(anterior.pk)]
@@ -103,7 +103,7 @@ def test_ia_analisa_demanda_sem_receber_cadastro_privado(atendimento, monkeypatc
             'passos': ['Conferir o acesso à aula na matrícula.']}))
     monkeypatch.setattr(service.modelo, 'responder', analisar)
     d = contexto.preparar(c)
-    assert d['demanda'] == 'A aula não abre.' and d['resposta'] == ''
+    assert d['demanda'] == 'A aula não abre.' and bool(d['resposta'])
     assert d['contexto']['nps']['avaliacoes'][0]['nota'] == 0
 
 

@@ -107,7 +107,8 @@ def _compra(bruta):
     return {'produtos': [str(p) for p in bruta.get('produtos') or [] if p][:10],
         'situacao': SITUACOES_DA_COMPRA.get(bruta.get('situacao'), 'Situação não informada'),
         'valor': dinheiro(valor) if type(valor) is int and valor >= 0 else '',
-        'pedido_em': quando(bruta.get('criada_em')), 'pago_em': quando(bruta.get('aprovado_em'))}
+        'pedido_em': quando(bruta.get('criada_em')), 'pago_em': quando(bruta.get('aprovado_em')),
+        'pago_em_iso': str(bruta.get('aprovado_em') or '')}
 
 
 def _crm(site_id, email):
@@ -274,9 +275,18 @@ def preparar(conversa, usar_ia=True):
         'sabemos': [], 'faltando': [], 'passos': [], 'produto_sugerido': None}
     if not ultima:
         return resultado
+    from .escala import registrar_classificacao
+    from .textos_fixos import preparar as texto_fixo
+    registrar_classificacao(conversa, ultima.texto, resultado['contexto'])
+    fixo = texto_fixo(conversa, resultado['contexto'])
+    resultado.update(fixo)
     resultado['produto_sugerido'] = sugerir_produto(conversa, resultado['contexto'])
     textos, _ = service.fontes_da_base(ultima.texto, conversa.site_id, conversa.assunto_id, conversa.curso)
     resultado['fontes'] = [{'id': str(t.pk), 'pergunta': t.pergunta, 'resposta': t.resposta, 'revisao': t.revisao} for t in textos]
+    # Datas, acesso, pagamento e cumprimentos não precisam de IA nem para classificar.
+    if conversa.tipo not in (0, 10, 12) or fixo.get('coberto'):
+        resultado['fontes'] = fixo['fontes']
+        return resultado
     config = service.config(conversa.site_id)
     autorizacao = service.orcamento(config)
     if not usar_ia or not config.ia_ativa or not autorizacao:
@@ -284,16 +294,25 @@ def preparar(conversa, usar_ia=True):
         return resultado
     produtos = resultado['contexto'].get('catalogo') or []
     try:
-        r = service.modelo.responder(modelo=service.modelo.conexao().modelo_rapido, instrucoes=INSTRUCOES,
+        from .escala import chamar_modelo
+        r = chamar_modelo(conversa, modelo=service.modelo.conexao().modelo_rapido, instrucoes=INSTRUCOES + '\nInclua resposta: um rascunho curto para revisão humana. Não afirme ter executado ações. Sem fonte da escola, faça uma pergunta para esclarecer. Não prometa datas, preços ou regras.',
             itens=[{'role': 'user', 'content': json.dumps({'historico': service.historico_para_sugestao(conversa),
                 'curso': conversa.curso, 'aula': conversa.aula, 'pagina': conversa.pagina, 'base': resultado['fontes'],
                 'hoje': resultado['contexto']['atualizado_em_texto'], 'aluno': _para_o_robo(conversa, resultado['contexto']),
                 'agenda': resultado['contexto']['agenda'], 'produtos': produtos[:80]}, ensure_ascii=False)}],
             autorizacao_id=autorizacao.pk, origem='suporte', max_saida=1400, esforco='low')
+        if getattr(r, 'consumo', None):
+            from .models import ConsumoDoAtendimento
+            ConsumoDoAtendimento.objects.get_or_create(consumo=r.consumo,
+                defaults={'conversa': conversa, 'rodada': conversa.rodada})
         d = json.loads(r.texto)
         if not r.completa or not isinstance(d.get('demanda'), str) or not d['demanda'].strip():
             raise ValueError
         resultado['demanda'] = service.publico(d['demanda'], conversa)[:1500]
+        if isinstance(d.get('resposta'), str) and d['resposta'].strip():
+            resultado['resposta'] = service.publico(d['resposta'], conversa)[:6000]
+            resultado['fixo'] = False
+            resultado['lote'] = False
         for chave in ('sabemos', 'faltando', 'passos'):
             valores = d.get(chave, [])
             if not isinstance(valores, list):

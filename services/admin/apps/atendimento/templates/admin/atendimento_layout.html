@@ -2,11 +2,12 @@
 {% load nomes_admin %}
 {% block titulo %}{% block suporte_titulo %}Suporte{% endblock %}{% endblock %}
 {% block corpo %}
-<link rel="stylesheet" href="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.css?v=2">
+<link rel="stylesheet" href="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.css?v=4">
 <div class="sg-shell">
   <aside class="sg-sidebar" aria-label="Menu do suporte">
     <a class="sg-marca" href="{{ suporte_prefixo }}/">✦ <strong>Meshcraft</strong><small>Suporte interno</small></a>
     <nav aria-label="Gestão do suporte">
+      <a href="{{ suporte_prefixo }}/decisoes/">☑ <span>Caixa de decisões</span></a>
       <a href="{{ suporte_prefixo }}/supervisor/" {% if '/supervisor/' in request.path %}aria-current="page"{% endif %}>◈ <span>Visão geral</span></a>
       <a href="{{ suporte_prefixo }}/" {% if request.path == suporte_prefixo|add:'/' %}aria-current="page"{% endif %}>☷ <span>Fila</span></a>
       <a href="{{ suporte_prefixo }}/triagem/" {% if '/triagem/' in request.path %}aria-current="page"{% endif %}>▤ <span>Triagem</span></a>
@@ -26,5 +27,5 @@
     </main>
   </div>
 </div>
-<script defer src="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.js?v=3"></script>
+<script defer src="{{ suporte_prefixo }}/chat/arquivo/gerenciamento.js?v=4"></script>
 {% endblock %}
