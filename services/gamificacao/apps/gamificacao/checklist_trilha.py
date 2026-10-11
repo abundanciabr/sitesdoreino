@@ -76,7 +76,7 @@ def montar_checklists(pessoa_id, site_id, jornada):
                 _item(2, "Meu motivo", inicio_etapas[0]['estado'],
                       "Motivo concluído e XP recebido." if inicio_etapas[0]['concluida'] else
                       "Escolha seu motivo e conclua a tarefa para receber XP.",
-                      {"rotulo": "Abrir meu motivo", "url": "/conquistas/inicio/motivo/"},
+                      {"rotulo": "Definir meus motivos", "url": "/conquistas/inicio/motivo/"},
                       sufixo="motivo", bloqueado=inicio_etapas[0]['bloqueada']),
                 _item(2, "Meu objetivo e compromisso", inicio_etapas[1]['estado'],
                       detalhe_inicio(1, "Objetivo e compromisso concluídos com XP." if inicio_etapas[1]['concluida'] else

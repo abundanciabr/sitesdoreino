@@ -244,6 +244,13 @@ function createProgressPanel(details,options){
     if(item.acao&&!blocked){
       const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
       action.href=item.acao.url;
+      if (item.acao.url === '/conquistas/inicio/motivo/') {
+        if (state !== 'concluido') action.textContent = 'Definir meus motivos';
+        action.addEventListener('click', event => {
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
+          event.preventDefault(); openMotivo(action);
+        });
+      }
       if(state!=='concluido')action.insertAdjacentHTML('beforeend',icon('arrow'));
       content.append(action);
     }
@@ -345,3 +352,37 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshJou
 window.addEventListener('focus',()=>{if(!document.hidden)refreshJourney();});
 setInterval(()=>{if(!document.hidden&&document.querySelector('#detail-dialog').open)refreshJourney();},30000);
 loadJourney();
+
+let motivoDialog, motivoFrame, motivoReady = false, motivoOpener;
+function openMotivo(opener) {
+  if (!motivoDialog) {
+    motivoDialog = document.createElement('dialog'); motivoDialog.className = 'motivo-dialog';
+    motivoDialog.setAttribute('aria-label', 'Definir meus motivos');
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'motivo-close';
+    close.textContent = '×'; close.setAttribute('aria-label', 'Fechar meus motivos');
+    motivoFrame = document.createElement('iframe'); motivoFrame.title = 'Meus motivos — uma etapa de cada vez';
+    const requestClose = () => {
+      if (motivoReady) motivoFrame.contentWindow.postMessage({type: 'meshcraft:motivo-pedir-fechamento'}, window.location.origin);
+      else motivoDialog.close();
+    };
+    close.addEventListener('click', requestClose);
+    motivoDialog.addEventListener('cancel', event => { event.preventDefault(); requestClose(); });
+    motivoDialog.addEventListener('close', () => {
+      motivoFrame.src = 'about:blank'; motivoReady = false;
+      const inDetails = document.querySelector('#detail-dialog').open;
+      refreshJourney().then(() => {
+        const panel = document.querySelector(inDetails ? '#dialog-panel' : '#panel-1');
+        (panel?.querySelector('a[href="/conquistas/inicio/motivo/"]') || motivoOpener)?.focus({preventScroll: true});
+      });
+    });
+    window.addEventListener('message', event => {
+      if (!motivoDialog.open || event.origin !== window.location.origin || event.source !== motivoFrame.contentWindow) return;
+      if (event.data?.type === 'meshcraft:motivo-pronto') motivoReady = true;
+      if (event.data?.type === 'meshcraft:motivo-fechar') motivoDialog.close();
+    });
+    motivoDialog.append(close, motivoFrame); document.body.append(motivoDialog);
+  }
+  motivoOpener = opener; motivoReady = false;
+  motivoFrame.src = '/conquistas/inicio/motivo/?embutido=1';
+  motivoDialog.showModal();
+}

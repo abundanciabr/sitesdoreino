@@ -5,9 +5,9 @@
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#f8faf5">
   <title>Uma conquista sua | Meshcraft Academy</title>
   <link rel="stylesheet" href="{% url 'estatico' 'inicio_conquista.css' %}?v=1">
-  <script src="{% url 'estatico' 'inicio_conquista.js' %}?v=1" defer></script>
+  <script src="{% url 'estatico' 'inicio_conquista.js' %}?v=2" defer></script>
 </head>
-<body class="{% if conquista_ja_recebida %}revisita{% endif %}">
+<body data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" class="{% if conquista_ja_recebida %}revisita{% endif %}">
   <header class="marca"><span class="marca-icone" aria-hidden="true">◇</span> MESHCRAFT <span>SEU CAMINHO CRIATIVO</span></header>
   <main class="celebracao" aria-labelledby="titulo-conquista">
     <div class="confetes" aria-hidden="true">{% for n in '123456789012' %}<i style="--i:{{ forloop.counter }}"></i>{% endfor %}</div>

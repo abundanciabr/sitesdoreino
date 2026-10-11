@@ -137,3 +137,23 @@ def test_links_entre_paginas_respeitam_prefixo_publico(client):
             assert '/conquistas/inventario/' in corpo
     finally:
         set_script_prefix(prefixo_anterior)
+
+
+def test_motivo_embutido_tem_duas_etapas_sem_saida_antiga_e_comprovante_no_mesmo_painel(client):
+    resposta = client.get(reverse('inicio-motivo') + '?embutido=1')
+    html = resposta.content.decode()
+    assert resposta.status_code == 200
+    assert 'gamificacao/inicio_embutido.html' in [t.name for t in resposta.templates]
+    assert 'data-embutido="sim"' in html
+    assert 'id="inicio-motivo-reflexao" hidden' in html
+    assert 'name="motivo_outro"' in html
+    assert 'Depois eu faço isso' in html
+    assert 'Sair e retomar depois' not in html
+    assert 'Salvar para continuar depois' not in html
+    assert 'private' in resposta['Cache-Control']
+    credito = guardar(client, 'inicio-motivo', motivo='ugc').json()
+    comprovante = client.get(credito['conquista_url'] + '&embutido=1')
+    assert comprovante.status_code == 200
+    assert comprovante.context['conquista_xp'] == 100
+    assert 'data-embutido="sim"' in comprovante.content.decode()
+    assert client.get(reverse('inicio-conquista', args=[1]) + '?embutido=1').context['conquista_xp'] == 0

@@ -182,6 +182,7 @@ def inicio_pagina(request, etapa):
         "entrou": bool(pessoa_id and site),
         "inicio_etapa": etapa,
         "inicio_titulo": titulos[etapa],
+        "inicio_embutido": etapa == 1 and request.GET.get("embutido") == "1",
         "url_de_entrada": settings.URL_DE_ENTRADA,
         "url_da_capa": settings.URL_DA_CAPA,
     }
@@ -194,7 +195,8 @@ def inicio_pagina(request, etapa):
             from .trilha_pessoal import _privada
             return _privada(HttpResponseRedirect(resumo["url"]))
     from .trilha_pessoal import _privada
-    return _privada(render(request, "gamificacao/inicio_pagina.html", contexto))
+    template = "gamificacao/inicio_embutido.html" if contexto["inicio_embutido"] else "gamificacao/inicio_pagina.html"
+    return _privada(render(request, template, contexto))
 
 
 @never_cache
@@ -212,6 +214,7 @@ def inicio_conquista(request, etapa):
     contexto = {"entrou": bool(pessoa_id and site), "inicio_etapa": etapa,
                 "inicio_titulo": titulos[etapa], "conquista_xp": 0,
                 "conquista_ja_recebida": False,
+                "inicio_embutido": etapa == 1 and request.GET.get("embutido") == "1",
                 "url_de_entrada": settings.URL_DE_ENTRADA,
                 "url_da_capa": settings.URL_DA_CAPA}
     if pessoa_id and site:
