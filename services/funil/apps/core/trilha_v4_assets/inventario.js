@@ -37,7 +37,7 @@ function render(){
   const start=data.inicio||{};
   const requirements={motivo:!!start.motivo,plano:!!(start.objetivo&&start.compromisso&&start.confirmado_em),item:first.alcancada,envio:hasFile};
   Object.entries(requirements).forEach(([id,done])=>{const node=q('#branca-'+id);node.textContent=done?'Concluído · pode revisar':'Para fazer';node.parentElement.dataset.estado=done?'concluido':'pendente';});
-  q('#branca-resumo').textContent=first.alcancada?'Sua faixa já conquistada permanece registrada. Você pode completar ou revisar este começo.':`${Object.values(requirements).filter(Boolean).length} de 4 requisitos concluídos. Salve e continue no seu ritmo.`;
+  q('#branca-resumo').textContent=first.alcancada?'Os quatro requisitos estão concluídos. Você pode revisar suas respostas e continuar guardando seus trabalhos.':`${Object.values(requirements).filter(Boolean).length} de 4 requisitos concluídos. Complete os quatro para alcançar a faixa amarela. Seus trabalhos anteriores continuam guardados.`;
   q('.save-file').hidden=first.alcancada;
   q('#first-state').textContent=first.alcancada?'CONCLUÍDO':hasFile?'ARQUIVO GUARDADO':'PENDENTE';
   q('#first-file').required=first.alcancada||!hasFile;
@@ -52,6 +52,8 @@ function render(){
   q('#receipts').replaceChildren();data.recebimentos.forEach(r=>q('#receipts').append(el('li',`${r.valor} · ${r.estado} · ${r.data}`)));
   q('#history').replaceChildren();data.historico.forEach(r=>{const li=el('li',r.texto);li.append(el('time',new Date(r.criado_em).toLocaleString('pt-BR')));q('#history').append(li);});
   if(!data.historico.length)q('#history').append(el('li','Seus registros aparecerão aqui conforme você avançar.'));
+  // A faixa atual não esconde os arquivos que a pessoa já guardou.
+  data.anexos.forEach(a=>{if(!/^\/conquistas\/inventario\/arquivos\/[0-9]+\/$/.test(a.url))return;const li=el('li','');const link=el('a',a.nome);link.href=a.url;li.append(link,el('small','Arquivo privado preservado'));q('#history').append(li);});
   q('#deliveries').replaceChildren();
   [3,4].filter(ordem=>shownSteps.includes(ordem)).forEach(ordem=>{const etapa=data.etapas.find(e=>e.ordem===ordem), details=document.createElement('details');details.append(el('summary',`${ordem===3?'Minha prática no Sandbox':'Meu trabalho real na Fila'} · ${etapa.alcancada?'Concluído':'Pendente'}`));
     details.append(el('p',etapa.conquista));const link=el('a',ordem===3?'Abrir Sandbox →':'Abrir Fila →');link.href=ordem===3?'/encomendas/sandbox/':'/encomendas/fila/';link.className='text-link';details.append(link);

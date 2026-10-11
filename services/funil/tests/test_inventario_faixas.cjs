@@ -23,3 +23,20 @@ test('faixas anteriores mostram apenas seu próprio registro',()=>{
  for(let current=2;current<=13;current++)for(let target=1;target<current;target++)assert.deepEqual(stage(current,target),[target]);
 });
 test('último grau não inventa uma etapa seguinte',()=>assert.deepEqual(stage(13,13),[13]));
+
+test('reinício na branca mantém arquivos de etapas superiores acessíveis no histórico privado',()=>{
+ const nodes=new Map();
+ const element=(tag,text='')=>({tag,textContent:text,children:[],parentElement:{dataset:{}},append(...items){this.children.push(...items);},replaceChildren(){this.children=[];}});
+ const q=selector=>{if(!nodes.has(selector))nodes.set(selector,element('div'));return nodes.get(selector);};
+ const data={atual_ordem:1,inicio:{},meta_cents:null,proposito:'',total:'0,00',recebimentos:[],historico:[],
+  etapas:Array.from({length:13},(_,i)=>({ordem:i+1,nome:String(i+1),alcancada:i===0})),
+  anexos:[{passo:3,nome:'pratica.blend',url:'/conquistas/inventario/arquivos/23/'},{passo:4,nome:'entrega.glb',url:'/conquistas/inventario/arquivos/24/'},{passo:4,nome:'externo',url:'https://example.test/'}]};
+ const ctx={data,q,el:element,location:{hash:''},selectedOrder:null,previousCurrent:null,fileList(){},renderBelts(){},inventoryStepsFor:()=>[1,2]};
+ vm.createContext(ctx);
+ vm.runInContext(source.slice(source.indexOf('function render(){'),source.indexOf('function inventoryStepsFor(')),ctx);
+ ctx.render();
+ const links=nodes.get('#history').children.flatMap(node=>node.children.filter(child=>child.tag==='a'));
+ assert.deepEqual(links.map(link=>link.textContent),['pratica.blend','entrega.glb']);
+ assert.deepEqual(links.map(link=>link.href),['/conquistas/inventario/arquivos/23/','/conquistas/inventario/arquivos/24/']);
+ assert.equal(nodes.get('#deliveries').children.length,0);
+});

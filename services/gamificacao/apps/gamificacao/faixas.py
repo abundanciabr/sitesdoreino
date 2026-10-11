@@ -1,4 +1,4 @@
-"""As 13 faixas do aluno: progressão própria, sem XP e sem Cristais.
+"""Registros legados das 13 faixas, sem XP e sem Cristais.
 
 Quem alimenta: cinco fatos de outros serviços (itens 3D, Sandbox, Fila do
 Dólar e rendimento real). Aqui nada toca em `PerfilJogador.xp_total`,
@@ -9,7 +9,7 @@ Regras:
 - Branca vale desde a entrada; é gravada na primeira avaliação da pessoa.
 - Faixas 2, 3 e 4 vêm do primeiro fato de cada tipo, uma vez.
 - Faixas 5 a 13 vêm do total ACUMULADO do livro de rendimento real.
-- Faixa atual = MAIOR ordem alcançada; nenhuma exige as anteriores.
+- A leitura da faixa atual segue a jornada sequencial; fatos ficam preservados.
 - Estorno que derruba o total abaixo do limite marca `revertida` (a linha
   fica); subir de novo volta a `alcancada` na mesma linha. Tudo no histórico.
 - `historico=True` (carga de quem já existia) nunca avisa nem comemora.
@@ -111,6 +111,9 @@ def _garantir_branca(pessoa, site_id, event_id, historico, quando) -> None:
 def _avisar(pessoa, site_id, ordem: int, event_id: str) -> None:
     """Carta + comemoração de tela. Só ao vivo; reutiliza o mecanismo existente."""
     if not AVISAR_O_ALUNO:
+        return
+    from .jornada import situacao
+    if not situacao(pessoa.id_da_plataforma, site_id)["lista"][ordem - 1]["alcancada"]:
         return
     faixa = _POR_ORDEM[ordem]
     slug = PREFIXO_DO_SLUG + faixa["slug"]
@@ -252,52 +255,73 @@ def _falta_texto(proxima: dict, total: int) -> str:
 
 
 def situacao_das_faixas(pessoa_id: str, site_id: str) -> dict[str, Any]:
-    """Situação das 13 faixas de uma pessoa num site (só leitura, nada é gravado)."""
+    """Forma legada de leitura, classificada pela jornada sequencial canônica."""
+    from .jornada import situacao
+
+    jornada = situacao(pessoa_id, site_id)
     linhas = {
         f.ordem: f
         for f in FaixaDoAluno.objects.filter(pessoa_id=pessoa_id, site_id=site_id)
     }
-    total = total_real_cents(pessoa_id, site_id)
     lista = []
-    for faixa in FAIXAS:
+    for faixa in jornada["lista"]:
         linha = linhas.get(faixa["ordem"])
-        if linha is None and faixa["ordem"] == 1:
-            alcancada, estado, quando, origem = True, "alcancada", None, ORIGENS["entrada"]
-        elif linha is None:
-            alcancada, estado, quando, origem = False, "nao-alcancada", None, None
-        else:
-            alcancada = linha.estado == FaixaDoAluno.Estado.ALCANCADA
-            estado = linha.estado
-            quando = linha.alcancada_em if alcancada else None
-            origem = ORIGENS.get(linha.origem) if alcancada else None
+        alcancada = faixa["alcancada"]
+        estado = (
+            "alcancada" if alcancada else
+            "revertida" if linha and linha.estado == FaixaDoAluno.Estado.REVERTIDA else
+            "nao-alcancada"
+        )
+        quando = linha.alcancada_em if alcancada and linha else None
+        origem = (
+            ORIGENS.get(linha.origem) if alcancada and linha else
+            ORIGENS["entrada"] if faixa["ordem"] == 1 else None
+        )
         lista.append({
             "ordem": faixa["ordem"], "nome": faixa["nome"], "cores": list(faixa["cores"]),
             "conquista": faixa["conquista"], "alcancada": alcancada, "estado": estado,
             "alcancada_em": quando, "origem": origem,
         })
-    atual = max((f for f in lista if f["alcancada"]), key=lambda f: f["ordem"])
+    atual = lista[jornada["atual"]["ordem"] - 1]
     proxima = None
     if atual["ordem"] < 13:
-        p = _POR_ORDEM[atual["ordem"] + 1]
+        p = lista[atual["ordem"]]
+        marco = jornada["lista"][atual["ordem"]]
+        total = jornada["total_cents"]
         dinheiro = None
-        if p["meta_cents"] is not None:
-            meta = p["meta_cents"]
+        if p["ordem"] >= 5:
+            meta = 1 if p["ordem"] == 5 else marco["meta_cents"] if jornada["meta_escolhida"] else None
+        else:
+            meta = None
+        if meta is not None:
             dinheiro = {
                 "total_cents": total,
                 "meta_cents": meta,
                 "falta_cents": max(meta - total, 0),
                 "fracao_pct": min(100, int(total * 100 // meta)),
             }
+        if p["ordem"] == 2:
+            falta_texto = "Conclua os requisitos do seu começo e registre seu primeiro item 3D."
+        elif p["ordem"] == 3:
+            falta_texto = "Conclua e entregue uma prática no Sandbox."
+        elif p["ordem"] == 4:
+            falta_texto = "Conclua e entregue seu trabalho real na Fila do Dólar."
+        elif p["ordem"] == 5:
+            falta_texto = "Registre seu primeiro recebimento confirmado por modelagem 3D."
+        elif meta is None:
+            falta_texto = "Escolha sua meta pessoal para ver o próximo limite."
+        else:
+            falta_texto = f"Faltam {_brl(max(meta - total, 0))} em recebimentos confirmados."
         proxima = {
             "ordem": p["ordem"], "nome": p["nome"], "cores": list(p["cores"]),
-            "conquista": p["conquista"], "falta_texto": _falta_texto(p, total),
+            "conquista": p["conquista"], "falta_texto": falta_texto,
             "dinheiro": dinheiro,
         }
     return {
         "atual": {k: atual[k] for k in ("ordem", "nome", "cores", "conquista", "alcancada_em", "origem")},
         "proxima": proxima,
         "faixas": lista,
-        "total_real_cents": total,
+        "total_real_cents": total_real_cents(pessoa_id, site_id),
     }
 
 

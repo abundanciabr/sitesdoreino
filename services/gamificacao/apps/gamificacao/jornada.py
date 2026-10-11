@@ -136,6 +136,12 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         else (jornada.meta_cents if jornada else None)
     )
     declaracoes = jornada.declaracoes if jornada else {}
+    confirmacoes = jornada.confirmacoes_sequenciais if jornada else {}
+    from .inicio import requisitos_branca
+    tem_anexo = AnexoDaJornada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, passo=2,
+    ).exists()
+    requisitos = requisitos_branca(jornada, tem_anexo)
     recebimentos = list(
         RecebimentoDeclarado.objects.filter(pessoa_id=pessoa_id, site_id=site_id)
         .defer("print_bytes")
@@ -150,14 +156,22 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         for r in recebimentos
     )
     lista = passos(meta or 10000)
+    anterior_alcancada = True
     for p in lista:
         ordem = p["ordem"]
-        p["alcancada"] = (
-            ordem == 1
-            or (ordem in (2, 3, 4) and bool(declaracoes.get(str(ordem))))
-            or (ordem == 5 and total > 0)
-            or (ordem >= 6 and meta is not None and total >= p["meta_cents"])
-        )
+        if ordem == 1:
+            criterio = True
+        elif ordem == 2:
+            criterio = (bool(confirmacoes.get("2")) and bool(declaracoes.get("2"))
+                        and all(requisitos.values()))
+        elif ordem in (3, 4):
+            criterio = bool(confirmacoes.get(str(ordem))) and bool(declaracoes.get(str(ordem)))
+        elif ordem == 5:
+            criterio = total > 0
+        else:
+            criterio = meta is not None and total >= p["meta_cents"]
+        p["alcancada"] = anterior_alcancada and criterio
+        anterior_alcancada = p["alcancada"]
         p["alcancada_em"] = None
     atual = max((p for p in lista if p["alcancada"]), key=lambda p: p["ordem"])
     proxima = next((p for p in lista if p["ordem"] > atual["ordem"]), None)
@@ -183,6 +197,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
     fila_usada = bool(declaracoes.get("4")) or any(
         r.origem == "fila" for r in recebimentos
     )
+    fila_para_proximo = bool(fila_usada and proxima and proxima["ordem"] >= 5)
     return {
         "atual": atual,
         "proxima": proxima,
@@ -217,7 +232,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         "celebracao": jornada.celebracao_pendente if jornada else {},
         "proxima_url": (
             "/forum/"
-            if fila_usada or (proxima and proxima["ordem"] >= 6)
+            if fila_para_proximo or (proxima and proxima["ordem"] >= 6)
             else (
                 "/encomendas/fila/"
                 if proxima and proxima["ordem"] == 4
@@ -230,7 +245,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         ),
         "proxima_acao": (
             "Buscar o próximo trabalho com apoio do Fórum"
-            if fila_usada or (proxima and proxima["ordem"] >= 6)
+            if fila_para_proximo or (proxima and proxima["ordem"] >= 6)
             else (
                 "Preparar minha única participação na Fila do Dólar"
                 if proxima and proxima["ordem"] == 4
@@ -275,12 +290,16 @@ def registrar_conclusao(pessoa_id, site_id, ordem):
         j = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa_id, site_id=site_id)
         if j.declaracoes.get(str(ordem)):
             from .bonus_faixas import conceder
-            conceder(pessoa_id, site_id, [p["ordem"] for p in situacao(pessoa_id, site_id)["lista"] if p["alcancada"]])
+            conceder(pessoa_id, site_id, [p['ordem'] for p in situacao(pessoa_id, site_id)['lista'] if p['alcancada']])
             return
         antes = situacao(pessoa_id, site_id)
-        j.declaracoes = {**j.declaracoes, str(ordem): timezone.now().isoformat()}
+        predecessor_alcancado = antes["lista"][ordem - 2]["alcancada"]
+        agora = timezone.now().isoformat()
+        j.declaracoes = {**j.declaracoes, str(ordem): agora}
+        if predecessor_alcancado:
+            j.confirmacoes_sequenciais = {**j.confirmacoes_sequenciais, str(ordem): agora}
         j.revisao += 1
-        j.save(update_fields=["declaracoes", "revisao", "atualizada_em"])
+        j.save(update_fields=["declaracoes", "confirmacoes_sequenciais", "revisao", "atualizada_em"])
         _registro(j, "conclusao", {"passo": ordem, "texto": RESULTADOS[ordem]}, antes)
 
 
@@ -342,8 +361,11 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     "Esse passo acompanha seus recebimentos automaticamente."
                 )
             declaracoes = dict(j.declaracoes)
+            confirmacoes = dict(j.confirmacoes_sequenciais)
             if dados.get("estado") == "feito":
-                if ordem == 2 and not declaracoes.get("2"):
+                if not antes["lista"][ordem - 2]["alcancada"]:
+                    raise ValueError("Conclua a faixa anterior antes de confirmar esta etapa.")
+                if ordem == 2:
                     from .inicio import requisitos_branca
                     tem_anexo = AnexoDaJornada.objects.filter(
                         pessoa_id=pessoa_id, site_id=site_id, passo=2,
@@ -353,16 +375,23 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                             "Para concluir o primeiro item, escolha seu motivo, "
                             "defina seu objetivo, assuma seu compromisso e envie seu arquivo."
                         )
-                declaracoes[str(ordem)] = timezone.now().isoformat()
+                if confirmacoes.get(str(ordem)) and declaracoes.get(str(ordem)):
+                    return antes, antes, False
+                agora = timezone.now().isoformat()
+                declaracoes.setdefault(str(ordem), agora)
+                if not declaracoes[str(ordem)]:
+                    declaracoes[str(ordem)] = agora
+                confirmacoes[str(ordem)] = agora
                 texto = RESULTADOS[ordem]
             elif dados.get("estado") == "corrigir":
-                declaracoes[str(ordem)] = None
+                confirmacoes.pop(str(ordem), None)
                 texto = (
                     f"Corrigi minha declaração do passo {ordem}; quero praticar mais."
                 )
             else:
                 raise ValueError("Escolha o que deseja registrar.")
             j.declaracoes = declaracoes
+            j.confirmacoes_sequenciais = confirmacoes
             registro = {"passo": ordem, "texto": texto}
         elif acao in ("recebimento", "correcao"):
             valor = centavos(dados.get("valor", ""))

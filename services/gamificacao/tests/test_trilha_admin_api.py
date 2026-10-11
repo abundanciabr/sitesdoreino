@@ -100,14 +100,14 @@ def test_salto_nao_inventa_etapas_e_isola_pessoa_e_site(client):
     )
     resposta = consultar(client)
     dados = resposta.json()
-    assert dados["atual_ordem"] == 3
-    assert [e["alcancada"] for e in dados["etapas"][:5]] == [True, False, True, False, False]
+    assert dados["atual_ordem"] == 1
+    assert [e["alcancada"] for e in dados["etapas"][:5]] == [True, False, False, False, False]
     assert dados["meta_cents"] == 10000 and dados["meta_escolhida"] is True
     assert dados["etapas"][5]["meta_cents"] == 125
     assert "PROPOSITO-PRIVADO" not in resposta.content.decode()
     assert "NOME-PRIVADO" not in resposta.content.decode()
     assert "@example.test" not in resposta.content.decode()
-    assert consultar(client, pessoa_id="outra-aluna").json()["atual_ordem"] == 4
+    assert consultar(client, pessoa_id="outra-aluna").json()["atual_ordem"] == 1
 
 
 def test_total_confirmado_pendente_e_correcao_preservada(client, monkeypatch):
@@ -126,10 +126,10 @@ def test_total_confirmado_pendente_e_correcao_preservada(client, monkeypatch):
     )
     dados = consultar(client).json()
     assert dados["total_cents"] == 1800
-    assert dados["atual_ordem"] == 9
-    assert dados["etapas"][4]["alcancada"] is True
-    assert dados["etapas"][6]["alcancada"] is True
-    assert dados["etapas"][8]["alcancada"] is True
+    assert dados["atual_ordem"] == 1
+    assert dados["etapas"][4]["alcancada"] is False
+    assert dados["etapas"][6]["alcancada"] is False
+    assert dados["etapas"][8]["alcancada"] is False
     assert dados["etapas"][9]["alcancada"] is False
     assert dados["etapas"][1]["alcancada"] is False
     assert RecebimentoDeclarado.objects.count() == 6
@@ -150,8 +150,8 @@ def test_minha_trilha_usa_somente_a_sessao_e_o_site_local(client, monkeypatch):
         return {"autenticado": True, "id": "aluna-a" if cookie.endswith("=A") else "aluna-b"}
 
     monkeypatch.setattr("apps.core.trilha_api._sessao", sessao)
-    for cookie, id_esperado, ordem in (("meshcraft_sessao=A", "aluna-a", 2),
-                                       ("meshcraft_sessao=B", "aluna-b", 3)):
+    for cookie, id_esperado, ordem in (("meshcraft_sessao=A", "aluna-a", 1),
+                                       ("meshcraft_sessao=B", "aluna-b", 1)):
         resposta = client.get(
             "/api/gamificacao/minha-trilha",
             {"pessoa_id": "outra-pessoa", "site_id": "outro-site", "aluno": "outro"},

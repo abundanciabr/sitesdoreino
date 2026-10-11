@@ -39,7 +39,7 @@ def salvar_inicio(jornada, dados):
             ('sonho', 500), ('objetivo', 280), ('quando', 160),
             ('obstaculo', 280), ('plano_b', 280), ('compromisso', 1200),
         )}
-        mudou = any(inicio.get(k, '') != v for k, v in plano.items())
+        mudou = any(inicio.get(k, '') != plano[k] for k in ('objetivo', 'compromisso'))
         if mudou:
             inicio['confirmado_em'] = None
         if dados.get('assumir') == 'sim':
@@ -66,7 +66,7 @@ def para_tela(jornada):
 
 
 def requisitos_branca(jornada, tem_anexo):
-    """Estado factual dos quatro requisitos, sem mudar conquistas anteriores."""
+    """Dados obrigatórios do começo; a jornada aplica a progressão sequencial."""
     inicio = jornada.inicio if jornada else {}
     preenchido = lambda chave: bool(str(inicio.get(chave) or '').strip())
     return {
