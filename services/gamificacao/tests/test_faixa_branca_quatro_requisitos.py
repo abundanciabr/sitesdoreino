@@ -19,7 +19,7 @@ CAMINHOS = (
     "/conquistas/inicio/motivo/",
     "/conquistas/inicio/objetivo/",
     "/conquistas/inicio/item/",
-    "/conquistas/inicio/item/#inicio-form-item",
+    "/conquistas/inicio/envio/",
 )
 
 
@@ -35,6 +35,8 @@ def arquivo():
 
 
 def post(client, acao, **dados):
+    if acao == 'inicio-motivo':
+        dados.setdefault('concluir', 'sim')
     revisao = client.get(URL, HTTP_COOKIE="meshcraft_sessao=A").json()["revisao"]
     return client.post(URL, {"acao": acao, "revisao": revisao, **dados}, HTTP_COOKIE="meshcraft_sessao=A")
 
@@ -44,6 +46,7 @@ def preparar(client):
     assert post(client, "inicio-plano", objetivo="OBJETIVO-PRIVADO-ALFA",
                 compromisso="COMPROMISSO-PRIVADO-ALFA", sonho="SONHO-PRIVADO-ALFA",
                 assumir="sim").status_code == 200
+    assert post(client, "inicio-item").status_code == 200
     assert post(client, "anexo", passo="2", arquivo=arquivo()).status_code == 200
 
 
@@ -69,10 +72,11 @@ def test_cada_requisito_bloqueia_declaracao_nova_no_nucleo_e_na_rota(client, fal
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert not JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
     assert not RegistroDaJornada.objects.filter(pessoa_id=P, site_id=SITE, acao="declaracao").exists()
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 0
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 300
 
 
 def test_rascunho_e_anexo_sao_permitidos_antes_dos_quatro_requisitos(client):
+    assert post(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert post(client, "inicio-plano", objetivo="Uma peça", compromisso="Vou tentar",
                 assumir="nao").status_code == 200
     assert post(client, "anexo", passo="2", arquivo=arquivo()).status_code == 200
@@ -87,9 +91,9 @@ def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_regride_sem_apaga
     preparar(client)
     resposta = post(client, "declaracao", passo="2", estado="feito")
     assert resposta.status_code == 200 and resposta.json()["atual_ordem"] == 2
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5000
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5400
     assert post(client, "declaracao", passo="2", estado="feito").status_code == 200
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5000
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5400
     assert RegistroDaJornada.objects.filter(pessoa_id=P, site_id=SITE, acao="declaracao").count() == 1
 
     assert post(client, "inicio-plano", objetivo="Objetivo revisado",
@@ -97,10 +101,10 @@ def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_regride_sem_apaga
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio["confirmado_em"] is None
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == [
-        "concluido", "pendente", "andamento", "concluido",
+        "concluido", "pendente", "concluido", "andamento",
     ]
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5000
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5400
 
 
 def test_editar_somente_sonho_nao_desfaz_compromisso_ja_confirmado(client):
@@ -123,7 +127,7 @@ def test_declaracao_legada_sem_inicio_nem_anexo_recomeca_branca_sem_ser_apagada(
     perfil_de(P, SITE)
     JornadaPessoal.objects.create(pessoa_id=P, site_id=SITE, declaracoes={"2": "2026-10-01T10:00:00-03:00"})
     assert situacao(P, SITE)["atual"]["ordem"] == 1
-    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == ["pendente"] * 4
+    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == ["pendente", "pendente", "concluido", "pendente"]
     assert post(client, "inicio-motivo", motivo="jogo").status_code == 200
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
@@ -146,8 +150,9 @@ def test_checklist_tem_quatro_itens_e_nao_exporta_respostas_privadas(client):
     assert post(client, "inicio-plano", objetivo="OBJETIVO-PRIVADO-ALFA",
                 compromisso="COMPROMISSO-PRIVADO-ALFA", sonho="SONHO-PRIVADO-ALFA",
                 assumir="sim").status_code == 200
+    assert post(client, "inicio-item").status_code == 200
     assert post(client, "anexo", passo="2", arquivo=arquivo()).status_code == 200
-    assert [i["estado"] for i in itens()] == ["concluido", "concluido", "andamento", "concluido"]
+    assert [i["estado"] for i in itens()] == ["concluido", "concluido", "concluido", "andamento"]
     projecao = _projecao(HttpResponse(), P, SITE).model_dump_json()
     for segredo in ("MOTIVO-PRIVADO-ALFA", "OBJETIVO-PRIVADO-ALFA",
                     "COMPROMISSO-PRIVADO-ALFA", "SONHO-PRIVADO-ALFA"):
@@ -160,13 +165,14 @@ def test_consultas_nao_alteram_revisao_xp_ou_declaracao(client):
     assert post(client, "inicio-motivo", motivo="descobrir").status_code == 200
     jornada = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE)
     revisao = jornada.revisao
-    for nome in ("base", "inicio-motivo", "inicio-objetivo", "inicio-item"):
+    for nome in ("base", "inicio-motivo", "inicio-objetivo"):
         assert client.get(reverse(nome)).status_code == 200
+    assert client.get(reverse("inicio-item")).url == reverse("inicio-objetivo")
     assert client.get(URL, HTTP_COOKIE="meshcraft_sessao=A").status_code == 200
     _projecao(HttpResponse(), P, SITE)
     jornada.refresh_from_db()
     assert jornada.revisao == revisao and not jornada.declaracoes
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 0
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
 
 
 def test_revisao_antiga_e_outro_dono_nao_aproveitam_quatro_requisitos(client, monkeypatch):

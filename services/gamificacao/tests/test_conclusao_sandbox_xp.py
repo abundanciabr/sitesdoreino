@@ -21,7 +21,8 @@ def preparar_ate(pessoa="aluno-concluiu", site="escola-teste", passo=2):
     perfil_de(pessoa, site)
     j, _ = JornadaPessoal.objects.get_or_create(pessoa_id=pessoa, site_id=site)
     j.inicio = {"motivo": "ugc", "objetivo": "Criar peça", "compromisso": "Praticar",
-                "confirmado_em": "2026-10-10T10:00:00-03:00"}
+                "confirmado_em": "2026-10-10T10:00:00-03:00",
+                "item_pronto_em": "2026-10-10T11:00:00-03:00"}
     j.save(update_fields=["inicio"])
     AnexoDaJornada.objects.create(pessoa_id=pessoa, site_id=site, passo=2,
                                   nome="obra.obj", conteudo=b"v 0 0 0\n", tamanho=8, sha256="preparo")

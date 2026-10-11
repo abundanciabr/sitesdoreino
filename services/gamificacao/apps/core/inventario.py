@@ -2,10 +2,12 @@
 import hashlib
 import io
 from pathlib import PurePosixPath
+from urllib.parse import urlencode
 
 from django.db import transaction
 from django.http import FileResponse, JsonResponse, HttpResponse
 from django.middleware.csrf import get_token
+from django.urls import reverse
 from ninja.errors import HttpError
 
 from apps.gamificacao.jornada import situacao, salvar
@@ -73,12 +75,12 @@ def inventario(request):
             if request.POST.get('contexto_pessoa', pessoa) != pessoa or request.POST.get('contexto_site', site) != site:
                 raise HttpError(403, 'Sua sessão mudou. Reabra o inventário antes de continuar.')
             acao = request.POST.get('acao')
-            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento', 'inicio-motivo', 'inicio-plano'):
+            if acao not in ('declaracao', 'anexo', 'meta', 'recebimento', 'inicio-motivo', 'inicio-plano', 'inicio-item', 'inicio-envio'):
                 raise ValueError('Escolha um registro do inventário.')
             preparado = None
-            if acao in ('anexo', 'declaracao'):
+            if acao in ('anexo', 'declaracao', 'inicio-envio'):
                 try:
-                    passo = int(request.POST.get('passo', '0'))
+                    passo = 2 if acao == 'inicio-envio' else int(request.POST.get('passo', '0'))
                 except ValueError:
                     raise ValueError('Escolha uma das entregas da jornada.') from None
                 if passo not in (2, 3, 4):
@@ -96,11 +98,20 @@ def inventario(request):
                 perfil_de(pessoa, site)
                 JornadaPessoal.objects.get_or_create(pessoa_id=pessoa, site_id=site)
                 jornada = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa, site_id=site)
-                if acao == 'anexo' and str(jornada.revisao) != request.POST.get('revisao'):
+                from apps.gamificacao.bonus_inicio import recebido, recebido_faixa_amarela, conceder, comprovante
+                faixa_antes = recebido_faixa_amarela(pessoa, site) if acao in ('inicio-envio', 'declaracao') else 0
+                if acao in ('anexo', 'inicio-envio') and str(jornada.revisao) != request.POST.get('revisao'):
                     raise ValueError('Seu registro mudou em outra aba. Suas respostas continuam na tela; confira a versão salva antes de tentar novamente.')
-                if acao in ('inicio-motivo', 'inicio-plano'):
+                if acao in ('inicio-motivo', 'inicio-plano', 'inicio-item'):
                     from apps.gamificacao.inicio import salvar_inicio
                     salvar_inicio(jornada, request.POST)
+                if acao == 'inicio-envio':
+                    from apps.gamificacao.inicio import requisitos_branca
+                    requisitos = requisitos_branca(jornada, True)
+                    if not all(requisitos.values()):
+                        raise ValueError('Conclua seu motivo, objetivo, compromisso e primeiro item antes de enviar.')
+                    if not preparado and not AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).exists():
+                        raise ValueError('Escolha um arquivo do seu item 3D ou uma imagem dele.')
                 if preparado:
                     from apps.gamificacao.inicio import texto
                     nome, corpo, sha = preparado
@@ -108,6 +119,7 @@ def inventario(request):
                     anexo, criado = AnexoDaJornada.objects.get_or_create(pessoa_id=pessoa, site_id=site, passo=passo, sha256=sha,
                         defaults={'nome': nome, 'conteudo': corpo, 'tamanho': len(corpo),
                                   **notas})
+                    atualizadas = []
                     if not criado:
                         atualizadas = [campo for campo, valor in notas.items() if valor and valor != getattr(anexo, campo)]
                         for campo in atualizadas:
@@ -119,11 +131,53 @@ def inventario(request):
                         jornada.save(update_fields=['revisao', 'atualizada_em'])
                 if acao == 'declaracao' and passo == 2 and not AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).exists():
                     raise ValueError('Anexe seu primeiro item 3D ou uma imagem dele antes de concluir.')
+                if acao == 'inicio-envio':
+                    revisao_antes = jornada.revisao
+                    dados_conclusao = request.POST.copy()
+                    dados_conclusao['acao'] = 'declaracao'
+                    dados_conclusao['passo'] = '2'
+                    dados_conclusao['estado'] = 'feito'
+                    salvar(pessoa, site, dados_conclusao)
+                    jornada.refresh_from_db(fields=['revisao'])
+                    if preparado and (criado or atualizadas) and jornada.revisao == revisao_antes:
+                        jornada.revisao += 1
+                        jornada.save(update_fields=['revisao', 'atualizada_em'])
                 # Repetir o clique não cria nova declaração nem novo bônus.
                 repetida = acao == 'declaracao' and situacao(pessoa, site)['lista'][passo - 1]['alcancada']
-                if acao not in ('anexo', 'inicio-motivo', 'inicio-plano') and not repetida:
+                if acao not in ('anexo', 'inicio-motivo', 'inicio-plano', 'inicio-item', 'inicio-envio') and not repetida:
                     salvar(pessoa, site, request.POST, arquivo=request.FILES.get('print'))
-        resposta = JsonResponse(_dados(request, pessoa, site))
+                etapa_concluida = (
+                    1 if acao == 'inicio-motivo' and request.POST.get('concluir') == 'sim' and
+                         jornada.inicio.get('motivo') and not jornada.inicio.get('motivo_rascunho') else
+                    2 if acao == 'inicio-plano' and request.POST.get('assumir') == 'sim' and
+                         jornada.inicio.get('confirmado_em') else
+                    3 if acao == 'inicio-item' and jornada.inicio.get('item_pronto_em') else
+                    4 if (acao == 'inicio-envio' or
+                          acao == 'declaracao' and passo == 2 and request.POST.get('estado') == 'feito') and
+                         situacao(pessoa, site)['atual']['ordem'] >= 2 else None
+                )
+                premio = None
+                if etapa_concluida:
+                    novo_tarefa = conceder(pessoa, site, etapa_concluida)
+                    novo_faixa = (recebido_faixa_amarela(pessoa, site) - faixa_antes
+                                  if etapa_concluida == 4 else 0)
+                    url_conquista = reverse('inicio-conquista', args=[etapa_concluida])
+                    if novo_tarefa or novo_faixa:
+                        token = comprovante(pessoa, site, etapa_concluida, novo_tarefa, novo_faixa)
+                        url_conquista += '?' + urlencode({'comprovante': token})
+                    else:
+                        url_conquista += '?repetida=1'
+                    premio = {
+                        'conquista_url': url_conquista,
+                        'conquista_xp_tarefa': novo_tarefa,
+                        'conquista_xp_faixa': novo_faixa,
+                        'conquista_xp': novo_tarefa + novo_faixa,
+                        'conquista_ja_recebida': not novo_tarefa and bool(recebido(pessoa, site, etapa_concluida)),
+                    }
+        dados_resposta = _dados(request, pessoa, site)
+        if request.method == 'POST' and premio:
+            dados_resposta.update(premio)
+        resposta = JsonResponse(dados_resposta)
     except HttpError as erro:
         resposta = JsonResponse({'detail': erro.message}, status=erro.status_code)
     except (ValueError, TypeError) as erro:

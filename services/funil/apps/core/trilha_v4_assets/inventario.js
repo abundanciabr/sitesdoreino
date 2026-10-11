@@ -35,7 +35,7 @@ function render(){
 
   const first=data.etapas.find(e=>e.ordem===2), hasFile=data.anexos.some(a=>a.passo===2);
   const start=data.inicio||{};
-  const requirements={motivo:!!start.motivo,plano:!!(start.objetivo&&start.compromisso&&start.confirmado_em),item:first.alcancada,envio:hasFile};
+  const requirements={motivo:!!start.motivo&&!start.motivo_rascunho,plano:!!(start.objetivo&&start.compromisso&&start.confirmado_em),item:!!start.item_pronto,envio:hasFile&&first.alcancada};
   Object.entries(requirements).forEach(([id,done])=>{const node=q('#branca-'+id);node.textContent=done?'Concluído · pode revisar':'Para fazer';node.parentElement.dataset.estado=done?'concluido':'pendente';});
   q('#branca-resumo').textContent=first.alcancada?'Os quatro requisitos estão concluídos. Você pode revisar suas respostas e continuar guardando seus trabalhos.':`${Object.values(requirements).filter(Boolean).length} de 4 requisitos concluídos. Complete os quatro para alcançar a faixa amarela. Seus trabalhos anteriores continuam guardados.`;
   q('.save-file').hidden=first.alcancada;
@@ -122,7 +122,7 @@ async function submit(event){
   const form=event.currentTarget; if(!form.reportValidity())return;
   const body=new FormData(form);if(event.submitter?.name==='acao')body.set('acao',event.submitter.value);body.set('revisao',String(data.revisao));body.set('chave',data.chave);body.set('contexto_pessoa',context.pessoa_id);body.set('contexto_site',context.site_id);
   const acao=body.get('acao');busy=true;document.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=true);message('Guardando seu registro…');
-  try{data=await request({method:'POST',headers:{'X-CSRFToken':data.csrf},body});form.reset();render();message(acao==='recebimento'?'Recebimento enviado para leitura. O resultado aparecerá nos seus registros.':acao==='declaracao'?'Conclusão registrada. Sua trilha já acompanha essa conquista.':'Registro guardado no seu inventário.');}
+  try{data=await request({method:'POST',headers:{'X-CSRFToken':data.csrf},body});form.reset();render();if(data.conquista_url){window.location.assign(data.conquista_url);return;}message(acao==='recebimento'?'Recebimento enviado para leitura. O resultado aparecerá nos seus registros.':acao==='declaracao'?'Conclusão registrada. Sua trilha já acompanha essa conquista.':'Registro guardado no seu inventário.');}
   catch(error){message(error.message,true);q('#notice').scrollIntoView({block:'center',behavior:'smooth'});}
   finally{busy=false;document.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=false);}
 }

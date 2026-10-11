@@ -172,6 +172,7 @@ def inicio_pagina(request, etapa):
         1: "Meu motivo",
         2: "Meu objetivo e compromisso",
         3: "Meu primeiro item 3D",
+        4: "Enviar meu 3D",
     }
     if etapa not in titulos:
         raise Http404
@@ -186,9 +187,66 @@ def inicio_pagina(request, etapa):
     }
     if pessoa_id and site:
         from apps.gamificacao.jornada import situacao
+        from apps.gamificacao.inicio import resumo_inicio
         contexto["faixas"] = situacao(pessoa_id, site)
+        resumo = resumo_inicio(pessoa_id, site, contexto["faixas"])
+        if not resumo["concluido"] and etapa > resumo["passo"]:
+            from .trilha_pessoal import _privada
+            return _privada(HttpResponseRedirect(resumo["url"]))
     from .trilha_pessoal import _privada
     return _privada(render(request, "gamificacao/inicio_pagina.html", contexto))
+
+
+@never_cache
+@require_GET
+def inicio_conquista(request, etapa):
+    """Mostra uma etapa concluída; esta leitura não concede XP."""
+    titulos = {1: "Meu motivo", 2: "Meu objetivo e compromisso",
+               3: "Meu primeiro item 3D", 4: "Enviar meu 3D"}
+    if etapa not in titulos:
+        raise Http404
+    pessoa_id, site = quem_e(request), site_atual()
+    if not pessoa_id or not site:
+        from .trilha_pessoal import _privada
+        return _privada(HttpResponseRedirect(settings.URL_DE_ENTRADA))
+    contexto = {"entrou": bool(pessoa_id and site), "inicio_etapa": etapa,
+                "inicio_titulo": titulos[etapa], "conquista_xp": 0,
+                "conquista_ja_recebida": False,
+                "url_de_entrada": settings.URL_DE_ENTRADA,
+                "url_da_capa": settings.URL_DA_CAPA}
+    if pessoa_id and site:
+        from apps.gamificacao.inicio import requisitos_branca, resumo_inicio
+        from apps.gamificacao.jornada import situacao
+        from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal
+        faixas = situacao(pessoa_id, site)
+        resumo = resumo_inicio(pessoa_id, site, faixas)
+        jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site).first()
+        tem_anexo = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site, passo=2).exists()
+        requisitos = requisitos_branca(jornada, tem_anexo)
+        completos = (requisitos['motivo'],
+                     requisitos['objetivo'] and requisitos['compromisso'],
+                     requisitos['item'],
+                     requisitos['envio'] and bool(jornada and jornada.confirmacoes_sequenciais.get('2')))
+        if not all(completos[:etapa]):
+            from .trilha_pessoal import _privada
+            return _privada(HttpResponseRedirect(resumo['url']))
+        contexto['faixas'] = faixas
+        from apps.gamificacao.bonus_inicio import (
+            recebido, recebido_faixa_amarela, conferir_comprovante,
+        )
+        credito = conferir_comprovante(
+            request.GET.get('comprovante', ''), pessoa_id, site, etapa,
+        ) if request.GET.get('comprovante') else None
+        xp_tarefa, xp_faixa = credito or (0, 0)
+        ja_pago = bool(recebido(pessoa_id, site, etapa) or
+                       etapa == 4 and recebido_faixa_amarela(pessoa_id, site))
+        contexto.update(conquista_xp=xp_tarefa + xp_faixa,
+                        conquista_xp_tarefa=xp_tarefa,
+                        conquista_xp_faixa=xp_faixa,
+                        conquista_ja_recebida=credito is None,
+                        conquista_sem_credito=credito is None and not ja_pago)
+    from .trilha_pessoal import _privada
+    return _privada(render(request, "gamificacao/inicio_conquista.html", contexto))
 
 
 def _reais(cents: int) -> str:

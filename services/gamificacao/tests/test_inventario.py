@@ -22,6 +22,7 @@ def file(name='modelo.obj',body=b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'):
 def post(client,**extras):
     dados=dict(acao='declaracao',passo='2',estado='feito',revisao=situacao(P,SITE)['revisao'])
     dados.update(extras)
+    if dados['acao']=='inicio-motivo':dados.setdefault('concluir','sim')
     return client.post(URL,dados,HTTP_COOKIE='meshcraft_sessao=A')
 
 
@@ -29,6 +30,7 @@ def preparar_inicio(client):
     assert post(client,acao='inicio-motivo',motivo='ugc').status_code==200
     assert post(client,acao='inicio-plano',objetivo='Criar meu item',
                 compromisso='Praticar e guardar minha peça',assumir='sim').status_code==200
+    assert post(client,acao='inicio-item').status_code==200
 
 def test_get_nao_cria_registro_e_privacidade(client):
     r=client.get(URL,HTTP_COOKIE='meshcraft_sessao=A')
@@ -53,7 +55,7 @@ def test_anexo_obrigatorio_e_bonus_unico(client):
     before=perfil.xp_total
     assert post(client,revisao='0',arquivo=file()).status_code==200
     perfil.refresh_from_db()
-    assert perfil.xp_total==before==5000
+    assert perfil.xp_total==before==5400
     assert RegistroDaJornada.objects.filter(pessoa_id=P,site_id=SITE,acao='declaracao').count()==1
     assert AnexoDaJornada.objects.count()==1
 
@@ -63,7 +65,7 @@ def test_guardar_arquivo_sem_concluir_nao_libera_faixa(client):
     assert not RegistroDaJornada.objects.exists()
     from apps.gamificacao.checklist_trilha import montar_checklists
     item=montar_checklists(P,SITE,situacao(P,SITE))[2]['itens'][2]
-    assert item['estado']=='andamento'
+    assert item['estado']=='pendente'
     assert item['acao']['url']=='/conquistas/inicio/item/'
     assert post(client).status_code==400
     preparar_inicio(client)

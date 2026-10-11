@@ -3,7 +3,7 @@
   const root = document.getElementById('inicio-jornada');
   if (!root) return;
   const $ = id => document.getElementById(`inicio-${id}`);
-  const forms = {motivo: $('form-motivo'), plano: $('form-plano'), item: $('form-item')};
+  const forms = {motivo: $('form-motivo'), plano: $('form-plano'), criacao: $('form-criacao'), item: $('form-item')};
   const dirty = new Set();
   let data = null;
   let busy = false;
@@ -56,26 +56,23 @@
     const start = data.inicio;
     const savedFiles = files();
     const completed = data.etapas.some(etapa => etapa.ordem === 2 && etapa.alcancada);
-    root.querySelector('[data-resumo="1"]').textContent = start.motivo ? 'Escolhido · pode editar' : 'Escolher';
-    root.querySelector('[data-resumo="2"]').textContent = start.confirmado_em ? 'Assumido · pode editar' : start.objetivo ? 'Rascunho salvo' : 'Planejar';
-    root.querySelector('[data-resumo="3"]').textContent = completed ? 'Conquista registrada' : savedFiles.length ? 'Tentativa guardada' : 'Criar';
     if ($('confirmacao')) $('confirmacao').textContent = start.confirmado_em ? `Compromisso assumido em ${date(start.confirmado_em)}. Você pode revisá-lo aqui.` : 'O rascunho fica guardado; você assume o compromisso quando fizer sentido para você.';
+    if (forms.criacao) {
+      $('objetivo-salvo').textContent = start.objetivo ? `Minha criação: ${start.objetivo}` : 'Escolha uma pequena criação para começar.';
+      $('pratica').textContent = start.pratica;
+      $('apoio-texto').textContent = ({guiado: 'Comece pela forma principal. Se travar, prepare uma dúvida para pedir orientação.', autonomo: 'Tente uma versão com o que já sabe. Depois escolha um ajuste.', desafio: 'Experimente uma segunda versão com uma mudança intencional e observe o que aprendeu.'})[start.apoio];
+      $('criacao-estado').textContent = start.item_pronto ? 'Você já marcou sua criação como pronta. Pode continuar quando quiser.' : 'Quando sua peça estiver pronta, confirme abaixo.';
+    }
     if (!forms.item) return;
-    $('objetivo-salvo').textContent = start.objetivo ? `Seu objetivo: ${start.objetivo}` : 'Escolha uma pequena criação para começar.';
-    $('pratica').textContent = start.pratica;
-    $('apoio-texto').textContent = ({guiado: 'Comece pela forma principal. Se travar, salve a tentativa e prepare uma dúvida para pedir orientação.', autonomo: 'Tente uma versão com o que já sabe. Depois escolha um ajuste para a próxima tentativa.', desafio: 'Experimente uma segunda versão com uma mudança intencional. Compare as duas e observe o que aprendeu.'})[start.apoio];
-    $('concluir').hidden = completed;
+    $('enviar').textContent = completed ? 'Enviar uma nova versão' : savedFiles.length ? 'Confirmar meu envio e concluir' : 'Enviar meu 3D e concluir';
     $('item-estado').textContent = completed
-      ? 'Seu primeiro item já faz parte das suas conquistas. Você pode continuar guardando versões; os registros anteriores permanecem aqui.'
+      ? 'Envio concluído. Seu arquivo está guardado em privado. Novas versões preservam os registros anteriores.'
       : savedFiles.length
-        ? 'Seus arquivos continuam guardados. Complete os requisitos da faixa branca e confirme a conclusão do primeiro item para alcançar a amarela.'
-        : 'Guardar uma tentativa permite voltar a ela. Quando seu primeiro item estiver concluído, você pode registrar essa conquista.';
-    $('obra').hidden = !savedFiles.length;
-    $('destaque').replaceChildren();
+        ? 'Seu arquivo anterior continua guardado. Você pode confirmar esse envio ou escolher uma nova versão.'
+        : 'O envio só acontece quando você confirma no botão acima.';
+    $('historico').hidden = !savedFiles.length;
     $('versoes').replaceChildren();
     if (savedFiles.length) {
-      $('obra-legenda').textContent = savedFiles.length === 1 ? 'Você tem um ponto de partida guardado. Volte a ele para perceber o que mudou.' : `${savedFiles.length} registros guardados. Compare as versões e escolha seu próximo ajuste.`;
-      $('destaque').append(fileCard(savedFiles[0], 0, savedFiles.length));
       const title = document.createElement('h3');
       title.textContent = 'Minha evolução · da versão mais recente à primeira';
       const grid = document.createElement('div');
@@ -150,6 +147,9 @@
         announce(data.inicio.salvo_em ? `Salvo na sua conta em ${date(data.inicio.salvo_em)}. Continue de onde parou.` : 'Comece com o que faz sentido para você hoje.');
       }
       $('conteudo').hidden = false;
+      if (forms.criacao && data.inicio.item_pronto && location.hash === '#inicio-form-item') {
+        window.location.assign(root.dataset.envio);
+      }
       if (!dirty.size && forms.item && ['#inicio-form-item', '#inicio-item'].includes(location.hash)) {
         document.getElementById(location.hash.slice(1)).scrollIntoView({block: 'start'});
       }
@@ -171,7 +171,7 @@
       render();
       $('recarregar').hidden = true;
       $('comparacao')?.remove();
-      announce(dirty.size ? 'Este passo foi salvo. Ainda há alterações em outro passo; salve-as antes de sair.' : 'Salvo na sua conta. Você pode sair e retomar quando quiser.');
+      announce('Salvo na sua conta. Você pode sair e retomar quando quiser.');
       return true;
     } catch (error) {
       announce(error.message, true);
@@ -183,13 +183,17 @@
   Object.values(forms).filter(Boolean).forEach(form => form.addEventListener('input', () => { dirty.add(form.id); announce('Há alterações nesta tela. Use o botão de salvar para retomá-las depois.'); }));
   forms.motivo?.addEventListener('submit', async event => {
     event.preventDefault();
-    const destination = event.submitter?.value === 'pausar' ? root.dataset.conquistas : root.dataset.proxima;
-    if (await save(forms.motivo, 'inicio-motivo')) window.location.assign(destination);
+    const concluir = event.submitter?.value === 'pausar' ? 'nao' : 'sim';
+    if (await save(forms.motivo, 'inicio-motivo', {concluir})) window.location.assign(concluir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas);
   });
   forms.plano?.addEventListener('submit', async event => {
     event.preventDefault();
     const assumir = event.submitter?.value || 'nao';
-    if (await save(forms.plano, 'inicio-plano', {assumir})) window.location.assign(assumir === 'sim' ? root.dataset.proxima : root.dataset.conquistas);
+    if (await save(forms.plano, 'inicio-plano', {assumir})) window.location.assign(assumir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas);
+  });
+  forms.criacao?.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (await save(forms.criacao, 'inicio-item')) window.location.assign(data.conquista_url || root.dataset.conquistas);
   });
   $('sugestao')?.addEventListener('click', () => {
     if (forms.plano.elements.compromisso.value.trim()) {
@@ -204,16 +208,16 @@
   });
   forms.item?.addEventListener('submit', async event => {
     event.preventDefault();
-    const action = event.submitter?.value || 'anexo';
     const file = $('arquivo').files[0];
-    if (!file && (action === 'anexo' || !files().length)) { announce('Escolha um arquivo do seu item ou uma imagem dele para guardar.', true); return; }
+    if (!file && !files().length) { announce('Escolha um arquivo do seu item ou uma imagem dele para enviar.', true); return; }
     if (file && file.size > 20 * 1024 * 1024) { announce('Escolha um arquivo de até 20 MB.', true); return; }
     if (!file && ($('aprendi').value.trim() || $('duvida').value.trim())) { announce('Para guardar estas notas, escolha o arquivo da nova versão. Seus registros anteriores continuam guardados.', true); return; }
     const count = files().length;
     const hasNotes = Boolean($('aprendi').value.trim() || $('duvida').value.trim());
-    if (await save(forms.item, action, {passo: '2', estado: 'feito'})) {
+    if (await save(forms.item, 'inicio-envio', {passo: '2', estado: 'feito'})) {
       forms.item.reset();
-      announce(action === 'declaracao' ? 'Seu primeiro item faz parte das suas conquistas. Escolha seu próximo passo abaixo.' : files().length === count ? (hasNotes ? 'Este arquivo já estava guardado. Suas notas foram atualizadas.' : 'Este arquivo já estava guardado. A versão anterior foi preservada.') : 'Versão guardada em privado. Cada tentativa ajuda você a perceber sua evolução.');
+      announce(files().length === count ? (hasNotes ? 'Envio confirmado. Suas notas foram atualizadas e o arquivo foi preservado.' : 'Envio confirmado. Seu arquivo continua guardado em privado.') : 'Envio concluído. Seu 3D está guardado em privado e sua conquista foi registrada.');
+      if (data.conquista_url) window.location.assign(data.conquista_url);
     }
   });
   $('pedir-ajuda')?.addEventListener('click', () => {

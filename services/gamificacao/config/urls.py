@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from apps.core.views import (
-    base, inicio_pagina, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
+    base, inicio_pagina, inicio_conquista, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
     interno_reconhecimentos, decidir_reconhecimento,
 )
 from apps.core.trilha_pessoal import minha_trilha
@@ -11,6 +11,8 @@ urlpatterns = [
     path("inicio/motivo/", inicio_pagina, {"etapa": 1}, name="inicio-motivo"),
     path("inicio/objetivo/", inicio_pagina, {"etapa": 2}, name="inicio-objetivo"),
     path("inicio/item/", inicio_pagina, {"etapa": 3}, name="inicio-item"),
+    path("inicio/envio/", inicio_pagina, {"etapa": 4}, name="inicio-envio"),
+    path("inicio/conquista/<int:etapa>/", inicio_conquista, name="inicio-conquista"),
     path("inventario/", inventario, name="inventario"),
     path("inventario/arquivos/<int:anexo_id>/", arquivo_do_inventario, name="arquivo-inventario"),
     path("minha-trilha/", minha_trilha, name="minha-trilha"),

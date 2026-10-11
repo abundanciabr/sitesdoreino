@@ -33,8 +33,17 @@ def salvar_inicio(jornada, dados):
         motivo = texto(dados, 'motivo', 20)
         if motivo and motivo not in {m[0] for m in MOTIVOS}:
             raise ValueError('Escolha um dos caminhos ou escreva seu próprio motivo.')
+        mudou = inicio.get('motivo') != motivo
+        if dados.get('concluir') == 'sim':
+            if not motivo:
+                raise ValueError('Escolha seu motivo para concluir esta etapa.')
+            inicio['motivo_rascunho'] = False
+        elif mudou or not inicio.get('motivo'):
+            inicio['motivo_rascunho'] = True
         inicio.update(motivo=motivo, motivo_pessoal=texto(dados, 'motivo_pessoal', 280))
-    else:
+    elif dados['acao'] == 'inicio-plano':
+        if not inicio.get('motivo') or inicio.get('motivo_rascunho'):
+            raise ValueError('Escolha seu motivo antes de definir o objetivo.')
         plano = {chave: texto(dados, chave, limite) for chave, limite in (
             ('sonho', 500), ('objetivo', 280), ('quando', 160),
             ('obstaculo', 280), ('plano_b', 280), ('compromisso', 1200),
@@ -52,6 +61,13 @@ def salvar_inicio(jornada, dados):
             raise ValueError('Escolha como quer praticar agora.')
         jornada.apoio = apoio
         inicio.update(plano)
+    elif dados['acao'] == 'inicio-item':
+        if not (inicio.get('motivo') and not inicio.get('motivo_rascunho') and inicio.get('objetivo') and
+                inicio.get('compromisso') and inicio.get('confirmado_em')):
+            raise ValueError('Confirme seu motivo, objetivo e compromisso antes de criar o item.')
+        inicio.setdefault('item_pronto_em', timezone.now().isoformat())
+    else:
+        raise ValueError('Escolha uma etapa do começo da jornada.')
     inicio['salvo_em'] = timezone.now().isoformat()
     jornada.inicio = inicio
     jornada.revisao += 1
@@ -62,7 +78,8 @@ def para_tela(jornada):
     inicio = dict(jornada.inicio) if jornada else {}
     motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
-            'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado'}
+            'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado',
+            'item_pronto': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2')))}
 
 
 def requisitos_branca(jornada, tem_anexo):
@@ -70,34 +87,32 @@ def requisitos_branca(jornada, tem_anexo):
     inicio = jornada.inicio if jornada else {}
     preenchido = lambda chave: bool(str(inicio.get(chave) or '').strip())
     return {
-        'motivo': preenchido('motivo'),
+        'motivo': preenchido('motivo') and not bool(inicio.get('motivo_rascunho')),
         'objetivo': preenchido('objetivo'),
         'compromisso': preenchido('compromisso') and bool(inicio.get('confirmado_em')),
-        'item': bool(tem_anexo),
+        'item': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
+        'envio': bool(tem_anexo),
     }
 
 
 def resumo_inicio(pessoa_id, site_id, faixas):
-    """Retomada dos três passos a partir dos registros privados já existentes."""
+    """Retomada da primeira das quatro etapas ainda pendente."""
     jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
     inicio = jornada.inicio if jornada else {}
-    motivo = bool(inicio.get('motivo'))
-    confirmado = bool(inicio.get('confirmado_em'))
-    arquivos = AnexoDaJornada.objects.filter(
-        pessoa_id=pessoa_id, site_id=site_id, passo=2,
-    ).count()
-    primeiro_item = any(
-        etapa['ordem'] == 2 and etapa['alcancada'] for etapa in faixas['lista']
-    )
-    concluido = motivo and confirmado and primeiro_item
-    passo = 1 if concluido or not motivo else 2 if not confirmado else 3
-    nome_rota = {1: 'inicio-motivo', 2: 'inicio-objetivo', 3: 'inicio-item'}[passo]
-    titulo = {1: 'Meu motivo', 2: 'Meu objetivo e compromisso', 3: 'Meu primeiro item 3D'}[passo]
+    arquivos = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).count()
+    requisitos = requisitos_branca(jornada, arquivos > 0)
+    declarada = bool(jornada and jornada.declaracoes.get('2') and jornada.confirmacoes_sequenciais.get('2'))
+    concluido = all(requisitos.values()) and declarada
+    passo = (1 if not requisitos['motivo'] else
+             2 if not (requisitos['objetivo'] and requisitos['compromisso']) else
+             3 if not requisitos['item'] else 4 if not (requisitos['envio'] and declarada) else 1)
+    nome_rota = {1: 'inicio-motivo', 2: 'inicio-objetivo', 3: 'inicio-item', 4: 'inicio-envio'}[passo]
+    titulo = {1: 'Meu motivo', 2: 'Meu objetivo e compromisso', 3: 'Meu primeiro item 3D', 4: 'Enviar meu 3D'}[passo]
     return {
         'passo': passo,
         'titulo': titulo,
         'url': reverse(nome_rota),
-        'iniciado': bool(inicio or arquivos or primeiro_item),
+        'iniciado': bool(inicio or arquivos or (jornada and jornada.declaracoes.get('2'))),
         'concluido': concluido,
         'quantidade_arquivos': arquivos,
     }
