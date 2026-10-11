@@ -59,7 +59,10 @@ def regular(p):
 def ler(p, limite=65536):
     if not regular(p) or p.stat().st_size > limite:
         raise Falha('registro_indisponivel')
-    return json.loads(p.read_text(encoding='utf-8'))
+    data = json.loads(p.read_text(encoding='utf-8'))
+    if not isinstance(data, dict):
+        raise Falha('registro_indisponivel')
+    return data
 
 
 def gravar(p, data):
