@@ -133,6 +133,19 @@ test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=
   const checklist=r.context.journeyChecklist(r.payload.progresso,2,r.payload.atividades);
   assert.equal(checklist.disponivel,false);assert.equal(checklist.itens.length,0);
 });
+
+test('aluno ja amarelo continua vendo a pratica seguinte mesmo sem preencher o inicio novo',async()=>{
+  const data=withChecklist();data.atual_ordem=2;
+  data.etapas.forEach(step=>step.alcancada=step.ordem<=2);
+  data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map(id=>({id,titulo:id,estado:id==='item-2'?'concluido':'pendente',detalhe:'Registro anterior',acao:{rotulo:'Abrir',url:'/conquistas/inicio/motivo/'}}));
+  data.etapas[2].checklist.itens[0].estado='pendente';
+  data.etapas[2].checklist.itens[0].acao={rotulo:'Abrir Sandbox',url:'/encomendas/sandbox/'};
+  const r=await load({ok:true,status:200,json:async()=>data});
+  const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['item-2','criterio-3']);
+  assert.equal(checklist.itens.find(item=>item.estado==='pendente').acao.url,'/encomendas/sandbox/');
+  assert.equal(r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades).itens.length,4);
+});
 test('estados ou acoes invalidas no checklist nao sao desenhados',async()=>{
   for(const change of [d=>d.etapas[0].checklist.itens[0].estado='suposto',d=>d.etapas[0].checklist.itens[0].acao={rotulo:'Falso',url:'javascript:alert(1)'},d=>d.etapas[0].checklist.itens.push(d.etapas[0].checklist.itens[0])]){
     const data=withChecklist();change(data);
