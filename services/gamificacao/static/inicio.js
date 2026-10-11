@@ -8,7 +8,8 @@ window.iniciarJornada = (scope = document, host = {}) => {
   let data = null;
   let busy = false;
   let motivoStep = 1;
-  const motivoReturnLabel = () => data?.inicio.etapas?.some(etapa => etapa.etapa === 1 && etapa.xp_recebido > 0) ? 'Voltar' : 'Depois eu faço isso';
+  const motivoJaConcluido = () => Boolean(data?.inicio.etapas?.some(etapa => etapa.etapa === 1 && etapa.xp_recebido > 0));
+  const motivoReturnLabel = () => motivoJaConcluido() ? 'Voltar' : 'Depois eu faço isso';
   const embedded = Boolean(host.close);
   const lifecycle = new AbortController();
   const navigate = destination => host.navigate ? host.navigate(destination) : window.location.assign(destination);
@@ -125,7 +126,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
       forms.motivo.elements.motivo_pessoal.value = data.inicio.motivo_pessoal || '';
       if (forms.motivo.elements.motivo_outro) forms.motivo.elements.motivo_outro.value = data.inicio.motivo_outro || '';
       otherMotivo();
-      showMotivoStep(data.inicio.motivo_etapa === 2 ? 2 : 1);
+      showMotivoStep(!motivoJaConcluido() && data.inicio.motivo_etapa === 2 ? 2 : 1);
     }
     if (forms.plano) {
       ['sonho', 'objetivo', 'quando', 'obstaculo', 'plano_b', 'compromisso', 'apoio'].forEach(key => {
