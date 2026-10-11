@@ -1,3 +1,24 @@
+# D2 — acesso atual e histórico da implantação
+
+## Acesso operacional atual — conferido em 11/10/2026
+
+O SSH dos robôs usa o alias `sitesdoreino-robo`, já configurado neste PC em `C:\Users\davia\.ssh\config`. O alias antigo `sitesdoreino-vps` teve a chave ampla revogada em 09/10/2026; sua presença no arquivo não significa acesso disponível. Não é necessário solicitar outra credencial para as operações abaixo.
+
+- Entregas: `ssh sitesdoreino-robo estado` e `ssh sitesdoreino-robo consultar ID`.
+- Estado do analisador e última operação: `ssh sitesdoreino-robo analisador consultar`.
+- Diagnóstico com modelos conhecidos e arquivo inválido: `ssh sitesdoreino-robo analisador diagnosticar`.
+- Recuperação da imagem/ponte/agenda preservadas: `ssh sitesdoreino-robo analisador recuperar`.
+
+Diagnóstico e recuperação devolvem um ID e continuam na VPS após a desconexão. A consulta mostra andamento e resultado. A recuperação começa por backup, comprova os modelos antes de ativar uma imagem restaurada e preserva anexos, históricos e banco. Uma imagem diferente da referência é informada para conferência, sem sobrescrevê-la. Falhas de conteúdo não são reabertas como se fossem falhas de infraestrutura.
+
+O console administrativo conhecido é `https://hpanel.hostinger.com/vps/1893584/overview`, botão Web console, que abre `https://asc.hostingervps.com/2018/`. Foi usado e conferido na instalação. A manutenção acima já funciona pelo canal limitado e não depende de abrir esse painel nem reativar o SSH amplo. A sessão do navegador pode expirar; nenhum segredo fica nestas referências.
+
+O programa versionado é `C:\Users\davia\.codex\worktrees\canal-analisador-vps\sitesdoreino-limpo-20260923\infra\acessos\analisador_manutencao.py`. Evidência desta instalação, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\canal-analisador-20261011\comprovacao-final.json`.
+
+## Registro histórico anterior ao corte de 09/10/2026
+
+As afirmações de pendência abaixo descrevem a preparação original. D2 foi aplicado: três chaves amplas foram retiradas, e a recuperação pelo console foi conferida. A correção do canal de 10/10 foi instalada às 09h31 de Brasília. Esses marcos substituem o estado de preparação do texto histórico.
+
 # D2 — acesso de robôs por operações (preparado; nada aplicado)
 
 Estado lido da VPS em 09/10/2026: `deploy` é uid 1000 e pertence a `docker`, equivalente a poder de root. Seu sudo listado permite só `/usr/local/sbin/provisionar-usuario-ponte`, mas o socket Docker já basta para escapar do isolamento. `/home/deploy/.ssh/authorized_keys` contém três chaves válidas:

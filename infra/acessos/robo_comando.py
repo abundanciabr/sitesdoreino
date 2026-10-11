@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Comando forçado pelo SSH: só encaminha três operações tipadas ao integrador."""
+"""Comando forçado SSH: entregas e manutenção tipada do analisador."""
 import json
 import os
 import shlex
@@ -7,7 +7,7 @@ import socket
 import sys
 
 SOCKET = "/run/meshcraft-robo.sock"
-PERMITIDOS = {"entregar", "consultar", "estado"}
+PERMITIDOS = {"entregar", "consultar", "estado", "analisador"}
 
 
 class ComandoRecusado(ValueError):
@@ -23,6 +23,8 @@ def principal():
     except ValueError:
         raise ComandoRecusado("comando inválido") from None
     if not args or args[0] not in PERMITIDOS or len(args) > 40:
+        raise ComandoRecusado("operação não permitida")
+    if args[0] == "analisador" and (len(args) != 2 or args[1] not in ("consultar", "diagnosticar", "recuperar")):
         raise ComandoRecusado("operação não permitida")
     pedido = json.dumps(args, ensure_ascii=True).encode()
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as canal:
