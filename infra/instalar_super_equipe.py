@@ -79,6 +79,7 @@ def main():
         if anterior.exists():
             shutil.copy2(anterior, copia/nome)
     CODIGO.mkdir(mode=0o755, exist_ok=True)
+    CODIGO.chmod(0o755)
     DADOS.mkdir(mode=0o700, exist_ok=True)
     os.chown(DADOS, robo.pw_uid, robo.pw_gid)
     for nome, fonte in arquivos.items():
