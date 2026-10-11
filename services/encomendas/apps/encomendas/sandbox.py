@@ -17,7 +17,7 @@ from .sandbox_models import (
 TERMOS_SIMULACAO = (
     "Esta atividade é exclusivamente uma simulação educacional de trabalho real, destinada ao aprendizado e à experiência. "
     "Não há contratação remunerada, cobrança, compra, investimento, pagamento, saque ou conversão em dinheiro. "
-    "Concluir o envio registra a conquista e concede os XP e a progressão previstos na jornada, sem repetir o bônus e respeitando as etapas anteriores. "
+    "A conquista e o bônus de XP chegam quando a análise termina e reconhece a realização, respeitando a sequência e sem repetir o bônus. "
     "Eu aceito realizar os entregáveis do briefing no prazo que escolhi e enviar minha entrega para avaliação. "
     "A análise automática determina a avaliação; discordâncias seguem pelo suporte. Participar não autoriza a fila remunerada."
 )
@@ -153,7 +153,7 @@ def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None, item_livre="", 
         termos.pop("recompensa", None)
         termos["termos_simulacao"] = (
             "Esta é uma prática educacional, sem cobrança ou pagamento. "
-            "Concluir o envio registra a conquista, os XP e a progressão previstos na jornada, respeitando a sequência e sem repetir bônus. "
+            "A conquista e o bônus de XP chegam quando a análise termina e reconhece a realização, respeitando a sequência e sem repetir o bônus. "
             "O aceite registra o briefing e o prazo escolhido."
         )
         termos["termos_simulacao_versao"] = catalogo_curso.VERSAO

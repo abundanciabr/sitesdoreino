@@ -22,7 +22,7 @@ def test_confirmacao_nao_inicia_antes_do_aceite_e_registra_prazo(client, monkeyp
     assert confirmacao.status_code == 200
     html = confirmacao.content.decode()
     assert 'sem qualquer pagamento ou envolvimento financeiro' in html
-    assert 'XP e a progressão previstos na jornada' in html
+    assert 'A conquista e o bônus de XP chegam quando a análise termina' in html
     assert 'type="checkbox" name="aceito_termos" value="sim" required' in html
     assert not ParticipacaoSandbox.objects.filter(site_id=site).exists()
     aceitar = reverse('sandbox_aceitar', args=[projeto.pk])
@@ -35,7 +35,7 @@ def test_confirmacao_nao_inicia_antes_do_aceite_e_registra_prazo(client, monkeyp
     assert trabalho.prazo_ate - trabalho.aceite_em == timedelta(hours=horas)
     assert trabalho.termos['prazo_horas'] == horas
     assert trabalho.termos['sem_pagamento'] is True
-    assert 'XP e a progressão previstos na jornada' in trabalho.termos['termos_simulacao']
+    assert 'A conquista e o bônus de XP chegam quando a análise termina' in trabalho.termos['termos_simulacao']
     assert trabalho.termos['recompensa_tipo'] == 'xp'
     assert 'recompensa' not in trabalho.termos
     tela = client.get(reverse('sandbox_trabalho', args=[trabalho.pk]))

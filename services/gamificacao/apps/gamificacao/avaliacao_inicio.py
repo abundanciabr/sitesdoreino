@@ -248,9 +248,15 @@ def _criterio(ordem, caminho):
     if ordem == 3:
         return "Reconheça somente se o relato identifica um item 3D e uma ação concreta realizada nele. Personalizar uma base preparada vale. Imagem é opcional; não alegue ter visto objeto ausente."
     if ordem == 4:
-        return ("Examine a imagem visível ou a estrutura 3D lida e sua relação concreta com o relato. "
-                "Descreva apenas características verificáveis. Sem imagem, geometria e nomes declarados não provam aparência; "
-                "se a estrutura não permite relacionar o item com segurança, marque incompleta e explique o limite. "
+        return ("Esta etapa é a primeira APRESENTAÇÃO do item para análise, não uma comparação de versões. "
+                "Examine a imagem visível ou a estrutura 3D lida, identifique o item descrito quando possível "
+                "e relate características concretas verificáveis do material. Reconheça a apresentação quando "
+                "o material examinado for compatível com o item relatado e permitir feedback específico. "
+                "O relato anterior sobre ações, mudança de cor ou salvamento é contexto: não exija imagem anterior, "
+                "registro independente nem prova dessa mudança ou do salvamento para reconhecer esta etapa. "
+                "Se a ação relatada não puder ser verificada pela imagem atual, diga esse limite sem tratar a "
+                "apresentação correspondente como incompleta por isso. Sem imagem, geometria e nomes declarados "
+                "não provam aparência; se a estrutura não permite relacionar o item com segurança, marque incompleta. "
                 "Imagem não prova malha nem funcionamento no jogo.")
     if ordem == 5:
         return ("Compare duas versões visuais do mesmo item e verifique mudança de cor de uma parte; identifique a parte e a diferença. "
@@ -404,7 +410,8 @@ def avaliar(pessoa_id, site_id, ordem, dados, anexos=()):
         "Para modelos 3D só há estrutura, medidas e nomes declarados; sem vista renderizada não afirme aparência, cor visível ou identidade visual. "
         "O nome do arquivo não é condição obrigatória nem prova de identidade. Relacione geometria e relato pelo que for verificável; "
         "se os fatos não permitem essa relação, marque incompleta. "
-        "Nas comparações, distinga as duas imagens; se a diferença não puder ser vista, marque incompleta. "
+        "Somente nas etapas de comparação (5, 6 e 7 quando aplicável), distinga as duas imagens; "
+        "se a diferença exigida pela etapa não puder ser vista, marque incompleta. "
         "Na etapa 7 de aprender, um registro da prática é uma fonte independente; cite registro:<índice> e confronte antes/depois com a explicação. "
         "Retorne apenas JSON: {\"resultado\":\"reconhecida|incompleta\",\"feedback\":\"explicação específica em português\","
         "\"observacoes\":[{\"fonte\":\"relato ou ID de imagem\",\"observacao\":\"fato concreto observado ou lacuna\"}]}. "

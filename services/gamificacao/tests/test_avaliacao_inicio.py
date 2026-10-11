@@ -54,6 +54,25 @@ def test_vermelha_precisa_imagem_examinada(monkeypatch):
     assert avaliacao.avaliar(10, "site", 4, dados(4), [anexo()])["resultado"] == "falha"
 
 
+def test_vermelha_avalia_apresentacao_sem_exigir_versao_anterior(monkeypatch):
+    chamada = {}
+    monkeypatch.setattr(avaliacao, "_imagem", lambda _: (b"png", {"largura_px": 800, "altura_px": 600}))
+    def modelo(instrucoes, conteudo):
+        chamada["instrucoes"] = instrucoes
+        chamada["pedido"] = json.loads(conteudo[0]["text"])
+        return responder(observacoes=[{"fonte": "1", "observacao":
+            "A imagem apresenta boné com aba azul e copa arredondada."}])
+    monkeypatch.setattr(avaliacao, "_modelo", modelo)
+    saida = avaliacao.avaliar(10, "site", 4, dados(4), [anexo()])
+    assert saida["resultado"] == "reconhecida"
+    assert len(chamada["pedido"]["imagens"]) == 1
+    assert "não exija imagem anterior" in chamada["pedido"]["criterio"]
+    assert "sem tratar a apresentação correspondente como incompleta" in chamada["pedido"]["criterio"]
+    assert "Somente nas etapas de comparação (5, 6 e 7" in chamada["instrucoes"]
+    assert "Compare duas versões" in avaliacao._criterio(5, "ugc")
+    assert "Compare duas versões" in avaliacao._criterio(6, "ugc")
+
+
 def test_glb_le_geometria_real_e_nao_afirma_aparencia(monkeypatch):
     vertices = struct.pack("<9f", 0, 0, 0, 1, 0, 0, 0, 1, 0)
     documento = {"asset": {"version": "2.0"}, "buffers": [{"byteLength": len(vertices)}],
