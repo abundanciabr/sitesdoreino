@@ -8,10 +8,12 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Ateliê — Trilha de {{ trilha.aluno.nome }}</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="{% url 'trilha_v4_css' %}">
-  <script src="{% url 'trilha_v4_js' %}" defer></script>
+  {% if request.previa_trilha_url %}<link rel="stylesheet" href="{{ request.previa_trilha_url }}style.css">
+  <script src="{{ request.previa_trilha_url }}app.js" defer></script>{% else %}<link rel="stylesheet" href="{% url 'trilha_v4_css' %}">
+  <script src="{% url 'trilha_v4_js' %}" defer></script>{% endif %}
 </head>
 <body>
+  {% if request.previa_trilha_url %}<div role="status" style="background:#1f4060;color:white;padding:10px 16px;text-align:center;font:700 14px system-ui,sans-serif">Prévia administrativa — progresso separado</div>{% endif %}
   {{ trilha|json_script:"trilha-data" }}
   <svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
@@ -70,7 +72,7 @@
     <div class="dialog-content">
       <div id="dialog-panel"><h2 id="dialog-title">Um passo de cada vez.</h2></div>
       <div class="checklist-update"><span id="checklist-updated" role="status" aria-live="polite"></span><button type="button" id="checklist-refresh">Atualizar</button></div>
-      <a class="checklist-back" style="text-align:center" href="/trilha/inventario/">Abrir meu inventário</a>
+      <a class="checklist-back" style="text-align:center" href="{{ request.previa_trilha_url|default:'/trilha/' }}inventario/">Abrir meu inventário</a>
       <button class="checklist-back" id="back-to-journey">Voltar à trilha</button>
     </div>
   </dialog>

@@ -8,6 +8,7 @@ import re
 import httpx
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.utils.cache import patch_vary_headers
+from django.views.decorators.csrf import csrf_exempt
 
 from .trilha_faixas import URLCONF, servir_view_da_celula
 from .trilha_v4 import _sessao, trilha_v4
@@ -89,6 +90,7 @@ def _privada(resposta):
     return resposta
 
 
+@csrf_exempt
 def trilha_previa(request, destino=""):
     """Todos os caminhos da candidata passam pela mesma verificação admin."""
     if request.get_host().split(":", 1)[0].lower() != "meshcraft.top":
@@ -101,11 +103,21 @@ def trilha_previa(request, destino=""):
     if estado_admin is not True:
         raise Http404
 
+    if destino in ARQUIVOS and request.method not in ("GET", "HEAD"):
+        raise Http404
     if destino in ("app.js", "inventario.js"):
         conteudo = Path(__file__).with_name("trilha_previa_assets").joinpath(destino).read_bytes()
         return _privada(HttpResponse(conteudo, content_type="text/javascript; charset=utf-8"))
     if destino in ARQUIVOS:
-        return _privada(trilha_v4(request, ARQUIVOS[destino]))
+        anterior = getattr(request, "previa_trilha_url", None)
+        request.previa_trilha_url = PREFIXO
+        try:
+            return _privada(trilha_v4(request, ARQUIVOS[destino]))
+        finally:
+            if anterior is None:
+                request.__dict__.pop("previa_trilha_url", None)
+            else:
+                request.previa_trilha_url = anterior
     if destino == "sandbox/":
         return _privada(HttpResponseRedirect(PREFIXO + "encomendas/sandbox/"))
     if destino == "fila/":

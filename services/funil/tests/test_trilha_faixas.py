@@ -1,6 +1,7 @@
 """Contrato da ponte das faixas no processo Django unificado."""
 
 import os
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -306,3 +307,65 @@ def test_links_de_trabalhos_nao_duplicam_prefixo_encomendas(aplicacao):
     finally:
         set_script_prefix("/")
         set_urlconf(None)
+
+
+def test_paginas_renderizadas_da_previa_so_carregam_rotas_privadas(aplicacao):
+    from django.test import RequestFactory
+    from django.urls import set_script_prefix, set_urlconf
+    from config.runtime import serving
+    from modules.funil.apps.core import trilha_previa, trilha_v4
+
+    fabrica = RequestFactory()
+    try:
+        with serving("funil"):
+            set_script_prefix("/")
+            set_urlconf("modules.funil.config.urls")
+            with patch.object(trilha_previa, "_administrador_real", return_value=True), \
+                    patch.object(trilha_v4, "_sessao", return_value=("ok", {
+                        "id": "pessoa-real", "nome_exibido": "Admin Teste"})):
+                for destino in ("", "inventario/"):
+                    pedido = fabrica.get("/trilha/previa/" + destino, HTTP_HOST="meshcraft.top",
+                                        HTTP_COOKIE="meshcraft_sessao=opaco")
+                    pedido.site = {"id": "site-real"}
+                    html = trilha_previa.trilha_previa(pedido, destino).content.decode()
+                    assert "Prévia administrativa — progresso separado" in html
+                    assert "/trilha/previa/style.css" in html
+                    assert "/trilha/previa/" + ("inventario.js" if destino else "app.js") in html
+                    assert "/trilha/app.js" not in html
+                    assert "/trilha/inventario/" not in html
+                    assert "/conquistas/" not in html
+                    for caminho in re.findall(r'(?:href|src)="(/[^\"]+)"', html):
+                        assert caminho.startswith("/trilha/previa/"), caminho
+                    assert not hasattr(pedido, "previa_trilha_url")
+    finally:
+        set_script_prefix("/")
+        set_urlconf(None)
+
+
+def test_post_privado_atravessa_middleware_funil_e_exige_csrf_da_celula(aplicacao):
+    from django.http import JsonResponse
+    from django.middleware.csrf import get_token
+    from django.test import Client
+    from config.runtime import serving
+    from modules.funil.apps.core import middleware, trilha_previa
+    from modules.gamificacao.config import trilha_urls
+
+    padrao = next(p for p in trilha_urls.urlpatterns if p.name == "inventario")
+    original = padrao.callback
+    padrao.callback = lambda request: JsonResponse({"csrf": get_token(request)})
+    cliente = Client(enforce_csrf_checks=True)
+    try:
+        with serving("funil"), patch.object(middleware.SiteResolutionMiddleware, "_resolver",
+                return_value=({"id": "site-real"}, None)), \
+                patch.object(trilha_previa, "_administrador_real", return_value=True):
+            caminho = "/trilha/previa/inventario/api/"
+            get = cliente.get(caminho, HTTP_HOST="meshcraft.top")
+            assert get.status_code == 200
+            assert get.cookies["trilha_previa_gamificacao_csrf"]["path"] == "/trilha/previa/"
+            token = get.json()["csrf"]
+            assert cliente.post(caminho, {}, HTTP_HOST="meshcraft.top",
+                                HTTP_X_CSRFTOKEN="token-ruim").status_code == 403
+            assert cliente.post(caminho, {}, HTTP_HOST="meshcraft.top",
+                                HTTP_X_CSRFTOKEN=token).status_code == 200
+    finally:
+        padrao.callback = original

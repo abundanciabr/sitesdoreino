@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Instala a candidata privada sem trocar a aplicaÃƒÂ§ÃƒÂ£o usada pelos alunos.
+"""Instala a candidata privada sem trocar a aplicaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o usada pelos alunos.
 
-Segredos continuam no servidor. NÃƒÂ£o modifica main, Traefik, checkout nem as
+Segredos continuam no servidor. NÃƒÆ’Ã‚Â£o modifica main, Traefik, checkout nem as
 bases atuais. Em falha, para somente processos novos e preserva os dados.
 """
 from __future__ import annotations
@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import uuid
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 
 ROOT = Path('/opt/plataforma')
@@ -54,7 +55,11 @@ def anchors():
              TRUSTED / 'docs/politica.json', TRUSTED / 'infra/docs_somente_admin.py',
              Path('/home/robo/.ssh/authorized_keys'), Path('/home/deploy/.ssh/authorized_keys')]
     paths += sorted((ROOT / 'env').glob('*.env'))
-    return {str(p): digest(p) for p in paths if p.is_file()}
+    result = {str(p): digest(p) for p in paths if p.is_file()}
+    # O verificador independente já normaliza somente o destino variável do Funil.
+    route = ROOT / 'traefik/dynamic/plataforma.yml'
+    result[str(route)] = module('mp_rotas', FIXED / 'infra/mercadopago_congelado.py').capturar_rotas(ROOT)
+    return result
 
 def parse_env(path):
     values = {}
@@ -88,6 +93,43 @@ def wait_pg(log):
             return
         time.sleep(1)
     raise RuntimeError('postgres_privado_indisponivel')
+
+def montar_privado(codigo, fontes, imagem, registro):
+    """Mesmo transformador confiável, com espaço para os assets 3D da candidata."""
+    nome = 'meshcraft-montagem-previa-' + uuid.uuid4().hex
+    preparar = TRUSTED / 'preparar-aplicacao.py'
+    if not preparar.is_file():
+        raise RuntimeError('transformador_confiavel_ausente')
+    comando = ['docker', 'create', '--name', nome, '--network', 'none',
+               '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+               '--user', '65532:65532', '--memory', '4096m', '--cpus', '1',
+               '--pids-limit', '96', '--tmpfs', '/tmp:rw,nosuid,nodev,size=2048m',
+               '-v', str(fontes) + ':/fontes:ro',
+               '-v', str(preparar) + ':/ferramentas/preparar.py:ro',
+               '--entrypoint', 'python', imagem, '-c',
+               "import runpy,sys,time; sys.argv=['/ferramentas/preparar.py','--origem','/fontes','--destino','/tmp/modules']; runpy.run_path('/ferramentas/preparar.py',run_name='__main__'); print('MONTAGEM-CONCLUIDA',flush=True); time.sleep(300)"]
+    try:
+        run(comando, log=registro)
+        run(['docker', 'start', nome], log=registro)
+        for _ in range(180):
+            logs = subprocess.check_output(['docker', 'logs', nome], stderr=subprocess.STDOUT)
+            if b'MONTAGEM-CONCLUIDA' in logs:
+                processo = subprocess.Popen(['docker', 'exec', nome, 'tar', '-C', '/tmp', '-cf', '-', 'modules'],
+                                            stdout=subprocess.PIPE, stderr=registro)
+                with tarfile.open(fileobj=processo.stdout, mode='r|') as arquivo:
+                    arquivo.extractall(codigo, filter='data')
+                processo.stdout.close()
+                if processo.wait() != 0:
+                    raise RuntimeError('saida_da_montagem_indisponivel')
+                return
+            if run(['docker', 'inspect', '--format', '{{.State.Running}}', nome]).strip() != 'true':
+                registro.write(logs.decode('utf-8', errors='replace')[-2000:])
+                raise RuntimeError('montagem_privada_falhou')
+            time.sleep(1)
+        raise RuntimeError('montagem_privada_excedeu_prazo')
+    finally:
+        # Somente o contêiner temporário desta chamada, sem volume nem dado persistente.
+        subprocess.run(['docker', 'rm', '-f', nome], stdout=registro, stderr=registro)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -164,8 +206,7 @@ def main():
             mp.conferir_fontes(source, policy)
             package = base / 'codigo'
             shutil.copytree(source / 'services/aplicacao', package)
-            from protecao_publicacao import montar
-            montar(package, source / 'services', image, TRUSTED / 'preparar-aplicacao.py', log)
+            montar_privado(package, source / 'services', image, log)
             shutil.copytree(source / 'documentos', package / 'documentos_embutidos')
             (package / 'infra').mkdir(mode=0o755)
             for file in ('previa_trilha.py', 'previa_trilha_transporte.py'):
@@ -182,7 +223,7 @@ def main():
                 if service in (*ISOLATED, 'admin', 'funil', 'identidade', 'alunos', 'catalogo'):
                     values = parse_env(original)
                 else:
-                    # CÃ©lulas sem papel na prÃ©via nÃ£o recebem segredo nem base real.
+                    # CÃƒÂ©lulas sem papel na prÃƒÂ©via nÃƒÂ£o recebem segredo nem base real.
                     values = {'DJANGO_SECRET_KEY': secrets.token_hex(32),
                               'DATABASE_URL': private_dsn}
                 if service in ('identidade', 'alunos', 'catalogo'):
@@ -260,7 +301,7 @@ print('MIGRACOES_SOMENTE_BASES_PRIVADAS_OK')
                  'infra.previa_trilha:application', '--host', '0.0.0.0', '--port', '8000',
                  '--lifespan', 'on', '--no-access-log'], log=log)
             created.append(NAMES[0])
-            # A célula Funil vigente fica em sua rede privada, sem acesso ao PG.
+            # A cÃ©lula Funil vigente fica em sua rede privada, sem acesso ao PG.
             run(['docker', 'network', 'connect', '--alias', 'trilha-previa',
                  'meshcraft-funil', NAMES[0]], log=log)
             probe = """import urllib.request,urllib.error
