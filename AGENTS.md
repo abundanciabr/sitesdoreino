@@ -6,6 +6,12 @@
 6. Todo trabalho é no site.
 7. Entregue funcionando no site.
 
+## Referência de faixas e XP pedida pelo mantenedor em 11/10/2026
+
+Antes de trabalhar com faixas, graus, XP, Sandbox, Fila do Dólar, MESH ou alunos, leia `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`. A referência compartilhada no repositório é `https://github.com/abundanciabr/sitesdoreino/blob/main/REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`; em outro checkout, use a cópia desse arquivo na raiz do repositório.
+
+A decisão de 11/10/2026 é: a análise automática do Sandbox determina o resultado; concluir o envio concede a progressão de faixa e os XP previstos; discordâncias seguem pelo suporte; MESH não é mais recompensa vigente. Preserve a progressão sequencial e o histórico. Aprovação manual obrigatória da escola e recompensa dependente dela são comportamentos antigos a atualizar, não decisões vigentes. Leia a referência completa antes de interpretar código, testes ou mensagens antigas como regra do produto.
+
 Orientação expressa do mantenedor em 06/10/2026 — pagamentos, Mercado Pago e Appmax:
 Em toda tarefa que envolva pagamento com cartão ou Pix, a identificação do pagador deve incluir nome completo, CPF e e-mail; somente e-mail não basta. Aplique essa orientação à coleta, conferência e envio dos dados ao provedor, inclusive à compra de créditos. Não invente dados pessoais nem exponha CPF, credenciais ou dados de cartão em documentos ou logs. A necessidade de endereço em compras com cartão ainda não foi definida pelo mantenedor: confira a integração e a documentação vigente do provedor para saber se e quando ele é exigido; não trate essa pendência como autorização para omitir nome completo, CPF ou e-mail.
 
