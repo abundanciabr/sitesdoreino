@@ -65,7 +65,11 @@
     $('pratica').textContent = start.pratica;
     $('apoio-texto').textContent = ({guiado: 'Comece pela forma principal. Se travar, salve a tentativa e prepare uma dúvida para pedir orientação.', autonomo: 'Tente uma versão com o que já sabe. Depois escolha um ajuste para a próxima tentativa.', desafio: 'Experimente uma segunda versão com uma mudança intencional. Compare as duas e observe o que aprendeu.'})[start.apoio];
     $('concluir').hidden = completed;
-    if (completed) $('item-estado').textContent = 'Seu primeiro item já faz parte das suas conquistas. Você pode continuar guardando versões; os registros anteriores permanecem aqui.';
+    $('item-estado').textContent = completed
+      ? 'Seu primeiro item já faz parte das suas conquistas. Você pode continuar guardando versões; os registros anteriores permanecem aqui.'
+      : savedFiles.length
+        ? 'Seus arquivos continuam guardados. Complete os requisitos da faixa branca e confirme a conclusão do primeiro item para alcançar a amarela.'
+        : 'Guardar uma tentativa permite voltar a ela. Quando seu primeiro item estiver concluído, você pode registrar essa conquista.';
     $('obra').hidden = !savedFiles.length;
     $('destaque').replaceChildren();
     $('versoes').replaceChildren();
@@ -104,10 +108,15 @@
   }
   async function request(body) {
     const response = await fetch(root.dataset.api, {method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', headers: body ? {'X-CSRFToken': data.csrf} : {}, ...(body ? {body} : {})});
+    const hidePrivateContent = () => { $('conteudo').hidden = true; $('comparacao')?.remove(); };
+    if (response.status === 401 || response.status === 403) hidePrivateContent();
     let result;
     try { result = await response.json(); } catch (_) { throw new Error('Não foi possível salvar ou abrir seu registro agora. Suas respostas continuam nesta tela. Tente novamente.'); }
     if (!response.ok) throw new Error(result.detail || 'Não foi possível salvar agora. Suas respostas continuam nesta tela.');
-    if (data && (data.pessoa_id !== result.pessoa_id || data.site_id !== result.site_id)) throw new Error('Sua conta mudou. Entre novamente na conta em que começou e reabra esta página.');
+    if (data && (data.pessoa_id !== result.pessoa_id || data.site_id !== result.site_id)) {
+      hidePrivateContent();
+      throw new Error('Sua conta mudou. Entre novamente na conta em que começou e reabra esta página.');
+    }
     return result;
   }
   async function open() {
@@ -138,11 +147,11 @@
         announce('Sua versão salva está abaixo. Suas respostas continuam nos campos; revise-as antes de salvar novamente.');
       } else {
         data = result; fill(); render();
-        $('conteudo').hidden = false;
-        if (forms.item && ['#inicio-form-item', '#inicio-item'].includes(location.hash)) {
-          document.getElementById(location.hash.slice(1)).scrollIntoView({block: 'start'});
-        }
         announce(data.inicio.salvo_em ? `Salvo na sua conta em ${date(data.inicio.salvo_em)}. Continue de onde parou.` : 'Comece com o que faz sentido para você hoje.');
+      }
+      $('conteudo').hidden = false;
+      if (!dirty.size && forms.item && ['#inicio-form-item', '#inicio-item'].includes(location.hash)) {
+        document.getElementById(location.hash.slice(1)).scrollIntoView({block: 'start'});
       }
       $('recarregar').hidden = true;
     } catch (error) {
