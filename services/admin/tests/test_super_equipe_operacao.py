@@ -100,3 +100,25 @@ def test_resposta_desconhecida_nao_e_reenviada(rotina, melhoria):
     reg["iniciada_em"] = (timezone.now()-timedelta(hours=1)).isoformat()
     melhoria.save()
     assert dev.desenvolver(requisicao(dados), melhoria.pk).status_code == 409
+
+
+def test_diagnostico_sem_defeito_nao_reabre_a_cada_observacao(rotina, fontes):
+    fontes["robos_ia"]["estado"] = "indisponivel"
+    rodar(fontes)
+    item = MelhoriaSuperEquipe.objects.get()
+    item.situacao = "resolvida"
+    item.desenvolvimento = {"rodadas": {"a": {"resposta": {"acao": "sem_defeito"}}}}
+    item.save()
+    adiantar(rotina)
+    rodar(fontes)
+    item.refresh_from_db()
+    assert item.situacao == "resolvida"
+    fontes["robos_ia"]["estado"] = "medido"
+    adiantar(rotina)
+    rodar(fontes)
+    fontes["robos_ia"]["estado"] = "indisponivel"
+    adiantar(rotina)
+    rodar(fontes)
+    item.refresh_from_db()
+    assert item.situacao == "pendente"  # uma recidiva real abre outro episódio
+    assert item.desenvolvimento["historico"][0]["rodadas"]["a"]

@@ -133,7 +133,8 @@ def confirmar_entrega(item):
     registro = publicar(["consultar", item["entrega"]])
     op = registro.get("operacao", {})
     candidata = registro.get("promovida_candidata") or registro.get("candidata")
-    if op.get("fase") == "ativa" and op.get("ativadas") and op.get("candidata") == candidata:
+    confirmada = (op.get("fase") == "ativa" and op.get("ativadas")) or op.get("fase") == "preservada em versão posterior"
+    if confirmada and op.get("candidata") == candidata:
         if not item.get("ativacao_conferida_em"):
             item["ativacao_conferida_em"] = datetime.now(timezone.utc).isoformat()
             salvar(item)
@@ -248,6 +249,17 @@ def desenvolver(item):
               + proposta["motivo"], entrega["id"])
 
 
+def fonte_recuperada(item, observacao):
+    evidencia = item.get("evidencia", {})
+    try:
+        nova = datetime.fromisoformat(observacao["consultado_em"].replace("Z", "+00:00"))
+        original = datetime.fromisoformat(evidencia["consultado_em"].replace("Z", "+00:00"))
+        return (evidencia.get("operacao") == "fonte" and evidencia.get("achado")
+                and nova >= original and evidencia["achado"] not in observacao["faltas"])
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def ciclo():
     contato = {"local": "vps"}
     try:
@@ -285,7 +297,11 @@ def ciclo():
             if item["entrega"]:
                 confirmar_entrega(item)
             else:
-                desenvolver(item)
+                observacao = fila.get("observacao", {})
+                if fonte_recuperada(item, observacao):
+                    resultado(item, "resolvida", "Nova leitura da mesma fonte não reproduziu a ocorrência. Conferência concluída sem publicar código nem iniciar nova chamada de IA.")
+                else:
+                    desenvolver(item)
         except Conflito:
             if item.get("posse"):
                 try:
