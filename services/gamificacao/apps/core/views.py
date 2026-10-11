@@ -344,6 +344,8 @@ def servir_estatico(request, caminho: str):
     if not str(alvo).startswith(str(raiz)) or not alvo.is_file():
         raise Http404("arquivo não encontrado")
     tipo, _ = mimetypes.guess_type(str(alvo))
+    if alvo.suffix.lower() == '.avif':
+        tipo = 'image/avif'
     return FileResponse(
         alvo.open("rb"), content_type=tipo or "application/octet-stream"
     )
