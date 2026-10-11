@@ -1,14 +1,7 @@
-(() => {
-  'use strict';
-  if (document.body.dataset.embutido === 'sim' && window.parent !== window) {
-    const close = () => window.parent.postMessage({type: 'meshcraft:motivo-fechar'}, window.location.origin);
-    document.querySelector('.voltar-faixa').addEventListener('click', event => { event.preventDefault(); close(); });
-    window.addEventListener('message', event => {
-      if (event.origin === window.location.origin && event.source === window.parent && event.data?.type === 'meshcraft:motivo-pedir-fechamento') close();
-    });
-    window.parent.postMessage({type: 'meshcraft:motivo-pronto'}, window.location.origin);
-  }
-  const number = document.getElementById('xp-numero');
+'use strict';
+window.iniciarConquista = (scope = document, host = {}) => {
+  if (host.close) scope.querySelector('.voltar-faixa').addEventListener('click', event => { event.preventDefault(); host.close(); });
+  const number = scope.getElementById('xp-numero');
   if (!number || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const total = Number(number.dataset.xp);
   if (!Number.isSafeInteger(total) || total < 1) return;
@@ -20,4 +13,5 @@
     if (progress < 1) requestAnimationFrame(frame);
   };
   requestAnimationFrame(frame);
-})();
+};
+window.iniciarConquista();

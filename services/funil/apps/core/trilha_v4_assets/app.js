@@ -353,36 +353,69 @@ window.addEventListener('focus',()=>{if(!document.hidden)refreshJourney();});
 setInterval(()=>{if(!document.hidden&&document.querySelector('#detail-dialog').open)refreshJourney();},30000);
 loadJourney();
 
-let motivoDialog, motivoFrame, motivoReady = false, motivoOpener;
+let motivoDialog, motivoContent, motivoScope, motivoController, motivoOpener, motivoLoad = 0;
+const motivoScripts = new Map();
+function loadMotivoScript(src) {
+  if (!motivoScripts.has(src)) motivoScripts.set(src, new Promise((resolve, reject) => {
+    const script = document.createElement('script'); script.src = src;
+    script.onload = resolve;
+    script.onerror = () => { motivoScripts.delete(src); script.remove(); reject(new Error('Não foi possível abrir agora. Tente novamente.')); };
+    document.head.append(script);
+  }));
+  return motivoScripts.get(src);
+}
+async function loadMotivo(url) {
+  const currentLoad = ++motivoLoad;
+  motivoController?.destroy(); motivoController = null;
+  const loading = document.createElement('p'); loading.textContent = 'Abrindo seus motivos…'; loading.setAttribute('role', 'status');
+  motivoScope.replaceChildren(loading); motivoContent.setAttribute('aria-busy', 'true');
+  try {
+    const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
+    if (!response.ok) throw new Error('Não foi possível abrir agora. Tente novamente.');
+    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
+    const form = page.querySelector('#inicio-jornada'), receipt = page.querySelector('.celebracao');
+    if (!form && !receipt) throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');
+    await loadMotivoScript(form ? '/conquistas/static/inicio.js?v=7' : '/conquistas/static/inicio_conquista.js?v=3');
+    if (currentLoad !== motivoLoad || !motivoDialog.open) return;
+    const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/conquistas/static/'));
+    const base = document.createElement('style');
+    base.textContent = ':host{display:block;color:#172b48;font:16px/1.6 system-ui,sans-serif} .motivo-recibo{--papel:#f8faf5;--escuro:#253923;--cinza:#667363;--verde:#58ae17;color:var(--escuro);background:var(--papel);min-height:100%;padding:16px 0;font-family:Nunito,system-ui,sans-serif} .motivo-recibo .celebracao{margin-top:0}@media(prefers-color-scheme:dark){.motivo-recibo{--papel:#151e19;--escuro:#f2f7ec;--cinza:#afbaaa}}';
+    const wrapper = document.createElement('div'); wrapper.className = form ? 'inicio-embutido' : 'motivo-recibo ' + page.body.className;
+    wrapper.append(form || receipt);
+    motivoScope.replaceChildren(base, ...styles, wrapper);
+    const host = {close: () => motivoDialog.close(), navigate: loadMotivo};
+    if (form) motivoController = window.iniciarJornada(motivoScope, host);
+    else window.iniciarConquista(motivoScope, host);
+    motivoContent.scrollTop = 0;
+  } catch (error) {
+    if (currentLoad !== motivoLoad || !motivoDialog.open) return;
+    const message = document.createElement('p'); message.textContent = error.message; message.setAttribute('role', 'alert');
+    const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Tentar novamente'; retry.addEventListener('click', () => loadMotivo(url));
+    motivoScope.replaceChildren(message, retry);
+  } finally { if (currentLoad === motivoLoad) motivoContent.removeAttribute('aria-busy'); }
+}
 function openMotivo(opener) {
   if (!motivoDialog) {
     motivoDialog = document.createElement('dialog'); motivoDialog.className = 'motivo-dialog';
     motivoDialog.setAttribute('aria-label', 'Definir meus motivos');
     const close = document.createElement('button'); close.type = 'button'; close.className = 'motivo-close';
     close.textContent = '×'; close.setAttribute('aria-label', 'Fechar meus motivos');
-    motivoFrame = document.createElement('iframe'); motivoFrame.title = 'Meus motivos — uma etapa de cada vez';
-    const requestClose = () => {
-      if (motivoReady) motivoFrame.contentWindow.postMessage({type: 'meshcraft:motivo-pedir-fechamento'}, window.location.origin);
-      else motivoDialog.close();
-    };
+    motivoContent = document.createElement('div'); motivoContent.className = 'motivo-content';
+    motivoScope = motivoContent.attachShadow({mode: 'open'});
+    const requestClose = () => motivoController ? motivoController.close() : motivoDialog.close();
     close.addEventListener('click', requestClose);
     motivoDialog.addEventListener('cancel', event => { event.preventDefault(); requestClose(); });
     motivoDialog.addEventListener('close', () => {
-      motivoFrame.src = 'about:blank'; motivoReady = false;
+      motivoLoad++; motivoController?.destroy(); motivoController = null; motivoScope.replaceChildren();
       const inDetails = document.querySelector('#detail-dialog').open;
       refreshJourney().then(() => {
         const panel = document.querySelector(inDetails ? '#dialog-panel' : '#panel-1');
         (panel?.querySelector('a[href="/conquistas/inicio/motivo/"]') || motivoOpener)?.focus({preventScroll: true});
       });
     });
-    window.addEventListener('message', event => {
-      if (!motivoDialog.open || event.origin !== window.location.origin || event.source !== motivoFrame.contentWindow) return;
-      if (event.data?.type === 'meshcraft:motivo-pronto') motivoReady = true;
-      if (event.data?.type === 'meshcraft:motivo-fechar') motivoDialog.close();
-    });
-    motivoDialog.append(close, motivoFrame); document.body.append(motivoDialog);
+    motivoDialog.append(close, motivoContent); document.body.append(motivoDialog);
   }
-  motivoOpener = opener; motivoReady = false;
-  motivoFrame.src = '/conquistas/inicio/motivo/?embutido=1';
+  motivoOpener = opener;
   motivoDialog.showModal();
+  loadMotivo('/conquistas/inicio/motivo/?embutido=1');
 }
