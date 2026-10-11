@@ -6,6 +6,7 @@ import json
 from datetime import date
 from uuid import uuid4
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
 from django.apps import apps
@@ -163,3 +164,27 @@ def test_migracao_sem_site_com_dados_recusa_sem_apagar(monkeypatch):
         migracao.aplicar(apps, SimpleNamespace(connection=connection))
     assert AnexoDaJornada.objects.filter(pk=anexo.pk).exists()
     assert not BackupDoReinicioDasFaixas.objects.exists()
+
+
+def test_migracao_transformada_pelo_runtime_unificado_executa_no_banco():
+    caminho = Path(__file__).resolve().parents[2] / 'aplicacao' / 'preparar.py'
+    if not caminho.exists():
+        pytest.skip('Preparador unificado disponível na cópia completa do repositório.')
+    spec = importlib.util.spec_from_file_location('preparador_reinicio_teste', caminho)
+    preparador = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(preparador)
+    codigo = Path(migracao.__file__).read_text(encoding='utf-8')
+    codigo = preparador._reescrever(codigo, 'gamificacao', {'gamificacao'}, set())
+    codigo = preparador._preservar_tabelas_migracoes(codigo, 'gamificacao')
+    contexto = {'__name__': 'migracao_transformada_para_teste'}
+    exec(compile(codigo, str(caminho), 'exec'), contexto)
+    p, j, anexo = preparar()
+
+    def modelo(label, nome):
+        assert label == 'gamificacao_gamificacao'
+        return apps.get_model('gamificacao', nome)
+
+    copia = contexto['reiniciar_site'](SimpleNamespace(get_model=modelo), connection, SITE)
+    assert copia.aplicado_em
+    assert not AnexoDaJornada.objects.filter(pk=anexo.pk).exists()
+    assert situacao(p.pk, SITE)['atual']['ordem'] == 1

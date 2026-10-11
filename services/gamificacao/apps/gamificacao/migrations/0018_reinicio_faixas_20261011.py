@@ -19,9 +19,9 @@ APAGAR = ('AnexoDaJornada', 'RegistroDaJornada', 'HistoricoDaFaixa', 'FaixaDoAlu
 BONUS = Q(regra_slug__startswith='bonus-inicio-etapa-') | Q(regra_slug__startswith='bonus-faixa-')
 
 
-def reiniciar_site(apps, connection, site):
+def reiniciar_site(apps, banco, site):
     """Repetir a operação não apaga o novo progresso."""
-    alias = connection.alias
+    alias = banco.alias
     modelos = {nome: apps.get_model('gamificacao', nome) for nome in (
         *APAGAR, 'JornadaPessoal', 'LancamentoDeXP', 'PerfilJogador',
         'RegraDePontuacao', 'NivelDefinicao', 'BackupDoReinicioDasFaixas',
@@ -29,10 +29,10 @@ def reiniciar_site(apps, connection, site):
     )}
     backup_model = modelos['BackupDoReinicioDasFaixas']
     with transaction.atomic(using=alias):
-        if connection.vendor == 'postgresql':
+        if banco.vendor == 'postgresql':
             tabelas = sorted(m._meta.db_table for m in modelos.values())
-            with connection.cursor() as cursor:
-                cursor.execute('LOCK TABLE ' + ', '.join(connection.ops.quote_name(t) for t in tabelas)
+            with banco.cursor() as cursor:
+                cursor.execute('LOCK TABLE ' + ', '.join(banco.ops.quote_name(t) for t in tabelas)
                                + ' IN SHARE ROW EXCLUSIVE MODE')
         existente = backup_model.objects.using(alias).filter(site_id=site, chave=CHAVE).first()
         if existente and existente.aplicado_em:
