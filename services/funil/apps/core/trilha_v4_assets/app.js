@@ -244,8 +244,8 @@ function createProgressPanel(details,options){
     if(item.acao&&!blocked){
       const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
       action.href=item.acao.url;
-      if (item.acao.url === '/conquistas/inicio/motivo/') {
-        if (state !== 'concluido') action.textContent = 'Definir meus motivos';
+      if (['/conquistas/inicio/motivo/', '/conquistas/inicio/objetivo/'].includes(item.acao.url)) {
+        if (state !== 'concluido' && item.acao.url === '/conquistas/inicio/motivo/') action.textContent = 'Definir meus motivos';
         action.addEventListener('click', event => {
           if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
           event.preventDefault(); openMotivo(action);
@@ -367,7 +367,7 @@ function loadMotivoScript(src) {
 async function loadMotivo(url) {
   const currentLoad = ++motivoLoad;
   motivoController?.destroy(); motivoController = null;
-  const loading = document.createElement('p'); loading.textContent = 'Abrindo seus motivos…'; loading.setAttribute('role', 'status');
+  const loading = document.createElement('p'); loading.textContent = 'Abrindo sua etapa…'; loading.setAttribute('role', 'status');
   motivoScope.replaceChildren(loading); motivoContent.setAttribute('aria-busy', 'true');
   try {
     const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
@@ -375,7 +375,7 @@ async function loadMotivo(url) {
     const page = new DOMParser().parseFromString(await response.text(), 'text/html');
     const form = page.querySelector('#inicio-jornada'), receipt = page.querySelector('.celebracao');
     if (!form && !receipt) throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');
-    await loadMotivoScript(form ? '/conquistas/static/inicio.js?v=11' : '/conquistas/static/inicio_conquista.js?v=3');
+    await loadMotivoScript(form ? '/conquistas/static/inicio.js?v=12' : '/conquistas/static/inicio_conquista.js?v=3');
     if (currentLoad !== motivoLoad || !motivoDialog.open) return;
     const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/conquistas/static/'));
     const base = document.createElement('style');
@@ -383,7 +383,7 @@ async function loadMotivo(url) {
     const wrapper = document.createElement('div'); wrapper.className = form ? 'inicio-embutido' : 'motivo-recibo ' + page.body.className;
     wrapper.append(form || receipt);
     motivoScope.replaceChildren(base, ...styles, wrapper);
-    const host = {close: () => motivoDialog.close(), navigate: loadMotivo};
+    const host = {close: () => motivoDialog.close(), navigate: loadMotivo, scrollTop: () => { motivoContent.scrollTop = 0; }};
     if (form) motivoController = window.iniciarJornada(motivoScope, host);
     else window.iniciarConquista(motivoScope, host);
     motivoContent.scrollTop = 0;
@@ -410,12 +410,16 @@ function openMotivo(opener) {
       const inDetails = document.querySelector('#detail-dialog').open;
       refreshJourney().then(() => {
         const panel = document.querySelector(inDetails ? '#dialog-panel' : '#panel-1');
-        (panel?.querySelector('a[href="/conquistas/inicio/motivo/"]') || motivoOpener)?.focus({preventScroll: true});
+        (panel?.querySelector(`a[href="${motivoOpener?.getAttribute('href')}"]`) || motivoOpener)?.focus({preventScroll: true});
       });
     });
     motivoDialog.append(close, motivoContent); document.body.append(motivoDialog);
   }
   motivoOpener = opener;
+  const compromisso = opener.getAttribute('href') === '/conquistas/inicio/objetivo/';
+  motivoDialog.classList.toggle('compromisso-dialog', compromisso);
+  motivoDialog.setAttribute('aria-label', compromisso ? 'Meu compromisso' : 'Definir meus motivos');
+  motivoDialog.querySelector('.motivo-close').setAttribute('aria-label', compromisso ? 'Fechar meu compromisso' : 'Fechar meus motivos');
   motivoDialog.showModal();
-  loadMotivo('/conquistas/inicio/motivo/?embutido=1');
+  loadMotivo(opener.getAttribute('href') + '?embutido=1');
 }

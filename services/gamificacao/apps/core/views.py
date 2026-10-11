@@ -170,7 +170,7 @@ def inicio_pagina(request, etapa):
     """Uma página privada para cada passo, sem alterar o estado no acesso."""
     titulos = {
         1: "Meu motivo",
-        2: "Meu objetivo e compromisso",
+        2: "Meu compromisso",
         3: "Meu primeiro item 3D",
         4: "Enviar meu 3D",
     }
@@ -182,7 +182,7 @@ def inicio_pagina(request, etapa):
         "entrou": bool(pessoa_id and site),
         "inicio_etapa": etapa,
         "inicio_titulo": titulos[etapa],
-        "inicio_embutido": etapa == 1 and request.GET.get("embutido") == "1",
+        "inicio_embutido": etapa in (1, 2) and request.GET.get("embutido") == "1",
         "url_de_entrada": settings.URL_DE_ENTRADA,
         "url_da_capa": settings.URL_DA_CAPA,
     }
@@ -203,7 +203,7 @@ def inicio_pagina(request, etapa):
 @require_GET
 def inicio_conquista(request, etapa):
     """Mostra uma etapa concluída; esta leitura não concede XP."""
-    titulos = {1: "Meu motivo", 2: "Meu objetivo e compromisso",
+    titulos = {1: "Meu motivo", 2: "Meu compromisso",
                3: "Meu primeiro item 3D", 4: "Enviar meu 3D"}
     if etapa not in titulos:
         raise Http404

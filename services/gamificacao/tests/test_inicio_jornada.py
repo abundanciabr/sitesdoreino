@@ -308,3 +308,62 @@ def test_sonhos_invalidos_nao_sobrescrevem_registro(client, valor):
     assert resposta.status_code == 400
     inicio = abrir(client).json()['inicio']
     assert inicio['motivo'] == 'ugc' and inicio['motivo_sonhos'] == ['pc_gamer']
+
+
+def test_compromisso_curso_retoma_sem_xp_e_assume_uma_vez_sem_objetivo(client):
+    assert guardar(client, 'inicio-compromisso', assumir='sim').status_code == 400
+    assert guardar(client, 'inicio-motivo', motivo='jogo', motivo_pessoal='Meu mundo',
+                   motivo_sonhos='["jogo_roblox", "ajudar_pais"]').status_code == 200
+    r = guardar(client, 'inicio-compromisso', compromisso_etapa='2')
+    assert r.status_code == 200 and 'conquista_xp' not in r.json()
+    assert abrir(Client()).json()['inicio']['compromisso_etapa'] == 2
+    assert r.json()['inicio']['etapas'][2]['bloqueada'] is True
+    assert guardar(client, 'inicio-item').status_code == 400
+    r = guardar(client, 'inicio-compromisso', assumir='sim')
+    assert r.status_code == 200 and r.json()['conquista_xp'] == 100
+    inicio = r.json()['inicio']
+    assert not inicio.get('objetivo')
+    assert inicio['compromisso_curso'].startswith('Eu assumo o compromisso de concluir todas as etapas deste curso.')
+    assert inicio['compromisso_motivos']['motivo_pessoal'] == 'Meu mundo'
+    assert inicio['compromisso_motivos']['motivo_sonhos'] == ['jogo_roblox', 'ajudar_pais']
+    assert inicio['etapas'][1]['concluida'] and inicio['etapas'][2]['liberada']
+    assert r.json()['atual_ordem'] == 1
+    repetida = guardar(client, 'inicio-compromisso', assumir='sim').json()
+    assert repetida['conquista_xp'] == 0 and repetida['conquista_ja_recebida']
+    assert repetida['inicio']['compromisso_curso_em'] == inicio['compromisso_curso_em']
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 200
+    assert guardar(client, 'inicio-item').status_code == 200
+    assert guardar(client, 'inicio-envio', arquivo=imagem()).status_code == 200
+    assert situacao(P, SITE)['atual']['ordem'] == 2
+
+
+def test_compromisso_novo_preserva_plano_antigo_e_xp_e_respostas_privadas(client, monkeypatch):
+    assert guardar(client, 'inicio-motivo', motivo='outro', motivo_outro='Minha razão',
+                   motivo_pessoal='Resposta privada', motivo_sonhos='["pc_gamer"]').status_code == 200
+    plano = dict(objetivo='Minha criação', compromisso='Meu compromisso anterior', sonho='Sonho antigo',
+                 quando='Sábado', obstaculo='Resposta antiga', plano_b='Meu plano antigo', apoio='autonomo')
+    assert guardar(client, 'inicio-plano', assumir='sim', **plano).status_code == 200
+    antigo = dict(JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio)
+    # Reabrir e sair não desfaz um compromisso cujo XP definitivo já existe.
+    assert guardar(client, 'inicio-compromisso', compromisso_etapa='2').json()['inicio']['etapas'][2]['liberada']
+    r = guardar(client, 'inicio-compromisso', assumir='sim').json()
+    assert r['conquista_xp'] == 0
+    for chave, valor in antigo.items():
+        if chave != 'salvo_em':
+            assert r['inicio'][chave] == valor
+    assert r['inicio']['apoio'] == 'autonomo'
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 200
+    assert 'compromisso_curso' not in _projecao(HttpResponse(), P, SITE).model_dump_json()
+    monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': 'outra-conta'})
+    assert 'Meu compromisso anterior' not in str(abrir(client).json())
+    assert not abrir(client).json()['inicio'].get('compromisso_curso_em')
+
+
+def test_compromisso_curso_conflito_nao_confirma_nem_concede_xp(client):
+    assert guardar(client, 'inicio-motivo', motivo='ugc').status_code == 200
+    revisao = abrir(client).json()['revisao']
+    assert guardar(client, 'inicio-motivo', motivo='jogo', concluir='nao').status_code == 200
+    r = client.post(URL, {'acao': 'inicio-compromisso', 'assumir': 'sim', 'revisao': revisao}, HTTP_COOKIE='meshcraft_sessao=A')
+    assert r.status_code == 400
+    assert not abrir(client).json()['inicio'].get('compromisso_curso_em')
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
