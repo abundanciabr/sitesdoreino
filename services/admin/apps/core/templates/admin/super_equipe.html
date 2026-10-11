@@ -9,11 +9,21 @@
     {% if rotina %}
       <p><b>{% if rotina.ativa %}Ligado{% else %}Pausado{% endif %}</b> · consulta a cada 15 minutos no servidor.</p>
       <p>Última observação: {{ rotina.observada_em|date:"d/m/Y H:i"|default:"aguardando" }} · próxima: {{ rotina.proxima_em|date:"d/m/Y H:i"|default:"aguardando" }}.</p>
-      <p>Último contato do executor de melhorias: {{ rotina.executor_em|date:"d/m/Y H:i"|default:"ainda não conectado" }}. Sem contato recente, as pendências continuam guardadas.</p>
+      <p><b>{{ executor_situacao }}</b>{% if rotina.executor_local %} · {{ rotina.executor_local }}{% endif %}.</p>
+      <p>Última consulta da fila: {{ rotina.executor_consultado_em|date:"d/m/Y H:i:s"|default:"ainda não conectado" }}. Última ação em uma melhoria: {{ rotina.executor_em|date:"d/m/Y H:i:s"|default:"nenhuma" }}.</p>
       {% if rotina.ultimo_erro %}<p class="aviso">{{ rotina.ultimo_erro }}</p>{% endif %}
       <form method="post">{% csrf_token %}<button class="botao" name="acao" value="{% if rotina.ativa %}pausar{% else %}retomar{% endif %}">{% if rotina.ativa %}Pausar acompanhamento{% else %}Retomar acompanhamento{% endif %}</button></form>
     {% else %}<p>Aguardando o primeiro ciclo no servidor.</p>{% endif %}
     <p>As consultas e a correção de ressalvas não usam IA paga. As análises usam o orçamento já autorizado, com consumo registrado por trabalho. Custo externo não informado não é contado como zero.</p>
+  </section>
+  <section class="cartao">
+    <h2>Operação observada</h2>
+    <p>Fila administrativa: {{ fila_operacional.na_fila }} aguardando · {{ fila_operacional.executando }} em execução · {{ fila_operacional.posses_vencidas }} posses vencidas · {{ fila_operacional.falhas_24h }} falhas nas últimas 24 horas.</p>
+    <p>{{ fila_operacional.limite }}</p>
+    {% if rotina.operacao.recebida_em %}
+      <p>VPS: {% if operacao_recente %}medição recente{% else %}<b>medição desatualizada</b>{% endif %}. Coletada em {{ rotina.operacao.coletada_em }}. Aplicação: {{ rotina.operacao.aplicacao }} · funil: {{ rotina.operacao.funil }}.</p>
+      <p>Amostra de acessos da aplicação nos últimos 15 minutos (até 30 mil linhas): HTTP 5xx {{ rotina.operacao.http_5xx_15m|default_if_none:"não medido" }} · HTTP 404 {{ rotina.operacao.http_404_15m|default_if_none:"não medido" }}. Disco livre: {{ rotina.operacao.disco_livre_mb|default_if_none:"não medido" }} MB.</p>
+    {% else %}<p>Coleta da VPS ainda não conectada; ausência de medição não significa ausência de erros.</p>{% endif %}
   </section>
   <h2>Melhorias e pendências</h2>
   {% for melhoria in melhorias %}
@@ -24,6 +34,7 @@
       <p style="white-space:pre-wrap">{{ melhoria.resultado|default:"Aguardando execução ou nova conferência." }}</p>
       {% if melhoria.entrega %}<p>Entrega do publicador: {{ melhoria.entrega }}.</p>{% endif %}
       <p>Custo externo: {% if melhoria.custo_externo_usd != None %}US$ {{ melhoria.custo_externo_usd }}{% else %}não informado{% endif %}.</p>
+      {% if melhoria.desenvolvimento.rodadas %}<p>IA do desenvolvimento: {% if melhoria.custo_codigo_usd != None %}US$ {{ melhoria.custo_codigo_usd }}{% else %}consumo ainda sem confirmação; reserva mantida no orçamento{% endif %}.</p>{% endif %}
       <details><summary>Histórico das ações</summary>{% for evento in melhoria.eventos.all %}<p>{{ evento.momento|date:"d/m/Y H:i:s" }} — {{ evento.texto }}</p>{% endfor %}</details>
     </section>
   {% empty %}<p>Nenhuma melhoria registrada até agora.</p>{% endfor %}

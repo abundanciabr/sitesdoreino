@@ -470,6 +470,10 @@ class RotinaSuperEquipe(models.Model):
     ultimo_erro = models.CharField(max_length=300, blank=True, default="")
     ultimo_trabalho = models.ForeignKey(Execucao, null=True, on_delete=models.SET_NULL)
     executor_em = models.DateTimeField(null=True)
+    executor_consultado_em = models.DateTimeField(null=True)
+    executor_local = models.CharField(max_length=30, blank=True, default="")
+    operacao = models.JSONField(default=dict)
+    fotografia = models.JSONField(default=dict)
 
 
 class MelhoriaSuperEquipe(models.Model):
@@ -495,6 +499,15 @@ class MelhoriaSuperEquipe(models.Model):
     ocupada_ate = models.DateTimeField(null=True)
     entrega = models.CharField(max_length=12, blank=True, default="")
     custo_externo_usd = models.DecimalField(max_digits=12, decimal_places=6, null=True)
+    desenvolvimento = models.JSONField(default=dict)
+
+    @property
+    def custo_codigo_usd(self):
+        from decimal import Decimal
+        rodadas = self.desenvolvimento.get("rodadas", {})
+        if any("custo_usd" not in rodada for rodada in rodadas.values()):
+            return None
+        return sum((Decimal(rodada["custo_usd"]) for rodada in rodadas.values()), Decimal("0"))
 
     class Meta:
         ordering = ["prioridade", "criada_em", "id"]
