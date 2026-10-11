@@ -1,15 +1,16 @@
-(() => {
-  'use strict';
-  const root = document.getElementById('inicio-jornada');
+'use strict';
+window.iniciarJornada = (scope = document, host = {}) => {
+  const root = scope.getElementById('inicio-jornada');
   if (!root) return;
-  const $ = id => document.getElementById(`inicio-${id}`);
+  const $ = id => scope.getElementById(`inicio-${id}`);
   const forms = {motivo: $('form-motivo'), plano: $('form-plano'), criacao: $('form-criacao'), item: $('form-item')};
   const dirty = new Set();
   let data = null;
   let busy = false;
   let motivoStep = 1;
-  const embedded = root.dataset.embutido === 'sim' && window.parent !== window;
-  const tellParent = type => { if (embedded) window.parent.postMessage({type}, window.location.origin); };
+  const embedded = Boolean(host.close);
+  const lifecycle = new AbortController();
+  const navigate = destination => host.navigate ? host.navigate(destination) : window.location.assign(destination);
   function showMotivoStep(step, focus = false) {
     motivoStep = step;
     if (!$('motivo-escolha')) return;
@@ -24,8 +25,8 @@
   async function leaveMotivo() {
     if (busy) return;
     if (dirty.size && !await save(forms.motivo, 'inicio-motivo', {concluir: 'nao', motivo_etapa: String(motivoStep)})) return;
-    if (embedded) tellParent('meshcraft:motivo-fechar');
-    else window.location.assign('/trilha/');
+    if (embedded) host.close();
+    else navigate('/trilha/');
   }
   const date = value => new Date(value).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
   const announce = (message, error = false) => {
@@ -171,7 +172,7 @@
       }
       $('conteudo').hidden = false;
       if (forms.criacao && data.inicio.item_pronto && location.hash === '#inicio-form-item') {
-        window.location.assign(root.dataset.envio);
+        navigate(root.dataset.envio);
       }
       if (!dirty.size && forms.item && ['#inicio-form-item', '#inicio-item'].includes(location.hash)) {
         document.getElementById(location.hash.slice(1)).scrollIntoView({block: 'start'});
@@ -219,17 +220,17 @@
     if (await save(forms.motivo, 'inicio-motivo', {concluir, motivo_etapa: '1'})) {
       let destination = concluir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas;
       if (embedded && data.conquista_url && concluir === 'sim') destination += (destination.includes('?') ? '&' : '?') + 'embutido=1';
-      window.location.assign(destination);
+      navigate(destination);
     }
   });
   forms.plano?.addEventListener('submit', async event => {
     event.preventDefault();
     const assumir = event.submitter?.value || 'nao';
-    if (await save(forms.plano, 'inicio-plano', {assumir})) window.location.assign(assumir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas);
+    if (await save(forms.plano, 'inicio-plano', {assumir})) navigate(assumir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas);
   });
   forms.criacao?.addEventListener('submit', async event => {
     event.preventDefault();
-    if (await save(forms.criacao, 'inicio-item')) window.location.assign(data.conquista_url || root.dataset.conquistas);
+    if (await save(forms.criacao, 'inicio-item')) navigate(data.conquista_url || root.dataset.conquistas);
   });
   $('sugestao')?.addEventListener('click', () => {
     if (forms.plano.elements.compromisso.value.trim()) {
@@ -253,7 +254,7 @@
     if (await save(forms.item, 'inicio-envio', {passo: '2', estado: 'feito'})) {
       forms.item.reset();
       announce(files().length === count ? (hasNotes ? 'Envio confirmado. Suas notas foram atualizadas e o arquivo foi preservado.' : 'Envio confirmado. Seu arquivo continua guardado em privado.') : 'Envio concluído. Seu 3D está guardado em privado e sua conquista foi registrada.');
-      if (data.conquista_url) window.location.assign(data.conquista_url);
+      if (data.conquista_url) navigate(data.conquista_url);
     }
   });
   $('pedir-ajuda')?.addEventListener('click', () => {
@@ -274,14 +275,10 @@
     if (busy) return;
     showMotivoStep(1, true); dirty.add(forms.motivo.id);
   });
-  if (embedded) {
-    window.addEventListener('message', event => {
-      if (event.origin === window.location.origin && event.source === window.parent && event.data?.type === 'meshcraft:motivo-pedir-fechamento') leaveMotivo();
-    });
-    tellParent('meshcraft:motivo-pronto');
-  }
   $('recarregar').addEventListener('click', open);
-  window.addEventListener('beforeunload', event => { if (dirty.size) { event.preventDefault(); event.returnValue = ''; } });
-  window.addEventListener('pageshow', event => { if (event.persisted) open(); });
+  window.addEventListener('beforeunload', event => { if (dirty.size) { event.preventDefault(); event.returnValue = ''; } }, {signal: lifecycle.signal});
+  window.addEventListener('pageshow', event => { if (event.persisted) open(); }, {signal: lifecycle.signal});
   open();
-})();
+  return {close: leaveMotivo, destroy: () => lifecycle.abort()};
+};
+window.iniciarJornada();

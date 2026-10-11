@@ -18,7 +18,7 @@ function file(overrides={}){
     criado_em:'2026-10-10T12:00:00Z',aprendi:'Minha tentativa',duvida:'Como suavizar a borda?',...overrides};
 }
 
-async function page(step,initial=record(),hash='',wizard=false){
+async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   const nodes=[];
   class Element {
     constructor(tag,id=''){this.tagName=tag;this.id=id;this.dataset={};this.children=[];this.events={};this.value='';this.files=[];this.hidden=false;this.text='';nodes.push(this);}
@@ -57,17 +57,17 @@ async function page(step,initial=record(),hash='',wizard=false){
     set(key,value){this.values.set(key,value);}
     get(key){return this.values.get(key);}
   }
-  const calls=[],redirects=[],copied=[],windowEvents={};
+  const calls=[],redirects=[],copied=[],panelEvents=[],windowEvents={};
   let current=initial,nextError=null;
-  const context=vm.createContext({FormData,location:{hash},
+  const context=vm.createContext({FormData,AbortController,location:{hash},
     document:{getElementById:id=>nodes.find(node=>node.id===id&&!node.removed)||null,createElement:tag=>new Element(tag),createTextNode:text=>{const node=new Element('#text');node.textContent=text;return node;}},
-    window:{location:{assign:dest=>redirects.push(dest)},addEventListener:(type,handler)=>{windowEvents[type]=handler;}},
+    window:{__testHost:embedded?{close:()=>panelEvents.push('fechado'),navigate:dest=>panelEvents.push(dest)}:{},location:{assign:dest=>redirects.push(dest)},addEventListener:(type,handler)=>{windowEvents[type]=handler;}},
     navigator:{clipboard:{writeText:async text=>copied.push(text)}},
     fetch:async(url,options)=>{calls.push({url,options});if(nextError){const error=nextError;nextError=null;if(error instanceof Error)throw error;return error;}const result=structuredClone(current);if(options.method==='POST')result.conquista_url='/conquistas/inicio/conquista/'+({motivo:1,plano:2,criacao:3,item:4}[step])+'/?comprovante=teste';return {ok:true,status:200,json:async()=>result};}
   });
-  vm.runInContext(source,context);await tick();
+  vm.runInContext(source.replace('window.iniciarJornada();','window.testController = window.iniciarJornada(document, window.__testHost);'),context);await tick();
   const fire=async(node,type,values={})=>{for(const handler of node.events[type]||[])await handler({preventDefault(){},...values});await tick();};
-  return {byId,form,calls,redirects,copied,summaries,fire,
+  return {byId,form,calls,redirects,copied,summaries,fire,panelEvents,close:()=>context.window.testController.close(),
     setRecord:value=>{current=value;},fail:value=>{nextError=value;},
     reopen:async()=>{windowEvents.pageshow({persisted:true});await tick();},
     submit:async value=>fire(form,'submit',{submitter:{value}}),
@@ -224,4 +224,16 @@ test('outro motivo, retomada e depois preservam rascunho na etapa correta',async
  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
  assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'1');
  assert.deepEqual(ui.redirects,['/trilha/']);
+});
+
+test('painel direto conclui e fecha sem trocar a pagina da trilha',async()=>{
+ const ui=await page('motivo',record(),'',true,true);
+ await ui.submit('proxima');await ui.submit('continuar');
+ assert.deepEqual(ui.redirects,[]);
+ assert.deepEqual(ui.panelEvents,['/conquistas/inicio/conquista/1/?comprovante=teste&embutido=1']);
+ const draft=await page('motivo',record(),'',true,true);
+ draft.form.elements.motivo_pessoal.value='Minha reflexão';await draft.fire(draft.form,'input');
+ await draft.close();assert.deepEqual(draft.redirects,[]);assert.deepEqual(draft.panelEvents,['fechado']);
+ assert.equal(draft.calls.at(-1).options.body.get('motivo_pessoal'),'Minha reflexão');
+ assert.equal(draft.calls.at(-1).options.body.get('concluir'),'nao');
 });
