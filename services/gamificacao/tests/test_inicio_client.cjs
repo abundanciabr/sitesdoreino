@@ -10,7 +10,7 @@ function record(overrides={}){
   return {pessoa_id:'aluna-a',site_id:'escola-a',csrf:'csrf-teste',revisao:3,
     inicio:{motivo:'ugc',motivo_pessoal:'Motivo reservado',sonho:'SONHO PRIVADO',objetivo:'Criar um chapéu',
       compromisso:'COMPROMISSO PRIVADO',confirmado_em:'2026-10-10T12:00:00Z',apoio:'guiado',
-      pratica:'Comece com uma forma simples.',motivos:[{valor:'ugc',nome:'Itens próprios'}]},
+      pratica:'Comece com uma forma simples.',sonhos_opcoes:[{valor:'pc_gamer',nome:'Comprar um PC Gamer'},{valor:'viagens',nome:'Viajar e conhecer novos lugares'}],motivos:[{valor:'ugc',nome:'Itens próprios'}]},
     etapas:[{ordem:1,alcancada:true},{ordem:2,alcancada:false}],anexos:[],...overrides};
 }
 function file(overrides={}){
@@ -38,8 +38,8 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   const root=add('jornada');root.dataset={api:'/conquistas/inventario/',conquistas:'/conquistas/',envio:'/conquistas/inicio/envio/'};
   const summaries=[new Element('small'),new Element('small'),new Element('small')];
   root.querySelector=selector=>summaries[Number(selector.match(/\d/)[0])-1];
-  root.querySelectorAll=selector=>nodes.filter(node=>selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
-  if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
+  root.querySelectorAll=selector=>nodes.filter(node=>selector==='input[name="motivo_sonhos"]:checked'?node.name==='motivo_sonhos'&&node.checked:selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
+  if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior','motivo-sonhos','motivo-sonhos-titulo','motivo-depois-3','sonhos-anterior','sonhos-opcoes'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
   const form=add('form-'+step,'form');form.elements={};
   const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?[]:['arquivo','aprendi','duvida'];
   fields.forEach(name=>{const node=add(name,name==='arquivo'?'input':'textarea');node.name=name;form.elements[name]=node;form.append(node);});
@@ -67,7 +67,7 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   });
   vm.runInContext(source.replace('window.iniciarJornada();','window.testController = window.iniciarJornada(document, window.__testHost);'),context);await tick();
   const fire=async(node,type,values={})=>{for(const handler of node.events[type]||[])await handler({preventDefault(){},...values});await tick();};
-  return {byId,form,calls,redirects,copied,summaries,fire,panelEvents,close:()=>context.window.testController.close(),
+  return {checkboxes:()=>nodes.filter(node=>node.type==='checkbox'),byId,form,calls,redirects,copied,summaries,fire,panelEvents,close:()=>context.window.testController.close(),
     setRecord:value=>{current=value;},fail:value=>{nextError=value;},
     reopen:async()=>{windowEvents.pageshow({persisted:true});await tick();},
     submit:async value=>fire(form,'submit',{submitter:{value}}),
@@ -195,7 +195,7 @@ test('a tela de envio não contém os controles nem o pedido de ajuda das etapas
  assert.equal(ui.byId('historico').hidden,false);
 });
 
-test('duas etapas guardam a escolha sem XP e permitem concluir a reflexão vazia',async()=>{
+test('três etapas guardam a escolha sem XP e permitem concluir a reflexão vazia',async()=>{
  const initial=record();initial.inicio.motivo_pessoal='';
  const ui=await page('motivo',initial,'',true);
  assert.equal(ui.byId('motivo-escolha').hidden,false);assert.equal(ui.byId('motivo-reflexao').hidden,true);
@@ -203,6 +203,11 @@ test('duas etapas guardam a escolha sem XP e permitem concluir a reflexão vazia
  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
  assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'2');
  assert.equal(ui.byId('motivo-escolha').hidden,true);assert.equal(ui.byId('motivo-reflexao').hidden,false);
+ assert.deepEqual(ui.redirects,[]);
+ await ui.submit('proxima');
+ assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'3');
+ assert.equal(ui.byId('motivo-reflexao').hidden,true);assert.equal(ui.byId('motivo-sonhos').hidden,false);
  assert.deepEqual(ui.redirects,[]);
  await ui.submit('continuar');
  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'sim');
@@ -228,7 +233,7 @@ test('outro motivo, retomada e depois preservam rascunho na etapa correta',async
 
 test('painel direto conclui e fecha sem trocar a pagina da trilha',async()=>{
  const ui=await page('motivo',record(),'',true,true);
- await ui.submit('proxima');await ui.submit('continuar');
+ await ui.submit('proxima');await ui.submit('proxima');await ui.submit('continuar');
  assert.deepEqual(ui.redirects,[]);
  assert.deepEqual(ui.panelEvents,['/conquistas/inicio/conquista/1/?comprovante=teste&embutido=1']);
  const draft=await page('motivo',record(),'',true,true);
@@ -239,14 +244,14 @@ test('painel direto conclui e fecha sem trocar a pagina da trilha',async()=>{
 });
 
 
-test('voltar aparece nas duas etapas somente depois do XP recebido e preserva a revisão',async()=>{
- for(const xp of [0,100]) for(const etapa of [1,2]) {
+test('voltar aparece nas três etapas somente depois do XP recebido e preserva a revisão',async()=>{
+ for(const xp of [0,100]) for(const etapa of [1,2,3]) {
   const initial=record();initial.inicio.motivo_etapa=etapa;
   initial.inicio.etapas=[{etapa:1,xp_recebido:xp,concluida:xp>0}];
   const ui=await page('motivo',initial,'',true,true);
-  if(xp && etapa===2) await ui.submit('proxima');
+  if(xp) for(let n=1;n<etapa;n++) await ui.submit('proxima');
   const label=xp?'← Voltar':'← Depois eu faço isso';
-  for(const n of [1,2]) assert.equal(ui.byId('motivo-depois-'+n).textContent,label);
+  for(const n of [1,2,3]) assert.equal(ui.byId('motivo-depois-'+n).textContent,label);
   ui.form.elements.motivo_pessoal.value='Motivo revisto';await ui.fire(ui.form,'input');
   assert.match(ui.byId('status').textContent,xp?/Voltar/:/Depois eu faço isso/);
   await ui.fire(ui.byId('motivo-depois-'+etapa),'click');
@@ -263,6 +268,7 @@ test('concluir revisão salva e retorna à trilha; primeira conclusão mantém a
   initial.inicio.etapas=[{etapa:1,xp_recebido:jaRecebida?100:0,concluida:jaRecebida}];
   const ui=await page('motivo',initial,'',true,embedded);
   if(jaRecebida) await ui.submit('proxima');
+  await ui.submit('proxima');
   ui.form.elements.motivo_pessoal.value='Minha reflexão atualizada';await ui.fire(ui.form,'input');
   ui.fail(new Error('Sem conexão'));await ui.submit('continuar');
   assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
@@ -300,4 +306,28 @@ test('revisar sempre abre a escolha; rascunho continua retomando a segunda etapa
   assert.equal(ui.byId('motivo-reflexao').hidden,concluido);
   assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
  }
+});
+
+
+test('sonhos permitem várias escolhas, desmarcação, retomada e saída segura na terceira etapa',async()=>{
+ const initial=record();Object.assign(initial.inicio,{motivo_etapa:3,motivo_sonhos:['pc_gamer']});
+ const ui=await page('motivo',initial,'',true,true);
+ assert.equal(ui.byId('motivo-escolha').hidden,true);assert.equal(ui.byId('motivo-reflexao').hidden,true);assert.equal(ui.byId('motivo-sonhos').hidden,false);
+ assert.equal(ui.byId('motivo-contagem').textContent,'Etapa 3 de 3');
+ assert.deepEqual(ui.checkboxes().map(check=>check.checked),[true,false]);
+ ui.checkboxes()[1].checked=true;await ui.fire(ui.form,'input');
+ ui.fail(new Error('Sem conexão'));await ui.close();
+ assert.deepEqual(ui.panelEvents,[]);assert.deepEqual(ui.checkboxes().map(check=>check.checked),[true,true]);
+ await ui.fire(ui.byId('sonhos-anterior'),'click');
+ assert.equal(ui.byId('motivo-reflexao').hidden,false);assert.equal(ui.byId('motivo-sonhos').hidden,true);
+ await ui.submit('proxima');
+ assert.deepEqual(JSON.parse(ui.calls.at(-1).options.body.get('motivo_sonhos')),['pc_gamer','viagens']);
+ ui.checkboxes().forEach(check=>{check.checked=false;});await ui.fire(ui.form,'input');
+ await ui.close();assert.deepEqual(ui.panelEvents,['fechado']);
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_sonhos'),'[]');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'3');
+ initial.inicio.etapas=[{etapa:1,xp_recebido:100,concluida:true}];
+ const review=await page('motivo',initial,'',true,true);
+ assert.equal(review.byId('motivo-escolha').hidden,false);assert.equal(review.byId('motivo-sonhos').hidden,true);
+ assert.deepEqual(review.checkboxes().map(check=>check.checked),[true,false]);
 });

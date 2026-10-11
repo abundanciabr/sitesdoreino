@@ -18,8 +18,9 @@ window.iniciarJornada = (scope = document, host = {}) => {
     if (!$('motivo-escolha')) return;
     $('motivo-escolha').hidden = step !== 1;
     $('motivo-reflexao').hidden = step !== 2;
-    $('motivo-contagem').textContent = `Etapa ${step} de 2`;
-    if (focus) $(step === 1 ? 'motivo-escolha-titulo' : 'motivo-reflexao-titulo').focus();
+    $('motivo-sonhos').hidden = step !== 3;
+    $('motivo-contagem').textContent = `Etapa ${step} de 3`;
+    if (focus) $(['motivo-escolha-titulo', 'motivo-reflexao-titulo', 'motivo-sonhos-titulo'][step - 1]).focus();
   }
   function otherMotivo() {
     if ($('outro-campo')) $('outro-campo').hidden = !root.querySelector('input[name="motivo"][value="outro"]:checked');
@@ -78,7 +79,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   function render() {
     const start = data.inicio;
     if (forms.motivo) {
-      for (const id of ['motivo-depois-1', 'motivo-depois-2']) {
+      for (const id of ['motivo-depois-1', 'motivo-depois-2', 'motivo-depois-3']) {
         if ($(id)) $(id).textContent = `← ${motivoReturnLabel()}`;
       }
     }
@@ -125,8 +126,19 @@ window.iniciarJornada = (scope = document, host = {}) => {
       });
       forms.motivo.elements.motivo_pessoal.value = data.inicio.motivo_pessoal || '';
       if (forms.motivo.elements.motivo_outro) forms.motivo.elements.motivo_outro.value = data.inicio.motivo_outro || '';
+      if ($('sonhos-opcoes')) {
+        $('sonhos-opcoes').replaceChildren();
+        (data.inicio.sonhos_opcoes || []).forEach(sonho => {
+          const label = document.createElement('label'); label.className = 'inicio-motivo';
+          const check = document.createElement('input');
+          check.type = 'checkbox'; check.name = 'motivo_sonhos'; check.value = sonho.valor;
+          check.checked = (data.inicio.motivo_sonhos || []).includes(sonho.valor);
+          const text = document.createElement('span'); text.textContent = sonho.nome;
+          label.append(check, text); $('sonhos-opcoes').append(label);
+        });
+      }
       otherMotivo();
-      showMotivoStep(!motivoJaConcluido() && data.inicio.motivo_etapa === 2 ? 2 : 1);
+      showMotivoStep(!motivoJaConcluido() && [2, 3].includes(data.inicio.motivo_etapa) ? data.inicio.motivo_etapa : 1);
     }
     if (forms.plano) {
       ['sonho', 'objetivo', 'quando', 'obstaculo', 'plano_b', 'compromisso', 'apoio'].forEach(key => {
@@ -161,9 +173,10 @@ window.iniciarJornada = (scope = document, host = {}) => {
         }
         comparison.replaceChildren(); comparison.open = true;
         const heading = document.createElement('summary'); heading.textContent = 'Versão salva na sua conta'; comparison.append(heading);
-        const fields = forms.motivo ? [['motivo', 'Caminho'], ['motivo_outro', 'Outro motivo'], ['motivo_pessoal', 'Motivo pessoal']] : forms.plano ? [['objetivo', 'Objetivo'], ['quando', 'Próximo passo'], ['sonho', 'Sonho'], ['obstaculo', 'Dificuldade'], ['plano_b', 'Plano alternativo'], ['compromisso', 'Compromisso'], ['apoio', 'Apoio']] : [];
+        const fields = forms.motivo ? [['motivo', 'Caminho'], ['motivo_outro', 'Outro motivo'], ['motivo_pessoal', 'Motivo pessoal'], ['motivo_sonhos', 'Meus sonhos']] : forms.plano ? [['objetivo', 'Objetivo'], ['quando', 'Próximo passo'], ['sonho', 'Sonho'], ['obstaculo', 'Dificuldade'], ['plano_b', 'Plano alternativo'], ['compromisso', 'Compromisso'], ['apoio', 'Apoio']] : [];
         for (const [key, label] of fields) {
-          const p = document.createElement('p'); p.textContent = `${label}: ${result.inicio[key] || 'Ainda não preenchido'}`; comparison.append(p);
+          const value = key === 'motivo_sonhos' ? (result.inicio.sonhos_opcoes || []).filter(sonho => (result.inicio.motivo_sonhos || []).includes(sonho.valor)).map(sonho => sonho.nome).join(', ') : result.inicio[key];
+          const p = document.createElement('p'); p.textContent = `${label}: ${value || 'Ainda não preenchido'}`; comparison.append(p);
         }
         data = result;
         render();
@@ -192,6 +205,9 @@ window.iniciarJornada = (scope = document, host = {}) => {
   async function save(form, action, extras = {}) {
     if (busy || !data) return false;
     const body = new FormData(form);
+    if (form === forms.motivo && $('sonhos-opcoes')) {
+      body.set('motivo_sonhos', JSON.stringify(Array.from(root.querySelectorAll('input[name="motivo_sonhos"]:checked'), check => check.value)));
+    }
     body.set('acao', action); body.set('revisao', String(data.revisao));
     body.set('contexto_pessoa', data.pessoa_id); body.set('contexto_site', data.site_id);
     Object.entries(extras).forEach(([key, value]) => body.set(key, value));
@@ -215,11 +231,12 @@ window.iniciarJornada = (scope = document, host = {}) => {
   forms.motivo?.addEventListener('submit', async event => {
     event.preventDefault();
     if (busy) return;
-    if ($('motivo-escolha') && motivoStep === 1) {
-      if (!new FormData(forms.motivo).get('motivo')) { announce('Escolha seu motivo para continuar.', true); return; }
-      if (await save(forms.motivo, 'inicio-motivo', {concluir: 'nao', motivo_etapa: '2'})) {
-        showMotivoStep(2, true);
-        announce('Agora, se quiser, conte por que esse motivo é importante para você.');
+    if ($('motivo-escolha') && motivoStep < 3) {
+      if (motivoStep === 1 && !new FormData(forms.motivo).get('motivo')) { announce('Escolha seu motivo para continuar.', true); return; }
+      const nextStep = motivoStep + 1;
+      if (await save(forms.motivo, 'inicio-motivo', {concluir: 'nao', motivo_etapa: String(nextStep)})) {
+        showMotivoStep(nextStep, true);
+        announce(nextStep === 2 ? 'Agora, se quiser, conte por que esse motivo é importante para você.' : 'Este espaço é seu. Marque os sonhos que combinam com você.');
       }
       return;
     }
@@ -281,10 +298,14 @@ window.iniciarJornada = (scope = document, host = {}) => {
     catch (_) { $('mensagem').focus(); $('mensagem').select(); announce('Selecione e copie o pedido acima para compartilhar quando quiser.'); }
   });
   forms.motivo?.addEventListener('change', otherMotivo);
-  for (const id of ['motivo-depois-1', 'motivo-depois-2']) $(id)?.addEventListener('click', leaveMotivo);
+  for (const id of ['motivo-depois-1', 'motivo-depois-2', 'motivo-depois-3']) $(id)?.addEventListener('click', leaveMotivo);
   $('motivo-anterior')?.addEventListener('click', () => {
     if (busy) return;
     showMotivoStep(1, true); dirty.add(forms.motivo.id);
+  });
+  $('sonhos-anterior')?.addEventListener('click', () => {
+    if (busy) return;
+    showMotivoStep(2, true); dirty.add(forms.motivo.id);
   });
   $('recarregar').addEventListener('click', open);
   window.addEventListener('beforeunload', event => { if (dirty.size) { event.preventDefault(); event.returnValue = ''; } }, {signal: lifecycle.signal});
