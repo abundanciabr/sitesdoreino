@@ -187,13 +187,6 @@ def manutencao():
             c.resolvida_em = c.encerrada_em + timedelta(days=7)
             c.resolucao = 'sem_retorno_7d'
             c.save(update_fields=['resolvida_em', 'resolucao'])
-    for c in Conversa.objects.filter(classificada_em__isnull=False, estado='aguardando',
-        prioridade__in=['normal', 'baixa'], criada_em__lt=agora-timedelta(hours=24))[:100]:
-        # Os avisos existentes da rodada já são idempotentes.
-        from .service import avisar
-        avisar(c)
-
-
 def token_tempo(quem, site, alvo):
     return signing.dumps({'quem': str(quem), 'site': site, 'alvo': str(alvo),
         'inicio': timezone.now().timestamp()}, salt='suporte-tempo')

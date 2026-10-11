@@ -94,18 +94,18 @@ Uma pessoa dá conta de milhares de pedidos de suporte por dia porque **o robô 
 | Oportunidade com próximo passo e prazo | `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\leads` (`Oportunidade`: `passo_descricao`, `passo_executar_ate`) | Sequência comercial |
 | Erros vistos no site | `site_errors` (código `ERR-...`) | Erro por página |
 
-**O que falta hoje:**
+**Situação após a implementação de E1 e da caixa assistida (provas abaixo):**
 
-- O robô não escreve a resposta no modo assistido (`resposta` sai vazia).
-- O pedido não tem tipo nem cor.
-- Não há agrupamento de pedidos iguais nem caixa de decisões.
+- O modo assistido prepara um rascunho; enviar exige clique da equipe.
+- O pedido registra tipo, cor, degrau, humor e prioridade; casos sem classificação suficiente ficam em revisão individual.
+- A caixa agrupa perguntas equivalentes por normalização de acentos, pontuação e espaços, tipo, curso, produto e fonte; não presume equivalência semântica entre perguntas distintas.
 - O WhatsApp do suporte não cai na fila.
 - Não há aviso automático antes da pergunta.
 - Não há nenhuma ação automática.
-- Não há "resolveu?" logo depois da resposta do robô.
+- O chat oferece "Resolveu?" ao encerrar ou na conclusão já reconhecida pelo fluxo de avaliação. Respostas autônomas continuam fora desta entrega.
 - Não há relatório das causas dos pedidos.
-- Primeira resposta e encerramento já têm campos distintos; falta separar resolução e preservar o histórico de cada reabertura.
-- Já existem indicadores de espera, primeira resposta e encerramento. Faltam fatia por tipo, tempo humano registrado, resolução efetiva, retorno e custo atribuído ao atendimento.
+- Primeira resposta, encerramento e resolução estão separados; a rodada anterior é guardada em cada reabertura.
+- O painel acrescenta fatia por tipo, soma de tempo humano por atendimento, resolução, retorno, satisfação, custo atribuído e pedidos por 100 pessoas com matrícula ativa. A janela real de medição ainda está pendente.
 
 ## 4. Como o robô e a pessoa dividem o trabalho
 
@@ -304,22 +304,22 @@ O detalhe passo a passo, com prova e auditoria, está no roteiro `C:\Users\davia
 - [ ] D6 cores da seção 5 com os três degraus
 
 **E1: números**
-- [ ] E1.1 tipo, cor por degrau, urgência e humor na chegada
-- [ ] E1.2 respondido, encerrado e resolvido separados; reabertura guardada
-- [ ] E1.3 painel de números
+- [x] E1.1 tipo, cor por degrau, urgência e humor na chegada
+- [x] E1.2 respondido, encerrado e resolvido separados; reabertura guardada
+- [x] E1.3 painel de números
 - [ ] E1.4 tabela da seção 2 refeita com números reais
 
 **E2: rascunhos e caixa de decisões**
-- [ ] E2.1 resposta pronta em todo pedido
-- [ ] E2.2 rascunho de texto fixo com dados do sistema
-- [ ] E2.3 prioridade automática
-- [ ] E2.4 fila por prazo
-- [ ] E2.5 agrupamento
-- [ ] E2.6 caixa de decisões com lote sem IA por aluno
+- [x] E2.1 resposta pronta em todo pedido
+- [x] E2.2 rascunho de texto fixo com dados do sistema
+- [x] E2.3 prioridade automática
+- [x] E2.4 fila por prazo
+- [x] E2.5 agrupamento
+- [x] E2.6 caixa de decisões com lote sem IA por aluno
 - [ ] E2.7 próximo passo, lembretes e encerramento por falta de resposta
 - [ ] E2.8 resumo no CRM e oportunidade comercial
-- [ ] E2.9 "resolveu?" ao encerrar
-- [ ] E2.10 atalhos de teclado
+- [x] E2.9 "resolveu?" ao encerrar
+- [x] E2.10 atalhos de teclado (ensaio no navegador local; tela publicada conferida após a entrega)
 
 **E3: prevenção**
 - [ ] E3.1 aviso antes do início pela agenda
@@ -372,3 +372,20 @@ E1.1–E1.3 e os rascunhos e a caixa de decisões da E2 estão autorizados e sã
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
 - E1.4: 14 dias reais a partir da ativação comprovada (data ainda pendente). E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
+
+## Provas da implementação — 11/10/2026
+
+- Código: `db7036d81`; main atual incorporada em `b0d9a429173ee669210cdfe46e5ca085e429b730`. A publicação pelo integrador ainda precisa ser confirmada no registro abaixo.
+- Suporte: **150 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
+- Migração nova aplicada, revertida e reaplicada em banco vazio; sem migração de atendimento faltando. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\migracao-comprovada.txt`.
+- Testes antigos de documentos na main: 12 falhas e 16 aprovações, sem alterações desta tarefa. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-base-main.txt`. Suíte geral completa: 2.837 aprovados, 101 falhas, 51 erros e 1 pulado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-admin-completo.txt`. Não é apresentada como verde.
+- Diff das cinco árvores congeladas vazio tanto contra a main como contra `425b82504028db3b7721ae32b776995915280bdb`. Nenhuma configuração de autonomia foi alterada. No site, Comunidade, Cursos e Site estavam assistidos antes da entrega; o teto existente de US$ 10/mês permanece, sem presumir a decisão D2 de escala.
+- Evidências locais acima existem somente neste PC; os dois documentos são versionados e não viram páginas. Teste principal: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_escala.py`.
+
+### Comparação final e alcance da prova
+
+A suíte geral não ficou verde. A falha do teste de streaming do suporte foi corrigida e sua suíte passou. Os demais casos foram executados no mesmo recorte na main limpa e nesta candidata: **99 falhas, 33 aprovações e 19 erros em ambas, com as mesmas identidades de casos reprovados**. A comparação distingue falhas do conjunto antigo de regressões da entrega; não remove nem contorna a proteção de documentos. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\comparacao-testes.json`; logs `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\falhas-comparadas-main.txt` e `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\falhas-comparadas-atual.txt`.
+
+Após retirar o lembrete novo de prazo (E2.7 está fora desta entrega), os **47 testes da etapa** passaram novamente: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-escala-final.txt`. Permanecem apenas os avisos já existentes; nenhum lembrete novo ao aluno foi ativado.
+
+Os atalhos Alt+N, Alt+P, Alt+A e Alt+E foram exercitados no navegador com o template real e destinatários fictícios. O servidor estático recebeu o POST de ensaio sem backend de envio e a navegação individual; os testes Django comprovam o processamento real. Prova somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-teclado.json`. Nenhuma mensagem foi enviada a um aluno real durante a conferência.

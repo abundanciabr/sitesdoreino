@@ -3,7 +3,7 @@
 - **Endereço deste documento:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\ROTEIRO-SUPORTE-EM-ESCALA-20261011.md` (cópia local; documento em versionamento nesta entrega, sem publicação como página).
 - **Plano que ele executa:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\PLANO-MESTRE-SUPORTE-EM-ESCALA-20261011.md`. O plano diz **o quê e por quê**; este roteiro diz **em que ordem, com que prova e onde marcar**.
 - **Código:** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\` (ramo de trabalho). Entregar o código é pelo integrador: `infra/robo.py entregar` com ramo `codex/entrega/suporte-escala-20261011`; a main é protegida.
-- **Criado em 11/10/2026.** Última atualização: 11/10/2026 (execução autorizada; base atual 8ec12125d99875945f84eccad4c5771115dd440c; documentos corrigidos antes do código).
+- **Criado em 11/10/2026.** Última atualização: 11/10/2026 (execução autorizada; base atual 8ec12125d99875945f84eccad4c5771115dd440c; código implementado e provas locais registradas; conferência no site pendente).
 
 ---
 
@@ -26,21 +26,21 @@
 
 | Campo | Valor |
 |---|---|
-| Etapa atual | E1 em implementação; E2 após classificação e reaberturas |
-| Passo atual | — |
+| Etapa atual | E1.1–E1.3 e rascunhos/caixa da E2 implementados e testados; entrega em preparação |
+| Passo atual | Entrega pelo integrador e conferência autenticada no site |
 | Último commit publicado do suporte | `b72bf7ce8` (contexto com compras, agenda e interesse no CRM, 10/10/2026) |
 | Decisões respondidas | nenhuma (D1 a D6 abertas) |
-| Pendências abertas (seção 8) | 0 |
+| Pendências abertas (seção 8) | Medição de 14 dias; decisões D1–D6; E2.7/E2.8 e E3–E7 fora do escopo |
 | Auditorias feitas (seção 6) | nenhuma |
 
 ---
 
 ## 2. Antes de começar (uma vez)
 
-- [ ] **P0.1** Conferir que o ramo de trabalho está em dia com a main: em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\`, `git fetch` e `git log --oneline -1 origin/main`. Prova: hash igual ou posterior a `b72bf7ce8` anotado aqui: ______
-- [ ] **P0.2** Subir o Postgres da sessão numa porta fora da faixa reservada e exportar `DATABASE_URL` (memória "Porta 55400 reservada"). Prova: `pytest services/admin/tests/test_atendimento*.py -q` verde antes de mexer. Resultado: ______
-- [ ] **P0.3** Ler `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py` uma vez e anotar aqui as três coisas que surpreenderam: ______
-- [ ] **P0.4** Confirmar que não há migração pendente em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\migrations` fora da main. Prova: `python manage.py makemigrations --check --dry-run atendimento` sem saída.
+- [x] **P0.1** Conferir que o ramo de trabalho está em dia com a main: em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\`, `git fetch` e `git log --oneline -1 origin/main`. Prova: main conferida e incorporada: `c0711d9d72c6f2e3b66b6d3c416c67b8cc402c60`; merge local `b0d9a429173ee669210cdfe46e5ca085e429b730`
+- [x] **P0.2** PostgreSQL isolado da sessão em 127.0.0.1:61921, sem tocar nos bancos de produção. O teste antigo de streaming fechava a conexão da transação; foi corrigido consumindo o streaming pelo cliente Django. Prova final: 150 testes do suporte aprovados.
+- [x] **P0.3** Ler `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`, `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py` uma vez e anotar aqui achados: os campos de primeira resposta e encerramento já existiam; a recepção automática não é resposta de mérito; reabrir apagava o estado da rodada anterior sem histórico próprio
+- [x] **P0.4** Confirmar que não há migração pendente em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\migrations` fora da main. Prova: `python manage.py makemigrations --check --dry-run atendimento` sem saída.
 
 ---
 
@@ -50,29 +50,29 @@ Cada linha: **passo**, o que fazer, onde, **prova**. A ordem dentro da etapa é 
 
 ### E1: números (ND)
 
-- [ ] **E1.1a** Campos novos em `Conversa`: `tipo` (16 tipos da seção 5 do plano), `cor` (verde, amarelo, vermelho), `degrau` (consultar, mostrar, cobrar), `humor`; reaproveitar `prioridade` para urgência. Migração. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`. Prova: migração aplica e reverte; teste de modelo.
-- [ ] **E1.1b** Classificação na chegada em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`: função que recebe a conversa e devolve tipo, cor, degrau, urgência e humor. Vermelho é fixo para tipos 13, 14 e 15; "cobrar" nunca sai verde. Prova: teste com uma mensagem de cada um dos 16 tipos; os três vermelhos saem vermelhos sempre.
-- [ ] **E1.1c** Tipo e cor aparecem na fila (`gestao.contexto_fila` e template). Prova: teste de view mostra o rótulo.
-- [ ] **E1.2a** Três estados separados: `primeira_resposta_em` e `encerrada_em` existentes, mais `resolvida_em` em `Conversa`, e modelo `Reabertura` (conversa, quando, motivo, quem). Migração. Prova: teste cria conversa, responde, encerra, reabre; os três campos e a reabertura ficam gravados e distintos.
-- [ ] **E1.2b** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`: responder mantém `primeira_resposta_em` existente; encerrar mantém `encerrada_em` existente; resolvido só por "sim" do aluno ou 7 dias sem volta; qualquer mensagem nova depois de encerrado cria `Reabertura` e limpa `resolvida_em`. Prova: teste cobre os quatro caminhos.
-- [ ] **E1.3a** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py`: fatia por tipo, tempo da pessoa por tipo (do primeiro clique da equipe ao envio), tempo até a primeira resposta e até resolvido, reaberturas em 7 dias, satisfação, custo de IA por pedido, pedidos por 100 alunos ativos. Prova: teste com dados fixos confere cada número.
+- [x] **E1.1a** Campos novos em `Conversa`: `tipo` (16 tipos da seção 5 do plano), `cor` (verde, amarelo, vermelho), `degrau` (consultar, mostrar, cobrar), `humor`; reaproveitar `prioridade` para urgência. Migração. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\models.py`. Prova: aplicação, reversão e reaplicação em banco vazio; `test_classifica_16_tipos_sem_ia`.
+- [x] **E1.1b** Classificação na chegada em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\contexto.py`: função que recebe a conversa e devolve tipo, cor, degrau, urgência e humor. Vermelho é fixo para tipos 13, 14 e 15; "cobrar" nunca sai verde. Prova: teste com uma mensagem de cada um dos 16 tipos; os três vermelhos saem vermelhos sempre.
+- [x] **E1.1c** Tipo e cor aparecem na fila (`gestao.contexto_fila` e template). Prova: teste de view mostra o rótulo.
+- [x] **E1.2a** Três estados separados: `primeira_resposta_em` e `encerrada_em` existentes, mais `resolvida_em` em `Conversa`, e modelo `Reabertura` (conversa, quando, motivo, quem). Migração. Prova: teste cria conversa, responde, encerra, reabre; os três campos e a reabertura ficam gravados e distintos.
+- [x] **E1.2b** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\service.py`: responder mantém `primeira_resposta_em` existente; encerrar mantém `encerrada_em` existente; resolvido só por "sim" do aluno ou 7 dias sem volta; qualquer mensagem nova depois de encerrado cria `Reabertura` e limpa `resolvida_em`. Prova: teste cobre os quatro caminhos.
+- [x] **E1.3a** `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\indicadores.py`: fatia por tipo, tempo da pessoa por tipo (do primeiro clique da equipe ao envio), tempo até a primeira resposta e até resolvido, reaberturas em 7 dias, satisfação, custo de IA por pedido, pedidos por 100 alunos ativos. Prova: teste com dados fixos confere cada número.
 - [ ] **E1.3b** Tela de números em `https://meshcraft.top/admin/atendimento/` (aba ou página). Prova: teste de view; conferir no site depois de publicar.
 - [ ] **E1.4** Depois de 2 semanas no ar: refazer a tabela da seção 2 do plano com os números medidos. Prova: tabela nova no plano com a data da medição. Data prevista: ______
 - [ ] **Auditoria da E1** (seção 6) feita em: ______
 
 ### E2: rascunhos e caixa de decisões (ND, depende de E1.1)
 
-- [ ] **E2.1** `contexto.preparar` passa a preencher `resposta` com o rascunho no modo assistido. Nada é enviado sem clique. Prova: teste mostra `resposta` cheia e nenhuma mensagem enviada ao aluno.
-- [ ] **E2.2** Textos fixos por tipo (1 a 5, 7, 9, 16) com campos preenchidos pelo sistema (nome, data da agenda, situação do pagamento, link do checkout que existe). Onde: módulo novo `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\textos_fixos.py`. IA só quando o texto fixo não cobre. Prova: teste de cada tipo gera o texto sem chamar IA (contador de chamadas em zero).
-- [ ] **E2.3** Prioridade automática: vermelho, humor irritado, comprador dos últimos 7 dias, reaberto. Prova: teste ordena a fila.
-- [ ] **E2.4** Fila por prazo: "sem resposta há X" e destaque ao passar de 24 h (ou D5). Prova: teste de view com conversa antiga destacada.
-- [ ] **E2.5** Agrupamento por tipo, produto e pergunta parecida. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`. Prova: teste junta 5 pedidos iguais num grupo e separa um diferente.
-- [ ] **E2.6** Tela "Caixa de decisões": lista grupos, aprova um texto e o sistema preenche dados de cada aluno sem IA. Rota em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\config\urls.py`, template novo. Prova: teste aprova grupo de 30 com um POST, 30 respostas saem, zero chamadas de IA.
+- [x] **E2.1** `contexto.preparar` passa a preencher `resposta` com o rascunho no modo assistido. Nada é enviado sem clique. Prova: teste mostra `resposta` cheia e nenhuma mensagem enviada ao aluno.
+- [x] **E2.2** Textos fixos por tipo (1 a 5, 7, 9, 16) com campos preenchidos pelo sistema (nome, data da agenda, situação do pagamento, link do checkout que existe). Onde: módulo novo `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\textos_fixos.py`. IA só quando o texto fixo não cobre. Prova: teste de cada tipo gera o texto sem chamar IA (contador de chamadas em zero).
+- [x] **E2.3** Prioridade automática: vermelho, humor irritado, comprador dos últimos 7 dias, reaberto. Prova: teste ordena a fila.
+- [x] **E2.4** Fila por prazo: "sem resposta há X" e destaque ao passar de 24 h (ou D5). Prova: teste de view com conversa antiga destacada.
+- [x] **E2.5** Agrupamento por tipo, produto e pergunta parecida. Onde: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\apps\atendimento\gestao.py`. Prova: teste junta 5 pedidos iguais num grupo e separa um diferente.
+- [x] **E2.6** Tela "Caixa de decisões": lista grupos, aprova um texto e o sistema preenche dados de cada aluno sem IA. Rota em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\config\urls.py`, template novo. Prova: teste aprova grupo de 30 com um POST, 30 respostas saem, zero chamadas de IA.
 - [ ] **E2.7** Próximo passo com prazo e responsável; lembrete por `Aviso` quando vence; lembrete ao aluno; encerramento por falta de resposta **sem** marcar resolvido. Prova: teste com relógio avançado.
 - [ ] **E2.8** Resumo no CRM ao encerrar e `Oportunidade` quando há interesse em produto não comprado. Prova: teste confere o histórico do lead e a oportunidade criada.
-- [ ] **E2.9** "Resolveu?" ao encerrar, ligado a `avaliacao_disponivel`. "Sim" marca resolvido; "não" cria `Reabertura` com prioridade. Prova: teste dos dois caminhos.
-- [ ] **E2.10** Atalhos de teclado na caixa de decisões. Prova: conferir no site.
-- [ ] **Ensaio da E2:** 200 pedidos de ensaio, um grupo de 30 aprovado com um clique, zero IA por aluno, nada enviado sem clique. Prova: teste de integração `test_atendimento_caixa.py`.
+- [x] **E2.9** "Resolveu?" ao encerrar, ligado a `avaliacao_disponivel`. "Sim" marca resolvido; "não" cria `Reabertura` com prioridade. Prova: teste dos dois caminhos.
+- [x] **E2.10** Atalhos de teclado na caixa de decisões. Prova: conferir no site.
+- [x] **Ensaio da E2:** 200 pedidos de ensaio, um grupo de 30 aprovado com um clique, zero IA por aluno, nada enviado sem clique. Prova: `test_ensaio_200_30_em_um_clique_zero_ia_e_repeticao_idempotente` em `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_escala.py`.
 - [ ] **Auditoria da E2** (seção 6) feita em: ______
 
 ### E3: prevenção (ND, depende da agenda e de E1.3)
@@ -189,7 +189,9 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 
 | Data | Passo | O que aconteceu | O que falta | Resolvido em |
 |---|---|---|---|---|
-| | | | | |
+| 11/10/2026 | E1.4 | Exige 14 dias reais após ativação | Registrar o início visto no painel e medir ao completar a janela | Pendente |
+| 11/10/2026 | Suíte geral | Testes antigos de documentos falham também na main diante da publicação manual | Registro separado; proteção preservada | Confirmado na main |
+| 11/10/2026 | E2.7/E2.8; E3–E7 | Fora desta entrega | Nova execução no escopo correspondente; D1–D6 quando aplicáveis | Não iniciado |
 
 ---
 
@@ -210,3 +212,20 @@ As oito linhas encerram o plano completo E1–E7, não a entrega atual de E1 e r
 - Resolução por confirmação fica distinta da inferência após sete dias sem retorno; encerramento por falta de resposta não pode contar como resolvido. Registros antigos sem informação suficiente permanecem sem medição.
 - E1.4: 14 dias reais a partir da ativação comprovada (data ainda pendente). E3: medição de 30 dias só depois da prevenção. E5: duas semanas sem erro só após a recuperação de matrícula. Ensaios não substituem esses períodos.
 - Nenhuma mudança nas cinco árvores congeladas, nenhuma resposta autônoma ativada e nenhuma página de documentação publicada.
+
+## Provas da implementação — 11/10/2026
+
+- Código: `db7036d81`; main atual incorporada em `b0d9a429173ee669210cdfe46e5ca085e429b730`. A publicação pelo integrador ainda precisa ser confirmada no registro abaixo.
+- Suporte: **150 testes aprovados**, incluindo 16 tipos, vermelhos sem resposta automática, preservação da rodada, sim/não, retorno em sete dias, prazo, prioridade, texto individualizado, lote idempotente de 30 entre 200 e recusa integral após mudança da fonte/destinatário. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-suporte.txt`.
+- Migração nova aplicada, revertida e reaplicada em banco vazio; sem migração de atendimento faltando. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\migracao-comprovada.txt`.
+- Testes antigos de documentos na main: 12 falhas e 16 aprovações, sem alterações desta tarefa. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-base-main.txt`. Suíte geral completa: 2.837 aprovados, 101 falhas, 51 erros e 1 pulado: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-admin-completo.txt`. Não é apresentada como verde.
+- Diff das cinco árvores congeladas vazio tanto contra a main como contra `425b82504028db3b7721ae32b776995915280bdb`. Nenhuma configuração de autonomia foi alterada. No site, Comunidade, Cursos e Site estavam assistidos antes da entrega; o teto existente de US$ 10/mês permanece, sem presumir a decisão D2 de escala.
+- Evidências locais acima existem somente neste PC; os dois documentos são versionados e não viram páginas. Teste principal: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\wt-suporte-escala-20261011\services\admin\tests\test_atendimento_escala.py`.
+
+### Comparação final e alcance da prova
+
+A suíte geral não ficou verde. A falha do teste de streaming do suporte foi corrigida e sua suíte passou. Os demais casos foram executados no mesmo recorte na main limpa e nesta candidata: **99 falhas, 33 aprovações e 19 erros em ambas, com as mesmas identidades de casos reprovados**. A comparação distingue falhas do conjunto antigo de regressões da entrega; não remove nem contorna a proteção de documentos. Prova local: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\comparacao-testes.json`; logs `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\falhas-comparadas-main.txt` e `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\falhas-comparadas-atual.txt`.
+
+Após retirar o lembrete novo de prazo (E2.7 está fora desta entrega), os **47 testes da etapa** passaram novamente: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\testes-escala-final.txt`. Permanecem apenas os avisos já existentes; nenhum lembrete novo ao aluno foi ativado.
+
+Os atalhos Alt+N, Alt+P, Alt+A e Alt+E foram exercitados no navegador com o template real e destinatários fictícios. O servidor estático recebeu o POST de ensaio sem backend de envio e a navegação individual; os testes Django comprovam o processamento real. Prova somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\suporte-escala-20261011\prova-teclado.json`. Nenhuma mensagem foi enviada a um aluno real durante a conferência.
