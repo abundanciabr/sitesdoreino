@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.core import diagnostico_texturas
 
 from apps.core import telas_do_cliente, telas_marketplace, telas_sandbox, telas_fila_real, trilha_pessoal, telas_limpeza_sandbox
 from apps.core.views import dar_titulo, healthz, plantao
@@ -37,6 +38,10 @@ from config.api import api
 # que alguém escreveria por instinto. Quem registra "pago pela escola" é o
 # plantão, com autor e data (lei §3.4).
 urlpatterns = [
+    path('diagnostico-texturas/', diagnostico_texturas.pagina, name='diagnostico_texturas'),
+    path('diagnostico-texturas/enviar/', diagnostico_texturas.enviar, name='diagnostico_texturas_enviar'),
+    path('diagnostico-texturas/analises/<str:ident>/', diagnostico_texturas.resultado, name='diagnostico_texturas_resultado'),
+    path('diagnostico-texturas/imagens/<str:ident>/<str:nome>', diagnostico_texturas.imagem, name='diagnostico_texturas_imagem'),
     path("minha-trilha/", trilha_pessoal.minha_trilha, name="encomendas_minha_trilha"),
     path('sandbox/arquivos/<uuid:arquivo_id>/previas/<str:nome>/', telas_sandbox.previa_analise, name='sandbox_previa_analise'),
     path('sandbox/trabalhos/<uuid:participacao_id>/analise/<uuid:entrega_id>/repetir/', telas_sandbox.repetir_analise, name='sandbox_repetir_analise'),
