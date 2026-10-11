@@ -240,6 +240,10 @@ def trabalho(request, participacao_id):
         return _login(request)
     sandbox.registrar_atrasos(site_id=participacao.site_id)
     participacao.refresh_from_db()
+    from apps.encomendas.devolutiva_sandbox import situacao
+    from apps.encomendas.sandbox_models import AnaliseEntregaSandbox
+    ultima = participacao.entregas.order_by('-versao').first()
+    analise = AnaliseEntregaSandbox.objects.filter(entrega=ultima).first() if ultima else None
     return render(request, "sandbox/trabalho.html", {
         "papel": papel, "trabalho": participacao, "agora": timezone.now(),
         "mensagens": MensagemSandbox.objects.filter(participacao=participacao).order_by("criada_em"),
@@ -247,6 +251,7 @@ def trabalho(request, participacao_id):
         "entregas": EntregaSandbox.objects.filter(participacao=participacao).order_by("-versao"),
         "ajustes": AjusteSandbox.objects.filter(participacao=participacao).order_by("-criado_em"),
         "respostas_pendentes": participacao.respostasandbox_set.exclude(estado='concluida'),
+        "situacao_analise": situacao(analise), "pode_entregar": sandbox.pode_entregar(participacao),
         "recado": request.GET.get("recado", ""),
     })
 

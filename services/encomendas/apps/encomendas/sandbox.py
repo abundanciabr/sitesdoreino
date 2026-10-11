@@ -194,7 +194,7 @@ def mensagem(*, site_id, participacao_id, ator_id, papel, texto):
 @transaction.atomic
 def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=None):
     p = ParticipacaoSandbox.objects.select_for_update().filter(pk=participacao_id, site_id=site_id, pessoa_id=pessoa_id).first()
-    if p is None or p.status not in ["em_producao", "em_ajuste"]:
+    if p is None or not pode_entregar(p):
         raise ErroSandbox("Entrega indisponível para esta pessoa.")
     arquivos = list(arquivos or [])
     if not arquivos:
@@ -221,13 +221,25 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
         arquivo.save(update_fields=["entrega"])
     for item in novos:
         ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, entrega=entrega, **item)
-    if p.atraso_em is None and timezone.now() > p.prazo_ate:
+    if p.status != 'entregue' and p.atraso_em is None and timezone.now() > p.prazo_ate:
         p.atraso_em = timezone.now()
     p.status = ParticipacaoSandbox.Status.ENTREGUE
     p.save(update_fields=["status", "atraso_em"])
     from .analises_sandbox import preparar
     preparar(entrega)
     return entrega
+
+
+def pode_entregar(participacao):
+    if participacao.status in ('em_producao', 'em_ajuste'):
+        return True
+    if participacao.status != 'entregue':
+        return False
+    from .sandbox_models import AnaliseEntregaSandbox
+    from .devolutiva_sandbox import lacunas
+    ultima = participacao.entregas.order_by('-versao').first()
+    analise = AnaliseEntregaSandbox.objects.filter(entrega=ultima, estado='concluida').first()
+    return bool(analise and lacunas(analise.resultado))
 
 
 @transaction.atomic
