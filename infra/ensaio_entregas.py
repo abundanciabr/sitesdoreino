@@ -298,6 +298,8 @@ def _ferramentas(ferramentas: Path) -> tuple[str, str]:
         "provas": __import__("protecao_publicacao").arvore(ferramentas / "provas-aplicacao"),
         "funil": _hash(ferramentas / "infra/execucao-celulas.py"),
         "provas_funil": __import__("protecao_publicacao").arvore(ferramentas / "provas-funil"),
+        "imagens_apoio": {nome: __import__("protecao_publicacao").imagem_id(nome)
+                          for nome in ("postgres:17", "redis:7")},
     })
     return executor, ensaio
 
@@ -897,7 +899,61 @@ def reaproveitar_celula(plataforma, candidata, ferramentas, celula, imagem, bund
     shutil.copy2(Path(prova["artefato"]["comercial_xml"]), relatorio)
     if conferir_relatorio(relatorio, registrar_falha_conhecida=True) != prova["cobertura"]:
         raise RecusaEnsaio("relatório reaproveitado divergiu")
-    return {"celula": outra, "identidade": prova["identidade"], "codigo": esperado}
+    return {"celula": outra, "candidata": candidata,
+            "identidade": prova["identidade"], "codigo": esperado}
+
+
+def reaproveitar_ensaio(plataforma, candidata, ferramentas, imagem, bundle, evidencias):
+    """Reusa o relatório de outra entrega somente para o pacote já montado igual.
+
+    A prova histórica confere seus artefatos preservados; a comparação com os
+    insumos atuais vincula o resultado à nova execução. A nova entrega conserva
+    sua própria prova, backup e ativação. Ausência ou corrupção do histórico
+    apenas faz o executor rodar novamente o ensaio normal.
+    """
+    arquivos = [p for p in (plataforma / "entregas/provas").glob("*.json")
+                if p.is_file() and not p.is_symlink()]
+    if not arquivos:
+        return None
+    from protecao_publicacao import arvore, conferir_relatorio
+    codigo = arvore(bundle)
+    executor, ensaio = _ferramentas(ferramentas)
+    contexto = {"imagem": imagem, "configuracao_base": _configuracao(plataforma, ferramentas),
+                "executor": executor, "ensaio": ensaio}
+    for arquivo in sorted(arquivos, key=lambda p: p.stat().st_mtime, reverse=True):
+        if (arquivo.is_symlink() or not re.fullmatch(r"[0-9a-f]{40}(?:-funil)?\.json", arquivo.name)
+                or arquivo.name.startswith(candidata)):
+            continue
+        try:
+            anterior = json.loads(arquivo.read_text(encoding="utf-8"))
+            if not isinstance(anterior, dict):
+                continue
+            celula = anterior.get("celula")
+            if celula not in ("aplicacao", "funil"):
+                continue
+            campo_codigo = "bundle_sha256" if celula == "funil" else "codigo"
+            if (anterior.get(campo_codigo) != codigo
+                    or any(anterior.get(k) != v for k, v in contexto.items())):
+                continue
+            sha = arquivo.name[:40]
+            prova = verificar_prova_historica(plataforma, sha, ferramentas, celula,
+                                              identidade=anterior["identidade"])
+            if (prova[campo_codigo] != codigo
+                    or any(prova.get(k) != v for k, v in contexto.items())):
+                continue
+            relatorio = Path(prova["artefato"]["comercial_xml"])
+            if conferir_relatorio(relatorio, registrar_falha_conhecida=True) != prova["cobertura"]:
+                continue
+        except (RecusaEnsaio, OSError, ValueError, TypeError, KeyError, ParseError):
+            continue
+        evidencias.mkdir(parents=True, exist_ok=True)
+        destino = evidencias / "comercial.xml"
+        shutil.copy2(relatorio, destino)
+        if conferir_relatorio(destino, registrar_falha_conhecida=True) != prova["cobertura"]:
+            raise RecusaEnsaio("cópia do relatório comprovado divergiu")
+        return {"tipo": "entre_entregas", "candidata": sha, "celula": celula,
+                "identidade": prova["identidade"], "codigo": codigo}
+    return None
 
 
 def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMENTAS,
@@ -961,6 +1017,9 @@ def executar(plataforma: Path, candidata: str, ferramentas: Path = RAIZ_FERRAMEN
             if "collectstatic" in dockerfile:
                 with tempos.medir("estaticos"):
                     _coletar_estaticos(bundle, base, imagem, registro)
+            with tempos.medir("reaproveitamento"):
+                reuso = reaproveitar_ensaio(plataforma, candidata, ferramentas, imagem,
+                                            bundle, base / "evidencias")
         # A imagem base é previamente aprovada e carregada pelo mantenedor.
         # Nunca executamos Dockerfile candidato nem rede de build.
         if celula == "funil":
