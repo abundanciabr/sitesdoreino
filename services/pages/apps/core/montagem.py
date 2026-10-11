@@ -1,5 +1,6 @@
 """Prévia privada e recursos da montagem visual do portfólio."""
 from pathlib import Path
+from types import SimpleNamespace
 
 from django.http import HttpResponse, Http404
 from django.shortcuts import render
@@ -52,3 +53,63 @@ def pdf_publico(request, apelido):
         endereco_publico=request.build_absolute_uri(vitrine.endereco(portfolio.apelido))), content_type="application/pdf")
     resposta["Content-Disposition"] = f'attachment; filename="{dossie.nome_do_arquivo(portfolio.apelido)}"'
     return _sem_rastro(resposta)
+
+
+@require_GET
+def previa_equipe(request):
+    """Mostra as telas reais com exemplos da escola, sem criar ou editar portfólios."""
+    from .jornada import desenhar
+    from .preparar import CATEGORIAS
+    from apps.portfolio.preparacao import ITENS_INICIAIS
+
+    if not getattr(request, "membro_da_equipe", None):
+        raise Http404
+    exemplos = (
+        ("Cabelo Cascata", "praticas-3d/modelos/cabelo-cascata/v3/miniatura.png"),
+        ("Robô Pingo", "praticas-3d/modelos/robo-pingo/v2/miniatura.png"),
+        ("Árvore estilizada", "joguinho-ep1/06-resultado.webp"),
+    )
+    trabalhos = [SimpleNamespace(
+        pk=i, id=i, titulo=titulo, titulo_comercial=titulo, legenda=titulo,
+        descricao="Exemplo da escola para demonstrar a apresentação.",
+        texto_comercial="Exemplo da escola para demonstrar a apresentação.",
+        link="/cursos/static/" + arquivo, imagem_montagem="/cursos/static/" + arquivo,
+        imagem_principal="/cursos/static/" + arquivo, materiais_montagem=[],
+        mostrar_na_pagina_publica=True, destaque=i == 1,
+    ) for i, (titulo, arquivo) in enumerate(exemplos, 1)]
+    conteudo = comercial.normalizar_conteudo({"pagina": {
+        "titulo": "Meus trabalhos em 3D", "subtitulo": "Crio objetos e acessórios para Roblox.",
+        "ordem_trabalhos": [str(item.pk) for item in trabalhos],
+        "trabalho_destaque": "1", "apelido_rascunho": "exemplo",
+    }})
+    comum = {"previa_admin": True, "aluno": {"nome": "Exemplo ilustrativo"}}
+    tela = request.GET.get("tela", "montagem")
+    if tela == "resultado":
+        resposta = render(request, "pages/portfolio-previa.html", {
+            "publico": {"conteudo": conteudo, "obras": trabalhos},
+            "hero": trabalhos[0], "apelido": "Exemplo ilustrativo",
+        })
+        resposta["X-Frame-Options"] = "SAMEORIGIN"
+        resposta["Content-Security-Policy"] = "frame-ancestors 'self'"
+    elif tela == "preparo":
+        resposta = desenhar(request, "preparar.html", {**comum,
+            "peca": trabalhos[0], "preparo": {
+                "titulo": trabalhos[0].titulo, "descricao": trabalhos[0].descricao,
+                "materiais": [], "checklist": [
+                    {"chave": chave, "rotulo": rotulo, "marcado": i < 2}
+                    for i, (chave, rotulo) in enumerate(ITENS_INICIAIS)
+                ],
+            }, "categorias": CATEGORIAS, "marcados": 2, "pendentes": 2,
+            "imagem_previa": trabalhos[0].link, "voltar_apresentacao": True,
+        })
+    elif tela == "montagem":
+        resposta = desenhar(request, "montagem.html", {**comum,
+            "conteudo": conteudo, "trabalhos": trabalhos, "selecionados": 3,
+            "portfolio": SimpleNamespace(apelido="exemplo", vitrine_publicada=False),
+            "base_endereco_publico": request.build_absolute_uri("/portfolio/"),
+        })
+    else:
+        raise Http404
+    resposta["Cache-Control"] = "no-store"
+    resposta["X-Robots-Tag"] = "noindex, nofollow"
+    return resposta

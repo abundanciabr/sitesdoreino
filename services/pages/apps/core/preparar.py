@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.http import require_http_methods
 
-from apps.portfolio import imagens, preparacao
-from apps.portfolio.models import Peca
+from apps.portfolio import comercial, imagens, preparacao
+from apps.portfolio.models import Peca, Portfolio
 
 from .jornada import desenhar, dono
 
@@ -23,8 +24,34 @@ CATEGORIAS = (
 )
 
 
+def _veio_da_apresentacao(request):
+    return (request.POST.get("voltar") or request.GET.get("voltar")) == "apresentacao"
+
+
+def _atualizar_textos_da_apresentacao(peca, dados):
+    """A edição feita na montagem atualiza só a legenda desse trabalho no rascunho."""
+    portfolio = peca.portfolio
+    conteudo = deepcopy(portfolio.apresentacao_comercial or {})
+    pagina = conteudo.setdefault("pagina", {})
+    legendas = pagina.setdefault("legendas", [])
+    legenda = next((item for item in legendas if str(item.get("peca_id")) == str(peca.pk)), None)
+    if legenda is None:
+        legenda = {"peca_id": str(peca.pk)}
+        legendas.append(legenda)
+    for origem, destino in (("titulo", "titulo"), ("descricao", "texto")):
+        if origem in dados:
+            legenda[destino] = getattr(peca, origem)
+    portfolio.apresentacao_comercial = conteudo
+    portfolio.save(update_fields=["apresentacao_comercial"])
+
+
 def _mostrar(request, peca, *, recusa="", feito="", status=200):
     dados = preparacao.carregar_preparacao(peca)
+    if _veio_da_apresentacao(request):
+        conteudo = comercial.conteudo_de(peca.portfolio)
+        comercial.preparar_trabalhos([peca], conteudo)
+        dados["titulo"] = peca.titulo_comercial
+        dados["descricao"] = peca.texto_comercial
     marcados = sum(1 for item in dados["checklist"] if item["marcado"])
     campos_pendentes = []
     for chave, rotulo in (
@@ -51,6 +78,7 @@ def _mostrar(request, peca, *, recusa="", feito="", status=200):
             "previa": request.GET.get("previa") == "1",
             "imagem_previa": imagem_principal.url if imagem_principal else peca.link,
             "imagem_legada": bool(getattr(peca, "imagem_enviada", None)),
+            "voltar_apresentacao": _veio_da_apresentacao(request),
         },
         status=status,
     )
@@ -70,7 +98,11 @@ def preparar_trabalho(request, peca_id):
             dados["checklist_json"] = json.dumps(
                 request.POST.getlist("checklist"), ensure_ascii=False
             )
-            preparacao.salvar_preparacao(peca, dados)
+            with transaction.atomic():
+                peca.portfolio = Portfolio.objects.select_for_update().get(pk=peca.portfolio_id)
+                preparacao.salvar_preparacao(peca, dados)
+                if _veio_da_apresentacao(request):
+                    _atualizar_textos_da_apresentacao(peca, dados)
             feito = "Seu trabalho foi salvo."
         elif acao == "enviar":
             arquivos = request.FILES.getlist("arquivos")
@@ -124,8 +156,20 @@ def preparar_trabalho(request, peca_id):
         return _mostrar(request, peca, recusa=str(erro), status=422)
 
     # O retorno conserva o endereço da peça, inclusive quando o aluno está na prévia.
-    resposta = redirect("preparar_trabalho", peca_id=peca.pk)
-    if acao == "salvar" and request.POST.get("ver_previa") == "1":
-        resposta["Location"] += "?previa=1#previa"
+    if acao == "salvar" and request.POST.get("concluir") == "1" and _veio_da_apresentacao(request):
+        resposta = redirect("apresentacao_publica")
+        resposta["Location"] += "#escolher-trabalhos"
+    else:
+        resposta = redirect("preparar_trabalho", peca_id=peca.pk)
+        parametros = []
+        if _veio_da_apresentacao(request):
+            parametros.append("voltar=apresentacao")
+        previa = acao == "salvar" and request.POST.get("ver_previa") == "1"
+        if previa:
+            parametros.append("previa=1")
+        if parametros:
+            resposta["Location"] += "?" + "&".join(parametros)
+        if previa:
+            resposta["Location"] += "#previa"
     resposta["Cache-Control"] = "no-store"
     return resposta

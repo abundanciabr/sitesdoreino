@@ -20,8 +20,13 @@
     data.pagina.legendas = rows().map(row => ({peca_id:row.dataset.id, titulo:form.elements['legenda_titulo_' + row.dataset.id].value, texto:form.elements['legenda_texto_' + row.dataset.id].value}));
     document.getElementById('conteudo-json').value = JSON.stringify(data);
     form.querySelectorAll('[data-destaque]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.destaque === highlight)));
-    const order = data.pagina.ordem_trabalhos;
-    rows().sort((a,b) => order.indexOf(a.dataset.id) - order.indexOf(b.dataset.id));
+    const selected = form.querySelectorAll('[name="trabalhos_ids"]:checked').length;
+    const selection = document.getElementById('portfolio-selecao');
+    if (selection) selection.textContent = `${selected} trabalho${selected === 1 ? '' : 's'} selecionado${selected === 1 ? '' : 's'}.`;
+    rows().forEach((row, index, all) => {
+      row.querySelector('[data-mover="-1"]').disabled = index === 0;
+      row.querySelector('[data-mover="1"]').disabled = index === all.length - 1;
+    });
     form.querySelectorAll('[data-material-work]').forEach(group => {
       const row = rows().find(item => item.dataset.id === group.dataset.materialWork);
       group.hidden = !row?.querySelector('[name="trabalhos_ids"]').checked;
@@ -43,7 +48,13 @@
         const result = await response.json().catch(() => ({}));
         if (!response.ok || !result.salvo) throw new Error(result.erro || 'Não foi possível salvar. Tente novamente.');
         if (current === revision) dirty = false;
-        if (result.endereco_publico) form.dataset.publicUrl = result.endereco_publico;
+        if (result.endereco_publico) {
+          form.dataset.publicUrl = result.endereco_publico;
+          const link = document.getElementById('portfolio-endereco-publicado');
+          link.href = result.endereco_publico;
+          link.textContent = result.endereco_publico;
+          document.getElementById('portfolio-link-publicado').hidden = false;
+        }
         message(action === 'publicar' ? 'Página publicada' : dirty ? 'Alterações aguardando salvamento' : 'Rascunho salvo', action === 'publicar' ? result.endereco_publico : 'A versão pública só muda quando você publica.');
         preview.src = form.dataset.previewUrl + '?v=' + Date.now();
         return result;
@@ -64,6 +75,7 @@
   const order = initial.pagina?.ordem_trabalhos || [];
   for (const id of order) { const row = rows().find(row => row.dataset.id === String(id)); if (row) row.parentNode.appendChild(row); }
   sync();
+  detail.textContent = 'As alterações são salvas automaticamente.';
   form.addEventListener('input', changed);
   form.addEventListener('change', changed);
   form.addEventListener('click', event => {
@@ -80,6 +92,22 @@
     }
   });
   form.addEventListener('submit', event => { event.preventDefault(); save(event.submitter?.value || 'salvar').catch(() => {}); });
+  form.addEventListener('click', async event => {
+    const link = event.target.closest('a[data-save-before-leave]');
+    if (!link || !dirty || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    const destination = link.href;
+    try { await save(); if (!dirty) location.assign(destination); } catch (_) {}
+  });
+  document.getElementById('portfolio-copiar-link').addEventListener('click', async () => {
+    if (!form.dataset.publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(form.dataset.publicUrl);
+      message('Link copiado', 'Compartilhe o endereço da sua página publicada.');
+    } catch (_) {
+      message('Copie o endereço da página', 'O link está disponível logo abaixo da prévia.');
+    }
+  });
   document.getElementById('portfolio-pdf').addEventListener('click', async event => {
     if (!dirty) return;
     event.preventDefault();
