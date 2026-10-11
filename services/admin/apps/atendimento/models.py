@@ -17,6 +17,7 @@ class Configuracao(models.Model):
     mensagem = models.TextField(default='Sua dúvida ficou registrada para a equipe. Você pode continuar por aqui; a resposta aparecerá nesta conversa.')
     ia_ativa = models.BooleanField(default=True)
     autorizacao_id = models.PositiveIntegerField(null=True, blank=True)
+    medicao_iniciada_em = models.DateTimeField(null=True, blank=True)
     class Meta:
         db_table = 'atendimento_configuracao'
 
@@ -69,6 +70,14 @@ class Conversa(models.Model):
     sugestao = models.JSONField(default=dict, blank=True)
     # Produto sobre o qual o aluno fala, confirmado pela equipe: {produto_id, nome, por, em, crm}.
     interesse = models.JSONField(default=dict, blank=True)
+    tipo = models.PositiveSmallIntegerField(default=0, db_index=True)
+    cor = models.CharField(max_length=10, default='amarelo')
+    degrau = models.CharField(max_length=10, default='consultar')
+    humor = models.CharField(max_length=15, default='neutro')
+    classificada_em = models.DateTimeField(null=True, blank=True)
+    resolvida_em = models.DateTimeField(null=True, blank=True)
+    resolucao = models.CharField(max_length=20, blank=True)
+    motivo_encerramento = models.CharField(max_length=30, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
     class Meta:
@@ -97,11 +106,36 @@ class Mensagem(models.Model):
     nome = models.CharField(max_length=160, blank=True)
     texto = models.TextField()
     fontes = models.JSONField(default=list, blank=True)
+    tempo_humano_seg = models.FloatField(null=True, blank=True)
+    tipo = models.PositiveSmallIntegerField(default=0)
+    rodada = models.PositiveIntegerField(default=1)
     criada_em = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = 'atendimento_mensagem'
         ordering = ['id']
         constraints = [models.UniqueConstraint(fields=['conversa', 'referencia'], name='suporte_mensagem_unica')]
+
+
+class Reabertura(models.Model):
+    conversa = models.ForeignKey(Conversa, on_delete=models.PROTECT, related_name='reaberturas')
+    rodada = models.PositiveIntegerField()
+    quando = models.DateTimeField()
+    motivo = models.CharField(max_length=100)
+    quem = models.CharField(max_length=100)
+    anterior = models.JSONField(default=dict)
+
+    class Meta:
+        db_table = 'atendimento_reabertura'
+        constraints = [models.UniqueConstraint(fields=['conversa', 'rodada'], name='suporte_reabertura_unica')]
+
+
+class ConsumoDoAtendimento(models.Model):
+    conversa = models.ForeignKey(Conversa, on_delete=models.PROTECT, related_name='consumos')
+    consumo = models.OneToOneField('agentes.Consumo', on_delete=models.CASCADE)
+    rodada = models.PositiveIntegerField()
+
+    class Meta:
+        db_table = 'atendimento_consumo'
 
 
 class Responsavel(models.Model):

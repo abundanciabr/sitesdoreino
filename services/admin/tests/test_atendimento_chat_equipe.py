@@ -71,7 +71,8 @@ def test_widget_e_arquivos_apenas_com_acesso_da_equipe(acesso, monkeypatch):
         r = c.get('/equipe/atendimento/chat/arquivo/' + nome)
         assert r.status_code == 200 and r['Content-Type'].startswith(tipo)
         assert r['X-Content-Type-Options'] == 'nosniff'
-        r.close()
+        # O cliente de testes fecha o streaming sem fechar a transação do teste.
+        assert b''.join(r.streaming_content)
     assert c.get('/equipe/atendimento/chat/arquivo/views.py').status_code == 404
     assert c.get('/equipe/atendimento/chat/arquivo/../views.py').status_code == 404
     assert c.get('/atendimento/configuracao/').status_code == 404

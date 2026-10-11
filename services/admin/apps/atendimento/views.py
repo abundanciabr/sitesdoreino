@@ -21,6 +21,7 @@ from apps.core.templatetags.nomes_admin import primeiro_nome
 from apps.agentes import modelo
 from .models import Configuracao, Assunto, Conhecimento, Conversa, Mensagem, Responsavel, Aviso, PreviaForum, AgendaDoProduto, MODOS
 from . import service
+from . import escala
 from .expediente import disponibilidade
 
 
@@ -52,6 +53,7 @@ def serializar(conversa, depois=0, antes=0):
       'atendente':conversa.atendente_nome,'atendente_id':conversa.atendente_id,'avaliacao':conversa.avaliacao,
       'prioridade':conversa.prioridade,'estado_nome':__import__('apps.atendimento.gestao',fromlist=['ESTADOS']).ESTADOS.get(conversa.estado,conversa.estado),
       'mostrar_avaliacao':service.avaliacao_disponivel(conversa),
+      'resolvida':conversa.resolucao == 'confirmada',
       'mensagens':[{'id':m.pk,'autor':m.autor,'nome':primeiro_nome(m.nome) if m.autor == 'aluno' else m.nome,'texto':m.texto,'fontes':m.fontes,
                    'em':m.criada_em.isoformat()} for m in lista],
       'tem_anteriores':bool(lista and conversa.mensagens.filter(pk__lt=lista[0].pk).exists())}
@@ -141,18 +143,18 @@ def _conversar(request, identidade):
                         conversa.aula=str(d.get('aula',''))[:200]
                     reabriu=conversa.estado=='encerrado'
                     if reabriu:
-                        conversa.rodada+=1
-                        conversa.rodada_iniciada_em=timezone.now()
-                        conversa.primeira_resposta_em=None
-                        conversa.encerrada_em=None
-                        conversa.avaliacao=None
+                        escala.reabrir(conversa, 'nova mensagem', dono)
                         conversa.atendente_id=''
                         conversa.atendente_nome=''
                         conversa.estado='robo' if conversa.assunto.modo!='assistido' else 'aguardando'
                         conversa.resolvida_robo=False
                         conversa.solicitou_pessoa=False
                     ja_respondeu=not reabriu and conversa.mensagens.filter(referencia__startswith='auto-').exists()
-                    Mensagem.objects.create(conversa=conversa,referencia=ref,autor='aluno',nome=conversa.nome,texto=texto)
+                    escala.classificar(conversa, texto)
+                    Mensagem.objects.create(conversa=conversa,referencia=ref,autor='aluno',nome=conversa.nome,texto=texto,
+                        tipo=conversa.tipo, rodada=conversa.rodada)
+                    conversa.resolvida_em=None; conversa.resolucao=''
+                    conversa.sugestao={}
                     if conversa.estado=='aguardando_aluno': conversa.estado='andamento' if conversa.atendente_id else 'aguardando'
                     if conversa.assunto.modo=='conversa':
                         if not conversa.atendente_id and not conversa.solicitou_pessoa:
@@ -174,15 +176,25 @@ def _conversar(request, identidade):
                 with transaction.atomic():
                     conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid,pessoa_id=dono)
                     if acao=='pessoa':
-                        if conversa.estado=='encerrado': conversa.rodada+=1
+                        escala.reabrir(conversa, 'pedido de pessoa', dono)
                         if not conversa.atendente_id:
                             conversa.solicitou_pessoa=True
                             service.encaminhar(conversa)
                     elif acao=='resolvido':
+                        if not service.avaliacao_disponivel(conversa):
+                            return resposta({'erro':'Aguarde uma resposta antes de confirmar a resolução.'},422)
                         ultima=conversa.mensagens.last()
                         if conversa.estado=='robo' and ultima and ultima.referencia.startswith('auto-'):
                             conversa.resolvida_robo=True
-                        conversa.estado='encerrado'; conversa.encerrada_em=timezone.now(); conversa.processar=False; conversa.save()
+                        escala.encerrar(conversa, 'aluno', resolvido=True); conversa.save()
+                    elif acao=='nao_resolvido':
+                        if not service.avaliacao_disponivel(conversa):
+                            return resposta({'erro':'Aguarde uma resposta antes de avaliar a resolução.'},422)
+                        if conversa.estado != 'encerrado':
+                            escala.encerrar(conversa, 'aluno')
+                        escala.reabrir(conversa, 'aluno informou que não resolveu', dono)
+                        conversa.estado='aguardando'; conversa.processar=True; conversa.solicitou_pessoa=True
+                        conversa.save()
                     elif acao=='avaliar':
                         nota=int(d.get('nota',0))
                         if nota not in range(1,6): raise ValueError
@@ -257,8 +269,15 @@ def conversa_admin(request,conversa_id):
                     ctx.update(erro='Este atendimento já está com outra pessoa. Peça que ela devolva o atendimento ao robô.',conversa=conversa)
                     return render(request,'admin/atendimento_conversa.html',ctx,status=409)
                 if acao in ('assumir','responder'):
+                    if acao == 'responder':
+                        texto=request.POST.get('texto','').strip()
+                        ref=request.POST.get('referencia','')
+                        if not texto or len(texto)>6000 or not re.fullmatch(r'[A-Za-z0-9_-]{8,100}',ref):
+                            return resposta({'erro':'Escreva uma resposta com até 6000 caracteres.'},422)
+                        if conversa.mensagens.filter(referencia=ref).exists():
+                            return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/?enviado=1')
                     if conversa.estado=='encerrado':
-                        conversa.rodada+=1;conversa.rodada_iniciada_em=timezone.now();conversa.primeira_resposta_em=None;conversa.avaliacao=None
+                        escala.reabrir(conversa, 'retomada pela equipe', quem)
                     conversa.encerrada_em=None
                     conversa.estado='andamento';conversa.atendente_id=quem;conversa.atendente_nome=nome_atendente[:160]
                     # Não envia respostas automáticas depois da tomada humana.
@@ -270,11 +289,14 @@ def conversa_admin(request,conversa_id):
                             ctx.update(erro='Escreva uma resposta com até 6000 caracteres.',conversa=conversa)
                             return render(request,'admin/atendimento_conversa.html',ctx,status=422)
                         mensagem,criada=Mensagem.objects.get_or_create(conversa=conversa,referencia=ref,
-                            defaults={'autor':'equipe','nome':conversa.atendente_nome,'texto':texto})
+                            defaults={'autor':'equipe','nome':conversa.atendente_nome,'texto':texto,
+                                'tipo':conversa.tipo,'rodada':conversa.rodada,
+                                'tempo_humano_seg':escala.tempo_decorrido(request.POST.get('tempo_token',''),quem,sid,conversa.pk)})
                         if criada and conversa.primeira_resposta_em is None: conversa.primeira_resposta_em=mensagem.criada_em
+                        if criada:
+                            conversa.resolvida_em=None;conversa.resolucao='';conversa.sugestao={}
                 elif acao=='encerrar':
-                    if conversa.estado!='encerrado': conversa.encerrada_em=timezone.now()
-                    conversa.estado='encerrado';conversa.processar=False
+                    escala.encerrar(conversa)
                 elif acao=='organizar':
                     estado=request.POST.get('estado',conversa.estado)
                     prioridade=request.POST.get('prioridade',conversa.prioridade)
@@ -283,8 +305,8 @@ def conversa_admin(request,conversa_id):
                     if estado not in ESTADOS or prioridade not in PRIORIDADES or (escolhido and escolhido not in permitidos):
                         return resposta({'erro':'Confira o status, a prioridade e o responsável.'},422)
                     if conversa.estado=='encerrado' and estado!='encerrado':
-                        conversa.rodada+=1;conversa.rodada_iniciada_em=timezone.now();conversa.primeira_resposta_em=None;conversa.avaliacao=None
-                    if estado=='encerrado' and conversa.estado!='encerrado': conversa.encerrada_em=timezone.now()
+                        escala.reabrir(conversa, 'organização pela equipe', quem)
+                    if estado=='encerrado' and conversa.estado!='encerrado': escala.encerrar(conversa)
                     elif estado!='encerrado': conversa.encerrada_em=None
                     conversa.estado=estado;conversa.prioridade=prioridade
                     conversa.atendente_id=escolhido;conversa.atendente_nome=permitidos.get(escolhido,'')
@@ -317,9 +339,11 @@ def conversa_admin(request,conversa_id):
             return resposta({'erro':'Confira a última mensagem informada.'},422)
         ctx['conversa']=conversa
         return resposta({'conversa':serializar(conversa,depois),
+            'rascunho':conversa.sugestao.get('resposta',''),
             'contexto_em':conversa.sugestao.get('contexto',{}).get('atualizado_em','') if conversa.sugestao.get('contexto') else '',
             'contexto_html':render_to_string('admin/atendimento_contexto.html',ctx)})
     ctx.update(conversa=conversa,mensagens=conversa.mensagens.all(),referencia=uuid.uuid4().hex,
+      tempo_token=escala.token_tempo(identidade_atendente(request)[0],sid,conversa.pk),
       avisos=Aviso.objects.filter(conversa=conversa).select_related('responsavel'),
       sem_responsaveis=not Responsavel.objects.filter(site_id=sid,ativo=True).exists(),
       previas=PreviaForum.objects.filter(conversa=conversa),recado=recado)

@@ -166,8 +166,10 @@ def novo_atendimento(site_id, pessoa_id, nome, nova_id, pagina='', curso='', aul
         if conversa.site_id != site_id or conversa.pessoa_id != pessoa_id:
             raise PermissionError
         if criada:
-            Conversa.objects.filter(site_id=site_id, pessoa_id=pessoa_id).exclude(pk=conversa.pk).update(
-                estado='encerrado', processar=False)
+            from .escala import encerrar
+            for anterior in Conversa.objects.select_for_update().filter(site_id=site_id, pessoa_id=pessoa_id).exclude(pk=conversa.pk).exclude(estado='encerrado'):
+                encerrar(anterior, 'novo_atendimento')
+                anterior.save()
         return conversa
 
 
@@ -193,7 +195,9 @@ def avaliacao_disponivel(conversa):
     ultima = conversa.mensagens.filter(autor='aluno').last()
     if not ultima:
         return False
-    respostas = conversa.mensagens.filter(autor__in=('robo', 'equipe'))
+    respostas = conversa.mensagens.filter(autor__in=('robo', 'equipe')).exclude(referencia__startswith='recepcao-')
+    if conversa.rodada_iniciada_em:
+        respostas = respostas.filter(criada_em__gte=conversa.rodada_iniciada_em)
     if conversa.estado == 'encerrado':
         return respostas.exists()
     if not aluno_agradeceu_ou_concluiu(ultima.texto):
@@ -233,7 +237,8 @@ def sugerir(conversa, usar_ia=True):
         return resultado
     historico = historico_para_sugestao(conversa)
     try:
-        r = modelo.responder(modelo=modelo.conexao().modelo_rapido, instrucoes=INSTRUCOES_CONVERSA if dialogo else INSTRUCOES,
+        from .escala import chamar_modelo
+        r = chamar_modelo(conversa, modelo=modelo.conexao().modelo_rapido, instrucoes=INSTRUCOES_CONVERSA if dialogo else INSTRUCOES,
             itens=[{'role':'user','content':json.dumps({'historico':historico,'curso':conversa.curso,'aula':conversa.aula,'pagina':conversa.pagina,'base':fontes},ensure_ascii=False)}],
             autorizacao_id=a.pk, origem='suporte', max_saida=1600, esforco='low')
         d = json.loads(r.texto)
@@ -314,9 +319,12 @@ def processar_uma():
         ultima = conversa.mensagens.filter(autor='aluno').last()
         ultima_id = ultima.pk if ultima else None
     try:
-        if conversa.assunto.modo == 'assistido':
+        from .escala import registrar_classificacao
+        if ultima:
+            registrar_classificacao(conversa, ultima.texto)
+        if conversa.assunto.modo == 'assistido' or conversa.cor == 'vermelho':
             from .contexto import preparar
-            sugestao = preparar(conversa)
+            sugestao = preparar(conversa, usar_ia=conversa.cor != 'vermelho')
         else:
             sugestao = sugerir(conversa, usar_ia=conversa.assunto.modo!='base')
     except Exception:
@@ -334,7 +342,10 @@ def processar_uma():
         atual.sugestao = sugestao
         atual.processar = False
         # Assumir durante a geração impede a entrega automática.
-        if atual.estado=='robo' and not atual.atendente_id and atual.assunto.modo=='assistido':
+        if atual.cor == 'vermelho':
+            if not atual.atendente_id:
+                encaminhar(atual)
+        elif atual.estado=='robo' and not atual.atendente_id and atual.assunto.modo=='assistido':
             encaminhar(atual)
         elif atual.estado=='robo' and not atual.atendente_id and atual.assunto.modo=='conversa':
             if sugestao['resposta'] and fontes_atuais(sugestao['fontes']):
@@ -354,6 +365,8 @@ def processar_uma():
 
 
 def manutencao_avisos():
+    from .escala import manutencao
+    manutencao()
     for conversa in Conversa.objects.filter(estado='aguardando',encaminhada=True).select_related('assunto')[:100]:
         avisar(conversa)
 

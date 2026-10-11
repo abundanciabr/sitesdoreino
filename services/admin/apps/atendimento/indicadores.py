@@ -25,7 +25,7 @@ def _periodo(request):
         dias = int(request.GET.get('periodo', '7'))
     except (TypeError, ValueError):
         dias = 7
-    dias = dias if dias in (7, 30, 90) else 7
+    dias = dias if dias in (7, 14, 30, 90) else 7
     hoje = timezone.localdate()
     inicio = timezone.make_aware(datetime.combine(hoje - timedelta(days=dias - 1), time.min))
     return dias, inicio, hoje
@@ -57,8 +57,8 @@ def desempenho(request):
         _resposta=Coalesce('primeira_resposta_em', Case(When(rodada=1, then=Subquery(resposta_antiga)))))
     respondidas = respondidas.filter(_resposta__gte=F('_inicio')).annotate(
         _tempo=ExpressionWrapper(F('_resposta') - F('_inicio'), output_field=DurationField()))
-    resolvidas = concluidas.filter(_inicio__isnull=False, encerrada_em__gte=F('_inicio')).annotate(
-        _tempo=ExpressionWrapper(F('encerrada_em') - F('_inicio'), output_field=DurationField()))
+    resolvidas = todas.filter(resolvida_em__gte=inicio, _inicio__isnull=False).filter(resolvida_em__gte=F('_inicio')).annotate(
+        _tempo=ExpressionWrapper(F('resolvida_em') - F('_inicio'), output_field=DurationField()))
     resposta_media = respondidas.aggregate(valor=Avg('_tempo'))['valor']
     resolucao_media = resolvidas.aggregate(valor=Avg('_tempo'))['valor']
     ultima_equipe = Mensagem.objects.filter(conversa_id=OuterRef('pk'), autor='equipe').order_by('-pk').values('pk')[:1]
@@ -108,12 +108,14 @@ def desempenho(request):
         linha['atendente_nome'] = item['atendente_nome']
         linha['satisfacao'] = round(item['nota'], 1)
     equipe = sorted(por_pessoa.values(), key=lambda item: (-item['concluidos'], item.get('atendente_nome') or ''))[:30]
-    ctx.update(periodo=dias, periodos=(7, 30, 90), curso=curso, cursos=cursos,
+    ctx.update(periodo=dias, periodos=(7, 14, 30, 90), curso=curso, cursos=cursos,
                metricas=metricas, serie=serie, assuntos=assuntos, equipe=equipe,
                max_volume=max([1]+[max(i['recebidos'],i['concluidos']) for i in serie]),
                max_resposta=max([1]+[i['primeira_resposta_min'] for i in serie if i['primeira_resposta_min'] is not None]),
                nps_estado='Sem dados consolidados para este período',
                indicadores_ressalva='Recebidos e tempos usam o início da rodada no período; conclusões usam a data registrada de encerramento. A espera atual começa na primeira mensagem do aluno ainda sem resposta humana. Notas sem data própria contam só na primeira rodada. Respostas antigas só entram quando a conversa não foi reaberta.')
+    from .medicao import calcular
+    ctx['escala'] = calcular(sid, inicio, curso)
     return render(request, 'admin/atendimento_desempenho.html', ctx)
 
 
