@@ -131,3 +131,14 @@ def test_inventario_privado_acessivel_apenas_pela_sessao(client, conta, caminho)
     assert resposta.status_code == 302
     assert parse_qs(urlsplit(resposta['Location']).query) == {'next': ['/trilha/inventario/']}
     assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404
+
+
+def test_formulario_branca_oferece_tres_passos_e_envio_separado(client, conta):
+    corpo = abrir(client, '/trilha/inventario/').content.decode()
+    bloco = re.search(r'<section id="branca-requisitos".*?</section>', corpo, re.S).group()
+    assert re.findall(r'href="([^"]+)"', bloco) == [
+        '/conquistas/inicio/motivo/', '/conquistas/inicio/objetivo/',
+        '/conquistas/inicio/item/', '/conquistas/inicio/item/#inicio-form-item',
+    ]
+    assert bloco.count('class="primary white-belt-action"') == 4
+    assert 'Meu objetivo e compromisso' in bloco

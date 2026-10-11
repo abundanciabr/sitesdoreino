@@ -139,6 +139,9 @@
       } else {
         data = result; fill(); render();
         $('conteudo').hidden = false;
+        if (forms.item && ['#inicio-form-item', '#inicio-item'].includes(location.hash)) {
+          document.getElementById(location.hash.slice(1)).scrollIntoView({block: 'start'});
+        }
         announce(data.inicio.salvo_em ? `Salvo na sua conta em ${date(data.inicio.salvo_em)}. Continue de onde parou.` : 'Comece com o que faz sentido para você hoje.');
       }
       $('recarregar').hidden = true;

@@ -16,7 +16,15 @@
   {% if faixas.meta_escolhida %}<div class="barra" role="progressbar" aria-label="Dinheiro recebido em relação à sua meta" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ faixas.percentual }}"><div class="cheio" style="width: {{ faixas.percentual }}%"></div></div>{% endif %}
   {% if faixas.proxima %}<div class="proximo-passo"><p class="rotulo">Seu próximo passo</p><h2>{{ faixas.proxima.nome }}</h2><p>{{ faixas.proxima.conquista }}</p>
     {% if faixas.proxima.limite %}<p>{{ faixas.proxima.limite }} acumulados{% if faixas.meta_escolhida %} · faltam {{ faixas.falta }}{% else %} com a meta sugerida{% endif %}.</p>{% endif %}
-    <a class="botao-jornada" href="{{ faixas.proxima_url }}">{{ faixas.proxima_acao }}</a>
+    {% if faixas.atual.ordem == 1 %}
+    <p>Quatro requisitos para passar da faixa branca à amarela:</p>
+    <ol class="criterios">
+      <li><a class="botao-jornada" href="{% url 'inicio-motivo' %}">Meu motivo</a></li>
+      <li><a class="botao-jornada" href="{% url 'inicio-objetivo' %}">Meu objetivo e compromisso</a></li>
+      <li><a class="botao-jornada" href="{% url 'inicio-item' %}">Meu primeiro item 3D</a></li>
+      <li><a class="botao-jornada" href="{% url 'inicio-item' %}#inicio-form-item">Enviar meu 3D</a></li>
+    </ol>
+    {% else %}<a class="botao-jornada" href="{{ faixas.proxima_url }}">{{ faixas.proxima_acao }}</a>{% endif %}
   </div>{% else %}<p class="celebracao">Você alcançou sua meta para o 7º grau da faixa-preta! Seu histórico mostra o caminho percorrido. A escola e a comunidade continuam com você.</p>{% endif %}
 </section>
 

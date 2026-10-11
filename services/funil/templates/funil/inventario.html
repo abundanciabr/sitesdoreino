@@ -18,12 +18,22 @@
 <div class="stage-dock" aria-label="Acesso direto às 13 faixas"><div class="dock-inner" id="inventory-dock"></div></div>
 <ol class="timeline" id="inventory-timeline"></ol>
 <div id="inventory-parts" hidden>
+<section id="branca-requisitos" class="inventory-card" aria-labelledby="branca-requisitos-titulo">
+<h2 id="branca-requisitos-titulo">Quatro requisitos para chegar à faixa amarela.</h2>
+<p>Faça os três passos e envie sua criação. Suas escolhas e seus arquivos continuam privados.</p>
+<ol class="white-belt-actions">
+<li><a class="primary white-belt-action" href="/conquistas/inicio/motivo/"><span>1. Meu motivo</span><small id="branca-motivo" class="white-belt-state"></small></a></li>
+<li><a class="primary white-belt-action" href="/conquistas/inicio/objetivo/"><span>2. Meu objetivo e compromisso</span><small id="branca-plano" class="white-belt-state"></small></a></li>
+<li><a class="primary white-belt-action" href="/conquistas/inicio/item/"><span>3. Meu primeiro item 3D</span><small id="branca-item" class="white-belt-state"></small></a></li>
+<li><a class="primary white-belt-action" href="/conquistas/inicio/item/#inicio-form-item"><span>4. Enviar meu 3D</span><small id="branca-envio" class="white-belt-state"></small></a></li>
+</ol><p id="branca-resumo" class="fine"></p>
+</section>
 <section class="inventory-card featured" id="primeiro-item" aria-labelledby="first-title"><p class="eyebrow">MINHA PRIMEIRA CRIAÇÃO <span id="first-state" class="badge"></span></p><h2 id="first-title">Meu primeiro item 3D.</h2>
 <p>Finalize seu item, confira a forma e salve os arquivos para mostrar sua criação.</p>
 <form id="first-form" data-action="declaracao"><input type="hidden" name="acao" value="declaracao"><input type="hidden" name="passo" value="2"><input type="hidden" name="estado" value="feito">
 <label class="upload" for="first-file"><strong>Anexar meu trabalho</strong><span>Modelo 3D, imagem ou ZIP · até 20 MB por arquivo</span><input id="first-file" type="file" name="arquivo" accept=".blend,.glb,.gltf,.obj,.stl,.fbx,.zip,.png,.jpg,.jpeg,.webp" required><span class="formats">BLEND, GLB, GLTF, OBJ, STL, FBX, ZIP, PNG, JPG ou WEBP.</span></label>
 <ul id="first-files" class="files"></ul><p class="declaration" id="first-declaration">“Concluí meu primeiro item 3D e consigo mostrar o resultado.”</p>
-<p class="fine">A conclusão exige um anexo. Este é um registro seu, sem avaliação de qualidade pelo professor. Seu arquivo fica privado na sua conta.</p>
+<p class="fine">Para passar à amarela, escolha seu motivo, defina seu objetivo e compromisso, conclua sua criação e envie o arquivo. Este é um registro seu, sem avaliação de qualidade pelo professor. Seu arquivo fica privado na sua conta.</p>
 <div class="action-row"><button class="primary" id="first-submit" type="submit">Concluí meu item 3D →</button><span>Bônus único<br><strong>5.000 XP · Faixa Amarela</strong></span></div><button class="text-link save-file" type="submit" name="acao" value="anexo">Guardar arquivo sem concluir</button></form>
 <a class="text-link" href="/cursos/">Ainda estou criando: abrir minhas aulas →</a></section>
 <section class="inventory-card" id="minhas-entregas"><p class="eyebrow">MINHAS ENTREGAS</p><h2>Da prática ao trabalho.</h2><p>Os registros acompanham sua jornada. Iniciar um trabalho não significa concluí-lo.</p><div id="deliveries"></div></section>

@@ -31,9 +31,13 @@ function render(){
   const shownSteps=inventoryStepsFor(data,selectedOrder);
   // Fora do cartão selecionado, nenhum formulário fica visível ou focável.
   const parts=q('#inventory-parts');
-  ['primeiro-item','minhas-entregas','minha-meta','recebimentos','minha-historia'].forEach(id=>parts.append(q('#'+id)));
+  ['branca-requisitos','primeiro-item','minhas-entregas','minha-meta','recebimentos','minha-historia'].forEach(id=>parts.append(q('#'+id)));
 
   const first=data.etapas.find(e=>e.ordem===2), hasFile=data.anexos.some(a=>a.passo===2);
+  const start=data.inicio||{};
+  const requirements={motivo:!!start.motivo,plano:!!(start.objetivo&&start.compromisso&&start.confirmado_em),item:first.alcancada,envio:hasFile};
+  Object.entries(requirements).forEach(([id,done])=>{const node=q('#branca-'+id);node.textContent=done?'Concluído · pode revisar':'Para fazer';node.parentElement.dataset.estado=done?'concluido':'pendente';});
+  q('#branca-resumo').textContent=first.alcancada?'Sua faixa já conquistada permanece registrada. Você pode completar ou revisar este começo.':`${Object.values(requirements).filter(Boolean).length} de 4 requisitos concluídos. Salve e continue no seu ritmo.`;
   q('.save-file').hidden=first.alcancada;
   q('#first-state').textContent=first.alcancada?'CONCLUÍDO':hasFile?'ARQUIVO GUARDADO':'PENDENTE';
   q('#first-file').required=first.alcancada||!hasFile;
@@ -88,6 +92,7 @@ function renderBelts(shownSteps){
       const summary=el('p',step.conquista);summary.className='belt-result';body.append(summary);
       const next=data.etapas.find(e=>e.ordem===step.ordem+1);
       if(step.ordem===data.atual_ordem&&next){const hint=el('p',`Próximo marco: Faixa ${next.nome}`);hint.className='next-milestone';body.append(hint);}
+      if(step.ordem===1)body.append(q('#branca-requisitos'));
       if(shownSteps.includes(2))body.append(q('#primeiro-item'));
       if(shownSteps.some(n=>n===3||n===4))body.append(q('#minhas-entregas'));
       if(shownSteps.some(n=>n>=6)&&step.ordem<13)body.append(q('#minha-meta'));

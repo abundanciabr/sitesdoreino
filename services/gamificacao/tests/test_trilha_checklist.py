@@ -35,7 +35,9 @@ def pessoa(identificador):
 
 
 def item(dados, ordem):
-    return dados["etapas"][ordem - 1]["checklist"]["itens"][-1]
+    itens = dados["etapas"][ordem - 1]["checklist"]["itens"]
+    # A etapa 2 tem um item histórico de criação, além do envio do arquivo.
+    return itens[2] if ordem == 2 else itens[-1]
 
 
 def test_vazio_mostra_pendencias_sem_inventar_modelagem(client):
