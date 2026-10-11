@@ -2,6 +2,7 @@ import json
 import os
 import re
 import uuid
+from datetime import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,6 +21,7 @@ from apps.core.templatetags.nomes_admin import primeiro_nome
 from apps.agentes import modelo
 from .models import Configuracao, Assunto, Conhecimento, Conversa, Mensagem, Responsavel, Aviso, PreviaForum, AgendaDoProduto, MODOS
 from . import service
+from .expediente import disponibilidade
 
 
 def site(request):
@@ -92,6 +94,7 @@ def _conversar(request, identidade):
         return resposta({'erro':'Entre na sua conta para conversar com o suporte.','entrar':'/entrar/google'},401)
     sid=site(request)
     c=service.config(sid)
+    expediente=disponibilidade(c)
     dono=str(identidade['id'])
     try:
         d=json.loads(request.body) if request.method=='POST' else request.GET
@@ -104,6 +107,9 @@ def _conversar(request, identidade):
             if not conversa and Conversa.objects.filter(pk=cid).exists(): raise Http404
         if request.method=='POST':
             acao=d.get('acao','mensagem')
+            if acao in ('novo', 'mensagem', 'pessoa') and not expediente['aberto']:
+                return resposta({'erro':expediente['mensagem'], 'disponibilidade':expediente,
+                                 'csrf':get_token(request)}, 409)
             if acao=='novo':
                 conversa=service.novo_atendimento(sid,dono,identidade.get('nome_exibido'),
                     d['nova_conversa'],d.get('pagina',''),d.get('curso',''),d.get('aula',''))
@@ -184,7 +190,8 @@ def _conversar(request, identidade):
                     else: raise ValueError
         elif not conversa and not id_bruto:
             conversa=service.conversa_atual(sid,dono)
-        return resposta({'csrf':get_token(request),'pessoa':dono,'horario':c.horario,
+        return resposta({'csrf':get_token(request),'pessoa':dono,'horario':expediente['horario'],
+            'disponibilidade':expediente,
             'mensagem':c.mensagem,'assuntos':list(Assunto.objects.filter(site_id=sid).values('id','nome')),
             'historico':[{'id':str(i.pk),'assunto':i.assunto.nome,'estado':i.estado,'em':i.atualizada_em.isoformat()}
                         for i in Conversa.objects.filter(site_id=sid,pessoa_id=dono).select_related('assunto')[:50]],
@@ -410,9 +417,19 @@ def configuracao(request):
     if request.method=='POST':
         acao=request.POST.get('acao')
         if acao=='geral':
-            c.horario=request.POST.get('horario','').strip()[:200]
-            c.mensagem=request.POST.get('mensagem','').strip()[:2000] or Configuracao._meta.get_field('mensagem').default
-            c.ia_ativa=request.POST.get('ia_ativa')=='sim';c.save()
+            try:
+                inicio=time.fromisoformat(request.POST.get('expediente_inicio') or str(c.expediente_inicio))
+                fim=time.fromisoformat(request.POST.get('expediente_fim') or str(c.expediente_fim))
+                if inicio >= fim: raise ValueError
+            except ValueError:
+                erro='Informe o início e o fim do atendimento; o início deve ser antes do fim.'
+            if not erro:
+                c.expediente_ativo=request.POST.get('expediente_ativo')=='sim'
+                c.expediente_inicio=inicio;c.expediente_fim=fim
+                c.horario=request.POST.get('horario','').strip()[:200]
+                if c.expediente_ativo:c.horario=disponibilidade(c)['horario']
+                c.mensagem=request.POST.get('mensagem','').strip()[:2000] or Configuracao._meta.get_field('mensagem').default
+                c.ia_ativa=request.POST.get('ia_ativa')=='sim';c.save()
         elif acao=='assunto':
             modo=request.POST.get('modo')
             if modo not in dict(MODOS):raise Http404
@@ -437,7 +454,8 @@ def configuracao(request):
         if not erro:return HttpResponseRedirect(prefixo(request)+'/configuracao/?salvo=1')
     a=service.orcamento(c)
     dados,erro_whatsapp=pedir_whatsapp(sid)
-    ctx.update(erro=erro,responsaveis=Responsavel.objects.filter(site_id=sid,ativo=True),
+    ctx.update(erro=erro,expediente=disponibilidade(c),salvo=request.GET.get('salvo'),
+      responsaveis=Responsavel.objects.filter(site_id=sid,ativo=True),
       whatsapp_estado=(dados or {}).get('conexao',{}).get('estado','indisponivel'),
       whatsapp_erro=erro_whatsapp,orcamento=a,consumo=modelo.gasto_do_mes(a.pk) if a else None)
     return render(request,'admin/atendimento_configuracao.html',ctx,status=422 if erro else 200)
