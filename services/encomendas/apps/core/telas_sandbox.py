@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core import sessao, telas_marketplace
 from apps.core.selecionar_marketplace import _matriculas_ativas
-from apps.encomendas import sandbox, catalogo_curso
+from apps.encomendas import sandbox, catalogo_curso, arquivos_sandbox
 from apps.encomendas.models import (ArquivoSandbox, EntregaSandbox, MensagemSandbox,
                                     AjusteSandbox, MovimentoMeshcoin, ParticipacaoSandbox,
                                     ProjetoSandbox)
@@ -97,9 +97,10 @@ def _aluno_atual(request, pessoa, site):
                for linha in matriculas)
 
 
-def _falha(request, texto, status=400, papel="aluno"):
+def _falha(request, texto, status=400, papel="aluno", trabalho=None):
     return render(request, "sandbox/aviso.html",
-                  {"texto": texto, "papel": papel, "titulo": "Confira este passo"}, status=status)
+                  {"texto": texto, "papel": papel, "titulo": "Confira este passo",
+                   "trabalho": trabalho}, status=status)
 
 
 def _voltar(nome, *args, recado=""):
@@ -261,6 +262,8 @@ def trabalho(request, participacao_id):
         "respostas_pendentes": participacao.respostasandbox_set.exclude(estado='concluida'),
         "situacao_analise": situacao(analise), "pode_entregar": sandbox.pode_entregar(participacao),
         "pode_testar": _pode_testar(request), "ultima_entrega_aluno": ultima,
+        "formatos_aceitos": arquivos_sandbox.ACEITAR,
+        "orientacao_arquivos": arquivos_sandbox.ORIENTACAO,
         "recado": request.GET.get("recado", ""),
     })
 
@@ -296,6 +299,11 @@ def enviar_arquivo(request, participacao_id):
     recebido = request.FILES.get("arquivo")
     if not recebido:
         return _falha(request, "Escolha um arquivo.")
+    nome = Path(str(recebido.name).replace("\\", "/")).name[:255]
+    try:
+        mime = arquivos_sandbox.validar(nome, recebido)
+    except arquivos_sandbox.ArquivoInvalido as erro:
+        return _falha(request, str(erro), papel=papel, trabalho=trabalho)
     chave = uuid.uuid4().hex
     caminho = telas_marketplace._pasta_privada() / chave
     resumo = hashlib.sha256()
@@ -307,9 +315,9 @@ def enviar_arquivo(request, participacao_id):
                 resumo.update(bloco)
                 tamanho += len(bloco)
         ArquivoSandbox.objects.create(
-            site_id=trabalho.site_id, participacao=trabalho, nome=Path(str(recebido.name).replace("\\", "/")).name[:255],
+            site_id=trabalho.site_id, participacao=trabalho, nome=nome,
             chave=chave, sha256=resumo.hexdigest(), tamanho=tamanho,
-            mime=(recebido.content_type or "application/octet-stream")[:120])
+            mime=mime)
     except Exception:
         caminho.unlink(missing_ok=True)
         raise
@@ -348,11 +356,21 @@ def entregar(request, participacao_id):
         raise Http404
     try:
         arquivos = [uuid.UUID(chave) for chave in request.POST.getlist("arquivos")]
+        # Confere também rascunhos guardados antes da restrição, sem removê-los.
+        for arquivo in ArquivoSandbox.objects.filter(pk__in=arquivos, participacao=trabalho, entrega__isnull=True):
+            arquivos_sandbox.formato(arquivo.nome)
+            if not arquivo.chave or Path(arquivo.chave).name != arquivo.chave:
+                raise arquivos_sandbox.ArquivoInvalido('Arquivo privado indisponível. Guarde novamente o arquivo do seu projeto.')
+            try:
+                with (telas_marketplace._pasta_privada() / arquivo.chave).open('rb') as conteudo:
+                    arquivos_sandbox.validar(arquivo.nome, conteudo)
+            except FileNotFoundError as erro:
+                raise arquivos_sandbox.ArquivoInvalido('Arquivo privado indisponível. Guarde novamente o arquivo do seu projeto.') from erro
         sandbox.entregar(site_id=trabalho.site_id, participacao_id=trabalho.pk,
                          pessoa_id=trabalho.pessoa_id, comentario=request.POST.get("comentario", "").strip(),
                          arquivos=arquivos, teste_mantenedor=teste)
     except (ValueError, sandbox.ErroSandbox) as erro:
-        return _falha(request, str(erro))
+        return _falha(request, str(erro), papel=papel, trabalho=trabalho)
     return _voltar("sandbox_trabalho", trabalho.pk, recado=("Teste do mantenedor recebido; análise automática na fila, sem alterar a conquista do aluno." if teste else "Envio concluído e conquista registrada. Análise automática na fila; XP e progressão seguem a jornada."))
 
 

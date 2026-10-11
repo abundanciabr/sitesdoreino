@@ -7,7 +7,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from . import faixas_eventos, catalogo_curso
+from . import faixas_eventos, catalogo_curso, arquivos_sandbox
 from .sandbox_models import (
     AjusteSandbox, ArquivoSandbox, EntregaSandbox, MensagemSandbox,
     MovimentoMeshcoin, ParticipacaoSandbox, ProjetoSandbox,
@@ -212,6 +212,13 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
             if arquivo is None:
                 raise ErroSandbox("Arquivo rascunho inválido.")
             rascunhos.append(arquivo)
+    try:
+        for item in rascunhos:
+            arquivos_sandbox.formato(item.nome)
+        for item in novos:
+            arquivos_sandbox.formato(item['nome'])
+    except arquivos_sandbox.ArquivoInvalido as erro:
+        raise ErroSandbox(str(erro)) from erro
     # A participação bloqueada serializa versões; a última versão vale como contador.
     ultima = EntregaSandbox.objects.filter(participacao=p).order_by("-versao").first()
     versao = ultima.versao + 1 if ultima else 1

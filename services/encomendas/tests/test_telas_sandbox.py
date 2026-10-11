@@ -1,5 +1,6 @@
 import hashlib
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -55,13 +56,14 @@ def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, proj
     assert p.mensagens.filter(papel="ia").count() == 0
     ia_sandbox.rodada_respostas()
     assert p.mensagens.filter(papel="ia").count() == 1
+    fonte = (Path(__file__).resolve().parents[2] / 'cursos/static/praticas-3d/modelos/espada-aurora/v3/fonte.blend').read_bytes()
     for versao in (1, 2):
-        recebido = SimpleUploadedFile(f"fonte-v{versao}.blend", b"BLENDER sandbox privado")
+        recebido = SimpleUploadedFile(f"fonte-v{versao}.blend", fonte)
         assert client.post(reverse("sandbox_arquivo", args=[p.pk]), {"arquivo": recebido}).status_code == 302
         arquivo = p.arquivos.get(entrega__isnull=True)
         download = client.get(reverse("sandbox_baixar", args=[arquivo.pk]))
-        assert b"".join(download.streaming_content) == b"BLENDER sandbox privado"
-        assert arquivo.sha256 == hashlib.sha256(b"BLENDER sandbox privado").hexdigest()
+        assert b"".join(download.streaming_content) == fonte
+        assert arquivo.sha256 == hashlib.sha256(fonte).hexdigest()
         assert download["Cache-Control"] == "private, no-store"
         contexto["id"] = "outro-aluno"
         assert client.get(reverse("sandbox_baixar", args=[arquivo.pk])).status_code == 404
