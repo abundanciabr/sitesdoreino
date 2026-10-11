@@ -53,8 +53,9 @@ def test_ativacao_sem_leitura_nova_nao_encerra(monkeypatch):
     assert resultado.call_args.args[1] == "publicando"
 
 
-def test_so_encerra_achado_apos_ativacao_e_nova_leitura(monkeypatch):
-    monkeypatch.setattr(ex, "publicar", lambda a: {"candidata": "abc", "operacao": {"fase": "ativa", "ativadas": ["aplicacao"], "candidata": "abc"}})
+@pytest.mark.parametrize("fase", ["ativa", "preservada em versão posterior"])
+def test_so_encerra_achado_apos_ativacao_e_nova_leitura(monkeypatch, fase):
+    monkeypatch.setattr(ex, "publicar", lambda a: {"candidata": "abc", "operacao": {"fase": fase, "ativadas": ["aplicacao"], "candidata": "abc"}})
     monkeypatch.setattr(ex, "api", lambda a: {"observacao": {"consultado_em": datetime.now(timezone.utc).isoformat(),
         "faltas": [], "paginas_publicas": {"itens": [{"estado": "medido", "http": 200}]}}})
     resultado = Mock()
@@ -62,3 +63,10 @@ def test_so_encerra_achado_apos_ativacao_e_nova_leitura(monkeypatch):
     ex.confirmar_entrega({"id": 1, "entrega": "012345678abc", "evidencia": {"achado": "falha"},
                          "ativacao_conferida_em": (datetime.now(timezone.utc)-timedelta(minutes=20)).isoformat()})
     assert resultado.call_args.args[1] == "resolvida"
+
+
+def test_fotografia_antiga_nao_resolve_ocorrencia_nova():
+    item = {"evidencia": {"operacao": "fonte", "achado": "falha", "consultado_em": "2026-10-11T11:00:00Z"}}
+    assert not ex.fonte_recuperada(item, {"faltas": [], "consultado_em": "2026-10-11T10:00:00Z"})
+    assert ex.fonte_recuperada(item, {"faltas": [], "consultado_em": "2026-10-11T12:00:00Z"})
+    assert not ex.fonte_recuperada(item, {"faltas": ["falha"], "consultado_em": "2026-10-11T12:00:00Z"})

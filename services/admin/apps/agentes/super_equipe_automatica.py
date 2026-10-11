@@ -48,7 +48,11 @@ def _ocorrencia(rotina, chave, titulo, evidencia, prioridade=2, trabalho=None):
         evento(item, "Identificada automaticamente pelas fontes do site.")
     else:
         item.observada_em = agora
-        if item.situacao == S.RESOLVIDA:
+        sem_defeito_continuo = (item.evidencia.get("operacao") == "fonte"
+            and not item.evidencia.get("recuperada_em")
+            and any(r.get("resposta", {}).get("acao") == "sem_defeito"
+                    for r in item.desenvolvimento.get("rodadas", {}).values()))
+        if item.situacao == S.RESOLVIDA and not sem_defeito_continuo:
             historico = item.desenvolvimento.get("historico", [])
             historico.append({"evidencia": item.evidencia, "resultado": item.resultado,
                               "entrega": item.entrega, "rodadas": item.desenvolvimento.get("rodadas", {})})
@@ -183,7 +187,12 @@ def ciclo():
                     prioridade=1 if "HTTP" in falta else 2)
                 ativas.add(item.pk)
             # Só resolve automaticamente o que uma nova leitura realmente conferiu.
-            for item in atual.melhorias.filter(evidencia__operacao="fonte").exclude(pk__in=ativas).exclude(situacao=S.RESOLVIDA):
+            for item in atual.melhorias.filter(evidencia__operacao="fonte").exclude(pk__in=ativas):
+                if item.situacao == S.RESOLVIDA:
+                    if not item.evidencia.get("recuperada_em"):
+                        item.evidencia["recuperada_em"] = timezone.now().isoformat()
+                        item.save(update_fields=["evidencia"])
+                    continue
                 if item.entrega or item.situacao == S.EXECUTANDO:
                     continue  # o executor confere a entrega antes de encerrar
                 item.situacao, item.resolvida_em = S.RESOLVIDA, timezone.now()
