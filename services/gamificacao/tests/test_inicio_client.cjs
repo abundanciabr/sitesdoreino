@@ -244,6 +244,7 @@ test('voltar aparece nas duas etapas somente depois do XP recebido e preserva a 
   const initial=record();initial.inicio.motivo_etapa=etapa;
   initial.inicio.etapas=[{etapa:1,xp_recebido:xp,concluida:xp>0}];
   const ui=await page('motivo',initial,'',true,true);
+  if(xp && etapa===2) await ui.submit('proxima');
   const label=xp?'← Voltar':'← Depois eu faço isso';
   for(const n of [1,2]) assert.equal(ui.byId('motivo-depois-'+n).textContent,label);
   ui.form.elements.motivo_pessoal.value='Motivo revisto';await ui.fire(ui.form,'input');
@@ -261,6 +262,7 @@ test('concluir revisão salva e retorna à trilha; primeira conclusão mantém a
   const initial=record();initial.inicio.motivo_etapa=2;
   initial.inicio.etapas=[{etapa:1,xp_recebido:jaRecebida?100:0,concluida:jaRecebida}];
   const ui=await page('motivo',initial,'',true,embedded);
+  if(jaRecebida) await ui.submit('proxima');
   ui.form.elements.motivo_pessoal.value='Minha reflexão atualizada';await ui.fire(ui.form,'input');
   ui.fail(new Error('Sem conexão'));await ui.submit('continuar');
   assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
@@ -272,5 +274,30 @@ test('concluir revisão salva e retorna à trilha; primeira conclusão mantém a
   const receipt='/conquistas/inicio/conquista/1/?comprovante=teste';
   assert.deepEqual(ui.redirects,embedded?[]:[jaRecebida?'/trilha/':receipt]);
   assert.deepEqual(ui.panelEvents,embedded?[jaRecebida?'fechado':receipt+'&embutido=1']:[]);
+ }
+});
+
+
+test('revisar sempre abre a escolha; rascunho continua retomando a segunda etapa',async()=>{
+ for(const embedded of [false,true]) for(const concluido of [false,true]) {
+  const initial=record();Object.assign(initial.inicio,{motivo_etapa:2,motivo_outro:'Texto preservado',etapas:[{etapa:1,xp_recebido:concluido?100:0,concluida:concluido}]});
+  const ui=await page('motivo',initial,'',true,embedded);
+  assert.equal(ui.byId('motivo-escolha').hidden,!concluido);
+  assert.equal(ui.byId('motivo-reflexao').hidden,concluido);
+  assert.equal(ui.form.elements.motivo_pessoal.value,'Motivo reservado');
+  assert.equal(ui.form.elements.motivo_outro.value,'Texto preservado');
+  assert.equal(ui.byId('outro-campo').hidden,true);
+  assert.equal(ui.calls.filter(call=>call.options.method==='POST').length,0);
+  if(concluido) {
+   await ui.submit('proxima');
+   assert.equal(ui.byId('motivo-escolha').hidden,true);
+   assert.equal(ui.byId('motivo-reflexao').hidden,false);
+   assert.equal(ui.calls.at(-1).options.body.get('motivo'),'ugc');
+   assert.equal(ui.calls.at(-1).options.body.get('motivo_pessoal'),'Motivo reservado');
+  }
+  await ui.reopen();
+  assert.equal(ui.byId('motivo-escolha').hidden,!concluido);
+  assert.equal(ui.byId('motivo-reflexao').hidden,concluido);
+  assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
  }
 });
