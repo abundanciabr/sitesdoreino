@@ -1,4 +1,4 @@
-"""O começo ocupa três páginas privadas; a Base só aponta a retomada."""
+"""O começo ocupa quatro páginas privadas; a Base aponta a primeira pendência."""
 
 import re
 from html import unescape
@@ -12,7 +12,7 @@ from apps.gamificacao.models import JornadaPessoal
 
 pytestmark = pytest.mark.django_db
 SITE, P = "site-paginas", "aluna-paginas"
-ETAPAS = ("inicio-motivo", "inicio-objetivo", "inicio-item")
+ETAPAS = ("inicio-motivo", "inicio-objetivo", "inicio-item", "inicio-envio")
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +24,8 @@ def conta(monkeypatch):
 
 def guardar(client, acao, **dados):
     url = reverse("inventario")
+    if acao == 'inicio-motivo':
+        dados.setdefault('concluir', 'sim')
     revisao = client.get(url, HTTP_COOKIE="meshcraft_sessao=A").json()["revisao"]
     return client.post(url, {"acao": acao, "revisao": revisao, **dados}, HTTP_COOKIE="meshcraft_sessao=A")
 
@@ -38,8 +40,14 @@ def destino_do_cartao(html):
 
 @pytest.mark.parametrize("ordem,nome", enumerate(ETAPAS, start=1))
 def test_cada_etapa_tem_rota_pagina_e_formulario_proprios(client, ordem, nome):
+    if ordem > 1:
+        assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
+    if ordem > 2:
+        assert guardar(client, "inicio-plano", objetivo="Minha peça", compromisso="Praticarei", assumir="sim").status_code == 200
+    if ordem > 3:
+        assert guardar(client, "inicio-item").status_code == 200
     url = reverse(nome)
-    assert url == ("/inicio/motivo/", "/inicio/objetivo/", "/inicio/item/")[ordem - 1]
+    assert url == ("/inicio/motivo/", "/inicio/objetivo/", "/inicio/item/", "/inicio/envio/")[ordem - 1]
     r = client.get(url)
     assert r.status_code == 200
     assert r.context["entrou"] is True and r.context["inicio_etapa"] == ordem
@@ -56,6 +64,7 @@ def test_cada_etapa_tem_rota_pagina_e_formulario_proprios(client, ordem, nome):
 
 
 def test_visitante_encontra_convite_sem_dados_privados(client, monkeypatch):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", sonho="SONHO-PRIVADO-ALFA", objetivo="OBJETIVO-PRIVADO-ALFA").status_code == 200
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: None)
     for nome in ("base", *ETAPAS):
@@ -84,8 +93,9 @@ def test_cartao_retoma_primeiro_passo_pendente_sem_expor_plano(client):
     # Concluir a entrega mantém as páginas acessíveis para releitura e edição.
     from django.core.files.uploadedfile import SimpleUploadedFile
     arquivo = SimpleUploadedFile("item.obj", b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")
-    assert guardar(client, "anexo", passo="2", arquivo=arquivo).status_code == 200
-    assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
+    assert guardar(client, "inicio-item").status_code == 200
+    assert destino_do_cartao(client.get(base).content.decode()) == reverse("inicio-envio")
+    assert guardar(client, "inicio-envio", arquivo=arquivo).status_code == 200
     corpo = client.get(base).content.decode()
     assert "Revisitar meu começo" in corpo
     assert destino_do_cartao(corpo) == reverse("inicio-motivo")
@@ -97,8 +107,10 @@ def test_paginas_nao_perdem_registro_e_respeitam_pessoa_e_site(client, monkeypat
     assert guardar(client, "inicio-motivo", motivo="estudio", motivo_pessoal="Minha razão").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Sonho reservado", objetivo="Minha peça").status_code == 200
     salvo = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE)
-    for nome in ETAPAS:
+    for nome in ETAPAS[:2]:
         assert client.get(reverse(nome)).status_code == 200
+    for nome in ETAPAS[2:]:
+        assert client.get(reverse(nome)).url == reverse("inicio-objetivo")
     salvo.refresh_from_db()
     assert salvo.inicio["sonho"] == "Sonho reservado" and salvo.inicio["motivo"] == "estudio"
     assert client.get(reverse("inventario"), HTTP_COOKIE="meshcraft_sessao=A").json()["inicio"]["objetivo"] == "Minha peça"
@@ -121,8 +133,7 @@ def test_links_entre_paginas_respeitam_prefixo_publico(client):
             r = client.get("/inicio/motivo/", SCRIPT_NAME="/conquistas")
             assert r.status_code == 200
             corpo = r.content.decode()
-            assert '/conquistas/inicio/objetivo/' in corpo
-            assert '/conquistas/inicio/item/' in corpo
+            assert '/conquistas/inicio/objetivo/' not in corpo
             assert '/conquistas/inventario/' in corpo
     finally:
         set_script_prefix(prefixo_anterior)

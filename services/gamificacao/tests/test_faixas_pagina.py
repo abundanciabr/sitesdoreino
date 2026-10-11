@@ -87,6 +87,7 @@ def preparar_primeiras_etapas(ate=4):
     j.inicio = {
         "motivo": "ugc", "objetivo": "Criar uma peça",
         "compromisso": "Praticar", "confirmado_em": "2026-10-10T10:00:00-03:00",
+        "item_pronto_em": "2026-10-10T11:00:00-03:00",
     }
     j.save(update_fields=["inicio"])
     AnexoDaJornada.objects.create(

@@ -92,6 +92,8 @@ def test_sem_predecessora_ninguem_confirma_passo_3_ou_4():
     assert jornada.confirmacoes_sequenciais == {}
     assert ordem() == 1
 
+    jornada.inicio = {**jornada.inicio, "item_pronto_em": "2026-10-11T10:00:00-03:00"}
+    jornada.save(update_fields=["inicio"])
     declarar(2)
     assert ordem() == 2
     with pytest.raises(ValueError):

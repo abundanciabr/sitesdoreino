@@ -35,23 +35,22 @@ async function page(step,initial=record(),hash=''){
     scrollIntoView(){this.scrolledWhileVisible=!nodes.find(node=>node.id==='inicio-conteudo').hidden;}
   }
   const add=(id,tag='div')=>new Element(tag,'inicio-'+id);
-  const root=add('jornada');root.dataset={api:'/conquistas/inventario/',conquistas:'/conquistas/',proxima:step==='motivo'?'/conquistas/inicio/objetivo/':'/conquistas/inicio/item/'};
+  const root=add('jornada');root.dataset={api:'/conquistas/inventario/',conquistas:'/conquistas/',envio:'/conquistas/inicio/envio/'};
   const summaries=[new Element('small'),new Element('small'),new Element('small')];
   root.querySelector=selector=>summaries[Number(selector.match(/\d/)[0])-1];
   root.querySelectorAll=selector=>nodes.filter(node=>selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
   const form=add('form-'+step,'form');form.elements={};
-  const fields=step==='motivo'?['motivo_pessoal']:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:['arquivo','aprendi','duvida'];
+  const fields=step==='motivo'?['motivo_pessoal']:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?[]:['arquivo','aprendi','duvida'];
   fields.forEach(name=>{const node=add(name,name==='arquivo'?'input':'textarea');node.name=name;form.elements[name]=node;form.append(node);});
   form.reset=()=>Object.values(form.elements).forEach(node=>{node.value='';node.files=[];});
   ['status','conteudo','recarregar','comparacao'].filter(id=>id!=='comparacao').forEach(id=>add(id,id==='recarregar'?'button':'div'));
   if(step==='motivo'){const options=add('opcoes');form.append(options);}
   if(step==='plano'){add('confirmacao');add('sugestao','button');}
-  if(step==='item'){
-    ['objetivo-salvo','pratica','apoio-texto','concluir','item-estado','obra','destaque','versoes','obra-legenda','pedir-ajuda','ajuda','mensagem','copiar'].forEach(id=>add(id));
-  }
+  if(step==='criacao')['objetivo-salvo','pratica','apoio-texto','criacao-estado','pedir-ajuda','ajuda','mensagem','copiar'].forEach(id=>add(id));
+  if(step==='item')['enviar','item-estado','historico','versoes'].forEach(id=>add(id));
   const byId=id=>nodes.find(node=>node.id==='inicio-'+id&&!node.removed)||null;
   byId('conteudo').hidden=true;
-  if(step==='item')byId('ajuda').hidden=true;
+  if(step==='criacao')byId('ajuda').hidden=true;
   class FormData {
     constructor(target){this.values=new Map(Object.values(target.elements).map(node=>[node.name,node.name==='arquivo'?node.files[0]||'':node.value]));nodes.filter(n=>n.name==='motivo'&&n.checked).forEach(n=>this.set(n.name,n.value));}
     set(key,value){this.values.set(key,value);}
@@ -63,7 +62,7 @@ async function page(step,initial=record(),hash=''){
     document:{getElementById:id=>nodes.find(node=>node.id===id&&!node.removed)||null,createElement:tag=>new Element(tag),createTextNode:text=>{const node=new Element('#text');node.textContent=text;return node;}},
     window:{location:{assign:dest=>redirects.push(dest)},addEventListener:(type,handler)=>{windowEvents[type]=handler;}},
     navigator:{clipboard:{writeText:async text=>copied.push(text)}},
-    fetch:async(url,options)=>{calls.push({url,options});if(nextError){const error=nextError;nextError=null;if(error instanceof Error)throw error;return error;}return {ok:true,status:200,json:async()=>structuredClone(current)};}
+    fetch:async(url,options)=>{calls.push({url,options});if(nextError){const error=nextError;nextError=null;if(error instanceof Error)throw error;return error;}const result=structuredClone(current);if(options.method==='POST')result.conquista_url='/conquistas/inicio/conquista/'+({motivo:1,plano:2,criacao:3,item:4}[step])+'/?comprovante=teste';return {ok:true,status:200,json:async()=>result};}
   });
   vm.runInContext(source,context);await tick();
   const fire=async(node,type,values={})=>{for(const handler of node.events[type]||[])await handler({preventDefault(){},...values});await tick();};
@@ -74,7 +73,7 @@ async function page(step,initial=record(),hash=''){
   };
 }
 
-test('motivo salvo é retomado e continuar envia identidade, revisão e CSRF antes de navegar',async()=>{
+test('motivo salvo é retomado e concluir leva à recompensa depois de salvar com identidade, revisão e CSRF',async()=>{
  const ui=await page('motivo');
  assert.equal(ui.form.elements.motivo_pessoal.value,'Motivo reservado');
  assert.equal(ui.byId('conteudo').hidden,false);
@@ -82,17 +81,24 @@ test('motivo salvo é retomado e continuar envia identidade, revisão e CSRF ant
  const post=ui.calls.find(call=>call.options.method==='POST');
  assert.equal(post.options.body.get('acao'),'inicio-motivo');
  assert.equal(post.options.body.get('motivo'),'ugc');
+ assert.equal(post.options.body.get('concluir'),'sim');
  assert.equal(post.options.body.get('contexto_pessoa'),'aluna-a');
  assert.equal(post.options.body.get('contexto_site'),'escola-a');
  assert.equal(post.options.body.get('revisao'),'3');
  assert.equal(post.options.headers['X-CSRFToken'],'csrf-teste');
  assert.equal(post.options.credentials,'same-origin');
  assert.equal(post.options.cache,'no-store');
- assert.deepEqual(ui.redirects,['/conquistas/inicio/objetivo/']);
+ assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/1/?comprovante=teste']);
+});
+
+test('salvar motivo como rascunho não abre celebração nem a próxima tarefa',async()=>{
+ const ui=await page('motivo');await ui.submit('pausar');
+ assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
+ assert.deepEqual(ui.redirects,['/conquistas/']);
 });
 
 test('plano permite rascunho e compromisso com destinos separados',async()=>{
- for(const [assumir,url] of [['nao','/conquistas/'],['sim','/conquistas/inicio/item/']]){
+ for(const [assumir,url] of [['nao','/conquistas/'],['sim','/conquistas/inicio/conquista/2/?comprovante=teste']]){
   const ui=await page('plano');await ui.submit(assumir);
   const post=ui.calls.find(call=>call.options.method==='POST');
   assert.equal(post.options.body.get('assumir'),assumir);
@@ -112,16 +118,18 @@ test('falha ao salvar não apaga rascunho nem navega e consulta posterior preser
  await ui.submit('sim');assert.equal(ui.calls.at(-1).options.body.get('revisao'),'4');
 });
 
-test('item exige arquivo, rejeita tamanho excessivo e permite confirmar arquivo já guardado',async()=>{
- const ui=await page('item');await ui.submit('declaracao');assert.equal(ui.calls.length,1);
- ui.byId('arquivo').files=[{size:21*1024*1024}];await ui.submit('anexo');assert.equal(ui.calls.length,1);
+test('envio exige arquivo, rejeita tamanho excessivo e permite confirmar arquivo já guardado',async()=>{
+ const ui=await page('item');await ui.submit();assert.equal(ui.calls.length,1);
+ ui.byId('arquivo').files=[{size:21*1024*1024}];await ui.submit();assert.equal(ui.calls.length,1);
  ui.byId('arquivo').files=[];ui.setRecord(record({anexos:[file()]}));await ui.reopen();
- await ui.submit('declaracao');assert.equal(ui.calls.at(-1).options.body.get('acao'),'declaracao');
+ await ui.submit();assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-envio');
  assert.equal(ui.calls.at(-1).options.body.get('passo'),'2');
+ assert.equal(ui.calls.at(-1).options.body.get('sonho'),undefined);
+ assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/4/?comprovante=teste']);
 });
 
 test('pedido de ajuda usa objetivo e dúvida sem incluir sonho, motivo pessoal ou compromisso',async()=>{
- const ui=await page('item',record({anexos:[file()]}));
+ const ui=await page('criacao',record({anexos:[file()]}));
  await ui.fire(ui.byId('pedir-ajuda'),'click');await ui.fire(ui.byId('copiar'),'click');
  assert.match(ui.copied[0],/Criar um chapéu/);assert.match(ui.copied[0],/Como suavizar/);
  assert.doesNotMatch(ui.copied[0],/SONHO PRIVADO|COMPROMISSO PRIVADO|Motivo reservado|obra.obj/);
@@ -130,10 +138,10 @@ test('pedido de ajuda usa objetivo e dúvida sem incluir sonho, motivo pessoal o
 
 test('reabrir após requisito invalidado retira mensagem antiga de conquista concluída',async()=>{
  const ui=await page('item',record({etapas:[{ordem:1,alcancada:true},{ordem:2,alcancada:true}],anexos:[file()]}));
- assert.equal(ui.byId('concluir').hidden,true);
+ assert.equal(ui.byId('enviar').textContent,'Enviar uma nova versão');
  const updated=record({anexos:[file()]});updated.inicio.confirmado_em=null;ui.setRecord(updated);await ui.reopen();
- assert.equal(ui.byId('concluir').hidden,false);
- assert.doesNotMatch(ui.byId('item-estado').textContent,/já faz parte das suas conquistas/);
+ assert.equal(ui.byId('enviar').textContent,'Confirmar meu envio e concluir');
+ assert.doesNotMatch(ui.byId('item-estado').textContent,/Envio concluído/);
 });
 
 test('sessão encerrada ou outra conta oculta os dados privados que estavam na tela',async()=>{
@@ -158,4 +166,30 @@ test('ao renovar a mesma sessão o rascunho é retomado e a comparação privada
 test('link de envio posiciona o formulário depois de revelar seu conteúdo',async()=>{
  const ui=await page('item',record(),'#inicio-form-item');
  assert.equal(ui.form.scrolledWhileVisible,true);
+});
+
+test('criação é confirmada sem upload e abre sua recompensa, sem pular para a próxima tarefa',async()=>{
+ const ui=await page('criacao');
+ assert.equal(ui.byId('arquivo'),null);
+ assert.equal(ui.byId('form-plano'),null);
+ await ui.submit();
+ assert.equal(ui.calls.at(-1).options.body.get('acao'),'inicio-item');
+ assert.equal(ui.calls.at(-1).options.body.get('arquivo'),undefined);
+ assert.deepEqual(ui.redirects,['/conquistas/inicio/conquista/3/?comprovante=teste']);
+});
+
+test('link antigo para envio encaminha para a quarta tela somente quando a criação está pronta',async()=>{
+ for(const pronta of [false,true]){
+  const dados=record();dados.inicio.item_pronto=pronta;
+  const ui=await page('criacao',dados,'#inicio-form-item');
+  assert.deepEqual(ui.redirects,pronta?['/conquistas/inicio/envio/']:[]);
+ }
+});
+
+test('a tela de envio não contém os controles nem o pedido de ajuda das etapas anteriores',async()=>{
+ const ui=await page('item',record({anexos:[file()]}));
+ assert.equal(ui.byId('objetivo-salvo'),null);
+ assert.equal(ui.byId('pedir-ajuda'),null);
+ assert.equal(ui.byId('form-criacao'),null);
+ assert.equal(ui.byId('historico').hidden,false);
 });

@@ -31,6 +31,8 @@ def abrir(client):
 
 def guardar(client, acao, **dados):
     atual = abrir(client).json()
+    if acao == 'inicio-motivo':
+        dados.setdefault('concluir', 'sim')
     return client.post(
         URL,
         {"acao": acao, "revisao": atual["revisao"], **dados},
@@ -60,7 +62,7 @@ def test_rascunho_parcial_salva_e_retomada_na_mesma_conta(client):
     assert retomada["inicio"]["motivo"] == "ugc"
     assert retomada["atual_ordem"] == 1
     assert situacao(P, SITE)["atual"]["ordem"] == 1
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 0
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
     assert not RegistroDaJornada.objects.exists()
 
 
@@ -87,6 +89,7 @@ def test_conflito_de_revisao_e_contexto_nao_substituem_resposta(client):
 
 
 def test_inicio_isolado_por_pessoa_e_site(client, monkeypatch):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Privado A", compromisso="Meu plano").status_code == 200
     monkeypatch.setattr("apps.core.inventario._sessao", lambda cookie: {"autenticado": True, "id": "aluna-b"})
     assert "Privado A" not in str(abrir(client).json())
@@ -111,6 +114,7 @@ def test_sessao_csrf_e_identidade_do_corpo(client, monkeypatch):
 
 
 def test_versoes_notas_previa_privada_e_projecao_sem_sonho(client, monkeypatch):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Segredo no sonho", objetivo="Criar item",
                    compromisso="Praticar").status_code == 200
     for cor, nota in (("red", "Aprendi a forma"), ("blue", "Ajustei a forma")):
@@ -187,6 +191,7 @@ def test_inicio_continua_editavel_depois_da_faixa_branca(client, monkeypatch):
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", objetivo="Criar meu item",
                    compromisso="Praticar esta semana", assumir="sim").status_code == 200
+    assert guardar(client, "inicio-item").status_code == 200
     assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
     assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
     depois = client.get(reverse("base")).content.decode()

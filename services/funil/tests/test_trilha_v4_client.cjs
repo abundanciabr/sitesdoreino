@@ -112,7 +112,7 @@ test('branca mostra quatro requisitos com os tres destinos e envio separado, inc
   for(const current of [1,3]){
     const data=withChecklist();data.atual_ordem=current;
     data.etapas.forEach(step=>step.alcancada=step.ordem<=current);
-    const urls=['/conquistas/inicio/motivo/','/conquistas/inicio/objetivo/','/conquistas/inicio/item/','/conquistas/inicio/item/#inicio-form-item'];
+    const urls=['/conquistas/inicio/motivo/','/conquistas/inicio/objetivo/','/conquistas/inicio/item/','/conquistas/inicio/envio/'];
     data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu objetivo e compromisso','Meu primeiro item 3D','Enviar meu 3D'][i],estado:i===0?'concluido':'pendente',detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
     const r=await load({ok:true,status:200,json:async()=>data});
     const checklist=r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades);

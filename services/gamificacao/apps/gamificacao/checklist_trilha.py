@@ -59,12 +59,11 @@ def montar_checklists(pessoa_id, site_id, jornada):
                            "A entrada na jornada já está registrada.")]
         elif ordem == 2:
             faixa = faixas.get(2)
-            iniciou_item = tem_anexo or bool(faixa and faixa.origem == "item" and faixa.estado == "alcancada")
+            iniciou_item = requisitos['item'] or bool(faixa and faixa.origem == "item" and faixa.estado == "alcancada")
             detalhe_item = (
-                "Resultado registrado na jornada." if alcancada else
-                "Um arquivo foi guardado no inventário; a conclusão ainda não foi registrada." if tem_anexo else
-                "Um item 3D foi salvo; a conclusão do primeiro item ainda não foi registrada." if iniciou_item else
-                "Envie seu primeiro item 3D ou uma imagem dele e registre a conclusão."
+                "Primeiro item 3D confirmado." if requisitos['item'] else
+                "Um arquivo foi guardado em privado; confirme quando o item estiver pronto." if tem_anexo else
+                "Marque seu primeiro item pronto quando terminar a criação."
             )
             itens = [
                 _item(2, "Meu motivo", _estado(requisitos['motivo']),
@@ -74,13 +73,14 @@ def montar_checklists(pessoa_id, site_id, jornada):
                       "Objetivo definido e compromisso assumido." if requisitos['objetivo'] and requisitos['compromisso'] else
                       "Defina seu objetivo e assuma seu compromisso para este começo.",
                       {"rotulo": "Abrir meu objetivo e compromisso", "url": "/conquistas/inicio/objetivo/"}, sufixo="plano"),
-                _item(2, "Meu primeiro item 3D", _estado(alcancada, iniciou_item),
+                _item(2, "Meu primeiro item 3D", _estado(requisitos['item'], iniciou_item),
                       detalhe_item,
                       {"rotulo": "Abrir meu primeiro item", "url": "/conquistas/inicio/item/"}, sufixo="item"),
-                _item(2, "Enviar meu 3D", _estado(requisitos['item']),
-                      "Arquivo do primeiro item guardado em privado." if requisitos['item'] else
+                _item(2, "Enviar meu 3D", _estado(requisitos['envio'] and alcancada, requisitos['envio']),
+                      "Arquivo do primeiro item enviado e conclusão confirmada em privado." if requisitos['envio'] and alcancada else
+                      "Arquivo do primeiro item guardado em privado; confirme o envio." if requisitos['envio'] else
                       "Envie o arquivo do seu item 3D ou uma imagem dele.",
-                      {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/item/#inicio-form-item"}, sufixo="envio"),
+                      {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/envio/"}, sufixo="envio"),
             ]
             if iniciou_item and not alcancada:
                 observacao = "Seu trabalho continua guardado. Complete os quatro requisitos e confirme a conclusão para alcançar a faixa amarela."

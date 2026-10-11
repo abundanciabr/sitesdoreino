@@ -67,7 +67,7 @@ def test_item_salvo_e_eventos_antigos_nao_promovem_conclusao(client):
     assert [item(dados, n)["estado"] for n in (2, 3, 4)] == [
         "andamento", "pendente", "pendente",
     ]
-    assert "salvo" in item(dados, 2)["detalhe"]
+    assert "Marque" in item(dados, 2)["detalhe"]
     assert consultar(client, "b")["etapas"][1]["alcancada"] is False
 
 
