@@ -61,3 +61,8 @@ Diagnóstico e recuperação devolvem um ID e continuam na VPS após a desconex�
 O console administrativo conhecido é `https://hpanel.hostinger.com/vps/1893584/overview`, botão Web console, que abre `https://asc.hostingervps.com/2018/`. Foi usado e conferido na instalação. A manutenção acima já funciona pelo canal limitado e não depende de abrir esse painel nem reativar o SSH amplo. A sessão do navegador pode expirar; nenhum segredo fica nestas referências.
 
 O programa versionado é `C:\Users\davia\.codex\worktrees\canal-analisador-vps\sitesdoreino-limpo-20260923\infra\acessos\analisador_manutencao.py`. Evidência desta instalação, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\canal-analisador-20261011\comprovacao-final.json`.
+
+
+## Prévia no site — ordem expressa do mantenedor em 11/10/2026
+
+"Antes de publicar para os alunos" quer dizer somente para admins e não em localhost; para criar algo em localhost ou somente no PC, somente com confirmação expressa disso.

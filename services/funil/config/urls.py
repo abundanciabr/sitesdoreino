@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.links import redirecionar_link
 from apps.core.trilha_v4 import trilha_v4
+from apps.core.trilha_previa_gateway import trilha_previa_gateway
 from apps.core.modelo_flp import (
     modelo_flp_conteudo,
     modelo_flp_imagem,
@@ -37,6 +38,8 @@ from apps.core.views import (
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
 # PLANO-I18N) decapa /en|pt-br|es de path_info ANTES da resolução de URL.
 urlpatterns = [
+    path("trilha/previa/", trilha_previa_gateway, name="trilha_previa_gateway"),
+    re_path(r"^trilha/previa/(?P<resto>.+)$", trilha_previa_gateway, name="trilha_previa_gateway_resto"),
     path("trilha/inventario/", trilha_v4, {"arquivo": "inventario.html"}, name="inventario_aluno"),
     path("trilha/inventario.css", trilha_v4, {"arquivo": "inventario.css"}, name="inventario_css"),
     path("trilha/inventario.js", trilha_v4, {"arquivo": "inventario.js"}, name="inventario_js"),
