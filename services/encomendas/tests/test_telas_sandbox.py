@@ -76,15 +76,15 @@ def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, proj
             assert client.post(reverse("sandbox_avaliar", args=[p.pk, "ajuste"]), {"texto": "Ajuste a silhueta."}).status_code == 302
             contexto["id"] = p.pessoa_id
     for _ in range(2):
-        assert client.post(reverse("sandbox_avaliar", args=[p.pk, "aprovar"])).status_code == 302
+        assert client.post(reverse("sandbox_avaliar", args=[p.pk, "aprovar"])).status_code == 400
     p.refresh_from_db()
     conclusoes = OutboxMarketplace.objects.filter(event=faixas_eventos.EV_CONCLUSAO)
-    assert conclusoes.count() == 2
+    assert conclusoes.count() == 0
     for entrega in p.entregas.all():
-        conclusao = conclusoes.get(event_id=faixas_eventos.event_id(
-            faixas_eventos.EV_CONCLUSAO, f'{p.pk}:envio:{entrega.pk}'))
-        assert conclusao.payload == {"site_id": p.site_id, "pessoa_id": p.pessoa_id,
-            "trabalho_id": str(p.pk), "ocorrido_em": entrega.criada_em.isoformat()}
+        avaliacao = OutboxMarketplace.objects.get(
+            event=faixas_eventos.EV_AVALIACAO, payload__entrega_id=str(entrega.pk),
+            payload__estado='pendente')
+        assert avaliacao.payload['pessoa_id'] == p.pessoa_id
     assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
     assert sandbox.saldo(site_id="escola-a", pessoa_id=p.pessoa_id) == Decimal("0.00")
     assert p.entregas.count() == 2 and p.arquivos.count() == 2

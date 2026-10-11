@@ -51,6 +51,7 @@ STREAMS = [
     "eventos.cursos.item-criado",
     "eventos.encomendas.sandbox-trabalho-criado",
     "eventos.encomendas.sandbox-trabalho-concluido",
+    "eventos.encomendas.sandbox-avaliacao-atualizada",
     "eventos.encomendas.fila-trabalho-aceito",
     "eventos.encomendas.fila-trabalho-concluido",
     "eventos.encomendas.rendimento-real-confirmado",

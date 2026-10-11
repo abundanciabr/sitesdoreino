@@ -400,16 +400,13 @@ from .faixas import (  # noqa: E402
 )
 
 def ao_sandbox_trabalho_concluido(envelope):
-    data = envelope.get("data") or {}
-    pessoa_id = data.get("pessoa_id")
-    site_id = data.get("site_id")
-    if not pessoa_id or not site_id or data.get("historico"):
-        return
-    from .reinicio import evento_anterior_ao_reinicio
-    if evento_anterior_ao_reinicio(site_id, envelope):
-        return
-    from .jornada import registrar_conclusao
-    registrar_conclusao(pessoa_id, site_id, 3)
+    """O evento legado significava envio, não avaliação; preserva só o histórico."""
+    return None
+
+
+def ao_sandbox_avaliacao_atualizada(envelope):
+    from .sandbox_avaliacoes import registrar_evento
+    registrar_evento(envelope)
 
 
 def ao_fila_trabalho_concluido(envelope):
@@ -425,6 +422,7 @@ def ao_fila_trabalho_concluido(envelope):
 
 HANDLERS = {
     "encomendas.sandbox-trabalho-concluido": ao_sandbox_trabalho_concluido,
+    "encomendas.sandbox-avaliacao-atualizada": ao_sandbox_avaliacao_atualizada,
     "encomendas.fila-trabalho-concluido": ao_fila_trabalho_concluido,
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,

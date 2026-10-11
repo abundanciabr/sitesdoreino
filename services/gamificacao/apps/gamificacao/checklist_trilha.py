@@ -106,13 +106,17 @@ def montar_checklists(pessoa_id, site_id, jornada):
                 4: "Concluir e entregar meu trabalho real na Fila",
             }[ordem]
             detalhe = {
-                3: "Uma prática no Sandbox foi iniciada; a entrega concluída ainda não foi registrada.",
+                3: "A prática do Sandbox aguarda uma análise concluída que reconheça a realização.",
                 4: "Um trabalho da Fila foi aceito; a entrega concluída ainda não foi registrada.",
             }[ordem] if iniciou else "Ainda não há registro de conclusão desta etapa."
             if alcancada:
-                detalhe = "Resultado registrado na jornada."
+                detalhe = "Resultado reconhecido na jornada." if ordem == 3 else "Resultado registrado na jornada."
             elif registro_inicio and registro_inicio.declaracoes.get(str(ordem)):
-                detalhe = "Uma conclusão anterior está guardada. Você pode confirmá-la ao chegar a esta etapa."
+                detalhe = (
+                    "A realização será reconhecida após análise concluída, respeitando a sequência."
+                    if ordem == 3 else
+                    "Uma conclusão anterior está guardada. Você pode confirmá-la ao chegar a esta etapa."
+                )
             acao = None if alcancada else {
                 3: {"rotulo": "Abrir Sandbox", "url": "/encomendas/sandbox/"},
                 4: {"rotulo": "Abrir Fila", "url": "/encomendas/fila/"},

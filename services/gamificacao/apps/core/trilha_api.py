@@ -1,11 +1,13 @@
 """Projeção privada e somente de leitura da jornada real."""
 
 from datetime import datetime
+import os
 
 from django.http import HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema
 from ninja.errors import HttpError
+from pydantic import Field
 
 from apps.gamificacao.checklist_trilha import montar_checklists
 from apps.gamificacao.jornada import situacao
@@ -53,6 +55,27 @@ class TrilhaDoAluno(Schema):
     meta_cents: int | None
     meta_escolhida: bool
     consultado_em: datetime
+    avaliacoes_sandbox: list[dict] = Field(default_factory=list)
+
+
+@router.get(
+    "/jornada-sandbox/{site_id}/{pessoa_id}",
+    operation_id="getStudentSandboxJourney",
+    summary="Avaliações do Sandbox projetadas para o suporte",
+)
+def get_student_sandbox_journey(request, response: HttpResponse, site_id: str, pessoa_id: str):
+    token_admin = (os.environ.get("TOKENS_ACEITOS_ADMIN") or "").strip()
+    if not token_admin or request.auth != token_admin:
+        raise HttpError(403, "Consulta reservada ao Admin")
+    site = site_atual()
+    if site is None:
+        raise HttpError(503, "SITE_ID ausente no env da gamificacao")
+    if site_id != site:
+        raise HttpError(404, "Site nao encontrado")
+    from apps.gamificacao.sandbox_avaliacoes import resumo
+    response["Cache-Control"] = "private, no-store"
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    return resumo(pessoa_id, site_id)
 
 
 @router.get(
@@ -68,7 +91,7 @@ def get_student_journey(request, response: HttpResponse, pessoa_id: str, site_id
     if site_id != site:
         raise HttpError(404, "Site nao encontrado")
 
-    return _projecao(response, pessoa_id, site)
+    return _projecao(response, pessoa_id, site, incluir_avaliacoes=False)
 
 
 @router.get(
@@ -90,10 +113,10 @@ def get_my_journey(request, response: HttpResponse):
         raise HttpError(503, "Identidade indisponivel") from None
     if sessao.get("autenticado") is not True or not isinstance(sessao.get("id"), str) or not sessao["id"].strip():
         raise HttpError(403, "Sessao invalida")
-    return _projecao(response, sessao["id"], site)
+    return _projecao(response, sessao["id"], site, incluir_avaliacoes=True)
 
 
-def _projecao(response: HttpResponse, pessoa_id: str, site_id: str):
+def _projecao(response: HttpResponse, pessoa_id: str, site_id: str, *, incluir_avaliacoes=False):
     jornada = situacao(pessoa_id, site_id)
     checklists = montar_checklists(pessoa_id, site_id, jornada)
     meta_escolhida = jornada["meta_escolhida"]
@@ -119,4 +142,5 @@ def _projecao(response: HttpResponse, pessoa_id: str, site_id: str):
         meta_cents=jornada["meta_cents"],
         meta_escolhida=meta_escolhida,
         consultado_em=timezone.now(),
+        avaliacoes_sandbox=jornada["sandbox_avaliacoes"] if incluir_avaliacoes else [],
     )

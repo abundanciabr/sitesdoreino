@@ -7,7 +7,8 @@ from pathlib import Path
 import re
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import CharField, Exists, OuterRef, Q, Value
+from django.db.models.functions import Cast, Concat
 from django.utils import timezone
 
 from .sandbox_models import AnaliseArquivoSandbox, AnaliseEntregaSandbox, EntregaSandbox, ParticipacaoSandbox
@@ -25,6 +26,7 @@ def salvar(path, data):
     temp.replace(path)
 
 
+@transaction.atomic
 def preparar(entrega):
     analysis, criada = AnaliseEntregaSandbox.objects.get_or_create(entrega=entrega, defaults={'site_id': entrega.site_id})
     for file in entrega.arquivos.all():
@@ -34,6 +36,8 @@ def preparar(entrega):
             'site_id': file.site_id, 'sha256': file.sha256, 'chave_cache': key})
     if criada:
         devolutiva.recebimento(entrega)
+        from .faixas_eventos import sandbox_avaliacao_atualizada
+        sandbox_avaliacao_atualizada(analysis)
     return analysis
 
 
@@ -159,12 +163,17 @@ def processar_entrega(identificador):
             if file.estado not in ('concluida', 'falha'):
                 publicar_pedido(file)
         if not files or any(f.estado not in ('concluida', 'falha') for f in files):
-            a.estado = 'examinando'
-            a.save()
+            if a.estado != 'examinando':
+                a.estado = 'examinando'
+                a.save()
+                from .faixas_eventos import sandbox_avaliacao_atualizada
+                sandbox_avaliacao_atualizada(a)
             return
         a.estado = 'comparando'
         a.tentativas += 1
         a.save()
+        from .faixas_eventos import sandbox_avaliacao_atualizada
+        sandbox_avaliacao_atualizada(a)
     try:
         result = comparar(a)
     except Exception:
@@ -174,6 +183,8 @@ def processar_entrega(identificador):
         atual = AnaliseEntregaSandbox.objects.select_for_update().filter(pk=a.pk).first()
         if atual is None:
             return  # A limpeza cancelou esta análise enquanto a IA respondia.
+        if atual.estado != 'comparando' or atual.tentativas != a.tentativas:
+            return  # Outra tentativa tomou esta análise; a resposta antiga não publica nada.
         if result is None:
             atual.estado = 'falha_ia'
             atual.falha = 'A comparação por IA está indisponível. As medidas dos arquivos continuam disponíveis. Tente novamente.'
@@ -185,6 +196,8 @@ def processar_entrega(identificador):
             atual.tentar_em = None
         atual.save()
         atual.entrega = a.entrega
+        from .faixas_eventos import sandbox_avaliacao_atualizada
+        sandbox_avaliacao_atualizada(atual)
         if result is None:
             devolutiva.indisponivel(atual)
         else:
@@ -192,7 +205,7 @@ def processar_entrega(identificador):
             from .sandbox import ultima_entrega_do_aluno, aprovar
             ultima = ultima_entrega_do_aluno(p)
             if not a.entrega.teste_mantenedor and ultima and ultima.pk == a.entrega_id:
-                if result['avaliacao']['resultado'] == 'atende':
+                if result.get('avaliacao', {}).get('resultado') == 'atende' and not devolutiva.lacunas(result):
                     aprovar(site_id=p.site_id, participacao_id=p.pk, aprovador_id='analise-automatica')
     if result is not None:
         from apps.core.ia_sandbox import enfileirar
@@ -211,10 +224,34 @@ def rodada():
         try:
             processar_entrega(a.pk)
         except Exception:
-            existente = AnaliseEntregaSandbox.objects.filter(pk=a.pk).update(
-                estado='falha', falha='Não foi possível processar esta versão. Tente novamente.', atualizada_em=timezone.now())
+            with transaction.atomic():
+                ParticipacaoSandbox.objects.select_for_update().get(pk=a.entrega.participacao_id)
+                atual = AnaliseEntregaSandbox.objects.select_for_update().select_related('entrega__participacao').filter(pk=a.pk).first()
+                existente = atual is not None
+                if atual is not None:
+                    atual.estado = 'falha'
+                    atual.falha = 'Não foi possível processar esta versão. Tente novamente.'
+                    atual.save()
+                    from .faixas_eventos import sandbox_avaliacao_atualizada
+                    sandbox_avaliacao_atualizada(atual)
             if existente and not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
                 devolutiva.indisponivel(a)
+    # Registros anteriores à publicação do fato entram no contexto sem gerar crédito retroativo.
+    from .faixas_eventos import EV_AVALIACAO, sandbox_avaliacao_atualizada
+    from .models import EventoMarketplace
+    prefixo = f'faixas:{EV_AVALIACAO}:'
+    emissao = EventoMarketplace.objects.filter(chave__startswith=Concat(
+        Value(prefixo), Cast(OuterRef('pk'), output_field=CharField()), Value(':')))
+    antigas = (AnaliseEntregaSandbox.objects.filter(entrega__teste_mantenedor=False)
+               .annotate(publicada=Exists(emissao)).filter(publicada=False)
+               .select_related('entrega__participacao').order_by('atualizada_em', 'pk')[:10])
+    for antiga in antigas:
+        with transaction.atomic():
+            ParticipacaoSandbox.objects.select_for_update().get(pk=antiga.entrega.participacao_id)
+            atual = (AnaliseEntregaSandbox.objects.select_for_update()
+                     .select_related('entrega__participacao').filter(pk=antiga.pk).first())
+            if atual is not None:
+                sandbox_avaliacao_atualizada(atual, historico=True)
 
 
 def repetir(entrega):
@@ -239,3 +276,5 @@ def repetir(entrega):
         a.falha = ''
         a.tentar_em = None
         a.save()
+        from .faixas_eventos import sandbox_avaliacao_atualizada
+        sandbox_avaliacao_atualizada(a)

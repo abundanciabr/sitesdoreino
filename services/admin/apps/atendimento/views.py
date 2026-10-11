@@ -352,6 +352,8 @@ def conversa_admin(request,conversa_id):
     ctx.update(produtos=catalogo(),
       produto_marcado=escolhido or ((conversa.sugestao or {}).get('produto_sugerido') or {}).get('id',''),
       agenda_do_interesse=AgendaDoProduto.objects.filter(site_id=sid,produto_id=escolhido).first() if escolhido else None)
+    from .contexto import _jornada_sandbox
+    ctx['jornada_sandbox'] = _jornada_sandbox(conversa)
     return render(request,'admin/atendimento_conversa.html',ctx)
 
 

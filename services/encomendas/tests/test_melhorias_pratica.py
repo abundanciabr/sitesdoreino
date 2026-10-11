@@ -59,11 +59,12 @@ def test_fila_compara_snapshot_preserva_escola_e_credito_unico(participacao, mon
     assert a.resultado['requisitos'][0]['requisito'] == participacao.termos['briefing']
     participacao.refresh_from_db()
     assert participacao.status == 'entregue' and not participacao.aprovado_em
-    sandbox.aprovar(site_id=participacao.site_id, participacao_id=participacao.pk, aprovador_id='TESTE-escola')
-    sandbox.aprovar(site_id=participacao.site_id, participacao_id=participacao.pk, aprovador_id='TESTE-escola')
+    with pytest.raises(sandbox.ErroSandbox):
+        sandbox.aprovar(site_id=participacao.site_id, participacao_id=participacao.pk, aprovador_id='TESTE-escola')
     from apps.encomendas.models import MovimentoMeshcoin, OutboxMarketplace
     assert not MovimentoMeshcoin.objects.filter(participacao=participacao).exists()
-    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 1
+    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-trabalho-concluido").count() == 0
+    assert OutboxMarketplace.objects.filter(event="encomendas.sandbox-avaliacao-atualizada", payload__resultado='inconclusiva').exists()
     assert xp_sandbox.aplicar(participacao,'aprovada',participacao.pk,timezone.now()) == []
 
 

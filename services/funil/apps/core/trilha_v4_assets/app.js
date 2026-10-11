@@ -98,11 +98,13 @@ function showChecklist(index){
   document.querySelector('#checklist-updated').textContent=consultedAtLabel(progress.consultado_em);
 }
 function beltPanel(index,modal=false){
-  return createProgressPanel(journeyChecklist(progress,index,payload.atividades),{
+  const panel=createProgressPanel(journeyChecklist(progress,index,payload.atividades),{
     name:belts[index].name,number:number(index),white:index===0,modal,
     next:(index===0||index===current)&&belts[index+1]?belts[index+1].name:null,
     summary:progress.etapas[index].conquista
   });
+  if(index===1||index===2)panel.append(sandboxEvaluationPanel(progress.avaliacoes_sandbox));
+  return panel;
 }
 function openDetails(index){
   if(!reached(index))return;
@@ -265,6 +267,53 @@ function createProgressPanel(details,options){
   const note=node('p','progress-note',options.white?'Conclua uma tarefa, receba seus XP e volte à faixa para o próximo passo. Suas respostas e seus arquivos continuam privados.':'Seu progresso acompanha os registros da jornada.');panel.append(note);
   if(details.observacao)panel.append(node('p','checklist-observation',details.observacao));
   return panel;
+}
+
+function sandboxEvaluationPanel(evaluations){
+  const node=(tag,cls,text)=>{const element=document.createElement(tag);element.className=cls;if(text!==undefined)element.textContent=text;return element;};
+  const section=node('section','sandbox-evaluations');
+  section.setAttribute('aria-label','Avaliações do Sandbox');
+  section.append(node('h4','sandbox-evaluations-title','Avaliação do Sandbox'));
+  if(!Array.isArray(evaluations)){
+    section.append(node('p','sandbox-evaluations-empty','Não foi possível consultar as avaliações do Sandbox agora. Atualize em instantes.'));
+    return section;
+  }
+  if(!evaluations.length){
+    section.append(node('p','sandbox-evaluations-empty','Ainda não há avaliação do Sandbox registrada na sua jornada.'));
+    return section;
+  }
+  const states={pendente:'Aguardando análise',em_analise:'Em análise',falha:'Análise interrompida',concluida:'Análise concluída'};
+  const results={atende:'Atende ao pedido',precisa_ajustes:'Precisa de ajustes',inconclusiva:'Avaliação inconclusiva','':''};
+  const list=node('ol','sandbox-evaluations-list');
+  for(const item of evaluations){
+    if(!item||!Number.isInteger(item.versao)||item.versao<1||!Object.hasOwn(states,item.estado)
+      ||typeof item.explicacao!=='string'||typeof item.justificativa!=='string'
+      ||typeof item.proxima_acao!=='string'||!Object.hasOwn(results,item.resultado)||typeof item.url!=='string'
+      ||typeof item.atual!=='boolean'||typeof item.historico!=='boolean'
+      ||!item.reconhecimento||typeof item.reconhecimento.estado!=='string'
+      ||typeof item.reconhecimento.texto!=='string'){
+      section.append(node('p','sandbox-evaluations-empty','Não foi possível apresentar as avaliações do Sandbox agora. Atualize em instantes.'));
+      return section;
+    }
+    const record=node('li','sandbox-evaluation');
+    record.append(node('h5','sandbox-evaluation-version',`Versão ${item.versao}${item.atual?' · Atual neste trabalho':''}${item.historico?' · Histórico':''}`));
+    record.append(node('p','sandbox-evaluation-state',states[item.estado]));
+    if(item.resultado)record.append(node('p','sandbox-evaluation-result',results[item.resultado]));
+    if(item.explicacao)record.append(node('p','sandbox-evaluation-explanation',item.explicacao));
+    if(item.justificativa)record.append(node('p','sandbox-evaluation-reason',item.justificativa));
+    if(item.reconhecimento.texto)record.append(node('p','sandbox-evaluation-recognition',item.reconhecimento.texto));
+    if(item.proxima_acao)record.append(node('p','sandbox-evaluation-next',item.proxima_acao));
+    if(item.url){
+      try{
+        const action=safeAction({rotulo:'Abrir trabalho no Sandbox',url:item.url});
+        const link=node('a','sandbox-evaluation-link',action.rotulo);
+        link.href=action.url;record.append(link);
+      }catch(error){/* Endereço inválido não vira link; a avaliação continua visível. */}
+    }
+    list.append(record);
+  }
+  section.append(list);
+  return section;
 }
 
 function validateProgress(data, context){

@@ -5,7 +5,7 @@
     <div><h1 id="minha-faixa">Faixa {{ faixas.atual.faixa }}</h1><p class="grau">{% if faixas.atual.grau %}{{ faixas.atual.grau }} Grau · {% endif %}Passo {{ faixas.atual.ordem }} de 13</p></div>
   </div>
   <p>{{ faixas.atual.conquista }}</p>
-  <p class="miudo">Cada conquista concede seu bônus de XP uma única vez, somado ao saldo. Concluir o Sandbox e conquistar a faixa Azul correspondem ao mesmo bônus de 10.000 XP.</p>
+  <p class="miudo">Cada conquista concede seu bônus de XP uma única vez, somado ao saldo. A prática do Sandbox é reconhecida quando a análise da entrega termina e confirma a realização.</p>
   {% if jornada_recado == 'cor' %}<p class="celebracao" role="status">Uma nova cor na sua jornada! Você chegou à faixa {{ faixas.atual.faixa }} com um resultado que registrou.</p>
   {% elif jornada_recado == 'grau' %}<p class="celebracao" role="status">Mais um grau alcançado! Veja o resultado e o próximo passo abaixo.</p>
   {% elif jornada_recado == 'salvo' %}<p role="status">Seu registro foi salvo. Sua história acompanha suas escolhas.</p>{% endif %}
@@ -27,6 +27,17 @@
     {% else %}<a class="botao-jornada" href="{{ faixas.proxima_url }}">{{ faixas.proxima_acao }}</a>{% endif %}
   </div>{% else %}<p class="celebracao">Você alcançou sua meta para o 7º grau da faixa-preta! Seu histórico mostra o caminho percorrido. A escola e a comunidade continuam com você.</p>{% endif %}
 </section>
+
+{% if faixas.sandbox_avaliacoes %}<section class="aviso" aria-labelledby="analises-do-sandbox">
+  <h2 id="analises-do-sandbox">Análises das minhas práticas no Sandbox</h2>
+  {% for avaliacao in faixas.sandbox_avaliacoes %}<article>
+    <p><strong>Entrega {{ avaliacao.versao }}</strong> · {{ avaliacao.reconhecimento.texto }}</p>
+    {% if avaliacao.explicacao %}<p>{{ avaliacao.explicacao }}</p>{% endif %}
+    {% if avaliacao.justificativa %}<p>{{ avaliacao.justificativa }}</p>{% endif %}
+    {% if avaliacao.proxima_acao %}<p>{{ avaliacao.proxima_acao }}</p>{% endif %}
+    {% if avaliacao.url %}<p><a href="{{ avaliacao.url }}">Ver trabalho e avaliação</a></p>{% endif %}
+  </article>{% endfor %}
+</section>{% endif %}
 
 {% if previa %}<section class="aviso previa-meta" aria-labelledby="previa-meta">
   <h2 id="previa-meta">Veja como fica antes de escolher</h2>
@@ -60,10 +71,11 @@
       <p>{{ passo.conquista }}</p><p class="miudo">Bônus único: {{ passo.bonus_xp }} XP</p>{% if passo.limite %}<p class="miudo">{{ passo.percentual }}% da meta · {{ passo.limite }} acumulados{% if not faixas.meta_escolhida %} (sugestão){% endif %}</p>{% endif %}
       {% if passo.ordem >= 2 and passo.ordem <= 4 %}
       {% if passo.ordem == 2 %}<p class="miudo">Crie e finalize um item. Confira a forma e salve os arquivos para mostrar sua criação.</p>
-      {% elif passo.ordem == 3 %}<p class="miudo">Entenda o pedido, modele o item, confira os entregáveis e faça a entrega. Use o feedback do tutor e do cliente simulado para melhorar o que precisar. Você reconhece quando concluiu.</p>
+      {% elif passo.ordem == 3 %}<p class="miudo">Entenda o pedido, modele o item, confira os entregáveis e envie sua prática. A análise da entrega dirá o que foi examinado e quando a realização foi reconhecida.</p>
       {% else %}<p class="miudo">Prepare a entrega para um cliente real, converse sobre o pedido e entregue os arquivos combinados. Essa participação na Fila do Dólar acontece uma única vez.</p>{% endif %}
+      {% if passo.ordem != 3 %}
       <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}<input type="hidden" name="acao" value="declaracao"><input type="hidden" name="revisao" value="{{ faixas.revisao }}"><input type="hidden" name="passo" value="{{ passo.ordem }}">
-      {% if passo.alcancada %}<button class="secundario" name="estado" value="corrigir">Corrigir: ainda quero praticar</button>{% else %}<button name="estado" value="feito">{% if passo.ordem == 2 %}Concluí meu item 3D{% elif passo.ordem == 3 %}Concluí e entreguei minha prática{% else %}Concluí e entreguei meu trabalho real{% endif %}</button>{% endif %}</form>{% endif %}
+      {% if passo.alcancada %}<button class="secundario" name="estado" value="corrigir">Corrigir: ainda quero praticar</button>{% else %}<button name="estado" value="feito">{% if passo.ordem == 2 %}Concluí meu item 3D{% else %}Concluí e entreguei meu trabalho real{% endif %}</button>{% endif %}</form>{% endif %}{% endif %}
     </li>{% endfor %}</ol></details>{% endfor %}</div>
 </section>
 

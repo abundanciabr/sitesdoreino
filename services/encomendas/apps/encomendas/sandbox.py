@@ -17,7 +17,7 @@ from .sandbox_models import (
 TERMOS_SIMULACAO = (
     "Esta atividade é exclusivamente uma simulação educacional de trabalho real, destinada ao aprendizado e à experiência. "
     "Não há contratação remunerada, cobrança, compra, investimento, pagamento, saque ou conversão em dinheiro. "
-    "Concluir o envio registra a conquista e concede os XP e a progressão previstos na jornada, sem repetir o bônus e respeitando as etapas anteriores. "
+    "A conquista, os XP e a progressão previstos na jornada vêm após a avaliação automática da realização, respeitando a sequência e sem repetir o bônus. "
     "Eu aceito realizar os entregáveis do briefing no prazo que escolhi e enviar minha entrega para avaliação. "
     "A análise automática determina a avaliação; discordâncias seguem pelo suporte. Participar não autoriza a fila remunerada."
 )
@@ -153,7 +153,7 @@ def aceitar(*, site_id, pessoa_id, projeto_id, prazo_horas=None, item_livre="", 
         termos.pop("recompensa", None)
         termos["termos_simulacao"] = (
             "Esta é uma prática educacional, sem cobrança ou pagamento. "
-            "Concluir o envio registra a conquista, os XP e a progressão previstos na jornada, respeitando a sequência e sem repetir bônus. "
+            "A conquista, os XP e a progressão vêm após a avaliação automática da realização, respeitando a sequência e sem repetir bônus. "
             "O aceite registra o briefing e o prazo escolhido."
         )
         termos["termos_simulacao_versao"] = catalogo_curso.VERSAO
@@ -233,7 +233,6 @@ def entregar(*, site_id, participacao_id, pessoa_id, comentario="", arquivos=Non
             p.atraso_em = timezone.now()
         p.status = ParticipacaoSandbox.Status.ENTREGUE
         p.save(update_fields=["status", "atraso_em"])
-        faixas_eventos.sandbox_trabalho_concluido(p, ocorrido_em=entrega.criada_em, entrega=entrega)
     from .analises_sandbox import preparar
     preparar(entrega)
     return entrega
@@ -284,6 +283,12 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     entrega = ultima_entrega_do_aluno(p)
     if entrega is None or not entrega.arquivos.exists():
         raise ErroSandbox("Entrega sem arquivos.")
+    from .sandbox_models import AnaliseEntregaSandbox
+    from .devolutiva_sandbox import lacunas
+    analise = AnaliseEntregaSandbox.objects.filter(entrega=entrega, estado='concluida').first()
+    if (analise is None or analise.resultado.get('avaliacao', {}).get('resultado') != 'atende'
+            or lacunas(analise.resultado)):
+        raise ErroSandbox("A realização precisa de uma avaliação automática concluída que atenda ao briefing.")
     agora = timezone.now()
     entrega.aprovada_em = agora
     entrega.save(update_fields=["aprovada_em"])

@@ -4,7 +4,7 @@ from uuid import uuid4
 import pytest
 from django.utils import timezone
 
-from apps.gamificacao.handlers import ao_sandbox_trabalho_concluido
+from apps.gamificacao.handlers import ao_sandbox_avaliacao_atualizada, ao_sandbox_trabalho_concluido
 from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal, LancamentoDeXP, Pessoa, PerfilJogador, RegraDePontuacao, NivelDefinicao
 
 
@@ -12,6 +12,19 @@ def envelope():
     return {"event": "encomendas.sandbox-trabalho-concluido", "version": 1,
             "event_id": str(uuid4()), "occurred_at": timezone.now().isoformat(),
             "data": {"site_id": "escola-teste", "pessoa_id": "aluno-concluiu", "trabalho_id": str(uuid4())}}
+
+
+def avaliacao(pessoa="aluno-concluiu", site="escola-teste", trabalho=None):
+    instante = timezone.now().isoformat()
+    return {"event": "encomendas.sandbox-avaliacao-atualizada", "version": 1,
+            "event_id": str(uuid4()), "occurred_at": instante,
+            "data": {"site_id": site, "pessoa_id": pessoa, "trabalho_id": trabalho or str(uuid4()),
+                     "entrega_id": str(uuid4()), "analise_id": str(uuid4()), "versao": 1,
+                     "entrega_criada_em": instante, "atualizado_em": instante,
+                     "ocorrido_em": instante, "estado": "concluida",
+                     "resultado": "atende", "atual": True, "historico": False,
+                     "explicacao": "A análise reconheceu a prática.", "justificativa": "Resultado atende.",
+                     "proxima_acao": "Continue a jornada.", "url": "/encomendas/sandbox/"}}
 
 
 def preparar_ate(pessoa="aluno-concluiu", site="escola-teste", passo=2):
@@ -30,8 +43,11 @@ def preparar_ate(pessoa="aluno-concluiu", site="escola-teste", passo=2):
     AnexoDaJornada.objects.create(pessoa_id=pessoa, site_id=site, passo=2,
                                   nome="obra.obj", conteudo=b"v 0 0 0\n", tamanho=8, sha256="preparo")
     for ordem in range(2, passo + 1):
-        jornada.salvar(pessoa, site, {"acao": "declaracao", "passo": ordem,
-            "estado": "feito", "revisao": jornada.situacao(pessoa, site)["revisao"]})
+        if ordem == 3:
+            ao_sandbox_avaliacao_atualizada(avaliacao(pessoa, site))
+        else:
+            jornada.salvar(pessoa, site, {"acao": "declaracao", "passo": ordem,
+                "estado": "feito", "revisao": jornada.situacao(pessoa, site)["revisao"]})
 
 
 @pytest.mark.django_db
@@ -52,8 +68,7 @@ def test_ativar_bonus_depois_da_conquista_nao_perde_nem_duplica_credito(monkeypa
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 0
     preparar_ate()
     from apps.gamificacao import jornada
-    jornada.salvar("aluno-concluiu", "escola-teste", {"acao": "declaracao", "passo": 3,
-        "estado": "feito", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"]})
+    ao_sandbox_avaliacao_atualizada(avaliacao())
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
     assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15400
 
@@ -69,9 +84,9 @@ def test_bonus_configurado_depois_de_conclusao_valida_chega_no_replay_sem_duplic
     assert LancamentoDeXP.objects.count() == 4
     bonus_faixas.configurar("escola-teste")
     ao_sandbox_trabalho_concluido(evento)
-    ao_sandbox_trabalho_concluido(evento)
+    ao_sandbox_avaliacao_atualizada(avaliacao())
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
-    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 15400
+    assert PerfilJogador.objects.get(pessoa_id="aluno-concluiu", site_id="escola-teste").xp_total == 10400
 
 
 @pytest.mark.django_db
@@ -85,13 +100,11 @@ def test_pontuacao_configurada_uma_unica_vez_no_aluno_correto(monkeypatch):
     e = envelope()
     ao_sandbox_trabalho_concluido(e)
     ao_sandbox_trabalho_concluido(e)
+    ao_sandbox_avaliacao_atualizada(avaliacao())
     lancamentos = LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul")
     assert lancamentos.count() == 1 and lancamentos.get().pessoa.id_da_plataforma == "aluno-concluiu"
     assert PerfilJogador.objects.get(pessoa__id_da_plataforma="aluno-concluiu").xp_total == 15400
-    jornada.salvar("aluno-concluiu", "escola-teste", {
-        "acao": "declaracao", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"],
-        "passo": 3, "estado": "feito",
-    })
+    ao_sandbox_avaliacao_atualizada(avaliacao())
     assert lancamentos.count() == 1
 
 
@@ -115,18 +128,19 @@ def test_corrigir_e_declarar_de_novo_nao_duplica_bonus(monkeypatch):
     monkeypatch.setattr(motor, "relay_apos_commit", lambda: None)
     bonus_faixas.configurar("escola-teste")
     preparar_ate()
-    ao_sandbox_trabalho_concluido(envelope())
+    ao_sandbox_avaliacao_atualizada(avaliacao())
     for estado in ("corrigir", "feito"):
-        jornada.salvar("aluno-concluiu", "escola-teste", {
-            "acao": "declaracao", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"],
-            "passo": 3, "estado": estado,
-        })
+        with pytest.raises(ValueError, match="análise"):
+            jornada.salvar("aluno-concluiu", "escola-teste", {
+                "acao": "declaracao", "revisao": jornada.situacao("aluno-concluiu", "escola-teste")["revisao"],
+                "passo": 3, "estado": estado,
+            })
     assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("evento,ordem,pontos", [
-    ("encomendas.sandbox-trabalho-concluido", 3, 10000),
+    ("encomendas.sandbox-avaliacao-atualizada", 3, 10000),
     ("encomendas.fila-trabalho-concluido", 4, 15000),
 ])
 def test_consumidor_recebe_conclusao_e_nao_duplica_por_outro_trabalho(monkeypatch, evento, ordem, pontos):
@@ -137,7 +151,7 @@ def test_consumidor_recebe_conclusao_e_nao_duplica_por_outro_trabalho(monkeypatc
     bonus_faixas.configurar("escola-teste")
     preparar_ate(passo=ordem - 1)
     assert "eventos." + evento in STREAMS
-    e = {**envelope(), "event": evento}
+    e = avaliacao() if ordem == 3 else {**envelope(), "event": evento}
     processar_envelope(e, HANDLERS)
     processar_envelope(e, HANDLERS)
     processar_envelope({**e, "event_id": str(uuid4())}, HANDLERS)

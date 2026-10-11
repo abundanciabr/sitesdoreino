@@ -66,7 +66,7 @@ def test_aluno_sem_jornada_tem_branca_sem_meta_simulada_ou_escrita(client):
     dados = resposta.json()
     assert set(dados) == {
         "pessoa_id", "site_id", "atual_ordem", "etapas", "total_cents",
-        "meta_cents", "meta_escolhida", "consultado_em",
+        "meta_cents", "meta_escolhida", "consultado_em", "avaliacoes_sandbox",
     }
     assert (dados["pessoa_id"], dados["site_id"], dados["atual_ordem"]) == (
         "aluna-v4", SITE, 1,

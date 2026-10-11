@@ -1793,6 +1793,43 @@ class JornadaPessoal(models.Model):
         constraints = [models.UniqueConstraint(fields=["pessoa", "site_id"], name="uma_jornada_pessoal_por_site")]
 
 
+class AvaliacaoSandboxProjetada(models.Model):
+    """Última avaliação recebida por trabalho; a análise original mora em encomendas."""
+
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    trabalho_id = models.CharField(max_length=64)
+    entrega_id = models.CharField(max_length=64, blank=True, default="")
+    analise_id = models.CharField(max_length=64, blank=True, default="")
+    event_id = models.CharField(max_length=64)
+    versao = models.PositiveIntegerField()
+    entrega_criada_em = models.DateTimeField()
+    origem_atualizada_em = models.DateTimeField()
+    ocorrido_em = models.DateTimeField()
+    atual = models.BooleanField(default=False)
+    estado = models.CharField(max_length=20)
+    resultado = models.CharField(max_length=24, blank=True, default="")
+    explicacao = models.TextField(blank=True, default="")
+    justificativa = models.TextField(blank=True, default="")
+    proxima_acao = models.TextField(blank=True, default="")
+    url = models.CharField(max_length=500, blank=True, default="")
+    historico = models.BooleanField(default=False)
+    anterior_reinicio = models.BooleanField(default=False)
+    reconhecida_em = models.DateTimeField(null=True, blank=True)
+    reconhecida_versao = models.PositiveIntegerField(null=True, blank=True)
+    reconhecida_entrega_id = models.CharField(max_length=64, blank=True, default="")
+    reconhecida_analise_id = models.CharField(max_length=64, blank=True, default="")
+    criada_em = models.DateTimeField(auto_now_add=True)
+    atualizada_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["pessoa", "site_id", "trabalho_id"],
+            name="uma_avaliacao_sandbox_por_trabalho",
+        )]
+        indexes = [models.Index(fields=["pessoa", "site_id"])]
+
+
 class RecebimentoDeclarado(models.Model):
     """Recebimento informado pelo aluno. Correção preserva o registro e a história."""
 
