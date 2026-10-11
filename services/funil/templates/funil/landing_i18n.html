@@ -59,6 +59,9 @@
      pelo middleware — o endereço público mora em apps/core/enderecos.py, e é
      lá que ele muda no dia em que a Caixa mudar de casa. -->
 {% block titulo %}{% t "landing.titulo" %}{% endblock %}
+{% block head_extra %}
+  <link rel="stylesheet" href="/cursos/static/cursos/suporte.css?v=20261011-expediente1">
+{% endblock %}
 {% block estilo %}
     .cta { display: block; width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; }
     .novidades { font-size: 1.05rem; }
@@ -218,4 +221,8 @@
   <a class="cta" href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "landing.entrar" %}</a>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block script_extra %}
+  <script defer src="/cursos/static/cursos/suporte.js?v=20261011-escala-expediente" data-curso="" data-aula=""></script>
 {% endblock %}
