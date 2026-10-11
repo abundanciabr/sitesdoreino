@@ -68,6 +68,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   async function leaveInicio() {
     if (forms.motivo) return leaveMotivo();
     if (busy) return;
+    if (forms.compromisso && dirty.has(forms.compromisso.id) && !await save(forms.compromisso, 'inicio-compromisso', {compromisso_etapa: String(Math.min(compromissoStep, 2))})) return;
     if (embedded) host.close();
     else navigate('/trilha/');
   }
@@ -186,7 +187,10 @@ window.iniciarJornada = (scope = document, host = {}) => {
         forms.plano.elements[key].value = data.inicio[key] || '';
       });
     }
-    if (forms.compromisso) showCompromissoStep(data.inicio.compromisso_curso_em ? 3 : data.inicio.compromisso_etapa === 2 ? 2 : 1);
+    if (forms.compromisso) {
+      root.querySelectorAll('input[name="compromisso_checks"]').forEach(check => { check.checked = (data.inicio.compromisso_checks || []).includes(check.value); });
+      showCompromissoStep(data.inicio.compromisso_curso_em ? 3 : data.inicio.compromisso_etapa === 2 ? 2 : 1);
+    }
   }
   async function request(body) {
     const response = await fetch(root.dataset.api, {method: body ? 'POST' : 'GET', credentials: 'same-origin', cache: 'no-store', headers: body ? {'X-CSRFToken': data.csrf} : {}, ...(body ? {body} : {})});
@@ -247,6 +251,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
   async function save(form, action, extras = {}) {
     if (busy || !data) return false;
     const body = new FormData(form);
+    if (form === forms.compromisso) body.set('compromisso_checks', JSON.stringify(Array.from(root.querySelectorAll('input[name="compromisso_checks"]:checked'), check => check.value)));
     if (form === forms.motivo && $('sonhos-opcoes')) {
       body.set('motivo_sonhos', JSON.stringify(Array.from(root.querySelectorAll('input[name="motivo_sonhos"]:checked'), check => check.value)));
     }
@@ -269,7 +274,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
     } finally { setBusy(false); }
   }
   root.querySelectorAll('a').forEach(link => link.addEventListener('click', event => { if (busy) { event.preventDefault(); announce('Seu registro está sendo guardado. Aguarde um instante.'); } }));
-  Object.values(forms).filter(Boolean).forEach(form => form.addEventListener('input', () => { dirty.add(form.id); announce(forms.motivo ? `Você pode continuar ou usar “${motivoReturnLabel()}” para guardar e voltar à faixa.` : 'Há alterações nesta tela. Use o botão de salvar para retomá-las depois.'); }));
+  Object.values(forms).filter(Boolean).forEach(form => form.addEventListener('input', () => { dirty.add(form.id); announce(forms.motivo ? `Você pode continuar ou usar “${motivoReturnLabel()}” para guardar e voltar à faixa.` : forms.compromisso ? 'Suas marcações serão guardadas ao continuar, voltar ou fechar o painel.' : 'Há alterações nesta tela. Use o botão de salvar para retomá-las depois.'); }));
   forms.motivo?.addEventListener('submit', async event => {
     event.preventDefault();
     if (busy) return;

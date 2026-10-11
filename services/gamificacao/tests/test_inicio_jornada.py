@@ -367,3 +367,20 @@ def test_compromisso_curso_conflito_nao_confirma_nem_concede_xp(client):
     assert r.status_code == 400
     assert not abrir(client).json()['inicio'].get('compromisso_curso_em')
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
+
+
+def test_checks_retomam_preservam_cliente_antigo_e_revisao_nao_duplica_xp(client):
+    guardar(client, 'inicio-motivo', motivo='jogo')
+    r = guardar(client, 'inicio-compromisso', compromisso_etapa='2', compromisso_checks='["desafios", "curso", "curso"]')
+    assert r.status_code == 200 and 'conquista_xp' not in r.json()
+    assert abrir(Client()).json()['inicio']['compromisso_checks'] == ['curso', 'desafios']
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
+    guardar(client, 'inicio-compromisso', compromisso_etapa='1')
+    assert abrir(client).json()['inicio']['compromisso_checks'] == ['curso', 'desafios']
+    r = guardar(client, 'inicio-compromisso', assumir='sim', compromisso_checks='["curso", "aulas", "desafios", "motivo"]')
+    assert r.json()['conquista_xp'] == 100
+    guardar(client, 'inicio-compromisso', compromisso_checks='[]', compromisso_etapa='2')
+    inicio = abrir(client).json()['inicio']
+    assert inicio['compromisso_checks'] == [] and inicio['etapas'][2]['liberada']
+    assert guardar(client, 'inicio-compromisso', assumir='sim').json()['conquista_xp'] == 0
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 200
