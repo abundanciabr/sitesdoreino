@@ -237,6 +237,7 @@ def test_migracao_recomeca_branca_sem_perder_legado_e_defaults_servem_codigo_ant
     anterior = [("gamificacao", "0016_inicio_da_jornada")]
     atual = [("gamificacao", "0017_confirmacoes_sequenciais")]
     executor = MigrationExecutor(connection)
+    ultimo = executor.loader.graph.leaf_nodes()
     try:
         executor.migrate(anterior)
         antigo = executor.loader.project_state(anterior).apps
@@ -250,10 +251,14 @@ def test_migracao_recomeca_branca_sem_perder_legado_e_defaults_servem_codigo_ant
         )
         executor = MigrationExecutor(connection)
         executor.migrate(atual)
-        nova = JornadaPessoal.objects.get(pk=jornada.pk)
+        apos_sequencia = executor.loader.project_state(atual).apps
+        nova = apos_sequencia.get_model('gamificacao', 'JornadaPessoal').objects.get(pk=jornada.pk)
         assert nova.confirmacoes_sequenciais == {}
         assert nova.declaracoes == {"2": "legado", "3": "legado", "4": "legado"}
         assert nova.inicio["sonho"] == "SONHO-ANTIGO"
+        # A leitura usa o código atual. O reinício 0018 é de outro SITE_ID
+        # neste teste; o legado deste site continua intacto.
+        MigrationExecutor(connection).migrate(ultimo)
         assert situacao("aluna-migracao", "site-migracao")["atual"]["ordem"] == 1
 
         # Modelo 0016 não conhece o novo campo; o banco fornece o default.
@@ -261,4 +266,4 @@ def test_migracao_recomeca_branca_sem_perder_legado_e_defaults_servem_codigo_ant
         criado = JornadaAntiga.objects.create(pessoa=outra, site_id="site-migracao", declaracoes={"3": "legado"})
         assert JornadaPessoal.objects.get(pk=criado.pk).confirmacoes_sequenciais == {}
     finally:
-        MigrationExecutor(connection).migrate(atual)
+        MigrationExecutor(connection).migrate(ultimo)

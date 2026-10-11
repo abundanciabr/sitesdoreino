@@ -1757,6 +1757,7 @@ class RendimentoRealLivro(models.Model):
     ciclo = models.PositiveIntegerField(default=1)
     ocorrido_em = models.DateTimeField()
     historico = models.BooleanField(default=False)
+    fora_da_progressao = models.BooleanField(default=False, db_default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -1801,6 +1802,7 @@ class RecebimentoDeclarado(models.Model):
     valor_cents = models.PositiveIntegerField()
     origem = models.CharField(max_length=8)
     estado = models.CharField(max_length=14, default="pendente")
+    fora_da_progressao = models.BooleanField(default=False, db_default=False)
     print_bytes = models.BinaryField(null=True, blank=True)
     print_sha256 = models.CharField(max_length=64, blank=True, default="")
     moeda_original = models.CharField(max_length=3, default="BRL")
@@ -1894,3 +1896,18 @@ class AnexoDaJornada(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['pessoa', 'site_id', 'passo', 'sha256'], name='anexo_jornada_unico')]
+
+
+class BackupDoReinicioDasFaixas(models.Model):
+    """Cópia privada da limpeza autorizada em 11/10/2026, sem download público."""
+
+    site_id = id_do_site()
+    chave = models.CharField(max_length=64)
+    conteudo = models.BinaryField()
+    sha256 = models.CharField(max_length=64)
+    contagens = models.JSONField(default=dict)
+    criado_em = models.DateTimeField()
+    aplicado_em = models.DateTimeField(null=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['site_id', 'chave'], name='um_backup_reinicio_faixas_por_site')]

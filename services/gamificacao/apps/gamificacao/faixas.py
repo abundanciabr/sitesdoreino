@@ -171,7 +171,9 @@ def total_real_cents(pessoa_id: str, site_id: str) -> int:
     vira crédito para outro rendimento.
     """
     por_ciclo = (
-        RendimentoRealLivro.objects.filter(pessoa_id=pessoa_id, site_id=site_id)
+        RendimentoRealLivro.objects.filter(
+            pessoa_id=pessoa_id, site_id=site_id, fora_da_progressao=False,
+        )
         .values("rendimento_id", "ciclo")
         .annotate(t=Sum("valor_cents"))
     )
@@ -218,21 +220,31 @@ def registrar_fato(
 def registrar_rendimento(
     pessoa_id: str, site_id: str, *, event_id: str, rendimento_id: str,
     valor_cents: int, quando, historico: bool, ciclo: int = 1,
+    fora_da_progressao: bool = False,
 ) -> bool:
     """Lança no livro (valor com sinal) e reavalia. False se o event_id já estava lá."""
     if not valor_cents:
         return False
     with transaction.atomic():
         pessoa = _pessoa(pessoa_id)
+        # Um estorno posterior do mesmo rendimento arquivado também fica fora
+        # da progressão, embora permaneça no livro financeiro completo.
+        fora_da_progressao = fora_da_progressao or RendimentoRealLivro.objects.filter(
+            pessoa=pessoa, site_id=site_id, rendimento_id=str(rendimento_id),
+            fora_da_progressao=True,
+        ).exists()
         _, criado = RendimentoRealLivro.objects.get_or_create(
             event_id=str(event_id),
             defaults={
                 "pessoa": pessoa, "site_id": site_id, "rendimento_id": str(rendimento_id),
-                "valor_cents": int(valor_cents), "ciclo": max(int(ciclo), 1), "ocorrido_em": quando, "historico": historico,
+                "valor_cents": int(valor_cents), "ciclo": max(int(ciclo), 1), "ocorrido_em": quando,
+                "historico": historico, "fora_da_progressao": fora_da_progressao,
             },
         )
         if not criado:
             return False
+        if fora_da_progressao:
+            return True
         _garantir_branca(pessoa, site_id, event_id, historico, quando)
         _reavaliar_dinheiro(pessoa, site_id, str(event_id), historico, quando)
         return True
@@ -352,6 +364,9 @@ def _tratar_fato(fato: str, campo_id: str):
         if lido is None:
             return
         pessoa_id, site_id, event_id, quando, historico, _ = lido
+        from .reinicio import evento_anterior_ao_reinicio
+        if evento_anterior_ao_reinicio(site_id, envelope):
+            return
         registrar_fato(pessoa_id, site_id, fato, event_id=event_id, quando=quando, historico=historico)
 
     return handler
@@ -374,6 +389,7 @@ def ao_rendimento_real_confirmado(envelope: dict) -> None:
     if lido is None:
         return
     pessoa_id, site_id, event_id, quando, historico, data = lido
+    from .reinicio import evento_anterior_ao_reinicio
     valor = int(data["valor_cents"])
     if valor <= 0:
         logger.warning("faixas: rendimento confirmado %s com valor não positivo", event_id)
@@ -381,6 +397,7 @@ def ao_rendimento_real_confirmado(envelope: dict) -> None:
     registrar_rendimento(
         pessoa_id, site_id, event_id=event_id, rendimento_id=str(data["rendimento_id"]),
         valor_cents=valor, quando=quando, historico=historico, ciclo=_ciclo(data),
+        fora_da_progressao=evento_anterior_ao_reinicio(site_id, envelope),
     )
 
 
@@ -389,6 +406,7 @@ def ao_rendimento_real_revertido(envelope: dict) -> None:
     if lido is None:
         return
     pessoa_id, site_id, event_id, quando, historico, data = lido
+    from .reinicio import evento_anterior_ao_reinicio
     valor = int(data["valor_cents"])
     if valor <= 0:
         logger.warning("faixas: reversão %s com valor não positivo", event_id)
@@ -396,4 +414,5 @@ def ao_rendimento_real_revertido(envelope: dict) -> None:
     registrar_rendimento(
         pessoa_id, site_id, event_id=event_id, rendimento_id=str(data["rendimento_id"]),
         valor_cents=-valor, quando=quando, historico=historico, ciclo=_ciclo(data),
+        fora_da_progressao=evento_anterior_ao_reinicio(site_id, envelope),
     )

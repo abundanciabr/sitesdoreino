@@ -144,7 +144,9 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
     requisitos = requisitos_branca(jornada, tem_anexo)
     inicio_concluido = etapas_inicio(pessoa_id, site_id, jornada, tem_anexo)[3]['concluida']
     recebimentos = list(
-        RecebimentoDeclarado.objects.filter(pessoa_id=pessoa_id, site_id=site_id)
+        RecebimentoDeclarado.objects.filter(
+            pessoa_id=pessoa_id, site_id=site_id, fora_da_progressao=False,
+        )
         .defer("print_bytes")
         .order_by("-recebido_em", "-id")
     )
@@ -329,7 +331,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     "Abra novamente a página para registrar o recebimento."
                 ) from None
             if RecebimentoDeclarado.objects.filter(
-                pessoa_id=pessoa_id, site_id=site_id, chave=chave
+                pessoa_id=pessoa_id, site_id=site_id, chave=chave,
             ).exists():
                 return antes, antes, False
         if revisao != j.revisao:
@@ -410,7 +412,8 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
             if valor and acao == "recebimento":
                 if (
                     RecebimentoDeclarado.objects.filter(
-                        pessoa_id=pessoa_id, site_id=site_id
+                        pessoa_id=pessoa_id, site_id=site_id,
+                        fora_da_progressao=False,
                     ).count()
                     >= prints.MAX_RECEBIMENTOS_POR_PESSOA
                 ):
@@ -419,7 +422,8 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     )
             elif valor and acao == "correcao" and arquivo is not None:
                 alvo = RecebimentoDeclarado.objects.filter(
-                    pessoa_id=pessoa_id, site_id=site_id, pk=dados.get("recebimento")
+                    pessoa_id=pessoa_id, site_id=site_id, pk=dados.get("recebimento"),
+                    fora_da_progressao=False,
                 ).first()
                 if (
                     alvo
@@ -475,7 +479,8 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 }
             else:
                 r = RecebimentoDeclarado.objects.filter(
-                    pessoa_id=pessoa_id, site_id=site_id, pk=dados.get("recebimento")
+                    pessoa_id=pessoa_id, site_id=site_id, pk=dados.get("recebimento"),
+                    fora_da_progressao=False,
                 ).first()
                 if r is None:
                     raise ValueError("Recebimento não encontrado na sua jornada.")

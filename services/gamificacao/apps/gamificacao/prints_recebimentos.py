@@ -204,7 +204,7 @@ def processar(recebimento_id):
     with transaction.atomic():
         r = RecebimentoDeclarado.objects.select_for_update().get(pk=recebimento_id)
         agora = timezone.now()
-        if r.estado not in ("pendente", "falha", "analisando") or (
+        if r.fora_da_progressao or r.estado not in ("pendente", "falha", "analisando") or (
             r.tentar_em and r.tentar_em > agora
         ):
             return False
@@ -238,7 +238,7 @@ def processar(recebimento_id):
             pessoa_id=r.pessoa_id, site_id=r.site_id
         )
         atual = RecebimentoDeclarado.objects.select_for_update().get(pk=r.pk)
-        if atual.revisao != revisao or atual.estado != "analisando":
+        if atual.fora_da_progressao or atual.revisao != revisao or atual.estado != "analisando":
             return False  # Um novo print/correção substituiu a versão que estava em leitura.
         antes = situacao(r.pessoa_id, r.site_id)
         # Lido antes do registro desta leitura, que entraria na conta do máximo.
@@ -275,6 +275,7 @@ def processar(recebimento_id):
                     site_id=r.site_id,
                     estado="confirmado",
                     print_sha256=atual.print_sha256,
+                    fora_da_progressao=False,
                 )
                 .exclude(pk=r.pk)
                 .exists()
@@ -335,7 +336,7 @@ def processar(recebimento_id):
 
 def rodada():
     agora = timezone.now()
-    consulta = RecebimentoDeclarado.objects.filter(
+    consulta = RecebimentoDeclarado.objects.filter(fora_da_progressao=False).filter(
         Q(estado__in=["pendente", "falha"])
         | Q(estado="analisando", analise_iniciada_em__lte=agora - timedelta(minutes=3))
     )
