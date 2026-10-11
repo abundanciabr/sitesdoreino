@@ -108,24 +108,57 @@ test('consulta de faixa passada mostra apenas seus criterios e nao a meta da atu
   assert.equal(checklist.itens[0].id,'criterio-2');
 });
 
-test('branca mostra quatro requisitos com os tres destinos e envio separado, inclusive depois da conquista',async()=>{
-  for(const current of [1,3]){
-    const data=withChecklist();data.atual_ordem=current;
-    data.etapas.forEach(step=>step.alcancada=step.ordem<=current);
+function mountPanel(context){
+  context.document.createElement=tag=>({tag,children:[],dataset:{},style:{},attributes:{},
+    setAttribute(key,value){this.attributes[key]=value;},
+    insertAdjacentHTML(position,value){this.innerHTML=(this.innerHTML||'')+value;},
+    append(...children){this.children.push(...children);}});
+}
+function descendants(node){return [node,...(node.children||[]).flatMap(descendants)];}
+
+test('branca libera somente a proxima tarefa e revisao das concluidas nos estados de zero a quatro',async()=>{
+  for(let done=0;done<=4;done++){
+    const data=withChecklist();data.atual_ordem=done===4?2:1;
+    data.etapas.forEach(step=>step.alcancada=step.ordem<=data.atual_ordem);
     const urls=['/conquistas/inicio/motivo/','/conquistas/inicio/objetivo/','/conquistas/inicio/item/','/conquistas/inicio/envio/'];
-    data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu objetivo e compromisso','Meu primeiro item 3D','Enviar meu 3D'][i],estado:i===0?'concluido':'pendente',detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
+    data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu objetivo e compromisso','Meu primeiro item 3D','Enviar meu 3D'][i],estado:i<done?'concluido':i===done?'andamento':'pendente',bloqueado:i>done,detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
     const r=await load({ok:true,status:200,json:async()=>data});
     const checklist=r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades);
     assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2','item-2','envio-2']);
     assert.deepEqual(Array.from(checklist.itens,item=>item.acao.url),urls);
     // Executa o gerador dos botões com nós mínimos, sem substituir sua lógica.
-    r.context.document.createElement=tag=>({tag,children:[],dataset:{},setAttribute(){},append(...children){this.children.push(...children);}});
+    mountPanel(r.context);
     const block=r.context.whiteBeltActions(r.payload.progresso);
     const list=block.children.find(node=>node.tag==='ol');
     assert.equal(list.children.length,4);
-    assert.deepEqual(list.children.map(row=>row.children[0].href),urls);
-    assert.equal(list.children[0].children[0].dataset.estado,'concluido');
-    assert.match(block.children.find(node=>node.className==='white-belt-count').textContent,/1 de 4/);
+    assert.deepEqual(descendants(list).filter(node=>node.tag==='a').map(node=>node.href),urls.slice(0,Math.min(done+1,4)));
+    assert.equal(descendants(list).filter(node=>node.className==='primary checklist-action').length,done===4?0:1);
+    list.children.forEach((row,i)=>{
+      if(i>done){assert.equal(row.attributes['aria-disabled'],'true');assert.equal(descendants(row).filter(node=>node.href).length,0);assert.match(row.children[2].innerHTML,/#lock/);assert.equal(row.children[2].textContent,'Pendente');}
+    });
+    assert.equal(descendants(block).find(node=>node.className==='checklist-percent').textContent,`${done*25}%`);
+    assert.equal(descendants(block).find(node=>node.attributes?.role==='progressbar').attributes['aria-valuenow'],String(done*25));
+    assert.ok(block.children.indexOf(block.children.find(node=>node.className==='checklist-completion'))<block.children.indexOf(list));
+  }
+});
+
+test('registros antigos nao liberam tarefas posteriores quando falta um passo anterior',async()=>{
+  const data=withChecklist();
+  data.etapas[1].checklist.itens=Array.from({length:4},(_,i)=>({id:`passo-${i}`,titulo:`Passo ${i+1}`,estado:i===0?'pendente':'concluido',detalhe:'Legado',acao:{rotulo:'Abrir',url:'/conquistas/inicio/item/'}}));
+  const r=await load({ok:true,status:200,json:async()=>data});
+  const details=r.context.journeyChecklist(r.payload.progresso,0);
+  assert.deepEqual(Array.from(details.itens,item=>item.bloqueado),[false,true,true,true]);
+  assert.deepEqual(Array.from(details.itens,item=>item.estado),['pendente','pendente','pendente','pendente']);
+});
+
+test('o mesmo painel atende todas as faixas com numeros reais e sem criar tarefas',async()=>{
+  const r=await load({ok:true,status:200,json:async()=>withChecklist()});mountPanel(r.context);
+  for(let i=1;i<=13;i++){
+    const details={disponivel:true,itens:[{titulo:'Prática registrada',estado:'concluido',detalhe:'Registro real'},{titulo:'Prática em curso',estado:'andamento',detalhe:'Trabalho salvo',acao:{rotulo:'Continuar',url:'/encomendas/sandbox/'}}],observacao:''};
+    const block=r.context.createProgressPanel(details,{name:String(i),number:String(i).padStart(2,'0'),modal:true});
+    assert.equal(block.children.find(node=>node.tag==='ol').children.length,2);
+    assert.equal(descendants(block).find(node=>node.className==='checklist-percent').textContent,'50%');
+    assert.equal(descendants(block).find(node=>node.id==='dialog-title').textContent,'Um passo de cada vez.');
   }
 });
 test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=>{

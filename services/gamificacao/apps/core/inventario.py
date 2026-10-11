@@ -100,13 +100,21 @@ def inventario(request):
                 jornada = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa, site_id=site)
                 from apps.gamificacao.bonus_inicio import recebido, recebido_faixa_amarela, conceder, comprovante
                 faixa_antes = recebido_faixa_amarela(pessoa, site) if acao in ('inicio-envio', 'declaracao') else 0
+                tarefa_do_post = (1 if acao == 'inicio-motivo' else
+                                  2 if acao == 'inicio-plano' else
+                                  3 if acao == 'inicio-item' else
+                                  4 if acao == 'inicio-envio' or acao == 'declaracao' and passo == 2 else None)
+                tarefa_antes = recebido(pessoa, site, tarefa_do_post) if tarefa_do_post else 0
                 if acao in ('anexo', 'inicio-envio') and str(jornada.revisao) != request.POST.get('revisao'):
                     raise ValueError('Seu registro mudou em outra aba. Suas respostas continuam na tela; confira a versão salva antes de tentar novamente.')
                 if acao in ('inicio-motivo', 'inicio-plano', 'inicio-item'):
                     from apps.gamificacao.inicio import salvar_inicio
                     salvar_inicio(jornada, request.POST)
+                if acao == 'inicio-envio' or acao == 'anexo' and passo == 2:
+                    from apps.gamificacao.inicio import requisitos_branca, etapas_inicio
+                    if not etapas_inicio(pessoa, site, jornada)[3]['liberada']:
+                        raise ValueError('Conclua as três tarefas anteriores e receba seus XP antes de enviar.')
                 if acao == 'inicio-envio':
-                    from apps.gamificacao.inicio import requisitos_branca
                     requisitos = requisitos_branca(jornada, True)
                     if not all(requisitos.values()):
                         raise ValueError('Conclua seu motivo, objetivo, compromisso e primeiro item antes de enviar.')
@@ -158,7 +166,9 @@ def inventario(request):
                 )
                 premio = None
                 if etapa_concluida:
-                    novo_tarefa = conceder(pessoa, site, etapa_concluida)
+                    if etapa_concluida != 4:
+                        conceder(pessoa, site, etapa_concluida)
+                    novo_tarefa = recebido(pessoa, site, etapa_concluida) - tarefa_antes
                     novo_faixa = (recebido_faixa_amarela(pessoa, site) - faixa_antes
                                   if etapa_concluida == 4 else 0)
                     url_conquista = reverse('inicio-conquista', args=[etapa_concluida])

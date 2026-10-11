@@ -35,9 +35,13 @@ function render(){
 
   const first=data.etapas.find(e=>e.ordem===2), hasFile=data.anexos.some(a=>a.passo===2);
   const start=data.inicio||{};
-  const requirements={motivo:!!start.motivo&&!start.motivo_rascunho,plano:!!(start.objetivo&&start.compromisso&&start.confirmado_em),item:!!start.item_pronto,envio:hasFile&&first.alcancada};
-  Object.entries(requirements).forEach(([id,done])=>{const node=q('#branca-'+id);node.textContent=done?'Concluído · pode revisar':'Para fazer';node.parentElement.dataset.estado=done?'concluido':'pendente';});
-  q('#branca-resumo').textContent=first.alcancada?'Os quatro requisitos estão concluídos. Você pode revisar suas respostas e continuar guardando seus trabalhos.':`${Object.values(requirements).filter(Boolean).length} de 4 requisitos concluídos. Complete os quatro para alcançar a faixa amarela. Seus trabalhos anteriores continuam guardados.`;
+  const requirements=inventoryStartSteps(start);
+  requirements.forEach(step=>{const node=q('#branca-'+step.id),link=node.parentElement;
+    node.textContent=step.done?'Concluído · pode revisar':step.blocked?'🔒 Pendente':'Disponível';
+    link.dataset.estado=step.done?'concluido':'pendente';link.setAttribute('aria-disabled',String(step.blocked));
+    if(step.blocked)link.removeAttribute('href');else link.href=step.url;
+  });
+  q('#branca-resumo').textContent=`${requirements.filter(step=>step.done).length} de 4 requisitos concluídos. Conclua uma tarefa, receba seus XP e volte à faixa para o próximo passo. Seus trabalhos anteriores continuam guardados.`;
   q('.save-file').hidden=first.alcancada;
   q('#first-state').textContent=first.alcancada?'CONCLUÍDO':hasFile?'ARQUIVO GUARDADO':'PENDENTE';
   q('#first-file').required=first.alcancada||!hasFile;
@@ -71,6 +75,16 @@ function inventoryStepsFor(value,selected){
   if(!own?.alcancada)return [];
   return selected===value.atual_ordem&&selected<13?[selected,selected+1]:[selected];
 }
+function inventoryStartSteps(start){
+  let previousDone=true;
+  return ['motivo','plano','item','envio'].map((id,index)=>{
+    const saved=Array.isArray(start.etapas)?start.etapas.find(step=>step.etapa===index+1):null;
+    const blocked=!previousDone||!saved||saved.bloqueada!==false||saved.liberada!==true;
+    const done=!blocked&&saved?.concluida===true;
+    previousDone=done;
+    return {id,blocked,done,url:`/conquistas/inicio/${id==='plano'?'objetivo':id}/`};
+  });
+}
 function renderBelts(shownSteps){
   const colors=['#e2e2e7','#e9c34b','#6299de','#dc6263','#65af88','#ae8b73'];
   const timeline=q('#inventory-timeline'),dock=q('#inventory-dock');timeline.replaceChildren();dock.replaceChildren();
@@ -95,7 +109,7 @@ function renderBelts(shownSteps){
       const next=data.etapas.find(e=>e.ordem===step.ordem+1);
       if(step.ordem===data.atual_ordem&&next){const hint=el('p',`Próximo marco: Faixa ${next.nome}`);hint.className='next-milestone';body.append(hint);}
       if(step.ordem===1)body.append(q('#branca-requisitos'));
-      if(shownSteps.includes(2))body.append(q('#primeiro-item'));
+      if(shownSteps.includes(2)&&step.ordem!==1)body.append(q('#primeiro-item'));
       if(shownSteps.some(n=>n===3||n===4))body.append(q('#minhas-entregas'));
       if(shownSteps.some(n=>n>=6)&&step.ordem<13)body.append(q('#minha-meta'));
       if(shownSteps.some(n=>n>=5)&&step.ordem<13)body.append(q('#recebimentos'));

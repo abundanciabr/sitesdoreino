@@ -68,12 +68,10 @@ belts.forEach((belt,index)=>{
     <span class="swatch" aria-hidden="true">${number(index)}</span><span class="stage-text"><span class="stage-name">Faixa ${belt.name}</span><span class="stage-category">${belt.category}</span></span><span class="stage-status">${state(index)}</span>${locked?icons.lock:icons.chevron}
     </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}" inert>${locked?'':`<div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div>`}</div>`;
   if(!locked){
-    card.querySelector('.focus-copy p').textContent=belt.summary;
-    if(index===0){
-      card.querySelector('.detail-button').replaceWith(whiteBeltActions(progress));
-    }else{
-      card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
-    }
+    const inner=card.querySelector('.expanded-inner');
+    inner.replaceChildren(beltPanel(index));
+    const enlarge=document.createElement('button');enlarge.type='button';enlarge.className='detail-button checklist-back';enlarge.textContent='Ampliar meu progresso';
+    enlarge.addEventListener('click',()=>openDetails(index));inner.append(enlarge);
   }
   card.querySelector('.stage-trigger').addEventListener('click',()=>select(index,false));
   stage.append(card);timeline.append(stage);stages.push(stage);
@@ -96,51 +94,15 @@ function select(index,scroll){
   if(scroll) stages[selected].scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
 }
 function showChecklist(index){
-  const own=progress.etapas[index];
-  const target=index===current?progress.etapas[index+1]:null;
-  const details=journeyChecklist(progress,index,payload.atividades);
-  document.querySelector('#dialog-eyebrow').textContent=`FAIXA ${belts[index].name.toLocaleUpperCase('pt-BR')} · SEU PROGRESSO`;
-  document.querySelector('#dialog-title').textContent=target?'Seu próximo movimento.':'Sua conquista, registrada.';
-  document.querySelector('#dialog-summary').textContent=target?`Próximo marco: Faixa ${belts[index+1].name}`:own.conquista;
-  const tasks=document.querySelector('#task-list');tasks.replaceChildren();
-  const counts={concluido:0,andamento:0,pendente:0};
-  details.itens.forEach(item=>counts[item.estado]++);
-  const focus=details.itens.find(item=>item.estado==='andamento')||details.itens.find(item=>item.estado==='pendente');
-  details.itens.forEach(item=>{
-    const task=document.createElement('li');task.className=`checklist-step ${item.estado}${item===focus?' is-focus':''}`;
-    const mark=document.createElement('span');mark.className='checklist-node';mark.setAttribute('aria-hidden','true');
-    if(item.estado==='concluido')mark.innerHTML=icons.check;
-    const content=document.createElement('div');content.className='checklist-copy';
-    const status=document.createElement('span');status.className='checklist-status';
-    status.textContent={concluido:'CONCLUÍDO',andamento:'EM ANDAMENTO',pendente:item===focus?'PRÓXIMO PASSO · PENDENTE':'PENDENTE'}[item.estado];
-    const heading=document.createElement('h3');heading.textContent=item.titulo;
-    const evidence=document.createElement('p');evidence.textContent=item.detalhe;
-    content.append(status,heading,evidence);
-    if(item===focus){
-      const art=document.createElement('div');art.className='checklist-art';art.setAttribute('aria-hidden','true');
-      art.innerHTML='<svg viewBox="0 0 120 130"><path d="M60 8 110 35 110 93 60 122 10 93 10 35Z M10 35 60 65 110 35 M60 65V122 M35 22 85 51V108 M85 22 35 51V108 M10 64 60 94 110 64"/></svg>';
-      content.append(art);
-    }
-    if(item.acao&&(item===focus||index===0)){
-        const action=document.createElement('a');action.className='primary checklist-action';action.href=item.acao.url;
-        action.append(document.createTextNode(item.acao.rotulo));action.insertAdjacentHTML('beforeend',icons.arrow);content.append(action);
-    }
-    task.append(mark,content);tasks.append(task);
-  });
-  document.querySelector('#checklist-done').textContent=details.disponivel?counts.concluido:'—';
-  document.querySelector('#checklist-active').textContent=details.disponivel?counts.andamento:'—';
-  document.querySelector('#checklist-pending').textContent=details.disponivel?counts.pendente:'—';
-  document.querySelector('#checklist-done-label').textContent=counts.concluido===1?'concluída':'concluídas';
-  document.querySelector('#checklist-pending-label').textContent=counts.pendente===1?'pendente':'pendentes';
-  document.querySelector('#checklist-observation').textContent=details.observacao;
-  const total=details.itens.length;
-  const percent=total?Math.round(counts.concluido*100/total):0;
-  document.querySelector('#checklist-completion').hidden=!details.disponivel||!total;
-  document.querySelector('#checklist-fill').style.width=`${percent}%`;
-  document.querySelector('.checklist-meter').setAttribute('aria-valuenow',String(percent));
-  document.querySelector('#checklist-fraction').textContent=`${counts.concluido} de ${total} ${total===1?'etapa concluída':'etapas concluídas'}`;
-  document.querySelector('#dialog-note').textContent=index===0?'Quatro requisitos para passar da faixa branca à amarela. Seus registros pessoais continuam privados.':'Atualizado pelos registros da sua jornada. As etapas exibidas não alteram os critérios das faixas.';
+  document.querySelector('#dialog-panel').replaceChildren(beltPanel(index,true));
   document.querySelector('#checklist-updated').textContent=consultedAtLabel(progress.consultado_em);
+}
+function beltPanel(index,modal=false){
+  return createProgressPanel(journeyChecklist(progress,index,payload.atividades),{
+    name:belts[index].name,number:number(index),white:index===0,modal,
+    next:(index===0||index===current)&&belts[index+1]?belts[index+1].name:null,
+    summary:progress.etapas[index].conquista
+  });
 }
 function openDetails(index){
   if(!reached(index))return;
@@ -190,7 +152,8 @@ function validateChecklist(checklist){
   const ids=new Set();
   const itens=checklist.itens.map(item=>{
     if(!item||typeof item.id!=='string'||!item.id||ids.has(item.id)||typeof item.titulo!=='string'
-      ||typeof item.detalhe!=='string'||!['concluido','andamento','pendente'].includes(item.estado))throw new Error('Checklist incompleto');
+      ||typeof item.detalhe!=='string'||!['concluido','andamento','pendente'].includes(item.estado)
+      ||(item.bloqueado!==undefined&&typeof item.bloqueado!=='boolean'))throw new Error('Checklist incompleto');
     ids.add(item.id);return {...item,acao:safeAction(item.acao)};
   });
   return {...checklist,itens};
@@ -227,33 +190,74 @@ function journeyChecklist(progress,index,activities){
     if(personalGoalShown)return false;
     personalGoalShown=true;return true;
   });
-  return {disponivel:true,itens:uniqueItems,observacao:[...notes].join(' ')};
+  // A apresentação também fecha os passos posteriores se uma resposta antiga
+  // ainda não trouxer os bloqueios. O servidor continua sendo a autoridade.
+  let previousDone=true;
+  const ordered=index===0?uniqueItems.map(item=>{
+    const blocked=item.bloqueado===true||!previousDone;
+    const state=blocked?'pendente':item.estado;
+    previousDone=previousDone&&!blocked&&state==='concluido';
+    return {...item,bloqueado:blocked,estado:state};
+  }):uniqueItems;
+  return {disponivel:true,itens:ordered,observacao:[...notes].join(' ')};
 }
 
 function whiteBeltActions(progress){
-  const details=journeyChecklist(progress,0);
-  const group=document.createElement('div');group.className='white-belt-requirements';
-  group.setAttribute('aria-label','Quatro requisitos da faixa branca');
-  const heading=document.createElement('p');heading.className='white-belt-heading';
-  heading.textContent='Quatro requisitos para chegar à faixa amarela';group.append(heading);
-  if(!details.disponivel||details.itens.length!==4||details.itens.some(item=>!item.acao)){
-    const notice=document.createElement('p');notice.textContent='Não foi possível abrir seus requisitos agora. Atualize a página em instantes.';group.append(notice);return group;
-  }
-  const list=document.createElement('ol');list.className='white-belt-actions';
+  return createProgressPanel(journeyChecklist(progress,0),{name:'Branca',number:'01',next:'Amarela',white:true});
+}
+
+function createProgressPanel(details,options){
+  const node=(tag,cls,text)=>{const n=document.createElement(tag);n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+  const icon=name=>`<svg aria-hidden="true"><use href="#${name}"/></svg>`;
+  const panel=node('section','progress-panel');panel.setAttribute('aria-label',`Progresso da faixa ${options.name}`);
+  const header=node('div','progress-heading');
+  const copy=node('div','progress-heading-copy');
+  const title=node(options.modal?'h2':'h3','progress-title','Um passo de cada vez.');if(options.modal)title.id='dialog-title';
+  const summary=node('p','progress-summary',options.next?'Próximo marco: ':options.summary);
+  if(options.next)summary.append(node('strong','',`Faixa ${options.next}`));
+  copy.append(node('span','dialog-eyebrow',`FAIXA ${options.name.toLocaleUpperCase('pt-BR')} · SEU PROGRESSO`),title,summary);
+  const badge=node('div','progress-badge');badge.setAttribute('aria-hidden','true');badge.append(node('span','',options.number));
+  header.append(copy,badge);panel.append(header);
+  const available=details.disponivel&&(!options.white||details.itens.length===4);
+  if(!available){panel.append(node('p','checklist-observation','Não foi possível consultar suas etapas agora. Atualize em instantes.'));return panel;}
+  const total=details.itens.length,done=details.itens.filter(item=>item.estado==='concluido'&&!item.bloqueado).length;
+  const percent=total?Math.round(done*100/total):0;
+  const completion=node('div','checklist-completion');
+  const numbers=node('div','checklist-numbers');const fraction=node('span','checklist-fraction');
+  fraction.append(node('strong','',`${done} de ${total}`),node('span','',` ${total===1?'etapa concluída':'etapas concluídas'}`));
+  numbers.append(fraction,node('span','checklist-percent',`${percent}%`));
+  const meter=node('div','checklist-meter');meter.setAttribute('role','progressbar');meter.setAttribute('aria-label','Etapas concluídas');meter.setAttribute('aria-valuemin','0');meter.setAttribute('aria-valuemax','100');meter.setAttribute('aria-valuenow',String(percent));
+  const fill=node('span','');fill.style.width=`${percent}%`;meter.append(fill);completion.append(numbers,meter);panel.append(completion);
+  const list=node('ol','checklist-path');
+  const focus=details.itens.find(item=>!item.bloqueado&&item.estado==='andamento')||details.itens.find(item=>!item.bloqueado&&item.estado==='pendente');
   details.itens.forEach((item,index)=>{
-    const row=document.createElement('li');
-    const link=document.createElement('a');link.className='primary white-belt-action';link.href=item.acao.url;
-    const title=document.createElement('span');title.textContent=`${index+1}. ${item.titulo}`;
-    const state=document.createElement('small');state.className='white-belt-state';
-    state.textContent={concluido:'Concluído · pode revisar',andamento:'Em andamento',pendente:'Para fazer'}[item.estado];
-    link.dataset.estado=item.estado;link.append(title,state);row.append(link);list.append(row);
-  });
-  group.append(list);
-  const count=document.createElement('p');count.className='white-belt-count';
-  count.textContent=`${details.itens.filter(item=>item.estado==='concluido').length} de 4 requisitos concluídos. Você pode salvar e continuar depois.`;
-  group.append(count);
-  if(details.observacao){const note=document.createElement('p');note.className='white-belt-count';note.textContent=details.observacao;group.append(note);}
-  return group;
+    const blocked=item.bloqueado===true;
+    const state=blocked?'pendente':item.estado;
+    const current=item===focus;
+    const row=node('li',`checklist-step ${state}${current?' is-focus':''}${blocked?' is-locked':''}`);row.dataset.estado=state;row.dataset.bloqueado=String(blocked);
+    if(blocked)row.setAttribute('aria-disabled','true');
+    const mark=node('span','checklist-node');mark.setAttribute('aria-hidden','true');if(state==='concluido')mark.innerHTML=icon('check');
+    const content=node('div','checklist-copy');
+    const heading=node(options.modal?'h3':'h4','',`${options.white?`${index+1}. `:''}${item.titulo}`);
+    const detail=blocked&&options.white?`Disponível após concluir e receber os XP de “${details.itens[index-1]?.titulo||'Meu motivo'}”.`:item.detalhe;
+    content.append(heading,node('p','',detail));
+    if(item.acao&&!blocked){
+      const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
+      action.href=item.acao.url;
+      if(state!=='concluido')action.insertAdjacentHTML('beforeend',icon('arrow'));
+      content.append(action);
+    }
+    const status=node('span','checklist-status',state==='concluido'?'Concluído':current?(state==='andamento'?'Em andamento':'Disponível'):'Pendente');
+    if(blocked)status.insertAdjacentHTML('afterbegin',icon('lock'));
+    row.append(mark,content,status);list.append(row);
+  });panel.append(list);
+  const legend=node('div','checklist-legend');
+  [['concluido','Já fez'],['andamento','Em andamento'],['pendente','Ainda precisa fazer']].forEach(([state,label])=>{
+    const item=node('span',state);const mark=node('i','checklist-node');mark.setAttribute('aria-hidden','true');if(state==='concluido')mark.innerHTML=icon('check');item.append(mark,node('span','',label));legend.append(item);
+  });panel.append(legend);
+  const note=node('p','progress-note',options.white?'Conclua uma tarefa, receba seus XP e volte à faixa para o próximo passo. Suas respostas e seus arquivos continuam privados.':'Seu progresso acompanha os registros da jornada.');panel.append(note);
+  if(details.observacao)panel.append(node('p','checklist-observation',details.observacao));
+  return panel;
 }
 
 function validateProgress(data, context){

@@ -1,16 +1,17 @@
 """Checklist de leitura da jornada, sem criar nem alterar conquistas."""
 
 from apps.gamificacao.models import FaixaDoAluno, RecebimentoDeclarado, AnexoDaJornada, JornadaPessoal
-from apps.gamificacao.inicio import requisitos_branca
+from apps.gamificacao.inicio import requisitos_branca, etapas_inicio
 
 
-def _item(ordem, titulo, estado, detalhe, acao=None, *, sufixo=None):
+def _item(ordem, titulo, estado, detalhe, acao=None, *, sufixo=None, bloqueado=False):
     return {
         "id": f"criterio-{ordem}" if sufixo is None else f"{sufixo}-{ordem}",
         "titulo": titulo,
         "estado": estado,
         "detalhe": detalhe,
         "acao": acao,
+        "bloqueado": bloqueado,
     }
 
 
@@ -28,6 +29,7 @@ def montar_checklists(pessoa_id, site_id, jornada):
     tem_anexo = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).exists()
     registro_inicio = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
     requisitos = requisitos_branca(registro_inicio, tem_anexo)
+    inicio_etapas = etapas_inicio(pessoa_id, site_id, registro_inicio, tem_anexo)
     etapas = {p["ordem"]: p for p in jornada["lista"]}
     faixas = {
         faixa.ordem: faixa
@@ -60,27 +62,37 @@ def montar_checklists(pessoa_id, site_id, jornada):
         elif ordem == 2:
             faixa = faixas.get(2)
             iniciou_item = requisitos['item'] or bool(faixa and faixa.origem == "item" and faixa.estado == "alcancada")
+            titulos_inicio = ("Meu motivo", "Meu objetivo e compromisso", "Meu primeiro item 3D", "Enviar meu 3D")
+            def detalhe_inicio(indice, texto):
+                return (f"Disponível após {titulos_inicio[indice - 1]}."
+                        if inicio_etapas[indice]['bloqueada'] else texto)
             detalhe_item = (
                 "Primeiro item 3D confirmado." if requisitos['item'] else
                 "Um arquivo foi guardado em privado; confirme quando o item estiver pronto." if tem_anexo else
                 "Marque seu primeiro item pronto quando terminar a criação."
             )
             itens = [
-                _item(2, "Meu motivo", _estado(requisitos['motivo']),
-                      "Motivo escolhido." if requisitos['motivo'] else "Escolha o motivo que te trouxe à modelagem 3D.",
-                      {"rotulo": "Abrir meu motivo", "url": "/conquistas/inicio/motivo/"}, sufixo="motivo"),
-                _item(2, "Meu objetivo e compromisso", _estado(requisitos['objetivo'] and requisitos['compromisso']),
-                      "Objetivo definido e compromisso assumido." if requisitos['objetivo'] and requisitos['compromisso'] else
-                      "Defina seu objetivo e assuma seu compromisso para este começo.",
-                      {"rotulo": "Abrir meu objetivo e compromisso", "url": "/conquistas/inicio/objetivo/"}, sufixo="plano"),
-                _item(2, "Meu primeiro item 3D", _estado(requisitos['item'], iniciou_item),
-                      detalhe_item,
-                      {"rotulo": "Abrir meu primeiro item", "url": "/conquistas/inicio/item/"}, sufixo="item"),
-                _item(2, "Enviar meu 3D", _estado(requisitos['envio'] and alcancada, requisitos['envio']),
-                      "Arquivo do primeiro item enviado e conclusão confirmada em privado." if requisitos['envio'] and alcancada else
-                      "Arquivo do primeiro item guardado em privado; confirme o envio." if requisitos['envio'] else
-                      "Envie o arquivo do seu item 3D ou uma imagem dele.",
-                      {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/envio/"}, sufixo="envio"),
+                _item(2, "Meu motivo", inicio_etapas[0]['estado'],
+                      "Motivo concluído e XP recebido." if inicio_etapas[0]['concluida'] else
+                      "Escolha seu motivo e conclua a tarefa para receber XP.",
+                      {"rotulo": "Abrir meu motivo", "url": "/conquistas/inicio/motivo/"},
+                      sufixo="motivo", bloqueado=inicio_etapas[0]['bloqueada']),
+                _item(2, "Meu objetivo e compromisso", inicio_etapas[1]['estado'],
+                      detalhe_inicio(1, "Objetivo e compromisso concluídos com XP." if inicio_etapas[1]['concluida'] else
+                                     "Defina seu objetivo e assuma seu compromisso para receber XP."),
+                      {"rotulo": "Abrir meu objetivo e compromisso", "url": "/conquistas/inicio/objetivo/"},
+                      sufixo="plano", bloqueado=inicio_etapas[1]['bloqueada']),
+                _item(2, "Meu primeiro item 3D", inicio_etapas[2]['estado'],
+                      detalhe_inicio(2, detalhe_item),
+                      {"rotulo": "Abrir meu primeiro item", "url": "/conquistas/inicio/item/"},
+                      sufixo="item", bloqueado=inicio_etapas[2]['bloqueada']),
+                _item(2, "Enviar meu 3D", inicio_etapas[3]['estado'],
+                      detalhe_inicio(3,
+                          "Arquivo enviado, conclusão confirmada e XP recebido." if inicio_etapas[3]['concluida'] else
+                          "Arquivo guardado em privado; conclua o envio para receber XP." if requisitos['envio'] else
+                          "Envie o arquivo do seu item 3D ou uma imagem dele."),
+                      {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/envio/"},
+                      sufixo="envio", bloqueado=inicio_etapas[3]['bloqueada']),
             ]
             if iniciou_item and not alcancada:
                 observacao = "Seu trabalho continua guardado. Complete os quatro requisitos e confirme a conclusão para alcançar a faixa amarela."

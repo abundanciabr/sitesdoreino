@@ -46,6 +46,12 @@ def imagem(nome="tentativa.png", cor="red"):
     return SimpleUploadedFile(nome, fluxo.getvalue(), content_type="image/png")
 
 
+def liberar_envio(client):
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
+    assert guardar(client, "inicio-plano", objetivo="Minha peça", compromisso="Praticarei", assumir="sim").status_code == 200
+    assert guardar(client, "inicio-item").status_code == 200
+
+
 def test_rascunho_parcial_salva_e_retomada_na_mesma_conta(client):
     assert not JornadaPessoal.objects.exists()
     r = guardar(client, "inicio-motivo", motivo="ugc", motivo_pessoal="Quero criar algo meu")
@@ -117,6 +123,9 @@ def test_versoes_notas_previa_privada_e_projecao_sem_sonho(client, monkeypatch):
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Segredo no sonho", objetivo="Criar item",
                    compromisso="Praticar").status_code == 200
+    assert guardar(client, "inicio-plano", sonho="Segredo no sonho", objetivo="Criar item",
+                   compromisso="Praticar", assumir="sim").status_code == 200
+    assert guardar(client, "inicio-item").status_code == 200
     for cor, nota in (("red", "Aprendi a forma"), ("blue", "Ajustei a forma")):
         r = guardar(client, "anexo", passo="2", arquivo=imagem(cor=cor), aprendi=nota, duvida="Como melhorar?")
         assert r.status_code == 200
@@ -137,6 +146,7 @@ def test_versoes_notas_previa_privada_e_projecao_sem_sonho(client, monkeypatch):
 
 
 def test_reenvio_da_mesma_versao_atualiza_notas_sem_apagar_ou_duplicar(client):
+    liberar_envio(client)
     r = guardar(client, "anexo", passo="2", arquivo=imagem(), aprendi="Primeira reflexão",
                 duvida="Como arredondar?")
     assert r.status_code == 200
@@ -149,10 +159,11 @@ def test_reenvio_da_mesma_versao_atualiza_notas_sem_apagar_ou_duplicar(client):
     assert r.json()["anexos"][0]["aprendi"] == "Aprendi a arredondar"
     assert r.json()["anexos"][0]["duvida"] == "Como arredondar?"
     assert AnexoDaJornada.objects.count() == 1
-    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 0
+    assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 300
 
 
 def test_duas_abas_com_revisao_antiga_nao_sobrescrevem_nota_nem_criam_arquivo(client):
+    liberar_envio(client)
     outra_aba = Client()
     revisao_aberta = abrir(outra_aba).json()["revisao"]
     primeiro = client.post(URL, {"acao": "anexo", "passo": "2", "revisao": revisao_aberta,

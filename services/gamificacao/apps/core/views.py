@@ -215,19 +215,15 @@ def inicio_conquista(request, etapa):
                 "url_de_entrada": settings.URL_DE_ENTRADA,
                 "url_da_capa": settings.URL_DA_CAPA}
     if pessoa_id and site:
-        from apps.gamificacao.inicio import requisitos_branca, resumo_inicio
+        from apps.gamificacao.inicio import etapas_inicio, resumo_inicio
         from apps.gamificacao.jornada import situacao
         from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal
         faixas = situacao(pessoa_id, site)
         resumo = resumo_inicio(pessoa_id, site, faixas)
         jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site).first()
         tem_anexo = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site, passo=2).exists()
-        requisitos = requisitos_branca(jornada, tem_anexo)
-        completos = (requisitos['motivo'],
-                     requisitos['objetivo'] and requisitos['compromisso'],
-                     requisitos['item'],
-                     requisitos['envio'] and bool(jornada and jornada.confirmacoes_sequenciais.get('2')))
-        if not all(completos[:etapa]):
+        estado_etapa = etapas_inicio(pessoa_id, site, jornada, tem_anexo)[etapa - 1]
+        if estado_etapa['bloqueada'] or not estado_etapa['dados_validos']:
             from .trilha_pessoal import _privada
             return _privada(HttpResponseRedirect(resumo['url']))
         contexto['faixas'] = faixas

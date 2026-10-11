@@ -60,18 +60,18 @@ def test_anexo_obrigatorio_e_bonus_unico(client):
     assert AnexoDaJornada.objects.count()==1
 
 def test_guardar_arquivo_sem_concluir_nao_libera_faixa(client):
+    preparar_inicio(client)
     r=post(client,acao='anexo',arquivo=file())
     assert r.status_code==200 and r.json()['atual_ordem']==1
     assert not RegistroDaJornada.objects.exists()
     from apps.gamificacao.checklist_trilha import montar_checklists
     item=montar_checklists(P,SITE,situacao(P,SITE))[2]['itens'][2]
-    assert item['estado']=='pendente'
+    assert item['estado']=='concluido'
     assert item['acao']['url']=='/conquistas/inicio/item/'
-    assert post(client).status_code==400
-    preparar_inicio(client)
     assert post(client).json()['atual_ordem']==2
 
 def test_download_privado_por_conta_e_site(client,monkeypatch):
+    preparar_inicio(client)
     r=post(client,acao='anexo',arquivo=file())
     id_=r.json()['anexos'][0]['id']
     url=f'/inventario/arquivos/{id_}/'
@@ -90,11 +90,13 @@ def test_download_privado_por_conta_e_site(client,monkeypatch):
 
 @pytest.mark.parametrize('name,body',[('modelo.html',b'<script>'),('modelo.obj',b'')])
 def test_arquivo_invalido_nao_grava(client,name,body):
+    preparar_inicio(client)
     assert post(client,arquivo=file(name,body)).status_code==400
     assert not AnexoDaJornada.objects.exists()
     assert not RegistroDaJornada.objects.exists()
 
 def test_limite_de_arquivo(client,monkeypatch):
+    preparar_inicio(client)
     monkeypatch.setattr('apps.core.inventario.MAX_ARQUIVO',3)
     assert post(client,arquivo=file()).status_code==400
     assert not AnexoDaJornada.objects.exists()
@@ -105,11 +107,12 @@ def test_concorrencia_revisao_nao_guarda_anexo_sem_declaracao(client):
     assert not JornadaPessoal.objects.exists()
 
 def test_csrf_real_e_identidade_do_corpo_ignorada(monkeypatch):
+    preparar_inicio(Client())
     c=Client(enforce_csrf_checks=True)
     dados=c.get(URL,HTTP_COOKIE='meshcraft_sessao=A').json()
     assert c.post(URL,{'acao':'declaracao','passo':'2'},HTTP_COOKIE='meshcraft_sessao=A').status_code==403
     # O cliente conserva o cookie CSRF, e a pessoa vem da sessão.
-    r=c.post(URL,{'acao':'anexo','passo':'2','revisao':0,'arquivo':file(),'pessoa_id':'aluna-b','site_id':'outro'},HTTP_X_CSRFTOKEN=dados['csrf'])
+    r=c.post(URL,{'acao':'anexo','passo':'2','revisao':dados['revisao'],'arquivo':file(),'pessoa_id':'aluna-b','site_id':'outro'},HTTP_X_CSRFTOKEN=dados['csrf'])
     assert r.status_code==200
     assert AnexoDaJornada.objects.get().pessoa_id==P
     assert AnexoDaJornada.objects.get().site_id==SITE

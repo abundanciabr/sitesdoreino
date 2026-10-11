@@ -42,8 +42,8 @@ def salvar_inicio(jornada, dados):
             inicio['motivo_rascunho'] = True
         inicio.update(motivo=motivo, motivo_pessoal=texto(dados, 'motivo_pessoal', 280))
     elif dados['acao'] == 'inicio-plano':
-        if not inicio.get('motivo') or inicio.get('motivo_rascunho'):
-            raise ValueError('Escolha seu motivo antes de definir o objetivo.')
+        if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
+            raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')
         plano = {chave: texto(dados, chave, limite) for chave, limite in (
             ('sonho', 500), ('objetivo', 280), ('quando', 160),
             ('obstaculo', 280), ('plano_b', 280), ('compromisso', 1200),
@@ -62,9 +62,8 @@ def salvar_inicio(jornada, dados):
         jornada.apoio = apoio
         inicio.update(plano)
     elif dados['acao'] == 'inicio-item':
-        if not (inicio.get('motivo') and not inicio.get('motivo_rascunho') and inicio.get('objetivo') and
-                inicio.get('compromisso') and inicio.get('confirmado_em')):
-            raise ValueError('Confirme seu motivo, objetivo e compromisso antes de criar o item.')
+        if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[2]['liberada']:
+            raise ValueError('Conclua seu objetivo e compromisso e receba o XP antes de criar o item.')
         inicio.setdefault('item_pronto_em', timezone.now().isoformat())
     else:
         raise ValueError('Escolha uma etapa do começo da jornada.')
@@ -79,7 +78,8 @@ def para_tela(jornada):
     motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
             'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado',
-            'item_pronto': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2')))}
+            'item_pronto': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
+            'etapas': etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada) if jornada else etapas_inicio(None, None, None)}
 
 
 def requisitos_branca(jornada, tem_anexo):
@@ -95,17 +95,48 @@ def requisitos_branca(jornada, tem_anexo):
     }
 
 
+def etapas_inicio(pessoa_id, site_id, jornada, tem_anexo=None):
+    """Quatro tarefas sequenciais: dados privados e XP definitivo de cada gesto."""
+    from .bonus_inicio import recebido
+
+    if tem_anexo is None:
+        tem_anexo = bool(jornada and AnexoDaJornada.objects.filter(
+            pessoa_id=pessoa_id, site_id=site_id, passo=2,
+        ).exists())
+    requisitos = requisitos_branca(jornada, tem_anexo)
+    inicio = jornada.inicio if jornada else {}
+    declarada = bool(jornada and jornada.declaracoes.get('2') and
+                     jornada.confirmacoes_sequenciais.get('2'))
+    validas = (requisitos['motivo'],
+               requisitos['objetivo'] and requisitos['compromisso'],
+               requisitos['item'], requisitos['envio'] and declarada)
+    em_andamento = (bool(inicio.get('motivo')),
+                    any(inicio.get(k) for k in ('sonho', 'objetivo', 'compromisso')),
+                    requisitos['item'], bool(tem_anexo or (jornada and jornada.declaracoes.get('2'))))
+    etapas = []
+    anteriores_concluidas = True
+    for indice, (valida, iniciada) in enumerate(zip(validas, em_andamento), start=1):
+        xp = recebido(pessoa_id, site_id, indice) if jornada else 0
+        concluida = bool(anteriores_concluidas and valida and xp > 0)
+        bloqueada = not anteriores_concluidas
+        estado = ('pendente' if bloqueada else 'concluido' if concluida else
+                  'andamento' if iniciada else 'pendente')
+        etapas.append({'etapa': indice, 'concluida': concluida,
+                       'liberada': not bloqueada, 'bloqueada': bloqueada,
+                       'dados_validos': bool(valida), 'xp_recebido': xp,
+                       'estado': estado})
+        anteriores_concluidas = concluida
+    return etapas
+
+
 def resumo_inicio(pessoa_id, site_id, faixas):
     """Retomada da primeira das quatro etapas ainda pendente."""
     jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
     inicio = jornada.inicio if jornada else {}
     arquivos = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).count()
-    requisitos = requisitos_branca(jornada, arquivos > 0)
-    declarada = bool(jornada and jornada.declaracoes.get('2') and jornada.confirmacoes_sequenciais.get('2'))
-    concluido = all(requisitos.values()) and declarada
-    passo = (1 if not requisitos['motivo'] else
-             2 if not (requisitos['objetivo'] and requisitos['compromisso']) else
-             3 if not requisitos['item'] else 4 if not (requisitos['envio'] and declarada) else 1)
+    etapas = etapas_inicio(pessoa_id, site_id, jornada, arquivos > 0)
+    concluido = etapas[3]['concluida']
+    passo = next((etapa['etapa'] for etapa in etapas if not etapa['concluida']), 1)
     nome_rota = {1: 'inicio-motivo', 2: 'inicio-objetivo', 3: 'inicio-item', 4: 'inicio-envio'}[passo]
     titulo = {1: 'Meu motivo', 2: 'Meu objetivo e compromisso', 3: 'Meu primeiro item 3D', 4: 'Enviar meu 3D'}[passo]
     return {
