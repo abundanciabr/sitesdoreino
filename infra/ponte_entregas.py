@@ -478,7 +478,8 @@ class Autoridade:
             raise ErroPonte("ensaio nao comprovado", "ensaio")
         return {"ok": True, "estado": "comprovado", "casos": resultado.get("casos"),
                 "tempos": resultado.get("tempos", {}),
-                "reaproveitado": bool(resultado.get("reaproveitamento"))}
+                "reaproveitado": bool(resultado.get("reaproveitamento")),
+                "reaproveitado_de": (resultado.get("reaproveitamento") or {}).get("candidata")}
 
     def registrar(self, id_, candidata, celula):
         self._conferir_espelho(id_, candidata)
