@@ -60,27 +60,46 @@ def recebido(pessoa_id, site_id, etapa):
     ).aggregate(soma=Sum('pontos'))['soma'] or 0
 
 
-def recebido_faixa_amarela(pessoa_id, site_id):
+def recebido_faixa(pessoa_id, site_id, ordem):
+    """Crédito definitivo da faixa específica, vinculado à sua origem estável."""
+    from .bonus_faixas import SLUGS
     from .models import LancamentoDeXP
 
-    origem = uuid.uuid5(uuid.NAMESPACE_URL, f'meshcraft:bonus-faixa:{site_id}:2')
+    if ordem not in SLUGS or ordem == 1:
+        return 0
+    origem = uuid.uuid5(uuid.NAMESPACE_URL, f'meshcraft:bonus-faixa:{site_id}:{ordem}')
     return LancamentoDeXP.objects.filter(
         pessoa__id_da_plataforma=pessoa_id, site_id=site_id,
-        origem_event_id=str(origem), regra_slug='bonus-faixa-amarela',
+        origem_event_id=str(origem), regra_slug='bonus-faixa-' + SLUGS[ordem],
         status=LancamentoDeXP.Status.DEFINITIVO,
     ).aggregate(soma=Sum('pontos'))['soma'] or 0
+
+
+def recebido_faixa_amarela(pessoa_id, site_id):
+    """Compatibilidade da consulta antiga; amarelo é a ordem 2."""
+    return recebido_faixa(pessoa_id, site_id, 2)
+
+
+def _avaliacao_reconhecida(pessoa_id, site_id, ordem):
+    from .models import AvaliacaoDaJornada
+
+    return AvaliacaoDaJornada.objects.filter(
+        pessoa__id_da_plataforma=pessoa_id, site_id=site_id,
+        ordem=ordem, resultado='reconhecida',
+    ).order_by('-id').values_list('id', flat=True).first()
 
 
 def comprovante(pessoa_id, site_id, etapa, xp_tarefa, xp_faixa):
     """Prova curta para a animação; os valores continuam conferidos no ledger."""
     dono = hashlib.sha256(f'{site_id}\0{pessoa_id}'.encode()).hexdigest()
-    return signing.dumps((dono, etapa, xp_tarefa, xp_faixa), salt='inicio-conquista-v1')
+    avaliacao_id = _avaliacao_reconhecida(pessoa_id, site_id, etapa) if etapa in (2, 3, 4) else None
+    return signing.dumps((dono, etapa, xp_tarefa, xp_faixa, avaliacao_id), salt='inicio-conquista-v2')
 
 
 def conferir_comprovante(token, pessoa_id, site_id, etapa):
     try:
-        dono, etapa_token, tarefa, faixa = signing.loads(
-            token, salt='inicio-conquista-v1', max_age=300,
+        dono, etapa_token, tarefa, faixa, avaliacao_id = signing.loads(
+            token, salt='inicio-conquista-v2', max_age=300,
         )
     except (signing.BadSignature, ValueError, TypeError):
         return None
@@ -89,6 +108,13 @@ def conferir_comprovante(token, pessoa_id, site_id, etapa):
         return None
     if not (tarefa or faixa) or tarefa > recebido(pessoa_id, site_id, etapa):
         return None
-    if faixa and (etapa != 4 or faixa > recebido_faixa_amarela(pessoa_id, site_id)):
+    if faixa and (etapa not in (2, 3, 4)
+                  or not avaliacao_id
+                  or avaliacao_id != _avaliacao_reconhecida(pessoa_id, site_id, etapa)
+                  or faixa != recebido_faixa(pessoa_id, site_id, etapa)):
         return None
+    if faixa:
+        from .jornada import situacao
+        if situacao(pessoa_id, site_id)['atual']['ordem'] < etapa:
+            return None
     return tarefa, faixa

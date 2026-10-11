@@ -757,6 +757,7 @@ def aprovar_entrega(
         _evento(pedido, "marketplace.entrega_aprovada.v1", str(entrega.pk), {
             "entrega_id": str(entrega.pk), "recebivel_id": recebivel.pk,
         })
+        faixas_eventos.fila_trabalho_concluido_por_cliente(pedido, entrega)
         faixas_eventos.sincronizar_rendimento(recebivel)
         return recebivel
 

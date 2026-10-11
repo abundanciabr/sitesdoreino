@@ -18,8 +18,9 @@ Regras:
 from __future__ import annotations
 
 import logging
-from datetime import timezone as dt_tz
+from datetime import datetime, timezone as dt_tz
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from django.db import transaction
 from django.db.models import Sum
@@ -27,7 +28,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from .cartas import ASSUNTO_CONQUISTA, carta_de_celebracao
-from .models import FaixaDoAluno, HistoricoDaFaixa, PerfilJogador, Pessoa, RendimentoRealLivro
+from .models import BackupDoReinicioDasFaixas, FaixaDoAluno, HistoricoDaFaixa, PerfilJogador, Pessoa, RendimentoRealLivro
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,15 @@ AVISAR_O_ALUNO = False
 
 #: Prefixo do slug enviado na carta (assunto `gamificacao.conquista-concedida`).
 PREFIXO_DO_SLUG = "faixa-"
+
+
+def limite_das_faixas_legadas(site_id):
+    """Conserva concessões anteriores ao reinício sem transformar fatos novos em faixa."""
+    aplicado = BackupDoReinicioDasFaixas.objects.filter(
+        site_id=site_id, chave="reinicio-autorizado-20261011",
+        aplicado_em__isnull=False,
+    ).values_list("aplicado_em", flat=True).first()
+    return aplicado or datetime(2026, 10, 11, tzinfo=ZoneInfo("America/Sao_Paulo"))
 
 
 def _brl(cents: int) -> str:
@@ -113,7 +123,8 @@ def _avisar(pessoa, site_id, ordem: int, event_id: str) -> None:
     if not AVISAR_O_ALUNO:
         return
     from .jornada import situacao
-    if not situacao(pessoa.id_da_plataforma, site_id)["lista"][ordem - 1]["alcancada"]:
+    lista = situacao(pessoa.id_da_plataforma, site_id)["lista"]
+    if ordem > len(lista) or not lista[ordem - 1]["alcancada"]:
         return
     faixa = _POR_ORDEM[ordem]
     slug = PREFIXO_DO_SLUG + faixa["slug"]
@@ -209,6 +220,8 @@ def registrar_fato(
     pessoa_id: str, site_id: str, fato: str, *, event_id: str, quando, historico: bool
 ) -> None:
     """Primeiro item / trabalho de Sandbox / trabalho da Fila. Fatos repetidos não mudam nada."""
+    if quando >= limite_das_faixas_legadas(site_id):
+        return
     ordem = _ORDEM_DO_FATO[fato]
     with transaction.atomic():
         pessoa = _pessoa(pessoa_id)
@@ -245,8 +258,9 @@ def registrar_rendimento(
             return False
         if fora_da_progressao:
             return True
-        _garantir_branca(pessoa, site_id, event_id, historico, quando)
-        _reavaliar_dinheiro(pessoa, site_id, str(event_id), historico, quando)
+        if quando < limite_das_faixas_legadas(site_id):
+            _garantir_branca(pessoa, site_id, event_id, historico, quando)
+            _reavaliar_dinheiro(pessoa, site_id, str(event_id), historico, quando)
         return True
 
 
@@ -296,7 +310,7 @@ def situacao_das_faixas(pessoa_id: str, site_id: str) -> dict[str, Any]:
         })
     atual = lista[jornada["atual"]["ordem"] - 1]
     proxima = None
-    if atual["ordem"] < 13:
+    if atual["ordem"] < len(lista):
         p = lista[atual["ordem"]]
         marco = jornada["lista"][atual["ordem"]]
         total = jornada["total_cents"]

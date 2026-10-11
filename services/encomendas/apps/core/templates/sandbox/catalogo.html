@@ -21,7 +21,7 @@
 {% for projeto in projetos %}<div class="selection-row" data-summary="{{ projeto.slug }}" {% if not forloop.first %}hidden{% endif %}>
 <div class="selected-project"><div class="summary-art tile-art {% if projeto.slug == 'prop-espada' or projeto.slug == 'fuzil-assalto' or projeto.slug == 'pistola-estilizada' %}weapon weapon-{{ projeto.slug }}{% endif %}">{% if projeto.do_curso %}{% visual_projeto projeto.slug projeto.titulo %}{% elif projeto.tem_ilustracao %}<img class="summary-image" src="{% url 'sandbox_ilustracao' projeto.slug %}" alt="" decoding="async">{% endif %}</div><div><h3>{{ projeto.titulo }}</h3><p class="tiny">Modelagem 3D · Projeto do curso</p></div></div>
 <div class="term"><span class="term-icon" aria-hidden="true">▦</span><p>{% if projeto.prazo_dias != None %}Escolha seu prazo<br><strong>24h, 48h ou 72h</strong>{% else %}Escolha seu prazo<br><strong>24h, 48h ou 72h</strong>{% endif %}</p></div>
-<div class="term"><span class="term-icon" aria-hidden="true">◎</span><p>Conclusão<br><strong>Faixa Azul · 10.000 XP</strong></p></div>
+<div class="term"><span class="term-icon" aria-hidden="true">◎</span><p>Conclusão<br><strong>Faixa Verde · 20.000 XP</strong></p></div>
 <div class="start-column">
 {% if trabalho_ativo %}<a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho →</a>
 {% else %}<a class="btn start-button" href="{% url 'sandbox_confirmar' projeto.pk %}">Aceitar e começar</a>{% endif %}

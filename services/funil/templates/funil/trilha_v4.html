@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f7f9fc">
-  <meta name="description" content="Trilha de evolução Meshcraft. Edição Ateliê. Seu progresso individual em 13 etapas.">
+  <meta name="description" content="Trilha de evolução Meshcraft. Edição Ateliê. Seu progresso individual.">
   <meta name="robots" content="noindex, nofollow">
   <title>Ateliê — Trilha de {{ trilha.aluno.nome }}</title>
   <link rel="icon" href="data:,">
@@ -31,7 +31,7 @@
       <div class="hero-copy">
         <p class="eyebrow"><span class="tiny-line"></span> A JORNADA DO CRIADOR</p>
         <h1 id="hero-title">A prática<br>encontra a<br><em>maestria.</em></h1>
-        <p class="hero-description">O que você cria transforma quem você é.<br>Uma trilha de 13 faixas, construída passo a passo.</p>
+        <p class="hero-description">O que você cria transforma quem você é.<br>Uma trilha de <span class="stage-total">—</span> etapas, construída passo a passo.</p>
         <a class="hero-link" href="#journey">Explore sua jornada <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 4v16m-6-6 6 6 6-6"/></svg></a>
       </div>
       <div class="hero-object" aria-label="Consultando seu progresso" aria-busy="true">
@@ -40,31 +40,31 @@
         <div class="dial" aria-hidden="true">
           <div class="dial-edge"></div><div class="dial-ticks"></div><div class="dial-track"></div>
           <div class="dial-face"><span class="dial-overline">FAIXA</span><span class="dial-number">—</span><span class="dial-name"><i></i> —</span></div>
-          <span class="dial-label north">01</span><span class="dial-label east">04</span><span class="dial-label south">07</span><span class="dial-label west">10</span>
+          <span class="dial-label north" data-dial-position="0">—</span><span class="dial-label east" data-dial-position="1">—</span><span class="dial-label south" data-dial-position="2">—</span><span class="dial-label west" data-dial-position="3">—</span>
         </div>
-        <div class="object-footer"><span>—</span><span><span id="current-position">—</span> <i>/</i> 13</span></div>
+        <div class="object-footer"><span>—</span><span><span id="current-position">—</span> <i>/</i> <span class="stage-total">—</span></span></div>
         <span class="object-corner corner-bl" aria-hidden="true"></span><span class="object-corner corner-br" aria-hidden="true"></span>
       </div>
     </section>
     <section class="journey-summary" aria-label="Resumo do progresso registrado">
       <div class="summary-title"><span class="small-cross" aria-hidden="true">✧</span><span>Cada etapa deixa<br>uma marca.</span></div>
-      <div class="summary-stat"><strong id="completed-count">—</strong><span>FAIXAS ALCANÇADAS</span></div>
-      <div class="summary-stat"><strong id="current-belt">—</strong><span>FAIXA ATUAL</span></div>
-      <div class="summary-stat"><strong id="remaining-count">—</strong><span>A CONQUISTAR</span></div>
+      <div class="summary-stat"><strong id="completed-count">—</strong><span>ETAPAS ALCANÇADAS</span></div>
+      <div class="summary-stat"><strong id="current-belt">—</strong><span>ETAPA ATUAL</span></div>
+      <div class="summary-stat"><strong id="remaining-count">—</strong><span>POR CONQUISTAR</span></div>
     </section>
     <section class="journey" id="journey" aria-labelledby="journey-title">
       <div class="journey-heading"><div><p class="eyebrow">01 — O PERCURSO</p><h2 id="journey-title">A arte de <em>continuar.</em></h2></div><p class="explore-hint">Concentre-se na faixa atual.<br>As próximas se abrem com suas conquistas.</p></div>
-      <nav class="stage-dock" aria-label="Acesso direto às 13 faixas"><div class="dock-inner" id="dock"></div></nav>
+      <nav class="stage-dock" aria-label="Acesso direto às faixas da sua jornada"><div class="dock-inner" id="dock"></div></nav>
       <ol class="timeline" id="timeline"></ol>
       <nav class="bottom-nav" aria-label="Navegação entre faixas">
         <button class="nav-arrow" id="previous" disabled aria-label="Faixa anterior"><svg class="reverse" aria-hidden="true"><use href="#arrow"/></svg><span>Anterior</span></button>
-        <div><span id="position">—</span><span class="position-total"> / 13</span><small id="selected-label">—</small></div>
+        <div><span id="position">—</span><span class="position-total"> / <span class="stage-total">—</span></span><small id="selected-label">—</small></div>
         <button class="nav-arrow" id="next" disabled aria-label="Próxima faixa"><span>Próxima</span><svg aria-hidden="true"><use href="#arrow"/></svg></button>
       </nav>
       <div class="closing"><span aria-hidden="true">✧</span><p>A próxima grande criação<br>começa no <em>próximo passo.</em></p></div>
     </section>
   </main>
-  <footer><span class="footer-brand">MESHCRAFT <i>/</i> ATELIÊ</span><span>{{ trilha.aluno.nome }} · Sua jornada</span><span>Consulta de progresso · Somente leitura.</span></footer>
+  <footer><span class="footer-brand">MESHCRAFT <i>/</i> ATELIÊ</span><span>{{ trilha.aluno.nome }} · Sua jornada</span><span>Atividades e progresso da sua Trilha.</span></footer>
   <dialog id="detail-dialog" class="live-checklist" aria-labelledby="dialog-title">
     <button class="dialog-close" aria-label="Fechar detalhes"><svg aria-hidden="true"><use href="#close"/></svg></button>
     <div class="dialog-content">

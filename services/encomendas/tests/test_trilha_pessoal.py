@@ -89,7 +89,7 @@ def test_isolamento_estados_atuais_sem_mutacao(client):
     dados = resposta.json()
     assert set(dados) == {"pessoa_id", "site_id", "consultado_em", "atividades"}
     assert (dados["pessoa_id"], dados["site_id"]) == ("a", SITE)
-    assert [x["ordem"] for x in dados["atividades"]] == [3, 4]
+    assert [x["ordem"] for x in dados["atividades"]] == [5, 6]
     assert all(x["estado"] == "andamento" for x in dados["atividades"])
     assert str(a.pk) in dados["atividades"][0]["acao"]["url"]
     assert str(fila.pk) in dados["atividades"][1]["acao"]["url"]
@@ -103,13 +103,14 @@ def test_entrega_aprovacao_e_cancelamento_nao_viram_conquista(client):
     p = participacao("a", status="entregue")
     fila = pedido_fila("a", status="entregue")
     dados = consultar(client).json()
-    assert [a["estado"] for a in dados["atividades"]] == ["andamento", "andamento"]
+    assert [a["estado"] for a in dados["atividades"]] == ["pendente", "pendente"]
     assert all("enviada" in a["detalhe"] for a in dados["atividades"])
     ParticipacaoSandbox.objects.filter(pk=p.pk).update(status="aprovado")
     PedidoMarketplace.objects.filter(pk=fila.pk).update(status="aprovado")
     dados = consultar(client).json()
     assert [a["estado"] for a in dados["atividades"]] == ["pendente", "pendente"]
-    assert all("aguardando registro" in a["detalhe"] for a in dados["atividades"])
+    assert "análise real" in dados["atividades"][0]["detalhe"]
+    assert "aceite real do cliente" in dados["atividades"][1]["detalhe"]
     PedidoMarketplace.objects.filter(pk=fila.pk).update(status="cancelado")
     dados = consultar(client).json()
     assert dados["atividades"][1]["estado"] == "pendente"

@@ -24,11 +24,11 @@
           <h2 id="inicio-motivo-escolha-titulo" tabindex="-1">Meu motivo para aprender modelagem 3D</h2>
           <p>Escolha a opção que mais combina com o que você quer hoje. Você pode mudar de ideia depois.</p>
           <fieldset class="inicio-motivos"><legend class="inicio-sr">Meu motivo para aprender modelagem 3D</legend><div id="inicio-opcoes"></div></fieldset>
-          <div id="inicio-outro-campo" hidden>
-            <label for="inicio-motivo-outro">Qual é o seu outro motivo?</label>
+          <div id="inicio-outro-campo">
+            <label for="inicio-motivo-outro">Meu motivo com minhas palavras (opcional)</label>
             <textarea id="inicio-motivo-outro" name="motivo_outro" rows="2" maxlength="280" placeholder="Escreva com suas palavras o que você quer fazer com a modelagem 3D."></textarea>
           </div>
-          <p class="inicio-nota">UGC são itens criados por pessoas como você, por exemplo roupas e acessórios para personagens de jogos.</p>
+          <p id="inicio-caminho-antigo" class="inicio-nota" hidden>Sua escolha anterior está preservada. Escolha um dos quatro caminhos para continuar com suas conquistas.</p><p class="inicio-nota">UGC são itens criados por pessoas como você, por exemplo roupas e acessórios para personagens de jogos.</p>
           <div class="inicio-acoes"><button type="submit" name="destino" value="proxima">Continuar</button><button type="button" id="inicio-motivo-depois-1" class="inicio-secundario">← Depois eu faço isso</button></div>
         </div>
         <div id="inicio-motivo-reflexao" hidden>
@@ -87,6 +87,9 @@
             <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="O motivo que sustenta minha decisão"></div>
           </div>
           <p class="compromisso-frase">Meu compromisso é com a minha decisão.</p>
+          <p>Vamos conferir seu motivo, seu compromisso e se você identificou como começar.</p>
+          <label for="inicio-proximo-passo">Qual é meu próximo passo para começar a criar?</label>
+          <select id="inicio-proximo-passo" name="proximo_passo"><option value="">Escolha uma resposta</option><option value="criar_item">Criar um primeiro item simples nas aulas e contar o que fiz</option><option value="esperar">Esperar o tempo passar sem praticar</option><option value="botao">Apenas apertar um botão para conquistar as faixas</option></select>
           <div class="inicio-acoes"><button type="submit" value="assumir">Eu assumo. Vou até o fim. <span aria-hidden="true">→</span></button><button type="button" class="inicio-secundario" id="inicio-compromisso-anterior">Voltar</button></div>
         </div>
         <div class="compromisso-visual"><img src="{% url 'estatico' 'compromisso-caminho.avif' %}" alt="" width="1024" height="683" loading="lazy"><p>Este compromisso fica privado na sua conta.</p></div>
@@ -115,9 +118,13 @@
       <p id="inicio-objetivo-salvo"></p>
       <p id="inicio-pratica"></p><p id="inicio-apoio-texto"></p>
       <p>Modele uma peça pequena, confira sua forma e salve o trabalho no seu computador. Não precisa ficar perfeito.</p>
-      <form id="inicio-form-criacao">
+      <p>Será conferido qual é sua criação e qual ação concreta você realizou. Personalizar uma base preparada também vale.</p>
+      <form id="inicio-form-criacao" enctype="multipart/form-data">
+        <label for="inicio-item-nome">Qual item eu criei?</label><input id="inicio-item-nome" name="item_nome" maxlength="180" required>
+        <label for="inicio-item-acao">Uma ação que realizei nele</label><textarea id="inicio-item-acao" name="item_acao" maxlength="1000" rows="3" required></textarea>
+        <label for="inicio-relato-imagem">Imagem da criação (opcional)</label><input id="inicio-relato-imagem" type="file" name="arquivo" accept=".png,.jpg,.jpeg,.webp">
         <p id="inicio-criacao-estado" class="inicio-nota"></p>
-        <div class="inicio-acoes"><button type="submit">Meu item está pronto</button><a href="/cursos/">Abrir minha prática</a></div>
+        <div class="inicio-acoes"><button type="submit">Avaliar meu relato</button><a href="/cursos/">Abrir minha prática</a></div>
       </form>
       <details class="inicio-detalhes"><summary>Preciso de ajuda nesta criação</summary>
         <button id="inicio-pedir-ajuda" class="inicio-texto" type="button" aria-expanded="false" aria-controls="inicio-ajuda">Preparar minha dúvida</button>
@@ -132,16 +139,16 @@
     {% elif inicio_etapa == 4 %}
     <section id="inicio-item" class="inicio-painel" data-painel="4">
       <h2 tabindex="-1">Guarde aqui a criação que você preparou.</h2>
-      <p>Escolha o modelo 3D ou uma imagem dele. Só você terá acesso ao arquivo.</p>
+      <p>A IA examinará uma imagem ou um modelo compatível, sua relação com o item descrito e o que conseguir verificar. Uma imagem permite avaliação visual. Seu anexo anterior pode ser aproveitado.</p>
       <form id="inicio-form-item" enctype="multipart/form-data">
-        <label class="inicio-upload" for="inicio-arquivo"><strong>Escolher meu arquivo</strong><span>Modelo 3D, ZIP ou imagem · até 20 MB por arquivo</span><input id="inicio-arquivo" type="file" name="arquivo" accept=".blend,.glb,.gltf,.obj,.stl,.fbx,.zip,.png,.jpg,.jpeg,.webp"></label>
-        <p class="inicio-nota">BLEND, GLB, GLTF, OBJ, STL, FBX, ZIP, PNG, JPG ou WEBP. Arquivos com texturas separadas podem ir juntos em um ZIP.</p>
+        <label class="inicio-upload" for="inicio-arquivo"><strong>Escolher meu arquivo</strong><span>Imagem ou GLB, OBJ, STL · até 20 MB por arquivo</span><input id="inicio-arquivo" type="file" name="arquivo" accept=".glb,.obj,.stl,.png,.jpg,.jpeg,.webp"></label>
+        <p class="inicio-nota">Para esta avaliação, apresente uma imagem PNG, JPG ou WEBP, ou um modelo GLB, OBJ ou STL. Seus arquivos anteriores continuam guardados.</p>
         <details class="inicio-detalhes"><summary>Uma nota sobre esta versão <span>opcional · privada</span></summary>
           <p class="inicio-nota">Ao reenviar o mesmo arquivo, apenas as notas preenchidas são atualizadas. Campos vazios preservam as notas anteriores.</p>
           <label for="inicio-aprendi">O que aprendi ou consegui melhorar?</label><textarea id="inicio-aprendi" name="aprendi" rows="2" maxlength="500"></textarea>
           <label for="inicio-duvida">Em que gostaria de receber ajuda?</label><textarea id="inicio-duvida" name="duvida" rows="2" maxlength="500" placeholder="Ex.: como deixar a borda do chapéu mais uniforme?"></textarea>
         </details>
-        <div class="inicio-acoes"><button id="inicio-enviar" type="submit">Enviar meu 3D e concluir</button></div>
+        <div class="inicio-acoes"><button id="inicio-enviar" type="submit">Enviar para avaliação</button></div>
         <p id="inicio-item-estado" class="inicio-nota"></p>
       </form>
       <details id="inicio-historico" class="inicio-detalhes" hidden><summary>Meus arquivos já enviados</summary><div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div></details>
@@ -151,4 +158,4 @@
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=13" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=14" defer></script>

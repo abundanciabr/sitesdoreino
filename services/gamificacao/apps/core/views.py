@@ -138,29 +138,18 @@ def base(request):
         return render(request, "gamificacao/base.html", {"entrou": False, **de_fora})
 
     perfil = perfil_de(pessoa_id, site)
-    faixas = _faixas_para_tela(pessoa_id, site) if FAIXAS_PARA_O_ALUNO else None
-    from apps.gamificacao.inicio import resumo_inicio
-    recado = request.GET.get("jornada", "")
-    if faixas and faixas["celebracao"].get("ordem") == faixas["atual"]["ordem"]:
-        recado = faixas["celebracao"].get("tipo", recado)
     resposta = render(
         request,
         "gamificacao/base.html",
         {
             "entrou": True,
             "escada": escada_de(perfil),
-            "faixas": faixas,
-            "inicio_resumo": resumo_inicio(pessoa_id, site, faixas or _faixas_para_tela(pessoa_id, site)),
-            "jornada_recado": recado,
             "jornada_admin": e_admin(request, pessoa_id),
             **de_fora,
         },
     )
     from .trilha_pessoal import _privada
     _privada(resposta)
-    if faixas and faixas["celebracao"]:
-        from apps.gamificacao.models import JornadaPessoal
-        JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site, celebracao_pendente=faixas["celebracao"]).update(celebracao_pendente={})
     return resposta
 
 
@@ -186,6 +175,8 @@ def inicio_pagina(request, etapa):
         "url_de_entrada": settings.URL_DE_ENTRADA,
         "url_da_capa": settings.URL_DA_CAPA,
     }
+    from apps.gamificacao.url_trilha import url_cursos
+    contexto["url_cursos"] = url_cursos()
     if pessoa_id and site:
         from apps.gamificacao.jornada import situacao
         from apps.gamificacao.inicio import resumo_inicio
@@ -231,14 +222,18 @@ def inicio_conquista(request, etapa):
             return _privada(HttpResponseRedirect(resumo['url']))
         contexto['faixas'] = faixas
         from apps.gamificacao.bonus_inicio import (
-            recebido, recebido_faixa_amarela, conferir_comprovante,
+            recebido, recebido_faixa, conferir_comprovante,
         )
         credito = conferir_comprovante(
             request.GET.get('comprovante', ''), pessoa_id, site, etapa,
         ) if request.GET.get('comprovante') else None
         xp_tarefa, xp_faixa = credito or (0, 0)
         ja_pago = bool(recebido(pessoa_id, site, etapa) or
-                       etapa == 4 and recebido_faixa_amarela(pessoa_id, site))
+                       etapa in (2, 3, 4) and recebido_faixa(pessoa_id, site, etapa))
+        from apps.gamificacao.models import AvaliacaoDaJornada
+        avaliacao = AvaliacaoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site, ordem=etapa, resultado='reconhecida').order_by('-id').first() if etapa > 1 else None
+        contexto.update(avaliacao_feedback=avaliacao.feedback if avaliacao else '',
+                        faixa_conquistada=next((p['nome'] for p in faixas['lista'] if p['ordem'] == etapa), '') if avaliacao else '')
         contexto.update(conquista_xp=xp_tarefa + xp_faixa,
                         conquista_xp_tarefa=xp_tarefa,
                         conquista_xp_faixa=xp_faixa,
@@ -553,3 +548,28 @@ def decidir_reconhecimento(request):
 
     # Gesto que não existe é formulário adulterado: volta sem mexer em nada.
     return _voltar("interno-reconhecimentos")
+
+
+@never_cache
+@require_GET
+def ciclo_pagina(request):
+    pessoa, site = _pessoa_e_site(request)
+    if not pessoa or not site:
+        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
+    from apps.gamificacao.jornada import situacao
+    from apps.gamificacao.models import JornadaPessoal
+    faixas = situacao(pessoa, site)
+    if faixas.get('caminho') not in ('ugc', 'jogo', 'aprender'):
+        return HttpResponseRedirect(reverse('inicio-motivo'))
+    ordem = faixas['proxima']['ordem'] if faixas['proxima'] else 7
+    if ordem < 5:
+        return HttpResponseRedirect(faixas['proxima_url'])
+    j = JornadaPessoal.objects.filter(pessoa_id=pessoa, site_id=site).first()
+    from .trilha_pessoal import _privada
+    from apps.gamificacao.url_trilha import url_cursos
+    return _privada(render(request, 'gamificacao/ciclo.html', {
+        'entrou': True, 'faixas': faixas, 'ordem': ordem,
+        'url_cursos': url_cursos(),
+        'item_nome': (j.inicio or {}).get('item_nome', ''),
+        'url_de_entrada': settings.URL_DE_ENTRADA, 'url_da_capa': settings.URL_DA_CAPA,
+    }))

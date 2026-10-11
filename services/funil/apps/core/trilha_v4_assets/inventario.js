@@ -1,13 +1,14 @@
 'use strict';
 const context=JSON.parse(document.querySelector('#trilha-data').textContent);
-const endpoint='/conquistas/inventario/';
+const endpoint='/trilha/inventario/api/';
 let data=null, busy=false, selectedOrder=null, previousCurrent=null;
 const q=s=>document.querySelector(s);
 function el(tag,text){const node=document.createElement(tag);node.textContent=text;return node;}
 function message(text,error=false){q('#notice').textContent=text;q('#notice').classList.toggle('error',error);}
 function validate(value){
   if(value.pessoa_id!==context.pessoa_id||value.site_id!==context.site_id){q('#inventory-content').hidden=true;throw new Error('Sua sessão mudou. Reabra o inventário antes de continuar.');}
-  if(!Array.isArray(value.etapas)||value.etapas.length!==13||!Array.isArray(value.anexos)||typeof value.csrf!=='string')throw new Error('Não foi possível consultar seus registros. Recarregue a página.');
+  if(!Array.isArray(value.etapas)||![7,13].includes(value.etapas.length)||!Array.isArray(value.anexos)||typeof value.csrf!=='string')throw new Error('Não foi possível consultar seus registros. Recarregue a página.');
+  value.graus_historicos=Array.isArray(value.graus_historicos)?value.graus_historicos.filter(g=>g&&Number.isInteger(g.ordem)&&g.ordem>=7&&g.ordem<=13&&Number.isInteger(g.bonus_xp)&&g.bonus_xp>=0&&typeof g.conquistada_em==='string'&&!Number.isNaN(Date.parse(g.conquistada_em))):[];
   return value;
 }
 async function request(options={}){
@@ -19,35 +20,37 @@ async function request(options={}){
 function fileList(target,passo){
   target.replaceChildren();
   data.anexos.filter(a=>a.passo===passo).forEach(a=>{const item=el('li','');
-    if(!new RegExp('^/conquistas/inventario/arquivos/[0-9]+/$').test(a.url))return;
+    if(!new RegExp('^/trilha/inventario/arquivos/[0-9]+/$').test(a.url))return;
     const link=el('a',a.nome);link.href=a.url;item.append(link,el('small',`${a.tamanho<1024?a.tamanho+' bytes':a.tamanho<1048576?Math.ceil(a.tamanho/1024)+' KB':(a.tamanho/1048576).toLocaleString('pt-BR',{maximumFractionDigits:2})+' MB'} · arquivo privado`));target.append(item);
   });
 }
 function render(){
   q('#inventory-content').hidden=false;
-  if(selectedOrder===null)selectedOrder=location.hash==='#primeiro-item'&&data.etapas[1].alcancada?2:data.atual_ordem;
+  if(selectedOrder===null)selectedOrder=location.hash==='#primeiro-item'&&data.etapas[2].alcancada?3:data.atual_ordem;
   else if(selectedOrder===previousCurrent||!data.etapas.some(e=>e.ordem===selectedOrder&&e.alcancada))selectedOrder=data.atual_ordem;
   previousCurrent=data.atual_ordem;
   const shownSteps=inventoryStepsFor(data,selectedOrder);
   // Fora do cartão selecionado, nenhum formulário fica visível ou focável.
   const parts=q('#inventory-parts');
-  ['branca-requisitos','primeiro-item','minhas-entregas','minha-meta','recebimentos','minha-historia'].forEach(id=>parts.append(q('#'+id)));
+  ['branca-requisitos','primeiro-item','apresentar-item','minhas-entregas','minha-meta','recebimentos','minha-historia'].forEach(id=>parts.append(q('#'+id)));
 
-  const first=data.etapas.find(e=>e.ordem===2), hasFile=data.anexos.some(a=>a.passo===2);
+  const itemStage=data.etapas.find(e=>e.ordem===3), fileStage=data.etapas.find(e=>e.ordem===4);
   const start=data.inicio||{};
   const requirements=inventoryStartSteps(start);
-  requirements.forEach(step=>{const node=q('#branca-'+step.id),link=node.parentElement;
+  requirements.slice(0,2).forEach(step=>{const node=q('#branca-'+step.id),link=node.parentElement;
     node.textContent=step.done?'Concluído · pode revisar':step.blocked?'🔒 Pendente':'Disponível';
     link.dataset.estado=step.done?'concluido':'pendente';link.setAttribute('aria-disabled',String(step.blocked));
     if(step.blocked)link.removeAttribute('href');else link.href=step.url;
   });
-  q('#branca-resumo').textContent=`${requirements.filter(step=>step.done).length} de 4 requisitos concluídos. Conclua uma tarefa, receba seus XP e volte à faixa para o próximo passo. Seus trabalhos anteriores continuam guardados.`;
-  q('.save-file').hidden=first.alcancada;
-  q('#first-state').textContent=first.alcancada?'CONCLUÍDO':hasFile?'ARQUIVO GUARDADO':'PENDENTE';
-  q('#first-file').required=first.alcancada||!hasFile;
-  q('#first-form [name=acao]').value=first.alcancada?'anexo':'declaracao';
-  q('#first-submit').textContent=first.alcancada?'Guardar outro arquivo →':'Concluí meu item 3D →';
-  q('#first-declaration').textContent=first.alcancada?'Sua conclusão já está registrada. Os arquivos ficam guardados aqui.':'“Concluí meu primeiro item 3D e consigo mostrar o resultado.”';
+  q('#branca-resumo').textContent=`${requirements.slice(0,2).filter(step=>step.done).length} de 2 passos concluídos. A faixa chega após a avaliação do seu compromisso.`;
+  const itemRequirement=requirements[2], fileRequirement=requirements[3];
+  const firstLink=q('#first-link');firstLink.setAttribute('aria-disabled',String(itemRequirement.blocked));
+  if(itemRequirement.blocked)firstLink.removeAttribute('href');else firstLink.href=itemRequirement.url;
+  q('#first-state').textContent=itemStage.alcancada?'CONCLUÍDO':itemRequirement.done?'PODE REVISAR':itemRequirement.blocked?'BLOQUEADO':'PENDENTE';
+  q('#first-item-summary').textContent=start.item_nome?`${start.item_nome}${start.item_acao?' · '+start.item_acao:''}`:'O relato do nome e da ação concreta é feito na etapa da faixa azul.';
+  const redLink=q('#red-link');redLink.setAttribute('aria-disabled',String(fileRequirement.blocked));
+  if(fileRequirement.blocked)redLink.removeAttribute('href');else redLink.href=fileRequirement.url;
+  q('#red-state').textContent=fileStage.alcancada?'CONCLUÍDO':fileRequirement.done?'PODE REVISAR':fileRequirement.blocked?'AGUARDA A FAIXA AZUL':'PENDENTE';
   fileList(q('#first-files'),2);
   q('#current-belt').textContent=`Faixa atual: ${data.etapas.find(e=>e.ordem===data.atual_ordem).nome}`;
 
@@ -56,24 +59,29 @@ function render(){
   q('#receipts').replaceChildren();data.recebimentos.forEach(r=>q('#receipts').append(el('li',`${r.valor} · ${r.estado} · ${r.data}`)));
   q('#history').replaceChildren();data.historico.forEach(r=>{const li=el('li',r.texto);li.append(el('time',new Date(r.criado_em).toLocaleString('pt-BR')));q('#history').append(li);});
   if(!data.historico.length)q('#history').append(el('li','Seus registros aparecerão aqui conforme você avançar.'));
+  const roman=['I','II','III','IV','V','VI','VII'];
+  const preserved=data.etapas.length===7&&['ugc','jogo','aprender'].includes(data.caminho)?data.graus_historicos:[];
+  if(preserved.length){const note=el('li','');const detail=el('small',`Graus anteriores preservados: ${preserved.map(g=>`Grau ${roman[g.ordem-7]} · +${g.bonus_xp.toLocaleString('pt-BR')} XP · ${new Date(g.conquistada_em).toLocaleDateString('pt-BR')}`).join(' | ')}`);detail.className='fine';note.append(detail);q('#history').append(note);}
   // A faixa atual não esconde os arquivos que a pessoa já guardou.
-  data.anexos.forEach(a=>{if(!/^\/conquistas\/inventario\/arquivos\/[0-9]+\/$/.test(a.url))return;const li=el('li','');const link=el('a',a.nome);link.href=a.url;li.append(link,el('small','Arquivo privado preservado'));q('#history').append(li);});
+  data.anexos.forEach(a=>{if(!/^\/trilha\/inventario\/arquivos\/[0-9]+\/$/.test(a.url))return;const li=el('li','');const link=el('a',a.nome);link.href=a.url;li.append(link,el('small','Arquivo privado preservado'));q('#history').append(li);});
   q('#deliveries').replaceChildren();
-  [3,4].filter(ordem=>shownSteps.includes(ordem)).forEach(ordem=>{const etapa=data.etapas.find(e=>e.ordem===ordem), details=document.createElement('details');details.append(el('summary',`${ordem===3?'Minha prática no Sandbox':'Meu trabalho real na Fila'} · ${etapa.alcancada?'Concluído':'Pendente'}`));
-    details.append(el('p',etapa.conquista));const link=el('a',ordem===3?'Abrir Sandbox →':'Abrir Fila →');link.href=ordem===3?'/encomendas/sandbox/':'/encomendas/fila/';link.className='text-link';details.append(link);
-    const files=el('ul','');files.className='files';fileList(files,ordem);details.append(files);
-    const form=document.createElement('form');
-    for(const [name,value] of Object.entries({acao:etapa.alcancada?'anexo':'declaracao',passo:String(ordem),estado:'feito'})){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.append(input);}
-    const label=el('label',etapa.alcancada?'Guardar um arquivo desta entrega':'Arquivo da entrega (opcional)');label.htmlFor=`file-${ordem}`;const input=document.createElement('input');input.type='file';input.name='arquivo';input.id=label.htmlFor;input.accept=q('#first-file').accept;input.required=etapa.alcancada;form.append(label,input);
-    const button=el('button',etapa.alcancada?'Guardar arquivo':'Concluí e entreguei este trabalho');button.className='primary';button.type='submit';form.append(button);form.addEventListener('submit',submit);details.append(form);details.open=true;q('#deliveries').append(details);
-  });
+  if(data.caminho==='freelancer'){
+    [5,6].filter(ordem=>shownSteps.includes(ordem)).forEach(ordem=>{const etapa=data.etapas.find(e=>e.ordem===ordem);if(!etapa)return;const details=document.createElement('details');details.append(el('summary',`${ordem===5?'Minha prática no Sandbox':'Meu trabalho real na Fila'} · ${etapa.alcancada?'Concluído':'Pendente'}`));
+      details.append(el('p',etapa.conquista));const link=el('a',ordem===5?'Abrir Sandbox →':'Abrir Fila →');link.href=ordem===5?'/trilha/sandbox/':'/trilha/fila/';link.className='text-link';details.append(link);
+      const files=el('ul','');files.className='files';fileList(files,ordem);details.append(files);
+      details.append(el('p','A conclusão depende da avaliação do Sandbox ou do aceite real da entrega na Fila.'));details.open=true;q('#deliveries').append(details);
+    });
+  }else if(['ugc','jogo','aprender'].includes(data.caminho)){
+    const activity=data.etapas.find(etapa=>etapa.ordem>=5&&!etapa.alcancada&&shownSteps.includes(etapa.ordem));
+    if(activity){const details=document.createElement('details');details.append(el('summary',`Prática da faixa ${activity.nome} · Disponível`));details.append(el('p',activity.conquista));const link=el('a','Abrir a prática e enviar para avaliação →');link.href='/trilha/ciclo/';link.className='text-link';details.append(link);details.open=true;q('#deliveries').append(details);}
+  }
   renderBelts(shownSteps);
 }
 
 function inventoryStepsFor(value,selected){
   const own=value.etapas.find(e=>e.ordem===selected);
   if(!own?.alcancada)return [];
-  return selected===value.atual_ordem&&selected<13?[selected,selected+1]:[selected];
+  return selected===value.atual_ordem&&selected<value.etapas.length?[selected,selected+1]:[selected];
 }
 function inventoryStartSteps(start){
   let previousDone=true;
@@ -82,7 +90,7 @@ function inventoryStartSteps(start){
     const blocked=!previousDone||!saved||saved.bloqueada!==false||saved.liberada!==true;
     const done=!blocked&&saved?.concluida===true;
     previousDone=done;
-    return {id,blocked,done,url:`/conquistas/inicio/${id==='plano'?'objetivo':id}/`};
+    return {id,blocked,done,url:`/trilha/inicio/${id==='plano'?'objetivo':id}/`};
   });
 }
 function renderBelts(shownSteps){
@@ -109,12 +117,13 @@ function renderBelts(shownSteps){
       const next=data.etapas.find(e=>e.ordem===step.ordem+1);
       if(step.ordem===data.atual_ordem&&next){const hint=el('p',`Próximo marco: Faixa ${next.nome}`);hint.className='next-milestone';body.append(hint);}
       if(step.ordem===1)body.append(q('#branca-requisitos'));
-      if(shownSteps.includes(2)&&step.ordem!==1)body.append(q('#primeiro-item'));
-      if(shownSteps.some(n=>n===3||n===4))body.append(q('#minhas-entregas'));
-      if(shownSteps.some(n=>n>=6)&&step.ordem<13)body.append(q('#minha-meta'));
-      if(shownSteps.some(n=>n>=5)&&step.ordem<13)body.append(q('#recebimentos'));
+      if(shownSteps.includes(3))body.append(q('#primeiro-item'));
+      if(shownSteps.includes(4))body.append(q('#apresentar-item'));
+      if(shownSteps.some(n=>n===5||n===6)&&q('#deliveries').children.length)body.append(q('#minhas-entregas'));
+      if(data.etapas.length===13&&shownSteps.some(n=>n>=6)&&step.ordem<13)body.append(q('#minha-meta'));
+      if(data.etapas.length===13&&shownSteps.some(n=>n>=5)&&step.ordem<13)body.append(q('#recebimentos'));
       if(step.ordem>=5&&next&&step.ordem===data.atual_ordem){const target=el('p',next.conquista);target.className='belt-result';body.append(target);}
-      if(step.ordem===13){const finish=el('p','Sua jornada está registrada. Veja abaixo o caminho que você construiu.');finish.className='belt-result';body.append(finish);}
+      if(step.ordem===data.etapas.length){const finish=el('p','Sua jornada está registrada. Veja abaixo o caminho que você construiu.');finish.className='belt-result';body.append(finish);}
       const history=el('details','');history.className='belt-history';history.append(el('summary','Meu histórico registrado'),q('#minha-historia'));body.append(history);
       inner.append(body);panel.append(inner);
     }
@@ -131,12 +140,22 @@ function selectBelt(order){
   q(`#inventario-faixa-${order}`).scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }
 
+function safeConquistaUrl(value){
+  try{
+    const url=new URL(value,window.location.origin);
+    const params=[...url.searchParams.entries()];
+    if(url.origin!==window.location.origin||url.username||url.password||!/^\/trilha\/inicio\/conquista\/[0-9]+\/$/.test(url.pathname)||url.hash
+      ||params.length>1||params.some(([key,token])=>key!=='comprovante'||!token))return null;
+    return url.href;
+  }catch{return null;}
+}
+
 async function submit(event){
   event.preventDefault();if(busy||!data)return;
   const form=event.currentTarget; if(!form.reportValidity())return;
   const body=new FormData(form);if(event.submitter?.name==='acao')body.set('acao',event.submitter.value);body.set('revisao',String(data.revisao));body.set('chave',data.chave);body.set('contexto_pessoa',context.pessoa_id);body.set('contexto_site',context.site_id);
   const acao=body.get('acao');busy=true;document.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=true);message('Guardando seu registro…');
-  try{data=await request({method:'POST',headers:{'X-CSRFToken':data.csrf},body});form.reset();render();if(data.conquista_url){window.location.assign(data.conquista_url);return;}message(acao==='recebimento'?'Recebimento enviado para leitura. O resultado aparecerá nos seus registros.':acao==='declaracao'?'Conclusão registrada. Sua trilha já acompanha essa conquista.':'Registro guardado no seu inventário.');}
+  try{data=await request({method:'POST',headers:{'X-CSRFToken':data.csrf},body});form.reset();render();if(data.conquista_url){const url=safeConquistaUrl(data.conquista_url);if(!url)throw new Error('A confirmação da avaliação está indisponível. Seus registros foram guardados.');window.location.assign(url);return;}message(acao==='recebimento'?'Recebimento enviado para leitura. O resultado aparecerá nos seus registros.':acao==='inicio-item'?'Item enviado para avaliação. O resultado aparecerá nos seus registros.':'Registro guardado no seu inventário.');}
   catch(error){message(error.message,true);q('#notice').scrollIntoView({block:'center',behavior:'smooth'});}
   finally{busy=false;document.querySelectorAll('button[type=submit]').forEach(b=>b.disabled=false);}
 }

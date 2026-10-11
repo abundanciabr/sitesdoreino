@@ -85,6 +85,7 @@ def test_percurso_telas_arquivos_versoes_ajuste_aprovacao(client, contexto, proj
             event=faixas_eventos.EV_AVALIACAO, payload__entrega_id=str(entrega.pk),
             payload__estado='pendente')
         assert avaliacao.payload['pessoa_id'] == p.pessoa_id
+    assert p.status == 'entregue' and p.aprovado_em is None
     assert MovimentoMeshcoin.objects.filter(participacao=p).count() == 0
     assert sandbox.saldo(site_id="escola-a", pessoa_id=p.pessoa_id) == Decimal("0.00")
     assert p.entregas.count() == 2 and p.arquivos.count() == 2

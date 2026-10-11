@@ -1,8 +1,5 @@
 """O começo ocupa quatro páginas privadas; a Base aponta a primeira pendência."""
 
-import re
-from html import unescape
-
 import pytest
 from django.test import Client, override_settings
 from django.urls import get_script_prefix, reverse, set_script_prefix
@@ -20,6 +17,8 @@ def conta(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: P)
     monkeypatch.setattr("apps.core.inventario._sessao", lambda cookie: {"autenticado": True, "id": P})
+    monkeypatch.setattr("apps.gamificacao.avaliacao_inicio.avaliar", lambda *args, **kwargs: {
+        "resultado": "reconhecida", "feedback": "A realização foi examinada.", "evidencia": {"teste": True}})
 
 
 def guardar(client, acao, **dados):
@@ -30,24 +29,16 @@ def guardar(client, acao, **dados):
     return client.post(url, {"acao": acao, "revisao": revisao, **dados}, HTTP_COOKIE="meshcraft_sessao=A")
 
 
-def destino_do_cartao(html):
-    ancora = re.search(r'<a\b(?=[^>]*\bid="inicio-retomar")[^>]*>', html)
-    assert ancora, "A Base deve ter o link de retomada"
-    destino = re.search(r'\bhref="([^"]+)"', ancora.group())
-    assert destino
-    return unescape(destino.group(1))
-
-
 @pytest.mark.parametrize("ordem,nome", enumerate(ETAPAS, start=1))
 def test_cada_etapa_tem_rota_pagina_e_formulario_proprios(client, ordem, nome):
     if ordem > 1:
         assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     if ordem > 2:
-        assert guardar(client, "inicio-plano", objetivo="Minha peça", compromisso="Praticarei", assumir="sim").status_code == 200
+        assert guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item").status_code == 200
     if ordem > 3:
-        assert guardar(client, "inicio-item").status_code == 200
+        assert guardar(client, "inicio-item", item_nome="Minha peça", item_acao="Modelei a forma").status_code == 200
     url = reverse(nome)
-    assert url == ("/inicio/motivo/", "/inicio/objetivo/", "/inicio/item/", "/inicio/envio/")[ordem - 1]
+    assert url == ("/trilha/inicio/motivo/", "/trilha/inicio/objetivo/", "/trilha/inicio/item/", "/trilha/inicio/envio/")[ordem - 1]
     r = client.get(url)
     assert r.status_code == 200
     assert r.context["entrou"] is True and r.context["inicio_etapa"] == ordem
@@ -92,33 +83,35 @@ def test_visitante_encontra_convite_sem_dados_privados(client, monkeypatch):
 def test_cartao_retoma_primeiro_passo_pendente_sem_expor_plano(client):
     base = reverse("base")
     corpo = client.get(base).content.decode()
-    assert 'id="inicio-cartao"' in corpo
-    assert destino_do_cartao(corpo) == reverse("inicio-motivo")
+    assert 'id="inicio-cartao"' not in corpo
+    assert client.get(reverse("inicio-motivo")).status_code == 200
 
     assert guardar(client, "inicio-motivo", motivo="ugc", motivo_pessoal="MOTIVO-PRIVADO-ALFA").status_code == 200
-    assert destino_do_cartao(client.get(base).content.decode()) == reverse("inicio-objetivo")
+    assert client.get(reverse("inicio-objetivo")).status_code == 200
+    assert client.get(reverse("inicio-item")).url == reverse("inicio-objetivo")
     assert guardar(client, "inicio-plano", sonho="SONHO-PRIVADO-ALFA", objetivo="OBJETIVO-PRIVADO-ALFA",
                    compromisso="COMPROMISSO-PRIVADO-ALFA", assumir="sim").status_code == 200
+    assert guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item").status_code == 200
     corpo = client.get(base).content.decode()
-    assert destino_do_cartao(corpo) == reverse("inicio-item")
+    assert client.get(reverse("inicio-item")).status_code == 200
     for segredo in ("SONHO-PRIVADO-ALFA", "OBJETIVO-PRIVADO-ALFA", "COMPROMISSO-PRIVADO-ALFA", "MOTIVO-PRIVADO-ALFA"):
         assert segredo not in corpo
 
     # Concluir a entrega mantém as páginas acessíveis para releitura e edição.
     from django.core.files.uploadedfile import SimpleUploadedFile
     arquivo = SimpleUploadedFile("item.obj", b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n")
-    assert guardar(client, "inicio-item").status_code == 200
-    assert destino_do_cartao(client.get(base).content.decode()) == reverse("inicio-envio")
+    assert guardar(client, "inicio-item", item_nome="Minha peça", item_acao="Modelei a forma").status_code == 200
+    assert client.get(reverse("inicio-envio")).status_code == 200
     assert guardar(client, "inicio-envio", arquivo=arquivo).status_code == 200
     corpo = client.get(base).content.decode()
-    assert "Revisitar meu começo" in corpo
-    assert destino_do_cartao(corpo) == reverse("inicio-motivo")
+    assert 'id="inicio-cartao"' not in corpo
+    assert client.get(reverse("inicio-motivo")).status_code == 200
     assert client.get(reverse("inicio-item")).status_code == 200
     assert guardar(client, "inicio-motivo", motivo="jogo").status_code == 200
 
 
 def test_paginas_nao_perdem_registro_e_respeitam_pessoa_e_site(client, monkeypatch):
-    assert guardar(client, "inicio-motivo", motivo="estudio", motivo_pessoal="Minha razão").status_code == 200
+    assert guardar(client, "inicio-motivo", motivo="aprender", motivo_pessoal="Minha razão").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Sonho reservado", objetivo="Minha peça").status_code == 200
     salvo = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE)
     for nome in ETAPAS[:2]:
@@ -126,7 +119,7 @@ def test_paginas_nao_perdem_registro_e_respeitam_pessoa_e_site(client, monkeypat
     for nome in ETAPAS[2:]:
         assert client.get(reverse(nome)).url == reverse("inicio-objetivo")
     salvo.refresh_from_db()
-    assert salvo.inicio["sonho"] == "Sonho reservado" and salvo.inicio["motivo"] == "estudio"
+    assert salvo.inicio["sonho"] == "Sonho reservado" and salvo.inicio["motivo"] == "aprender"
     assert client.get(reverse("inventario"), HTTP_COOKIE="meshcraft_sessao=A").json()["inicio"]["objetivo"] == "Minha peça"
 
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: "outro-aluno")
@@ -142,13 +135,13 @@ def test_paginas_nao_perdem_registro_e_respeitam_pessoa_e_site(client, monkeypat
 def test_links_entre_paginas_respeitam_prefixo_publico(client):
     prefixo_anterior = get_script_prefix()
     try:
-        with override_settings(FORCE_SCRIPT_NAME="/conquistas"):
-            set_script_prefix("/conquistas/")
-            r = client.get("/inicio/motivo/", SCRIPT_NAME="/conquistas")
+        with override_settings(FORCE_SCRIPT_NAME="/prefixo"):
+            set_script_prefix("/prefixo/")
+            r = client.get("/trilha/inicio/motivo/", SCRIPT_NAME="/prefixo")
             assert r.status_code == 200
             corpo = r.content.decode()
-            assert '/conquistas/inicio/objetivo/' not in corpo
-            assert '/conquistas/inventario/' in corpo
+            assert '/trilha/inicio/objetivo/' not in corpo
+            assert '/prefixo/trilha/inventario/api/' in corpo
     finally:
         set_script_prefix(prefixo_anterior)
 

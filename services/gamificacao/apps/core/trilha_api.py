@@ -50,6 +50,8 @@ class TrilhaDoAluno(Schema):
     pessoa_id: str
     site_id: str
     atual_ordem: int
+    caminho: str | None = None
+    graus_historicos: list[dict] = []
     etapas: list[EtapaDaTrilha]
     total_cents: int
     meta_cents: int | None
@@ -126,6 +128,8 @@ def _projecao(response: HttpResponse, pessoa_id: str, site_id: str, *, incluir_a
         pessoa_id=pessoa_id,
         site_id=site_id,
         atual_ordem=jornada["atual"]["ordem"],
+        caminho=jornada.get("caminho"),
+        graus_historicos=jornada.get("graus_historicos", []),
         etapas=[
             EtapaDaTrilha(
                 ordem=etapa["ordem"],

@@ -5,7 +5,7 @@ import pytest
 from django.utils import timezone
 
 from apps.gamificacao.handlers import ao_sandbox_avaliacao_atualizada, ao_sandbox_trabalho_concluido
-from apps.gamificacao.models import AvaliacaoSandboxProjetada, BackupDoReinicioDasFaixas, LancamentoDeXP, RegistroDaJornada
+from apps.gamificacao.models import AvaliacaoDaJornada, AvaliacaoSandboxProjetada, BackupDoReinicioDasFaixas, JornadaPessoal, LancamentoDeXP, RegistroDaJornada
 from apps.gamificacao.sandbox_avaliacoes import resumo
 from tests.test_conclusao_sandbox_xp import preparar_ate
 
@@ -38,7 +38,7 @@ def sem_relay(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_so_analise_real_atual_reconhece_e_credita_uma_vez():
+def test_projecao_de_analise_real_nao_concede_faixa_por_si():
     preparar_ate()
     ao_sandbox_trabalho_concluido({"event": "encomendas.sandbox-trabalho-concluido",
                                    "version": 1, "data": {"site_id": "escola-teste", "pessoa_id": "aluno-concluiu"}})
@@ -50,9 +50,87 @@ def test_so_analise_real_atual_reconhece_e_credita_uma_vez():
                       entrega_criada_em=pendente["data"]["entrega_criada_em"])
     ao_sandbox_avaliacao_atualizada(concluida)
     ao_sandbox_avaliacao_atualizada(concluida)
-    assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
-    assert RegistroDaJornada.objects.filter(acao="avaliacao_sandbox").count() == 1
-    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "reconhecido"
+    assert not LancamentoDeXP.objects.filter(regra_slug__startswith="bonus-faixa-").exists()
+    assert not RegistroDaJornada.objects.filter(acao="avaliacao_sandbox").exists()
+    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "aguardando_sequencia"
+
+
+@pytest.mark.django_db
+def test_avaliacao_real_concede_verde_uma_vez_e_preserva_azul_do_item():
+    from apps.core.perfil import perfil_de
+    from apps.gamificacao.bonus_faixas import configurar
+    from apps.gamificacao.jornada import registrar_avaliacao, situacao
+
+    pessoa, site = "aluno-concluiu", "escola-teste"
+    perfil_de(pessoa, site)
+    JornadaPessoal.objects.create(pessoa_id=pessoa, site_id=site,
+                                  inicio={"motivo": "freelancer"})
+    configurar(site)
+    for ordem in (2, 3, 4):
+        registrar_avaliacao(pessoa, site, ordem, "reconhecida",
+                            f"A realização {ordem} foi examinada com resultado positivo.",
+                            {"chave": f"atividade:{ordem}", "fato": "material examinado"})
+    azul_antes = LancamentoDeXP.objects.filter(
+        pessoa_id=pessoa, site_id=site, regra_slug="bonus-faixa-azul",
+    ).count()
+    fato = {"event": "encomendas.sandbox-trabalho-concluido", "version": 1,
+            "event_id": str(uuid4()), "occurred_at": timezone.now().isoformat(),
+            "data": {"site_id": site, "pessoa_id": pessoa, "resultado": "reconhecida",
+                     "feedback": "A análise concluiu que a geometria atende ao briefing da prática.",
+                     "evidencia": {"chave": "sandbox:analise-real", "trabalho_id": "trabalho-real",
+                                   "entrega_id": "entrega-real", "analise_id": "analise-real",
+                                   "avaliacao": {"resultado": "atende"},
+                                   "requisitos": [{"encontrado": True}],
+                                   "imagens_examinadas": ["imagem-do-item"]}}}
+    ao_sandbox_trabalho_concluido(fato)
+    ao_sandbox_trabalho_concluido(fato)
+    assert situacao(pessoa, site)["atual"]["ordem"] == 5
+    assert AvaliacaoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, ordem=5).count() == 1
+    assert LancamentoDeXP.objects.filter(
+        pessoa_id=pessoa, site_id=site, regra_slug="bonus-faixa-verde",
+    ).count() == 1
+    assert LancamentoDeXP.objects.filter(
+        pessoa_id=pessoa, site_id=site, regra_slug="bonus-faixa-azul",
+    ).count() == azul_antes
+
+
+@pytest.mark.django_db
+def test_azul_antiga_do_sandbox_permanece_e_nao_recompensa_a_mesma_analise():
+    from apps.core.perfil import perfil_de
+    from apps.gamificacao.bonus_faixas import conceder, configurar
+    from apps.gamificacao.jornada import registrar_avaliacao, situacao
+
+    pessoa, site = "aluno-concluiu", "escola-teste"
+    perfil_de(pessoa, site)
+    JornadaPessoal.objects.create(pessoa_id=pessoa, site_id=site,
+                                  inicio={"motivo": "freelancer"})
+    configurar(site)
+    evento_antigo = evento()
+    ao_sandbox_avaliacao_atualizada(evento_antigo)
+    projecao = AvaliacaoSandboxProjetada.objects.get(pessoa_id=pessoa, site_id=site)
+    projecao.reconhecida_em = timezone.now()
+    projecao.reconhecida_analise_id = projecao.analise_id
+    projecao.save(update_fields=["reconhecida_em", "reconhecida_analise_id"])
+    RegistroDaJornada.objects.create(pessoa_id=pessoa, site_id=site,
+        acao="avaliacao_sandbox", dados={"analise_id": projecao.analise_id})
+    assert conceder(pessoa, site, [3]) == 10000
+    assert situacao(pessoa, site)["atual"]["ordem"] == 3
+    for ordem in (2, 4):
+        registrar_avaliacao(pessoa, site, ordem, "reconhecida",
+                            f"A realização {ordem} foi examinada e reconhecida.",
+                            {"chave": f"nova:{ordem}", "fato": "material examinado"})
+    antes = sum(LancamentoDeXP.objects.filter(pessoa_id=pessoa, site_id=site)
+                .values_list("pontos", flat=True))
+    registrar_avaliacao(pessoa, site, 5, "reconhecida",
+                        "A análise anterior reconheceu a prática realizada no Sandbox.",
+                        {"chave": "historico:sandbox:" + projecao.analise_id,
+                         "analise_id": projecao.analise_id,
+                         "conquista_equivalente_original": {"ordem": 3, "origem": "sandbox"}})
+    assert situacao(pessoa, site)["atual"]["ordem"] == 5
+    assert sum(LancamentoDeXP.objects.filter(pessoa_id=pessoa, site_id=site)
+               .values_list("pontos", flat=True)) == antes
+    assert not LancamentoDeXP.objects.filter(pessoa_id=pessoa, site_id=site,
+        regra_slug="bonus-faixa-verde").exists()
 
 
 @pytest.mark.django_db
@@ -75,7 +153,7 @@ def test_avaliacao_antes_da_etapa_dois_fica_registrada_e_espera_sequencia():
     ao_sandbox_avaliacao_atualizada(evento())
     assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "aguardando_sequencia"
     preparar_ate()
-    assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
+    assert not LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").exists()
 
 
 @pytest.mark.django_db
@@ -87,9 +165,9 @@ def test_nova_versao_pendente_nao_desfaz_bonus_nem_diz_que_foi_reconhecida():
     ao_sandbox_avaliacao_atualizada(nova)
     ao_sandbox_avaliacao_atualizada(antiga)
     linha = AvaliacaoSandboxProjetada.objects.get(trabalho_id="trabalho-a")
-    assert linha.versao == 2 and linha.reconhecida_versao == 1
-    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "nao_reconhecido"
-    assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
+    assert linha.versao == 2 and linha.reconhecida_versao is None
+    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "aguardando_analise"
+    assert not LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").exists()
 
 
 @pytest.mark.django_db
@@ -102,9 +180,9 @@ def test_limpeza_reinicia_numero_da_versao_mas_entrega_mais_nova_prevalece():
     ao_sandbox_avaliacao_atualizada(antiga)
     linha = AvaliacaoSandboxProjetada.objects.get(trabalho_id="trabalho-a")
     assert linha.versao == 1 and linha.entrega_id == "entrega-1"
-    assert linha.reconhecida_versao == 3
-    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "nao_reconhecido"
-    assert LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").count() == 1
+    assert linha.reconhecida_versao is None
+    assert resumo("aluno-concluiu", "escola-teste")["avaliacoes"][0]["reconhecimento"]["estado"] == "aguardando_analise"
+    assert not LancamentoDeXP.objects.filter(regra_slug="bonus-faixa-azul").exists()
 
 
 @pytest.mark.django_db

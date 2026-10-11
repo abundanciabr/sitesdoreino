@@ -7,7 +7,7 @@ from apps.gamificacao.jornada import situacao
 from apps.core.sessao import IdentidadeIndisponivel
 
 pytestmark=pytest.mark.django_db
-URL='/inventario/'
+URL='/trilha/inventario/api/'
 P='aluna-a'
 SITE='escola-inventario'
 
@@ -15,12 +15,15 @@ SITE='escola-inventario'
 def conta(monkeypatch):
     monkeypatch.setenv('SITE_ID',SITE)
     monkeypatch.setattr('apps.core.inventario._sessao',lambda cookie:{'autenticado':True,'id':P})
+    monkeypatch.setattr('apps.gamificacao.avaliacao_inicio.avaliar', lambda *args, **kwargs: {
+        'resultado': 'reconhecida', 'feedback': 'O relato e o arquivo desta versão foram examinados.',
+        'evidencia': {'tipo': 'avaliacao-no-teste'}})
 
 def file(name='modelo.obj',body=b'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'):
     return SimpleUploadedFile(name,body)
 
 def post(client,**extras):
-    dados=dict(acao='declaracao',passo='2',estado='feito',revisao=situacao(P,SITE)['revisao'])
+    dados=dict(acao='inicio-envio',passo='2',estado='feito',revisao=situacao(P,SITE)['revisao'])
     dados.update(extras)
     if dados['acao']=='inicio-motivo':dados.setdefault('concluir','sim')
     return client.post(URL,dados,HTTP_COOKIE='meshcraft_sessao=A')
@@ -30,7 +33,8 @@ def preparar_inicio(client):
     assert post(client,acao='inicio-motivo',motivo='ugc').status_code==200
     assert post(client,acao='inicio-plano',objetivo='Criar meu item',
                 compromisso='Praticar e guardar minha peça',assumir='sim').status_code==200
-    assert post(client,acao='inicio-item').status_code==200
+    assert post(client,acao='inicio-compromisso',assumir='sim',proximo_passo='criar_item').status_code==200
+    assert post(client,acao='inicio-item',item_nome='Meu item',item_acao='Modelei a forma').status_code==200
 
 def test_get_nao_cria_registro_e_privacidade(client):
     r=client.get(URL,HTTP_COOKIE='meshcraft_sessao=A')
@@ -38,7 +42,7 @@ def test_get_nao_cria_registro_e_privacidade(client):
     assert r['Cache-Control']=='private, no-store'
     assert r['X-Robots-Tag']=='noindex, nofollow'
     assert not JornadaPessoal.objects.exists()
-    assert len(r.json()['etapas'])==13
+    assert len(r.json()['etapas'])>=7
 
 def test_anexo_obrigatorio_e_bonus_unico(client):
     configurar(SITE)
@@ -48,33 +52,29 @@ def test_anexo_obrigatorio_e_bonus_unico(client):
     preparar_inicio(client)
     r=post(client,arquivo=file())
     assert r.status_code==200
-    assert r.json()['atual_ordem']==2
+    assert r.json()['atual_ordem']==4
     assert len(r.json()['anexos'])==1
     perfil=PerfilJogador.objects.get(pessoa_id=P,site_id=SITE)
     # A repetição não concede XP nem escreve a declaração outra vez.
     before=perfil.xp_total
-    assert post(client,revisao='0',arquivo=file()).status_code==200
+    assert post(client,arquivo=file()).status_code==200
     perfil.refresh_from_db()
-    assert perfil.xp_total==before==5400
-    assert RegistroDaJornada.objects.filter(pessoa_id=P,site_id=SITE,acao='declaracao').count()==1
+    assert perfil.xp_total==before
+    assert RegistroDaJornada.objects.filter(pessoa_id=P,site_id=SITE,acao='declaracao').count()==0
     assert AnexoDaJornada.objects.count()==1
 
 def test_guardar_arquivo_sem_concluir_nao_libera_faixa(client):
     preparar_inicio(client)
     r=post(client,acao='anexo',arquivo=file())
-    assert r.status_code==200 and r.json()['atual_ordem']==1
-    assert not RegistroDaJornada.objects.exists()
-    from apps.gamificacao.checklist_trilha import montar_checklists
-    item=montar_checklists(P,SITE,situacao(P,SITE))[2]['itens'][2]
-    assert item['estado']=='concluido'
-    assert item['acao']['url']=='/conquistas/inicio/item/'
-    assert post(client).json()['atual_ordem']==2
+    assert r.status_code==200 and r.json()['atual_ordem']==3
+    assert r.json()['inicio']['etapas'][3]['concluida'] is False
+    assert post(client).json()['atual_ordem']==4
 
 def test_download_privado_por_conta_e_site(client,monkeypatch):
     preparar_inicio(client)
     r=post(client,acao='anexo',arquivo=file())
     id_=r.json()['anexos'][0]['id']
-    url=f'/inventario/arquivos/{id_}/'
+    url=f'/trilha/inventario/arquivos/{id_}/'
     r=client.get(url,HTTP_COOKIE='meshcraft_sessao=A')
     assert r.status_code==200
     assert b''.join(r.streaming_content).startswith(b'v 0')
@@ -93,7 +93,7 @@ def test_arquivo_invalido_nao_grava(client,name,body):
     preparar_inicio(client)
     assert post(client,arquivo=file(name,body)).status_code==400
     assert not AnexoDaJornada.objects.exists()
-    assert not RegistroDaJornada.objects.exists()
+    assert not RegistroDaJornada.objects.filter(acao='declaracao').exists()
 
 def test_limite_de_arquivo(client,monkeypatch):
     preparar_inicio(client)
@@ -129,7 +129,7 @@ def test_formulario_antigo_nao_contorna_anexo(client,monkeypatch):
     monkeypatch.setattr('apps.core.views.quem_e',lambda req:P)
     r=client.post('/jornada/salvar',{'acao':'declaracao','passo':'2','estado':'feito','revisao':0})
     assert r.status_code==303 and r['Location']=='/trilha/inventario/#primeiro-item'
-    assert not RegistroDaJornada.objects.exists()
+    assert not RegistroDaJornada.objects.filter(acao='declaracao').exists()
 
 def test_meta_e_recebimentos_continuam_com_criterios_existentes(client):
     assert post(client,acao='meta',meta='250',proposito='Meu projeto').status_code==200

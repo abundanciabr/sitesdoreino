@@ -1,6 +1,6 @@
-from django.urls import path, re_path
+from django.urls import include, path, re_path
 from apps.core.views import (
-    base, inicio_pagina, inicio_conquista, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
+    base, ciclo_pagina, inicio_pagina, inicio_conquista, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
     interno_reconhecimentos, decidir_reconhecimento,
 )
 from apps.core.trilha_pessoal import minha_trilha
@@ -11,6 +11,7 @@ from apps.core.teste_branca import teste_branca
 
 urlpatterns = [
     path("interno/teste-faixa-branca/", teste_branca, name="teste-faixa-branca"),
+    path("ciclo/", ciclo_pagina, name="ciclo"),
     path("interno/reinicio-faixas/", relatorio_reinicio, name="relatorio-reinicio-faixas"),
     path("inicio/motivo/", inicio_pagina, {"etapa": 1}, name="inicio-motivo"),
     path("inicio/objetivo/", inicio_pagina, {"etapa": 2}, name="inicio-objetivo"),
@@ -29,6 +30,7 @@ urlpatterns = [
     path("interno/reconhecimentos", interno_reconhecimentos, name="interno-reconhecimentos"),
     path("interno/reconhecimentos/gesto", decidir_reconhecimento, name="decidir-reconhecimento"),
     path("", base, name="base"),
+    path("trilha/", include("config.trilha_urls")),
 ]
 handler404 = "site_errors.handlers.page_not_found_shared"
 handler500 = "site_errors.handlers.server_error_shared"

@@ -82,7 +82,8 @@ def conclusao(analise):
                   'Se discordar, peça ajuda ao suporte. Confira as evidências no histórico. '
                   'Você pode corrigir os pontos indicados e enviar uma nova versão quando necessário. '
                   'O histórico e o horário do envio permanecem preservados. '
-                  'A conquista depende da avaliação da realização nesta versão.')
+                  'A faixa e o bônus de XP chegam somente quando a análise reconhece a realização. '
+                  'Os arquivos permanecem preservados.')
     revisao = len(analise.historico)
     return registrar(analise.entrega, f'resultado-automatico-v2-{revisao}', texto)
 

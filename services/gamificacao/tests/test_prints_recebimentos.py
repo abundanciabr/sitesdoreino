@@ -6,7 +6,7 @@ from django.urls import reverse
 from apps.gamificacao.jornada import salvar, situacao
 from apps.gamificacao.prints_recebimentos import processar, preparar
 from apps.gamificacao.models import RecebimentoDeclarado, VersaoDoRecebimento
-from tests.test_faixas_pagina import imagem, confirmar, SITE, P, ambiente  # noqa: F401
+from tests.test_faixas_pagina import imagem, SITE, P, ambiente  # noqa: F401
 
 pytestmark = pytest.mark.django_db
 
@@ -19,6 +19,7 @@ def enviar(**extras):
         "valor": "50",
         "origem": "fora",
         "recebido_em": "2026-10-01",
+        "referencia_trabalho": "pedido-1234",
         **extras,
     }
     salvar(P, SITE, dados, arquivo=imagem())
@@ -31,8 +32,17 @@ def leitura(**extras):
         "valor_cents": 5000,
         "moeda": "BRL",
         "data": "2026-10-01",
+        "identificador_trabalho": "pedido-1234",
         **extras,
     }
+
+
+def confirmar(r):
+    with patch("apps.gamificacao.prints_recebimentos.ler_modelo",
+               return_value=leitura(valor_cents=r.valor_original_cents,
+                                    moeda=r.moeda_original,
+                                    data=r.recebido_em.isoformat())):
+        return processar(r.pk)
 
 
 def test_pendente_nao_soma_ate_print_confirmado():
@@ -95,6 +105,7 @@ def test_outro_print_nao_recebe_confirmacao_da_versao_antiga():
                 "recebimento": r.pk,
                 "valor": "20",
                 "recebido_em": "2026-10-01",
+                "referencia_trabalho": "pedido-1234",
             },
             arquivo=imagem(),
         )
@@ -249,6 +260,7 @@ def test_limite_de_versoes(monkeypatch):
                 "recebimento": r.pk,
                 "valor": "50",
                 "recebido_em": "2026-10-01",
+                "referencia_trabalho": "pedido-1234",
             },
             arquivo=imagem(),
         )
@@ -267,3 +279,14 @@ def test_reenvio_com_mesma_chave_nao_conta_duas_vezes(monkeypatch):
     enviar(chave=chave)
     enviar(chave=chave)
     assert RecebimentoDeclarado.objects.count() == 1
+
+
+@pytest.mark.parametrize('referencia,identificador,esperado', [
+    ('Boné', 'bone', True),
+    ('UGC-7', 'ugc 7', True),
+    ('Boné', 'espada', False),
+    ('', '', False),
+])
+def test_correspondencia_aceita_identificador_curto_e_acentos(referencia, identificador, esperado):
+    from apps.gamificacao.prints_recebimentos import _mesmo_trabalho
+    assert _mesmo_trabalho(referencia, identificador) is esperado

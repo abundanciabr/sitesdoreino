@@ -286,9 +286,10 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     from .sandbox_models import AnaliseEntregaSandbox
     from .devolutiva_sandbox import lacunas
     analise = AnaliseEntregaSandbox.objects.filter(entrega=entrega, estado='concluida').first()
-    if (analise is None or analise.resultado.get('avaliacao', {}).get('resultado') != 'atende'
+    if (aprovador_id != 'analise-automatica' or analise is None
+            or analise.resultado.get('avaliacao', {}).get('resultado') != 'atende'
             or lacunas(analise.resultado)):
-        raise ErroSandbox("A realização precisa de uma avaliação automática concluída que atenda ao briefing.")
+        raise ErroSandbox("A conclusão depende da avaliação automática fundamentada desta versão.")
     agora = timezone.now()
     entrega.aprovada_em = agora
     entrega.save(update_fields=["aprovada_em"])
@@ -296,6 +297,9 @@ def aprovar(*, site_id, participacao_id, aprovador_id):
     p.aprovado_em = agora
     p.aprovado_por = aprovador_id
     p.save(update_fields=["status", "aprovado_em", "aprovado_por"])
+    faixas_eventos.sandbox_trabalho_concluido(
+        p, ocorrido_em=agora, entrega=entrega, analise=analise,
+        feedback=analise.resultado['avaliacao']['justificativa'])
     return p
 
 

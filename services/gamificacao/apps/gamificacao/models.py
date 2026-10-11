@@ -1838,6 +1838,7 @@ class RecebimentoDeclarado(models.Model):
     chave = models.UUIDField(default=uuid.uuid4)
     valor_cents = models.PositiveIntegerField()
     origem = models.CharField(max_length=8)
+    referencia_trabalho = models.CharField(max_length=280, blank=True, default="")
     estado = models.CharField(max_length=14, default="pendente")
     fora_da_progressao = models.BooleanField(default=False, db_default=False)
     print_bytes = models.BinaryField(null=True, blank=True)
@@ -1884,6 +1885,28 @@ class RegistroDaJornada(models.Model):
 
     class Meta:
         ordering = ["-id"]
+
+
+class AvaliacaoDaJornada(models.Model):
+    """Resultado imutável de uma tentativa real; uma falha posterior não apaga conquista."""
+
+    pessoa = models.ForeignKey(Pessoa, on_delete=models.PROTECT)
+    site_id = id_do_site()
+    ordem = models.PositiveSmallIntegerField()
+    caminho = models.CharField(max_length=20)
+    resultado = models.CharField(max_length=12)
+    feedback = models.TextField()
+    evidencia = models.JSONField(default=dict)
+    chave = models.CharField(max_length=64)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["pessoa", "site_id", "ordem", "chave"],
+            name="uma_avaliacao_por_tentativa",
+        )]
+        indexes = [models.Index(fields=["pessoa", "site_id", "ordem", "resultado"],
+                                name="gam_avaliacao_pessoa_ordem_idx")]
 
 
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]

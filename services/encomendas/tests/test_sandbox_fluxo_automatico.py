@@ -54,8 +54,11 @@ def test_envio_aguarda_avaliacao_para_conquista_e_sem_mesh(p, monkeypatch):
     concluir(e, monkeypatch)
     p.refresh_from_db()
     assert p.status == 'aprovado' and p.aprovado_por == 'analise-automatica'
+    assert eventos().count() == 1
+    assert eventos().get().payload['resultado'] == 'reconhecida'
+    assert eventos().get().payload['evidencia']['entrega_id'] == str(e.pk)
     analises.processar_entrega(e.analise.pk)
-    assert eventos().count() == 0 and not MovimentoMeshcoin.objects.exists()
+    assert eventos().count() == 1 and not MovimentoMeshcoin.objects.exists()
     assert OutboxMarketplace.objects.filter(event='encomendas.sandbox-avaliacao-atualizada', payload__estado='concluida', payload__resultado='atende').count() == 1
 
 def test_teste_preserva_aluno_status_credito_e_contexto(p, monkeypatch):
@@ -76,6 +79,8 @@ def test_teste_preserva_aluno_status_credito_e_contexto(p, monkeypatch):
     nova = enviar(p)
     assert eventos().count() == 0
     assert OutboxMarketplace.objects.filter(event='encomendas.sandbox-avaliacao-atualizada', payload__entrega_id=str(nova.pk), payload__estado='pendente').exists()
+    concluir(nova, monkeypatch)
+    assert eventos().count() == 1
 
 def test_teste_sem_entrega_original_nao_concede_xp(p, monkeypatch):
     e = enviar(p, teste=True)
@@ -88,6 +93,7 @@ def test_invalido_nao_vira_aprovacao_mesmo_com_resposta_incorreta(p, monkeypatch
     e = enviar(p)
     a = concluir(e, monkeypatch, invalido=True)
     assert a.resultado['avaliacao']['resultado'] == 'inconclusiva'
+    assert not eventos().exists()
     p.refresh_from_db()
     assert p.status == 'entregue' and sandbox.pode_entregar(p)
     assert p.mensagens.filter(texto__contains='Leitura incompleta').exists()
@@ -96,6 +102,7 @@ def test_sem_conclusao_fundamentada_responde_falha_e_reagenda(p, monkeypatch):
     e = enviar(p)
     a = concluir(e, monkeypatch, sem_decisao=True)
     assert a.estado == 'falha_ia' and a.tentar_em is not None
+    assert not eventos().exists()
     assert p.mensagens.filter(texto__contains='encontrou uma falha').exists()
 
 def test_reprocessar_legado_guarda_analise_e_mensagens(p, monkeypatch, settings, tmp_path):
@@ -113,7 +120,27 @@ def test_reprocessar_legado_guarda_analise_e_mensagens(p, monkeypatch, settings,
     concluir(e, monkeypatch)
     assert all(p.mensagens.filter(pk=pk, texto=texto).exists() for pk, texto in falas)
     assert p.mensagens.filter(texto__startswith='Avaliação automática da versão 1:').count() == 2
-    assert eventos().count() == 0
+    assert eventos().count() == 1
+
+
+def test_analise_inconclusiva_pode_repetir_sem_credito_e_preserva_historico(p, monkeypatch, settings, tmp_path):
+    settings.MARKETPLACE_UPLOAD_ROOT = tmp_path
+    entrega = enviar(p)
+    analise = concluir(entrega, monkeypatch, resultado='inconclusiva')
+    assert not eventos().exists()
+    analises.repetir(entrega)
+    analise.refresh_from_db()
+    assert analise.estado == 'na_fila'
+    assert analise.historico[0]['resultado']['avaliacao']['resultado'] == 'inconclusiva'
+    concluir(entrega, monkeypatch)
+    assert eventos().count() == 1
+
+
+def test_aprovacao_manual_nao_substitui_analise(p):
+    enviar(p)
+    with pytest.raises(sandbox.ErroSandbox, match='avaliação automática'):
+        sandbox.aprovar(site_id=p.site_id, participacao_id=p.pk, aprovador_id='equipe')
+    assert not eventos().exists()
 
 def test_reanalise_antiga_nao_aprova_entrega_mais_nova(p, monkeypatch):
     original = enviar(p)
@@ -125,6 +152,7 @@ def test_reanalise_antiga_nao_aprova_entrega_mais_nova(p, monkeypatch):
     concluir(original, monkeypatch)
     p.refresh_from_db()
     assert p.status == 'entregue' and nova.analise.estado == 'na_fila'
+    assert not eventos().exists()
 
 def test_so_equipe_pode_identificar_novo_teste(p, client, monkeypatch):
     monkeypatch.setattr(sessao, 'quem_e', lambda r: p.pessoa_id)

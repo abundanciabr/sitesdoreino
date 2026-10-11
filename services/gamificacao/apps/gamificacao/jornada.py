@@ -1,19 +1,26 @@
-"""Sete faixas, treze passos; entregas declaradas e recebimentos com print lido."""
+"""Quatro caminhos; faixas conquistadas após avaliação real e sequencial."""
 
 from __future__ import annotations
 
 import re
+import hashlib
+import json
 import uuid
 from datetime import date
 from decimal import Decimal, InvalidOperation, ROUND_CEILING
 
 from django.db import transaction
 from django.utils import timezone
-from .bonus_faixas import PONTOS
+from .bonus_faixas import PONTOS, SLUGS
+from .historico_reinicio import marcos_anteriores
 
 from .models import (
     AnexoDaJornada,
+    AvaliacaoDaJornada,
+    AvaliacaoSandboxProjetada,
+    FaixaDoAluno,
     JornadaPessoal,
+    LancamentoDeXP,
     RecebimentoDeclarado,
     RegistroDaJornada,
     VersaoDoRecebimento,
@@ -28,20 +35,42 @@ FAIXAS = (
     ("Marrom", "#7a4a26", (6,)),
     ("Preta", "#1d1d1d", (7, 8, 9, 10, 11, 12, 13)),
 )
-# Proporções da tabela do mantenedor: 25, 50, 100, 200, 500, 750, 1000, 2000.
+# Percentuais dos graus de clientes, após o primeiro recebimento reconhecido.
 PERCENTUAIS = dict(
     zip(
-        range(6, 14),
-        map(Decimal, ("1.25", "2.5", "5", "10", "25", "37.5", "50", "100")),
+        range(8, 14),
+        map(Decimal, ("5", "10", "25", "37.5", "50", "100")),
     )
 )
+CAMINHOS = frozenset(("freelancer", "ugc", "jogo", "aprender"))
 GRAUS = ("I", "II", "III", "IV", "V", "VI", "VII")
 RESULTADOS = {
-    1: "Comecei minha jornada para ganhar os primeiros dólares com modelagem 3D.",
-    2: "Concluí meu primeiro item 3D e consigo mostrar o resultado.",
-    3: "Concluí e entreguei um trabalho de prática no Sandbox.",
-    4: "Concluí e entreguei meu trabalho real na Fila do Dólar.",
-    5: "Recebi meu primeiro dinheiro por um trabalho de modelagem 3D.",
+    1: "Comecei minha jornada de modelagem 3D.",
+    2: "Escolher meu caminho, assumir o compromisso e responder sobre o próximo passo.",
+    3: "Descrever meu primeiro item e uma ação concreta que realizei nele.",
+    4: "Apresentar imagem ou arquivo 3D para análise do meu item.",
+}
+RESULTADOS_POR_CAMINHO = {
+    "freelancer": {
+        5: "Concluir uma prática do Sandbox conforme o briefing, reconhecida pela análise automática.",
+        6: "Entregar o trabalho real da Fila do Dólar com aceite do cliente.",
+        7: "Conferir meu primeiro recebimento por modelagem 3D, ligado ao trabalho e valor.",
+    },
+    "ugc": {
+        5: "Alterar e salvar a cor de uma parte do acessório.",
+        6: "Mudar a proporção do acessório e comparar as versões.",
+        7: "Apresentar imagem final, nome e uso imaginado do acessório.",
+    },
+    "jogo": {
+        5: "Alterar e salvar a cor do objeto pensando no cenário.",
+        6: "Ajustar a proporção do objeto e registrar o resultado.",
+        7: "Apresentar a imagem final e explicar onde usaria o objeto no jogo.",
+    },
+    "aprender": {
+        5: "Experimentar e salvar uma mudança de cor.",
+        6: "Fazer uma pequena alteração de proporção e observar a diferença.",
+        7: "Apresentar a criação final e explicar uma mudança feita desde o começo.",
+    },
 }
 APOIOS = {
     "guiado": (
@@ -81,10 +110,12 @@ def centavos(texto):
     return resultado
 
 
-def passos(meta):
+def passos(meta, caminho="freelancer"):
     lista = []
     for nome, cor, ordens in FAIXAS:
         for indice, ordem in enumerate(ordens):
+            if caminho != "freelancer" and ordem > 7:
+                continue
             pct = PERCENTUAIS.get(ordem)
             limite = (
                 int(
@@ -99,15 +130,15 @@ def passos(meta):
                 {
                     "ordem": ordem,
                     "faixa": nome,
-                    "grau": f"{indice+1}º" if nome == "Preta" else "",
-                    "nome": f"{nome} · {indice+1}º Grau" if nome == "Preta" else nome,
+                    "grau": f"{indice+1}º" if nome == "Preta" and caminho == "freelancer" else "",
+                    "nome": f"{nome} · {indice+1}º Grau" if nome == "Preta" and caminho == "freelancer" else nome,
                     "cor": cor,
                     "cores": [cor],
                     "bonus_xp": PONTOS[ordem],
-                    "conquista": RESULTADOS.get(
-                        ordem,
-                        f"Alcancei {str(pct).replace('.', ',')}% da minha meta pessoal.",
-                    ),
+                    "conquista": (f"Alcançar {str(pct).replace('.', ',')}% da minha meta pessoal em recebimentos conferidos."
+                                  if pct else RESULTADOS.get(ordem) or
+                                  RESULTADOS_POR_CAMINHO.get(caminho, {}).get(ordem) or
+                                  "Escolher meu caminho para conhecer esta atividade."),
                     "percentual": pct,
                     "meta_cents": limite,
                     "limite": reais(limite) if limite is not None else None,
@@ -126,6 +157,42 @@ def _soma_anterior(r):
     )
 
 
+def _conquistas_anteriores(pessoa_id, site_id, jornada):
+    """Lê faixas já concedidas, sem criar uma avaliação ou um crédito novo."""
+    anteriores = marcos_anteriores(pessoa_id, site_id)
+    data_reserva = jornada.atualizada_em if jornada else timezone.now()
+    alcancadas = {ordem: dado["criado_em"] or data_reserva
+                  for ordem, dado in anteriores["bonus"].items()}
+    for ordem, _origem in anteriores["faixas"]:
+        if isinstance(ordem, int) and 2 <= ordem <= 13:
+            alcancadas.setdefault(ordem, data_reserva)
+    from .faixas import limite_das_faixas_legadas
+    for faixa in FaixaDoAluno.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, estado=FaixaDoAluno.Estado.ALCANCADA,
+        alcancada_em__lt=limite_das_faixas_legadas(site_id),
+    ).values("ordem", "alcancada_em"):
+        alcancadas.setdefault(faixa["ordem"], faixa["alcancada_em"])
+    # A confirmação antiga da amarela só valia após quatro tarefas completas.
+    if jornada and jornada.declaracoes.get("2") and jornada.confirmacoes_sequenciais.get("2"):
+        from .bonus_inicio import recebido
+        from .inicio import requisitos_branca
+        tem_anexo = AnexoDaJornada.objects.filter(
+            pessoa_id=pessoa_id, site_id=site_id, passo=2,
+        ).exists()
+        if all(requisitos_branca(jornada, tem_anexo).values()) and all(
+            recebido(pessoa_id, site_id, etapa) > 0 for etapa in (1, 2, 3, 4)
+        ):
+            alcancadas.setdefault(2, data_reserva)
+    # A projeção só marca reconhecida_em quando o avaliador antigo aceitou o
+    # Sandbox. Projeções pendentes, envios e simples declarações ficam de fora.
+    reconhecimento = AvaliacaoSandboxProjetada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, reconhecida_em__isnull=False,
+    ).order_by("reconhecida_em").values_list("reconhecida_em", flat=True).first()
+    if reconhecimento:
+        alcancadas.setdefault(3, reconhecimento)
+    return alcancadas
+
+
 def situacao(pessoa_id, site_id, *, meta_simulada=None):
     from .sandbox_avaliacoes import resumo as resumo_sandbox
     jornada = JornadaPessoal.objects.filter(
@@ -137,13 +204,40 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         else (jornada.meta_cents if jornada else None)
     )
     declaracoes = jornada.declaracoes if jornada else {}
-    confirmacoes = jornada.confirmacoes_sequenciais if jornada else {}
-    from .inicio import requisitos_branca, etapas_inicio
-    tem_anexo = AnexoDaJornada.objects.filter(
-        pessoa_id=pessoa_id, site_id=site_id, passo=2,
-    ).exists()
-    requisitos = requisitos_branca(jornada, tem_anexo)
-    inicio_concluido = etapas_inicio(pessoa_id, site_id, jornada, tem_anexo)[3]['concluida']
+    caminho = (jornada.inicio or {}).get("motivo") if jornada else None
+    if caminho not in CAMINHOS:
+        caminho = None
+    reconhecidas = {}
+    recentes = {}
+    historicas = []
+    bonus_historicos = {}
+    slugs_para_ordem = {"bonus-faixa-" + slug: ordem for ordem, slug in SLUGS.items()}
+    for lancamento in LancamentoDeXP.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, pontos__gt=0,
+        regra_slug__in=slugs_para_ordem,
+    ).exclude(status="estornado").values("regra_slug", "criado_em", "pontos"):
+        ordem_historica = slugs_para_ordem[lancamento["regra_slug"]]
+        bonus_historicos.setdefault(ordem_historica, lancamento)
+    for ordem_historica, lancamento in marcos_anteriores(pessoa_id, site_id)["bonus"].items():
+        bonus_historicos.setdefault(ordem_historica, lancamento)
+    conquistas_anteriores = _conquistas_anteriores(pessoa_id, site_id, jornada)
+    # Um grau já creditado prova a antiga conquista; os passos intermediários
+    # ficam reconhecidos como baseline, sem fabricar novas avaliações ou XP.
+    for ordem_historica in range(2, max((*bonus_historicos, *conquistas_anteriores), default=1) + 1):
+        reconhecidas[ordem_historica] = (
+            conquistas_anteriores.get(ordem_historica)
+            or bonus_historicos.get(ordem_historica, {}).get("criado_em")
+            or conquistas_anteriores.get(max(conquistas_anteriores, default=1))
+            or bonus_historicos.get(max(bonus_historicos, default=1), {}).get("criado_em")
+        )
+    for avaliacao in AvaliacaoDaJornada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id,
+    ).order_by("criada_em", "id").values("ordem", "caminho", "resultado", "feedback", "criada_em"):
+        historicas.append(avaliacao)
+        if avaliacao["caminho"] == "comum" or avaliacao["caminho"] == caminho:
+            recentes[avaliacao["ordem"]] = avaliacao
+            if avaliacao["resultado"] == "reconhecida":
+                reconhecidas.setdefault(avaliacao["ordem"], avaliacao["criada_em"])
     recebimentos = list(
         RecebimentoDeclarado.objects.filter(
             pessoa_id=pessoa_id, site_id=site_id, fora_da_progressao=False,
@@ -159,29 +253,28 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         else 0
         for r in recebimentos
     )
-    lista = passos(meta or 10000)
+    total_conferido = sum(
+        r.valor_cents for r in recebimentos
+        if r.estado == "confirmado" and (r.leitura or {}).get("correspondencia_trabalho") is True
+    )
+    lista = passos(meta or 10000, caminho)
     anterior_alcancada = True
     for p in lista:
         ordem = p["ordem"]
-        if ordem == 1:
-            criterio = True
-        elif ordem == 2:
-            criterio = (bool(confirmacoes.get("2")) and bool(declaracoes.get("2"))
-                        and all(requisitos.values()) and inicio_concluido)
-        elif ordem in (3, 4):
-            criterio = bool(confirmacoes.get(str(ordem))) and bool(declaracoes.get(str(ordem)))
-        elif ordem == 5:
-            criterio = total > 0
-        else:
-            criterio = meta is not None and total >= p["meta_cents"]
+        criterio = ordem == 1 or ordem in reconhecidas
         p["alcancada"] = anterior_alcancada and criterio
         anterior_alcancada = p["alcancada"]
-        p["alcancada_em"] = None
+        p["alcancada_em"] = reconhecidas.get(ordem) if p["alcancada"] else None
+        p["feedback"] = recentes.get(ordem, {}).get("feedback", "")
+        p["avaliacao_resultado"] = recentes.get(ordem, {}).get("resultado")
+        if ordem in reconhecidas and not p["feedback"]:
+            p["feedback"] = "Conquista histórica preservada."
+            p["avaliacao_resultado"] = "historica"
     atual = max((p for p in lista if p["alcancada"]), key=lambda p: p["ordem"])
     proxima = next((p for p in lista if p["ordem"] > atual["ordem"]), None)
     grupos = [
         {"nome": nome, "cor": cor, "passos": [p for p in lista if p["ordem"] in ordens]}
-        for nome, cor, ordens in FAIXAS
+        for nome, cor, ordens in FAIXAS if any(p["ordem"] in ordens for p in lista)
     ]
     for r in recebimentos:
         from .prints_recebimentos import mensagem
@@ -197,11 +290,29 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
             .defer("print_bytes")
             .order_by("-revisao")
         )
-    falta = max((proxima["meta_cents"] or 0) - total, 0) if proxima else 0
-    fila_usada = bool(declaracoes.get("4")) or any(
+    falta = max((proxima["meta_cents"] or 0) - total_conferido, 0) if proxima else 0
+    fila_usada = 6 in reconhecidas or any(
         r.origem == "fila" for r in recebimentos
     )
-    fila_para_proximo = bool(fila_usada and proxima and proxima["ordem"] >= 5)
+    fila_para_proximo = bool(fila_usada and proxima and proxima["ordem"] >= 7)
+    if proxima is None:
+        proxima_url, proxima_acao = "", "Ciclo concluído"
+    elif caminho is None:
+        proxima_url, proxima_acao = "/trilha/inicio/motivo/", "Escolher um dos quatro caminhos"
+    elif proxima["ordem"] == 2:
+        proxima_url, proxima_acao = "/trilha/inicio/objetivo/", "Definir meu compromisso"
+    elif proxima["ordem"] == 3:
+        proxima_url, proxima_acao = "/trilha/inicio/item/", "Descrever meu primeiro item"
+    elif proxima["ordem"] == 4:
+        proxima_url, proxima_acao = "/trilha/inicio/envio/", "Apresentar meu item para análise"
+    elif caminho != "freelancer":
+        proxima_url, proxima_acao = "/trilha/ciclo/", "Continuar a prática do meu caminho"
+    elif proxima["ordem"] == 5:
+        proxima_url, proxima_acao = "/trilha/sandbox/", "Concluir uma prática avaliada no Sandbox"
+    elif proxima["ordem"] == 6:
+        proxima_url, proxima_acao = "/trilha/fila/", "Entregar trabalho ao cliente da Fila do Dólar"
+    else:
+        proxima_url, proxima_acao = "/trilha/recebimentos/", "Conferir meu próximo recebimento"
     return {
         "atual": atual,
         "proxima": proxima,
@@ -209,6 +320,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         "grupos": grupos,
         "total": reais(total),
         "total_cents": total,
+        "total_conferido_cents": total_conferido,
         "meta": reais(meta or 10000),
         "meta_input": f"{(meta or 10000) / 100:.2f}",
         "meta_escolhida": meta is not None,
@@ -225,73 +337,52 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         ],
         "dica": APOIOS.get(jornada.apoio if jornada else "guiado", APOIOS["guiado"])[1],
         "revisao": jornada.revisao if jornada else 0,
+        "caminho": caminho,
+        "avaliacoes_historicas": historicas,
+        "graus_historicos": [{"ordem": ordem, "bonus_xp": dado["pontos"],
+                              "conquistada_em": dado["criado_em"]}
+                             for ordem, dado in sorted(bonus_historicos.items()) if ordem >= 7],
         "recebimentos": recebimentos,
         "sandbox_avaliacoes": resumo_sandbox(pessoa_id, site_id)["avaliacoes"],
         "historico": RegistroDaJornada.objects.filter(
             pessoa_id=pessoa_id, site_id=site_id
         )[:20],
         "fila_usada": fila_usada,
-        "percentual": min(100, total * 100 // (meta or 10000)),
+        "percentual": min(100, total_conferido * 100 // (meta or 10000)),
         "falta": reais(falta),
         "chave": str(uuid.uuid4()),
         "celebracao": jornada.celebracao_pendente if jornada else {},
-        "proxima_url": (
-            "/forum/"
-            if fila_para_proximo or (proxima and proxima["ordem"] >= 6)
-            else (
-                "/encomendas/fila/"
-                if proxima and proxima["ordem"] == 4
-                else (
-                    "/cursos/"
-                    if proxima and proxima["ordem"] == 2
-                    else "/encomendas/sandbox/"
-                )
-            )
-        ),
-        "proxima_acao": (
-            "Buscar o próximo trabalho com apoio do Fórum"
-            if fila_para_proximo or (proxima and proxima["ordem"] >= 6)
-            else (
-                "Preparar minha única participação na Fila do Dólar"
-                if proxima and proxima["ordem"] == 4
-                else (
-                    "Criar meu primeiro item nas aulas"
-                    if proxima and proxima["ordem"] == 2
-                    else "Praticar minha próxima entrega no Sandbox"
-                )
-            )
-        ),
+        "proxima_url": proxima_url,
+        "proxima_acao": proxima_acao,
     }
 
 
-def _ordens_de_bonus(pessoa_id, site_id, ordens):
-    """Bônus azul novo exige reconhecimento da análise; crédito antigo segue intacto."""
-    ordens = set(ordens)
-    if 3 not in ordens:
-        return ordens
-    from .models import AvaliacaoSandboxProjetada, LancamentoDeXP
-    reconhecida = AvaliacaoSandboxProjetada.objects.filter(
-        pessoa_id=pessoa_id, site_id=site_id, reconhecida_em__isnull=False,
-    ).exists()
-    ja_creditado = LancamentoDeXP.objects.filter(
-        pessoa_id=pessoa_id, site_id=site_id, regra_slug="bonus-faixa-azul",
-    ).exists()
-    if not reconhecida and not ja_creditado:
-        ordens.remove(3)
-    return ordens
-
-
 def _registro(jornada, acao, dados, antes):
-    if acao == "declaracao" and dados.get("passo") == 2:
-        from .sandbox_avaliacoes import reconhecer_pendentes
-        reconhecer_pendentes(jornada)
     depois = situacao(jornada.pessoa_id, jornada.site_id)
-    alcancadas = _ordens_de_bonus(
-        jornada.pessoa_id, jornada.site_id,
-        (p["ordem"] for p in depois["lista"] if p["alcancada"]),
+    alcancadas = {p["ordem"] for p in depois["lista"] if p["alcancada"]}
+    avaliadas = set(AvaliacaoDaJornada.objects.filter(
+        pessoa_id=jornada.pessoa_id, site_id=jornada.site_id, resultado="reconhecida",
+    ).values_list("ordem", flat=True))
+    equivalentes_pagas = set()
+    for ordem, evidencia in AvaliacaoDaJornada.objects.filter(
+        pessoa_id=jornada.pessoa_id, site_id=jornada.site_id, resultado="reconhecida",
+    ).values_list("ordem", "evidencia"):
+        if (evidencia or {}).get("credito_equivalente_confirmado"):
+            equivalentes_pagas.add(ordem)
+    ja_creditadas = set(LancamentoDeXP.objects.filter(
+        pessoa_id=jornada.pessoa_id, site_id=jornada.site_id, pontos__gt=0,
+        regra_slug__startswith="bonus-faixa-",
+    ).exclude(status="estornado").values_list("regra_slug", flat=True))
+    baseline_max = max(
+        (ordem for ordem, slug in SLUGS.items() if "bonus-faixa-" + slug in ja_creditadas),
+        default=1,
     )
+    baseline_max = max(baseline_max, *_conquistas_anteriores(
+        jornada.pessoa_id, jornada.site_id, jornada), 1)
     from .bonus_faixas import conceder
-    dados["bonus_xp"] = conceder(jornada.pessoa_id, jornada.site_id, alcancadas)
+    dados["bonus_xp"] = conceder(jornada.pessoa_id, jornada.site_id,
+                                  {ordem for ordem in alcancadas & avaliadas
+                                   if ordem > baseline_max and ordem not in equivalentes_pagas})
     dados.update(
         {
             "texto": dados.get("texto", "Registro atualizado."),
@@ -304,34 +395,182 @@ def _registro(jornada, acao, dados, antes):
     RegistroDaJornada.objects.create(
         pessoa_id=jornada.pessoa_id, site_id=jornada.site_id, acao=acao, dados=dados
     )
+    depois["bonus_xp"] = dados["bonus_xp"]
     return depois
 
 
-def registrar_conclusao(pessoa_id, site_id, ordem):
-    """A conclusão e a declaração do aluno usam a mesma conquista e o mesmo bônus."""
-    if ordem != 4:
-        raise ValueError("Conclusão indisponível.")
+def registrar_avaliacao(pessoa_id, site_id, ordem, resultado, feedback, evidencia):
+    """Guarda uma tentativa examinada e libera em sequência as reconhecidas.
+
+    ``evidencia`` descreve o trabalho efetivamente conferido e pode trazer
+    ``chave`` (ID estável da tentativa). A repetição da mesma tentativa é idempotente.
+    """
+    if type(ordem) is not int or ordem not in range(2, 14):
+        raise ValueError("Ordem de faixa inválida.")
+    if resultado not in ("reconhecida", "incompleta", "falha"):
+        raise ValueError("Resultado de avaliação inválido.")
+    if not isinstance(feedback, str) or not feedback.strip():
+        raise ValueError("A avaliação precisa de feedback concreto.")
+    if not isinstance(evidencia, dict) or not evidencia:
+        raise ValueError("A avaliação precisa identificar a evidência examinada.")
+    try:
+        payload = json.dumps([resultado, feedback, evidencia], sort_keys=True, ensure_ascii=False)
+    except (TypeError, ValueError):
+        raise ValueError("Evidência inválida.") from None
+    chave = hashlib.sha256(str(evidencia.get("chave") or payload).encode()).hexdigest()
     from apps.core.perfil import perfil_de
     perfil_de(pessoa_id, site_id)
     with transaction.atomic():
         JornadaPessoal.objects.get_or_create(pessoa_id=pessoa_id, site_id=site_id)
         j = JornadaPessoal.objects.select_for_update().get(pessoa_id=pessoa_id, site_id=site_id)
-        if j.declaracoes.get(str(ordem)):
-            from .bonus_faixas import conceder
-            conceder(pessoa_id, site_id, _ordens_de_bonus(
-                pessoa_id, site_id,
-                (p['ordem'] for p in situacao(pessoa_id, site_id)['lista'] if p['alcancada']),
-            ))
-            return
+        caminho = (j.inicio or {}).get("motivo")
+        equivalente = evidencia.get("conquista_equivalente_original")
+        if equivalente is not None:
+            esperado = {5: (3, "sandbox"), 6: (4, "fila")}.get(ordem)
+            if (not isinstance(equivalente, dict) or esperado is None or
+                (equivalente.get("ordem"), equivalente.get("origem")) != esperado):
+                raise ValueError("Vínculo de conquista histórica inválido.")
+            origem_antiga, origem_nome = esperado
+            registro_antigo = FaixaDoAluno.objects.filter(
+                pessoa_id=pessoa_id, site_id=site_id, ordem=origem_antiga,
+                origem=origem_nome,
+            ).exists()
+            conclusao_antiga = RegistroDaJornada.objects.filter(
+                pessoa_id=pessoa_id, site_id=site_id, acao="conclusao",
+                dados__passo=origem_antiga,
+            ).exists()
+            credito_antigo = LancamentoDeXP.objects.filter(
+                pessoa_id=pessoa_id, site_id=site_id, pontos__gt=0,
+                regra_slug="bonus-faixa-" + SLUGS[origem_antiga],
+            ).exclude(status="estornado").exists()
+            anterior = marcos_anteriores(pessoa_id, site_id)
+            registro_antigo |= (origem_antiga, origem_nome) in anterior["faixas"]
+            conclusao_antiga |= origem_antiga in anterior["conclusoes"]
+            credito_antigo |= origem_antiga in anterior["bonus"]
+            if origem_antiga == 3:
+                projecao_antiga = AvaliacaoSandboxProjetada.objects.filter(
+                    pessoa_id=pessoa_id, site_id=site_id,
+                    reconhecida_em__isnull=False,
+                    reconhecida_analise_id=str(evidencia.get("analise_id") or ""),
+                ).exists()
+                registro_antigo |= projecao_antiga
+                conclusao_antiga |= RegistroDaJornada.objects.filter(
+                    pessoa_id=pessoa_id, site_id=site_id,
+                    acao="avaliacao_sandbox", dados__analise_id=str(evidencia.get("analise_id") or ""),
+                ).exists()
+            evidencia = {**evidencia,
+                         "credito_equivalente_confirmado": bool(
+                             registro_antigo and conclusao_antiga and credito_antigo)}
+        if ordem >= 5 and caminho not in CAMINHOS:
+            raise ValueError("Escolha um dos quatro caminhos antes desta avaliação.")
+        if ordem >= 8 and caminho != "freelancer":
+            raise ValueError("Graus adicionais pertencem ao caminho de clientes.")
+        if resultado == "reconhecida" and ordem >= 7 and caminho == "freelancer":
+            if not all(evidencia.get(campo) for campo in
+                       ("recebimento_id", "referencia_trabalho", "valor_cents")):
+                raise ValueError("Confira o vínculo entre trabalho, recebimento e valor.")
+            recebimento = RecebimentoDeclarado.objects.filter(
+                pk=evidencia["recebimento_id"], pessoa_id=pessoa_id, site_id=site_id,
+                estado="confirmado", fora_da_progressao=False,
+            ).first()
+            if (not recebimento or not recebimento.referencia_trabalho
+                or recebimento.referencia_trabalho != evidencia["referencia_trabalho"]
+                or recebimento.valor_cents != evidencia["valor_cents"]
+                or (recebimento.leitura or {}).get("correspondencia_trabalho") is not True):
+                raise ValueError("O recebimento e o trabalho ainda não foram conferidos.")
+            if ordem >= 8:
+                if j.meta_cents is None:
+                    raise ValueError("Defina a meta antes dos graus adicionais.")
+                total_reconhecido = sum(r.valor_cents for r in RecebimentoDeclarado.objects.filter(
+                    pessoa_id=pessoa_id, site_id=site_id, estado="confirmado",
+                    fora_da_progressao=False,
+                ) if (r.leitura or {}).get("correspondencia_trabalho") is True)
+                limite = int((Decimal(j.meta_cents) * PERCENTUAIS[ordem] / 100).to_integral_value(
+                    rounding=ROUND_CEILING))
+                if total_reconhecido < limite:
+                    raise ValueError("O valor conferido ainda não alcançou este grau.")
         antes = situacao(pessoa_id, site_id)
-        predecessor_alcancado = antes["lista"][ordem - 2]["alcancada"]
-        agora = timezone.now().isoformat()
-        j.declaracoes = {**j.declaracoes, str(ordem): agora}
-        if predecessor_alcancado:
-            j.confirmacoes_sequenciais = {**j.confirmacoes_sequenciais, str(ordem): agora}
-        j.revisao += 1
-        j.save(update_fields=["declaracoes", "confirmacoes_sequenciais", "revisao", "atualizada_em"])
-        _registro(j, "conclusao", {"passo": ordem, "texto": RESULTADOS[ordem]}, antes)
+        avaliacao, criada = AvaliacaoDaJornada.objects.get_or_create(
+            pessoa_id=pessoa_id, site_id=site_id, ordem=ordem, chave=chave,
+            defaults={"caminho": "comum" if ordem <= 4 else caminho,
+                      "resultado": resultado, "feedback": feedback.strip(), "evidencia": evidencia},
+        )
+        if not criada:
+            if (avaliacao.resultado, avaliacao.feedback, avaliacao.evidencia) != (
+                resultado, feedback.strip(), evidencia
+            ):
+                raise ValueError("A chave desta avaliação já representa outro resultado.")
+            antes["bonus_xp"] = 0
+            return antes
+        depois = _registro(j, "avaliacao", {
+            "passo": ordem, "avaliacao_id": avaliacao.pk,
+            "resultado": resultado, "texto": feedback.strip(),
+        }, antes)
+        if depois["atual"]["ordem"] > antes["atual"]["ordem"]:
+            j.celebracao_pendente = {
+                "ordem": depois["atual"]["ordem"],
+                "tipo": "cor" if depois["atual"]["faixa"] != antes["atual"]["faixa"] else "grau",
+            }
+            j.save(update_fields=["celebracao_pendente", "atualizada_em"])
+        return depois
+
+
+def registrar_conclusao(pessoa_id, site_id, ordem):
+    """Compatibilidade: registra o fato antigo sem fingir que houve avaliação."""
+    if ordem not in (3, 4):
+        raise ValueError("Conclusão indisponível.")
+    from apps.core.perfil import perfil_de
+    perfil_de(pessoa_id, site_id)
+    with transaction.atomic():
+        j, _ = JornadaPessoal.objects.get_or_create(pessoa_id=pessoa_id, site_id=site_id)
+        j = JornadaPessoal.objects.select_for_update().get(pk=j.pk)
+        if str(ordem) not in j.declaracoes:
+            j.declaracoes = {**j.declaracoes, str(ordem): timezone.now().isoformat()}
+            j.save(update_fields=["declaracoes", "atualizada_em"])
+            RegistroDaJornada.objects.create(pessoa_id=pessoa_id, site_id=site_id,
+                acao="conclusao", dados={"passo": ordem, "texto": "Conclusão registrada; avaliação pendente."})
+
+
+def reconciliar_recebimentos(pessoa_id, site_id):
+    """Aproveita leituras com trabalho vinculado, inclusive após escolher a meta."""
+    j = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
+    if not j or (j.inicio or {}).get("motivo") != "freelancer":
+        return situacao(pessoa_id, site_id)
+    recebimentos = [r for r in RecebimentoDeclarado.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, estado="confirmado",
+        fora_da_progressao=False,
+    ).order_by("recebido_em", "id") if r.referencia_trabalho and
+        (r.leitura or {}).get("correspondencia_trabalho") is True]
+    total = 0
+    for r in recebimentos:
+        total += r.valor_cents
+        evidencia = {
+            "recebimento_id": r.pk, "referencia_trabalho": r.referencia_trabalho,
+            "valor_cents": r.valor_cents, "print_sha256": r.print_sha256,
+            "recebido_em": r.recebido_em.isoformat(),
+            "conferencia": "leitura visual; sem autenticacao bancaria",
+            "chave": f"recebimento:{r.pk}:revisao:{r.revisao}:primeiro",
+        }
+        registrar_avaliacao(pessoa_id, site_id, 7, "reconhecida",
+            f"Conferi o identificador do trabalho e o recebimento de {reais(r.valor_cents)} "
+            "no material. A leitura visual não autentica o pagamento.", evidencia)
+        if j.meta_cents:
+            for ordem, percentual in PERCENTUAIS.items():
+                if total * 100 < j.meta_cents * percentual:
+                    continue
+                registrar_avaliacao(pessoa_id, site_id, ordem, "reconhecida",
+                    f"Recebimentos conferidos de {reais(total)} alcançaram "
+                    f"{str(percentual).replace('.', ',')}% da meta de {reais(j.meta_cents)}. "
+                    f"Grau {ordem - 6} conquistado.",
+                    {**evidencia, "meta_cents": j.meta_cents, "total_cents": total,
+                     "percentual": str(percentual),
+                     "chave": f"recebimento:{r.pk}:revisao:{r.revisao}:grau:{ordem}:meta:{j.meta_cents}"})
+    return situacao(pessoa_id, site_id)
+
+
+def recuperar_avaliacoes_anteriores(pessoa_id, site_id, fatos=None):
+    from .historico_avaliacoes import recuperar_avaliacoes_anteriores as recuperar
+    return recuperar(pessoa_id, site_id, fatos=fatos)
 
 
 def salvar(pessoa_id, site_id, dados, *, arquivo=None):
@@ -396,34 +635,11 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
             declaracoes = dict(j.declaracoes)
             confirmacoes = dict(j.confirmacoes_sequenciais)
             if dados.get("estado") == "feito":
-                if not antes["lista"][ordem - 2]["alcancada"]:
-                    raise ValueError("Conclua a faixa anterior antes de confirmar esta etapa.")
-                if ordem == 2:
-                    from .inicio import requisitos_branca, etapas_inicio
-                    tem_anexo = AnexoDaJornada.objects.filter(
-                        pessoa_id=pessoa_id, site_id=site_id, passo=2,
-                    ).exists()
-                    if not all(requisitos_branca(j, tem_anexo).values()):
-                        raise ValueError(
-                            "Para concluir o primeiro item, escolha seu motivo, "
-                            "assuma seu compromisso e envie seu arquivo."
-                        )
-                    if not etapas_inicio(pessoa_id, site_id, j, tem_anexo)[2]['concluida']:
-                        raise ValueError('Conclua as três tarefas anteriores e receba seus XP antes de enviar.')
-                    # O quarto crédito entra antes de situacao calcular a faixa.
-                    # Se a regra não pagar, a declaração fica guardada, mas não promove.
-                    from .bonus_inicio import conceder as conceder_inicio
-                    novo_inicio_xp = conceder_inicio(pessoa_id, site_id, 4)
-                else:
-                    novo_inicio_xp = 0
-                if confirmacoes.get(str(ordem)) and declaracoes.get(str(ordem)) and not novo_inicio_xp:
+                if declaracoes.get(str(ordem)):
                     return antes, antes, False
                 agora = timezone.now().isoformat()
                 declaracoes.setdefault(str(ordem), agora)
-                if not declaracoes[str(ordem)]:
-                    declaracoes[str(ordem)] = agora
-                confirmacoes.setdefault(str(ordem), agora)
-                texto = RESULTADOS[ordem]
+                texto = "Atividade informada; avaliação pendente."
             elif dados.get("estado") == "corrigir":
                 confirmacoes.pop(str(ordem), None)
                 texto = (
@@ -436,6 +652,11 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
             registro = {"passo": ordem, "texto": texto}
         elif acao in ("recebimento", "correcao"):
             valor = centavos(dados.get("valor", ""))
+            referencia_trabalho = str(dados.get("referencia_trabalho", "")).strip()
+            if len(referencia_trabalho) > 280:
+                raise ValueError("Descreva o trabalho em até 280 caracteres.")
+            if valor and not referencia_trabalho:
+                raise ValueError("Identifique o trabalho de modelagem 3D ligado a este recebimento.")
             from . import prints_recebimentos as prints
             from .prints_recebimentos import preparar
 
@@ -497,6 +718,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                     chave=chave,
                     valor_cents=valor,
                     origem=origem,
+                    referencia_trabalho=referencia_trabalho,
                     recebido_em=recebido_em,
                     print_bytes=print_bytes,
                     print_sha256=print_sha256,
@@ -528,6 +750,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 else:
                     anterior = 0
                 r.valor_cents, r.recebido_em = valor, recebido_em
+                r.referencia_trabalho = referencia_trabalho or r.referencia_trabalho
                 if print_bytes:
                     r.print_bytes, r.print_sha256 = print_bytes, print_sha256
                 r.moeda_original, r.valor_original_cents = (
@@ -553,6 +776,7 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                         "moeda_original": moeda_original,
                         "valor_original_cents": valor_original,
                         "recebido_em": recebido_em.isoformat(),
+                        "referencia_trabalho": referencia_trabalho,
                     },
                 )
         else:
@@ -560,4 +784,6 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
         j.revisao += 1
         j.save()
         depois = _registro(j, acao, registro, antes)
+        if acao == "meta":
+            depois = reconciliar_recebimentos(pessoa_id, site_id)
         return antes, depois, depois["atual"]["ordem"] > antes["atual"]["ordem"]

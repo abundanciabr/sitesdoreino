@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Minha Trilha{% endblock %} | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">{% block faixa %}<a href="{% url 'base' %}">← Voltar à minha Trilha</a>{% endblock %}</div>
+<main>{% block conteudo %}{% endblock %}</main>
+</body>
+</html>
