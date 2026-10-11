@@ -254,3 +254,23 @@ test('voltar aparece nas duas etapas somente depois do XP recebido e preserva a 
   assert.deepEqual(ui.panelEvents,['fechado']);
  }
 });
+
+
+test('concluir revisão salva e retorna à trilha; primeira conclusão mantém a celebração',async()=>{
+ for(const embedded of [false,true]) for(const jaRecebida of [false,true]) {
+  const initial=record();initial.inicio.motivo_etapa=2;
+  initial.inicio.etapas=[{etapa:1,xp_recebido:jaRecebida?100:0,concluida:jaRecebida}];
+  const ui=await page('motivo',initial,'',true,embedded);
+  ui.form.elements.motivo_pessoal.value='Minha reflexão atualizada';await ui.fire(ui.form,'input');
+  ui.fail(new Error('Sem conexão'));await ui.submit('continuar');
+  assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
+  assert.equal(ui.form.elements.motivo_pessoal.value,'Minha reflexão atualizada');
+  ui.setRecord({...initial,conquista_ja_recebida:jaRecebida,conquista_xp:jaRecebida?0:100});
+  await ui.submit('continuar');
+  assert.equal(ui.calls.at(-1).options.body.get('concluir'),'sim');
+  assert.equal(ui.calls.at(-1).options.body.get('motivo_pessoal'),'Minha reflexão atualizada');
+  const receipt='/conquistas/inicio/conquista/1/?comprovante=teste';
+  assert.deepEqual(ui.redirects,embedded?[]:[jaRecebida?'/trilha/':receipt]);
+  assert.deepEqual(ui.panelEvents,embedded?[jaRecebida?'fechado':receipt+'&embutido=1']:[]);
+ }
+});

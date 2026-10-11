@@ -224,6 +224,10 @@ window.iniciarJornada = (scope = document, host = {}) => {
     }
     const concluir = event.submitter?.value === 'pausar' ? 'nao' : 'sim';
     if (await save(forms.motivo, 'inicio-motivo', {concluir, motivo_etapa: '1'})) {
+      if (concluir === 'sim' && data.conquista_ja_recebida) {
+        await leaveMotivo();
+        return;
+      }
       let destination = concluir === 'sim' ? data.conquista_url || root.dataset.conquistas : root.dataset.conquistas;
       if (embedded && data.conquista_url && concluir === 'sim') destination += (destination.includes('?') ? '&' : '?') + 'embutido=1';
       navigate(destination);
