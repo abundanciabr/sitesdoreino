@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Serviço local do integrador; socket acessível ao grupo robo, código como integrador."""
 import json
+import math
 from datetime import datetime, timezone
 import os
 from pathlib import Path
@@ -124,7 +125,46 @@ def _fase_publica(fase):
         diag = _diagnostico(fase.get(chave))
         if diag is not None:
             publico[chave] = diag
+    publico.update(_tempos_publicos(fase))
     return publico
+
+
+OPERACOES_TEMPO = {"espelhamento", "conferencia", "registro", "ensaio", "promocao", "ativacao"}
+ETAPAS_ENSAIO = {"reaproveitamento", "montagem", "estaticos", "projecao", "testes_funil",
+                "testes_comerciais", "imagem", "backup_codigo"}
+
+
+def _segundos(valor):
+    return type(valor) in (int, float) and 0 <= valor <= 31536000 and math.isfinite(valor)
+
+
+def _tempos_publicos(fase):
+    saida = {}
+    permitidas = OPERACOES_TEMPO | {n + "_" + c for n in OPERACOES_TEMPO for c in CELULAS}
+    tempos = fase.get("tempos")
+    if isinstance(tempos, dict):
+        saida["tempos_segundos"] = {k: v for k, v in tempos.items() if k in permitidas and _segundos(v)}
+    ensaios = fase.get("ensaios")
+    if isinstance(ensaios, dict):
+        saida["ensaios"] = {}
+        for celula, valor in ensaios.items():
+            if celula in CELULAS and isinstance(valor, dict) and isinstance(valor.get("tempos"), dict):
+                saida["ensaios"][celula] = {
+                    "tempos_segundos": {k: v for k, v in valor["tempos"].items()
+                                         if k in ETAPAS_ENSAIO and _segundos(v)},
+                    "reaproveitado": valor.get("reaproveitado") is True}
+    atual = fase.get("operacao_atual")
+    if (isinstance(atual, dict) and isinstance(atual.get("nome"), str)
+            and atual["nome"] in OPERACOES_TEMPO and atual.get("celula") in (*CELULAS, None)):
+        inicio = _instante(atual.get("iniciada_em"))
+        if inicio:
+            saida["operacao_atual"] = {"nome": atual["nome"], "celula": atual.get("celula"),
+                "iniciada_em": atual["iniciada_em"],
+                "decorridos_segundos": round(max(0, (datetime.now(timezone.utc) - inicio).total_seconds()), 1)}
+    for chave in ("iniciada_em", "concluida_em"):
+        if _instante(fase.get(chave)):
+            saida[chave] = fase[chave]
+    return saida
 
 
 def _canal_publico():

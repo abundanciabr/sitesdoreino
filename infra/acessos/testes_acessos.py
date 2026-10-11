@@ -51,6 +51,23 @@ class Conexao:
 
 
 class BrokerTests(unittest.TestCase):
+    def test_tempos_expoem_so_operacoes_conhecidas_e_numeros_finitos(self):
+        inicio = datetime.now(timezone.utc).isoformat()
+        saida = BROKER._tempos_publicos({
+            'tempos': {'ensaio_aplicacao': 4.25, 'token_secreto': 123, 'promocao': float('nan')},
+            'operacao_atual': {'nome': 'ensaio', 'celula': 'funil', 'iniciada_em': inicio,
+                               'comando': 'nao deve aparecer'},
+            'ensaios': {'funil': {'reaproveitado': True,
+                                 'tempos': {'testes_funil': 3.5, 'senha': 1}}}})
+        self.assertEqual(saida['tempos_segundos'], {'ensaio_aplicacao': 4.25})
+        self.assertEqual(saida['ensaios']['funil'], {
+            'reaproveitado': True, 'tempos_segundos': {'testes_funil': 3.5}})
+        self.assertEqual(saida['operacao_atual']['nome'], 'ensaio')
+        self.assertGreaterEqual(saida['operacao_atual']['decorridos_segundos'], 0)
+        self.assertNotIn('comando', saida['operacao_atual'])
+        self.assertFalse(BROKER._segundos(10 ** 1000))
+        self.assertEqual(BROKER._tempos_publicos({'operacao_atual': {'nome': []}}), {})
+
     def test_estado_roda_somente_o_integrador(self):
         processo = types.SimpleNamespace(returncode=0, stdout='{"estado":"ok"}\n')
         with mock.patch.object(BROKER.pwd, "getpwnam", return_value=types.SimpleNamespace(pw_uid=1001)):
