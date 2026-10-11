@@ -69,6 +69,22 @@ class TestCanal(unittest.TestCase):
             start.assert_not_called()
             read.assert_not_called()
 
+    def test_registro_com_tipo_invalido_nao_e_aceito(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / 'estado.json'
+            for value in ([], None, 'texto', 7):
+                p.write_text(json.dumps(value))
+                with self.assertRaises(m.Falha):
+                    m.ler(p)
+
+    def test_fila_com_registro_invalido_continua_consultavel(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(m, 'QUEUE', Path(d)):
+            job = Path(d) / ('a' * 64)
+            job.mkdir()
+            (job / 'pedido.json').write_text('{}')
+            (job / 'estado.json').write_text('[]')
+            self.assertEqual(m.contagens()['ilegivel'], 1)
+
     def test_consulta_nao_inicia_manutencao(self):
         with patch.object(m, 'consultar', return_value={'estado': 'disponivel'}), patch.object(m, 'iniciar') as start:
             self.assertEqual(m.atender(Conn(['consultar'])), {'estado': 'disponivel'})
