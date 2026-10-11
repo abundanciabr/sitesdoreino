@@ -24,8 +24,8 @@ def p(db):
 
 
 def enviar(p):
-    arquivo = ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, nome='modelo.zip',
-        chave=uuid.uuid4().hex, sha256='a' * 64, tamanho=100, mime='application/zip')
+    arquivo = ArquivoSandbox.objects.create(site_id=p.site_id, participacao=p, nome='modelo.glb',
+        chave=uuid.uuid4().hex, sha256='a' * 64, tamanho=100, mime='model/gltf-binary')
     return sandbox.entregar(site_id=p.site_id, participacao_id=p.pk,
                             pessoa_id=p.pessoa_id, arquivos=[arquivo.pk])
 
@@ -34,9 +34,8 @@ def resultado_incompleto(e):
     f = e.arquivos.get().analise
     f.estado = 'concluida'
     f.resultado = {'arquivos': [
-        {'arquivo': 'modelo.zip', 'estado': 'concluida', 'medidas': {}, 'imagens': []},
-        {'arquivo': 'modelo.zip / guia.pdf', 'estado': 'nao_examinado',
-         'falha': 'Formato sem leitor disponível.', 'imagens': []},
+        {'arquivo': 'modelo.glb', 'estado': 'nao_examinado', 'medidas': {},
+         'falha': 'Não foi possível examinar o modelo.', 'imagens': []},
     ]}
     f.save()
     return f
@@ -46,8 +45,8 @@ def concluir(e, monkeypatch):
     resultado_incompleto(e)
     monkeypatch.setattr(ia_sandbox, 'avaliar_entrega', lambda *args: {
         'requisitos': [{'id': '1', 'encontrado': False, 'nao_encontrado': False,
-                        'inconclusivo': True, 'evidencias': ['guia.pdf não examinado']}],
-        'avaliacao': {'resultado': 'inconclusiva', 'justificativa': 'PDF não examinado.'},
+                        'inconclusivo': True, 'evidencias': ['modelo.glb não examinado']}],
+        'avaliacao': {'resultado': 'inconclusiva', 'justificativa': 'Modelo não examinado.'},
         'interpretacao_visual_ia': 'Sem imagem examinável.'})
     analises.processar_entrega(e.analise.pk)
     return AnaliseEntregaSandbox.objects.get(entrega=e)
@@ -65,7 +64,7 @@ def test_recebimento_imediato_e_resultado_incompleto_sem_depender_do_chat(p, mon
     assert 'Não foi possível verificar' in a.resultado['requisitos'][0]['inconclusivo']
     respostas = p.mensagens.filter(ator_id='analise-automatica')
     assert respostas.count() == 2
-    assert respostas.filter(texto__contains='guia.pdf').exists()
+    assert respostas.filter(texto__contains='modelo.glb').exists()
     assert 'incompleta' in devolutiva.situacao(a)
     analises.processar_entrega(a.pk)
     devolutiva.conclusao(a)
@@ -93,7 +92,9 @@ def test_respostas_esgotadas_e_adiadas_nao_ocupam_o_lote(p, monkeypatch):
             papel='ia', estado='falha', tentativas=3)
         RespostaSandbox.objects.create(site_id=p.site_id, participacao=p, origem=f'adiada:{i}',
             papel='ia', tentar_em=timezone.now() + timedelta(hours=1))
-    pronta = ia_sandbox.enfileirar(p, 'mensagem:pronta', 'ia')
+    mensagem = MensagemSandbox.objects.create(site_id=p.site_id, participacao=p,
+        ator_id=p.pessoa_id, papel='aluno', texto='Pergunta do aluno')
+    pronta = ia_sandbox.enfileirar(p, 'mensagem:'+str(mensagem.pk), 'ia')
     chamadas = []
     monkeypatch.setattr(ia_sandbox, 'processar_resposta', chamadas.append)
     ia_sandbox.rodada_respostas()
@@ -156,7 +157,12 @@ def test_resposta_do_caso_indicado_unica_e_preservada_na_recuperacao(p, monkeypa
     ParticipacaoSandbox.objects.filter(pk=p.pk).update(id=modulo.TRABALHO)
     p.pk = uuid.UUID(modulo.TRABALHO)
     e = enviar(p)
-    concluir(e, monkeypatch)
+    a = concluir(e, monkeypatch)
+    # A migração trata um ZIP histórico com PDF, anterior aos formatos atuais.
+    a.resultado['medidas_programas'] = [{'conteudo': {'arquivos': [
+        {'arquivo': 'guia.pdf', 'estado': 'nao_examinado'},
+    ]}}]
+    a.save(update_fields=['resultado'])
     modulo.responder(apps, SimpleNamespace(connection=connection))
     modulo.responder(apps, SimpleNamespace(connection=connection))
     assert MensagemSandbox.objects.filter(participacao=p, texto__startswith='Revimos').count() == 1

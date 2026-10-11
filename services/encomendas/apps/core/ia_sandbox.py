@@ -171,16 +171,31 @@ Sem notas numéricas inventadas.""",
     return result
 
 
+@transaction.atomic
 def enfileirar(participacao, origem, papel):
     if papel not in ('ia', 'cliente'):
         raise ValueError('Interlocutor desconhecido')
+    participacao = ParticipacaoSandbox.objects.select_for_update().get(pk=participacao.pk)
+    # Uma chamada que já estava em voo não recria a conversa apagada.
+    if origem.startswith('entrega:') and not participacao.entregas.filter(pk=origem.split(':')[1]).exists():
+        return None
+    if origem.startswith('mensagem:') and not participacao.mensagens.filter(pk=origem.split(':')[1]).exists():
+        return None
+    if origem.startswith('atraso:') and (not participacao.atraso_em or origem != 'atraso:' + participacao.prazo_ate.isoformat()):
+        return None
     return RespostaSandbox.objects.get_or_create(participacao=participacao, origem=origem, papel=papel,
                                                  defaults={'site_id': participacao.site_id})[0]
 
 
 def processar_resposta(pk):
     with transaction.atomic():
-        job = RespostaSandbox.objects.select_for_update().select_related('participacao').get(pk=pk)
+        participacao_id = RespostaSandbox.objects.filter(pk=pk).values_list('participacao_id', flat=True).first()
+        if participacao_id is None:
+            return
+        ParticipacaoSandbox.objects.select_for_update().get(pk=participacao_id)
+        job = RespostaSandbox.objects.select_for_update().select_related('participacao').filter(pk=pk).first()
+        if job is None:
+            return
         if job.estado == 'concluida' or (job.tentar_em and job.tentar_em > timezone.now()):
             return
         if job.estado == 'respondendo' and timezone.now() - job.atualizada_em < timedelta(minutes=8):
@@ -208,8 +223,9 @@ def processar_resposta(pk):
     except Exception:
         text = None
     with transaction.atomic():
-        atual = RespostaSandbox.objects.select_for_update().get(pk=job.pk)
-        if atual.estado == 'concluida':
+        ParticipacaoSandbox.objects.select_for_update().get(pk=p.pk)
+        atual = RespostaSandbox.objects.select_for_update().filter(pk=job.pk).first()
+        if atual is None or atual.estado == 'concluida':
             return
         if text:
             # Mensagem e conclusão são atômicas: repetição nunca duplica a fala.
