@@ -68,6 +68,15 @@ class BrokerTests(unittest.TestCase):
         self.assertFalse(BROKER._segundos(10 ** 1000))
         self.assertEqual(BROKER._tempos_publicos({'operacao_atual': {'nome': []}}), {})
 
+    def test_origem_do_ensaio_aparece_sem_expor_outros_campos(self):
+        for origem, esperado in [('a' * 40, True), ('/privado/config.env', False), (None, False)]:
+            saida = BROKER._tempos_publicos({'ensaios': {'aplicacao': {
+                'reaproveitado': True, 'reaproveitado_de': origem,
+                'tempos': {'reaproveitamento': 1.2}, 'segredo': 'nao-publicar'}}})
+            ensaio = saida['ensaios']['aplicacao']
+            self.assertEqual('reaproveitado_de' in ensaio, esperado)
+            self.assertNotIn('segredo', ensaio)
+
     def test_estado_roda_somente_o_integrador(self):
         processo = types.SimpleNamespace(returncode=0, stdout='{"estado":"ok"}\n')
         with mock.patch.object(BROKER.pwd, "getpwnam", return_value=types.SimpleNamespace(pw_uid=1001)):
