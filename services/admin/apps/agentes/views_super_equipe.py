@@ -21,6 +21,7 @@ from apps.core.equipe import _membro_da_sessao
 
 from .models import Execucao, MelhoriaSuperEquipe, RotinaSuperEquipe
 from .super_equipe import ESPECIALIDADES, pedir_trabalho
+from .super_equipe_operacao import situacao_executor, receber, coletar, operacao_recente
 
 
 def _admin(request):
@@ -64,10 +65,13 @@ def super_equipe(request):
                     .select_related("robo").prefetch_related("entregas")[:50])
     for trabalho in trabalhos:
         trabalho.custo = trabalho.consumos.aggregate(total=Sum("custo_estimado_usd"))["total"] or 0
+    rotina = RotinaSuperEquipe.objects.filter(host="meshcraft.top").first()
     return render(request, "admin/super_equipe.html", {
         "admin": request.admin, "especialidades": ESPECIALIDADES.items(),
         "trabalhos": trabalhos, "chave": str(uuid.uuid4()), "erro": erro,
-        "rotina": RotinaSuperEquipe.objects.filter(host="meshcraft.top").first(),
+        "rotina": rotina, "executor_situacao": situacao_executor(rotina),
+        "fila_operacional": coletar(),
+        "operacao_recente": operacao_recente(rotina.operacao if rotina else {}),
         "melhorias": MelhoriaSuperEquipe.objects.select_related("trabalho").prefetch_related("eventos").order_by("situacao", "prioridade", "-observada_em")[:100],
     }, status=400 if erro else 200)
 
@@ -109,9 +113,37 @@ def super_equipe_fila(request):
     return JsonResponse({"ativa": bool(rotina and rotina.ativa),
         "observada_em": rotina.observada_em if rotina else None,
         "executor_em": rotina.executor_em if rotina else None,
+        "executor_consultado_em": rotina.executor_consultado_em if rotina else None,
+        "executor_local": rotina.executor_local if rotina else "",
+        "executor_situacao": situacao_executor(rotina),
+        "operacao": rotina.operacao if rotina else {},
+        "observacao": rotina.fotografia if rotina else {},
         "ultimo_erro": rotina.ultimo_erro if rotina else "Aguardando primeiro ciclo no servidor.",
         "melhorias": [_serializar(x) for x in MelhoriaSuperEquipe.objects.exclude(
             situacao=MelhoriaSuperEquipe.Situacao.RESOLVIDA)[:100]]})
+
+
+@require_http_methods(["POST"])
+def super_equipe_executor(request):
+    impedimento = _admin(request)
+    if impedimento:
+        return impedimento
+    try:
+        if len(request.body) > 16000:
+            raise ValueError()
+        dados = json.loads(request.body)
+        if not isinstance(dados, dict) or dados.get("local") not in ("vps", "codex_local"):
+            raise ValueError()
+        campos = {"executor_consultado_em": timezone.now(), "executor_local": dados["local"]}
+        if "operacao" in dados:
+            if not isinstance(dados["operacao"], dict):
+                raise ValueError()
+            campos["operacao"] = receber(dados["operacao"])
+        rotina, _ = RotinaSuperEquipe.objects.get_or_create(host="meshcraft.top")
+        RotinaSuperEquipe.objects.filter(pk=rotina.pk).update(**campos)
+        return JsonResponse({"recebido": True, "consultado_em": campos["executor_consultado_em"]})
+    except (ValueError, TypeError):
+        return JsonResponse({"erro": "Contato inválido."}, status=400)
 
 
 @require_http_methods(["POST"])

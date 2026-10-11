@@ -158,7 +158,10 @@ def coletar_fontes(site_id: str, host: str) -> dict:
             "entrega_id": entrega.pk if entrega else None,
             "entrega_parcial": entrega.parcial if entrega else None,
         })
-    for nome, consulta in (("negocio", lambda: _painel(site_id)),
+    from .super_equipe_operacao import coletar, servidor
+    for nome, consulta in (("execucao_operacional", coletar),
+                           ("servidor", servidor),
+                           ("negocio", lambda: _painel(site_id)),
                            ("experimentos", lambda: _experimentos(site_id)),
                            ("robos_ia", lambda: _robos_ia(site_id)),
                            ("paginas_publicas", lambda: _probes(host))):
@@ -215,6 +218,24 @@ def _pendencias(fontes: dict) -> list[str]:
             pendentes.append(f"{url}: {detalhe}.")
     if not fontes.get("paginas_publicas", {}).get("itens"):
         pendentes.append("As páginas públicas não foram verificadas.")
+    operacao = fontes.get("execucao_operacional", {})
+    if operacao.get("estado") == "indisponivel":
+        pendentes.append("Fila operacional indisponível.")
+    for campo, texto in (("posses_vencidas", "Execuções com posse vencida"),
+                         ("fila_atrasada", "Trabalhos na fila há mais de 20 minutos"),
+                         ("falhas_24h", "Execuções com falha nas últimas 24 horas")):
+        if operacao.get(campo, 0):
+            pendentes.append(texto + ".")
+    servidor = fontes.get("servidor")
+    if servidor is not None:
+        if servidor.get("estado") != "medido":
+            pendentes.append("Medição da VPS indisponível ou desatualizada.")
+        else:
+            for nome in ("aplicacao", "funil"):
+                if servidor.get(nome) != "ativo":
+                    pendentes.append(f"Serviço {nome}: atividade não confirmada na VPS.")
+            if servidor.get("http_5xx_15m"):
+                pendentes.append("VPS: erros HTTP 5xx observados nos últimos 15 minutos.")
     return pendentes
 
 

@@ -39,6 +39,7 @@ def evento(melhoria, texto):
 
 def _ocorrencia(rotina, chave, titulo, evidencia, prioridade=2, trabalho=None):
     agora = timezone.now()
+    evidencia = {**evidencia, "episodio": str(uuid.uuid4())}
     item, nova = MelhoriaSuperEquipe.objects.get_or_create(
         rotina=rotina, chave=_chave(chave), defaults={"titulo": titulo[:300],
         "prioridade": prioridade, "evidencia": evidencia, "observada_em": agora,
@@ -47,10 +48,17 @@ def _ocorrencia(rotina, chave, titulo, evidencia, prioridade=2, trabalho=None):
         evento(item, "Identificada automaticamente pelas fontes do site.")
     else:
         item.observada_em = agora
-        item.evidencia = evidencia
         if item.situacao == S.RESOLVIDA:
+            historico = item.desenvolvimento.get("historico", [])
+            historico.append({"evidencia": item.evidencia, "resultado": item.resultado,
+                              "entrega": item.entrega, "rodadas": item.desenvolvimento.get("rodadas", {})})
+            item.desenvolvimento = {"historico": historico}
+            item.entrega, item.posse, item.ocupada_ate = "", "", None
             item.situacao, item.resolvida_em = S.PENDENTE, None
             evento(item, "O problema reapareceu na conferência; voltou à fila.")
+        else:
+            evidencia["episodio"] = item.evidencia.get("episodio", evidencia["episodio"])
+        item.evidencia = evidencia
         item.save()
     return item
 
@@ -170,11 +178,14 @@ def ciclo():
             ativas = set()
             for falta in faltas:
                 item = _ocorrencia(atual, f"fonte:{falta}", falta,
-                    {"operacao": "fonte", "consultado_em": fontes["consultado_em"], "achado": falta},
+                    {"operacao": "fonte", "consultado_em": fontes["consultado_em"], "achado": falta,
+                     "fila": fontes.get("execucao_operacional", {}), "servidor": fontes.get("servidor", {})},
                     prioridade=1 if "HTTP" in falta else 2)
                 ativas.add(item.pk)
             # Só resolve automaticamente o que uma nova leitura realmente conferiu.
             for item in atual.melhorias.filter(evidencia__operacao="fonte").exclude(pk__in=ativas).exclude(situacao=S.RESOLVIDA):
+                if item.entrega or item.situacao == S.EXECUTANDO:
+                    continue  # o executor confere a entrega antes de encerrar
                 item.situacao, item.resolvida_em = S.RESOLVIDA, timezone.now()
                 item.resultado = "Nova consulta às mesmas fontes não reproduziu o problema. Não houve alteração de código."
                 item.save()
@@ -186,6 +197,8 @@ def ciclo():
             except ValueError:
                 atual.ultimo_erro = "Análise aguarda um robô disponível. O monitoramento continua."
             atual.observada_em = timezone.now()
+            atual.fotografia = {"consultado_em": fontes["consultado_em"], "faltas": faltas,
+                                "paginas_publicas": fontes.get("paginas_publicas", {})}
             atual.proxima_em = atual.observada_em + INTERVALO
             atual.posse, atual.ocupada_ate = "", None
             atual.save()
