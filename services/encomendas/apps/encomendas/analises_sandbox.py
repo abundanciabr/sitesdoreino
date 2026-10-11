@@ -129,7 +129,12 @@ def comparar(analysis):
                      'nao_encontrado': devolutiva.texto_campo(row.get('nao_encontrado'), 'nao_encontrado'),
                      'inconclusivo': devolutiva.texto_campo(row.get('inconclusivo', 'Sem evidência suficiente.'), 'inconclusivo'),
                      'evidencias': row.get('evidencias', [])})
-    return {'versao': entrega.versao, 'entrega_id': str(entrega.pk), 'requisitos': rows,
+    avaliacao = answer.get('avaliacao') or {}
+    if avaliacao.get('resultado') not in ('atende', 'precisa_ajustes', 'inconclusiva') or not isinstance(avaliacao.get('justificativa'), str) or not avaliacao['justificativa'].strip():
+        raise ValueError('Avaliação automática sem conclusão fundamentada')
+    if avaliacao['resultado'] == 'atende' and (devolutiva.lacunas({'medidas_programas': found}) or set(answers) != {r['id'] for r in reqs}):
+        avaliacao = {'resultado': 'inconclusiva', 'justificativa': 'Não foi possível examinar todos os arquivos ou comparar todos os requisitos. Confira as evidências antes de reenviar.'}
+    return {'avaliacao': avaliacao, 'versao': entrega.versao, 'entrega_id': str(entrega.pk), 'requisitos': rows,
             'tem_falhas': bool(devolutiva.lacunas({'medidas_programas': found})),
             'medidas_programas': found, 'interpretacao_visual_ia': str(answer.get('interpretacao_visual_ia', '')),
             'imagens_examinadas': [{k: v for k, v in im.items() if k != 'caminho'} for im in images[:12]],
@@ -159,6 +164,8 @@ def processar_entrega(identificador):
     except Exception:
         result = None
     with transaction.atomic():
+        from .sandbox_models import ParticipacaoSandbox
+        p = ParticipacaoSandbox.objects.select_for_update().get(pk=a.entrega.participacao_id)
         atual = AnaliseEntregaSandbox.objects.select_for_update().get(pk=a.pk)
         if result is None:
             atual.estado = 'falha_ia'
@@ -171,14 +178,18 @@ def processar_entrega(identificador):
             atual.tentar_em = None
         atual.save()
         atual.entrega = a.entrega
-        if not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
-            if result is None:
-                devolutiva.indisponivel(atual)
-            else:
-                devolutiva.conclusao(atual)
-    if result is not None and not a.entrega.participacao.entregas.filter(versao__gt=a.entrega.versao).exists():
+        if result is None:
+            devolutiva.indisponivel(atual)
+        else:
+            devolutiva.conclusao(atual)
+            from .sandbox import ultima_entrega_do_aluno, aprovar
+            ultima = ultima_entrega_do_aluno(p)
+            if not a.entrega.teste_mantenedor and ultima and ultima.pk == a.entrega_id:
+                if result['avaliacao']['resultado'] == 'atende':
+                    aprovar(site_id=p.site_id, participacao_id=p.pk, aprovador_id='analise-automatica')
+    if result is not None:
         from apps.core.ia_sandbox import enfileirar
-        enfileirar(a.entrega.participacao, 'entrega:' + str(a.entrega_id), 'cliente')
+        enfileirar(a.entrega.participacao, 'entrega:' + str(a.entrega_id) + ':' + str(len(atual.historico)), 'cliente')
 
 
 def rodada():
@@ -202,8 +213,10 @@ def rodada():
 def repetir(entrega):
     with transaction.atomic():
         a = AnaliseEntregaSandbox.objects.select_for_update().get(entrega=entrega)
-        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and not a.resultado.get('tem_falhas') and not devolutiva.lacunas(a.resultado)):
+        if a.estado in ('comparando', 'examinando', 'na_fila') or (a.estado == 'concluida' and a.resultado.get('avaliacao') and not a.resultado.get('tem_falhas') and not devolutiva.lacunas(a.resultado)):
             return
+        a.historico = [*a.historico, {'estado': a.estado, 'resultado': a.resultado, 'falha': a.falha,
+            'atualizada_em': a.atualizada_em.isoformat(), 'medidas_programas': evidencias(entrega)[0]}]
         for f in AnaliseArquivoSandbox.objects.filter(arquivo__entrega=entrega):
             if f.estado != 'falha' and not any(m.get('estado') != 'concluida' or m.get('aviso') for m in f.resultado.get('arquivos', [])):
                 continue

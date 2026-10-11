@@ -47,7 +47,7 @@ def test_fila_compara_snapshot_preserva_escola_e_credito_unico(participacao, mon
         vistos.update(reqs=reqs, ev=ev, termos=p.termos)
         return {'requisitos': [{'id': r['id'], 'encontrado': 'Imagem examinada',
             'nao_encontrado': '', 'inconclusivo': 'Sem abertura do fonte',
-            'evidencias': [file.nome + ': 512px']} for r in reqs], 'interpretacao_visual_ia': 'Imagem parcial'}
+            'evidencias': [file.nome + ': 512px']} for r in reqs], 'interpretacao_visual_ia': 'Imagem parcial', 'avaliacao': {'resultado': 'inconclusiva', 'justificativa': 'Fonte não examinado.'}}
     monkeypatch.setattr(ia_sandbox,'avaliar_entrega',avaliar)
     participacao.projeto.briefing='Modificação posterior que não pertence ao aceite'
     participacao.projeto.save()
@@ -171,7 +171,7 @@ def test_privacidade_previas_e_tela_enquanto_analisa(participacao,client,monkeyp
     assert 'Análise da versão 1' in response.content.decode()
     assert 'Cliente simulado (IA)' in response.content.decode()
     assert 'Brasília' in response.content.decode()
-    assert '10.000 XP' in response.content.decode()
+    assert 'XP e a progressão' in response.content.decode()
 
 
 def test_formatacao_preserva_endereco_e_nao_executa_html():

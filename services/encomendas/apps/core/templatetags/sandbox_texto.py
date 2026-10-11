@@ -49,3 +49,9 @@ def conversa(text):
     if lines:
         result.append('<pre><code>' + str(escape('\n'.join(lines))) + '</code></pre>')
     return mark_safe(''.join(result))
+
+
+@register.filter
+def titulo_avaliacao(valor):
+    return {'atende': 'atende ao briefing', 'precisa_ajustes': 'precisa de ajustes',
+            'inconclusiva': 'inconclusiva'}.get(valor, 'consulte as evidências')
