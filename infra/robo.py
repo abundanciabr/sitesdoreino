@@ -141,6 +141,8 @@ def main(argv=None):
     c = s.add_parser('consultar')
     c.add_argument('id', nargs='?')
     s.add_parser('estado')
+    an = s.add_parser('analisador', help='estado, diagnóstico real e recuperação da versão preservada')
+    an.add_argument('acao', choices=['consultar', 'diagnosticar', 'recuperar'])
     a = p.parse_args(argv)
     try:
         if a.comando == 'nova':
@@ -152,6 +154,8 @@ def main(argv=None):
             if a.id and not re.fullmatch(r'[0-9a-f]{12}', a.id):
                 raise ValueError('id inválido')
             saida = remoto(a.servidor, ['consultar'] + ([a.id] if a.id else []))
+        elif a.comando == 'analisador':
+            saida = remoto(a.servidor, ['analisador', a.acao])
         else:
             saida = remoto(a.servidor, ['estado'])
         print(saida)

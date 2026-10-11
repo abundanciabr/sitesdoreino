@@ -46,3 +46,18 @@ Somente o mantenedor/admin autenticado pode criar e publicar páginas em `https:
 Todos os alunos existentes começam na faixa branca nesta implantação. A faixa atual é a primeira cujos requisitos de saída ainda não estão integralmente cumpridos. Para alcançar a amarela, o aluno completa os quatro requisitos da branca: Meu motivo, Meu objetivo e compromisso, Meu primeiro item 3D e Enviar meu 3D. As faixas e os graus seguintes são sequenciais: nenhuma conquista, recebimento, pontuação ou declaração isolada permite ultrapassar uma faixa com requisito obrigatório pendente. Se um requisito obrigatório deixa de ser válido, a faixa atual volta à primeira etapa pendente.
 
 O reinício e a reavaliação da faixa preservam os trabalhos, arquivos, respostas privadas, registros de conquistas e históricos dos alunos. Registros anteriores podem ser aproveitados e confirmados na sequência; não concedem promoção automática na implantação. A edição das etapas continua disponível, sem acrescentar links aos menus.
+
+## Acesso operacional atual — conferido em 11/10/2026
+
+O SSH dos robôs usa o alias `sitesdoreino-robo`, já configurado neste PC em `C:\Users\davia\.ssh\config`. O alias antigo `sitesdoreino-vps` teve a chave ampla revogada em 09/10/2026; sua presença no arquivo não significa acesso disponível. Não é necessário solicitar outra credencial para as operações abaixo.
+
+- Entregas: `ssh sitesdoreino-robo estado` e `ssh sitesdoreino-robo consultar ID`.
+- Estado do analisador e última operação: `ssh sitesdoreino-robo analisador consultar`.
+- Diagnóstico com modelos conhecidos e arquivo inválido: `ssh sitesdoreino-robo analisador diagnosticar`.
+- Recuperação da imagem/ponte/agenda preservadas: `ssh sitesdoreino-robo analisador recuperar`.
+
+Diagnóstico e recuperação devolvem um ID e continuam na VPS após a desconexão. A consulta mostra andamento e resultado. A recuperação começa por backup, comprova os modelos antes de ativar uma imagem restaurada e preserva anexos, históricos e banco. Uma imagem diferente da referência é informada para conferência, sem sobrescrevê-la. Falhas de conteúdo não são reabertas como se fossem falhas de infraestrutura.
+
+O console administrativo conhecido é `https://hpanel.hostinger.com/vps/1893584/overview`, botão Web console, que abre `https://asc.hostingervps.com/2018/`. Foi usado e conferido na instalação. A manutenção acima já funciona pelo canal limitado e não depende de abrir esse painel nem reativar o SSH amplo. A sessão do navegador pode expirar; nenhum segredo fica nestas referências.
+
+O programa versionado é `C:\Users\davia\.codex\worktrees\canal-analisador-vps\sitesdoreino-limpo-20260923\infra\acessos\analisador_manutencao.py`. Evidência desta instalação, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\canal-analisador-20261011\comprovacao-final.json`.

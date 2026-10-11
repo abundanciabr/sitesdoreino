@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] if Path(__file__).par
                        else Path("/usr/local/lib/meshcraft-integrador")))
 from diagnostico_entregas import diagnostico_publico
 
-PERMITIDOS = {"entregar", "consultar", "estado"}
+PERMITIDOS = {"entregar", "consultar", "estado", "analisador"}
 INTEGRADOR = "/usr/local/lib/meshcraft-integrador/entregas.py"
 LIMITE = 4096
 FASES = Path("/var/lib/meshcraft-integrador/entregas/fases")
@@ -179,6 +179,8 @@ def _candidata_esperada(reg):
 
 
 def validar_args(args):
+    if args[0] == "analisador":
+        return len(args) == 2 and args[1] in ("consultar", "diagnosticar", "recuperar")
     if args[0] == "estado":
         return len(args) == 1
     if args[0] == "consultar":
@@ -255,6 +257,23 @@ def acrescentar_operacao(saida):
     return json.dumps(dados, ensure_ascii=False) + "\n"
 
 
+def consultar_analisador(args):
+    """O integrador não ganha Docker, sudo ou arquivos privados; usa uma ponte fixa."""
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as canal:
+        canal.settimeout(120)
+        canal.connect('/run/meshcraft-analisador-manutencao.sock')
+        canal.sendall(json.dumps(args[1:]).encode() + b'\n')
+        canal.shutdown(socket.SHUT_WR)
+        with canal.makefile('rb') as stream:
+            raw = stream.readline(32769)
+    if len(raw) > 32768 or not raw.endswith(b'\n'):
+        raise ValueError('resposta inválida')
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError('resposta inválida')
+    return {'codigo': 3 if 'erro' in data else 0, 'saida': json.dumps(data, ensure_ascii=False) + '\n'}
+
+
 def atender(conexao):
     cred = conexao.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
     _, uid, _ = struct.unpack("3i", cred)
@@ -277,6 +296,8 @@ def atender(conexao):
         or not validar_args(args)
     ):
         raise ValueError("operação recusada")
+    if args[0] == "analisador":
+        return consultar_analisador(args)
     ambiente = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "HOME": "/home/integrador",

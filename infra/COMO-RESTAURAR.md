@@ -1,3 +1,5 @@
+> Atualização de acesso em 11/10/2026: o SSH amplo do alias `sitesdoreino-vps` foi revogado em 09/10. As chamadas desse alias abaixo são históricas. O canal atual é `sitesdoreino-robo`, com entregas e `analisador consultar`, `analisador diagnosticar`, `analisador recuperar` já instalados. O console administrativo conhecido fica em `https://hpanel.hostinger.com/vps/1893584/overview`. Referência atual, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\AGENTS.md`.
+
 # Como devolver os dados do site
 
 Este guia é para quem não é técnico. Para cada situação há uma frase pronta. Copie a frase,
