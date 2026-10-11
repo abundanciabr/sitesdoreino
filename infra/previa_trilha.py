@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from wsgiref.simple_server import make_server
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'output/previa-trilha'
 OUT.mkdir(parents=True, exist_ok=True)
 sys.path[:0] = [str(ROOT / 'services/gamificacao'), str(ROOT / 'packages/site_errors/src')]
