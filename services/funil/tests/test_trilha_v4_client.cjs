@@ -103,9 +103,30 @@ test('trabalho cancelado retorna pendente e uma conquista registrada permanece c
 test('consulta de faixa passada mostra apenas seus criterios e nao a meta da atual',async()=>{
   const data=withChecklist();
   const r=await load({ok:true,status:200,json:async()=>data});
-  const checklist=r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades);
+  const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
   assert.equal(checklist.itens.length,1);
-  assert.equal(checklist.itens[0].id,'criterio-1');
+  assert.equal(checklist.itens[0].id,'criterio-2');
+});
+
+test('branca mostra quatro requisitos com os tres destinos e envio separado, inclusive depois da conquista',async()=>{
+  for(const current of [1,3]){
+    const data=withChecklist();data.atual_ordem=current;
+    data.etapas.forEach(step=>step.alcancada=step.ordem<=current);
+    const urls=['/conquistas/inicio/motivo/','/conquistas/inicio/objetivo/','/conquistas/inicio/item/','/conquistas/inicio/item/#inicio-form-item'];
+    data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map((id,i)=>({id,titulo:['Meu motivo','Meu objetivo e compromisso','Meu primeiro item 3D','Enviar meu 3D'][i],estado:i===0?'concluido':'pendente',detalhe:'Registro privado',acao:{rotulo:'Abrir',url:urls[i]}}));
+    const r=await load({ok:true,status:200,json:async()=>data});
+    const checklist=r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades);
+    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2','item-2','envio-2']);
+    assert.deepEqual(Array.from(checklist.itens,item=>item.acao.url),urls);
+    // Executa o gerador dos botões com nós mínimos, sem substituir sua lógica.
+    r.context.document.createElement=tag=>({tag,children:[],dataset:{},setAttribute(){},append(...children){this.children.push(...children);}});
+    const block=r.context.whiteBeltActions(r.payload.progresso);
+    const list=block.children.find(node=>node.tag==='ol');
+    assert.equal(list.children.length,4);
+    assert.deepEqual(list.children.map(row=>row.children[0].href),urls);
+    assert.equal(list.children[0].children[0].dataset.estado,'concluido');
+    assert.match(block.children.find(node=>node.className==='white-belt-count').textContent,/1 de 4/);
+  }
 });
 test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=>{
   const r=await load({ok:true,status:200,json:async()=>progress()});

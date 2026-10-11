@@ -24,6 +24,12 @@ def post(client,**extras):
     dados.update(extras)
     return client.post(URL,dados,HTTP_COOKIE='meshcraft_sessao=A')
 
+
+def preparar_inicio(client):
+    assert post(client,acao='inicio-motivo',motivo='ugc').status_code==200
+    assert post(client,acao='inicio-plano',objetivo='Criar meu item',
+                compromisso='Praticar e guardar minha peça',assumir='sim').status_code==200
+
 def test_get_nao_cria_registro_e_privacidade(client):
     r=client.get(URL,HTTP_COOKIE='meshcraft_sessao=A')
     assert r.status_code==200
@@ -37,6 +43,7 @@ def test_anexo_obrigatorio_e_bonus_unico(client):
     assert post(client).status_code==400
     assert not AnexoDaJornada.objects.exists()
     assert situacao(P,SITE)['atual']['ordem']==1
+    preparar_inicio(client)
     r=post(client,arquivo=file())
     assert r.status_code==200
     assert r.json()['atual_ordem']==2
@@ -55,13 +62,15 @@ def test_guardar_arquivo_sem_concluir_nao_libera_faixa(client):
     assert r.status_code==200 and r.json()['atual_ordem']==1
     assert not RegistroDaJornada.objects.exists()
     from apps.gamificacao.checklist_trilha import montar_checklists
-    item=montar_checklists(P,SITE,situacao(P,SITE))[2]['itens'][0]
+    item=montar_checklists(P,SITE,situacao(P,SITE))[2]['itens'][2]
     assert item['estado']=='andamento'
-    assert item['acao']['url']=='/trilha/inventario/#primeiro-item'
+    assert item['acao']['url']=='/conquistas/inicio/item/'
+    assert post(client).status_code==400
+    preparar_inicio(client)
     assert post(client).json()['atual_ordem']==2
 
 def test_download_privado_por_conta_e_site(client,monkeypatch):
-    r=post(client,arquivo=file())
+    r=post(client,acao='anexo',arquivo=file())
     id_=r.json()['anexos'][0]['id']
     url=f'/inventario/arquivos/{id_}/'
     r=client.get(url,HTTP_COOKIE='meshcraft_sessao=A')
@@ -98,7 +107,7 @@ def test_csrf_real_e_identidade_do_corpo_ignorada(monkeypatch):
     dados=c.get(URL,HTTP_COOKIE='meshcraft_sessao=A').json()
     assert c.post(URL,{'acao':'declaracao','passo':'2'},HTTP_COOKIE='meshcraft_sessao=A').status_code==403
     # O cliente conserva o cookie CSRF, e a pessoa vem da sessão.
-    r=c.post(URL,{'acao':'declaracao','passo':'2','estado':'feito','revisao':0,'arquivo':file(),'pessoa_id':'aluna-b','site_id':'outro'},HTTP_X_CSRFTOKEN=dados['csrf'])
+    r=c.post(URL,{'acao':'anexo','passo':'2','revisao':0,'arquivo':file(),'pessoa_id':'aluna-b','site_id':'outro'},HTTP_X_CSRFTOKEN=dados['csrf'])
     assert r.status_code==200
     assert AnexoDaJornada.objects.get().pessoa_id==P
     assert AnexoDaJornada.objects.get().site_id==SITE

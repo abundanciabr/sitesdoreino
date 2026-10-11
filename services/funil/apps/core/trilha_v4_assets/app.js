@@ -69,7 +69,11 @@ belts.forEach((belt,index)=>{
     </button><div class="expanded" id="panel-${index+1}" role="region" aria-labelledby="trigger-${index+1}" inert>${locked?'':`<div class="expanded-inner"><div class="focus-content"><div class="focus-copy"><span class="selected-label">${index===current?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA'}</span><h3>${belt.title}</h3><p></p><button type="button" class="primary detail-button">${index===current?'Ver progresso':'Explorar esta faixa'} ${icons.arrow}</button></div><div class="medallion-scene" aria-hidden="true"><div class="medallion"><span>${number(index)}</span></div></div></div></div>`}</div>`;
   if(!locked){
     card.querySelector('.focus-copy p').textContent=belt.summary;
-    card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
+    if(index===0){
+      card.querySelector('.detail-button').replaceWith(whiteBeltActions(progress));
+    }else{
+      card.querySelector('.detail-button').addEventListener('click',event=>openDetails(index,event.currentTarget));
+    }
   }
   card.querySelector('.stage-trigger').addEventListener('click',()=>select(index,false));
   stage.append(card);timeline.append(stage);stages.push(stage);
@@ -116,10 +120,10 @@ function showChecklist(index){
       const art=document.createElement('div');art.className='checklist-art';art.setAttribute('aria-hidden','true');
       art.innerHTML='<svg viewBox="0 0 120 130"><path d="M60 8 110 35 110 93 60 122 10 93 10 35Z M10 35 60 65 110 35 M60 65V122 M35 22 85 51V108 M85 22 35 51V108 M10 64 60 94 110 64"/></svg>';
       content.append(art);
-      if(item.acao){
+    }
+    if(item.acao&&(item===focus||index===0)){
         const action=document.createElement('a');action.className='primary checklist-action';action.href=item.acao.url;
         action.append(document.createTextNode(item.acao.rotulo));action.insertAdjacentHTML('beforeend',icons.arrow);content.append(action);
-      }
     }
     task.append(mark,content);tasks.append(task);
   });
@@ -135,7 +139,7 @@ function showChecklist(index){
   document.querySelector('#checklist-fill').style.width=`${percent}%`;
   document.querySelector('.checklist-meter').setAttribute('aria-valuenow',String(percent));
   document.querySelector('#checklist-fraction').textContent=`${counts.concluido} de ${total} ${total===1?'etapa concluída':'etapas concluídas'}`;
-  document.querySelector('#dialog-note').textContent='Atualizado pelos registros da sua jornada. As etapas exibidas não alteram os critérios das faixas.';
+  document.querySelector('#dialog-note').textContent=index===0?'Quatro requisitos para passar da faixa branca à amarela. Seus registros pessoais continuam privados.':'Atualizado pelos registros da sua jornada. As etapas exibidas não alteram os critérios das faixas.';
   document.querySelector('#checklist-updated').textContent=consultedAtLabel(progress.consultado_em);
 }
 function openDetails(index){
@@ -145,7 +149,7 @@ function openDetails(index){
   refreshJourney();
 }
 function closeDetails(){dialog.close();}
-dialog.onclose=()=>{const index=openedIndex;openedIndex=null;stages[index]?.querySelector('.detail-button')?.focus({preventScroll:true});};
+dialog.onclose=()=>{const index=openedIndex;openedIndex=null;stages[index]?.querySelector('.detail-button, .white-belt-action')?.focus({preventScroll:true});};
 document.querySelector('.dialog-close').onclick=closeDetails;
 document.querySelector('#back-to-journey').onclick=closeDetails;
 document.querySelector('#checklist-refresh').onclick=()=>refreshJourney();
@@ -160,7 +164,7 @@ dock.onkeydown=event=>{
 select(selected,false);
 if(dialog.open){
   if(reached(openedIndex))showChecklist(openedIndex);
-  else{dialog.close();stages[current].querySelector('.detail-button')?.focus({preventScroll:true});}
+  else{dialog.close();stages[current].querySelector('.detail-button, .white-belt-action')?.focus({preventScroll:true});}
 }
 document.querySelector('#resume').disabled=false;
 document.querySelector('.hero-object').removeAttribute('aria-busy');
@@ -175,7 +179,7 @@ function consultedAtLabel(value){
 function safeAction(action){
   if(action===null||action===undefined)return null;
   if(typeof action.rotulo!=='string'||!action.rotulo.trim()||typeof action.url!=='string'
-    ||!/^\/(cursos|encomendas|forum|trilha)(?:\/|$)/.test(action.url)
+    ||!/^\/(cursos|encomendas|forum|trilha|conquistas)(?:\/|$)/.test(action.url)
     ||/[\\\s]/.test(action.url)||action.url.includes('..'))throw new Error('Ação inválida');
   return {rotulo:action.rotulo,url:action.url};
 }
@@ -204,7 +208,7 @@ function validateActivities(data,context){
 function journeyChecklist(progress,index,activities){
   const own=progress.etapas[index];
   const next=index===progress.atual_ordem-1?progress.etapas[index+1]:null;
-  const sources=next?[own,next]:[own];
+  const sources=index===0?[progress.etapas[1]]:next?[own,next]:[own];
   if(sources.some(step=>!step.checklist))return {disponivel:false,itens:[],observacao:'O checklist está temporariamente indisponível. Tente atualizar em instantes.'};
   const notes=new Set();
   const itens=sources.flatMap(step=>{
@@ -223,6 +227,32 @@ function journeyChecklist(progress,index,activities){
     personalGoalShown=true;return true;
   });
   return {disponivel:true,itens:uniqueItems,observacao:[...notes].join(' ')};
+}
+
+function whiteBeltActions(progress){
+  const details=journeyChecklist(progress,0);
+  const group=document.createElement('div');group.className='white-belt-requirements';
+  group.setAttribute('aria-label','Quatro requisitos da faixa branca');
+  const heading=document.createElement('p');heading.className='white-belt-heading';
+  heading.textContent='Quatro requisitos para chegar à faixa amarela';group.append(heading);
+  if(!details.disponivel||details.itens.length!==4||details.itens.some(item=>!item.acao)){
+    const notice=document.createElement('p');notice.textContent='Não foi possível abrir seus requisitos agora. Atualize a página em instantes.';group.append(notice);return group;
+  }
+  const list=document.createElement('ol');list.className='white-belt-actions';
+  details.itens.forEach((item,index)=>{
+    const row=document.createElement('li');
+    const link=document.createElement('a');link.className='primary white-belt-action';link.href=item.acao.url;
+    const title=document.createElement('span');title.textContent=`${index+1}. ${item.titulo}`;
+    const state=document.createElement('small');state.className='white-belt-state';
+    state.textContent={concluido:'Concluído · pode revisar',andamento:'Em andamento',pendente:'Para fazer'}[item.estado];
+    link.dataset.estado=item.estado;link.append(title,state);row.append(link);list.append(row);
+  });
+  group.append(list);
+  const count=document.createElement('p');count.className='white-belt-count';
+  count.textContent=`${details.itens.filter(item=>item.estado==='concluido').length} de 4 requisitos concluídos. Você pode salvar e continuar depois.`;
+  group.append(count);
+  if(details.observacao){const note=document.createElement('p');note.className='white-belt-count';note.textContent=details.observacao;group.append(note);}
+  return group;
 }
 
 function validateProgress(data, context){

@@ -1,6 +1,7 @@
 """Checklist de leitura da jornada, sem criar nem alterar conquistas."""
 
-from apps.gamificacao.models import FaixaDoAluno, RecebimentoDeclarado, AnexoDaJornada
+from apps.gamificacao.models import FaixaDoAluno, RecebimentoDeclarado, AnexoDaJornada, JornadaPessoal
+from apps.gamificacao.inicio import requisitos_branca
 
 
 def _item(ordem, titulo, estado, detalhe, acao=None, *, sufixo=None):
@@ -25,6 +26,8 @@ def _dinheiro(cents):
 def montar_checklists(pessoa_id, site_id, jornada):
     """A conquista vem só de situacao; eventos e registros apenas contextualizam."""
     tem_anexo = AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).exists()
+    registro_inicio = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
+    requisitos = requisitos_branca(registro_inicio, tem_anexo)
     etapas = {p["ordem"]: p for p in jornada["lista"]}
     faixas = {
         faixa.ordem: faixa
@@ -54,31 +57,55 @@ def montar_checklists(pessoa_id, site_id, jornada):
         if ordem == 1:
             itens = [_item(1, "Começar minha jornada", "concluido",
                            "A entrada na jornada já está registrada.")]
-        elif ordem in (2, 3, 4):
+        elif ordem == 2:
+            faixa = faixas.get(2)
+            iniciou_item = tem_anexo or bool(faixa and faixa.origem == "item" and faixa.estado == "alcancada")
+            detalhe_item = (
+                "Resultado registrado na jornada." if alcancada else
+                "Um arquivo foi guardado no inventário; a conclusão ainda não foi registrada." if tem_anexo else
+                "Um item 3D foi salvo; a conclusão do primeiro item ainda não foi registrada." if iniciou_item else
+                "Envie seu primeiro item 3D ou uma imagem dele e registre a conclusão."
+            )
+            itens = [
+                _item(2, "Meu motivo", _estado(requisitos['motivo']),
+                      "Motivo escolhido." if requisitos['motivo'] else "Escolha o motivo que te trouxe à modelagem 3D.",
+                      {"rotulo": "Abrir meu motivo", "url": "/conquistas/inicio/motivo/"}, sufixo="motivo"),
+                _item(2, "Meu objetivo e compromisso", _estado(requisitos['objetivo'] and requisitos['compromisso']),
+                      "Objetivo definido e compromisso assumido." if requisitos['objetivo'] and requisitos['compromisso'] else
+                      "Defina seu objetivo e assuma seu compromisso para este começo.",
+                      {"rotulo": "Abrir meu objetivo e compromisso", "url": "/conquistas/inicio/objetivo/"}, sufixo="plano"),
+                _item(2, "Meu primeiro item 3D", _estado(alcancada, iniciou_item),
+                      detalhe_item,
+                      {"rotulo": "Abrir meu primeiro item", "url": "/conquistas/inicio/item/"}, sufixo="item"),
+                _item(2, "Enviar meu 3D", _estado(requisitos['item']),
+                      "Arquivo do primeiro item guardado em privado." if requisitos['item'] else
+                      "Envie o arquivo do seu item 3D ou uma imagem dele.",
+                      {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/item/#inicio-form-item"}, sufixo="envio"),
+            ]
+            if iniciou_item and not alcancada:
+                observacao = "Salvar um item não comprova sua conclusão."
+            elif alcancada and not all(requisitos.values()):
+                observacao = "Sua faixa já conquistada permanece registrada. Você pode completar ou revisar este começo."
+        elif ordem in (3, 4):
             faixa = faixas.get(ordem)
-            origem = {2: "item", 3: "sandbox", 4: "fila"}[ordem]
-            iniciou = bool(faixa and faixa.origem == origem and faixa.estado == "alcancada") or (ordem == 2 and tem_anexo)
+            origem = {3: "sandbox", 4: "fila"}[ordem]
+            iniciou = bool(faixa and faixa.origem == origem and faixa.estado == "alcancada")
             titulo = {
-                2: "Concluir meu primeiro item 3D",
                 3: "Concluir e entregar uma prática no Sandbox",
                 4: "Concluir e entregar meu trabalho real na Fila",
             }[ordem]
             detalhe = {
-                2: "Um arquivo foi guardado no inventário; a conclusão ainda não foi registrada." if tem_anexo else "Um item 3D foi salvo; a conclusão do primeiro item ainda não foi registrada.",
                 3: "Uma prática no Sandbox foi iniciada; a entrega concluída ainda não foi registrada.",
                 4: "Um trabalho da Fila foi aceito; a entrega concluída ainda não foi registrada.",
             }[ordem] if iniciou else "Ainda não há registro de conclusão desta etapa."
             if alcancada:
                 detalhe = "Resultado registrado na jornada."
             acao = None if alcancada else {
-                2: {"rotulo": "Registrar meu primeiro item", "url": "/trilha/inventario/#primeiro-item"},
                 3: {"rotulo": "Abrir Sandbox", "url": "/encomendas/sandbox/"},
                 4: {"rotulo": "Abrir Fila", "url": "/encomendas/fila/"},
             }[ordem]
-            itens = [_item(ordem, titulo, _estado(alcancada, iniciou if ordem == 2 else False),
+            itens = [_item(ordem, titulo, _estado(alcancada),
                            detalhe, acao)]
-            if ordem == 2 and iniciou and not alcancada:
-                observacao = "Salvar um item não comprova sua conclusão."
         elif ordem == 5:
             detalhe = (
                 "Recebimento confirmado contabilizado na jornada."

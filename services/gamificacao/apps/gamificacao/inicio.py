@@ -1,4 +1,4 @@
-"""Escolhas privadas e revisáveis; não mudam os critérios ou bônus das faixas."""
+"""Escolhas privadas e revisáveis e requisitos do começo da jornada."""
 from django.utils import timezone
 from django.urls import reverse
 
@@ -63,6 +63,18 @@ def para_tela(jornada):
     motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
             'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado'}
+
+
+def requisitos_branca(jornada, tem_anexo):
+    """Estado factual dos quatro requisitos, sem mudar conquistas anteriores."""
+    inicio = jornada.inicio if jornada else {}
+    preenchido = lambda chave: bool(str(inicio.get(chave) or '').strip())
+    return {
+        'motivo': preenchido('motivo'),
+        'objetivo': preenchido('objetivo'),
+        'compromisso': preenchido('compromisso') and bool(inicio.get('confirmado_em')),
+        'item': bool(tem_anexo),
+    }
 
 
 def resumo_inicio(pessoa_id, site_id, faixas):

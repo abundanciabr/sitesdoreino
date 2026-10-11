@@ -184,6 +184,9 @@ def test_inicio_continua_editavel_depois_da_faixa_branca(client, monkeypatch):
     antes = client.get(reverse("base")).content.decode()
     assert 'id="inicio-cartao"' in antes
     assert 'id="inicio-retomar"' in antes
+    assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
+    assert guardar(client, "inicio-plano", objetivo="Criar meu item",
+                   compromisso="Praticar esta semana", assumir="sim").status_code == 200
     assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
     assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
     depois = client.get(reverse("base")).content.decode()

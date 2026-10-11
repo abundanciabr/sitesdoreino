@@ -12,6 +12,7 @@ from django.utils import timezone
 from .bonus_faixas import PONTOS
 
 from .models import (
+    AnexoDaJornada,
     JornadaPessoal,
     RecebimentoDeclarado,
     RegistroDaJornada,
@@ -342,6 +343,16 @@ def salvar(pessoa_id, site_id, dados, *, arquivo=None):
                 )
             declaracoes = dict(j.declaracoes)
             if dados.get("estado") == "feito":
+                if ordem == 2 and not declaracoes.get("2"):
+                    from .inicio import requisitos_branca
+                    tem_anexo = AnexoDaJornada.objects.filter(
+                        pessoa_id=pessoa_id, site_id=site_id, passo=2,
+                    ).exists()
+                    if not all(requisitos_branca(j, tem_anexo).values()):
+                        raise ValueError(
+                            "Para concluir o primeiro item, escolha seu motivo, "
+                            "defina seu objetivo, assuma seu compromisso e envie seu arquivo."
+                        )
                 declaracoes[str(ordem)] = timezone.now().isoformat()
                 texto = RESULTADOS[ordem]
             elif dados.get("estado") == "corrigir":
