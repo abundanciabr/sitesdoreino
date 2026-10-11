@@ -91,3 +91,5 @@ dialog{position:fixed;width:min(590px,calc(100% - 32px));max-height:calc(100dvh 
   .checklist-legend{gap:14px;font-size:10px;padding:22px 0}.progress-note{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){.checklist-meter>span{transition:none}}
+
+.motivo-dialog{width:min(920px,calc(100% - 32px));max-width:none;height:min(900px,calc(100dvh - 40px));max-height:calc(100dvh - 40px);padding:48px 0 0;border:1px solid #d9e3f1;border-radius:22px;background:#f7f9fc;overflow:hidden;box-shadow:0 24px 100px #172b4840}.motivo-dialog::backdrop{background:#172b4866;backdrop-filter:blur(4px)}.motivo-dialog iframe{display:block;border:0;width:100%;height:100%;background:#f7f9fc}.motivo-dialog .motivo-close{position:absolute;top:6px;right:12px;width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:50%;background:#e8eef7;color:#172b48;font:28px/1 system-ui;cursor:pointer}.motivo-dialog .motivo-close:focus-visible{outline:3px solid #306bec;outline-offset:2px}@media(max-width:560px){.motivo-dialog{width:calc(100% - 12px);height:calc(100dvh - 12px);max-height:calc(100dvh - 12px);border-radius:16px}}

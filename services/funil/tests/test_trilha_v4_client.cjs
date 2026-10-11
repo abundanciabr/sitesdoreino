@@ -110,6 +110,7 @@ test('consulta de faixa passada mostra apenas seus criterios e nao a meta da atu
 
 function mountPanel(context){
   context.document.createElement=tag=>({tag,children:[],dataset:{},style:{},attributes:{},
+    addEventListener(){},
     setAttribute(key,value){this.attributes[key]=value;},
     insertAdjacentHTML(position,value){this.innerHTML=(this.innerHTML||'')+value;},
     append(...children){this.children.push(...children);}});

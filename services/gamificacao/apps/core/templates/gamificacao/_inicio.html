@@ -1,9 +1,9 @@
-<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=3">
-<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
+<link rel="stylesheet" href="{% url 'estatico' 'inicio.css' %}?v=4">
+<section id="inicio-jornada" class="inicio" data-api="{% url 'inventario' %}" data-etapa="{{ inicio_etapa }}" data-embutido="{{ inicio_embutido|yesno:'sim,nao' }}" data-conquistas="{% url 'base' %}" data-envio="{% url 'inicio-envio' %}" aria-labelledby="inicio-titulo">
   <header class="inicio-cabecalho">
     <p class="inicio-selo"><span aria-hidden="true">◇</span> {% if faixas.atual.ordem == 1 %}Faixa branca · Meu ponto de partida{% else %}Meu ponto de partida · Sempre editável{% endif %}</p>
-    <p class="inicio-sobrelinha">Etapa {{ inicio_etapa }} de 4 · Uma coisa de cada vez</p>
-    <h1 id="inicio-titulo">{{ inicio_titulo }}</h1>
+    <p class="inicio-sobrelinha">{% if inicio_etapa == 1 %}Meus motivos · <span id="inicio-motivo-contagem">Etapa 1 de 2</span>{% else %}Etapa {{ inicio_etapa }} de 4 · Uma coisa de cada vez{% endif %}</p>
+    <h1 id="inicio-titulo">{% if inicio_etapa == 1 %}Meus motivos{% else %}{{ inicio_titulo }}{% endif %}</h1>
     <p class="inicio-privado">{% if inicio_etapa == 1 %}Esta resposta é só sua. Você pode mudá-la depois.{% elif inicio_etapa == 2 %}Seus sonhos e seu compromisso ficam privados na sua conta.{% elif inicio_etapa == 3 %}Uma criação simples já é um começo. Faça no seu ritmo.{% else %}Seu arquivo fica privado na sua conta.{% endif %}</p>
   </header>
   <p id="inicio-status" role="status" aria-live="polite">Abrindo seu ponto de partida…</p>
@@ -11,13 +11,36 @@
   <div id="inicio-conteudo" hidden>
     {% if inicio_etapa == 1 %}
     <section id="inicio-motivo" class="inicio-painel" data-painel="1">
-      <h2 tabindex="-1">O que te trouxe até aqui?</h2>
-      <p>Escolha o caminho que mais combina com você hoje. Você pode mudar de ideia.</p>
       <form id="inicio-form-motivo">
-        <fieldset class="inicio-motivos"><legend class="inicio-sr">Meu motivo para aprender modelagem 3D</legend><div id="inicio-opcoes"></div></fieldset>
-        <label for="inicio-motivo-pessoal">Por que isso importa para mim? <span>(opcional)</span></label>
-        <textarea id="inicio-motivo-pessoal" name="motivo_pessoal" rows="2" maxlength="280" placeholder="Pode ser algo simples, escrito do seu jeito."></textarea>
-        <div class="inicio-acoes"><button type="submit" name="destino" value="continuar">Concluir meu motivo</button><button type="submit" name="destino" value="pausar" class="inicio-secundario">Salvar para continuar depois</button></div>
+        <div id="inicio-motivo-escolha">
+          <h2 id="inicio-motivo-escolha-titulo" tabindex="-1">Meu motivo para aprender modelagem 3D</h2>
+          <p>Escolha a opção que mais combina com o que você quer hoje. Você pode mudar de ideia depois.</p>
+          <fieldset class="inicio-motivos"><legend class="inicio-sr">Meu motivo para aprender modelagem 3D</legend><div id="inicio-opcoes"></div></fieldset>
+          <div id="inicio-outro-campo" hidden>
+            <label for="inicio-motivo-outro">Qual é o seu outro motivo?</label>
+            <textarea id="inicio-motivo-outro" name="motivo_outro" rows="2" maxlength="280" placeholder="Escreva com suas palavras o que você quer fazer com a modelagem 3D."></textarea>
+          </div>
+          <p class="inicio-nota">UGC são itens criados por pessoas como você, por exemplo roupas e acessórios para personagens de jogos.</p>
+          <div class="inicio-acoes"><button type="submit" name="destino" value="proxima">Continuar</button><button type="button" id="inicio-motivo-depois-1" class="inicio-secundario">← Depois eu faço isso</button></div>
+        </div>
+        <div id="inicio-motivo-reflexao" hidden>
+          <h2 id="inicio-motivo-reflexao-titulo" tabindex="-1">Por que isso importa para mim? <span class="inicio-opcional">(opcional)</span></h2>
+          <p>Pense no que aprender modelagem 3D pode mudar na sua vida ou no que você gostaria de sentir ao criar. Não precisa saber termos técnicos, escrever muito ou ter uma resposta perfeita.</p>
+          <p>Uma frase do seu jeito já basta. Estes exemplos são apenas ideias para ajudar você a começar:</p>
+          <ul class="inicio-exemplos">
+            <li>“Quero fazer trabalhos para clientes e ter uma nova possibilidade de renda.”</li>
+            <li>“Quero ver um personagem usando um acessório que eu criei.”</li>
+            <li>“Tenho uma ideia de jogo e quero conseguir dar forma ao mundo dele.”</li>
+            <li>“Sonho em montar um estúdio e quero começar aprendendo uma habilidade.”</li>
+            <li>“Gosto de criar e quero descobrir se me divirto com modelagem 3D.”</li>
+            <li>“Quero olhar para uma peça pronta e sentir orgulho de ter feito sozinho.”</li>
+          </ul>
+          <label for="inicio-motivo-pessoal">Minha resposta <span>(opcional)</span></label>
+          <textarea id="inicio-motivo-pessoal" name="motivo_pessoal" rows="3" maxlength="280" aria-describedby="inicio-reflexao-ajuda" placeholder="Isso importa para mim porque…"></textarea>
+          <p id="inicio-reflexao-ajuda" class="inicio-nota">Esta resposta fica só na sua conta. Você pode deixar em branco, concluir agora e voltar para escrever ou editar depois.</p>
+          <div class="inicio-acoes"><button type="submit" name="destino" value="continuar">Concluir meu motivo</button><button type="button" id="inicio-motivo-depois-2" class="inicio-secundario">← Depois eu faço isso</button></div>
+          <button type="button" id="inicio-motivo-anterior" class="inicio-texto">← Voltar à escolha do motivo</button>
+        </div>
       </form>
     </section>
     {% elif inicio_etapa == 2 %}
@@ -84,8 +107,8 @@
       <details id="inicio-historico" class="inicio-detalhes" hidden><summary>Meus arquivos já enviados</summary><div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div></details>
     </section>
     {% endif %}
-    <p class="inicio-voltar"><a href="{% url 'base' %}">Sair e retomar depois</a></p>
+    {% if inicio_etapa != 1 %}<p class="inicio-voltar"><a href="{% url 'base' %}">Sair e retomar depois</a></p>{% endif %}
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=5" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=6" defer></script>

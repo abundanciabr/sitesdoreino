@@ -208,3 +208,20 @@ def test_inicio_continua_editavel_depois_da_faixa_branca(client, monkeypatch):
     depois = client.get(reverse("base")).content.decode()
     assert 'id="inicio-cartao"' in depois
     assert 'id="inicio-retomar"' in depois
+
+
+def test_outro_motivo_e_etapa_sao_privados_retomaveis_sem_credito_no_rascunho(client, monkeypatch):
+    r = guardar(client, 'inicio-motivo', motivo='outro', motivo_outro='Meu motivo privado',
+                motivo_pessoal='', motivo_etapa='2', concluir='nao')
+    assert r.status_code == 200
+    assert 'conquista_xp' not in r.json()
+    assert r.json()['inicio']['etapas'][1]['bloqueada'] is True
+    retomada = abrir(Client()).json()['inicio']
+    assert retomada['motivo_outro'] == 'Meu motivo privado'
+    assert retomada['motivo_etapa'] == 2
+    concluida = guardar(client, 'inicio-motivo', motivo='outro', motivo_pessoal='', concluir='sim')
+    assert concluida.json()['conquista_xp'] == 100
+    assert concluida.json()['inicio']['motivo_outro'] == 'Meu motivo privado'
+    assert guardar(client, 'inicio-motivo', motivo='outro', concluir='sim').json()['conquista_xp'] == 0
+    monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': 'outra-conta'})
+    assert 'Meu motivo privado' not in str(abrir(client).json())

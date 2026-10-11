@@ -18,7 +18,7 @@ function file(overrides={}){
     criado_em:'2026-10-10T12:00:00Z',aprendi:'Minha tentativa',duvida:'Como suavizar a borda?',...overrides};
 }
 
-async function page(step,initial=record(),hash=''){
+async function page(step,initial=record(),hash='',wizard=false){
   const nodes=[];
   class Element {
     constructor(tag,id=''){this.tagName=tag;this.id=id;this.dataset={};this.children=[];this.events={};this.value='';this.files=[];this.hidden=false;this.text='';nodes.push(this);}
@@ -39,8 +39,9 @@ async function page(step,initial=record(),hash=''){
   const summaries=[new Element('small'),new Element('small'),new Element('small')];
   root.querySelector=selector=>summaries[Number(selector.match(/\d/)[0])-1];
   root.querySelectorAll=selector=>nodes.filter(node=>selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
+  if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
   const form=add('form-'+step,'form');form.elements={};
-  const fields=step==='motivo'?['motivo_pessoal']:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?[]:['arquivo','aprendi','duvida'];
+  const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?[]:['arquivo','aprendi','duvida'];
   fields.forEach(name=>{const node=add(name,name==='arquivo'?'input':'textarea');node.name=name;form.elements[name]=node;form.append(node);});
   form.reset=()=>Object.values(form.elements).forEach(node=>{node.value='';node.files=[];});
   ['status','conteudo','recarregar','comparacao'].filter(id=>id!=='comparacao').forEach(id=>add(id,id==='recarregar'?'button':'div'));
@@ -192,4 +193,35 @@ test('a tela de envio não contém os controles nem o pedido de ajuda das etapas
  assert.equal(ui.byId('pedir-ajuda'),null);
  assert.equal(ui.byId('form-criacao'),null);
  assert.equal(ui.byId('historico').hidden,false);
+});
+
+test('duas etapas guardam a escolha sem XP e permitem concluir a reflexão vazia',async()=>{
+ const initial=record();initial.inicio.motivo_pessoal='';
+ const ui=await page('motivo',initial,'',true);
+ assert.equal(ui.byId('motivo-escolha').hidden,false);assert.equal(ui.byId('motivo-reflexao').hidden,true);
+ await ui.submit('proxima');
+ assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'2');
+ assert.equal(ui.byId('motivo-escolha').hidden,true);assert.equal(ui.byId('motivo-reflexao').hidden,false);
+ assert.deepEqual(ui.redirects,[]);
+ await ui.submit('continuar');
+ assert.equal(ui.calls.at(-1).options.body.get('concluir'),'sim');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_pessoal'),'');
+ assert.match(ui.redirects[0],/conquista/);
+});
+test('outro motivo, retomada e depois preservam rascunho na etapa correta',async()=>{
+ const initial=record();Object.assign(initial.inicio,{motivo:'outro',motivo_outro:'Criar cenários',motivo_etapa:2,motivos:[{valor:'outro',nome:'Tenho outro motivo'}]});
+ const ui=await page('motivo',initial,'',true);
+ assert.equal(ui.byId('outro-campo').hidden,false);assert.equal(ui.form.elements.motivo_outro.value,'Criar cenários');
+ assert.equal(ui.byId('motivo-reflexao').hidden,false);
+ await ui.fire(ui.byId('motivo-anterior'),'click');
+ assert.equal(ui.byId('motivo-escolha').hidden,false);assert.equal(ui.byId('motivo-reflexao').hidden,true);
+ ui.form.elements.motivo_outro.value='Criar miniaturas';await ui.fire(ui.form,'input');
+ ui.fail(new Error('Sem conexão'));await ui.fire(ui.byId('motivo-depois-1'),'click');
+ assert.deepEqual(ui.redirects,[]);assert.equal(ui.form.elements.motivo_outro.value,'Criar miniaturas');
+ await ui.fire(ui.byId('motivo-depois-1'),'click');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_outro'),'Criar miniaturas');
+ assert.equal(ui.calls.at(-1).options.body.get('concluir'),'nao');
+ assert.equal(ui.calls.at(-1).options.body.get('motivo_etapa'),'1');
+ assert.deepEqual(ui.redirects,['/trilha/']);
 });

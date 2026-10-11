@@ -41,6 +41,11 @@ def salvar_inicio(jornada, dados):
         elif mudou or not inicio.get('motivo'):
             inicio['motivo_rascunho'] = True
         inicio.update(motivo=motivo, motivo_pessoal=texto(dados, 'motivo_pessoal', 280))
+        # Clientes anteriores não apagam os novos campos privados.
+        if 'motivo_outro' in dados:
+            inicio['motivo_outro'] = texto(dados, 'motivo_outro', 280)
+        if dados.get('motivo_etapa') in ('1', '2'):
+            inicio['motivo_etapa'] = int(dados['motivo_etapa'])
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
             raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')

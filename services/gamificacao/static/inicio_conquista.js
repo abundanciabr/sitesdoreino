@@ -1,5 +1,13 @@
 (() => {
   'use strict';
+  if (document.body.dataset.embutido === 'sim' && window.parent !== window) {
+    const close = () => window.parent.postMessage({type: 'meshcraft:motivo-fechar'}, window.location.origin);
+    document.querySelector('.voltar-faixa').addEventListener('click', event => { event.preventDefault(); close(); });
+    window.addEventListener('message', event => {
+      if (event.origin === window.location.origin && event.source === window.parent && event.data?.type === 'meshcraft:motivo-pedir-fechamento') close();
+    });
+    window.parent.postMessage({type: 'meshcraft:motivo-pronto'}, window.location.origin);
+  }
   const number = document.getElementById('xp-numero');
   if (!number || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const total = Number(number.dataset.xp);
