@@ -50,6 +50,7 @@ urlpatterns = [
     path("sandbox/projetos/<uuid:projeto_id>/aceitar/", telas_sandbox.aceitar, name="sandbox_aceitar"),
     path("sandbox/trabalhos/<uuid:participacao_id>/", telas_sandbox.trabalho, name="sandbox_trabalho"),
     path("sandbox/trabalhos/<uuid:participacao_id>/mensagem/", telas_sandbox.mensagem, name="sandbox_mensagem"),
+    path("sandbox/trabalhos/<uuid:participacao_id>/conversa/limpar/", telas_sandbox.limpar_conversa, name="sandbox_limpar_conversa"),
     path("sandbox/trabalhos/<uuid:participacao_id>/arquivo/", telas_sandbox.enviar_arquivo, name="sandbox_arquivo"),
     path("sandbox/arquivos/<uuid:arquivo_id>/", telas_sandbox.baixar_arquivo, name="sandbox_baixar"),
     path("sandbox/trabalhos/<uuid:participacao_id>/entregar/", telas_sandbox.entregar, name="sandbox_entregar"),

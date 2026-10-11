@@ -253,9 +253,14 @@ def trabalho(request, participacao_id):
     from apps.encomendas.sandbox_models import AnaliseEntregaSandbox
     ultima = sandbox.ultima_entrega_do_aluno(participacao)
     analise = AnaliseEntregaSandbox.objects.filter(entrega=ultima).first() if ultima else None
+    mensagens = MensagemSandbox.objects.filter(participacao=participacao).order_by("criada_em")
+    mensagens_anteriores = mensagens.none()
+    if participacao.mensagens_recolhidas_ate:
+        mensagens_anteriores = mensagens.filter(criada_em__lte=participacao.mensagens_recolhidas_ate)
+        mensagens = mensagens.filter(criada_em__gt=participacao.mensagens_recolhidas_ate)
     return render(request, "sandbox/trabalho.html", {
         "papel": papel, "trabalho": participacao, "agora": timezone.now(),
-        "mensagens": MensagemSandbox.objects.filter(participacao=participacao).order_by("criada_em"),
+        "mensagens": mensagens, "mensagens_anteriores": mensagens_anteriores,
         "arquivos": ArquivoSandbox.objects.filter(participacao=participacao).select_related("entrega").order_by("-criado_em"),
         "entregas": EntregaSandbox.objects.filter(participacao=participacao).order_by("-versao"),
         "ajustes": AjusteSandbox.objects.filter(participacao=participacao).order_by("-criado_em"),
@@ -266,6 +271,19 @@ def trabalho(request, participacao_id):
         "orientacao_arquivos": arquivos_sandbox.ORIENTACAO,
         "recado": request.GET.get("recado", ""),
     })
+
+
+@require_POST
+def limpar_conversa(request, participacao_id):
+    trabalho, _, _ = _trabalho(request, participacao_id)
+    if trabalho is None:
+        return _login(request)
+    if not _pode_testar(request):
+        raise Http404
+    trabalho.mensagens_recolhidas_ate = timezone.now()
+    trabalho.save(update_fields=["mensagens_recolhidas_ate"])
+    return _voltar("sandbox_trabalho", trabalho.pk,
+                   recado="Conversa limpa. As mensagens anteriores estão recolhidas no histórico.")
 
 
 @require_POST

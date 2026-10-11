@@ -59,6 +59,7 @@ class ParticipacaoSandbox(models.Model):
     atraso_em = models.DateTimeField(null=True, blank=True)
     aprovado_em = models.DateTimeField(null=True, blank=True)
     aprovado_por = models.CharField(max_length=64, blank=True)
+    mensagens_recolhidas_ate = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "encomendas_participacaosandbox"
