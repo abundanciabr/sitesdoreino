@@ -10,9 +10,7 @@ MOTIVOS = (
     ('freelancer', 'Criar peças 3D para clientes', 'Experimente um objeto simples a partir de um pedido. Observe forma, proporção e organização dos arquivos.'),
     ('ugc', 'Criar meus próprios itens UGC', 'Comece com um acessório simples e escolha um detalhe que expresse seu estilo. Guarde uma imagem da primeira versão.'),
     ('jogo', 'Criar a parte visual do meu jogo', 'Escolha um objeto pequeno que seu cenário precisa. Modele primeiro a forma principal e depois acrescente um detalhe.'),
-    ('estudio', 'Preparar meu futuro estúdio', 'Conclua uma peça pequena e organize as partes e os arquivos. Imagine como explicaria sua criação a um colaborador.'),
-    ('descobrir', 'Experimentar e descobrir meu caminho', 'Escolha um objeto que desperte sua curiosidade. Faça uma versão simples e observe qual parte mais gostou de criar.'),
-    ('outro', 'Tenho outro motivo', 'Escolha uma peça pequena relacionada à sua ideia. Comece pela forma principal e peça ajuda sobre uma dificuldade por vez.'),
+    ('aprender', 'Aprender modelagem 3D', 'Experimente uma criação simples. Mude uma cor, observe as proporções e guarde sua primeira versão.'),
 )
 
 COMPROMISSO_CURSO = (
@@ -71,7 +69,7 @@ def salvar_inicio(jornada, dados):
     if dados['acao'] == 'inicio-motivo':
         motivo = texto(dados, 'motivo', 20)
         if motivo and motivo not in {m[0] for m in MOTIVOS}:
-            raise ValueError('Escolha um dos caminhos ou escreva seu próprio motivo.')
+            raise ValueError('Escolha um dos quatro caminhos. Seu motivo escrito fica como complemento.')
         from .bonus_inicio import recebido
 
         ja_concluido = recebido(jornada.pessoa_id, jornada.site_id, 1) > 0
@@ -83,6 +81,10 @@ def salvar_inicio(jornada, dados):
             inicio['motivo_rascunho'] = False
         elif mudou or not inicio.get('motivo'):
             inicio['motivo_rascunho'] = True
+        if mudou and inicio.get('motivo'):
+            anteriores = list(inicio.get('motivos_anteriores', []))
+            anteriores.append({k: inicio.get(k) for k in ('motivo', 'motivo_pessoal', 'motivo_outro', 'motivo_sonhos')})
+            inicio['motivos_anteriores'] = anteriores
         inicio.update(motivo=motivo, motivo_pessoal=texto(dados, 'motivo_pessoal', 280))
         # Clientes anteriores não apagam os novos campos privados.
         if 'motivo_outro' in dados:
@@ -118,7 +120,8 @@ def salvar_inicio(jornada, dados):
                 inicio['compromisso_curso_em'] = timezone.now().isoformat()
                 inicio['compromisso_motivos'] = {chave: inicio.get(chave) for chave in
                     ('motivo', 'motivo_outro', 'motivo_pessoal', 'motivo_sonhos')}
-            inicio['compromisso_etapa'] = 3
+            inicio['proximo_passo_resposta'] = texto(dados, 'proximo_passo', 40)
+            inicio['compromisso_etapa'] = 3 if inicio['proximo_passo_resposta'] == 'criar_item' else 2
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
             raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')
@@ -142,6 +145,10 @@ def salvar_inicio(jornada, dados):
     elif dados['acao'] == 'inicio-item':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[2]['liberada']:
             raise ValueError('Assuma seu compromisso e receba o XP antes de criar o item.')
+        inicio['item_nome'] = texto(dados, 'item_nome', 180)
+        inicio['item_acao'] = texto(dados, 'item_acao', 1000)
+        if not inicio['item_nome'] or not inicio['item_acao']:
+            raise ValueError('Diga qual item criou e uma ação concreta que realizou nele.')
         inicio.setdefault('item_pronto_em', timezone.now().isoformat())
     else:
         raise ValueError('Escolha uma etapa do começo da jornada.')
@@ -149,15 +156,30 @@ def salvar_inicio(jornada, dados):
     jornada.inicio = inicio
     jornada.revisao += 1
     jornada.save(update_fields=['inicio', 'apoio', 'revisao', 'atualizada_em'])
+    if dados['acao'] == 'inicio-compromisso' and dados.get('assumir') == 'sim':
+        from .jornada import registrar_avaliacao
+        correto = inicio.get('motivo') in {m[0] for m in MOTIVOS} and inicio.get('proximo_passo_resposta') == 'criar_item'
+        registrar_avaliacao(jornada.pessoa_id, jornada.site_id, 2,
+            'reconhecida' if correto else 'incompleta',
+            'Você definiu seu motivo, identificou como começar e assumiu seu compromisso.' if correto else
+            'Seu compromisso está guardado. O próximo passo é criar um primeiro item simples nas aulas. Confira a resposta e tente novamente.',
+            {'tipo': 'exercicio-compromisso', 'motivo': inicio.get('motivo'),
+             'compromisso_em': inicio.get('compromisso_curso_em'), 'resposta': inicio.get('proximo_passo_resposta')})
+        jornada.refresh_from_db()
+    if dados['acao'] == 'inicio-motivo' and inicio.get('motivo') == 'freelancer' and not inicio.get('motivo_rascunho'):
+        from .jornada import reconciliar_recebimentos
+        reconciliar_recebimentos(jornada.pessoa_id, jornada.site_id)
+        jornada.refresh_from_db()
 
 
 def para_tela(jornada):
     inicio = dict(jornada.inicio) if jornada else {}
-    motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[4])
+    motivo = next((m for m in MOTIVOS if m[0] == inicio.get('motivo')), MOTIVOS[3])
     return {**inicio, 'motivos': [{'valor': m[0], 'nome': m[1]} for m in MOTIVOS],
             'sonhos_opcoes': [{'valor': valor, 'nome': nome} for valor, nome in SONHOS],
             'pratica': motivo[2], 'apoio': jornada.apoio if jornada else 'guiado',
             'item_pronto': bool(inicio.get('item_pronto_em') or (jornada and jornada.declaracoes.get('2'))),
+            'caminho_antigo': bool(inicio.get('motivo') and inicio.get('motivo') not in {m[0] for m in MOTIVOS}),
             'etapas': etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada) if jornada else etapas_inicio(None, None, None)}
 
 
@@ -184,36 +206,27 @@ def requisitos_branca(jornada, tem_anexo):
 
 
 def etapas_inicio(pessoa_id, site_id, jornada, tem_anexo=None):
-    """Quatro tarefas sequenciais: dados privados e XP definitivo de cada gesto."""
+    """O motivo abre o compromisso; cada etapa seguinte depende de avaliação."""
     from .bonus_inicio import recebido
-
-    if tem_anexo is None:
-        tem_anexo = bool(jornada and AnexoDaJornada.objects.filter(
-            pessoa_id=pessoa_id, site_id=site_id, passo=2,
-        ).exists())
-    requisitos = requisitos_branca(jornada, tem_anexo)
+    from .models import AvaliacaoDaJornada
+    from .jornada import situacao
     inicio = jornada.inicio if jornada else {}
-    declarada = bool(jornada and jornada.declaracoes.get('2') and
-                     jornada.confirmacoes_sequenciais.get('2'))
-    validas = (requisitos['motivo'],
-               requisitos['objetivo'] and requisitos['compromisso'],
-               requisitos['item'], requisitos['envio'] and declarada)
-    em_andamento = (bool(inicio.get('motivo')),
-                    any(inicio.get(k) for k in ('sonho', 'objetivo', 'compromisso', 'compromisso_etapa')),
-                    requisitos['item'], bool(tem_anexo or (jornada and jornada.declaracoes.get('2'))))
-    etapas = []
-    anteriores_concluidas = True
-    for indice, (valida, iniciada) in enumerate(zip(validas, em_andamento), start=1):
+    if tem_anexo is None:
+        tem_anexo = bool(jornada and AnexoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, passo=2).exists())
+    alcancadas = {p['ordem'] for p in situacao(pessoa_id, site_id)['lista'] if p['alcancada']} if jornada else {1}
+    motivo_ok = inicio.get('motivo') in {m[0] for m in MOTIVOS} and (not inicio.get('motivo_rascunho') or jornada and recebido(pessoa_id, site_id, 1) > 0)
+    validas = (motivo_ok, 2 in alcancadas, 3 in alcancadas, 4 in alcancadas)
+    em_andamento = (bool(inicio.get('motivo')), bool(inicio.get('compromisso_curso_em')), bool(inicio.get('item_nome') or inicio.get('item_pronto_em')), bool(tem_anexo))
+    etapas, anteriores = [], True
+    for indice, (valida, iniciada) in enumerate(zip(validas, em_andamento), 1):
         xp = recebido(pessoa_id, site_id, indice) if jornada else 0
-        concluida = bool(anteriores_concluidas and valida and xp > 0)
-        bloqueada = not anteriores_concluidas
-        estado = ('pendente' if bloqueada else 'concluido' if concluida else
-                  'andamento' if iniciada else 'pendente')
-        etapas.append({'etapa': indice, 'concluida': concluida,
-                       'liberada': not bloqueada, 'bloqueada': bloqueada,
-                       'dados_validos': bool(valida), 'xp_recebido': xp,
-                       'estado': estado})
-        anteriores_concluidas = concluida
+        ultima = AvaliacaoDaJornada.objects.filter(pessoa_id=pessoa_id, site_id=site_id, ordem=indice).order_by('-id').first() if jornada and indice > 1 else None
+        concluida = bool(anteriores and valida)
+        etapas.append({'etapa': indice, 'concluida': concluida, 'liberada': anteriores,
+            'bloqueada': not anteriores, 'dados_validos': bool(valida), 'xp_recebido': xp,
+            'estado': 'concluido' if concluida else 'andamento' if iniciada and anteriores else 'pendente',
+            'feedback': ultima.feedback if ultima else '', 'resultado': ultima.resultado if ultima else ''})
+        anteriores = concluida
     return etapas
 
 

@@ -20,13 +20,14 @@
     <p class="sobretitulo">{{ inicio_titulo }} · Concluído</p>
     <h1 id="titulo-conquista">{% if conquista_ja_recebida %}Seu progresso continua aqui.{% elif inicio_etapa == 1 %}Você encontrou seu motivo!{% elif inicio_etapa == 2 %}Um compromisso com você!{% elif inicio_etapa == 3 %}Sua ideia ganhou forma!{% else %}Sua criação virou conquista!{% endif %}</h1>
     <p class="mensagem">{% if conquista_sem_credito %}Sua tarefa foi salva e faz parte do seu progresso.{% elif conquista_ja_recebida %}Sua tarefa está atualizada e os XP anteriores continuam com você.{% elif inicio_etapa == 1 %}Agora seu começo tem uma razão que é sua.{% elif inicio_etapa == 2 %}Um passo possível. No seu tempo, do seu jeito.{% elif inicio_etapa == 3 %}Você transformou uma ideia em algo que existe.{% else %}Seu trabalho está guardado. Este começo faz parte da sua história.{% endif %}</p>
+    {% if avaliacao_feedback %}<p class="mensagem">{{ avaliacao_feedback }}</p><p><strong>Faixa {{ faixa_conquistada }} conquistada.</strong></p>{% endif %}
     <section class="recompensa" aria-label="Recompensa desta tarefa">
       <span class="recompensa-icone" aria-hidden="true">✦</span>
       <div><p class="recompensa-rotulo">{% if conquista_sem_credito %}TAREFA CONCLUÍDA{% elif conquista_ja_recebida %}RECOMPENSA JÁ RECEBIDA{% else %}XP CONQUISTADOS{% endif %}</p>
       <p class="pontos" aria-live="polite">{% if conquista_sem_credito %}<span>Progresso salvo</span>{% elif conquista_ja_recebida %}<span>XP preservados</span>{% else %}<span aria-label="{{ conquista_xp }} XP recebidos">+<span id="xp-numero" data-xp="{{ conquista_xp }}">{{ conquista_xp }}</span><span class="unidade"> XP</span></span>{% endif %}</p></div>
       <span class="credito-confirmado" aria-hidden="true">✓</span>
     </section>
-    {% if conquista_xp_faixa %}<div class="bonus-faixa"><span aria-hidden="true">🏅</span><div><strong>Faixa amarela conquistada!</strong><p>{{ conquista_xp_tarefa }} XP da tarefa + {{ conquista_xp_faixa }} XP da nova faixa.</p></div></div>{% endif %}
+    {% if conquista_xp_faixa %}<div class="bonus-faixa"><span aria-hidden="true">🏅</span><div><strong>Faixa {{ faixa_conquistada }} conquistada!</strong><p>{{ conquista_xp_tarefa }} XP da tarefa + {{ conquista_xp_faixa }} XP da nova faixa.</p></div></div>{% endif %}
     <a class="voltar-faixa" href="/trilha/">Voltar à minha faixa <span aria-hidden="true">→</span></a>
     <p class="ritmo">Comemore este passo. Você escolhe quando continuar.</p>
   </main>

@@ -17,13 +17,16 @@ from apps.gamificacao.models import AnexoDaJornada, JornadaPessoal, PerfilJogado
 
 pytestmark = pytest.mark.django_db
 SITE, P = "site-inicio", "aluna-inicio"
-URL = "/inventario/"
+URL = "/trilha/inventario/api/"
 
 
 @pytest.fixture(autouse=True)
 def conta(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
     monkeypatch.setattr("apps.core.inventario._sessao", lambda cookie: {"autenticado": True, "id": P})
+    monkeypatch.setattr('apps.gamificacao.avaliacao_inicio.avaliar', lambda *args, **kwargs: {
+        'resultado': 'reconhecida', 'feedback': 'O relato e o anexo apresentados foram examinados nesta versão.',
+        'evidencia': {'tipo': 'avaliacao-simulada-no-teste'}})
 
 
 def abrir(client):
@@ -50,7 +53,8 @@ def imagem(nome="tentativa.png", cor="red"):
 def liberar_envio(client):
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", objetivo="Minha peça", compromisso="Praticarei", assumir="sim").status_code == 200
-    assert guardar(client, "inicio-item").status_code == 200
+    assert guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item").status_code == 200
+    assert guardar(client, "inicio-item", item_nome="Minha peça", item_acao="Modelei a forma inicial").status_code == 200
 
 
 def test_rascunho_parcial_salva_e_retomada_na_mesma_conta(client):
@@ -70,11 +74,11 @@ def test_rascunho_parcial_salva_e_retomada_na_mesma_conta(client):
     assert retomada["atual_ordem"] == 1
     assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
-    assert not RegistroDaJornada.objects.exists()
+    assert RegistroDaJornada.objects.filter(acao='atividade').count() == 2
 
 
 def test_edicao_do_compromisso_pede_nova_confirmacao(client):
-    assert guardar(client, "inicio-motivo", motivo="descobrir").status_code == 200
+    assert guardar(client, "inicio-motivo", motivo="aprender").status_code == 200
     dados = {"objetivo": "Minha primeira peça", "compromisso": "Praticar sábado"}
     assert guardar(client, "inicio-plano", assumir="sim", **dados).json()["inicio"]["confirmado_em"]
     r = guardar(client, "inicio-plano", assumir="nao", **{**dados, "compromisso": "Praticar domingo"})
@@ -126,7 +130,8 @@ def test_versoes_notas_previa_privada_e_projecao_sem_sonho(client, monkeypatch):
                    compromisso="Praticar").status_code == 200
     assert guardar(client, "inicio-plano", sonho="Segredo no sonho", objetivo="Criar item",
                    compromisso="Praticar", assumir="sim").status_code == 200
-    assert guardar(client, "inicio-item").status_code == 200
+    assert guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item").status_code == 200
+    assert guardar(client, "inicio-item", item_nome="Item", item_acao="Modelei a forma").status_code == 200
     for cor, nota in (("red", "Aprendi a forma"), ("blue", "Ajustei a forma")):
         r = guardar(client, "anexo", passo="2", arquivo=imagem(cor=cor), aprendi=nota, duvida="Como melhorar?")
         assert r.status_code == 200
@@ -197,22 +202,20 @@ def test_duas_abas_com_revisao_antiga_nao_sobrescrevem_nota_nem_criam_arquivo(cl
 
 def test_inicio_continua_editavel_depois_da_faixa_branca(client, monkeypatch):
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: P)
-    antes = client.get(reverse("base")).content.decode()
-    assert 'id="inicio-cartao"' in antes
-    assert 'id="inicio-retomar"' in antes
+    assert client.get(reverse("inicio-motivo")).status_code == 200
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", objetivo="Criar meu item",
                    compromisso="Praticar esta semana", assumir="sim").status_code == 200
-    assert guardar(client, "inicio-item").status_code == 200
+    assert guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item").status_code == 200
+    assert guardar(client, "inicio-item", item_nome="Meu item", item_acao="Modelei a forma").status_code == 200
     assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
-    assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
-    depois = client.get(reverse("base")).content.decode()
-    assert 'id="inicio-cartao"' in depois
-    assert 'id="inicio-retomar"' in depois
+    assert guardar(client, "inicio-envio").status_code == 200
+    assert client.get(reverse("inicio-motivo")).status_code == 200
+    assert client.get(reverse("inicio-envio")).status_code == 200
 
 
-def test_outro_motivo_e_etapa_sao_privados_retomaveis_sem_credito_no_rascunho(client, monkeypatch):
-    r = guardar(client, 'inicio-motivo', motivo='outro', motivo_outro='Meu motivo privado',
+def test_motivo_escrito_complementar_e_etapa_sao_privados_sem_credito_no_rascunho(client, monkeypatch):
+    r = guardar(client, 'inicio-motivo', motivo='aprender', motivo_outro='Meu motivo privado',
                 motivo_pessoal='', motivo_etapa='2', concluir='nao')
     assert r.status_code == 200
     assert 'conquista_xp' not in r.json()
@@ -220,10 +223,10 @@ def test_outro_motivo_e_etapa_sao_privados_retomaveis_sem_credito_no_rascunho(cl
     retomada = abrir(Client()).json()['inicio']
     assert retomada['motivo_outro'] == 'Meu motivo privado'
     assert retomada['motivo_etapa'] == 2
-    concluida = guardar(client, 'inicio-motivo', motivo='outro', motivo_pessoal='', concluir='sim')
+    concluida = guardar(client, 'inicio-motivo', motivo='aprender', motivo_pessoal='', concluir='sim')
     assert concluida.json()['conquista_xp'] == 100
     assert concluida.json()['inicio']['motivo_outro'] == 'Meu motivo privado'
-    assert guardar(client, 'inicio-motivo', motivo='outro', concluir='sim').json()['conquista_xp'] == 0
+    assert guardar(client, 'inicio-motivo', motivo='aprender', concluir='sim').json()['conquista_xp'] == 0
     monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado': True, 'id': 'outra-conta'})
     assert 'Meu motivo privado' not in str(abrir(client).json())
 
@@ -235,7 +238,7 @@ def test_revisar_motivo_e_voltar_preserva_conclusao_pontos_e_faixa(client, etapa
     if faixa_completa:
         liberar_envio(client)
         assert guardar(client, "anexo", passo="2", arquivo=imagem()).status_code == 200
-        assert guardar(client, "declaracao", passo="2", estado="feito").status_code == 200
+        assert guardar(client, "inicio-envio", arquivo=imagem()).status_code == 200
     antes = abrir(client).json()
     xp_antes = PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total
     resposta = guardar(client, "inicio-motivo", motivo="jogo", motivo_pessoal="Meu novo motivo",
@@ -319,7 +322,7 @@ def test_compromisso_curso_retoma_sem_xp_e_assume_uma_vez_sem_objetivo(client):
     assert abrir(Client()).json()['inicio']['compromisso_etapa'] == 2
     assert r.json()['inicio']['etapas'][2]['bloqueada'] is True
     assert guardar(client, 'inicio-item').status_code == 400
-    r = guardar(client, 'inicio-compromisso', assumir='sim')
+    r = guardar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item')
     assert r.status_code == 200 and r.json()['conquista_xp'] == 100
     inicio = r.json()['inicio']
     assert not inicio.get('objetivo')
@@ -327,29 +330,29 @@ def test_compromisso_curso_retoma_sem_xp_e_assume_uma_vez_sem_objetivo(client):
     assert inicio['compromisso_motivos']['motivo_pessoal'] == 'Meu mundo'
     assert inicio['compromisso_motivos']['motivo_sonhos'] == ['jogo_roblox', 'ajudar_pais']
     assert inicio['etapas'][1]['concluida'] and inicio['etapas'][2]['liberada']
-    assert r.json()['atual_ordem'] == 1
-    repetida = guardar(client, 'inicio-compromisso', assumir='sim').json()
+    assert r.json()['atual_ordem'] == 2
+    repetida = guardar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item').json()
     assert repetida['conquista_xp'] == 0 and repetida['conquista_ja_recebida']
     assert repetida['inicio']['compromisso_curso_em'] == inicio['compromisso_curso_em']
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 200
-    assert guardar(client, 'inicio-item').status_code == 200
+    assert guardar(client, 'inicio-item', item_nome='Meu item', item_acao='Modelei a forma').status_code == 200
     assert guardar(client, 'inicio-envio', arquivo=imagem()).status_code == 200
-    assert situacao(P, SITE)['atual']['ordem'] == 2
+    assert situacao(P, SITE)['atual']['ordem'] == 4
 
 
 def test_compromisso_novo_preserva_plano_antigo_e_xp_e_respostas_privadas(client, monkeypatch):
-    assert guardar(client, 'inicio-motivo', motivo='outro', motivo_outro='Minha razão',
+    assert guardar(client, 'inicio-motivo', motivo='aprender', motivo_outro='Minha razão',
                    motivo_pessoal='Resposta privada', motivo_sonhos='["pc_gamer"]').status_code == 200
     plano = dict(objetivo='Minha criação', compromisso='Meu compromisso anterior', sonho='Sonho antigo',
                  quando='Sábado', obstaculo='Resposta antiga', plano_b='Meu plano antigo', apoio='autonomo')
     assert guardar(client, 'inicio-plano', assumir='sim', **plano).status_code == 200
     antigo = dict(JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio)
     # Reabrir e sair não desfaz um compromisso cujo XP definitivo já existe.
-    assert guardar(client, 'inicio-compromisso', compromisso_etapa='2').json()['inicio']['etapas'][2]['liberada']
-    r = guardar(client, 'inicio-compromisso', assumir='sim').json()
+    assert not guardar(client, 'inicio-compromisso', compromisso_etapa='2').json()['inicio']['etapas'][2]['liberada']
+    r = guardar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item').json()
     assert r['conquista_xp'] == 0
     for chave, valor in antigo.items():
-        if chave != 'salvo_em':
+        if chave not in ('salvo_em', 'compromisso_etapa'):
             assert r['inicio'][chave] == valor
     assert r['inicio']['apoio'] == 'autonomo'
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 200
@@ -377,7 +380,8 @@ def test_checks_retomam_preservam_cliente_antigo_e_revisao_nao_duplica_xp(client
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 100
     guardar(client, 'inicio-compromisso', compromisso_etapa='1')
     assert abrir(client).json()['inicio']['compromisso_checks'] == ['curso', 'desafios']
-    r = guardar(client, 'inicio-compromisso', assumir='sim', compromisso_checks='["curso", "aulas", "desafios", "motivo"]')
+    r = guardar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item',
+                compromisso_checks='["curso", "aulas", "desafios", "motivo"]')
     assert r.json()['conquista_xp'] == 100
     guardar(client, 'inicio-compromisso', compromisso_checks='[]', compromisso_etapa='2')
     inicio = abrir(client).json()['inicio']

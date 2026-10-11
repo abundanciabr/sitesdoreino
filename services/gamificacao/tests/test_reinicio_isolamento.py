@@ -1,5 +1,7 @@
-"""O reinício preserva comprovantes e fatos financeiros sem reabrir faixas antigas."""
+"""O corte preserva comprovantes, isola fatos antigos e exige avaliação nova."""
 
+import gzip
+import hashlib
 from datetime import date, timedelta
 from unittest.mock import patch
 from uuid import uuid4
@@ -12,7 +14,8 @@ from apps.gamificacao.faixas import ao_item_criado, ao_rendimento_real_confirmad
 from apps.gamificacao.handlers import ao_sandbox_trabalho_concluido
 from apps.gamificacao.jornada import salvar, situacao
 from apps.gamificacao.models import (
-    BackupDoReinicioDasFaixas, FaixaDoAluno, JornadaPessoal,
+    AvaliacaoDaJornada, BackupDoReinicioDasFaixas, FaixaDoAluno, JornadaPessoal,
+    LancamentoDeXP, Pessoa,
     RecebimentoDeclarado, RegistroDaJornada, RendimentoRealLivro,
 )
 from apps.gamificacao.prints_recebimentos import processar, rodada
@@ -24,9 +27,11 @@ SITE, P = "site-reinicio-isolamento", "aluno-reinicio-isolamento"
 
 def _corte():
     agora = timezone.now()
+    conteudo = gzip.compress(b"[]", mtime=0)
     BackupDoReinicioDasFaixas.objects.create(
-        site_id=SITE, chave="reinicio-autorizado-20261011", conteudo=b"",
-        sha256="", contagens={}, criado_em=agora, aplicado_em=agora,
+        site_id=SITE, chave="reinicio-autorizado-20261011", conteudo=conteudo,
+        sha256=hashlib.sha256(conteudo).hexdigest(), contagens={},
+        criado_em=agora, aplicado_em=agora,
     )
     return agora
 
@@ -99,7 +104,7 @@ def test_comprovante_pendente_arquivado_nao_entra_na_fila_nem_conclui_leitura():
 
 def test_eventos_anteriores_ao_corte_nao_refazem_faixas_mas_novos_contam():
     corte = _corte()
-    antigo, novo = corte - timedelta(seconds=1), corte + timedelta(seconds=1)
+    antigo, novo = corte - timedelta(seconds=1), timezone.now()
     ao_item_criado(_envelope("cursos.item-criado", antigo, item_id="antigo"))
     ao_sandbox_trabalho_concluido(_envelope("encomendas.sandbox-trabalho-concluido", antigo))
     ao_rendimento_real_confirmado(_envelope(
@@ -112,11 +117,38 @@ def test_eventos_anteriores_ao_corte_nao_refazem_faixas_mas_novos_contam():
     assert antigo_livro.fora_da_progressao and total_real_cents(P, SITE) == 0
 
     ao_item_criado(_envelope("cursos.item-criado", novo, item_id="novo"))
-    ao_sandbox_trabalho_concluido(_envelope("encomendas.sandbox-trabalho-concluido", novo))
+    # Os fatos novos permanecem no livro, sem fabricar faixas legadas.
+    perfil_de(P, SITE)
+    JornadaPessoal.objects.create(pessoa_id=P, site_id=SITE, inicio={"motivo": "freelancer"})
+    ao_sandbox_trabalho_concluido(_envelope(
+        "encomendas.sandbox-trabalho-concluido", novo,
+        resultado="reconhecida", feedback="O modelo foi examinado conforme o briefing.",
+        evidencia={"trabalho_id": "trabalho-novo", "entrega_id": "entrega-nova",
+                   "analise_id": "analise-nova", "avaliacao": "atende"},
+    ))
     ao_rendimento_real_confirmado(_envelope(
         "encomendas.rendimento-real-confirmado", novo,
         rendimento_id="novo", valor_cents=3000,
     ))
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, site_id=SITE, ordem=2).exists()
-    assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("3")
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P, site_id=SITE).exists()
+    assert AvaliacaoDaJornada.objects.filter(pessoa_id=P, site_id=SITE,
+                                             ordem=5, resultado="reconhecida").exists()
+    assert not JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("3")
+    assert situacao(P, SITE)["atual"]["ordem"] == 1  # Aguarda as ordens 2–4.
     assert total_real_cents(P, SITE) == 3000
+
+
+def test_faixa_antiga_real_permanece_e_linha_apos_corte_nao_finge_avaliacao():
+    corte = _corte()
+    perfil_de(P, SITE)
+    pessoa = Pessoa.objects.get(id_da_plataforma=P)
+    JornadaPessoal.objects.create(pessoa=pessoa, site_id=SITE, inicio={"motivo": "freelancer"})
+    FaixaDoAluno.objects.create(pessoa=pessoa, site_id=SITE, ordem=2,
+        estado="alcancada", origem="item", alcancada_em=corte - timedelta(seconds=1))
+    FaixaDoAluno.objects.create(pessoa=pessoa, site_id=SITE, ordem=3,
+        estado="alcancada", origem="sandbox", alcancada_em=corte + timedelta(seconds=1))
+    estado = situacao(P, SITE)
+    assert estado["atual"]["ordem"] == 2
+    assert estado["lista"][1]["avaliacao_resultado"] == "historica"
+    assert not estado["lista"][2]["alcancada"]
+    assert not LancamentoDeXP.objects.filter(regra_slug__startswith="bonus-faixa-").exists()

@@ -83,16 +83,28 @@ def sandbox_trabalho_criado(participacao, *, historico=False):
     })
 
 
-def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None, entrega=None):
+def sandbox_trabalho_concluido(participacao, *, ocorrido_em=None, entrega=None,
+                               analise=None, feedback=None):
     E, O = _modelos()
-    # Cada envio tem seu fato. A gamificação concede cada bônus uma única vez;
-    # um evento antigo ignorado pelo reinício não pode suprimir um envio novo.
+    # Cada avaliação reconhecida tem seu fato. O bônus da faixa é único na gamificação.
     chave = f'{participacao.pk}:envio:{entrega.pk}' if entrega else participacao.pk
     return emitir(E, O, site_id=participacao.site_id, evento=EV_CONCLUSAO,
                   chave=chave, dados={
                       "pessoa_id": str(participacao.pessoa_id),
                       "trabalho_id": str(participacao.pk),
                       "ocorrido_em": _iso(ocorrido_em or participacao.aprovado_em),
+                      "resultado": "reconhecida" if analise else "historico",
+                      "entrega_id": str(entrega.pk) if entrega else None,
+                      "analise_id": str(analise.pk) if analise else None,
+                      "feedback": feedback or "",
+                      "evidencia": {
+                          "trabalho_id": str(participacao.pk),
+                          "entrega_id": str(entrega.pk) if entrega else None,
+                          "analise_id": str(analise.pk) if analise else None,
+                          "avaliacao": (analise.resultado.get("avaliacao") if analise else None),
+                          "requisitos": (analise.resultado.get("requisitos") if analise else []),
+                          "imagens_examinadas": (analise.resultado.get("imagens_examinadas") if analise else []),
+                      },
                   })
 
 
@@ -157,6 +169,25 @@ def fila_trabalho_aceito(acordo, *, historico=False):
         "pessoa_id": str(acordo.aluno.pessoa_id), "pedido_id": str(acordo.pedido_id),
         "ocorrido_em": _iso(acordo.aceito_em), "historico": historico,
     })
+
+
+def fila_trabalho_concluido_por_cliente(pedido, entrega):
+    """Reconhece somente o aceite explícito da última entrega pelo cliente real."""
+    if (pedido.status != 'aprovado' or not pedido.aluno_id
+            or not hasattr(pedido, 'fila_cliente') or not entrega.aprovada_em):
+        return None, False
+    E, O = _modelos()
+    feedback = f'O cliente aprovou a versão {entrega.versao} da entrega deste trabalho da Fila do Dólar.'
+    return emitir(E, O, site_id=pedido.site_id, evento='encomendas.fila-trabalho-concluido',
+                  chave=f'{pedido.pk}:cliente:{entrega.pk}', pedido_id=pedido.pk, dados={
+                      'pessoa_id': str(pedido.aluno.pessoa_id), 'pedido_id': str(pedido.pk),
+                      'ocorrido_em': _iso(entrega.aprovada_em), 'resultado': 'reconhecida',
+                      'feedback': feedback, 'evidencia': {
+                          'pedido_id': str(pedido.pk), 'entrega_id': str(entrega.pk),
+                          'versao': entrega.versao, 'avaliador_papel': 'cliente',
+                          'aprovada_em': _iso(entrega.aprovada_em),
+                      },
+                  })
 
 
 # ---------------------------------------------------------------------------
@@ -301,13 +332,6 @@ def _ao_salvar_recebivel(sender, instance, raw=False, **kwargs):
 def _ao_salvar_pedido(sender, instance, raw=False, **kwargs):
     if not raw:
         sincronizar_do_pedido(instance.pk)
-        if instance.status == "aprovado" and instance.aluno_id and hasattr(instance, "fila_cliente"):
-            E, O = _modelos()
-            emitir(E, O, site_id=instance.site_id, evento="encomendas.fila-trabalho-concluido",
-                   chave=instance.pk, pedido_id=instance.pk, dados={
-                       "pessoa_id": str(instance.aluno.pessoa_id), "pedido_id": str(instance.pk),
-                       "ocorrido_em": _iso(instance.aprovado_em),
-                   })
 
 
 def _ao_salvar_vinculo_da_fila(sender, instance, raw=False, **kwargs):

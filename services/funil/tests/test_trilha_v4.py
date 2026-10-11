@@ -133,11 +133,13 @@ def test_inventario_privado_acessivel_apenas_pela_sessao(client, conta, caminho)
     assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404
 
 
-def test_formulario_branca_oferece_tres_passos_e_envio_separado(client, conta):
+def test_formulario_branca_oferece_motivo_e_compromisso_sem_antecipar_o_item(client, conta):
     corpo = abrir(client, '/trilha/inventario/').content.decode()
     bloco = re.search(r'<section id="branca-requisitos".*?</section>', corpo, re.S).group()
     # Antes da consulta à sessão, nenhuma etapa é liberada por suposição.
     assert re.findall(r'href="([^"]+)"', bloco) == []
-    assert bloco.count('aria-disabled="true"') == 4
-    assert bloco.count('class="primary white-belt-action"') == 4
+    assert bloco.count('aria-disabled="true"') == 2
+    assert bloco.count('class="primary white-belt-action"') == 2
     assert 'Meu compromisso' in bloco
+    assert 'Meu primeiro item 3D' not in bloco
+    assert 'Enviar meu 3D' not in bloco

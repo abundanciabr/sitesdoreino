@@ -45,9 +45,7 @@ paga.
 
 {% block conteudo %}
 {% if entrou %}
-  {% include "gamificacao/_inicio_cartao.html" %}
   {% if jornada_admin %}
-  {% if faixas %}{% include "gamificacao/jornada.html" %}{% endif %}
 
   <section class="degrau">
     {% if not escada.montada %}
@@ -96,17 +94,7 @@ paga.
     </ul>
   </nav>
   {% else %}
-  <section class="aviso"><h2>Suas conquistas continuam com você</h2><p>Sua faixa atual é {{ faixas.atual.faixa }}{% if faixas.atual.grau %}, {{ faixas.atual.grau }} grau{% endif %}. Seus trabalhos e avanços anteriores permanecem guardados.</p><a class="botao-jornada" href="/trilha/">Ver minha jornada completa</a></section>
-  {% if faixas.sandbox_avaliacoes %}<section class="aviso" aria-labelledby="analises-do-sandbox">
-    <h2 id="analises-do-sandbox">Análises das minhas práticas no Sandbox</h2>
-    {% for avaliacao in faixas.sandbox_avaliacoes %}<article>
-      <p><strong>Entrega {{ avaliacao.versao }}</strong> · {{ avaliacao.reconhecimento.texto }}</p>
-      {% if avaliacao.explicacao %}<p>{{ avaliacao.explicacao }}</p>{% endif %}
-      {% if avaliacao.justificativa %}<p>{{ avaliacao.justificativa }}</p>{% endif %}
-      {% if avaliacao.proxima_acao %}<p>{{ avaliacao.proxima_acao }}</p>{% endif %}
-      {% if avaliacao.url %}<p><a href="{{ avaliacao.url }}">Ver trabalho e avaliação</a></p>{% endif %}
-    </article>{% endfor %}
-  </section>{% endif %}
+  <section class="aviso"><h2>Suas conquistas continuam com você</h2><p>Seus trabalhos e avanços anteriores permanecem guardados. As atividades e avaliações das faixas acontecem na Trilha.</p><a class="botao-jornada" href="/trilha/">Ver minha jornada completa</a></section>
   {% endif %}
 {% else %}
   <section class="convite">

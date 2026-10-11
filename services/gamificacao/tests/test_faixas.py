@@ -4,6 +4,7 @@ import uuid
 
 import pytest
 from django.test import Client
+from django.utils import timezone
 
 from apps.eventos.management.commands.consume_eventos import STREAMS, processar_envelope
 from apps.gamificacao.faixas import FAIXAS, situacao_das_faixas, total_real_cents
@@ -11,6 +12,7 @@ from apps.gamificacao.handlers import HANDLERS
 from apps.gamificacao.models import (
     FaixaDoAluno,
     HistoricoDaFaixa,
+    JornadaPessoal,
     OutboxEvent,
     PerfilJogador,
     Pessoa,
@@ -25,13 +27,14 @@ P = "aluno-1"
 AGORA = "2026-10-08T12:00:00+00:00"
 
 
-def env(event, pessoa=P, site=SITE, historico=False, event_id=None, **extra):
-    data = {"site_id": site, "pessoa_id": pessoa, "ocorrido_em": AGORA, "historico": historico, **extra}
+def env(event, pessoa=P, site=SITE, historico=False, event_id=None, novo=True, **extra):
+    instante = timezone.now().isoformat() if novo else AGORA
+    data = {"site_id": site, "pessoa_id": pessoa, "ocorrido_em": instante, "historico": historico, **extra}
     return {
         "event_id": event_id or str(uuid.uuid4()),
         "event": event,
         "version": 1,
-        "occurred_at": AGORA,
+        "occurred_at": instante,
         "ator_id": pessoa,
         "data": data,
     }
@@ -57,6 +60,14 @@ def atual(pessoa=P, site=SITE):
 @pytest.fixture(autouse=True)
 def _aviso_ligado(monkeypatch):
     monkeypatch.setattr("apps.gamificacao.faixas.AVISAR_O_ALUNO", True)
+
+
+@pytest.fixture(autouse=True)
+def _caminho_freelancer():
+    pessoa, _ = Pessoa.objects.get_or_create(id_da_plataforma=P,
+                                             defaults={"email": "aluno@example.invalid"})
+    JornadaPessoal.objects.get_or_create(pessoa=pessoa, site_id=SITE,
+        defaults={"inicio": {"motivo": "freelancer"}})
 
 
 def test_aluno_nao_e_avisado_enquanto_faixas_sao_so_do_admin(monkeypatch):
@@ -94,12 +105,15 @@ def test_cada_fato_de_origem(event, campo, ordem):
     entregar(env(event, **{campo: "x1"}))
     s = situacao_das_faixas(P, SITE)
     assert s["atual"]["ordem"] == 1
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=1).exists()  # Branca gravada
     assert not s["faixas"][ordem - 1]["alcancada"]
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P).exists()
+    # A importação de um marco verdadeiramente anterior ao corte continua legível.
+    entregar(env(event, historico=True, novo=False, **{campo: "historico"}))
     assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=ordem, estado="alcancada").exists()
+    assert atual() == ordem
     # segundo fato do mesmo tipo não muda nada
     n = HistoricoDaFaixa.objects.count()
-    entregar(env(event, **{campo: "x2"}))
+    entregar(env(event, historico=True, novo=False, **{campo: "historico-2"}))
     assert HistoricoDaFaixa.objects.count() == n
 
 
@@ -116,8 +130,13 @@ def test_limites_um_centavo_abaixo_e_no_limite(ordem, meta):
     else:
         paga(meta)
     assert atual() == 1
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=ordem, estado="alcancada").exists()
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P, ordem=ordem).exists()
     assert total_real_cents(P, SITE) == meta
+    # A antiga linha de faixa permanece comprovável quando o fato é pré-corte.
+    paga(meta, pessoa="aluno-legado", historico=True, novo=False)
+    assert FaixaDoAluno.objects.filter(pessoa_id="aluno-legado", ordem=ordem,
+                                      estado="alcancada").exists()
+    assert total_real_cents("aluno-legado", SITE) == meta
 
 
 def test_acumulado_em_varias_vendas():
@@ -127,7 +146,7 @@ def test_acumulado_em_varias_vendas():
     assert atual() == 1
     s = situacao_das_faixas(P, SITE)
     assert s["proxima"]["ordem"] == 2
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=7, estado="alcancada").exists()
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P, ordem=7).exists()
 
 
 def test_maior_faixa_bruta_sem_anteriores_nao_promove_aluno():
@@ -136,7 +155,7 @@ def test_maior_faixa_bruta_sem_anteriores_nao_promove_aluno():
     assert s["atual"]["ordem"] == 1 and s["proxima"]["ordem"] == 2
     assert [f["alcancada"] for f in s["faixas"]][1:4] == [False, False, False]
     assert not any(f["alcancada"] for f in s["faixas"][4:])
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=13, estado="alcancada").exists()
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P, ordem=13).exists()
 
 
 def test_laranja_bruta_depois_da_renda_nao_promove():
@@ -158,21 +177,21 @@ def test_mesmo_event_id_sem_dedupe_do_consumidor_nao_duplica():
     HANDLERS[e["event"]](e)
     HANDLERS[e["event"]](e)  # ignora o EventoProcessado de propósito
     assert RendimentoRealLivro.objects.count() == 1
-    assert HistoricoDaFaixa.objects.filter(ordem=6).count() == 1
+    assert not HistoricoDaFaixa.objects.exists()
     assert cartas().count() == 0
 
 
 def test_eventos_historicos_e_ao_vivo_guardam_fatos_sem_aviso_antecipado():
-    paga(3000, historico=True)
-    entregar(env("cursos.item-criado", item_id="i", historico=True))
-    assert atual() == 1
+    paga(3000, historico=True, novo=False)
+    entregar(env("cursos.item-criado", item_id="i", historico=True, novo=False))
+    assert atual() == 6
     assert cartas().count() == 0
     assert not PerfilJogador.objects.filter(pessoa_id=P).exists()
     assert HistoricoDaFaixa.objects.filter(historico=True).count() >= 3
 
     paga(3000, pessoa="aluno-2")
     assert cartas().count() == 0
-    assert FaixaDoAluno.objects.filter(pessoa_id="aluno-2", ordem=6, estado="alcancada").exists()
+    assert not FaixaDoAluno.objects.filter(pessoa_id="aluno-2").exists()
 
 
 def test_cruzar_limites_brutos_sem_sequencia_nao_avisa():
@@ -181,17 +200,17 @@ def test_cruzar_limites_brutos_sem_sequencia_nao_avisa():
 
 
 def test_estorno_reverte_e_reconfirmacao_restaura_na_mesma_linha():
-    paga(3000, rid="r1")
+    paga(3000, rid="r1", historico=True, novo=False)
     linha = FaixaDoAluno.objects.get(pessoa_id=P, ordem=6)
     assert linha.estado == "alcancada"
-    estorna(3000, "r1")
+    estorna(3000, "r1", historico=True, novo=False)
     linha.refresh_from_db()
     assert linha.estado == "revertida"
     assert atual() == 1
     s = situacao_das_faixas(P, SITE)
     assert s["faixas"][5]["estado"] == "revertida" and not s["faixas"][5]["alcancada"]
     cartas_antes = cartas().count()
-    paga(3000, rid="r1")  # reconfirmação com outro event_id
+    paga(3000, rid="r1", historico=True, novo=False)  # reconfirmação com outro event_id
     linha2 = FaixaDoAluno.objects.get(pessoa_id=P, ordem=6)
     assert linha2.pk == linha.pk and linha2.estado == "alcancada"
     assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=6).count() == 1
@@ -201,11 +220,11 @@ def test_estorno_reverte_e_reconfirmacao_restaura_na_mesma_linha():
 
 
 def test_estorno_parcial_derruba_so_o_que_cai():
-    paga(2000, rid="a")
-    paga(500, rid="b")
-    assert atual() == 1
-    estorna(500, "b")
-    assert atual() == 1
+    paga(2000, rid="a", historico=True, novo=False)
+    paga(500, rid="b", historico=True, novo=False)
+    assert atual() == 6
+    estorna(500, "b", historico=True, novo=False)
+    assert atual() == 5
     assert FaixaDoAluno.objects.get(pessoa_id=P, ordem=5).estado == "alcancada"
 
 
@@ -226,7 +245,7 @@ def test_separacao_entre_pessoas_e_entre_sites():
 
 
 def test_xp_e_cristais_intactos():
-    pessoa = Pessoa.objects.create(id_da_plataforma=P, email="a@example.invalid")
+    pessoa = Pessoa.objects.get(id_da_plataforma=P)
     PerfilJogador.objects.create(pessoa=pessoa, site_id=SITE, xp_total=120, nivel=1, cristais_saldo=7)
     paga(200000)
     entregar(env("cursos.item-criado", item_id="i"))
@@ -301,4 +320,5 @@ def test_confirmacao_do_ciclo_novo_antes_da_reversao_velha_nao_avisa_falso():
     estorna(1500, "troca", ciclo=1)
     assert total_real_cents(P, SITE) == 4800
     assert cartas().count() == antes
-    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem__gt=atual()).exists()
+    assert atual() == 1
+    assert not FaixaDoAluno.objects.filter(pessoa_id=P).exists()

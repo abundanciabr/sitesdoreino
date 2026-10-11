@@ -35,22 +35,22 @@ def _url_do_trabalho(nome, identificador):
 def _atividade_sandbox(participacao):
     estado = participacao.status
     if estado == "em_producao":
-        return {"ordem": 3, "estado": "andamento",
+        return {"ordem": 5, "estado": "andamento",
                 "detalhe": "Prática do Sandbox iniciada; entrega ainda não enviada.",
                 "acao": {"rotulo": "Continuar prática",
                          "url": _url_do_trabalho("sandbox_trabalho", participacao.pk)}}
     if estado == "entregue":
-        return {"ordem": 3, "estado": "andamento",
-                "detalhe": "Entrega do Sandbox enviada; conclusão ainda não consta na jornada.",
+        return {"ordem": 5, "estado": "pendente",
+                "detalhe": "Entrega do Sandbox enviada; aguardando análise real da realização.",
                 "acao": {"rotulo": "Ver entrega",
                          "url": _url_do_trabalho("sandbox_trabalho", participacao.pk)}}
     if estado == "em_ajuste":
-        return {"ordem": 3, "estado": "andamento",
+        return {"ordem": 5, "estado": "andamento",
                 "detalhe": "A prática do Sandbox está em ajuste; conclusão ainda não consta na jornada.",
                 "acao": {"rotulo": "Continuar ajustes",
                          "url": _url_do_trabalho("sandbox_trabalho", participacao.pk)}}
-    return {"ordem": 3, "estado": "pendente",
-            "detalhe": ("Prática aprovada; aguardando registro da conclusão na jornada."
+    return {"ordem": 5, "estado": "pendente",
+            "detalhe": ("Status aprovado; faixa depende da análise real registrada na jornada."
                         if estado == "aprovado" else "Estado da prática indisponível."),
             "acao": None}
 
@@ -59,20 +59,20 @@ def _atividade_fila(pedido):
     estado = pedido.status
     acao = {"rotulo": "Ver trabalho", "url": _url_do_trabalho("fila_real_trabalho", pedido.pk)}
     if estado == "em_producao":
-        return {"ordem": 4, "estado": "andamento",
+        return {"ordem": 6, "estado": "andamento",
                 "detalhe": "Trabalho da Fila iniciado; entrega ainda não enviada.", "acao": acao}
     if estado == "entregue":
-        return {"ordem": 4, "estado": "andamento",
-                "detalhe": "Entrega da Fila enviada; conclusão ainda não consta na jornada.", "acao": acao}
+        return {"ordem": 6, "estado": "pendente",
+                "detalhe": "Entrega da Fila enviada; aguardando aceite real do cliente.", "acao": acao}
     if estado == "em_ajuste":
-        return {"ordem": 4, "estado": "andamento",
+        return {"ordem": 6, "estado": "andamento",
                 "detalhe": "O trabalho da Fila está em ajuste; conclusão ainda não consta na jornada.",
                 "acao": acao}
     if estado == "aprovado":
-        return {"ordem": 4, "estado": "pendente",
-                "detalhe": "Trabalho aprovado; aguardando registro da conclusão na jornada.",
+        return {"ordem": 6, "estado": "pendente",
+                "detalhe": "Status aprovado; faixa depende do aceite real do cliente registrado na jornada.",
                 "acao": None}
-    return {"ordem": 4, "estado": "pendente",
+    return {"ordem": 6, "estado": "pendente",
             "detalhe": "O trabalho da Fila não está em produção ou entrega.",
             "acao": None}
 

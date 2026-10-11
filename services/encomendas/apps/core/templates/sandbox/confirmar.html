@@ -9,7 +9,7 @@
 <h3>Critérios de aprovação</h3><p class="preserve">{{ projeto.criterios }}</p>
 <h3>Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% endfor %}
 <p><strong>Ajustes:</strong> {% if projeto.ajustes_previstos != None %}{{ projeto.ajustes_previstos }} pedidos previstos{% else %}A escola pode orientar correções na avaliação, sem quantidade definida.{% endif %}</p>
-<p><strong>Conclusão:</strong> faixa e bônus de XP previstos na jornada após a análise reconhecer a realização, uma vez por conquista.</p></section>
+<p><strong>Conclusão:</strong> faixa Verde e 20.000 XP após a análise reconhecer o trabalho no Sandbox, uma vez por aluno.</p></section>
 <section class="card"><h2>Simulação para aprender</h2><div class="notice"><strong>Sem dinheiro, cobrança ou pagamento.</strong><p class="preserve">{{ termos_simulacao }}</p></div>
 {% if trabalho_ativo %}<p>Você já tem um projeto em andamento.</p><a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho</a>
 {% elif aluno_atual %}

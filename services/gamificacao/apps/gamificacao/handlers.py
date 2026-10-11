@@ -400,11 +400,23 @@ from .faixas import (  # noqa: E402
 )
 
 def ao_sandbox_trabalho_concluido(envelope):
-    """O evento legado significava envio, não avaliação; preserva só o histórico."""
-    return None
+    """Somente a avaliação concluída e reconhecida alimenta a ordem 5."""
+    data = envelope.get("data") or {}
+    pessoa_id = data.get("pessoa_id")
+    site_id = data.get("site_id")
+    if not pessoa_id or not site_id or data.get("historico"):
+        return
+    from .reinicio import evento_anterior_ao_reinicio
+    if evento_anterior_ao_reinicio(site_id, envelope):
+        return
+    if data.get("resultado") != "reconhecida" or not data.get("feedback") or not isinstance(data.get("evidencia"), dict):
+        return
+    from .jornada import registrar_avaliacao
+    registrar_avaliacao(pessoa_id, site_id, 5, "reconhecida", data["feedback"], data["evidencia"])
 
 
 def ao_sandbox_avaliacao_atualizada(envelope):
+    """Mantém o retrato e o histórico do Sandbox sem conceder faixa."""
     from .sandbox_avaliacoes import registrar_evento
     registrar_evento(envelope)
 
@@ -416,8 +428,13 @@ def ao_fila_trabalho_concluido(envelope):
     from .reinicio import evento_anterior_ao_reinicio
     if evento_anterior_ao_reinicio(data["site_id"], envelope):
         return
-    from .jornada import registrar_conclusao
-    registrar_conclusao(data["pessoa_id"], data["site_id"], 4)
+    evidencia = data.get("evidencia")
+    if (data.get("resultado") != "reconhecida" or not data.get("feedback")
+        or not isinstance(evidencia, dict) or evidencia.get("avaliador_papel") != "cliente"):
+        return
+    from .jornada import registrar_avaliacao
+    registrar_avaliacao(data["pessoa_id"], data["site_id"], 6,
+                        "reconhecida", data["feedback"], evidencia)
 
 
 HANDLERS = {

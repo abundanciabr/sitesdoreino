@@ -1,10 +1,10 @@
-"""Leitura local da análise do Sandbox e reconhecimento da terceira etapa."""
+"""Projeção local das análises do Sandbox para leitura e histórico."""
 
 from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
-from .models import AvaliacaoSandboxProjetada, JornadaPessoal, LancamentoDeXP, RegistroDaJornada
+from .models import AvaliacaoDaJornada, AvaliacaoSandboxProjetada, JornadaPessoal
 
 
 ESTADOS = {"pendente", "em_analise", "falha", "concluida"}
@@ -100,58 +100,7 @@ def registrar_evento(envelope):
             for chave, valor in campos.items():
                 setattr(registro, chave, valor)
             registro.save(update_fields=[*campos, "atualizada_em"])
-        _reconhecer(jornada, registro)
         return registro
-
-
-def reconhecer_pendentes(jornada):
-    """Usado depois da etapa 2: avaliação anterior continua valendo na sequência."""
-    for registro in AvaliacaoSandboxProjetada.objects.select_for_update().filter(
-        pessoa=jornada.pessoa, site_id=jornada.site_id, estado="concluida",
-        resultado="atende", historico=False, anterior_reinicio=False,
-        atual=True, reconhecida_em__isnull=True,
-    ).order_by("origem_atualizada_em", "pk"):
-        if _reconhecer(jornada, registro):
-            break  # a terceira etapa e seu bônus são únicos
-
-
-def _reconhecer(jornada, registro):
-    if (registro.historico or registro.anterior_reinicio or not registro.atual or registro.estado != "concluida" or
-            registro.resultado != "atende" or registro.reconhecida_em):
-        return False
-    from .jornada import situacao
-    antes = situacao(jornada.pessoa_id, jornada.site_id)
-    if not antes["lista"][1]["alcancada"]:
-        return False
-    if jornada.confirmacoes_sequenciais.get("3") and antes["lista"][2]["alcancada"]:
-        return False
-    from .bonus_faixas import conceder, configurar
-    configurar(jornada.site_id)
-    agora = timezone.now()
-    jornada.declaracoes = {**jornada.declaracoes, "3": agora.isoformat()}
-    jornada.confirmacoes_sequenciais = {
-        **jornada.confirmacoes_sequenciais, "3": agora.isoformat(),
-    }
-    jornada.revisao += 1
-    jornada.save(update_fields=["declaracoes", "confirmacoes_sequenciais", "revisao", "atualizada_em"])
-    pontos = conceder(jornada.pessoa_id, jornada.site_id, [3])
-    registro.reconhecida_em = agora
-    registro.reconhecida_versao = registro.versao
-    registro.reconhecida_entrega_id = registro.entrega_id
-    registro.reconhecida_analise_id = registro.analise_id
-    registro.save(update_fields=["reconhecida_em", "reconhecida_versao", "reconhecida_entrega_id", "reconhecida_analise_id", "atualizada_em"])
-    RegistroDaJornada.objects.create(
-        pessoa=jornada.pessoa, site_id=jornada.site_id, acao="avaliacao_sandbox",
-        dados={
-            "texto": "A análise reconheceu sua prática no Sandbox.",
-            "passo": 3, "trabalho_id": registro.trabalho_id,
-            "entrega_id": registro.entrega_id, "analise_id": registro.analise_id,
-            "versao": registro.versao, "event_id": registro.event_id,
-            "resultado": registro.resultado, "explicacao": registro.explicacao,
-            "bonus_xp": pontos,
-        },
-    )
-    return True
 
 
 def resumo(pessoa_id, site_id):
@@ -162,50 +111,31 @@ def resumo(pessoa_id, site_id):
     if not linhas:
         return {"fonte": "gamificacao", "site_id": site_id,
                 "pessoa_id": pessoa_id, "avaliacoes": []}
-    jornada = JornadaPessoal.objects.filter(pessoa_id=pessoa_id, site_id=site_id).first()
-    sequencia = False
-    if jornada and jornada.confirmacoes_sequenciais.get("2") and jornada.declaracoes.get("2"):
-        from .inicio import etapas_inicio, requisitos_branca
-        from .models import AnexoDaJornada
-        tem_anexo = AnexoDaJornada.objects.filter(
-            pessoa_id=pessoa_id, site_id=site_id, passo=2,
-        ).exists()
-        sequencia = bool(
-            all(requisitos_branca(jornada, tem_anexo).values())
-            and etapas_inicio(pessoa_id, site_id, jornada, tem_anexo)[3]["concluida"]
-        )
-    bonus_creditado = LancamentoDeXP.objects.filter(
-        pessoa_id=pessoa_id, site_id=site_id, regra_slug="bonus-faixa-azul",
-        pontos__gt=0,
-    ).exists()
+    reconhecidas = {
+        str((a.evidencia or {}).get("analise_id"))
+        for a in AvaliacaoDaJornada.objects.filter(
+            pessoa_id=pessoa_id, site_id=site_id, ordem=5,
+            caminho="freelancer", resultado="reconhecida",
+        ).only("evidencia")
+    }
     itens = []
     for linha in linhas:
-        reconhecimento_da_versao = bool(
-            linha.reconhecida_em and linha.reconhecida_versao == linha.versao
-            and linha.reconhecida_entrega_id == linha.entrega_id
-            and linha.reconhecida_analise_id == linha.analise_id
-        )
         if linha.historico:
             estado, texto = "historico", "Registro histórico preservado; esta importação não concede novo bônus."
         elif linha.anterior_reinicio:
             estado, texto = "historico", "Avaliação anterior ao reinício preservada; ela não concede novo bônus."
-        elif reconhecimento_da_versao:
-            estado = "reconhecido"
-            texto = "Prática reconhecida após a análise; bônus já concedido uma única vez." if bonus_creditado else "Prática reconhecida após a análise; bônus de XP não consta no histórico."
+        elif str(linha.analise_id) in reconhecidas:
+            estado, texto = "reconhecido", "A análise reconheceu a prática. A Faixa Verde segue a sequência da Trilha."
         elif linha.reconhecida_em:
-            estado, texto = "nao_reconhecido", "Reconhecimento de uma entrega anterior preservado; esta avaliação ainda não o substitui."
+            estado, texto = "historico", "Reconhecimento anterior preservado; ele não concede novo bônus nesta leitura."
         elif not linha.atual:
             estado, texto = "nao_reconhecido", "Esta análise não é da entrega atual."
         elif linha.estado != "concluida":
             estado, texto = "aguardando_analise", "A avaliação ainda não reconheceu a realização."
         elif linha.resultado != "atende":
             estado, texto = "nao_reconhecido", "A análise não reconheceu esta versão; confira o retorno."
-        elif not sequencia:
-            estado, texto = "aguardando_sequencia", "Avaliação concluída; falta alcançar a etapa anterior."
-        elif jornada and jornada.confirmacoes_sequenciais.get("3"):
-            estado, texto = "nao_reconhecido", "A etapa já estava registrada na jornada; esta avaliação não concede outro bônus."
         else:
-            estado, texto = "aguardando_sequencia", "Avaliação registrada; reconhecimento em atualização."
+            estado, texto = "aguardando_sequencia", "Avaliação concluída; a Faixa Verde depende do caminho e da sequência da Trilha."
         itens.append({
             "trabalho_id": linha.trabalho_id, "entrega_id": linha.entrega_id,
             "analise_id": linha.analise_id, "versao": linha.versao,
