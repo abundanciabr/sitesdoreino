@@ -45,8 +45,8 @@ def test_duas_contas_veem_somente_a_propria_trilha_sem_bearer_ou_escrita(client,
 
     monkeypatch.setattr("apps.core.trilha_api._sessao", sessao)
     for cookie, identidade, ordem, meta in (
-        ("meshcraft_sessao=A", "aluna-a", 2, 10000),
-        ("meshcraft_sessao=B", "aluna-b", 4, 20000),
+        ("meshcraft_sessao=A", "aluna-a", 1, 10000),
+        ("meshcraft_sessao=B", "aluna-b", 1, 20000),
     ):
         resposta = client.get(
             URL, {"pessoa_id": "aluna-b" if identidade == "aluna-a" else "aluna-a",

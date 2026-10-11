@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../apps/core/trilha_v4_assets/app.js'), 'utf8');
 const bootstrap = {aluno:{nome:'Ana'},pessoa_id:'aluna-a',site_id:'mesh'};
 function progress(){return {pessoa_id:'aluna-a',site_id:'mesh',atual_ordem:3,total_cents:0,meta_cents:null,meta_escolhida:false,
-  etapas:Array.from({length:13},(_,i)=>({ordem:i+1,alcancada:i===0||i===2,conquista:'Registrada',meta_cents:null,alcancada_em:null}))};}
+  etapas:Array.from({length:13},(_,i)=>({ordem:i+1,alcancada:i<3,conquista:'Registrada',meta_cents:null,alcancada_em:null}))};}
 async function load(response, activityResponse){
   const nodes = new Map();
   const result = {};
@@ -46,7 +46,7 @@ test('sessao encerrada volta ao login sem desenhar dados',async()=>{
 });
 
 test('nao desenha resposta de outra pessoa ou escola nem faixas inconsistentes',async()=>{
-  for(const mutate of [d=>d.pessoa_id='aluna-b',d=>d.site_id='outra-escola',d=>d.atual_ordem=13,d=>d.etapas.pop(),d=>d.meta_escolhida=true]){
+  for(const mutate of [d=>d.pessoa_id='aluna-b',d=>d.site_id='outra-escola',d=>d.atual_ordem=13,d=>d.etapas.pop(),d=>d.meta_escolhida=true,d=>d.etapas[1].alcancada=false]){
     const data=progress();mutate(data);
     const r=await load({ok:true,status:200,json:async()=>data});
     assert.equal(r.payload,undefined);
@@ -134,10 +134,10 @@ test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=
   assert.equal(checklist.disponivel,false);assert.equal(checklist.itens.length,0);
 });
 
-test('aluno ja amarelo continua vendo a pratica seguinte mesmo sem preencher o inicio novo',async()=>{
+test('aluno amarelo com quatro requisitos concluidos continua vendo a pratica seguinte',async()=>{
   const data=withChecklist();data.atual_ordem=2;
   data.etapas.forEach(step=>step.alcancada=step.ordem<=2);
-  data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map(id=>({id,titulo:id,estado:id==='item-2'?'concluido':'pendente',detalhe:'Registro anterior',acao:{rotulo:'Abrir',url:'/conquistas/inicio/motivo/'}}));
+  data.etapas[1].checklist.itens=['motivo-2','plano-2','item-2','envio-2'].map(id=>({id,titulo:id,estado:'concluido',detalhe:'Requisito concluído',acao:{rotulo:'Abrir',url:'/conquistas/inicio/motivo/'}}));
   data.etapas[2].checklist.itens[0].estado='pendente';
   data.etapas[2].checklist.itens[0].acao={rotulo:'Abrir Sandbox',url:'/encomendas/sandbox/'};
   const r=await load({ok:true,status:200,json:async()=>data});

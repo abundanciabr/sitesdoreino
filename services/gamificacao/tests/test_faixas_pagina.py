@@ -5,6 +5,7 @@ import pytest
 from django.urls import reverse
 from apps.gamificacao.jornada import passos, salvar, situacao, centavos
 from apps.gamificacao.models import (
+    AnexoDaJornada,
     JornadaPessoal,
     RecebimentoDeclarado,
     RegistroDaJornada,
@@ -77,6 +78,25 @@ def receber(valor, **extras):
     return gesto("recebimento", **dados)
 
 
+def preparar_primeiras_etapas(ate=4):
+    """Conclui a parte não financeira antes dos cenários sobre renda."""
+    from apps.core.perfil import perfil_de
+
+    perfil_de(P, SITE)
+    j, _ = JornadaPessoal.objects.get_or_create(pessoa_id=P, site_id=SITE)
+    j.inicio = {
+        "motivo": "ugc", "objetivo": "Criar uma peça",
+        "compromisso": "Praticar", "confirmado_em": "2026-10-10T10:00:00-03:00",
+    }
+    j.save(update_fields=["inicio"])
+    AnexoDaJornada.objects.create(
+        pessoa_id=P, site_id=SITE, passo=2, nome="obra.obj",
+        conteudo=b"v 0 0 0\n", tamanho=8, sha256="preparo",
+    )
+    for passo in range(2, ate + 1):
+        gesto("declaracao", passo=str(passo), estado="feito")
+
+
 @pytest.mark.parametrize("meta", [10000, 50000, 100000, 13749])
 def test_sete_cores_treze_passos_preta_setimo_grau_na_meta(meta):
     lista = passos(meta)
@@ -131,13 +151,13 @@ def test_preview_nao_grava_e_preserva_entrada(client):
     assert JornadaPessoal.objects.count() == 0
 
 
-def test_meta_customizada_e_recebimento_avancam_sem_xp(client):
+def test_meta_customizada_e_recebimento_sem_predecessoras_nao_avancam(client):
     gesto("meta", meta="137.49", proposito="Pagar uma conta")
     _, depois, avancou = receber("137.49")
     assert (
-        avancou
-        and depois["atual"]["faixa"] == "Preta"
-        and depois["atual"]["ordem"] == 13
+        not avancou
+        and depois["atual"]["faixa"] == "Branca"
+        and depois["atual"]["ordem"] == 1
     )
     assert depois["total_cents"] == 13749
     perfil = PerfilJogador.objects.get(pessoa_id=P)
@@ -158,7 +178,9 @@ def test_iniciar_sandbox_nao_concede_grau():
         historico=False,
     )
     assert situacao(P, SITE)["atual"]["ordem"] == 1
-    gesto("declaracao", passo="3", estado="feito")
+    with pytest.raises(ValueError):
+        gesto("declaracao", passo="3", estado="feito")
+    preparar_primeiras_etapas(ate=3)
     assert situacao(P, SITE)["atual"]["ordem"] == 3
 
 
@@ -217,6 +239,7 @@ def test_recebimento_simultaneo_com_mesma_chave_so_soma_uma_vez():
 
 
 def test_correcao_guarda_historia_sem_apagar():
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     r = RecebimentoDeclarado.objects.get()
@@ -237,6 +260,7 @@ def test_correcao_guarda_historia_sem_apagar():
 
 
 def test_troca_meta_preserva_recebimentos_e_historico():
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     gesto("meta", meta="1000")
@@ -248,6 +272,7 @@ def test_troca_meta_preserva_recebimentos_e_historico():
 
 
 def test_fila_um_recebimento_corrigivel_e_proxima_acao_forum():
+    preparar_primeiras_etapas()
     receber("10", origem="fila")
     gesto(
         "correcao",
@@ -316,7 +341,7 @@ def test_api_nao_revela_meta_valor_proposito(client, monkeypatch):
         {"pessoa_id": P},
         HTTP_AUTHORIZATION="Bearer teste-jornada",
     )
-    assert r.status_code == 200 and r.json()["atual"]["nome"] == "Preta · 3º Grau"
+    assert r.status_code == 200 and r.json()["atual"]["nome"] == "Branca"
     for privado in ["137.49", "13749", "MOTIVO-PRIVADO", "20,00"]:
         assert privado not in r.content.decode()
 
@@ -364,6 +389,7 @@ def _corrigir_sem_confirmar(r, valor):
 
 
 def test_correcao_pendente_mantem_total_e_passo():
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     r = RecebimentoDeclarado.objects.get()
@@ -389,6 +415,7 @@ def test_reconfirmar_correcao_igual_nao_comemora():
 
 
 def test_correcao_maior_comemora_so_passo_novo():
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("30")
     j = JornadaPessoal.objects.get()
@@ -442,6 +469,7 @@ def test_cinco_falhas_do_leitor_em_correcao_mantem_valor_antigo():
     from unittest.mock import patch
     from apps.gamificacao.prints_recebimentos import processar
 
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     j = JornadaPessoal.objects.get()
@@ -474,6 +502,7 @@ def test_correcao_sobre_esclarecer_do_leitor_mantem_total_e_nao_comemora():
     from unittest.mock import patch
     from apps.gamificacao.prints_recebimentos import processar
 
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     j = JornadaPessoal.objects.get()
@@ -525,13 +554,14 @@ def _limpar_celebracao():
 
 
 def test_correcao_rejeitada_e_reconfirmada_nao_comemora_de_novo():
+    preparar_primeiras_etapas()
     gesto("meta", meta="100")
     receber("100")
     j = _limpar_celebracao()
     assert j.declaracoes["maior_passo_comemorado"] == 13
     r = RecebimentoDeclarado.objects.get()
     _rejeitar_correcao(r, "100")
-    assert situacao(P, SITE)["atual"]["ordem"] == 1
+    assert situacao(P, SITE)["atual"]["ordem"] == 4
     _corrigir_sem_confirmar(r, "100")
     confirmar(r)
     assert situacao(P, SITE)["atual"]["ordem"] == 13
@@ -541,6 +571,7 @@ def test_correcao_rejeitada_e_reconfirmada_nao_comemora_de_novo():
 
 
 def test_passo_realmente_novo_depois_da_queda_ainda_comemora():
+    preparar_primeiras_etapas()
     gesto("meta", meta="1000")
     receber("300")
     j = _limpar_celebracao()

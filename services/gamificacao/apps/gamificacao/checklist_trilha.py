@@ -83,9 +83,7 @@ def montar_checklists(pessoa_id, site_id, jornada):
                       {"rotulo": "Enviar meu 3D", "url": "/conquistas/inicio/item/#inicio-form-item"}, sufixo="envio"),
             ]
             if iniciou_item and not alcancada:
-                observacao = "Salvar um item não comprova sua conclusão."
-            elif alcancada and not all(requisitos.values()):
-                observacao = "Sua faixa já conquistada permanece registrada. Você pode completar ou revisar este começo."
+                observacao = "Seu trabalho continua guardado. Complete os quatro requisitos e confirme a conclusão para alcançar a faixa amarela."
         elif ordem in (3, 4):
             faixa = faixas.get(ordem)
             origem = {3: "sandbox", 4: "fila"}[ordem]
@@ -100,6 +98,8 @@ def montar_checklists(pessoa_id, site_id, jornada):
             }[ordem] if iniciou else "Ainda não há registro de conclusão desta etapa."
             if alcancada:
                 detalhe = "Resultado registrado na jornada."
+            elif registro_inicio and registro_inicio.declaracoes.get(str(ordem)):
+                detalhe = "Uma conclusão anterior está guardada. Você pode confirmá-la ao chegar a esta etapa."
             acao = None if alcancada else {
                 3: {"rotulo": "Abrir Sandbox", "url": "/encomendas/sandbox/"},
                 4: {"rotulo": "Abrir Fila", "url": "/encomendas/fila/"},
@@ -110,6 +110,8 @@ def montar_checklists(pessoa_id, site_id, jornada):
             detalhe = (
                 "Recebimento confirmado contabilizado na jornada."
                 if alcancada else
+                "Seu recebimento confirmado continua guardado. Conclua as faixas anteriores para avançar."
+                if total > 0 else
                 "Há comprovante em leitura; ele ainda não conta como recebimento confirmado."
                 if em_leitura else
                 "Há registro que precisa de correção ou esclarecimento; ele não conta como confirmado."
@@ -135,5 +137,7 @@ def montar_checklists(pessoa_id, site_id, jornada):
             ]
             if not meta_escolhida:
                 observacao = "Sem meta escolhida, nenhum limite monetário desta etapa é real."
+        if ordem > 2 and not etapas[ordem - 1]['alcancada']:
+            observacao = "Seus registros continuam guardados. Conclua os requisitos das faixas anteriores para alcançar esta faixa."
         resultado[ordem] = {"itens": itens, "observacao": observacao}
     return resultado

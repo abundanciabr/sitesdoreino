@@ -82,7 +82,7 @@ def test_rascunho_e_anexo_sao_permitidos_antes_dos_quatro_requisitos(client):
     assert situacao(P, SITE)["atual"]["ordem"] == 1
 
 
-def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_nao_rebaixa(client):
+def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_regride_sem_apagar(client):
     configurar(SITE)
     preparar(client)
     resposta = post(client, "declaracao", passo="2", estado="feito")
@@ -95,24 +95,38 @@ def test_quatro_requisitos_concluem_uma_vez_e_edicao_posterior_nao_rebaixa(clien
     assert post(client, "inicio-plano", objetivo="Objetivo revisado",
                 compromisso="Compromisso revisado", assumir="nao").status_code == 200
     assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio["confirmado_em"] is None
-    assert situacao(P, SITE)["atual"]["ordem"] == 2
+    assert situacao(P, SITE)["atual"]["ordem"] == 1
     assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == [
-        "concluido", "pendente", "concluido", "concluido",
+        "concluido", "pendente", "andamento", "concluido",
     ]
+    assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
     assert PerfilJogador.objects.get(pessoa_id=P, site_id=SITE).xp_total == 5000
 
 
-def test_declaracao_legada_sem_inicio_nem_anexo_continua_alcancada(client):
+def test_editar_somente_sonho_nao_desfaz_compromisso_ja_confirmado(client):
+    preparar(client)
+    assert post(client, "declaracao", passo="2", estado="feito").status_code == 200
+    confirmado = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).inicio["confirmado_em"]
+    resposta = post(client, "inicio-plano", objetivo="OBJETIVO-PRIVADO-ALFA",
+                   compromisso="COMPROMISSO-PRIVADO-ALFA", sonho="SONHO-REVISTO-ALFA",
+                   assumir="nao")
+    assert resposta.status_code == 200
+    jornada = JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE)
+    assert jornada.inicio["confirmado_em"] == confirmado
+    assert jornada.inicio["sonho"] == "SONHO-REVISTO-ALFA"
+    assert situacao(P, SITE)["atual"]["ordem"] == 2
+
+
+def test_declaracao_legada_sem_inicio_nem_anexo_recomeca_branca_sem_ser_apagada(client):
     from apps.core.perfil import perfil_de
 
     perfil_de(P, SITE)
     JornadaPessoal.objects.create(pessoa_id=P, site_id=SITE, declaracoes={"2": "2026-10-01T10:00:00-03:00"})
-    assert situacao(P, SITE)["atual"]["ordem"] == 2
-    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == [
-        "pendente", "pendente", "concluido", "pendente",
-    ]
+    assert situacao(P, SITE)["atual"]["ordem"] == 1
+    assert [i["estado"] for i in montar_checklists(P, SITE, situacao(P, SITE))[2]["itens"]] == ["pendente"] * 4
     assert post(client, "inicio-motivo", motivo="jogo").status_code == 200
-    assert situacao(P, SITE)["atual"]["ordem"] == 2
+    assert situacao(P, SITE)["atual"]["ordem"] == 1
+    assert JornadaPessoal.objects.get(pessoa_id=P, site_id=SITE).declaracoes.get("2")
 
 
 def test_checklist_tem_quatro_itens_e_nao_exporta_respostas_privadas(client):

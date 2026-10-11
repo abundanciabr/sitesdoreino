@@ -271,7 +271,7 @@ function validateProgress(data, context){
       ||(index<5&&step.meta_cents!==null)
       ||(index>=5&&(data.meta_escolhida?step.meta_cents===null:step.meta_cents!==null))
       ||(step.alcancada_em!==null&&typeof step.alcancada_em!=='string'))
-    ||Math.max(...steps.filter(step=>step.alcancada).map(step=>step.ordem))!==data.atual_ordem)
+    ||steps.some(step=>step.alcancada!==(step.ordem<=data.atual_ordem)))
     throw new Error('Progresso incompleto');
   return {...data, etapas:steps.map(step=>({...step,checklist:validateChecklist(step.checklist)}))};
 }

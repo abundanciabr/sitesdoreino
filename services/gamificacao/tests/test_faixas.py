@@ -62,7 +62,7 @@ def _aviso_ligado(monkeypatch):
 def test_aluno_nao_e_avisado_enquanto_faixas_sao_so_do_admin(monkeypatch):
     monkeypatch.setattr("apps.gamificacao.faixas.AVISAR_O_ALUNO", False)
     paga(6000)
-    assert atual() == 7
+    assert atual() == 1
     assert cartas().count() == 0
     assert not PerfilJogador.objects.filter(pessoa_id=P).exists()
 
@@ -93,9 +93,10 @@ def test_contrato_das_13_faixas():
 def test_cada_fato_de_origem(event, campo, ordem):
     entregar(env(event, **{campo: "x1"}))
     s = situacao_das_faixas(P, SITE)
-    assert s["atual"]["ordem"] == ordem
+    assert s["atual"]["ordem"] == 1
     assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=1).exists()  # Branca gravada
-    assert s["faixas"][ordem - 1]["alcancada"] and s["atual"]["origem"]
+    assert not s["faixas"][ordem - 1]["alcancada"]
+    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=ordem, estado="alcancada").exists()
     # segundo fato do mesmo tipo não muda nada
     n = HistoricoDaFaixa.objects.count()
     entregar(env(event, **{campo: "x2"}))
@@ -110,11 +111,12 @@ LIMITES = [(5, 1), (6, 2500), (7, 5000), (8, 10000), (9, 20000), (10, 50000),
 def test_limites_um_centavo_abaixo_e_no_limite(ordem, meta):
     if meta > 1:
         paga(meta - 1)
-        assert atual() == ordem - 1
+        assert atual() == 1
         paga(1)
     else:
         paga(meta)
-    assert atual() == ordem
+    assert atual() == 1
+    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=ordem, estado="alcancada").exists()
     assert total_real_cents(P, SITE) == meta
 
 
@@ -122,26 +124,25 @@ def test_acumulado_em_varias_vendas():
     for _ in range(5):
         paga(1000)
     assert total_real_cents(P, SITE) == 5000
-    assert atual() == 7
+    assert atual() == 1
     s = situacao_das_faixas(P, SITE)
-    assert s["proxima"]["ordem"] == 8
-    assert s["proxima"]["dinheiro"] == {"total_cents": 5000, "meta_cents": 10000,
-                                         "falta_cents": 5000, "fracao_pct": 50}
-    assert "R$ 50,00" in s["proxima"]["falta_texto"]
+    assert s["proxima"]["ordem"] == 2
+    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=7, estado="alcancada").exists()
 
 
-def test_maior_faixa_sem_exigir_as_anteriores():
+def test_maior_faixa_bruta_sem_anteriores_nao_promove_aluno():
     paga(200000)
     s = situacao_das_faixas(P, SITE)
-    assert s["atual"]["ordem"] == 13 and s["proxima"] is None
+    assert s["atual"]["ordem"] == 1 and s["proxima"]["ordem"] == 2
     assert [f["alcancada"] for f in s["faixas"]][1:4] == [False, False, False]
-    assert all(f["alcancada"] for f in s["faixas"][4:])
+    assert not any(f["alcancada"] for f in s["faixas"][4:])
+    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem=13, estado="alcancada").exists()
 
 
-def test_atual_e_a_maior_ordem_mesmo_com_laranja_depois():
+def test_laranja_bruta_depois_da_renda_nao_promove():
     paga(100)
     entregar(env("encomendas.fila-trabalho-aceito", pedido_id="p"))
-    assert atual() == 5
+    assert atual() == 1
 
 
 def test_reentrega_do_mesmo_evento_nao_duplica():
@@ -158,30 +159,25 @@ def test_mesmo_event_id_sem_dedupe_do_consumidor_nao_duplica():
     HANDLERS[e["event"]](e)  # ignora o EventoProcessado de propósito
     assert RendimentoRealLivro.objects.count() == 1
     assert HistoricoDaFaixa.objects.filter(ordem=6).count() == 1
-    assert cartas().count() == 1
+    assert cartas().count() == 0
 
 
-def test_historico_true_nao_avisa_e_ao_vivo_avisa():
+def test_eventos_historicos_e_ao_vivo_guardam_fatos_sem_aviso_antecipado():
     paga(3000, historico=True)
     entregar(env("cursos.item-criado", item_id="i", historico=True))
-    assert atual() == 6
+    assert atual() == 1
     assert cartas().count() == 0
     assert not PerfilJogador.objects.filter(pessoa_id=P).exists()
     assert HistoricoDaFaixa.objects.filter(historico=True).count() >= 3
 
     paga(3000, pessoa="aluno-2")
-    carta = cartas().get()
-    assert carta.payload["assunto"] == "gamificacao.conquista-concedida"
-    assert carta.payload["destinatario_id"] == "aluno-2"
-    assert carta.payload["parametros"]["conquista_slug"] == "faixa-verde-e-azul"
-    perfil = PerfilJogador.objects.get(pessoa_id="aluno-2")
-    assert {"tipo": "conquista-concedida", "referencia": "faixa-verde-e-azul"} in perfil.celebracoes_pendentes
+    assert cartas().count() == 0
+    assert FaixaDoAluno.objects.filter(pessoa_id="aluno-2", ordem=6, estado="alcancada").exists()
 
 
-def test_aviso_so_da_faixa_mais_alta_cruzada():
+def test_cruzar_limites_brutos_sem_sequencia_nao_avisa():
     paga(6000)  # cruza 5, 6 e 7 de uma vez
-    assert cartas().count() == 1
-    assert cartas().get().payload["parametros"]["conquista_slug"] == "faixa-azul"
+    assert cartas().count() == 0
 
 
 def test_estorno_reverte_e_reconfirmacao_restaura_na_mesma_linha():
@@ -207,9 +203,9 @@ def test_estorno_reverte_e_reconfirmacao_restaura_na_mesma_linha():
 def test_estorno_parcial_derruba_so_o_que_cai():
     paga(2000, rid="a")
     paga(500, rid="b")
-    assert atual() == 6
+    assert atual() == 1
     estorna(500, "b")
-    assert atual() == 5
+    assert atual() == 1
     assert FaixaDoAluno.objects.get(pessoa_id=P, ordem=5).estado == "alcancada"
 
 
@@ -224,8 +220,8 @@ def test_separacao_entre_pessoas_e_entre_sites():
     assert atual("outra") == 1
     assert atual(P, "outra-escola") == 1
     paga(100, site="outra-escola")
-    assert atual(P, "outra-escola") == 5
-    assert atual() == 7
+    assert atual(P, "outra-escola") == 1
+    assert atual() == 1
     assert total_real_cents(P, "outra-escola") == 100
 
 
@@ -305,4 +301,4 @@ def test_confirmacao_do_ciclo_novo_antes_da_reversao_velha_nao_avisa_falso():
     estorna(1500, "troca", ciclo=1)
     assert total_real_cents(P, SITE) == 4800
     assert cartas().count() == antes
-    assert not FaixaDoAluno.objects.filter(pessoa_id=P, ordem__gt=atual()).exists()
+    assert FaixaDoAluno.objects.filter(pessoa_id=P, ordem__gt=atual()).exists()

@@ -63,9 +63,9 @@ def test_item_salvo_e_eventos_antigos_nao_promovem_conclusao(client):
         estado="alcancada", origem="item", alcancada_em=agora)
     JornadaPessoal.objects.create(pessoa=a, site_id=SITE, declaracoes={"4": True})
     dados = consultar(client)
-    assert [e["alcancada"] for e in dados["etapas"][:4]] == [True, False, False, True]
+    assert [e["alcancada"] for e in dados["etapas"][:4]] == [True, False, False, False]
     assert [item(dados, n)["estado"] for n in (2, 3, 4)] == [
-        "andamento", "pendente", "concluido",
+        "andamento", "pendente", "pendente",
     ]
     assert "salvo" in item(dados, 2)["detalhe"]
     assert consultar(client, "b")["etapas"][1]["alcancada"] is False
@@ -93,8 +93,8 @@ def test_confirmado_pendente_e_meta_sem_simulacao(client, monkeypatch):
     )
     dados = consultar(client)
     assert dados["total_cents"] == 150
-    assert item(dados, 5)["estado"] == "concluido"
-    assert item(dados, 6)["estado"] == "concluido"
+    assert item(dados, 5)["estado"] == "andamento"
+    assert item(dados, 6)["estado"] == "andamento"
     assert dados["etapas"][5]["checklist"]["itens"][0]["estado"] == "concluido"
 
 
@@ -125,4 +125,4 @@ def test_releitura_preserva_valor_confirmado_da_jornada(client, monkeypatch):
     )
     dados = consultar(client)
     assert dados["total_cents"] == 400
-    assert item(dados, 5)["estado"] == "concluido"
+    assert item(dados, 5)["estado"] == "andamento"

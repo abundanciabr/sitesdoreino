@@ -1782,6 +1782,7 @@ class JornadaPessoal(models.Model):
     inicio = models.JSONField(default=dict, blank=True)
     apoio = models.CharField(max_length=12, default="guiado")
     declaracoes = models.JSONField(default=dict)
+    confirmacoes_sequenciais = models.JSONField(default=dict, db_default={}, blank=True)
     celebracao_pendente = models.JSONField(default=dict)
     revisao = models.PositiveIntegerField(default=0)
     criada_em = models.DateTimeField(auto_now_add=True)

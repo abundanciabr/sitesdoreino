@@ -120,7 +120,7 @@ def inventario(request):
                 if acao == 'declaracao' and passo == 2 and not AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).exists():
                     raise ValueError('Anexe seu primeiro item 3D ou uma imagem dele antes de concluir.')
                 # Repetir o clique não cria nova declaração nem novo bônus.
-                repetida = acao == 'declaracao' and bool(jornada.declaracoes.get(str(passo)))
+                repetida = acao == 'declaracao' and situacao(pessoa, site)['lista'][passo - 1]['alcancada']
                 if acao not in ('anexo', 'inicio-motivo', 'inicio-plano') and not repetida:
                     salvar(pessoa, site, request.POST, arquivo=request.FILES.get('print'))
         resposta = JsonResponse(_dados(request, pessoa, site))
