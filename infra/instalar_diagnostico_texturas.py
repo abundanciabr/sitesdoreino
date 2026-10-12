@@ -15,7 +15,8 @@ TARGET=ROOT/'diagnostico-texturas'
 SOURCE=Path(__file__).resolve().parents[1]/'services/encomendas/analise_texturas'
 ARCHIVE='blender-4.5.9-linux-x64.tar.xz'
 SHA='dcdc3eca6c9825bb35a8033b689c053f3cb5a9b0cd2a61b2eac2a49436b4ad3d'
-IMAGE='sha256:e067accf6a9183c27f66c7181fe27659dba607d7f79a285acb08cb2f913b4a9c'
+IMAGE='meshcraft-diagnostico-texturas:blender-4.5.9-v1'
+BASE_IMAGE_ID='sha256:e067accf6a9183c27f66c7181fe27659dba607d7f79a285acb08cb2f913b4a9c'
 UNIT=Path('/etc/systemd/system/meshcraft-diagnostico-texturas.service')
 
 
@@ -47,6 +48,10 @@ def main():
         with tarfile.open(bundle) as tar:tar.extractall(TARGET,filter='data')
     code=TARGET/('v1-'+stamp)
     shutil.copytree(SOURCE,code)
+    original=subprocess.check_output(['docker','image','inspect','meshcraft-analise-pratica:20261008-v3','--format','{{.Id}}'],text=True).strip()
+    if original!=BASE_IMAGE_ID:raise RuntimeError('A imagem preservada do analisador divergiu; não foi alterada.')
+    print('PREPARANDO_CONTÊINER_SEPARADO',flush=True)
+    run(['docker','build','--pull=false','-t',IMAGE,str(code)],timeout=600)
     run(['docker','run','--rm','--network','none','--entrypoint','/blender/blender',
          '--mount','type=bind,src='+str(blender)+',dst=/blender,readonly',IMAGE,'--background','--version'],stdout=subprocess.DEVNULL)
     samples=TARGET/('prova-'+stamp)
@@ -111,7 +116,8 @@ WantedBy=multi-user.target
         else:
             subprocess.run(['systemctl','disable','--now','meshcraft-diagnostico-texturas.service'])
         raise
-    evidence={'backup':str(backup),'codigo':str(code),'blender':'4.5.9','provas':proofs,'estado':'instalado'}
+    image_id=subprocess.check_output(['docker','image','inspect',IMAGE,'--format','{{.Id}}'],text=True).strip()
+    evidence={'backup':str(backup),'codigo':str(code),'blender':'4.5.9','imagem_id':image_id,'provas':proofs,'estado':'instalado'}
     (TARGET/'instalacao.json').write_text(json.dumps(evidence,ensure_ascii=False))
     print('INSTALADO_E_CONFERIDO',json.dumps(evidence,ensure_ascii=False),flush=True)
 
