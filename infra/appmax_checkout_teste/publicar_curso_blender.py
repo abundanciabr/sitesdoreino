@@ -162,6 +162,13 @@ def backup_database(path: Path, container: str, output: Path, *, clone: bool) ->
 
 
 def complete_backup(backup: Path, approved: dict, originals: dict[str, bytes]) -> dict:
+    # Mantém também o gerador de cópias de código já instalado na VPS.
+    preserved = Path('/usr/local/lib/meshcraft-backups/v1-20261012/backups_reutilizaveis.py')
+    if preserved.is_file():
+        spec = importlib.util.spec_from_file_location('backup_reuso', preserved)
+        reuso = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(reuso)
+        return reuso.appmax_backup(globals(), backup, approved, originals)
     backup.mkdir(mode=0o700, parents=True)
     for name, content in originals.items():
         target = backup / ('before-' + name.replace('/', '-'))
