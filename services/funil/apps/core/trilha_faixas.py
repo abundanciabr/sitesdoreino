@@ -26,18 +26,24 @@ def _indisponivel():
 
 
 def servir_view_da_celula(request, destino, *, servico="gamificacao", urlconf=URLCONF,
-                          prefixo_publico="/trilha/"):
+                          prefixo_publico="/trilha/", permitir_fallback=False):
     """Preserva o contexto do Funil antes e depois da view de outra célula.
 
-    O processo unificado já possui as duas células e seus bancos. O Funil
-    isolado não possui essa infraestrutura e responde 503 sem tentar criar
-    uma sessão nem mostrar dados privados.
+    O processo unificado serve a view no mesmo pedido. O Funil isolado
+    encaminha somente a rota pública aprovada ao processo unificado.
     """
     if request.get_host().split(":", 1)[0].lower() != "meshcraft.top":
         raise Http404
     try:
         serving = import_module("config.runtime").serving
+        ativos = import_module("config.registry").ACTIVE_SERVICES
+        if servico not in ativos:
+            raise ImportError("célula indisponível neste processo")
     except (ImportError, AttributeError):
+        if (permitir_fallback and servico == "gamificacao" and urlconf == URLCONF
+                and prefixo_publico == "/trilha/"):
+            from .trilha_faixas_gateway import encaminhar_publico
+            return encaminhar_publico(request, destino)
         return _indisponivel()
 
     prefixo, urlconf_anterior = get_script_prefix(), get_urlconf()
@@ -122,4 +128,4 @@ def servir_view_da_celula(request, destino, *, servico="gamificacao", urlconf=UR
 
 @csrf_exempt  # a célula interna confere origem e token com seu cookie próprio
 def trilha_faixas(request, destino):
-    return servir_view_da_celula(request, destino)
+    return servir_view_da_celula(request, destino, permitir_fallback=True)
