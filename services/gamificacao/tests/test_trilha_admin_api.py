@@ -67,14 +67,17 @@ def test_aluno_sem_jornada_tem_branca_sem_meta_simulada_ou_escrita(client):
     assert set(dados) == {
         "pessoa_id", "site_id", "atual_ordem", "etapas", "total_cents",
         "meta_cents", "meta_escolhida", "consultado_em", "avaliacoes_sandbox",
+        "caminho", "graus_historicos",
     }
     assert (dados["pessoa_id"], dados["site_id"], dados["atual_ordem"]) == (
         "aluna-v4", SITE, 1,
     )
     assert dados["total_cents"] == 0
     assert dados["meta_cents"] is None and dados["meta_escolhida"] is False
-    assert [etapa["ordem"] for etapa in dados["etapas"]] == list(range(1, 14))
-    assert [etapa["alcancada"] for etapa in dados["etapas"]] == [True] + [False] * 12
+    assert dados["caminho"] is None
+    assert dados["graus_historicos"] == []
+    assert [etapa["ordem"] for etapa in dados["etapas"]] == list(range(1, 8))
+    assert [etapa["alcancada"] for etapa in dados["etapas"]] == [True] + [False] * 6
     assert all(etapa["meta_cents"] is None for etapa in dados["etapas"])
     assert all(set(etapa) == {
         "ordem", "nome", "alcancada", "conquista", "meta_cents", "alcancada_em", "checklist",
@@ -83,12 +86,14 @@ def test_aluno_sem_jornada_tem_branca_sem_meta_simulada_ou_escrita(client):
     assert Pessoa.objects.count() == 0
 
 
-def test_salto_nao_inventa_etapas_e_isola_pessoa_e_site(client):
+@pytest.mark.parametrize("caminho", [None, "freelancer", "ugc", "jogo", "aprender"])
+def test_salto_nao_inventa_etapas_e_isola_pessoa_e_site(client, caminho):
     aluna = pessoa("aluna-v4")
     outra = pessoa("outra-aluna")
     JornadaPessoal.objects.create(
         pessoa=aluna, site_id=SITE, meta_cents=10000,
         declaracoes={"3": True}, proposito="PROPOSITO-PRIVADO",
+        inicio={"motivo": caminho} if caminho else {},
     )
     JornadaPessoal.objects.create(
         pessoa=aluna, site_id="outro-site", meta_cents=100000,
@@ -103,7 +108,15 @@ def test_salto_nao_inventa_etapas_e_isola_pessoa_e_site(client):
     assert dados["atual_ordem"] == 1
     assert [e["alcancada"] for e in dados["etapas"][:5]] == [True, False, False, False, False]
     assert dados["meta_cents"] == 10000 and dados["meta_escolhida"] is True
-    assert dados["etapas"][5]["meta_cents"] == 125
+    assert dados["caminho"] == caminho
+    assert [e["ordem"] for e in dados["etapas"]] == list(
+        range(1, 14 if caminho == "freelancer" else 8)
+    )
+    assert all(e["meta_cents"] is None for e in dados["etapas"][:7])
+    if caminho == "freelancer":
+        assert [e["meta_cents"] for e in dados["etapas"][7:]] == [
+            500, 1000, 2500, 3750, 5000, 10000,
+        ]
     assert "PROPOSITO-PRIVADO" not in resposta.content.decode()
     assert "NOME-PRIVADO" not in resposta.content.decode()
     assert "@example.test" not in resposta.content.decode()
@@ -112,7 +125,10 @@ def test_salto_nao_inventa_etapas_e_isola_pessoa_e_site(client):
 
 def test_total_confirmado_pendente_e_correcao_preservada(client, monkeypatch):
     aluna = pessoa("aluna-v4")
-    JornadaPessoal.objects.create(pessoa=aluna, site_id=SITE, meta_cents=10000)
+    JornadaPessoal.objects.create(
+        pessoa=aluna, site_id=SITE, meta_cents=10000,
+        inicio={"motivo": "freelancer"},
+    )
     recebimento(aluna, SITE, 1000, "confirmado")
     recebimento(aluna, SITE, 9000, "pendente")
     recebimento(aluna, SITE, 700, "analisando", {"anterior_cents": 500})
