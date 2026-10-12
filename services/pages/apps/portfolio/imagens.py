@@ -234,9 +234,15 @@ def servir_imagem(request, imagem_id):
             ):
                 return _recusa()
             email = sessao["email"].strip().lower()
+            admin_dono = False
+            if sessao["id"] == portfolio.aluno_id:
+                try:
+                    admin_dono = e_da_equipe(email)
+                except (AdminIndisponivel, ConfiguracaoAusente):
+                    pass
             from .colegas import compartilha_imagem
             compartilhada = compartilha_imagem(portfolio, imagem.pk)
-            categoria = AlunosClient().categoria_de(email) if sessao["id"] == portfolio.aluno_id or compartilhada else None
+            categoria = "aluno" if admin_dono else (AlunosClient().categoria_de(email) if sessao["id"] == portfolio.aluno_id or compartilhada else None)
             dono = sessao["id"] == portfolio.aluno_id and categoria == "aluno"
             colega = categoria == "aluno" and compartilhada
             if not dono and not colega and not e_da_equipe(email):

@@ -236,6 +236,14 @@ class PortaDaCasa:
             return self._sem_resposta(request)
 
         try:
+            administrador = e_da_equipe(email)
+        except (AdminIndisponivel, ConfiguracaoAusente):
+            administrador = False
+        if administrador:
+            request.aluno = {"id": aluno_id, "nome": nome}
+            return self.get_response(request)
+
+        try:
             categoria = self.alunos.categoria_de(email)
         except (AlunosIndisponivel, ConfiguracaoAusente) as erro:
             # FECHA. Não conseguir conferir a matrícula nunca é "pode entrar".
