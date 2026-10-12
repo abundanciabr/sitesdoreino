@@ -28,6 +28,12 @@ def backup_image(reference, destination, store):
     record = {"format": "meshcraft-imagem-1", "image_id": identity,
               "reference": reference, "archive_sha256": result["sha256"], **result}
     new_json(destination.with_suffix(destination.suffix + ".json"), record)
+    registrar_uso(result, store)
+    return record
+
+
+def registrar_uso(result, store):
+    """Contadores também usados pelo gerador de cópias já instalado na VPS."""
     with locked(store) as root:
         usage = root/"uso.json"
         totals = json.loads(usage.read_text()) if usage.exists() else {}
@@ -44,7 +50,6 @@ def backup_image(reference, destination, store):
             os.fsync(stream.fileno())
         os.replace(temp, usage)
         sync_dir(root)
-    return record
 
 
 def restore_image(destination):

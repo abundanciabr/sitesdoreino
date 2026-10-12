@@ -15,6 +15,8 @@ BASE = ROOT/'manutencoes/publicacao-estrutural-c19960b9e7c1/aplicar_canal.py'
 BASE_SHA = '1f29d45cabb7580a8b5db6c01c67885c25a3aa056fea8fda74fa08431f85bb76'
 INT = Path('/usr/local/lib/meshcraft-integrador/entregas.py')
 INT_SHA = '32489117ffdf695f9f1d9c1446e9ba6f0be31a1eb69ca50315718f548c9533f6'
+REUSO = Path('/usr/local/lib/meshcraft-backups/v1-20261012/backups_reutilizaveis.py')
+REUSO_SHA = '91a7d95a56b5c634abb9ac108da6f4d0389cf5174e831281657b5df7904258fb'
 
 
 def sha(data):
@@ -35,6 +37,12 @@ def replace_once(text, old, new):
 
 
 def patch_appmax(text):
+    tree = ast.parse(text)
+    function = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'complete_backup')
+    body = ast.get_source_segment(text, function)
+    if ('return reuso.appmax_backup(globals(), backup, approved, originals)' in body
+            and str(REUSO) in body):
+        return text  # Preserva a correção de código/imagem já instalada.
     old = """    fd = os.open(image, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, 'wb') as stream:
         result = subprocess.run(['docker', 'image', 'save', approved['imagem']], stdout=stream,
@@ -49,6 +57,18 @@ def patch_appmax(text):
     from backup_imagens import backup_image
     backup_image(approved['imagem'], image, ROOT / 'objetos-imagens-manutencao')
 """
+    return replace_once(text, old, new)
+
+
+def patch_reuso(text):
+    old = '        return dict(entry,arquivo=destination.name,reutilizado=new_bytes==0,bytes_novos=new_bytes)'
+    new = """        import sys
+        sys.path.insert(0, '/usr/local/lib/meshcraft-publicador/atual/infra')
+        from backup_imagens import registrar_uso
+        registrar_uso({'reused': new_bytes == 0, 'new_bytes': new_bytes,
+                       'saved_bytes': entry['bytes'] if new_bytes == 0 else 0},
+                      Path('/opt/plataforma/objetos-imagens-manutencao'))
+""" + old
     return replace_once(text, old, new)
 
 
@@ -75,6 +95,7 @@ def main(source):
     assert os.geteuid() == 0
     assert sha(BASE.read_bytes()) == BASE_SHA
     assert sha(INT.read_bytes()) == INT_SHA
+    assert sha(REUSO.read_bytes()) == REUSO_SHA
     inst = load('instalador_existente', BASE)
     original = new = None
     active = set()
@@ -98,14 +119,17 @@ def main(source):
         flats = {INT: (source/'infra/entregas.py').read_bytes(),
                  Path('/usr/local/lib/meshcraft-super-equipe/coletor.py'): (source/'infra/super_equipe_coletor.py').read_bytes(),
                  Path('/usr/local/lib/meshcraft-super-equipe/executor.py'): (source/'infra/super_equipe_executor.py').read_bytes(),
-                 BASE: patch_maintenance(BASE.read_text()).encode()}
+                 BASE: patch_maintenance(BASE.read_text()).encode(),
+                 REUSO: patch_reuso(REUSO.read_text()).encode()}
         # Estas são fontes de preparação, não os arquivos preservados de backup.
         appmax = ROOT/'appmax-clones/checkout-roblox-20261009'
         candidates = list(appmax.glob('preparacao-producao*/infra/appmax_checkout_teste/publicar_curso_blender.py'))
         candidates += [ROOT/'manutencoes/publicador-reaproveitamento-20261011/infra/appmax_checkout_teste/publicar_curso_blender.py']
         for path in candidates:
             if path.is_file():
-                flats[path] = patch_appmax(path.read_text()).encode()
+                candidate = patch_appmax(path.read_text()).encode()
+                if candidate != path.read_bytes():
+                    flats[path] = candidate
         records = []
         for i, (path, content) in enumerate(flats.items()):
             compile(content, str(path), 'exec')
