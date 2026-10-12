@@ -74,7 +74,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,
   <div class="pf-preview-head"><h3>Prévia da página</h3><span class="pf-badge">Rascunho privado</span></div>
   <iframe id="portfolio-preview" src="{% if previa_admin %}{% url 'previa_portfolio_equipe' %}?tela=resultado{% else %}{% url 'apresentacao_previa' %}{% endif %}" title="Prévia privada da página pública"></iframe>
   <div class="pf-share">
-    <label class="pf-field">Nome ou apelido para o endereço<input name="apelido" value="{{ conteudo.pagina.apelido_rascunho|default:portfolio.apelido }}" maxlength="48" placeholder="seu-estudio" aria-describedby="portfolio-endereco"></label>
+    <label class="pf-field">Nome ou apelido para o endereço<input name="apelido" value="{% firstof conteudo.pagina.apelido_rascunho portfolio.apelido '' %}" maxlength="48" placeholder="seu-estudio" aria-describedby="portfolio-endereco"></label>
     <p id="portfolio-endereco" class="pf-address" data-address-preview data-address-base="{{ base_endereco_publico }}" aria-live="polite">Seu endereço será: <span data-address-text></span></p>
     <div id="portfolio-link-publicado"{% if not endereco_publico %} hidden{% endif %}><p>Página publicada: <a class="pf-share-link" id="portfolio-endereco-publicado" href="{{ endereco_publico }}" target="_blank" rel="noopener">{{ endereco_publico }}</a></p><button class="pf-button" id="portfolio-copiar-link" type="button">Copiar link</button></div>
     <p class="pf-note">Salvar guarda o rascunho. Sua página pública só muda quando você publica.</p>
