@@ -173,6 +173,7 @@ TEMPLATES = [
                 # crachá. Ver o cabeçalho de `apps/core/moldura.py` — em
                 # especial por que ela some para quem a porta recusa.
                 "apps.core.moldura.moldura_do_contexto",
+                "apps.core.governanca.contexto",
             ],
         },
     },

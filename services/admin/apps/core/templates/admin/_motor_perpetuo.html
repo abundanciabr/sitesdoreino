@@ -1,0 +1,43 @@
+{% load i18n %}{% language "pt-br" %}
+<style>
+.motor{max-width:1200px;margin:28px auto;padding:0 24px;color:var(--texto);line-height:1.55}.motor h1{font-size:clamp(28px,4vw,44px);line-height:1.1;margin:10px 0 18px}.motor h2{font-size:22px;margin:28px 0 12px}.motor p{max-width:950px}.motor .intro{font-size:18px}.motor-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.motor-card{padding:22px;border:1px solid var(--linha);background:var(--painel);border-radius:14px}.motor-card h2{margin:0 0 10px;font-size:16px}.motor-numero{font-size:38px;font-weight:750}.motor small{display:block;color:var(--texto-2)}.motor-fluxo{padding:22px;background:#102b48;color:#fff;border-radius:14px;font-size:19px}.motor-loop{margin:8px 0;font-size:14px}.motor table{width:100%;border-collapse:collapse}.motor td,.motor th{padding:10px;text-align:left;border-bottom:1px solid var(--linha)}.motor .atual{background:#14314a;color:#fff}.motor-scroll{overflow:auto}.motor-links{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0}.motor progress{width:100%;height:12px}.motor-nota{padding:16px;border-left:3px solid #dba44f;background:var(--painel)}@media(max-width:750px){.motor-grid{grid-template-columns:1fr}.motor{padding:0 16px}}
+</style>
+<main class="motor">
+  <p>Princípio central de gestão · decisão do mantenedor em 12/10/2026</p>
+  <h1>O motor de crescimento da Meshcraft</h1>
+  <p class="intro">Lançamentos perpétuos toda semana. Ciclos de 12 semanas para organizar metas, execução e melhoria contínua.</p>
+  <div class="motor-fluxo">Tráfego pago → Quizzes → Low · Mid · High ticket → Novos alunos na plataforma
+    <p class="motor-loop">Entrega de valor + resultados + dados → melhorias nas campanhas, quizzes, ofertas e experiência → próximo lançamento.</p>
+  </div>
+  <div class="motor-links"><a href="{% url 'ciclo' %}">Calendário e metas por produto</a><a href="{% url 'placar' %}">Placar e compromissos</a><a href="{{ governanca.documento }}">Ler o princípio completo</a></div>
+  <div class="motor-grid">
+    <section class="motor-card"><h2>Alunos únicos até 31/12/2027</h2><div class="motor-numero">{{ alunos_2027.total|default_if_none:"—" }} <span style="font-size:18px">/ {{ governanca.meta_texto }}</span></div>
+      {% if alunos_2027.total is not None %}<progress max="{{ governanca.meta }}" value="{{ alunos_2027.total }}" aria-label="Alunos únicos na meta de 2027"></progress><p>{{ alunos_2027.vendas }} vendas elegíveis · {{ alunos_2027.faltam }} alunos para a meta.</p>{% else %}<p>{{ alunos_2027.motivo }}</p>{% endif %}
+      <small>Compras desde 12/10/2026. Uma pessoa é contada uma vez por cadastro, mesmo comprando vários produtos.</small>
+    </section>
+    <section class="motor-card"><h2>Low ticket · primeiro ciclo</h2><div class="motor-numero">{{ governanca.low_texto }}</div><p>vendas do desafio</p><a href="{% url 'ciclo' %}?produto=desafio">Abrir metas e vendas do low ticket →</a></section>
+    <section class="motor-card"><h2>Mid ticket · primeiro ciclo</h2><div class="motor-numero">{{ governanca.mid_texto }}</div><p>vendas do Curso Primeiros Dólares</p><a href="{% url 'ciclo' %}?produto=curso">Abrir metas e vendas do mid ticket →</a></section>
+  </div>
+  <p class="motor-nota"><b>O que entra na meta de alunos:</b> compra confirmada pelo checkout do site ou liberação na escola marcada como nova venda paga, desde 12/10/2026, horário de São Paulo. A base antiga não é somada automaticamente. Testes, pedidos sem pagamento e liberações sem nova venda ficam fora. Reembolsos seguem o tratamento vigente. A deduplicação usa o e-mail do cadastro; pessoas com cadastros diferentes ainda exigem conciliação.</p>
+  <h2>Ciclo {{ governanca.calendario.numero }} · {{ governanca.calendario.inicio|date:"d/m/Y" }} a {{ governanca.calendario.fim|date:"d/m/Y" }}</h2>
+  <p>Cada linha é uma semana do motor. O próximo ciclo começa em {{ governanca.calendario.proximo|date:"d/m/Y" }}. As operações continuam na passagem entre ciclos.</p>
+  <div class="motor-scroll"><table><thead><tr><th>Semana</th><th>Período</th><th>Low ticket</th><th>Mid ticket</th></tr></thead><tbody>
+    {% for s in governanca.calendario.semanas %}<tr{% if s.atual %} class="atual" aria-current="date"{% endif %}><th>{{ s.n }}{% if s.atual %} · atual{% endif %}</th><td>{{ s.de|date:"d/m" }} – {{ s.ate|date:"d/m" }}</td><td>{% if s.recuperacao %}Recuperar saldo{% else %}{{ s.low|default_if_none:"Meta a definir" }}{% endif %}</td><td>{% if s.recuperacao %}Recuperar saldo{% else %}{{ s.mid|default_if_none:"Meta a definir" }}{% endif %}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <small>Primeiro ciclo: distribuição já aprovada no calendário, incluindo preparação e recuperação. Metas futuras não são copiadas automaticamente.</small>
+  <h2>A orientação em cada horizonte</h2>
+  <div class="motor-scroll"><table><thead><tr><th>Quando</th><th>Foco da gestão</th></tr></thead><tbody>
+    <tr><th>Diariamente</th><td>Conferir percurso, compras, atendimento, entrega e o ajuste em execução.</td></tr>
+    <tr><th>Semanalmente</th><td>Executar o lançamento, acompanhar metas da semana e revisar compromissos com as 4DX.</td></tr>
+    <tr><th>Mensalmente</th><td>Comparar campanhas, ofertas, custo, receita e resultados dos grupos de entrada.</td></tr>
+    <tr><th>A cada 45 dias</th><td>Reavaliar o gargalo e a distribuição de esforços dentro do ciclo.</td></tr>
+    <tr><th>A cada 12 semanas</th><td>Apurar metas e orientar o próximo ciclo, conservando os aprendizados. Esta é a orientação trimestral operacional; 84 dias não equivalem a um trimestre civil.</td></tr>
+  </tbody></table></div>
+  <p><b>4DX:</b> foco nas metas definidas → ações que influenciam o gargalo → placar legível → compromissos semanais.</p>
+  <h2>A equipe a serviço desse resultado</h2>
+  <p>O mantenedor define direção e investimentos. O COO integra a execução; dados mantém a contagem e as evidências; growth e tráfego melhoram aquisição; produto, CRO e copy melhoram quizzes e ofertas; comercial trabalha recuperação e progressão entre tickets; educação e sucesso do aluno cuidam da entrega e dos resultados; engenharia mantém o percurso funcionando; finanças mede custo e margem. São responsabilidades propostas, não contratações ou agentes já ativados.</p>
+  <h2>Prioridade do ciclo atual</h2>
+  <p>Fazer funcionar e otimizar o percurso anúncio → quiz → low ticket → mid ticket → plataforma para alcançar as metas existentes. Escolher o próximo ajuste pelo gargalo observado. A oferta e a meta do high ticket ainda precisam ser definidas.</p>
+  <p class="motor-nota"><b>Dados que ainda faltam unir:</b> campanha, quiz, compra, custo de mídia e resultado do aluno. Sem essa ligação, não é possível afirmar CAC, margem por campanha ou crescimento exponencial. O contador acima mede matrículas elegíveis; vendas por produto continuam nos calendários próprios.</p>
+</main>
+{% endlanguage %}

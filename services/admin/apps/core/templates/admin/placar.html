@@ -19,10 +19,17 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
 {% block corpo %}
 <div class="envolucro">
   <h1>O placar</h1>
+  <section class="lei" aria-label="Metas centrais da Meshcraft">
+    <h2>O resultado que orienta a gestão</h2>
+    <p><strong>{{ alunos_2027.total|default_if_none:"—" }} / {{ governanca.meta_texto }} alunos únicos até 31/12/2027</strong> · compras e liberações marcadas como nova venda desde 12/10/2026.</p>
+    {% if alunos_2027.total is None %}<p>{{ alunos_2027.motivo }}</p>{% endif %}
+    <p>Primeiro ciclo: <a href="{% url 'ciclo' %}?produto=desafio">{{ governanca.low_texto }} vendas low ticket</a> e <a href="{% url 'ciclo' %}?produto=curso">{{ governanca.mid_texto }} vendas do Curso Primeiros Dólares</a>.</p>
+    <p><a href="{% url 'perpetuo' %}">Acompanhar o motor, os ciclos e os critérios da contagem →</a></p>
+  </section>
   {% include "admin/_painel_negocio.html" %}
   <p class="recado-fraco"><a href="{% url 'funil' %}">Ver o funil de vendas</a> · <a href="{% url 'experimentos' %}">Experimentos da oferta</a></p>
   <p class="recado-fraco"><a href="{% url 'gestao_do_placar' %}">Editar metas, medições e compromissos</a></p>
-  <p class="subtitulo">Quantas pessoas compraram pelo nosso site neste mês, e a meta grande por cima: estamos ganhando ou perdendo? Quem foi liberado pela sala de espera comprou em outro site e não entra nesta conta.</p>
+  <p class="subtitulo">Indicadores complementares e cartões já configurados, com seus próprios períodos. Eles não substituem as metas centrais acima. A contagem de 2027 inclui a liberação marcada como nova venda paga; a liberação da base antiga fica fora.</p>
 
   {% comment %}
   A LINHA DA MEMÓRIA (degrau 7.6). Não é um bloco, e isso é de propósito: a

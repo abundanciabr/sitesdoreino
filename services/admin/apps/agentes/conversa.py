@@ -14,6 +14,7 @@ import json
 
 from apps.core import equipe_operacoes as operacoes
 from apps.core.models import MembroDaEquipe
+from apps.core.governanca import orientacao_dos_robos
 
 from . import ferramentas, modelo
 from .executor import batimento, guardar_estado, terminar
@@ -31,6 +32,7 @@ def instrucoes(robo, membro, retrato: dict | None = None, quiz: dict | None = No
     hoje = operacoes.hoje()
     segunda = operacoes.segunda(hoje)
     partes = [
+        orientacao_dos_robos(),
         f"Você é {robo.nome}, o robô pessoal de {membro.nome}"
         + (f" ({membro.area})" if membro.area else "")
         + " na equipe da Meshcraft, uma escola de modelagem 3D.",

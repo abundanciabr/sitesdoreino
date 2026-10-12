@@ -20,6 +20,7 @@ ganha versão nova com a leitura.
 from __future__ import annotations
 
 import json
+from apps.core.governanca import orientacao_dos_robos
 from datetime import date, datetime, timedelta
 
 from django.utils import timezone
@@ -251,7 +252,7 @@ def ler(execucao: Execucao, dados: dict, membro: MembroDaEquipe, segunda: date) 
     }
     resposta = modelo.responder(
         modelo=execucao.modelo,
-        instrucoes=INSTRUCOES_DA_LEITURA,
+        instrucoes=INSTRUCOES_DA_LEITURA + "\n\n" + orientacao_dos_robos(),
         itens=[{"role": "user", "content": json.dumps(pedido, ensure_ascii=False)}],
         max_saida=MAX_SAIDA,
         execucao=execucao,

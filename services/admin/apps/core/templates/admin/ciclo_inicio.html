@@ -56,8 +56,9 @@ body{background:var(--fundo)}
   {% include "admin/_seletor_ciclo.html" %}
   <header>
     <p class="sobrancelha-ciclo">Painel do ciclo · Out–Dez 2026</p>
-    <h1>Como Ganhar em Dólar com Roblox</h1>
-    <p class="subtitulo-ciclo">Um passo de cada vez: preparar, validar e crescer.</p>
+    <h1>Lançamentos perpétuos · ciclo de 12 semanas</h1>
+    <p class="subtitulo-ciclo">Tráfego pago → quizzes → low, mid e high ticket → novos alunos na plataforma.</p>
+    <p>Meta deste ciclo: <strong>{{ governanca.low_texto }} vendas low ticket e {{ governanca.mid_texto }} vendas mid ticket</strong>. Os lançamentos se repetem semanalmente. <a href="{% url 'perpetuo' %}">Ver o motor e a meta de alunos até 2027 →</a></p>
   </header>
   <section class="painel-ciclo destino-ciclo" aria-labelledby="destino-ciclo">
     <div><h2 id="destino-ciclo">Nosso destino</h2><p>Chegar a <strong>{{ painel.meta_texto }} vendas do desafio</strong> até {{ visao.fim_planejado|date:"j \d\e F"|lower }}.</p><small>Produto de entrada · referência de preço: {{ painel.preco }}.</small></div>
