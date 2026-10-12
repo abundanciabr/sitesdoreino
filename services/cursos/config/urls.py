@@ -1,4 +1,4 @@
-from apps.core import acesso_desafio
+from apps.core import acesso_desafio, comentarios_desafio
 from apps.core import previa_aula3
 from apps.core import previa_aula2
 from django.urls import path, re_path
@@ -62,6 +62,8 @@ urlpatterns = [
     path('<slug:curso>/parte-<int:parte>/<str:numero>/dia1/tradutor', dia1.tradutor, name='dia1-tradutor'),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3", previa_aula3.pagina, name="previa-aula3"),
     # Antes de `<slug:curso>/`, que leria estes endereços como o mapa de um curso.
+    path("acesso-desafio-como-ganhar-em-dolar-com-roblox/comentar/", comentarios_desafio.enviar, name="comentar-desafio-roblox"),
+    path("acesso-desafio-como-ganhar-em-dolar-com-roblox/comentarios/<int:comentario_id>/ocultar/", comentarios_desafio.ocultar, name="ocultar-comentario-desafio"),
     path("acesso-desafio-como-ganhar-em-dolar-com-roblox/", acesso_desafio.acesso, name="acesso-desafio-roblox"),
     path("evento-desafio-como-ganhar-em-dolar-com-roblox/", acesso_desafio.evento, name="evento-desafio-roblox"),
     path("desafio-como-ganhar-em-dolar-com-roblox/previa-aula-3/", previa_aula3.pagina),

@@ -10,6 +10,8 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
+from django.views.decorators.vary import vary_on_cookie
+from .comentarios_desafio import contexto
 
 CURSO = "desafio-como-ganhar-em-dolar-com-roblox"
 NOME = "Desafio Como Ganhar em Dólar com Roblox"
@@ -19,8 +21,9 @@ AULA_1 = datetime(2026, 10, 19, 9, 0, tzinfo=tz(timedelta(hours=-3)))
 
 @require_GET
 @never_cache
+@vary_on_cookie
 def acesso(request):
-    return render(request, "cursos/acesso_desafio.html", {"curso": CURSO, "nome": NOME})
+    return render(request, "cursos/acesso_desafio.html", {"curso": CURSO, "nome": NOME, **contexto(request)})
 
 
 @require_GET

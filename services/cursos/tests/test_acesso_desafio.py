@@ -1,3 +1,7 @@
+import pytest
+
+pytestmark = pytest.mark.django_db
+
 from datetime import timedelta
 from unittest import mock
 
