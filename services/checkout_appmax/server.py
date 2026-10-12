@@ -120,3 +120,7 @@ application = build_app(
     session_snapshot=sync_to_async(_session_snapshot, thread_sensitive=True),
     order_allowed=sync_to_async(_order_allowed, thread_sensitive=True),
 )
+
+if os.environ.get("APPMAX_PRODUCTION_CHILD") != "1":
+    from production_admin import wrap
+    application = wrap(application, Path(__file__).resolve().parent / "assets")
