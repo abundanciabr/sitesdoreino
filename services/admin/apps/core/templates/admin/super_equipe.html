@@ -7,8 +7,8 @@
   <section class="cartao">
     <h2>Acompanhamento automático</h2>
     {% if rotina %}
-      <p><b>{% if rotina.ativa %}Ligado{% else %}Pausado{% endif %}</b> · consulta a cada 15 minutos no servidor.</p>
-      <p>Última observação: {{ rotina.observada_em|date:"d/m/Y H:i"|default:"aguardando" }} · próxima: {{ rotina.proxima_em|date:"d/m/Y H:i"|default:"aguardando" }}.</p>
+      <p><b>{% if rotina.ativa %}Ligado{% else %}Pausado{% endif %}</b>{% if rotina.ativa %} · consulta a cada 15 minutos no servidor{% endif %}.</p>
+      <p>Última observação: {{ rotina.observada_em|date:"d/m/Y H:i"|default:"aguardando" }}{% if rotina.ativa %} · próxima: {{ rotina.proxima_em|date:"d/m/Y H:i"|default:"aguardando" }}{% endif %}.</p>
       <p><b>{{ executor_situacao }}</b>{% if rotina.executor_local %} · {{ rotina.executor_local }}{% endif %}.</p>
       <p>Última consulta da fila: {{ rotina.executor_consultado_em|date:"d/m/Y H:i:s"|default:"ainda não conectado" }}. Última ação em uma melhoria: {{ rotina.executor_em|date:"d/m/Y H:i:s"|default:"nenhuma" }}.</p>
       {% if rotina.ultimo_erro %}<p class="aviso">{{ rotina.ultimo_erro }}</p>{% endif %}
@@ -65,7 +65,7 @@
   {% for trabalho in trabalhos %}
     <section class="cartao"><h3><a href="{% url 'super_equipe_trabalho' trabalho.pk %}">Trabalho nº {{ trabalho.pk }}</a></h3>
       <p>{{ trabalho.pedido|truncatechars:220 }}</p>
-      <p>{{ trabalho.get_situacao_display }} · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {{ trabalho.progresso }}% · {{ trabalho.tentativas }} tentativa(s) · US$ {{ trabalho.custo }}</p>
+      <p>{{ trabalho.get_situacao_display }} · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {% if trabalho.estado.especialidades %}{{ trabalho.estado.resultados|length }} de {{ trabalho.estado.especialidades|length }} perfis com resposta salva{% else %}Seleção de perfis não registrada{% endif %} · {{ trabalho.tentativas }} tentativa(s) · US$ {{ trabalho.custo }}</p>
       <small>Pedido por {{ trabalho.pedido_por }} em {{ trabalho.criada_em|date:"d/m/Y H:i" }}</small>
     </section>
   {% empty %}<p>Ainda não há trabalhos da equipe técnica.</p>{% endfor %}
