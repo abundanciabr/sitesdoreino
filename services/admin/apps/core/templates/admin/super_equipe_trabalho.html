@@ -7,7 +7,7 @@
   <p class="subtitulo">{{ trabalho.pedido }}</p>
   <p><a class="botao" href="{{ request.path }}">Atualizar andamento</a></p>
   <section class="cartao"><h2>Acompanhamento</h2>
-    <p><b>{{ trabalho.get_situacao_display }}</b> · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {{ trabalho.progresso }}%</p>
+    <p><b>{{ trabalho.get_situacao_display }}</b> · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {% if trabalho.estado.especialidades %}{{ trabalho.estado.resultados|length }} de {{ trabalho.estado.especialidades|length }} perfis com resposta salva{% else %}Seleção de perfis não registrada{% endif %}</p>
     <p>{{ trabalho.motivo }}</p>
     <p>Pedido por {{ trabalho.pedido_por }} · {{ trabalho.tentativas }} tentativa(s) · Modelo {{ trabalho.modelo|default:"configurado na conexão" }} · custo registrado US$ {{ custo }}</p>
     {% if trabalho.tarefa_id %}<p>Tarefa da equipe nº {{ trabalho.tarefa_id }}</p>{% endif %}
