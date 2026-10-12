@@ -21,6 +21,7 @@ from apps.core.equipe import _membro_da_sessao
 
 from .models import Execucao, MelhoriaSuperEquipe, RotinaSuperEquipe
 from .super_equipe import ESPECIALIDADES, pedir_trabalho
+from .super_equipe_perfis import PERFIS, rotulo
 from .super_equipe_operacao import situacao_executor, receber, coletar, operacao_recente
 
 
@@ -67,7 +68,7 @@ def super_equipe(request):
         trabalho.custo = trabalho.consumos.aggregate(total=Sum("custo_estimado_usd"))["total"] or 0
     rotina = RotinaSuperEquipe.objects.filter(host="meshcraft.top").first()
     return render(request, "admin/super_equipe.html", {
-        "admin": request.admin, "especialidades": ESPECIALIDADES.items(),
+        "admin": request.admin, "especialidades": list(PERFIS.items()),
         "trabalhos": trabalhos, "chave": str(uuid.uuid4()), "erro": erro,
         "rotina": rotina, "executor_situacao": situacao_executor(rotina),
         "fila_operacional": coletar(),
@@ -84,7 +85,7 @@ def super_equipe_trabalho(request, trabalho_id: int):
     trabalho = get_object_or_404(
         Execucao.objects.select_related("robo").prefetch_related("entregas", "registros"),
         pk=trabalho_id, tipo=Execucao.Tipo.SUPER_EQUIPE)
-    resultados = [(ESPECIALIDADES.get(codigo, codigo), trabalho.estado.get("resultados", {}).get(codigo))
+    resultados = [(rotulo(codigo, ESPECIALIDADES), trabalho.estado.get("resultados", {}).get(codigo))
                   for codigo in trabalho.estado.get("especialidades", [])]
     return render(request, "admin/super_equipe_trabalho.html", {
         "admin": request.admin, "trabalho": trabalho,
