@@ -251,6 +251,9 @@ class PortaAdministrativa:
         return self._responder(request)
 
     def _responder(self, request):
+        # Este receptor de máquina valida o Hottok na própria view.
+        if request.path_info in ('/hotmart/webhooks', '/hotmart/webhooks/'):
+            return self.get_response(request)
         from .galeria_comunidade import caminho_publico
         if caminho_publico(request.path_info):
             return self._com_seguranca(self.get_response(request))
