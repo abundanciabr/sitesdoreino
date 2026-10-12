@@ -191,3 +191,32 @@ def test_anexo_de_outro_aluno_nao_vai_ao_modelo(monkeypatch):
 def test_snapshot_obrigatorio():
     with pytest.raises(ValueError, match="chave"):
         avaliacao.avaliar(10, "site", 3, {**dados(), "chave": ""})
+
+
+def test_ugc_final_separa_acao_historica_da_evidencia_atual(monkeypatch):
+    chamada = {}
+    monkeypatch.setattr(avaliacao, "_imagem", lambda _: (b"png", {"largura_px": 800, "altura_px": 600}))
+    def modelo(instrucoes, conteudo):
+        chamada["instrucoes"] = instrucoes
+        chamada["pedido"] = json.loads(conteudo[0]["text"])
+        return responder(observacoes=[{"fonte": "1", "observacao":
+            "A imagem final apresenta o acessório com gemas rosa."}])
+    monkeypatch.setattr(avaliacao, "_modelo", modelo)
+    saida = avaliacao.avaliar(10, "site", 7, dados(7,
+        item_acao="Pintei as gemas de verde.",
+        explicacao="Uso a espada com gemas rosa no avatar."), [anexo()])
+    assert saida["resultado"] == "reconhecida"
+    pacote = chamada["pedido"]
+    assert "item_acao" not in pacote["atividade"]
+    assert pacote["historico"]["item_acao_inicial"] == "Pintei as gemas de verde."
+    assert pacote["atividade"]["explicacao"] == "Uso a espada com gemas rosa no avatar."
+    assert "não requisito" in pacote["historico"]["papel"]
+    assert "não transforme ações ou cores históricas em requisitos adicionais" in chamada["instrucoes"]
+    assert pacote["criterio"] == avaliacao._criterio(7, "ugc")
+
+
+def test_contexto_historico_nao_aprova_ugc_sem_material(monkeypatch):
+    monkeypatch.setattr(avaliacao, "_modelo", lambda *args: pytest.fail("não deveria chamar IA"))
+    saida = avaliacao.avaliar(10, "site", 7, dados(7,
+        item_acao="Pintei as gemas de verde.", explicacao="Uso no avatar."))
+    assert saida["resultado"] == "incompleta"
