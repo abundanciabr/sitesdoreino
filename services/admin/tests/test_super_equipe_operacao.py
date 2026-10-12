@@ -44,12 +44,12 @@ def test_armazenamento_preserva_pausa_e_exige_entrega_util(rotina):
     rotina.ativa = False
     rotina.save()
     agora = timezone.now()
-    def enviar(segundos, evitadas, ativacao=None, repetidas=0):
+    def enviar(segundos, evitadas, ativacao=None, repetidas=0, protegidos=7, aplicacao="ativo"):
         em = (agora+timedelta(seconds=segundos)).isoformat()
         dados = {"coletada_em": em, "integrador": {"coletada_em": em,
-            "conflitos": 7, "conflitos_protegidos": 7, "repeticoes_identicas": repetidas,
+            "conflitos": 7, "conflitos_protegidos": protegidos, "repeticoes_identicas": repetidas,
             "totais": {"conflito_reutilizado": evitadas}, "ultima_ativacao_em": ativacao},
-            "aplicacao": "ativo", "funil": "ativo"}
+            "aplicacao": aplicacao, "funil": "ativo"}
         with patch.object(op.timezone, 'now', return_value=agora+timedelta(seconds=segundos)):
             op.acompanhar_armazenamento(rotina, dados)
     enviar(0, 7)
@@ -62,6 +62,20 @@ def test_armazenamento_preserva_pausa_e_exige_entrega_util(rotina):
     rotina.refresh_from_db()
     assert not rotina.ativa and rotina.ultimo_trabalho_id is None
     enviar(180, 21, (agora+timedelta(seconds=90)).isoformat(), repetidas=1)
+    item.refresh_from_db()
+    assert item.situacao == 'publicando' and item.resolvida_em is None
+    enviar(240, 28, (agora+timedelta(seconds=200)).isoformat())
+    enviar(300, 35, (agora+timedelta(seconds=200)).isoformat())
+    item.refresh_from_db()
+    assert item.situacao == 'resolvida'
+    enviar(360, 35, (agora+timedelta(seconds=200)).isoformat(), protegidos=6)
+    item.refresh_from_db()
+    assert item.situacao == 'publicando' and item.resolvida_em is None
+    enviar(420, 42, (agora+timedelta(seconds=400)).isoformat())
+    enviar(480, 49, (agora+timedelta(seconds=400)).isoformat())
+    item.refresh_from_db()
+    assert item.situacao == 'resolvida'
+    enviar(540, 49, (agora+timedelta(seconds=400)).isoformat(), aplicacao='inativo')
     item.refresh_from_db()
     assert item.situacao == 'publicando' and item.resolvida_em is None
 
