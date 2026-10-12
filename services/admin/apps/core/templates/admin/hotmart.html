@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Hotmart{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Hotmart · dados recebidos</h1>
+  <p>Recebimento e armazenamento dos eventos. Nenhum acesso ou mensagem é enviado nesta etapa.</p>
+  <div class="cartao">
+    <h2>Conectar a Hotmart</h2>
+    <p>URL do webhook: <code>https://meshcraft.top/api/hotmart/webhooks</code></p>
+    <p>Na Hotmart, cadastre essa URL na versão <strong>2.0.0</strong> com os 15 eventos escolhidos.</p>
+    <p><strong>Compras:</strong> cancelada, completa, aguardando pagamento, aprovada, reembolsada, chargeback, expirada, pedido de reembolso e atrasada.<br>
+       <strong>Assinaturas:</strong> cancelamento, troca de plano e atualização de data de cobrança.<br>
+       <strong>Club:</strong> primeiro acesso e módulo completo.<br>
+       <strong>Outros:</strong> abandono de carrinho.</p>
+    <p>Autenticação: <strong>{% if configurada %}Hottok cadastrado{% else %}Aguardando Hottok{% endif %}</strong>.</p>
+    {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <p><label for="hottok">Hottok (Hotmart → Ferramentas → Webhook → Autenticação)</label></p>
+      <input id="hottok" name="hottok" type="password" autocomplete="new-password" maxlength="512" required>
+      <button type="submit">Salvar Hottok</button>
+    </form>
+    <p>O valor não é exibido novamente. Depois de salvar, envie o teste pela Hotmart e atualize esta página.</p>
+  </div>
+  <h2>Eventos recebidos: {{ total }}</h2>
+  <p><a href="{% url 'hotmart_painel' %}">Atualizar recebimentos</a></p>
+  <p>Últimos 100 eventos. Os dados completos enviados ficam guardados de forma privada. Hottok não integra o histórico. Campos ausentes na Hotmart não são inventados.</p>
+  {% for e in eventos %}
+  <article class="cartao">
+    <h3>{{ e.registro.evento }} · {{ e.produto|default:"Produto não informado" }}</h3>
+    <p>{{ e.registro.ultimo_recebimento|date:"d/m/Y H:i:s" }} · Recebimentos: {{ e.registro.recebimentos }}</p>
+    <p><strong>Nome:</strong> {{ e.nome|default:"Não informado" }}<br>
+       <strong>E-mail:</strong> {{ e.email|default:"Não informado" }}<br>
+       <strong>Telefone recebido:</strong> {{ e.telefone|default:"Não informado" }}{% if e.codigo_telefone %} · Código: {{ e.codigo_telefone }}{% endif %}<br>
+       <strong>Transação:</strong> {{ e.transacao|default:"Não informada" }}<br>
+       <strong>ID do evento:</strong> {{ e.registro.evento_id }}</p>
+  </article>
+  {% empty %}<p>Nenhum evento recebido ainda.</p>{% endfor %}
+</div>
+{% endblock %}
