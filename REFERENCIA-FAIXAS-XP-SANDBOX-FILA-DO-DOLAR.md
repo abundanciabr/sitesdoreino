@@ -105,7 +105,7 @@ O ensaio foi executado na VPS do site, com a mesma imagem e o mesmo código mont
 
 Foram conservados 68 registros de observação: 43 do início e ciclos de criação, cinco de Sandbox/Fila, 18 de recebimentos e preservação e dois da falha de envio final descrita abaixo. Não são 68 cenários aprovados: os dois últimos reproduzem uma falha. A primeira tentativa de preparação, sem a tabela de bônus nos bancos vazios, foi desconsiderada; o ensaio válido configurou a tabela já aprovada antes de criar novas contas fictícias.
 
-### Falhas concretas e limites ainda abertos
+### Falhas encontradas na conferência anterior — consultar atualização abaixo
 
 1. **Prévia visual desatualizada.** A prévia em `https://meshcraft.top/trilha/previa/` usa uma versão diferente da aplicação publicada em arquivos de jornada, início, inventário, Sandbox e eventos. Por isso a navegação dessa prévia não certifica os painéis atuais dos quatro caminhos. O avaliador de início tinha o mesmo conteúdo nas duas versões. O ensaio complementar usou o código publicado, sem atualizar a prévia existente.
 2. **Aprender: comparação errada no envio final por arquivos.** Com a marrom já alcançada, imagem inicial no passo 2 e a versão final já salva no passo 6, enviar essa mesma versão para a preta faz o inventário selecionar a imagem do passo 6 como anterior. Ela tem o mesmo conteúdo da final. O avaliador responde “Envie a imagem anterior e a final...” e mantém a marrom, sem bônus. A falha também ocorre quando o pedido inclui explicitamente a imagem inicial correta em `arquivo_anterior`: o inventário substitui a referência anterior pelo arquivo do passo 6. Os dois casos foram reproduzidos no código em produção com pré-condições fictícias até a marrom. A conclusão pela prática salva, que fornece o histórico de alterações, funcionou.
@@ -117,6 +117,25 @@ Continuam sem nova comprovação: navegação visual completa dos quatro percurs
 Relatório e decisões disponíveis aos administradores em `https://meshcraft.top/admin/documentos/faixas-xp-sandbox-fila-do-dolar`. Cópia auxiliar das evidências, somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\conferencia-quatro-caminhos-20261012\evidencia-final.json`.
 
 O reinício dos alunos na faixa branca foi uma decisão específica de implantação. Não é uma ordem para reiniciar as faixas a cada nova tarefa. Trabalhos, arquivos, respostas privadas e conquistas anteriores continuam preservados.
+
+
+## Correção privada concluída em 12/10/2026 — estado mais recente
+
+**As falhas descritas na conferência anterior acima são históricas. Aprender, acesso ao Sandbox e contexto final UGC foram corrigidos somente na prévia administrativa `https://meshcraft.top/trilha/previa/`. Essas correções não foram publicadas para alunos.** Relatório privado completo: `https://meshcraft.top/admin/documentos/trilha-previa-sandbox-ugc-20261012`. Análise usada: `https://meshcraft.top/admin/super-equipe/99/`.
+
+Aprender agora respeita a imagem inicial explícita e, quando omitida, a primeira imagem inicial da própria pessoa e site; exige a imagem final. A avaliação real anterior reconheceu a mudança e conferiu bônus único.
+
+O Sandbox falhava na montagem das rotas porque o adaptador privado antigo não tinha a função limpar_conversa referenciada pelas rotas atuais. A função existente no código atual foi restaurada no adaptador, sem apagar nem recolher mensagens. Sandbox, tarefa histórica, minha-trilha e Fila abriram na prévia. Não houve retomada de avaliações pendentes.
+
+O UGC final agora envia ação antiga em histórico separado da atividade atual, preservando o critério. Avaliação real com imagem final de gemas rosa e descrição inicial verde reconheceu a etapa: 30.000 XP uma vez, zero na repetição. Passaram 17 testes específicos do avaliador. As pré-condições da conta fictícia até a marrom foram controladas; não são avaliações reais de todas as etapas.
+
+Todos os campos dos registros originais comparados ao backup restaurado em base de auditoria ficaram iguais: 11 avaliações, 28 registros de histórico, 10 lançamentos de XP e três anexos. Nenhuma base ativa foi restaurada. Consulta somente leitura confirmou ausência dos quatro identificadores de teste nos bancos públicos. Os três dumps privados tiveram o catálogo lido. A diferença de hash da participação Sandbox na conferência anterior veio de ordem das colunas; a comparação pelos campos originais mostrou zero diferenças.
+
+As telas dos quatro caminhos foram abertas depois dos ajustes: três caminhos curtos com sete etapas; Clientes com 13 etapas, posição histórica 7/13 e graus seguintes bloqueados. A seleção Aprender foi restaurada na interface privada. Essa navegação não comprova cada etapa de todos os percursos, pagamento real ou aceite real. Acesso anônimo à prévia: 403; página pública principal: 200.
+
+A diferença de linguagem entre requisito da conquista no inventário e próximo requisito na tela permanece registrada. Ampliação do leitor 3D e retomada das avaliações dependem de decisão separada. XP, anexos, conquistas e histórico foram preservados. Mercado Pago congelado não foi alterado.
+
+Backup desta alteração, privado na VPS: `/opt/plataforma/previas/trilha/correcao-aprender-20261012/backup/sandbox-ugc-20261012T223814Z`. Recuperação somente do código, nunca automática do banco: `/opt/plataforma/previas/trilha/correcao-aprender-20261012/backup/sandbox-ugc-20261012T223814Z/recuperar-somente-codigo.py`. Evidências auxiliares somente neste PC: `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\output\correcao-trilha-20261012`.
 
 ## Fila do Dólar e MESH
 
