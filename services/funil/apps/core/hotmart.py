@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_variables
 from django.views.decorators.http import require_POST
 
-DESTINO = 'https://meshcraft.top/admin/hotmart/webhooks'
+DESTINO = 'https://meshcraft.top/admin/interno/hotmart/webhooks'
 LIMITE = 1024 * 1024
 
 
