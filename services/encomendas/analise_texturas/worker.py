@@ -12,7 +12,7 @@ import time
 ROOT=Path('/opt/plataforma/encomendas-arquivos/marketplace/diagnosticos-texturas')
 CODE=Path(__file__).resolve().parent
 BLENDER=Path('/opt/plataforma/diagnostico-texturas/blender-4.5.9-linux-x64')
-IMAGE='sha256:e067accf6a9183c27f66c7181fe27659dba607d7f79a285acb08cb2f913b4a9c'
+IMAGE='meshcraft-diagnostico-texturas:blender-4.5.9-v1'
 
 
 def own(path,owner):
