@@ -1149,3 +1149,23 @@ class ComentarioDeAula(models.Model):
     def nome_do_autor(self):
         nome = self.autor.nome_exibido.strip()
         return nome if nome and "@" not in nome else "Aluno"
+
+
+class ComentarioDoEvento(models.Model):
+    site_id = models.CharField(max_length=120)
+    evento = models.SlugField(max_length=160)
+    autor = models.ForeignKey(Pessoa, on_delete=models.PROTECT, related_name="comentarios_eventos")
+    resposta_a = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="respostas")
+    corpo = models.TextField(max_length=4000)
+    equipe = models.BooleanField(default=False)
+    oculto = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em", "-pk"]
+        indexes = [models.Index(fields=["site_id", "evento", "-criado_em"], name="comentario_evento_data_idx")]
+
+    @property
+    def nome_do_autor(self):
+        nome = self.autor.nome_exibido.strip()
+        return nome if nome and "@" not in nome else "Participante"

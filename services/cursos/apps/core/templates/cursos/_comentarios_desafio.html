@@ -1,0 +1,46 @@
+{% load nomes_cursos %}
+<section class="comentarios" id="comentarios" aria-labelledby="titulo-comentarios">
+  <h3 id="titulo-comentarios">Comentários <span>{{ total_comentarios }}</span></h3>
+  <p class="comentarios-intro">Conte o que você espera do evento, compartilhe suas dúvidas e converse com os outros participantes.</p>
+  {% if request.GET.enviado %}<p class="comentario-sucesso" role="status">Seu comentário foi publicado.</p>{% endif %}
+  {% if pode_comentar %}
+  <form method="post" action="{% url 'comentar-desafio-roblox' %}" class="comentario-form" id="form-comentario">
+    {% csrf_token %}
+    {% if responder_a %}
+    <input type="hidden" name="resposta_a" value="{{ responder_a.pk }}">
+    <label for="comentario">Responder a {{ responder_a.nome_do_autor|primeiro_nome }}</label>
+    <a class="comentario-cancelar" href="{% url 'acesso-desafio-roblox' %}#comentarios">Cancelar resposta</a>
+    {% else %}<label for="comentario">Seu comentário</label>{% endif %}
+    <textarea id="comentario" name="corpo" rows="4" maxlength="4000" required placeholder="O que você está mais animado para aprender?"></textarea>
+    <small>Seu primeiro nome e seu comentário ficarão visíveis nesta página. Não inclua dados pessoais ou informações de pagamento.</small>
+    <button class="comentario-enviar" type="submit">{% if responder_a %}Publicar resposta{% else %}Publicar comentário{% endif %}</button>
+  </form>
+  {% else %}
+  <p class="comentarios-intro">Entre na sua conta para comentar e responder.</p>
+  <a class="comentario-entrar" href="{{ url_entrar_comentarios }}">Entrar para comentar</a>
+  {% endif %}
+  <div class="comentarios-lista">
+    {% for comentario in comentarios %}
+    <article class="comentario-card" id="comentario-{{ comentario.pk }}">
+      {% include "cursos/_comentario_evento_item.html" with item=comentario %}
+      {% if pode_comentar %}<a class="comentario-responder" href="?responder={{ comentario.pk }}#comentarios">Responder</a>{% endif %}
+      {% if comentario.respostas.all %}
+      <div class="comentario-respostas" aria-label="Respostas">
+        {% for resposta in comentario.respostas.all %}
+        <article class="comentario-card" id="comentario-{{ resposta.pk }}">
+          {% include "cursos/_comentario_evento_item.html" with item=resposta %}
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </article>
+    {% empty %}<p class="comentarios-vazio">A conversa começa com você. Compartilhe sua expectativa para o evento.</p>{% endfor %}
+  </div>
+  {% if comentarios.has_other_pages %}
+  <nav class="comentarios-paginacao" aria-label="Páginas de comentários">
+    {% if comentarios.has_previous %}<a href="?comentarios_pagina={{ comentarios.previous_page_number }}#comentarios">Mais recentes</a>{% endif %}
+    <span>Página {{ comentarios.number }} de {{ comentarios.paginator.num_pages }}</span>
+    {% if comentarios.has_next %}<a href="?comentarios_pagina={{ comentarios.next_page_number }}#comentarios">Mais antigos</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>

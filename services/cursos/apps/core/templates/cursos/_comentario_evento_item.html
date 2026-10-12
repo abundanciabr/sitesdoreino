@@ -1,0 +1,12 @@
+{% load nomes_cursos %}
+<div class="comentario-cabecalho">
+  <strong>{{ item.nome_do_autor|primeiro_nome }}</strong>
+  {% if item.equipe %}<span class="comentario-equipe">Equipe</span>{% endif %}
+  <time class="comentario-data" datetime="{{ item.criado_em|date:'c' }}">{{ item.criado_em|date:'d/m/Y H:i' }}</time>
+</div>
+<p class="comentario-texto">{{ item.corpo|linebreaksbr }}</p>
+{% if admin_comentarios %}
+<form method="post" action="{% url 'ocultar-comentario-desafio' item.pk %}" class="comentario-moderar">
+  {% csrf_token %}<button type="submit">Ocultar comentário</button>
+</form>
+{% endif %}
