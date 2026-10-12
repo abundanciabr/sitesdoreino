@@ -122,17 +122,20 @@ def acompanhar_armazenamento(rotina, dados):
                 >= parse_datetime(dados["coletada_em"])):
             return
         antes = item.situacao
-        if repetidas:
+        protegidos, conflitos = integrador.get("conflitos_protegidos"), integrador.get("conflitos")
+        protege_todas = type(protegidos) is int and type(conflitos) is int and protegidos == conflitos
+        servicos_ativos = dados.get("aplicacao") == "ativo" and dados.get("funil") == "ativo"
+        degradou = bool(repetidas) or not protege_todas or not servicos_ativos
+        if degradou:
             evidencia.update(inicio=dados["coletada_em"], evitadas_iniciais=evitadas, amostras_sem_repeticao=0)
             item.situacao, item.resolvida_em = "publicando", None
         else:
             evidencia["amostras_sem_repeticao"] = evidencia.get("amostras_sem_repeticao", 0) + 1
         ultima = parse_datetime(integrador.get("ultima_ativacao_em") or "")
         inicio = parse_datetime(evidencia["inicio"])
-        protege_todas = integrador.get("conflitos_protegidos") == integrador.get("conflitos")
         comprovado = (not repetidas and protege_todas and evidencia["amostras_sem_repeticao"] >= 2
                        and evitadas > evidencia["evitadas_iniciais"] and ultima and ultima >= inicio
-                       and dados.get("aplicacao") == "ativo" and dados.get("funil") == "ativo")
+                       and servicos_ativos)
         if comprovado:
             item.situacao = "resolvida"
             item.resolvida_em = item.resolvida_em or timezone.now()
@@ -142,6 +145,7 @@ def acompanhar_armazenamento(rotina, dados):
         item.observada_em = timezone.now()
         item.resultado = (f"Ação no integrador: {evitadas} combinações idênticas evitadas; "
                           f"{repetidas} novas tentativas de conflitos com entradas iguais nesta coleta. "
+                          + ("Proteção de todos os conflitos ou atividade dos serviços não confirmada. " if degradou else "")
                           + ("Nova entrega ativada e serviços ativos; efeito conferido." if comprovado else
                              "Acompanhando o efeito; a conclusão exige nova entrega ativada e repetição interrompida."))
         item.save()
