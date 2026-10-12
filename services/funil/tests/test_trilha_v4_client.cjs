@@ -93,8 +93,8 @@ test('atividade real enriquece o proximo criterio sem promover a faixa',async()=
   const activity={ordem:6,estado:'andamento',detalhe:'Trabalho aceito, produção iniciada.',acao:{rotulo:'Retomar trabalho',url:'/encomendas/fila/'}};
   const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>ownActivities([activity])});
   const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','andamento']);
-  assert.equal(checklist.itens[1].detalhe,activity.detalhe);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['andamento']);
+  assert.equal(checklist.itens[0].detalhe,activity.detalhe);
   assert.equal(r.payload.progresso.etapas[5].alcancada,false);
   assert.equal(r.payload.progresso.atual_ordem,5);
 });
@@ -104,7 +104,7 @@ test('outra conta, falso concluido e acao externa nao entram no checklist',async
     const activity=ownActivities([{ordem:6,estado:'andamento',detalhe:'NÃO MOSTRAR',acao:{rotulo:'Retomar',url:'/encomendas/fila/'}}]);change(activity);
     const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>activity});
     const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
-    assert.equal(checklist.itens[1].estado,'pendente');
+    assert.equal(checklist.itens[0].estado,'pendente');
     assert.doesNotMatch(JSON.stringify(checklist),/NÃO MOSTRAR/);
     assert.match(checklist.observacao,/Não foi possível consultar/);
   }
@@ -114,16 +114,18 @@ test('trabalho cancelado retorna pendente e uma conquista registrada permanece c
   const activities=ownActivities([{ordem:5,estado:'andamento',detalhe:'Outro trabalho iniciado',acao:null},{ordem:6,estado:'pendente',detalhe:'Trabalho cancelado.',acao:null}]);
   const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>activities});
   const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','pendente']);
-  assert.equal(checklist.itens[1].detalhe,'Trabalho cancelado.');
-  assert.equal(checklist.itens[0].detalhe,'Registro real');
+  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['pendente']);
+  assert.equal(checklist.itens[0].detalhe,'Trabalho cancelado.');
+  const anterior=r.context.journeyChecklist(r.payload.progresso,3,r.payload.atividades);
+  assert.equal(anterior.itens[0].estado,'concluido');
+  assert.equal(anterior.itens[0].detalhe,'Registro real');
 });
 test('consulta de faixa passada mostra apenas seus criterios e nao a meta da atual',async()=>{
   const data=withChecklist();
   const r=await load({ok:true,status:200,json:async()=>data});
   const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
-  assert.equal(checklist.itens.length,2);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2']);
+  assert.equal(checklist.itens.length,1);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['item-3']);
 });
 
 function mountPanel(context){
@@ -186,7 +188,7 @@ test('checklist ausente durante atualizacao nao vira etapas inventadas',async()=
   assert.equal(checklist.disponivel,false);assert.equal(checklist.itens.length,0);
 });
 
-test('aluno amarelo conserva motivo e compromisso e ve o relato do item como proximo passo',async()=>{
+test('amarela mostra o primeiro item sem repetir motivo ou compromisso da branca',async()=>{
   const data=withChecklist(2);
   data.etapas.forEach(step=>step.alcancada=step.ordem<=2);
   data.etapas[1].checklist.itens=['motivo-2','plano-2'].map((id,i)=>({id,titulo:id,estado:'concluido',detalhe:'Requisito concluído',acao:{rotulo:'Abrir',url:i===0?'/trilha/inicio/motivo/':'/trilha/inicio/objetivo/'}}));
@@ -194,7 +196,7 @@ test('aluno amarelo conserva motivo e compromisso e ve o relato do item como pro
   data.etapas[2].checklist.itens[0].acao={rotulo:'Descrever meu item',url:'/trilha/inicio/item/'};
   const r=await load({ok:true,status:200,json:async()=>data});
   const checklist=r.context.journeyChecklist(r.payload.progresso,1,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['motivo-2','plano-2','item-3']);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['item-3']);
   assert.equal(checklist.itens.find(item=>item.estado==='pendente').acao.url,'/trilha/inicio/item/');
   assert.equal(r.context.journeyChecklist(r.payload.progresso,0,r.payload.atividades).itens.length,2);
 });
@@ -241,8 +243,8 @@ test('meta pessoal compartilhada entre graus conta uma vez no checklist',async()
   for(const step of data.etapas.slice(7))step.checklist.itens.unshift({id:`meta-${step.ordem}`,titulo:'Escolher minha meta pessoal',estado:'concluido',detalhe:'Meta pessoal escolhida.',acao:null});
   const r=await load({ok:true,status:200,json:async()=>data});
   const checklist=r.context.journeyChecklist(r.payload.progresso,7,r.payload.atividades);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['meta-8','criterio-8','criterio-9']);
-  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','concluido','andamento']);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.id),['meta-9','criterio-9']);
+  assert.deepEqual(Array.from(checklist.itens,item=>item.estado),['concluido','andamento']);
 });
 
 test('caminhos curtos usam sete faixas e não herdam Sandbox ou Fila do freelancer',async()=>{
@@ -252,8 +254,36 @@ test('caminhos curtos usam sete faixas e não herdam Sandbox ou Fila do freelanc
     const r=await load({ok:true,status:200,json:async()=>data},{ok:true,status:200,json:async()=>externa});
     assert.equal(r.payload.progresso.etapas.length,7);
     const checklist=r.context.journeyChecklist(r.payload.progresso,4,r.payload.atividades);
-    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['criterio-5','criterio-6']);
-    assert.equal(checklist.itens[1].acao.url,'/trilha/ciclo/');
+    assert.deepEqual(Array.from(checklist.itens,item=>item.id),['criterio-6']);
+    assert.equal(checklist.itens[0].acao.url,'/trilha/ciclo/');
     assert.doesNotMatch(JSON.stringify(checklist),/NÃO MOSTRAR/);
   }
+});
+
+test('tarefas pertencem a um unico painel nos quatro caminhos, atuais e historicos',async()=>{
+  for(const caminho of ['freelancer','ugc','jogo','aprender']){
+    const total=caminho==='freelancer'?13:7;
+    for(const current of [1,2,4,total]){
+      const data=withChecklist(current,caminho);
+      const r=await load({ok:true,status:200,json:async()=>data});
+      const before=JSON.stringify(r.payload.progresso);
+      const shown=new Set();
+      for(let index=0;index<current;index++){
+        const details=r.context.journeyChecklist(r.payload.progresso,index,r.payload.atividades);
+        if(index===total-1){assert.equal(details.concluido,true);assert.equal(details.itens.length,0);continue;}
+        assert.deepEqual(Array.from(details.itens,item=>item.id),data.etapas[index+1].checklist.itens.map(item=>item.id));
+        for(const item of details.itens){assert.equal(shown.has(item.id),false);shown.add(item.id);}
+      }
+      assert.equal(JSON.stringify(r.payload.progresso),before);
+    }
+  }
+});
+
+test('ultimo marco concluido mostra a conclusao sem repetir tarefas ou progresso zero',async()=>{
+  const data=withChecklist(7,'jogo');
+  const r=await load({ok:true,status:200,json:async()=>data});mountPanel(r.context);
+  const details=r.context.journeyChecklist(r.payload.progresso,6,r.payload.atividades);
+  const panel=r.context.createProgressPanel(details,{name:'Preta',number:'07',summary:'Percurso concluído'});
+  assert.match(descendants(panel).find(node=>node.className==='progress-note').textContent,/concluiu todas as etapas/);
+  assert.equal(descendants(panel).filter(node=>node.tag==='ol'||node.attributes?.role==='progressbar').length,0);
 });
