@@ -286,4 +286,6 @@ test('ultimo marco concluido mostra a conclusao sem repetir tarefas ou progresso
   const panel=r.context.createProgressPanel(details,{name:'Preta',number:'07',summary:'Percurso concluído'});
   assert.match(descendants(panel).find(node=>node.className==='progress-note').textContent,/concluiu todas as etapas/);
   assert.equal(descendants(panel).filter(node=>node.tag==='ol'||node.attributes?.role==='progressbar').length,0);
+  const incompleto=await load({ok:true,status:200,json:async()=>withChecklist(4,'jogo')});
+  assert.equal(incompleto.context.journeyChecklist(incompleto.payload.progresso,6,incompleto.payload.atividades).concluido,false);
 });
