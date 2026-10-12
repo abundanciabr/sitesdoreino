@@ -9,6 +9,7 @@ from django.views.decorators.http import require_GET
 
 from .nps import _site, _texto, preparar_avaliacoes
 from .nps_client import NPSClient
+from .crm_whatsapp import contato_da_pesquisa
 
 
 ASSUNTOS = {
@@ -205,6 +206,7 @@ def crm_satisfacao_painel(request):
     atual = lista.get("pagina", 1)
     return render(request, "admin/crm_satisfacao_painel.html", {
         **contexto_robo,
+        "contato_whatsapp": contato_da_pesquisa(site_id, avaliacao),
         "arquivadas": arquivadas, "aluno_id": aluno_id,
         "arquivo_url": reverse("crm_satisfacao_arquivo"),
         "excluir_url": reverse("crm_satisfacao_confirmar_exclusao") + "?" + urlencode({"site_id": site_id, "aluno_id": aluno_id, "avaliacao": avaliacao.get("id", "") if avaliacao else ""}),

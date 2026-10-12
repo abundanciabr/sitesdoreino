@@ -198,6 +198,14 @@ def _estado_whatsapp(status: str) -> str:
     return status if status in {"desconhecido", "aceito", "enviado", "entregue", "lido", "falhou"} else "desconhecido"
 
 
+def texto_livre_pessoa(conversa: Conversa) -> bool:
+    """A conversa manual usa os recursos do aparelho conectado; a API Business mantém a janela."""
+    from apps.whatsapp.models import ConfiguracaoWhatsApp
+
+    return conversa.canal == "whatsapp" and ConfiguracaoWhatsApp.objects.filter(
+        site_id=conversa.site_id, ativo=True, transporte="WHATSAPP-BAILEYS").exists()
+
+
 def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: str = "agente",
            autor_id: str = "", modelo: dict | None = None, assunto: str = "",
            interacao: str | None = None) -> Resultado:
@@ -227,10 +235,11 @@ def enviar(*, conversa: Conversa, texto: str, chave_idempotencia: str, autor: st
         return Resultado("conversa_com_pessoa", detalhe="uma pessoa da equipe assumiu esta conversa")
     if bloqueio_por_descadastro(conversa):
         return Resultado("descadastrado", detalhe=f"o contato pediu para parar no {conversa.canal}")
-    if conversa.canal == "whatsapp" and not janela_aberta(conversa) and not modelo:
+    atendimento_manual = autor == "pessoa" and texto_livre_pessoa(conversa)
+    if conversa.canal == "whatsapp" and not janela_aberta(conversa) and not modelo and not atendimento_manual:
         return Resultado("fora_da_janela",
                          detalhe="fora das 24h desde a ultima mensagem do contato; use modelo aprovado")
-    if conversa.canal == "whatsapp" and not janela_aberta(conversa):
+    if conversa.canal == "whatsapp" and not janela_aberta(conversa) and not atendimento_manual:
         from apps.consentimentos.servico import situacao
 
         permissao = situacao(conversa.site_id, conversa.endereco)
@@ -312,7 +321,7 @@ def _enviar_whatsapp(conversa: Conversa, mensagem: MensagemDaConversa, modelo: d
     from apps.whatsapp.service import enviar_mensagem
 
     resultado = enviar_mensagem(
-        site_id=conversa.site_id, destinatario=conversa.endereco, corpo=mensagem.texto,
+        site_id=conversa.site_id, destinatario="+" + conversa.endereco, corpo=mensagem.texto,
         origem="conversa", referencia=f"{conversa.id}:{mensagem.chave_idempotencia}", modelo=modelo,
     )
     mensagem.mensagem_whatsapp = resultado

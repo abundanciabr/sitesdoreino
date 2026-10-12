@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% load nomes_admin %}
+{% load crm_whatsapp %}
 
 {% comment %}
 OS CONTATOS (/admin/contatos/, 03/10/2026): a primeira tela de CRM, só de
@@ -107,6 +108,7 @@ cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
       <div class="valor"><b>{% if pessoa.id %}<a href="{% url 'contato' pessoa.id %}">{{ pessoa.nome|primeiro_nome }}</a>{% else %}{{ pessoa.nome|primeiro_nome }}{% endif %}</b></div>
       {% if pessoa.email %}<div class="nota">{{ pessoa.email }}</div>{% endif %}
       {% if pessoa.telefone %}<div class="nota">Telefone: {{ pessoa.telefone }}</div>{% endif %}
+{% chamar_whatsapp pessoa.id pessoa.telefone pessoa.nome %}
       <div class="nota">
         {% if pessoa.criado_em %}Chegou em {{ pessoa.criado_em|date:"d/m/Y H:i" }}{% else %}Chegou em data desconhecida{% endif %}
         {% if pessoa.origem %} &middot; origem: {{ pessoa.origem }}{% endif %}
@@ -135,4 +137,5 @@ cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
   {% endif %}
   {% endif %}
 </div>
+{% include 'admin/_whatsapp_painel.html' %}
 {% endblock %}

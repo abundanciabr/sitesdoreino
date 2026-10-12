@@ -571,7 +571,8 @@ def responder(request, cliente, site_id, conversa_id, autor, lido=None):
     conversa = atual["conversa"]
     if lido is not None:
         lido["lead_id"] = None if conversa.get("ambigua") else conversa.get("lead_id")
-    if conversa.get("canal") == "whatsapp" and conversa.get("janela_aberta") is False and not modelo:
+    if (conversa.get("canal") == "whatsapp" and conversa.get("janela_aberta") is False
+            and not conversa.get("texto_livre_pessoa") and not modelo):
         # A mensageria vai recusar: não assume a conversa para nada e o agente continua atendendo.
         return RECUSADO, MENSAGENS_DA_RECUSA["fora_da_janela"] + (CONTINUA_COM_O_AGENTE if conversa.get("estado") == "agente" else "")
     assumiu = False

@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% load nomes_admin %}
+{% load crm_whatsapp %}
 
 {% block titulo %}Contato | CRM{% endblock %}
 {% block corpo %}
@@ -21,6 +22,7 @@
   <div class="cartoes">
     <section class="cartao">
       <h2 class="titulo-de-bloco">Contato</h2>
+{% chamar_whatsapp tela.id tela.telefone tela.nome %}
       {% if tela.email %}<p>E-mail: <a href="mailto:{{ tela.email|urlencode }}">{{ tela.email }}</a></p>{% endif %}
       {% if tela.telefone %}<p>Telefone: <a href="tel:{{ tela.telefone|urlencode }}">{{ tela.telefone }}</a></p>{% endif %}
       {% if not tela.email and not tela.telefone %}<p class="nota">Sem e-mail ou telefone registrado.</p>{% endif %}
@@ -227,4 +229,5 @@
   {% else %}<p class="aviso">Ainda não há atividades registradas para este contato.</p>{% endif %}
   {% endif %}
 </div>
+{% include 'admin/_whatsapp_painel.html' %}
 {% endblock %}
