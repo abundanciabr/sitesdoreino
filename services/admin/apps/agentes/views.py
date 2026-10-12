@@ -420,6 +420,8 @@ def execucao_detalhe(request, id: int):
     execucao = _execucao_visivel(request, id)
     if execucao is None:
         return _nao_existe(request)
+    if execucao.tipo == Execucao.Tipo.SUPER_EQUIPE:
+        return HttpResponseRedirect(reverse("super_equipe_trabalho", args=[execucao.pk]))
     if execucao.tipo == Execucao.Tipo.SATISFACAO:
         from .satisfacao import endereco_do_caso
         return HttpResponseRedirect(endereco_do_caso(execucao))
