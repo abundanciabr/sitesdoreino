@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 
 ROOT='/ferramentas/diagnostico-de-texturas/'
-UPSTREAM='http://aplicacao:8000/encomendas/diagnostico-texturas/'
+UPSTREAM='https://meshcraft.top/encomendas/diagnostico-texturas/'
 LIMIT=66*1024*1024
 
 
