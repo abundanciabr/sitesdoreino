@@ -320,8 +320,8 @@ class ProductionAdmin:
         headers = {k.lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
         method = scope.get("method")
         cookie = flow_cookie(headers.get(b"cookie", ""))
-        async def reply(status, body=b"", content_type="text/html; charset=utf-8", location=None, new_cookie=None):
-            response = [(b"content-type", content_type.encode()), (b"cache-control", b"no-store"), (b"referrer-policy", b"no-referrer"), (b"x-content-type-options", b"nosniff"), (b"x-robots-tag", b"noindex, nofollow")]
+        async def reply(status, body=b"", content_type="text/html; charset=utf-8", location=None, new_cookie=None, referrer_policy="no-referrer"):
+            response = [(b"content-type", content_type.encode()), (b"cache-control", b"no-store"), (b"referrer-policy", referrer_policy.encode()), (b"x-content-type-options", b"nosniff"), (b"x-robots-tag", b"noindex, nofollow")]
             if location:
                 response.append((b"location", location.encode()))
             if new_cookie:
@@ -361,7 +361,8 @@ class ProductionAdmin:
                 return await reply(503, b'{"erro":"confirmacao_indisponivel"}', "application/json")
         if method == "GET" and (path in {PANEL, PANEL + "/autorizar"} or (path == PANEL + "/retorno" and not scope.get("query_string"))):
             new_cookie = None if cookie else secrets.token_hex(32)
-            return await reply(200, self.panel(cookie or new_cookie), new_cookie=new_cookie)
+            # A native form POST needs its real Origin; cross-site referrers stay omitted.
+            return await reply(200, self.panel(cookie or new_cookie), new_cookie=new_cookie, referrer_policy="same-origin")
         if path == PANEL + "/checkout" and method == "GET":
             return await reply(200, self.preview())
         if path == PANEL + '/conferencia' and method == 'GET':

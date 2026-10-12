@@ -72,6 +72,16 @@ class ProductionPreviewTests(unittest.TestCase):
         response_cookie = dict(result[0]['headers'])[b'set-cookie'].decode()
         self.assertTrue(module.flow_cookie(response_cookie))
         self.assertIn('Secure; HttpOnly; SameSite=Lax', response_cookie)
+        self.assertEqual(dict(result[0]['headers'])[b'referrer-policy'], b'same-origin')
+
+    def test_authorization_redirect_and_callback_do_not_refer_the_ticket(self):
+        import urllib.parse
+        data = urllib.parse.urlencode({'csrf': self.app.csrf(self.nonce)}).encode()
+        redirect = self.request(module.PANEL+'/autorizar', cookie=self.cookie, method='POST', body=data, origin=module.ORIGIN)
+        self.assertEqual(redirect[0]['status'], 303)
+        self.assertEqual(dict(redirect[0]['headers'])[b'referrer-policy'], b'no-referrer')
+        callback = self.request(module.PANEL+'/retorno', query=b'token=singleuseticket')
+        self.assertEqual(dict(callback[0]['headers'])[b'referrer-policy'], b'no-referrer')
 
     def test_preview_cannot_submit_personal_or_card_data(self):
         page = self.app.preview().decode()
@@ -113,8 +123,9 @@ class ProductionPreviewTests(unittest.TestCase):
     def test_foreign_origin_still_cannot_start_installation(self):
         import urllib.parse
         data = urllib.parse.urlencode({'csrf': self.app.csrf(self.nonce)}).encode()
-        result = self.request(module.PANEL+'/autorizar', cookie=self.cookie, method='POST', body=data, origin='https://another-site.invalid')
-        self.assertEqual(result[0]['status'], 403)
+        for origin in ('https://another-site.invalid', '', 'null'):
+            result = self.request(module.PANEL+'/autorizar', cookie=self.cookie, method='POST', body=data, origin=origin)
+            self.assertEqual(result[0]['status'], 403)
         self.assertFalse(self.calls)
 
     def test_order_and_payment_creation_blocked_before_provider(self):
