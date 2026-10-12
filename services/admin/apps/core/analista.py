@@ -71,6 +71,7 @@ import unicodedata
 from dataclasses import dataclass
 
 import anthropic
+from .governanca import orientacao_dos_robos
 
 logger = logging.getLogger(__name__)
 
@@ -446,7 +447,7 @@ def analisar(*, dossie: str) -> Analise:
         resposta = cliente.messages.create(
             model=MODELO,
             max_tokens=TETO_DE_SAIDA,
-            system=INSTRUCOES,
+            system=INSTRUCOES + "\n\n" + orientacao_dos_robos(),
             messages=[
                 {
                     "role": "user",
@@ -552,8 +553,12 @@ def dossie_do_placar(contexto: dict, hoje) -> str:
     restricao = contexto.get("restricao") or {}
     linhas = [
         f"Hoje: {hoje.isoformat()}.",
+        orientacao_dos_robos(),
+        "META CENTRAL DE ALUNOS ATÉ 2027",
+        f"  medido hoje: {_numero((contexto.get('alunos_2027') or {}).get('total'))}",
+        "  deduplicação por cadastro (e-mail); cadastros distintos ainda exigem conciliação.",
         "",
-        "A META DO CICLO",
+        "CARTÃO ANTERIOR DO PLACAR (PERÍODO PRÓPRIO; NÃO SUBSTITUI AS METAS CENTRAIS)",
         f"  alvo: {_numero(meta.get('alvo'))} pessoas até {_numero(meta.get('ate'))}",
         f"  medido hoje: {_numero(placar.get('x'))}",
         f"  esperado pela curva para hoje: {_numero(placar.get('esperado_hoje'))}",

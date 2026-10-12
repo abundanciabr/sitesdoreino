@@ -298,7 +298,8 @@ def estrategia_ativa(papel: str) -> EstrategiaComercial:
 def instrucoes_completas(estrategia: EstrategiaComercial, site_id: str = "") -> str:
     """As instruções do papel, com a identidade do assistente DESTE site."""
     identidade = trecho_das_instrucoes(site_id) or identidade_do_site("").trecho_das_instrucoes()
-    return COMUM + "\n\n" + identidade + "\n\n" + estrategia.instrucoes
+    from apps.core.governanca import orientacao_dos_robos
+    return COMUM + "\n\n" + identidade + "\n\n" + estrategia.instrucoes + "\n\n" + orientacao_dos_robos()
 
 
 class VersaoMudou(Exception):

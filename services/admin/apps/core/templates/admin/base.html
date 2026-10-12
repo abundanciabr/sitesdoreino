@@ -1058,6 +1058,7 @@ As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da
 `armadilhas/033`: solta, cada uma põe um espaço a mais entre os botões.
 {% endcomment %}{% block navegacao_admin %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if forloop.first %} class="fora"{% elif secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>{% endblock %}
 {% endif %}
+{% if governanca %}<aside style="padding:12px 24px;border-bottom:1px solid var(--linha);font-size:13px;line-height:1.6" aria-label="Direção da gestão"><a href="{% url 'perpetuo' %}"><strong>Motor perpétuo · {{ governanca.meta_texto }} alunos até 2027</strong></a> · Lançamentos semanais em ciclos de 12 semanas · Primeiro ciclo: {{ governanca.low_texto }} vendas low + {{ governanca.mid_texto }} mid.</aside>{% endif %}
 {% block corpo %}{% endblock %}
 {% block rodape_admin %}{% if rodape_do_admin %}
 {% comment %}

@@ -19,15 +19,15 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
 {% endcomment %}
 {% block titulo %}Lançamento perpétuo{% endblock %}
 {% block corpo %}
+{% include "admin/_motor_perpetuo.html" %}
 <div class="envolucro">
-  <h1>O lançamento perpétuo</h1>
-  <p class="subtitulo">A máquina que vende todo dia, sem depender de uma data.</p>
+  <h2>Ferramentas de apoio à operação</h2>
+  <p class="subtitulo">Leituras operacionais complementares ao motor e às metas acima.</p>
 
   <p class="lei">
-    Um lançamento comum abre as matrículas por alguns dias e fecha. O perpétuo
-    não fecha: cada pessoa que chega começa o próprio caminho, no relógio dela.
-    Quem entrou hoje encontra o mesmo convite que alguém encontrou semana
-    passada, na mesma ordem, porque quem conduz é a máquina e não o calendário.
+    As filas de acesso, jornadas e pontos ajudam a operar a escola. Seus estados
+    não comprovam vendas, lucro ou aquisição de novos alunos. O calendário
+    de 12 semanas organiza os lançamentos semanais e a melhoria contínua.
   </p>
 
   {% if mapa_ausente %}
@@ -40,11 +40,10 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
   </p>
   {% endif %}
 
-  <h2 class="titulo-de-bloco">As seis peças da máquina</h2>
+  <h2 class="titulo-de-bloco">Onde acompanhar cada operação</h2>
   <p class="recado-fraco espaco-abaixo-10">
-    Na ordem em que uma pessoa as atravessa, de quem nunca ouviu falar da escola
-    até quem já está dentro dela. Em cada peça, as portas que o site já tem hoje
-    para ela.
+    As portas existentes e suas leituras específicas. A contagem comercial e
+    os compromissos continuam nos painéis indicados no início desta página.
   </p>
 
   <div class="etapas">
@@ -105,11 +104,9 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
   O que está pronto mora no livro de ocorrências, e não aqui.
   {% endcomment %}
   <p class="aviso espaco-28">
-    <b>Cada peça diz o estado dela, e nenhuma inventa número.</b>
-    Quatro peças conseguem responder hoje, porque existe quem guarde o dado
-    delas. As duas primeiras dizem "a casa não mede" com o motivo: antes da
-    tela precisa nascer a fonte, e mostrar um palpite no lugar seria pior que o
-    silêncio. Cada painel novo desta área entra como uma página vizinha desta.
+    <b>Estado operacional e resultado comercial são medidas diferentes.</b>
+    Uma fila vazia não comprova vendas. A ausência de uma leitura nesta seção
+    não significa que não existam dados nos painéis de funil e CRM.
   </p>
 </div>
 {% endblock %}

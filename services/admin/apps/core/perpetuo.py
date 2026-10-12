@@ -7,13 +7,12 @@ primeira peça dela: **o mapa da máquina, com o estado de cada engrenagem**.
 
 ## O que é um lançamento perpétuo, para quem lê esta pasta
 
-Um lançamento comum abre as matrículas por alguns dias e fecha. O perpétuo não
-fecha: cada pessoa que chega começa o próprio caminho, no relógio dela. Quem
-entrou hoje encontra o mesmo convite que alguém encontrou semana passada, na
-mesma ordem, porque quem conduz é a máquina e não o calendário.
-
-Uma máquina dessas tem seis peças, e é isso que a tela desenha. As peças são
-CONCEITO (o que cada etapa faz), e conceito não envelhece em silêncio.
+Decisão do mantenedor em 12/10/2026: campanhas de tráfego pago alimentam
+quizzes, a esteira low/mid/high ticket e a plataforma. Os lançamentos são
+semanais e contínuos, organizados em ciclos sucessivos de 12 semanas.
+`governanca.py` guarda essa orientação e a contagem de alunos até 2027.
+As seis leituras antigas abaixo permanecem como apoio operacional da escola;
+não substituem a medição comercial do motor.
 
 ## O que mudou em 07/09/2026, e por quê
 
@@ -152,9 +151,8 @@ ETAPAS = (
         ),
         "portas": ("/", _admin("menu_do_topo")),
         "sem_fonte_porque": (
-            "ninguém conta quantas pessoas visitam o site. Nenhuma parte da "
-            "plataforma guarda visita, e é por isso que esta peça não tem "
-            "número: a fonte precisa nascer antes da tela."
+            "esta leitura operacional não reúne visitas, campanhas e custo de mídia. "
+            "Existem visitas no painel de funil; ainda falta ligá-las ao custo e às vendas."
         ),
     },
     {
@@ -168,9 +166,8 @@ ETAPAS = (
         ),
         "portas": ("/cadastro", "/quiz/<slug:slug>/"),
         "sem_fonte_porque": (
-            "a parte que recebe os contatos guarda cada um, mas ainda não tem "
-            "porta para dizer quantos são. É a mesma falta que a tela do "
-            "placar já declara na passagem de quem se cadastrou."
+            "esta seção ainda não reúne a conversão de contatos em compradores. "
+            "Os contatos existentes podem ser consultados no CRM."
         ),
     },
     {
@@ -178,9 +175,8 @@ ETAPAS = (
         "nome": "Aquecer",
         "pergunta": "O que chega até a pessoa depois, sem você precisar mandar?",
         "resumo": (
-            "É esta peça que faz o lançamento ser perpétuo: as mensagens saem "
-            "sozinhas, na ordem certa, contadas a partir do dia em que aquela "
-            "pessoa chegou. Os textos que convencem também moram aqui."
+            "As jornadas apoiam os lançamentos semanais com mensagens a partir "
+            "da entrada de cada pessoa. Confira aqui quais sequências estão ativas."
         ),
         # 07/09/2026: a tela das sequências entrou aqui, e a falta dela era o
         # buraco mais grave desta página. A peça se descreve como "as mensagens
@@ -520,12 +516,17 @@ def perpetuo(request):
     em que você precisa dela.
     """
     mapa = _mapa_por_endereco()
+    from .governanca import contar_alunos
+    from django.utils import timezone
+    site_id = site_de(request)
+    alunos_2027 = contar_alunos(AlunosClient().alunos() if site_id else None, site_id, timezone.localdate())
     return render(
         request,
         "admin/perpetuo.html",
         {
             "admin": request.admin,
-            "etapas": etapas_com_portas(mapa, vereditos(site_de(request))),
+            "alunos_2027": alunos_2027,
+            "etapas": etapas_com_portas(mapa, vereditos(site_id)),
             "mapa_ausente": mapa is None,
         },
     )

@@ -6,6 +6,14 @@
 6. Todo trabalho é no site.
 7. Entregue funcionando no site.
 
+## Princípio central de gestão — ordem expressa de 12/10/2026
+
+Toda a gestão da Meshcraft deve orientar a execução e a melhoria contínua do motor: tráfego pago → quizzes → cursos low, mid e high ticket → novos alunos na plataforma → entrega de valor e dados para melhorar os próximos lançamentos. Os lançamentos perpétuos se repetem semanalmente, indefinidamente; as 12 semanas são o calendário dos ciclos desse motor, não um programa de descoberta de produto nem a duração de uma turma.
+
+Preserve as metas do primeiro ciclo já aprovado (05/10 a 27/12/2026): 10.000 vendas low ticket e 500 vendas mid ticket, do Curso Primeiros Dólares. Até 31/12/2027, a meta é 10.000 pessoas únicas com compra pelo checkout do site ou liberação no painel da escola marcada como nova venda paga, a partir da semana de 12/10/2026, horário de São Paulo. Várias compras da mesma pessoa não multiplicam alunos. A base anterior não é somada automaticamente. Os períodos diário, semanal, mensal, de 45 dias e de 12 semanas servem ao mesmo motor. Não invente oferta high ticket, metas futuras, custos ou resultados ausentes.
+
+Referência privada vigente: `https://meshcraft.top/admin/documentos/principio-central-lancamentos-perpetuos-20261012`. Painel: `https://meshcraft.top/admin/perpetuo/`. Calendário: `https://meshcraft.top/admin/placar/ciclo/`. A orientação anterior de usar as 12 semanas para descobrir outro negócio foi substituída pelo mantenedor.
+
 ## Referência de faixas e XP pedida pelo mantenedor em 11/10/2026
 
 Antes de trabalhar com faixas, graus, XP, Sandbox, Fila do Dólar, MESH ou alunos, leia `C:\Users\davia\abundanciabr\sitesdoreino-limpo-20260923\REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`. A referência compartilhada no repositório é `https://github.com/abundanciabr/sitesdoreino/blob/main/REFERENCIA-FAIXAS-XP-SANDBOX-FILA-DO-DOLAR.md`; em outro checkout, use a cópia desse arquivo na raiz do repositório.

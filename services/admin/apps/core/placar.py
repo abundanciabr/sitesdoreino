@@ -633,6 +633,10 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     # nunca equivale a uma lista vazia de registros.
     registros = dir_.ler_registros()
 
+    from .governanca import contar_alunos
+    fichas_do_site = AlunosClient().alunos()
+    alunos_2027 = contar_alunos(fichas_do_site, site_id, hoje)
+
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
@@ -640,7 +644,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         # direção e os doze olham as MESMAS listas, senão discordariam entre si
         # por um segundo de diferença.
         from .vendas_do_crm import para_o_placar
-        alunos = para_o_placar(cliente.alunos())
+        alunos = para_o_placar(fichas_do_site)
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
         contagem = contar_compras(alunos, partida_em, hoje)
@@ -696,6 +700,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     from . import medicao as med_
 
     contexto = {
+        "alunos_2027": alunos_2027,
         "medicao": med_.a_memoria(site_id, timezone.now()),
         "registros": registros,
         "mudancas": mudancas,
