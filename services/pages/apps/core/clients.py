@@ -224,6 +224,12 @@ class AdminClient:
 
     def e_administrador(self, email: str) -> bool:
         """Esta pessoa é administradora da escola? Ou exceção, nunca um chute."""
+        try:
+            from modules.admin.apps.core.acesso_site import e_administrador
+        except ImportError:
+            pass
+        else:
+            return e_administrador(email)
         base = exigir("ADMIN_API_URL").rstrip("/")
         token = exigir("ADMIN_API_TOKEN")
         try:

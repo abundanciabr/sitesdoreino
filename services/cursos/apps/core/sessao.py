@@ -5,6 +5,9 @@ A `identidade` diz quem é; a `alunos` diz em que categoria está. **Quem decide
 se a pessoa vê a aula é esta célula**, aqui, fail-CLOSED: só a matrícula ativa
 abre a sala, e não conseguir perguntar nunca vira "então pode entrar".
 
+Administradores reconhecidos pela lista oficial têm acesso aos cursos sem
+matrícula. Esse acesso não concede conclusão, XP nem assinatura de laudos.
+
 **Esta célula não assina sessão**. O cookie recebido é repassado
 OPACO à `identidade`; não há `SessionMiddleware`, não há `request.session`, e
 os dois estados que a tentação poria lá (a cerimônia do Boss e "já leu o
@@ -79,6 +82,7 @@ class Ator:
     papel_do_site: str = ""
     eh_professor: bool = False
     pode_assinar_laudo: bool = False
+    eh_admin: bool = False
 
     @property
     def autenticado(self) -> bool:
@@ -193,24 +197,28 @@ def _resolver(request) -> Ator:
         defaults={"nome_exibido": corpo.get("nome_exibido") or ""},
     )
 
-    try:
-        matriculas = AlunosClient().matriculas_de(email)
-        conferida = True
-    except (AlunosIndisponivel, ConfiguracaoAusente) as erro:
-        # FECHA. Não conseguir conferir a matrícula nunca é "pode entrar".
-        logger.warning("não deu para conferir a matrícula de %s: %s", pessoa.pk, erro)
-        matriculas, conferida = [], False
+    from .acesso_admin import e_administrador
+    administrador = e_administrador(email)
+    if administrador:
+        matriculas, conferida = [], True
+    else:
+        try:
+            matriculas = AlunosClient().matriculas_de(email)
+            conferida = True
+        except (AlunosIndisponivel, ConfiguracaoAusente) as erro:
+            logger.warning("não deu para conferir a matrícula de %s: %s", pessoa.pk, erro)
+            matriculas, conferida = [], False
 
     request._matriculas_nps = matriculas
     request._identidade_nps = {"id": id_da_plataforma, "email": email, "nome": pessoa.nome_exibido}
     return Ator(
         pessoa=pessoa,
-        eh_aluno=bool(matriculas),
+        eh_aluno=administrador or bool(matriculas),
         matricula_conferida=conferida,
         produtos_matriculados=_produtos_deste_site(matriculas),
-        matricula_ativa_deste_site=bool(site_atual()) and any(
+        matricula_ativa_deste_site=bool(site_atual()) and (administrador or any(
             matricula.get("site_id") == site_atual() for matricula in matriculas
-        ),
+        )),
         papel_do_site=(corpo.get("papel") or "").strip(),
         # AS DUAS LISTAS, lidas no PONTO DE USO e no mesmo lugar de propósito:
         # se um dia uma delas mudar de nome, as duas leituras quebram juntas.
@@ -218,4 +226,5 @@ def _resolver(request) -> Ator:
         eh_professor=email
         in (_lista_de_emails("CURSOS_PROFESSORES") | _lista_de_emails("ADMIN_EMAILS")),
         pode_assinar_laudo=email in _lista_de_emails("CURSOS_PROFESSORES"),
+        eh_admin=administrador,
     )

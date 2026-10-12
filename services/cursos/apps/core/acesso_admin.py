@@ -3,6 +3,15 @@ from django.http import HttpResponse, HttpResponseNotFound
 from django.urls import get_script_prefix, get_urlconf, set_script_prefix, set_urlconf
 
 
+def e_administrador(email):
+    try:
+        from modules.admin.apps.core.acesso_site import e_administrador as conferir
+    except ImportError:
+        from .sessao import _lista_de_emails
+        return (email or "").strip().lower() in _lista_de_emails("ADMIN_EMAILS")
+    return conferir(email)
+
+
 def autorizar(request):
     # A aplicação compartilhada conserva a porta e a configuração do admin.
     # Nenhuma lista de professores, matrícula ou papel da identidade a substitui.

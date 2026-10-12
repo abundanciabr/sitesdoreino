@@ -81,6 +81,7 @@ def rede():
     verdade montar a URL de verdade.
     """
     with respx.mock(assert_all_called=False) as dublagem:
+        dublar_administrador(dublagem, False)
         yield dublagem
 
 

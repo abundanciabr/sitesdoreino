@@ -262,6 +262,8 @@ def _recusa_de_curso(ator, curso: Curso) -> str:
     `manage.py apontar_o_produto_do_curso`; curso aberto por falta de
     apontamento é o defeito invisível que esta mudança existe para matar.
     """
+    if ator.eh_admin:
+        return ""
     if curso.slug == "comunidade":
         return "" if ator.matricula_ativa_deste_site else "outro-curso"
     if not curso.produto_id:
@@ -436,13 +438,17 @@ def _explicacao_da_porta(estado: str, progresso: Progresso | None) -> str:
     return "Pronta para você abrir: é a sua próxima entrega."
 
 
-def _porta(aula: Aula, progresso: Progresso | None) -> dict:
+def _porta(aula: Aula, progresso: Progresso | None, *, administrador=False) -> dict:
     """Uma porta pronta para o template, com a conta feita aqui e não em `{{ }}`."""
     estado = progresso.estado if progresso else Progresso.Estado.TRANCADA
     publicada = aula.estado == Aula.Estado.PUBLICADA
     data_3d = praticas_3d.liberacao(aula, progresso.pessoa) if progresso else None
     trancada = estado == Progresso.Estado.TRANCADA
-    if not publicada:
+    if administrador and publicada:
+        estado_visual = "disponivel"
+        rotulo = "Acesso de administrador"
+        explicacao = "Você pode abrir esta aula como administrador."
+    elif not publicada:
         estado_visual = "em-preparo"
         rotulo = "Em preparo"
         explicacao = "A escola está preparando esta aula."
@@ -476,11 +482,11 @@ def _porta(aula: Aula, progresso: Progresso | None) -> dict:
         # Só se entra numa porta que não está trancada E cuja aula já foi
         # publicada: a aula em rascunho responde 404, e um link para ela seria
         # uma promessa quebrada no mapa.
-        "abre": (not trancada) and publicada and not data_3d,
+        "abre": publicada and (administrador or ((not trancada) and not data_3d)),
     }
 
 
-def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
+def _partes(curso: Curso, pessoa, *, administrador=False) -> tuple[list[dict], dict | None]:
     """As três Partes com os doze Blocos e as 34 portas, e a porta em destaque.
 
     Uma consulta de progresso, filtrada pela PESSOA DA SESSÃO:
@@ -492,7 +498,7 @@ def _partes(curso: Curso, pessoa) -> tuple[list[dict], dict | None]:
     partes: dict[int, dict] = {}
     atual = None
     for aula in curso.aulas.select_related("bloco").order_by("ordem"):
-        porta = _porta(aula, por_aula.get(aula.id))
+        porta = _porta(aula, por_aula.get(aula.id), administrador=administrador)
         if atual is None and porta["abre"] and porta["estado"] in ESTADOS_COM_A_PESSOA:
             atual = porta
         parte = partes.setdefault(
@@ -677,7 +683,7 @@ def mapa(request, curso: str):
     if recusa is not None:
         return recusa
     portas.nascer(pessoa, curso)
-    partes, atual = _partes(curso, pessoa)
+    partes, atual = _partes(curso, pessoa, administrador=quem_e(request).eh_admin)
     resumo = _resumo_do_progresso(curso, pessoa)
     return render(
         request,
@@ -845,7 +851,7 @@ def _porta_de_aulas_avulsas(request):
         return None, _recusar(request, "entrar", status=200)
     if site_atual() is None or not ator.matricula_conferida:
         return None, _recusar(request, "sem-resposta", status=403)
-    if not ator.produtos_matriculados:
+    if not ator.eh_admin and not ator.produtos_matriculados:
         return None, _recusar(request, "sem-matricula", status=403)
     return ator, None
 
@@ -1070,6 +1076,11 @@ def _porta_aberta(request, numero: str, *, slug: str | None = None, parte=None):
             ),
         )
     progresso = portas.progresso_de(pessoa, aula)
+    if quem_e(request).eh_admin:
+        # A leitura administrativa não destranca nem conclui a progressão.
+        if progresso is None:
+            progresso, _ = Progresso.objects.get_or_create(pessoa=pessoa, aula=aula)
+        return pessoa, curso, aula, progresso, None
     data_3d = praticas_3d.liberacao(aula, pessoa)
     if data_3d:
         return None, None, None, None, render(request, 'cursos/aguardar_pratica_3d.html', {**_de_fora(curso), 'data': data_3d, 'curso': curso}, status=403)
@@ -1121,8 +1132,8 @@ def _o_endereco_de_um_segmento_mudou_de_casa(numero: str):
     return HttpResponsePermanentRedirect(_url_da_aula(curso, aula))
 
 
-def _conteudo_do_curso(curso: Curso, aula: Aula, pessoa) -> dict:
-    partes, _ = _partes(curso, pessoa)
+def _conteudo_do_curso(curso: Curso, aula: Aula, pessoa, *, administrador=False) -> dict:
+    partes, _ = _partes(curso, pessoa, administrador=administrador)
     blocos = []
     for parte in partes:
         for bloco in parte["blocos"]:
@@ -1148,7 +1159,7 @@ def _conteudo_do_curso(curso: Curso, aula: Aula, pessoa) -> dict:
     }
 
 
-def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
+def _navegacao_aulas(curso: Curso, aula: Aula, pessoa, *, administrador=False) -> dict:
     vizinhas = {
         "anterior": curso.aulas.filter(ordem__lt=aula.ordem)
         .select_related("bloco")
@@ -1164,7 +1175,7 @@ def _navegacao_aulas(curso: Curso, aula: Aula, pessoa) -> dict:
         if vizinha is None:
             navegacao[direcao] = None
             continue
-        porta = _porta(vizinha, portas.progresso_de(pessoa, vizinha))
+        porta = _porta(vizinha, portas.progresso_de(pessoa, vizinha), administrador=administrador)
         navegacao[direcao] = {
             "titulo": vizinha.titulo_na_ordem,
             "url": _url_da_aula(curso, vizinha) if porta["abre"] else "",
@@ -1205,14 +1216,14 @@ def aula(request, numero: str, curso: str | None = None, parte: int | None = Non
         "cursos/aula.html",
         {
             "aula": aula,
-            "estado": Progresso.Estado(progresso.estado).label,
+            "estado": "Acesso de administrador" if quem_e(request).eh_admin else Progresso.Estado(progresso.estado).label,
             "pecas": _pecas(aula),
             "videoaula": _videoaula(aula),
             "video": _video(aula),
             "dia1": dia1,
             "pratica3d": None if dia1 else praticas_3d.contexto(aula, pessoa, request),
-            "navegacao": _navegacao_aulas(curso, aula, pessoa),
-            "conteudo": _conteudo_do_curso(curso, aula, pessoa),
+            "navegacao": _navegacao_aulas(curso, aula, pessoa, administrador=quem_e(request).eh_admin),
+            "conteudo": _conteudo_do_curso(curso, aula, pessoa, administrador=quem_e(request).eh_admin),
             "comentarios": Paginator(
                 comentarios_visiveis(ComentarioDeAula.objects.filter(aula=aula)
                 .filter(Q(autor=pessoa) | Q(publico=True))
