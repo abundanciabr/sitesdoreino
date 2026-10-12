@@ -11,6 +11,7 @@
   <form id="ciclo-form" enctype="multipart/form-data">
     <input name="item_nome" type="hidden" value="{{ item_nome }}">
     {% if ordem < 7 %}<label for="ciclo-parte">Parte que alterei</label><input id="ciclo-parte" name="parte" maxlength="180" required><label for="ciclo-anterior">Versão anterior do mesmo item</label><input id="ciclo-anterior" name="arquivo_anterior" type="file" accept=".png,.jpg,.jpeg,.webp" required>{% endif %}
+    {% if ordem == 7 and faixas.caminho == 'aprender' %}<label for="ciclo-anterior">Imagem do começo (opcional)</label><input id="ciclo-anterior" name="arquivo_anterior" type="file" accept=".png,.jpg,.jpeg,.webp" aria-describedby="ciclo-comparacao"><p id="ciclo-comparacao">Compare a mesma criação nas duas imagens. Se não escolher uma imagem do começo, usaremos a primeira imagem guardada no seu inventário.</p>{% endif %}
     <label for="ciclo-arquivo">{% if ordem == 7 %}Imagem final{% else %}Versão atual salva{% endif %}</label><input id="ciclo-arquivo" name="arquivo" type="file" accept=".png,.jpg,.jpeg,.webp" required>
     <label for="ciclo-explicacao">Minha explicação</label><textarea id="ciclo-explicacao" name="explicacao" rows="3" maxlength="1000" required></textarea>
     <button type="submit">Avaliar esta etapa</button>
