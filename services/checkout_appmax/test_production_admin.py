@@ -40,7 +40,7 @@ class ProductionPreviewTests(unittest.TestCase):
             self.app.health({'app_id': 1888, 'external_key': self.app.state()['external_key']})
             return {'data': {'client': {'client_id': 'merchant-key', 'client_secret': 'private-merchant-key'}}}
         if url.endswith('/installments'):
-            return {'data': {'parcels': {}}}
+            return {'data': {'parcels': {'1': 27}}}
         raise AssertionError('Unexpected provider operation')
 
     def request(self, path, *, cookie='', method='GET', body=b'', origin='', query=b''):
@@ -75,12 +75,47 @@ class ProductionPreviewTests(unittest.TestCase):
 
     def test_preview_cannot_submit_personal_or_card_data(self):
         page = self.app.preview().decode()
-        self.assertNotIn('<script', page)
+        self.assertNotIn('checkout.js', page)
         self.assertNotIn('__CHECKOUT_CONFIG__', page)
         self.assertIn('R$ 27,00', page)
+        self.assertIn('homologacao.js', page)
         import re
-        for tag in re.findall(r'<(?:input|select|button)\b[^>]*>', page):
+        for tag in re.findall(r'<(?:select|button)\b[^>]*>', page):
+            if 'homologacao-conferir' in tag:
+                continue
             self.assertIn('disabled', tag)
+        for tag in re.findall(r'<input\b[^>]*id="card-[^"]+"[^>]*>', page):
+            self.assertIn('disabled', tag)
+
+    def test_pending_conference_is_public_and_does_not_call_provider(self):
+        result = self.request(module.PANEL+'/conferencia')
+        self.assertEqual(result[0]['status'], 200)
+        value = json.loads(result[1]['body'])
+        self.assertFalse(value['instalacao_concluida'])
+        self.assertFalse(value['pagamentos_ativados'])
+        self.assertFalse(self.calls)
+
+    def test_production_conference_only_authenticates_and_calculates(self):
+        self.app.begin({}, self.nonce)
+        self.app.finish('singleuseticket')
+        self.calls.clear()
+        result = self.request(module.PANEL+'/conferencia')
+        self.assertEqual(result[0]['status'], 200)
+        value = json.loads(result[1]['body'])
+        self.assertTrue(value['autenticacao_lojista'])
+        self.assertTrue(value['parcelas_conferidas'])
+        self.assertFalse(value['pagamentos_ativados'])
+        self.assertNotIn(b'private-merchant-key', result[1]['body'])
+        self.assertEqual(self.calls, [module.AUTH, module.API+'/v1/payments/installments'])
+        self.request(module.PANEL+'/conferencia')
+        self.assertEqual(len(self.calls), 2)
+
+    def test_foreign_origin_still_cannot_start_installation(self):
+        import urllib.parse
+        data = urllib.parse.urlencode({'csrf': self.app.csrf(self.nonce)}).encode()
+        result = self.request(module.PANEL+'/autorizar', cookie=self.cookie, method='POST', body=data, origin='https://another-site.invalid')
+        self.assertEqual(result[0]['status'], 403)
+        self.assertFalse(self.calls)
 
     def test_order_and_payment_creation_blocked_before_provider(self):
         for operation in ('/api/sessoes/11111111-1111-4111-8111-111111111111/pedido', '/api/pedidos/22222222-2222-4222-8222-222222222222/cartao'):

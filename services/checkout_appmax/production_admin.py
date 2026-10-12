@@ -96,6 +96,7 @@ class ProductionAdmin:
         self.api_call = api_call
         self.lock = threading.RLock()
         self.process = None
+        self.conference_cache = None
 
     def state(self):
         return json.loads((self.root / "instalacao.json").read_text())
@@ -216,12 +217,43 @@ class ProductionAdmin:
         import re
         document = re.sub(r'<script\b[^>]*>.*?</script>', '', document, flags=re.S | re.I)
         document = document.replace(BASE + "/assets/", PANEL + "/assets/")
-        document = re.sub(r'<(input|select|button)\b', r'<\1 disabled', document, flags=re.I)
+        document = re.sub(r'<(select|button)\b', r'<\1 disabled', document, flags=re.I)
+        document = re.sub(r'(<input\b[^>]*id="card-[^"]+"[^>]*)(>)', r'\1 disabled\2', document, flags=re.I)
         document = re.sub(r'(<[^>]+id="product-price"[^>]*>).*?(</[^>]+>)', r'\1R$ 27,00 à vista\2', document, flags=re.S)
         document = re.sub(r'(<[^>]+id="order-total"[^>]*>).*?(</[^>]+>)', r'\1R$ 27,00\2', document, flags=re.S)
         document = re.sub(r'(<button[^>]+id="purchase-button"[^>]*>).*?(</button>)', r'\1Prévia sem cobrança\2', document, flags=re.S)
-        document = document.replace('<body>', '<body><div style="padding:16px;background:#fff2cf;text-align:center">Prévia pública de produção — nenhuma cobrança.<br><a href="' + PANEL + '">Voltar à instalação da Appmax</a></div>')
+        document = document.replace('<body>', '<body><div style="padding:16px;background:#fff2cf;text-align:center">Homologação de produção — pagamentos desativados.<br><a href="' + PANEL + '">Instalação da Appmax</a><p id="homologacao-estado" role="status">Conferindo a instalação...</p><button id="homologacao-conferir" type="button">Conferir conexão e parcelas</button></div>')
+        document = document.replace('</body>', '<script src="' + PANEL + '/assets/homologacao.js" defer></script></body>')
         return document.encode()
+
+    def conference(self):
+        state = self.state()
+        out = {'ambiente': 'production', 'price_cents': 2700, 'pagamentos_ativados': False,
+               'instalacao_concluida': state.get('status') == 'preparada',
+               'credenciais_recebidas': bool(state.get('merchant')),
+               'autenticacao_lojista': False, 'parcelas_conferidas': False}
+        if not out['instalacao_concluida']:
+            out['mensagem'] = 'Aguardando o recebimento da autorização e das credenciais de produção.'
+            return out
+        with self.lock:
+            if self.conference_cache and time.time() - self.conference_cache[0] < 60:
+                return self.conference_cache[1]
+            env = read_env(self.root/'env/pagamentos.env')
+            auth = self.api_call(AUTH, {'grant_type': 'client_credentials',
+                                       'client_id': env['APPMAX_MERCHANT_CLIENT_ID'],
+                                       'client_secret': env['APPMAX_MERCHANT_CLIENT_SECRET']}, form=True)
+            token = auth.get('access_token')
+            if not token:
+                raise RuntimeError('A autenticação do lojista ainda não foi concluída')
+            quote = self.api_call(API+'/v1/payments/installments', {'installments': 12, 'total_value': 2700, 'settings': True}, token)
+            data = quote.get('data') or {}
+            if not isinstance(data, dict) or not (data.get('parcels') or data.get('installments')):
+                raise RuntimeError('A consulta de parcelas precisa ser conferida na Appmax')
+            out.update({'autenticacao_lojista': True, 'parcelas_conferidas': True,
+                        'externalId': state['external_id'], 'scriptURL': 'https://scripts.appmax.com.br/appmax.min.js',
+                        'mensagem': 'Credenciais e cálculo de R$ 27 conferidos na Appmax de produção. Pagamentos desativados.'})
+            self.conference_cache = (time.time(), out)
+            return out
 
     def ensure_runtime(self):
         if self.state().get("status") != "preparada":
@@ -332,6 +364,13 @@ class ProductionAdmin:
             return await reply(200, self.panel(cookie or new_cookie), new_cookie=new_cookie)
         if path == PANEL + "/checkout" and method == "GET":
             return await reply(200, self.preview())
+        if path == PANEL + '/conferencia' and method == 'GET':
+            try:
+                result = await asyncio.to_thread(self.conference)
+                return await reply(200, json.dumps(result, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
+            except Exception as error:
+                message = str(error) if isinstance(error, RuntimeError) else 'A conferência de produção não foi concluída.'
+                return await reply(503, json.dumps({'mensagem': message, 'pagamentos_ativados': False}, ensure_ascii=False).encode(), 'application/json; charset=utf-8')
         prefix = PANEL + "/checkout/"
         if path.startswith(prefix):
             suffix = path[len(PANEL + "/checkout"):]
@@ -344,6 +383,8 @@ class ProductionAdmin:
                 return await reply(503, b'{"erro":"instalacao_pendente"}', "application/json")
         if path == PANEL + "/assets/checkout.css" and method == "GET":
             return await reply(200, (self.assets / "checkout.css").read_bytes(), "text/css; charset=utf-8")
+        if path == PANEL + '/assets/homologacao.js' and method == 'GET':
+            return await reply(200, (self.assets/'homologacao.js').read_bytes(), 'text/javascript; charset=utf-8')
         if path == PANEL + "/retorno" and method == "GET":
             query = urllib.parse.parse_qs(scope.get("query_string", b"").decode())
             state = self.state()
@@ -359,7 +400,15 @@ class ProductionAdmin:
             form = {k: v[0] for k, v in urllib.parse.parse_qs((await body()).decode()).items()}
             if not cookie or headers.get(b"origin") != ORIGIN or not self.valid_csrf(cookie, form.get("csrf", "")):
                 reason = 'cookie_ausente' if not cookie else 'origem_incompativel' if headers.get(b'origin') != ORIGIN else 'formulario_vencido_ou_incompleto'
-                private_write(self.root/'ultimo-formulario.json', json.dumps({'motivo': reason, 'cookie_recebido': bool(cookie), 'origem_correta': headers.get(b'origin') == ORIGIN, 'codigo_formulario_recebido': bool(form.get('csrf')), 'horario': int(time.time())}).encode())
+                try:
+                    origin = urllib.parse.urlsplit(headers.get(b'origin', ''))
+                    origin_info = {'origem_mesmo_host': origin.hostname == 'meshcraft.top',
+                                   'origem_https': origin.scheme == 'https',
+                                   'origem_porta_padrao': origin.port in {None, 443},
+                                   'origem_caminho_vazio': origin.path in {'', '/'}}
+                except ValueError:
+                    origin_info = {'origem_formato_invalido': True}
+                private_write(self.root/'ultimo-formulario.json', json.dumps({'motivo': reason, 'cookie_recebido': bool(cookie), 'origem_correta': headers.get(b'origin') == ORIGIN, 'assinatura_valida': bool(cookie) and self.valid_csrf(cookie, form.get('csrf', '')), 'codigo_formulario_recebido': bool(form.get('csrf')), 'horario': int(time.time()), **origin_info}).encode())
                 return await reply(403, b"Abra novamente a tela de instalacao.")
             try:
                 location = await asyncio.to_thread(self.begin, form, cookie)

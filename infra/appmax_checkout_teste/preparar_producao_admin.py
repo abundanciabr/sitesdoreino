@@ -68,7 +68,7 @@ def main(source):
     backup = TASK / 'backups-producao-admin' / stamp
     server = TASK / 'servico/server.py'
     before = server.read_bytes()
-    originals = {name: (TASK/'servico'/name).read_bytes() for name in ('server.py', 'production_admin.py', 'production_runtime.py') if (TASK/'servico'/name).exists()}
+    originals = {name: (TASK/'servico'/name).read_bytes() for name in ('server.py', 'production_admin.py', 'production_runtime.py', 'assets/homologacao.js') if (TASK/'servico'/name).exists()}
     backup_module.complete_backup(backup, approved, originals)
     production = TASK / 'producao'
     if production.exists():
@@ -131,9 +131,9 @@ def main(source):
     previous_name = WEB + '-antes-' + stamp
     replacement_started = False
     try:
-        for name in ('production_admin.py', 'production_runtime.py'):
+        for name in ('production_admin.py', 'production_runtime.py', 'assets/homologacao.js'):
             destination = TASK / 'servico' / name
-            replacement = destination.with_name(name + '.preparando-' + stamp)
+            replacement = destination.with_name(destination.name + '.preparando-' + stamp)
             shutil.copyfile(source / 'services/checkout_appmax' / name, replacement)
             os.replace(replacement, destination)
         replacement = server.with_name('server.preparando-' + stamp + '.py')
