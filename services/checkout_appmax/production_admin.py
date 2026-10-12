@@ -1,4 +1,4 @@
-"""Admin-only production preparation beside the existing sandbox checkout.
+"""Public production preparation beside the existing sandbox checkout.
 
 All installation receipts and credentials belong to the isolated copy. The
 approved payment source, primary environments and edge routes are not edited.
@@ -20,20 +20,18 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+from http.cookies import SimpleCookie
 from pathlib import Path
 
 BASE = "/checkout/curso-primeiros-passos-no-blender"
-PANEL = BASE + "/admin/producao"
+PANEL = BASE + "/producao"
+OLD_PANEL = BASE + "/admin/producao"
+FLOW_COOKIE = "meshcraft_appmax_instalacao"
 ORIGIN = "https://meshcraft.top"
 AUTH = "https://auth.appmax.com.br/oauth2/token"
 API = "https://api.appmax.com.br"
 SITE = "cc06b8c3-043b-4c06-92c5-5ea624e00586"
 LIMIT = 65536
-
-
-class NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(self, request, fp, code, message, headers, newurl):
-        return None
 
 
 def read_env(path: Path) -> dict:
@@ -81,21 +79,19 @@ def vendor(url: str, body: dict, token: str = "", *, form: bool = False) -> dict
     return parsed
 
 
-def is_admin(cookie: str) -> bool:
-    if not cookie or len(cookie) > 16384 or "\n" in cookie or "\r" in cookie:
-        return False
-    request = urllib.request.Request(ORIGIN + "/admin/", headers={"Cookie": cookie})
+def flow_cookie(header: str) -> str:
     try:
-        with urllib.request.build_opener(NoRedirect()).open(request, timeout=8) as response:
-            return response.status == 200
+        values = SimpleCookie(header)
+        value = values[FLOW_COOKIE].value
+        return value if len(value) == 64 and all(c in "0123456789abcdef" for c in value) else ""
     except Exception:
-        return False
+        return ""
 
 
 class ProductionAdmin:
-    def __init__(self, fallback, assets: Path, root: Path, admin_check=is_admin, api_call=vendor):
+    def __init__(self, fallback, assets: Path, root: Path, api_call=vendor):
         self.fallback, self.assets, self.root = fallback, assets, root
-        self.admin_check, self.api_call = admin_check, api_call
+        self.api_call = api_call
         self.lock = threading.RLock()
         self.process = None
 
@@ -139,8 +135,8 @@ class ProductionAdmin:
         if state.get("merchant"):
             self.finish(None)
             return PANEL
-        app_uuid = str(uuid.UUID(form.get("app_uuid", "")))
-        numerical = form.get("app_id", "").strip()
+        app_uuid = str(uuid.UUID(state["app_uuid"]))
+        numerical = state["app_id"]
         if not numerical.isdecimal() or int(numerical) < 1:
             raise RuntimeError("Copie o ID numérico do aplicativo já existente")
         token = self.app_token()
@@ -222,7 +218,7 @@ class ProductionAdmin:
         document = re.sub(r'(<[^>]+id="product-price"[^>]*>).*?(</[^>]+>)', r'\1R$ 27,00 à vista\2', document, flags=re.S)
         document = re.sub(r'(<[^>]+id="order-total"[^>]*>).*?(</[^>]+>)', r'\1R$ 27,00\2', document, flags=re.S)
         document = re.sub(r'(<button[^>]+id="purchase-button"[^>]*>).*?(</button>)', r'\1Prévia sem cobrança\2', document, flags=re.S)
-        document = document.replace('<body>', '<body><div style="padding:16px;background:#fff2cf;text-align:center">Prévia de produção exclusiva para administradores — nenhuma cobrança.<br><a href="' + PANEL + '">Voltar à instalação da Appmax</a></div>')
+        document = document.replace('<body>', '<body><div style="padding:16px;background:#fff2cf;text-align:center">Prévia pública de produção — nenhuma cobrança.<br><a href="' + PANEL + '">Voltar à instalação da Appmax</a></div>')
         return document.encode()
 
     def ensure_runtime(self):
@@ -273,27 +269,35 @@ class ProductionAdmin:
         action = "Conferir a instalação já autorizada" if state.get("merchant") else "Autorizar minha loja na Appmax de produção"
         return ('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Appmax de produção · Meshcraft</title>'
                 '<style>body{font:17px/1.6 system-ui;background:#f3f5fa;color:#182037;margin:0}main{max-width:820px;margin:40px auto;padding:30px;background:white;border-radius:18px}h1{line-height:1.2}code{overflow-wrap:anywhere}input{display:block;width:95%;padding:12px;margin:8px 0 20px;border:1px solid #acb5c9;border-radius:8px}button,.link{display:inline-block;padding:13px 20px;border:0;border-radius:8px;background:#164bd5;color:white;text-decoration:none;cursor:pointer}.notice{padding:18px;background:#edf3ff;border-radius:10px}.error{color:#ad2831}small{color:#56617a}</style><main>'
-                '<a href="/admin/">← Administração</a><h1>Appmax de produção</h1><p>Curso Primeiros Passos com 3D no Blender · <strong>R$ 27,00</strong></p>'
+                '<a href="/curso-primeiros-passos-no-blender">← Página do produto</a><h1>Appmax de produção</h1><p>Curso Primeiros Passos com 3D no Blender · <strong>R$ 27,00</strong></p>'
                 '<p class="notice">' + esc(status) + '</p><p class="error">' + esc(message) + '</p>'
                 '<p>As credenciais do aplicativo já estão guardadas. Esta preparação usa uma cópia isolada e preserva o Mercado Pago aprovado.</p>'
                 '<p><a class="link" href="' + PANEL + '/checkout">Abrir prévia do checkout de R$ 27</a></p>'
                 '<h2>O passo para autorizar a loja</h2><p>Abra o aplicativo já existente em <a href="https://appstore.appmax.com.br" target="_blank" rel="noreferrer">https://appstore.appmax.com.br</a>. Em Desenvolver, confira os endereços desta cópia:</p>' + fields +
                 '<p>Use o UUID e o ID numérico desse mesmo aplicativo. Clique no botão abaixo e, na Appmax, selecione a loja de produção que você já possui e confirme a instalação. O retorno salva as credenciais automaticamente; não é preciso copiá-las.</p>'
-                '<form method="post" action="' + PANEL + '/autorizar"><input type="hidden" name="csrf" value="' + self.csrf(cookie) + '"><label>UUID público do aplicativo existente<input name="app_uuid" value="' + esc(state.get("app_uuid", "")) + '" required></label><label>ID numérico do mesmo aplicativo<input name="app_id" value="' + esc(state.get("app_id", "")) + '" inputmode="numeric" required></label><button>' + action + '</button></form>'
+                '<form method="post" action="' + PANEL + '/autorizar"><input type="hidden" name="csrf" value="' + self.csrf(cookie) + '"><label>UUID público do aplicativo existente<input name="app_uuid" value="' + esc(state.get("app_uuid", "")) + '" readonly></label><label>ID numérico do mesmo aplicativo<input name="app_id" value="' + esc(state.get("app_id", "")) + '" readonly></label><button>' + action + '</button></form>'
                 '<p><small>Esta tela não cria compras. O produto e o checkout públicos continuam como estão até a autorização para disponibilizar produção à homologação.</small></p></main></html>').encode()
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "")
-        if scope.get("type") != "http" or not (path == PANEL or path.startswith(PANEL + "/")):
+        old_path = path == OLD_PANEL or path.startswith(OLD_PANEL + "/")
+        if scope.get("type") != "http" or not (old_path or path == PANEL or path.startswith(PANEL + "/")):
             return await self.fallback(scope, receive, send)
         headers = {k.lower(): v.decode("latin1") for k, v in scope.get("headers", [])}
         method = scope.get("method")
-        async def reply(status, body=b"", content_type="text/html; charset=utf-8", location=None):
+        cookie = flow_cookie(headers.get(b"cookie", ""))
+        async def reply(status, body=b"", content_type="text/html; charset=utf-8", location=None, new_cookie=None):
             response = [(b"content-type", content_type.encode()), (b"cache-control", b"no-store"), (b"referrer-policy", b"no-referrer"), (b"x-content-type-options", b"nosniff"), (b"x-robots-tag", b"noindex, nofollow")]
             if location:
                 response.append((b"location", location.encode()))
+            if new_cookie:
+                response.append((b"set-cookie", (FLOW_COOKIE + "=" + new_cookie + "; Path=" + PANEL + "; Max-Age=7200; Secure; HttpOnly; SameSite=Lax").encode()))
             await send({"type": "http.response.start", "status": status, "headers": response})
             await send({"type": "http.response.body", "body": body})
+        if old_path:
+            query = scope.get("query_string", b"")
+            location = PANEL + path[len(OLD_PANEL):] + ("?" + query.decode() if query else "")
+            return await reply(307, location=location)
         async def body():
             data = bytearray()
             while True:
@@ -305,6 +309,8 @@ class ProductionAdmin:
                     raise RuntimeError("Requisição muito grande")
                 if not msg.get("more_body"):
                     return bytes(data)
+        if path in {PANEL + "/validacao", PANEL + "/webhooks"} and method == "GET":
+            return await reply(200, json.dumps({"url": ORIGIN + path, "metodo": "POST", "login_necessario": False}).encode(), "application/json")
         if path == PANEL + "/validacao" and method == "POST":
             try:
                 result = self.health(json.loads(await body()))
@@ -319,11 +325,9 @@ class ProductionAdmin:
                 return await reply(*result)
             except Exception:
                 return await reply(503, b'{"erro":"confirmacao_indisponivel"}', "application/json")
-        cookie = headers.get(b"cookie", "")
-        if not await asyncio.to_thread(self.admin_check, cookie):
-            return await reply(403, b"Acesso exclusivo para administradores autenticados.")
-        if path == PANEL and method == "GET":
-            return await reply(200, self.panel(cookie))
+        if method == "GET" and (path in {PANEL, PANEL + "/autorizar"} or (path == PANEL + "/retorno" and not scope.get("query_string"))):
+            new_cookie = None if cookie else secrets.token_hex(32)
+            return await reply(200, self.panel(cookie or new_cookie), new_cookie=new_cookie)
         if path == PANEL + "/checkout" and method == "GET":
             return await reply(200, self.preview())
         prefix = PANEL + "/checkout/"
@@ -341,8 +345,8 @@ class ProductionAdmin:
         if path == PANEL + "/retorno" and method == "GET":
             query = urllib.parse.parse_qs(scope.get("query_string", b"").decode())
             state = self.state()
-            if state.get("cookie_hash") != hashlib.sha256(cookie.encode()).hexdigest():
-                return await reply(403, b"Volte pelo navegador que iniciou a instalacao.")
+            if not cookie or state.get("cookie_hash") != hashlib.sha256(cookie.encode()).hexdigest():
+                return await reply(200, self.panel(cookie, "Volte pelo navegador que iniciou a instalação na Appmax."))
             try:
                 await asyncio.to_thread(self.finish, query.get("token", [None])[0])
                 return await reply(303, location=PANEL)
@@ -351,7 +355,7 @@ class ProductionAdmin:
                 return await reply(200, self.panel(cookie, message))
         if path == PANEL + "/autorizar" and method == "POST":
             form = {k: v[0] for k, v in urllib.parse.parse_qs((await body()).decode()).items()}
-            if headers.get(b"origin") != ORIGIN or not self.valid_csrf(cookie, form.get("csrf", "")):
+            if not cookie or headers.get(b"origin") != ORIGIN or not self.valid_csrf(cookie, form.get("csrf", "")):
                 return await reply(403, b"Abra novamente a tela de instalacao.")
             try:
                 location = await asyncio.to_thread(self.begin, form, cookie)

@@ -23,7 +23,9 @@ class ProductionPreviewTests(unittest.TestCase):
         self.fallback_calls = []
         async def fallback(scope, receive, send):
             self.fallback_calls.append(scope['path'])
-        self.app = module.ProductionAdmin(fallback, Path(__file__).with_name('assets'), self.root, admin_check=lambda cookie: cookie == 'admin-session', api_call=self.provider)
+        self.app = module.ProductionAdmin(fallback, Path(__file__).with_name('assets'), self.root, api_call=self.provider)
+        self.nonce = 'a' * 64
+        self.cookie = module.FLOW_COOKIE + '=' + self.nonce
 
     def tearDown(self):
         self.temp.cleanup()
@@ -41,29 +43,35 @@ class ProductionPreviewTests(unittest.TestCase):
             return {'data': {'parcels': {}}}
         raise AssertionError('Unexpected provider operation')
 
-    def request(self, path, *, cookie='', method='GET', body=b'', origin=''):
+    def request(self, path, *, cookie='', method='GET', body=b'', origin='', query=b''):
         result = []
         async def receive():
             return {'type': 'http.request', 'body': body}
         async def send(message):
             result.append(message)
         headers = [(b'cookie', cookie.encode()), (b'origin', origin.encode())]
-        asyncio.run(self.app({'type': 'http', 'path': path, 'method': method, 'headers': headers}, receive, send))
+        asyncio.run(self.app({'type': 'http', 'path': path, 'method': method, 'headers': headers, 'query_string': query}, receive, send))
         return result
 
-    def test_visitors_cannot_read_panel_preview_or_assets(self):
-        for suffix in ('', '/checkout', '/assets/checkout.css', '/autorizar'):
+    def test_all_published_urls_open_without_login(self):
+        self.assertNotIn('/admin/', module.PANEL)
+        for suffix in ('', '/checkout', '/assets/checkout.css', '/autorizar', '/retorno', '/validacao', '/webhooks'):
             result = self.request(module.PANEL + suffix)
-            self.assertEqual(result[0]['status'], 403)
+            self.assertEqual(result[0]['status'], 200, suffix)
+            self.assertNotIn(b'/login', result[1]['body'])
         self.assertFalse(self.calls)
 
-    def test_admin_panel_has_existing_ids_and_no_secrets(self):
-        result = self.request(module.PANEL, cookie='admin-session')
+    def test_public_panel_has_existing_ids_and_no_secrets(self):
+        result = self.request(module.PANEL)
         self.assertEqual(result[0]['status'], 200)
         page = result[1]['body'].decode()
         self.assertIn('c682b36a-7687-402f-a94d-7e87f31adaba', page)
         self.assertNotIn('private-application-key', page)
         self.assertIn('R$ 27,00', page)
+        self.assertNotIn('/admin/', page)
+        response_cookie = dict(result[0]['headers'])[b'set-cookie'].decode()
+        self.assertTrue(module.flow_cookie(response_cookie))
+        self.assertIn('Secure; HttpOnly; SameSite=Lax', response_cookie)
 
     def test_preview_cannot_submit_personal_or_card_data(self):
         page = self.app.preview().decode()
@@ -76,17 +84,17 @@ class ProductionPreviewTests(unittest.TestCase):
 
     def test_order_and_payment_creation_blocked_before_provider(self):
         for operation in ('/api/sessoes/11111111-1111-4111-8111-111111111111/pedido', '/api/pedidos/22222222-2222-4222-8222-222222222222/cartao'):
-            result = self.request(module.PANEL + '/checkout' + operation, cookie='admin-session', method='POST')
+            result = self.request(module.PANEL + '/checkout' + operation, method='POST')
             self.assertEqual(result[0]['status'], 409)
         self.assertFalse(self.calls)
 
-    def test_authorization_requires_current_admin_csrf_and_origin(self):
-        result = self.request(module.PANEL + '/autorizar', cookie='admin-session', method='POST', body=b'csrf=invalid', origin=module.ORIGIN)
+    def test_authorization_retains_form_integrity_without_site_login(self):
+        result = self.request(module.PANEL + '/autorizar', cookie=self.cookie, method='POST', body=b'csrf=invalid', origin=module.ORIGIN)
         self.assertEqual(result[0]['status'], 403)
         self.assertFalse(self.calls)
 
     def test_installation_preserves_pair_and_reuses_it(self):
-        self.app.begin({'app_uuid': 'c682b36a-7687-402f-a94d-7e87f31adaba', 'app_id': '1888'}, 'admin-session')
+        self.app.begin({}, self.nonce)
         self.app.finish('singleuseticket')
         self.assertEqual(self.app.state()['status'], 'preparada')
         self.assertEqual(self.app.state()['merchant']['client_secret'], 'private-merchant-key')
@@ -94,6 +102,30 @@ class ProductionPreviewTests(unittest.TestCase):
         self.assertEqual(self.calls.count(module.API + '/app/client/generate'), 1)
         self.assertEqual(self.calls.count(module.API + '/app/authorize'), 1)
         self.assertIn('private-merchant-key', (self.root / 'env/pagamentos.env').read_text())
+        page = self.request(module.PANEL)[1]['body']
+        self.assertNotIn(b'private-merchant-key', page)
+        self.assertNotIn(b'merchant-key', page)
+
+    def test_public_authorization_form_uses_only_existing_application(self):
+        import urllib.parse
+        data = urllib.parse.urlencode({'csrf': self.app.csrf(self.nonce), 'app_uuid': 'unrelated-application', 'app_id': '9999'}).encode()
+        result = self.request(module.PANEL + '/autorizar', cookie=self.cookie, method='POST', body=data, origin=module.ORIGIN)
+        self.assertEqual(result[0]['status'], 303)
+        self.assertEqual(self.app.state()['app_id'], '1888')
+        self.assertEqual(self.app.state()['app_uuid'], 'c682b36a-7687-402f-a94d-7e87f31adaba')
+
+    def test_old_links_redirect_without_login_and_preserve_callback(self):
+        result = self.request(module.OLD_PANEL + '/validacao', method='POST')
+        self.assertEqual(result[0]['status'], 307)
+        self.assertEqual(dict(result[0]['headers'])[b'location'], (module.PANEL + '/validacao').encode())
+
+    def test_callback_without_origin_browser_cannot_generate_credentials(self):
+        self.app.begin({}, self.nonce)
+        self.calls.clear()
+        result = self.request(module.PANEL + '/retorno', query=b'token=singleuseticket')
+        self.assertEqual(result[0]['status'], 200)
+        self.assertFalse(self.calls)
+        self.assertNotIn(b'singleuseticket', result[1]['body'])
 
     def test_health_cannot_change_installation_without_active_generation(self):
         result = self.request(module.PANEL + '/validacao', method='POST', body=b'{"app_id":1888}')

@@ -1,4 +1,4 @@
-"""Install the administrator preview without changing the frozen application.
+"""Install the public Appmax preview without changing the frozen application.
 
 Run the reviewed source directory on the hosting console. Backup and rollback
 reuse the already deployed checkout procedure. Existing databases are never
@@ -15,6 +15,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 import urllib.error
 import urllib.parse
@@ -25,7 +26,7 @@ TASK = ROOT / 'appmax-clones/checkout-roblox-20261009'
 WEB = 'meshcraft-checkout-appmax-roblox-20261009'
 PG = 'meshcraft-appmax-roblox-sandbox-postgres-20261009'
 NETWORK = 'meshcraft-appmax-roblox-sandbox-20261009'
-PANEL = 'https://meshcraft.top/checkout/curso-primeiros-passos-no-blender/admin/producao'
+PANEL = 'https://meshcraft.top/checkout/curso-primeiros-passos-no-blender/producao'
 BLOCK = '\nif os.environ.get("APPMAX_PRODUCTION_CHILD") != "1":\n    from production_admin import wrap\n    application = wrap(application, Path(__file__).resolve().parent / "assets")\n'
 
 
@@ -67,10 +68,18 @@ def main(source):
     backup = TASK / 'backups-producao-admin' / stamp
     server = TASK / 'servico/server.py'
     before = server.read_bytes()
-    backup_module.complete_backup(backup, approved, {'server.py': before})
+    originals = {name: (TASK/'servico'/name).read_bytes() for name in ('server.py', 'production_admin.py', 'production_runtime.py') if (TASK/'servico'/name).exists()}
+    backup_module.complete_backup(backup, approved, originals)
+    production = TASK / 'producao'
+    if production.exists():
+        descriptor = os.open(backup/'producao-isolada.privado.tar.gz', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
+            with tarfile.open(fileobj=stream, mode='w:gz') as archive:
+                archive.add(production, arcname='producao')
+        for name in ('checkout', 'pagamentos'):
+            backup_module.backup_database(production/'env'/(name+'.env'), PG, backup/('producao-'+name+'.dump'), clone=True)
     private(backup / 'container-antes.privado.json', json.dumps(old).encode())
     print(json.dumps({'etapa': 'backup_completo_conferido'}), flush=True)
-    production = TASK / 'producao'
     production.mkdir(mode=0o700, exist_ok=True)
     env_dir = production / 'env'
     env_dir.mkdir(mode=0o700, exist_ok=True)
@@ -114,22 +123,22 @@ def main(source):
         run(['docker', 'run', '-d', '--name', redis_name, '--network', NETWORK, '--network-alias', 'redis-producao', '--restart', 'unless-stopped', '--mount', 'type=volume,source=meshcraft-appmax-producao-redis-20261012,target=/data', 'redis:7', 'redis-server', '--appendonly', 'yes'])
     else:
         run(['docker', 'start', redis_name])
-    for name in ('production_admin.py', 'production_runtime.py'):
-        destination = TASK / 'servico' / name
-        if destination.exists():
-            private(backup / ('antes-' + name), destination.read_bytes())
-        shutil.copyfile(source / 'services/checkout_appmax' / name, destination)
     updated = before.decode()
     if 'from production_admin import wrap' not in updated:
         updated += BLOCK
-    replacement = server.with_name('server.preparando-' + stamp + '.py')
-    replacement.write_text(updated)
-    os.replace(replacement, server)
     bootstrap = production / ('bootstrap-' + stamp + '.privado.env')
     private(bootstrap, ('\n'.join(old['Config']['Env']) + '\n').encode())
     previous_name = WEB + '-antes-' + stamp
     replacement_started = False
     try:
+        for name in ('production_admin.py', 'production_runtime.py'):
+            destination = TASK / 'servico' / name
+            replacement = destination.with_name(name + '.preparando-' + stamp)
+            shutil.copyfile(source / 'services/checkout_appmax' / name, replacement)
+            os.replace(replacement, destination)
+        replacement = server.with_name('server.preparando-' + stamp + '.py')
+        replacement.write_text(updated)
+        os.replace(replacement, server)
         run(['docker', 'stop', WEB])
         run(['docker', 'rename', WEB, previous_name])
         first = next(n for n in old['NetworkSettings']['Networks'] if n != 'edge')
@@ -138,7 +147,8 @@ def main(source):
             if mount['Type'] != 'bind':
                 raise RuntimeError('Montagem da copia nao reconhecida')
             command += ['--mount', 'type=bind,src=' + mount['Source'] + ',dst=' + mount['Destination'] + ('' if mount['RW'] else ',readonly')]
-        command += ['--mount', 'type=bind,src=' + str(production) + ',dst=/appmax-producao']
+        if not any(mount['Destination'] == '/appmax-producao' for mount in old['Mounts']):
+            command += ['--mount', 'type=bind,src=' + str(production) + ',dst=/appmax-producao']
         for port, bindings in (old['HostConfig'].get('PortBindings') or {}).items():
             for binding in bindings or []:
                 command += ['-p', (binding.get('HostIp') or '127.0.0.1') + ':' + binding['HostPort'] + ':' + port]
@@ -153,20 +163,22 @@ def main(source):
             try:
                 public_status, public_body = http('https://meshcraft.top/checkout/curso-primeiros-passos-no-blender')
                 admin_status, admin_body = http(PANEL)
-                if public_status == 200 and b'scripts.sandboxappmax.com.br' in public_body and admin_status == 403:
+                urls = [http(PANEL + suffix)[0] for suffix in ('/checkout', '/validacao', '/webhooks', '/retorno', '/autorizar')]
+                if public_status == 200 and b'scripts.sandboxappmax.com.br' in public_body and admin_status == 200 and all(value == 200 for value in urls) and b'/admin/' not in admin_body:
                     good = True
                     break
             except Exception:
                 pass
             time.sleep(1)
         if not good:
-            raise RuntimeError('A previa exclusiva de administradores nao foi comprovada')
+            raise RuntimeError('As URLs publicas sem login nao foram comprovadas')
         backup_module.prove_frozen(checker, policy)
         if http('https://meshcraft.top/')[0] != 200:
             raise RuntimeError('O site principal nao respondeu')
-        print(json.dumps({'etapa': 'previa_instalada', 'url': PANEL, 'publico': 'sandbox_preservado', 'visitante_http': 403, 'mercadopago': 'conferido', 'cobrancas': 0, 'backup': str(backup)}), flush=True)
+        print(json.dumps({'etapa': 'previa_instalada', 'url': PANEL, 'publico': 'sandbox_preservado', 'visitante_http': 200, 'login_necessario': False, 'mercadopago': 'conferido', 'cobrancas': 0, 'backup': str(backup)}), flush=True)
     except Exception:
-        server.write_bytes(before)
+        for name, content in originals.items():
+            (TASK/'servico'/name).write_bytes(content)
         if replacement_started:
             run(['docker', 'stop', WEB])
             run(['docker', 'rename', WEB, WEB + '-falhou-' + stamp])
