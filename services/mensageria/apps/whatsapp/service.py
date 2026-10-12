@@ -45,7 +45,7 @@ def normalizar_telefone(valor: str) -> str:
     numero = re.sub(r"\D", "", valor or "")
     if numero.startswith("00"):
         numero = numero[2:]
-    if len(numero) in (10, 11):
+    elif not str(valor or "").strip().startswith("+") and len(numero) in (10, 11):
         numero = "55" + numero
     if not 10 <= len(numero) <= 15 or numero.startswith("0"):
         raise ValueError("telefone invalido; informe DDI e numero")

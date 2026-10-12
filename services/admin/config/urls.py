@@ -97,6 +97,7 @@ from apps.core.links_rastreados import (
     destinos_rastreados_novo, destinos_rastreados_versao,
 )
 from apps.core.crm_conversas import crm_conversa, crm_conversas
+from apps.core.crm_whatsapp import conversa as crm_whatsapp, javascript as crm_whatsapp_javascript
 from apps.core.crm_agentes import (
     crm_agentes,
     crm_agentes_analisar,
@@ -289,6 +290,8 @@ from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
+    path("crm/whatsapp/painel.js", crm_whatsapp_javascript, name="crm_whatsapp_javascript"),
+    path("crm/whatsapp/<uuid:lead_id>/", crm_whatsapp, name="crm_whatsapp"),
     path("trilha/", trilha_v4, name="trilha_v4"),
     path("trilha/style.css", trilha_v4_css, name="trilha_v4_css"),
     path("trilha/app.js", trilha_v4_js, name="trilha_v4_js"),

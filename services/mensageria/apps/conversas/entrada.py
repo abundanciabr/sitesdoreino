@@ -113,6 +113,11 @@ def receber(recebida: Recebida) -> tuple[MensagemDaConversa | None, bool]:
     existente = Conversa.objects.filter(
         site_id=recebida.site_id, canal=recebida.canal, endereco=recebida.endereco,
     ).first()
+    if existente is None and recebida.canal == "whatsapp":
+        variante = enderecos.variante_celular(recebida.endereco)
+        existente = Conversa.objects.filter(site_id=recebida.site_id, canal="whatsapp", endereco=variante).first() if variante else None
+        if existente:
+            recebida.endereco = existente.endereco
     if existente is not None and recebida.id_externo and existente.mensagens.filter(
         direcao="entrada", id_externo=recebida.id_externo,
     ).exists():

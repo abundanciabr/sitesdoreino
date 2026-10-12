@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .clients import CatalogoClient
 from .nps_client import NPSClient
+from .crm_whatsapp import contato_da_pesquisa
 
 
 FATOS_OPCOES = {
@@ -396,6 +397,7 @@ def crm_satisfacao(request):
                 params["aluno_id"] = aluno_id
             avaliacao["revisao_url"] = reverse("crm_satisfacao_gestao") + "?" + urlencode(params) + "#revisao"
     return render(request, "admin/crm_satisfacao.html", {
+        "contato_whatsapp": contato_da_pesquisa(site_id, next(iter((historico or {}).get("avaliacoes", [])), None)),
         "admin": request.admin,
         "secao": request.GET.get("secao", "completa"),
         "site_id": site_id,

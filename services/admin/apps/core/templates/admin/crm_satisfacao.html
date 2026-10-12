@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
 {% load nomes_admin %}
+{% load crm_whatsapp %}
 
 {% load crm_menu %}
 {% block titulo %}Satisfação | CRM{% endblock %}
@@ -8,6 +9,7 @@
   <a class="volta" href="{% url 'crm' %}">&larr; CRM</a>
   <h1>{% if secao == "configuracao" %}Configurar pesquisa{% elif secao == "atendimento" %}Atendimento do aluno{% else %}Histórico de satisfação{% endif %}</h1>
   <p class="subtitulo">Avaliações por aluno e curso, reclamações e acompanhamento da equipe.</p>
+  {% if secao != "configuracao" %}{% chamar_whatsapp contato_whatsapp.id contato_whatsapp.telefone contato_whatsapp.nome %}{% endif %}
   {% menu_do_crm %}
   <p><a href="{% url 'crm_satisfacao_respondentes' %}?site_id={{ site_id|urlencode }}">Ver todos os alunos que responderam à pesquisa</a></p>
   {% if erro %}<p class="aviso borda-vermelha" role="alert">{{ erro }}</p>{% endif %}
@@ -155,4 +157,5 @@
   {% endif %}
   {% endif %}
 </main>
+{% include 'admin/_whatsapp_painel.html' %}
 {% endblock %}

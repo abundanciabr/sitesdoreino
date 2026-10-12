@@ -99,6 +99,7 @@ def conversa_json(conversa: Conversa, descadastrados: set | None = None) -> dict
         "assumida_em": _data(conversa.assumida_em),
         "janela_aberta_ate": _data(conversa.janela_aberta_ate),
         "janela_aberta": envio.janela_aberta(conversa, agora),
+        "texto_livre_pessoa": envio.texto_livre_pessoa(conversa),
         "descadastrado": parou,
         # Por que não há oportunidade ligada (sem_origem_quiz, telefone_ambiguo, equipe_confirma) e
         # a orientação fixa que já saiu. Nunca carrega dado de lead.
@@ -244,6 +245,12 @@ def abrir_conversa(request, dados: AbrirEntrada):
         raise HttpError(422, "telefone ou e-mail invalido")
     if not dados.lead_id.strip():
         raise HttpError(422, "lead_id obrigatorio")
+    if dados.canal == "whatsapp" and not Conversa.objects.filter(
+            site_id=site_id, canal=dados.canal, endereco=endereco).exists():
+        variante = enderecos.variante_celular(endereco)
+        anterior = Conversa.objects.filter(site_id=site_id, canal=dados.canal, endereco=variante).first() if variante else None
+        if anterior:
+            endereco = anterior.endereco
     conversa, _ = Conversa.objects.get_or_create(
         site_id=site_id, canal=dados.canal, endereco=endereco,
         defaults={"lead_id": dados.lead_id.strip()[:64], "ligacao": "ligada"},

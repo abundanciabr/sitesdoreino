@@ -31,6 +31,15 @@ def chave_telefone(valor: str) -> str:
     return numero
 
 
+def variante_celular(numero: str) -> str:
+    """O provedor pode devolver o celular brasileiro sem o nono dígito."""
+    if numero.startswith("55") and len(numero) == 13 and numero[4] == "9" and numero[-8] in "6789":
+        return numero[:4] + numero[-8:]
+    if numero.startswith("55") and len(numero) == 12 and numero[-8] in "6789":
+        return numero[:4] + "9" + numero[-8:]
+    return ""
+
+
 def email(valor: str) -> str:
     _, endereco = parseaddr(valor or "")
     endereco = endereco.strip().lower()
