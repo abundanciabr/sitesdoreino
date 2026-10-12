@@ -2,18 +2,21 @@
 import hashlib
 import hmac
 import json
+import uuid
 
 from django.core.exceptions import RequestDataTooBig
 from django.db import DatabaseError, transaction
 from django.db.models import F
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart
+from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart, ProdutoHotmart, TesteHotmart
+from apps.hotmart.dados import extrair
+from apps.hotmart import operacao
 
 LIMITE = 1024 * 1024
 
@@ -90,18 +93,7 @@ def webhook(request):
 
 
 def resumo(registro):
-    dados = registro.dados.get('data', {})
-    comprador = dados.get('buyer') or dados.get('subscriber') or dados.get('user') or {}
-    produto = dados.get('product') or {}
-    compra = dados.get('purchase') or {}
-    comprador = comprador if isinstance(comprador, dict) else {}
-    produto = produto if isinstance(produto, dict) else {}
-    compra = compra if isinstance(compra, dict) else {}
-    return {'registro': registro, 'nome': comprador.get('name', ''),
-            'email': comprador.get('email', ''),
-            'telefone': comprador.get('phone') or comprador.get('checkout_phone', ''),
-            'codigo_telefone': comprador.get('checkout_phone_code', ''),
-            'produto': produto.get('name', ''), 'transacao': compra.get('transaction', '')}
+    return extrair(registro)
 
 
 @sensitive_post_parameters('hottok')
@@ -109,15 +101,68 @@ def resumo(registro):
 @require_http_methods(['GET', 'POST'])
 def painel(request):
     erro = ''
-    if request.method == 'POST':
+    site_id, cursos, erro_catalogo = '', [], ''
+    try:
+        site_id, cursos = operacao.contexto_do_site()
+    except ValueError as exc:
+        erro_catalogo = str(exc)
+    acao = request.POST.get('acao', 'hottok')
+    if request.method == 'POST' and acao == 'hottok':
         token = request.POST.get('hottok', '').strip()
         if not token or len(token) > 512:
             erro = 'Cole o Hottok da sua conta Hotmart.'
         else:
             ConfiguracaoHotmart.objects.update_or_create(pk=1, defaults={'hottok_sha256': impressao(token)})
             return redirect('hotmart_painel')
+    elif request.method == 'POST':
+        try:
+            if not site_id:
+                raise ValueError(erro_catalogo)
+            if acao == 'produto':
+                operacao.salvar_produto(site_id, cursos, request.POST)
+                return redirect('hotmart_painel')
+            elif acao == 'preparar':
+                registro = get_object_or_404(EventoHotmart, pk=request.POST.get('evento'))
+                teste = operacao.preparar_teste(site_id=site_id, cursos=cursos, registro=registro,
+                    dados=request.POST, admin=request.admin)
+                return redirect('hotmart_teste', teste_id=teste.pk)
+            else:
+                raise ValueError('Ação desconhecida. Nenhuma automação foi ativada.')
+        except ValueError as exc:
+            erro = str(exc)
     contexto = {'admin': request.admin, 'erro': erro,
+                'cursos': cursos, 'erro_catalogo': erro_catalogo, 'chave_teste': str(uuid.uuid4()),
+                'produtos': ProdutoHotmart.objects.filter(site_id=site_id).order_by('nome'),
+                'aprovacoes': EventoHotmart.objects.filter(evento='PURCHASE_APPROVED').order_by('-recebido_em')[:100],
+                'testes': TesteHotmart.objects.filter(site_id=site_id).order_by('-criado_em')[:20],
                 'configurada': ConfiguracaoHotmart.objects.filter(pk=1).exclude(hottok_sha256='').exists(),
                 'total': EventoHotmart.objects.count(),
                 'eventos': [resumo(e) for e in EventoHotmart.objects.order_by('-ultimo_recebimento')[:100]]}
     return render(request, 'admin/hotmart.html', contexto)
+
+
+@require_http_methods(['GET', 'POST'])
+def teste_administrativo(request, teste_id):
+    teste = get_object_or_404(TesteHotmart, pk=teste_id)
+    erro, mensagens = '', None
+    if request.method == 'POST':
+        try:
+            if request.POST.get('acao') != 'executar':
+                raise ValueError('Ação desconhecida.')
+            teste = operacao.executar_teste(teste, request.admin)
+            return redirect('hotmart_teste', teste_id=teste.pk)
+        except ValueError as exc:
+            erro = str(exc)
+    try:
+        mensagens = operacao.consultar_mensagens(teste)
+    except ValueError as exc:
+        erro = str(exc)
+    estados = {'pendente': 'Aguardando envio', 'enviado': 'Aceito pelo serviço de envio',
+               'aceito': 'Aceito pelo WhatsApp', 'entregue': 'Entrega confirmada', 'lido': 'Leitura confirmada',
+               'falhou': 'Falha no envio', 'desconhecido': 'Resultado ainda não confirmado'}
+    itens = (mensagens or teste.resultado.get('mensagens') or {}).get('envios', [])
+    for item in itens:
+        item['rotulo'] = estados.get(item.get('estado'), 'Aguardando confirmação')
+    return render(request, 'admin/hotmart_teste.html', {'admin': request.admin, 'teste': teste,
+        'erro': erro, 'envios': itens, 'pode_executar': not request.admin.get('robo') and
+        str(request.admin.get('email') or '').lower() == teste.administrador})

@@ -2,10 +2,68 @@
 {% block titulo %}Hotmart{% endblock %}
 {% block corpo %}
 <div class="envolucro">
-  <h1>Hotmart · dados recebidos</h1>
-  <p>Recebimento e armazenamento dos eventos. Nenhum acesso ou mensagem é enviado nesta etapa.</p>
+  <h1>Hotmart · cursos e recebimentos</h1>
+  <p><strong>Modo administrativo · automação para alunos desligada.</strong></p>
+  <p>As compras continuam sendo recebidas e guardadas. Prepare as associações e teste o acesso e as mensagens na sua própria conta.</p>
+  {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+  {% if erro_catalogo %}<p role="alert">{{ erro_catalogo }}</p>{% endif %}
   <div class="cartao">
-    <h2>Conectar a Hotmart</h2>
+    <h2>1. Associar produtos Hotmart aos cursos</h2>
+    <p>Use o ID real do produto na Hotmart. Salvar uma associação deixa a automação preparada; a ativação para alunos permanece desligada.</p>
+    {% for produto in produtos %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="produto">
+      <input type="hidden" name="produto_hotmart" value="{{ produto.produto_hotmart }}">
+      <p><strong>Hotmart {{ produto.produto_hotmart }}</strong> · {{ produto.nome }}</p>
+      <label>Nome do produto <input name="nome" value="{{ produto.nome }}" maxlength="200" required></label>
+      <label>Curso <select name="curso_slug" required>
+        {% for curso in cursos %}<option value="{{ curso.slug }}" {% if curso.slug == produto.curso_slug %}selected{% endif %}>{{ curso.nome }}</option>{% endfor %}
+      </select></label>
+      <button type="submit">Salvar associação</button>
+    </form>
+    {% empty %}<p>Nenhuma associação cadastrada. Os produtos fictícios do teste não foram associados automaticamente.</p>{% endfor %}
+    {% if cursos %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="produto">
+      <p><label>ID do produto na Hotmart <input name="produto_hotmart" inputmode="numeric" pattern="[0-9]+" maxlength="30" required></label></p>
+      <p><label>Nome do produto Hotmart <input name="nome" maxlength="200" required></label></p>
+      <p><label>Curso que será liberado <select name="curso_slug" required>
+        <option value="">Escolha o curso</option>
+        {% for curso in cursos %}<option value="{{ curso.slug }}">{{ curso.nome }} · {{ curso.estado }}</option>{% endfor %}
+      </select></label></p>
+      <button type="submit">Salvar associação em preparação</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="cartao">
+    <h2>2. Preparar teste administrativo</h2>
+    <p>Escolha uma compra aprovada recebida. Você verá a mensagem e os destinatários antes de executar. O teste usa seu e-mail de administrador e não envia nada ao comprador do evento.</p>
+    <p>Os eventos fictícios da Hotmart também servem para o ensaio: escolha um curso abaixo, sem precisar associar o produto de teste a uma oferta real.</p>
+    {% if cursos and aprovacoes %}
+    <form method="post">
+      {% csrf_token %}<input type="hidden" name="acao" value="preparar">
+      <input type="hidden" name="chave" value="{{ chave_teste }}">
+      <p><label>Compra aprovada <select name="evento" required>
+        {% for evento in aprovacoes %}<option value="{{ evento.pk }}">{{ evento.recebido_em|date:"d/m/Y H:i" }} · {{ evento.evento_id }}</option>{% endfor %}
+      </select></label></p>
+      <p><label>Curso para o ensaio <select name="curso_slug">
+        <option value="">Usar a associação do produto Hotmart</option>
+        {% for curso in cursos %}<option value="{{ curso.slug }}">{{ curso.nome }}</option>{% endfor %}
+      </select></label></p>
+      <p><strong>E-mail do teste:</strong> {{ admin.email }}</p>
+      <p><label><input type="checkbox" name="email" value="sim" checked> Testar e-mail</label></p>
+      <p><label><input type="checkbox" name="whatsapp" value="sim"> Testar WhatsApp</label></p>
+      <p><label>Seu WhatsApp, com DDI e DDD <input name="telefone" type="tel" placeholder="+55 DDD número" maxlength="30"></label></p>
+      <p><label><input type="checkbox" name="telefone_proprio" value="sim"> O número informado é meu e quero usá-lo no teste administrativo.</label></p>
+      <button type="submit">Preparar prévia do teste</button>
+    </form>
+    {% else %}<p>O ensaio fica disponível quando houver um curso associado ao catálogo e uma compra aprovada recebida.</p>{% endif %}
+    <h3>Testes preparados</h3>
+    {% for teste in testes %}<p><a href="{% url 'hotmart_teste' teste_id=teste.pk %}">{{ teste.criado_em|date:"d/m/Y H:i" }} · {{ teste.plano.curso_nome }} · {{ teste.administrador }}</a></p>
+    {% empty %}<p>Nenhum teste preparado.</p>{% endfor %}
+  </div>
+  <div class="cartao">
+    <h2>3. Conexão com a Hotmart</h2>
     <p>URL do webhook: <code>https://meshcraft.top/api/hotmart/webhooks</code></p>
     <p>Na Hotmart, cadastre essa URL na versão <strong>2.0.0</strong> com os 15 eventos escolhidos.</p>
     <p><strong>Compras:</strong> cancelada, completa, aguardando pagamento, aprovada, reembolsada, chargeback, expirada, pedido de reembolso e atrasada.<br>
@@ -13,9 +71,9 @@
        <strong>Club:</strong> primeiro acesso e módulo completo.<br>
        <strong>Outros:</strong> abandono de carrinho.</p>
     <p>Autenticação: <strong>{% if configurada %}Hottok cadastrado{% else %}Aguardando Hottok{% endif %}</strong>.</p>
-    {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
     <form method="post">
       {% csrf_token %}
+      <input type="hidden" name="acao" value="hottok">
       <p><label for="hottok">Hottok (Hotmart → Ferramentas → Webhook → Autenticação)</label></p>
       <input id="hottok" name="hottok" type="password" autocomplete="new-password" maxlength="512" required>
       <button type="submit">Salvar Hottok</button>

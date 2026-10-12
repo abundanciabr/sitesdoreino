@@ -5,6 +5,7 @@ from apps.core.views import healthz
 from apps.eventos.webhooks import webhook_email
 from apps.whatsapp.views import webhook_whatsapp, webhook_whatsapp_cloud
 from config.api import api
+from apps.eventos.hotmart import testes as hotmart_testes
 
 # A `mensageria` não serve página nenhuma: não há `SCRIPT_NAME`, não há rota no
 # Traefik e não há template. As duas rotas abaixo são tudo que esta célula
@@ -20,6 +21,8 @@ from config.api import api
 # é o Bearer, em dois graus (`apps/core/auth.py`). O endereço escolhido e o
 # motivo estão em `config/api.py`; congelá-lo é o degrau 6d, PR à parte.
 urlpatterns = [
+    path("api/mensageria/hotmart/testes", hotmart_testes),
+    path("api/mensageria/hotmart/testes/<uuid:chave>", hotmart_testes),
     path("healthz", healthz),
     path("webhooks/email", webhook_email),
     path("webhooks/whatsapp", webhook_whatsapp),
