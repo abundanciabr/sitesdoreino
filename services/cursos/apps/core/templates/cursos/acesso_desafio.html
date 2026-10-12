@@ -14,17 +14,13 @@ a{color:inherit}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
 svg{display:block}
 .topo{position:sticky;top:0;z-index:5;height:78px;background:#000;border-bottom:1px solid #2a2a2a;display:flex;align-items:center;padding:0 22px 0 32px;gap:30px}
-.topo h1{margin:0;font-size:19px;font-weight:500;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.topo .icones{display:flex;align-items:center;gap:30px}
-.sino{position:relative}
-.sino::after{content:"";position:absolute;top:-3px;right:-4px;width:9px;height:9px;border-radius:50%;background:#e5202b}
-.avatar{width:40px;height:40px;border-radius:50%;border:2px solid #3ccf6e;box-shadow:0 0 0 2px #000 inset;display:grid;place-items:center;background:#2b2b2b;color:#ddd}
+.topo h1{margin:0;font-size:19px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topo button{flex-shrink:0}
 .pagina{display:grid;grid-template-columns:minmax(0,1fr) min(35vw,550px);min-height:calc(100vh - 78px)}
 .pagina.sem-lateral{grid-template-columns:minmax(0,1fr) 0}
 .pagina.sem-lateral .lateral{display:none}
 .aula{padding:0 20px 60px 13px;min-width:0}
-.linha-voltar{display:flex;align-items:center;justify-content:space-between;padding:20px 0 30px}
-.voltar{display:flex;align-items:center;gap:16px;text-decoration:none;font-weight:700;font-size:15px}
+.linha-navegacao{display:flex;align-items:center;justify-content:flex-end;padding:20px 0 30px}
 .navegar{display:flex;gap:10px}
 .navegar span{width:45px;height:45px;border-radius:6px;background:#262626;display:grid;place-items:center;color:#8a8a8a}
 .trilha{font-size:14px;color:#e8e8e8;margin:0 0 4px}
@@ -46,7 +42,7 @@ svg{display:block}
 .comentarios h3 span{color:#9a9a9a;font-weight:400}
 .escrever{display:flex;gap:20px;align-items:flex-start}
 .bolinha{flex:0 0 60px;height:60px;border-radius:50%;background:#2b2b2b;display:grid;place-items:center;color:#ddd}
-.escrever textarea{flex:1;min-height:70px;resize:vertical;background:#1b1b1b;border:1px solid #3a3a3a;border-radius:4px;color:#fff;font:inherit;font-size:19px;padding:20px 16px}
+.escrever textarea{flex:1;min-width:0;min-height:70px;resize:vertical;background:#1b1b1b;border:1px solid #3a3a3a;border-radius:4px;color:#fff;font:inherit;font-size:19px;padding:20px 16px}
 .escrever textarea::placeholder{color:#9a9a9a}
 .aviso-comentario{margin:10px 0 0 80px;color:#bbb;font-size:15px}
 .vazio{text-align:center;padding:20px 0 40px}
@@ -64,24 +60,23 @@ svg{display:block}
 .modulo{display:flex;align-items:center;gap:20px;padding:0 24px 0 30px;margin-bottom:22px;width:100%;text-align:left}
 .modulo .numero{flex:0 0 50px;height:50px;border-radius:50%;background:#262626;display:grid;place-items:center;font-size:18px}
 .modulo .info{flex:1;min-width:0}
-.modulo .nome{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.modulo .nome{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .modulo .progresso{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;margin-top:4px}
-.modulo .barra{width:168px;height:4px;border-radius:2px;background:#444;overflow:hidden}
+.modulo .barra{width:168px;min-width:0;height:4px;border-radius:2px;background:#444;overflow:hidden}
 .modulo .barra i{display:block;height:100%;width:0;background:#3ccf6e}
-.modulo .seta{transition:transform .2s}
+.modulo .seta{flex-shrink:0;transition:transform .2s}
 .modulo[aria-expanded=false] .seta{transform:rotate(180deg)}
 .aulas{margin:0 16px;padding-bottom:76px;border-bottom:1px solid #333}
 .item{display:flex;align-items:center;gap:12px;background:#262626;border-radius:8px;padding:14px}
 .miniatura{position:relative;flex:0 0 152px;height:86px;border-radius:4px;overflow:hidden;background:linear-gradient(135deg,#0b1a2b 0%,#163a5c 45%,#d83a2e 100%)}
 .miniatura em{position:absolute;left:8px;top:6px;font-style:normal;font-size:8px;font-weight:800;letter-spacing:.5px;color:#fff;opacity:.85;line-height:1.2}
 .miniatura span{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:14px}
-.item .nome-aula{flex:1;font-size:18px}
-.item .check{color:#ddd}
+.item .nome-aula{flex:1;min-width:0;font-size:18px;overflow-wrap:anywhere}
+.item .check{flex-shrink:0;color:#ddd}
 .item.feita .check{color:#3ccf6e}
 .nada{color:#9a9a9a;padding:14px;font-size:15px}
 @media (max-width:900px){
   .topo{padding:0 14px;gap:16px}
-  .topo .icones{gap:18px}
   .pagina,.pagina.sem-lateral{grid-template-columns:1fr}
   .lateral{border-left:0;border-top:1px solid #2a2a2a}
   .pagina.sem-lateral .lateral{display:none}
@@ -103,26 +98,11 @@ svg{display:block}
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
   </button>
   <h1>{{ nome }}</h1>
-  <div class="icones">
-    <button type="button" id="ir-para-busca" aria-label="Buscar conteúdo">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-    </button>
-    <span class="sino" aria-hidden="true">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-    </span>
-    <span class="avatar" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg>
-    </span>
-  </div>
 </header>
 
 <div class="pagina" id="pagina">
   <main class="aula">
-    <div class="linha-voltar">
-      <a class="voltar" href="{% url 'curso' curso %}">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12H4M10 6l-6 6 6 6"/></svg>
-        Voltar
-      </a>
+    <div class="linha-navegacao">
       <div class="navegar" aria-hidden="true">
         <span><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2.5v14H6zM19 5v14L9 12z"/></svg></span>
         <span><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 5H18v14h-2.5zM5 5l10 7-10 7z"/></svg></span>
@@ -233,10 +213,6 @@ svg{display:block}
   var pagina = document.getElementById("pagina");
   document.getElementById("abrir-lateral").onclick = function () { pagina.classList.toggle("sem-lateral"); };
   document.getElementById("fechar-lateral").onclick = function () { pagina.classList.add("sem-lateral"); };
-  document.getElementById("ir-para-busca").onclick = function () {
-    pagina.classList.remove("sem-lateral");
-    document.getElementById("busca").focus();
-  };
 
   var estrelas = document.querySelectorAll("#estrelas button");
   function pintar(nota) {
