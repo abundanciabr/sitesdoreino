@@ -6,8 +6,39 @@ from pathlib import Path
 import re
 import subprocess
 
-from armazenamento_codigo import digest, image_archive, new_json, locked, sync_dir
+from armazenamento_codigo import digest, image_archive, new_json, locked, sync_dir, regular
 from ensaio_entregas import _imagem_id_tar
+
+IMAGENS_PRESERVADAS = Path('/opt/plataforma/backups-de-codigo/.reuso-v1')
+
+
+def adotar_imagem_preservada(identity, store):
+    """Reaproveita o acervo anterior por hardlink, sem reescrever seus arquivos."""
+    source = IMAGENS_PRESERVADAS/('imagem-'+identity[7:]+'.tar')
+    meta = source.with_suffix('.json')
+    if not source.exists() and not meta.exists():
+        return
+    if not regular(source) or not regular(meta):
+        raise ValueError('imagem preservada irregular')
+    record = json.loads(meta.read_text())
+    if (record.get('imagem') != identity or record.get('bytes') != source.stat().st_size
+            or record.get('sha256') != digest(source) or _imagem_id_tar(source) != identity):
+        raise ValueError('imagem preservada divergente')
+    with locked(store) as root:
+        images = root/'imagens'
+        images.mkdir(mode=0o700, exist_ok=True)
+        target = images/(identity[7:]+'.tar')
+        if target.exists() or target.is_symlink():
+            return  # image_archive confere o objeto existente antes de usá-lo.
+        expected = {'image_id': identity, 'sha256': record['sha256'], 'size': record['bytes']}
+        target_meta = target.with_suffix('.json')
+        if target_meta.exists():
+            if not regular(target_meta) or json.loads(target_meta.read_text()) != expected:
+                raise ValueError('manifesto de imagem divergente')
+        else:
+            new_json(target_meta, expected)
+        os.link(source, target)
+        sync_dir(images)
 
 
 def docker(*args):
@@ -22,6 +53,7 @@ def backup_image(reference, destination, store):
     if reference.startswith("sha256:") and identity != reference:
         raise ValueError("imagem aprovada divergente")
     destination = Path(destination)
+    adotar_imagem_preservada(identity, store)
     result = image_archive(store, identity, destination, _imagem_id_tar)
     # A tag não identifica o conteúdo. Guardá-la separadamente permite
     # reconstruir o nome original mesmo se outra tag reutilizar o mesmo ID.

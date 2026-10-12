@@ -62,3 +62,24 @@ def test_imagem_divergente_nao_e_compartilhada(tmp_path, monkeypatch):
     with pytest.raises(ValueError):
         b.backup_image('app:teste', tmp_path/'a.tar', tmp_path/'store')
     assert not (tmp_path/'a.tar').exists()
+
+
+def test_acervo_anterior_e_reusado_sem_exportar_ou_alterar_backup(tmp_path, monkeypatch):
+    legacy = tmp_path/'anterior'
+    legacy.mkdir()
+    source = legacy/'source.tar'
+    identity = imagem(source)
+    source = source.rename(legacy/('imagem-'+identity[7:]+'.tar'))
+    source.with_suffix('.json').write_text(json.dumps({'imagem': identity,
+        'sha256': storage.digest(source), 'bytes': source.stat().st_size}))
+    monkeypatch.setattr(b, 'IMAGENS_PRESERVADAS', legacy)
+    monkeypatch.setattr(b, 'docker', lambda *args: identity)
+    def nao_exportar(*args, **kwargs):
+        raise AssertionError('A imagem já preservada não deve ser exportada novamente')
+    monkeypatch.setattr(storage.subprocess, 'run', nao_exportar)
+    before = source.stat()
+    result = b.backup_image(identity, tmp_path/'nova.tar', tmp_path/'store')
+    assert result['reused'] and result['new_bytes'] == 0
+    assert os.path.samefile(source, tmp_path/'nova.tar')
+    assert source.stat().st_mtime_ns == before.st_mtime_ns
+    assert source.stat().st_mode == before.st_mode
