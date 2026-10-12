@@ -415,6 +415,9 @@ def backup(release: Path, inv: dict) -> Path:
     if not images:
         raise RuntimeError('journals não indicam imagem para backup')
     image_proof = {}
+    image_reuse = {}
+    sys.path.insert(0, str(release / 'infra'))
+    from backup_imagens import backup_image
     for number, image in enumerate(sorted(images), 1):
         identity = run('docker', 'image', 'inspect', '--format', '{{.Id}}', image, timeout=120).stdout.strip()
         if not re.fullmatch(r'sha256:[0-9a-f]{64}', identity):
@@ -422,8 +425,7 @@ def backup(release: Path, inv: dict) -> Path:
         if image.startswith('sha256:') and identity != image:
             raise RuntimeError('imagem aprovada não corresponde ao Docker')
         image_path = dest / f'imagem-{number}.tar'
-        run('docker', 'save', '-o', str(image_path), image, timeout=3600)
-        os.chmod(image_path, 0o600)
+        image_reuse[image] = backup_image(image, image_path, ROOT / 'objetos-imagens-manutencao')
         if not tarfile.is_tarfile(image_path):
             raise RuntimeError('imagem de backup inválida')
         with tarfile.open(image_path) as archive:
@@ -443,6 +445,7 @@ def backup(release: Path, inv: dict) -> Path:
                     raise RuntimeError('identidade da imagem salva diverge')
         image_proof[image] = digest(image_path)
     proof = {'arquivo_sha256': digest(dest / 'estado-antes.tar.gz'), 'imagens': image_proof,
+             'reaproveitamento_imagens': image_reuse,
              'dumps': {p.name: digest(p) for p in dumps}}
     (dest / 'prova.json').write_text(json.dumps(proof, sort_keys=True), encoding='utf-8')
     os.chmod(dest / 'prova.json', 0o600)

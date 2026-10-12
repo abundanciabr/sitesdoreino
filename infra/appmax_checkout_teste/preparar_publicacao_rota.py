@@ -91,7 +91,11 @@ def main():
         if len(archive.getmembers())<50:raise RuntimeError('Source backup incomplete')
     print(json.dumps({'etapa':'backup_codigo_e_configuracao_conferido'}),flush=True)
     image=backup/'imagem-aprovada.tar'
-    run_file(['docker','image','save',approved['imagem']],image)
+    import sys
+    helper = Path('/usr/local/lib/meshcraft-publicador/atual/infra')
+    sys.path.insert(0, str(helper if helper.is_dir() else Path(__file__).resolve().parents[1]))
+    from backup_imagens import backup_image
+    image_reuse = backup_image(approved['imagem'], image, ROOT/'objetos-imagens-manutencao')
     with tarfile.open(image) as archive:
         manifest=json.loads(archive.extractfile('manifest.json').read())
         config=archive.extractfile(manifest[0]['Config']).read()
@@ -179,6 +183,7 @@ def main():
     frozen.conferir_pacote(approved['codigo'],approved['imagem'],policy)
     proof={'backup_privado':str(backup),'codigo_original':approved['codigo'],'imagem':approved['imagem'],
         'codigo_configuracao_sha256':sha(archive_path),'imagem_backup_sha256':sha(image),'bancos':databases,
+        'image_reuse':image_reuse,
         'bancos_clone':clone_databases,
         'rota_anterior_arquivo_sha256':sha(ROUTES),'politica_anterior_sha256':sha(POLICY),
         'rota_candidata_arquivo_sha256':sha(candidate_path),'politica_candidata_sha256':sha(backup/'politica-candidata.json'),

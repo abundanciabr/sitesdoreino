@@ -309,6 +309,12 @@ def _pendencias(fontes: dict) -> list[str]:
                     pendentes.append(f"Serviço {nome}: atividade não confirmada na VPS.")
             if servidor.get("http_5xx_15m"):
                 pendentes.append("VPS: erros HTTP 5xx observados nos últimos 15 minutos.")
+            integrador = servidor.get("integrador") or {}
+            if integrador.get("repeticoes_identicas"):
+                pendentes.append("Integrador: novas combinações de conflitos com entradas idênticas foram observadas.")
+            livre, pico = servidor.get("disco_livre_mb"), servidor.get("pico_entre_coletas_mb")
+            if livre is not None and pico is not None and livre < pico:
+                pendentes.append("Disco: a folga atual é menor que um pico de crescimento já medido entre coletas.")
     return pendentes
 
 
