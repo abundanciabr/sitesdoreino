@@ -6,7 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_variables
 from django.views.decorators.http import require_POST
 
-DESTINO = 'https://meshcraft.top/admin/interno/hotmart/webhooks'
+# A célula funil alcança somente o Traefik privado; Host e SNI validam o TLS público.
+DESTINO = 'https://plataforma-traefik-1:443/admin/interno/hotmart/webhooks'
 LIMITE = 1024 * 1024
 
 
@@ -34,9 +35,12 @@ def webhook(request):
         if len(corpo) > LIMITE:
             return resposta({'erro': 'corpo_muito_grande'}, 413)
         # Destino fixo HTTPS, sem cookies, sem redirects e sem registrar o corpo.
-        r = httpx.post(DESTINO, content=corpo,
-                       headers={'Content-Type': 'application/json', 'X-Hotmart-Hottok': token},
-                       timeout=8.0, follow_redirects=False, trust_env=False)
+        requisicao = httpx.Request('POST', DESTINO, content=corpo,
+            headers={'Host': 'meshcraft.top', 'Content-Type': 'application/json',
+                     'X-Hotmart-Hottok': token},
+            extensions={'sni_hostname': 'meshcraft.top'})
+        with httpx.Client(timeout=8.0, follow_redirects=False, trust_env=False) as cliente:
+            r = cliente.send(requisicao)
         if r.status_code in (200, 400, 401, 413, 415, 503):
             return resposta(r.json(), r.status_code)
     except RequestDataTooBig:

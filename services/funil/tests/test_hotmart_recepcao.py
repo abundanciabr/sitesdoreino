@@ -23,6 +23,8 @@ def test_encaminha_corpo_intacto_e_preserva_status():
     assert r.status_code == 200
     assert destino.calls.last.request.content == b'{"id":"teste"}'
     assert destino.calls.last.request.headers['x-hotmart-hottok'] == 'teste'
+    assert destino.calls.last.request.headers['host'] == 'meshcraft.top'
+    assert destino.calls.last.request.extensions['sni_hostname'] == 'meshcraft.top'
     assert 'cookie' not in destino.calls.last.request.headers
 
 
