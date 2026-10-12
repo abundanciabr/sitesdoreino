@@ -16,7 +16,9 @@ const belts=progress.etapas.map((step,index)=>{
   const theme=palette[Math.min(index,palette.length-1)];
   const name=step.nome||step.conquista;
   const short=totalStages===7?name:name.replace(/^Preta\s*[·-]?\s*/i,'').replace(/\s*Grau/i,'');
-  return {name,short,category:step.conquista,title:name,summary:step.feedback||step.conquista,color:theme.color,wash:theme.wash,tone:theme.tone,ink:theme.ink};
+  const goal=progress.etapas[index+1];
+  const category=goal?.conquista||'Todas as etapas deste percurso foram concluídas.';
+  return {name,short,category,title:name,summary:goal?.feedback||category,color:theme.color,wash:theme.wash,tone:theme.tone,ink:theme.ink};
 });
 const current = progress.atual_ordem - 1;
 const reached = index=>progress.etapas[index]?.alcancada===true;
@@ -105,10 +107,10 @@ function showChecklist(index){
 function beltPanel(index,modal=false){
   const panel=createProgressPanel(journeyChecklist(progress,index,payload.atividades),{
     name:belts[index].name,number:number(index),white:index===0,modal,
-    next:(index===0||index===current)&&belts[index+1]?belts[index+1].name:null,
-    summary:progress.etapas[index].conquista
+    next:belts[index+1]?belts[index+1].name:null,
+    summary:belts[index].category
   });
-  if(index===1||index===2)panel.append(sandboxEvaluationPanel(progress.avaliacoes_sandbox));
+  if(index===3&&progress.caminho==='freelancer')panel.append(sandboxEvaluationPanel(progress.avaliacoes_sandbox));
   return panel;
 }
 function openDetails(index){
@@ -176,9 +178,11 @@ function validateActivities(data,context){
   });
 }
 function journeyChecklist(progress,index,activities){
-  const own=progress.etapas[index];
-  const next=index===progress.atual_ordem-1?progress.etapas[index+1]:null;
-  const sources=index===0?[progress.etapas[1]]:next?[own,next]:[own];
+  // O checklist da etapa descreve como conquistar aquela faixa. Na faixa
+  // atual, mostramos a atividade que leva à próxima, inclusive no histórico.
+  const target=progress.etapas[index+1];
+  if(!target)return {disponivel:progress.etapas[index].alcancada,itens:[],observacao:'',concluido:progress.etapas[index].alcancada};
+  const sources=[target];
   if(sources.some(step=>!step.checklist))return {disponivel:false,itens:[],observacao:'O checklist está temporariamente indisponível. Tente atualizar em instantes.'};
   const notes=new Set();
   const itens=sources.flatMap(step=>{
@@ -225,6 +229,7 @@ function createProgressPanel(details,options){
   copy.append(node('span','dialog-eyebrow',`FAIXA ${options.name.toLocaleUpperCase('pt-BR')} · SEU PROGRESSO`),title,summary);
   const badge=node('div','progress-badge');badge.setAttribute('aria-hidden','true');badge.append(node('span','',options.number));
   header.append(copy,badge);panel.append(header);
+  if(details.concluido){panel.append(node('p','progress-note','Você concluiu todas as etapas deste percurso. Suas conquistas e os XP continuam registrados.'));return panel;}
   const available=details.disponivel&&(!options.white||details.itens.length>0);
   if(!available){panel.append(node('p','checklist-observation','Não foi possível consultar suas etapas agora. Atualize em instantes.'));return panel;}
   const total=details.itens.length,done=details.itens.filter(item=>item.estado==='concluido'&&!item.bloqueado).length;
