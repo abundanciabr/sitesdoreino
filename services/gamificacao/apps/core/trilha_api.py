@@ -61,6 +61,26 @@ class TrilhaDoAluno(Schema):
 
 
 @router.get(
+    "/resumo-aluno/{site_id}/{pessoa_id}",
+    operation_id="getStudentIndividualSummary",
+    summary="Resumo individual de conquistas para o Admin",
+)
+def get_student_individual_summary(request, response: HttpResponse, site_id: str, pessoa_id: str):
+    token_admin = (os.environ.get("TOKENS_ACEITOS_ADMIN") or "").strip()
+    if not token_admin or request.auth != token_admin:
+        raise HttpError(403, "Consulta reservada ao Admin")
+    site = site_atual()
+    if site is None:
+        raise HttpError(503, "SITE_ID ausente no env da gamificacao")
+    if site_id != site:
+        raise HttpError(404, "Site nao encontrado")
+    from apps.gamificacao.resumo_aluno import resumir_aluno
+    response["Cache-Control"] = "private, no-store"
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    return resumir_aluno(pessoa_id, site_id)
+
+
+@router.get(
     "/jornada-sandbox/{site_id}/{pessoa_id}",
     operation_id="getStudentSandboxJourney",
     summary="Avaliações do Sandbox projetadas para o suporte",

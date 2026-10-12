@@ -23,6 +23,15 @@ AVALIACAO = {
 }
 CORPO = {"fonte": "gamificacao", "site_id": SITE, "pessoa_id": PESSOA,
          "avaliacoes": [AVALIACAO]}
+RESUMO = {"fonte": "gamificacao", "site_id": SITE, "pessoa_id": PESSOA,
+    "perfil": {"pessoa_id": PESSOA, "xp": 40, "nivel": 3,
+               "ultima_atividade_em": "2026-10-11T12:00:00Z", "conquistas": []},
+    "faixa": {"alcancadas": 1, "atual": {"ordem": 1, "nome": "Branca",
+        "cores": ["#ffffff"], "conquista": "Primeira análise", "alcancada_em": None}},
+    "sandbox": {**CORPO, "avaliacoes": [{**AVALIACAO, "reconhecimento": {
+        **AVALIACAO["reconhecimento"], "origem": {"tipo": "avaliacao_sandbox_anterior",
+            "versao": 2, "entrega_id": "entrega-1", "analise_id": "analise-1",
+            "reconhecida_em": "2026-10-11T12:00:00Z"}}}]}}
 
 
 def test_cliente_consulta_so_a_pessoa_e_site_pedidos(monkeypatch):
@@ -62,6 +71,31 @@ def test_cliente_preserva_explicacao_de_ate_quatro_mil_caracteres(monkeypatch):
             json=lambda: {**CORPO, "avaliacoes": [{**AVALIACAO, "explicacao": explicacao}]})
         dados = GamificacaoClient().jornada_sandbox(SITE, PESSOA)
     assert dados["avaliacoes"][0]["explicacao"] == explicacao
+
+
+def test_cliente_resumo_individual_valida_site_pessoa_e_faz_uma_chamada(monkeypatch):
+    monkeypatch.setenv("GAMIFICACAO_API_URL", "http://gam/api/gamificacao/")
+    monkeypatch.setenv("TOKEN_GAMIFICACAO", "par-admin")
+    with patch("apps.core.clients.http") as http:
+        http.return_value.get.return_value = Mock(status_code=200, json=lambda: RESUMO)
+        dados = GamificacaoClient().resumo_aluno(SITE, PESSOA)
+        assert dados["perfil"]["xp"] == 40
+        assert dados["sandbox"]["avaliacoes"][0]["explicacao"] == AVALIACAO["explicacao"]
+        assert http.return_value.get.call_count == 1
+        args, kwargs = http.return_value.get.call_args
+        assert args[0] == f"http://gam/api/gamificacao/resumo-aluno/{SITE}/{PESSOA}"
+        assert kwargs["headers"] == {"Authorization": "Bearer par-admin"}
+        http.return_value.get.return_value = Mock(status_code=200,
+            json=lambda: {**RESUMO, "pessoa_id": "outra-pessoa"})
+        assert GamificacaoClient().resumo_aluno(SITE, PESSOA) is None
+        http.return_value.get.return_value = Mock(status_code=200,
+            json=lambda: {**RESUMO, "sandbox": {**CORPO, "site_id": "outra-escola"}})
+        assert GamificacaoClient().resumo_aluno(SITE, PESSOA) is None
+        http.return_value.get.return_value = Mock(status_code=200,
+            json=lambda: {**RESUMO, "perfil": {**RESUMO["perfil"], "pessoa_id": "outra-pessoa"}})
+        assert GamificacaoClient().resumo_aluno(SITE, PESSOA) is None
+        http.return_value.get.side_effect = httpx.ConnectError("fora do ar")
+        assert GamificacaoClient().resumo_aluno(SITE, PESSOA) is None
 
 
 @pytest.mark.django_db
@@ -124,8 +158,7 @@ def test_ficha_indica_fonte_indisponivel_sem_inventar_conclusao(monkeypatch):
             patch("apps.core.acompanhamento_fontes._fonte", return_value=("sem_registro", None)):
         identidade.return_value._configuracao.return_value = ("http://identidade", "token")
         nps.return_value.historico.return_value = ("sem_registro", None)
-        gamificacao.return_value.jornada_sandbox.return_value = None
-        gamificacao.return_value.quadro.return_value = None
+        gamificacao.return_value.resumo_aluno.return_value = None
         fontes = consultar_fontes(SITE, "aluna@example.test")
     assert fontes["jornada_sandbox"]["estado"] == "indisponivel"
     html = render_to_string("admin/acompanhamento_fontes.html", {"fontes": fontes})
@@ -140,9 +173,9 @@ def test_ficha_mostra_explicacao_escapada(monkeypatch):
             patch("apps.core.acompanhamento_fontes._fonte", return_value=("sem_registro", None)):
         identidade.return_value._configuracao.return_value = ("http://identidade", "token")
         nps.return_value.historico.return_value = ("sem_registro", None)
-        gamificacao.return_value.jornada_sandbox.return_value = CORPO
-        gamificacao.return_value.quadro.return_value = None
+        gamificacao.return_value.resumo_aluno.return_value = RESUMO
         fontes = consultar_fontes(SITE, "aluna@example.test")
     html = render_to_string("admin/acompanhamento_fontes.html", {"fontes": fontes})
     assert "Faltam texturas" in html and "Faixa ainda não concedida" in html
+    assert "análise anterior do Sandbox" in html
     assert "<script>" not in html and "&lt;script&gt;" in html

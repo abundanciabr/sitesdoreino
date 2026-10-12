@@ -1,5 +1,6 @@
 """Consultas de acompanhamento às fontes autorizadas da escola."""
 import os
+import re
 from urllib.parse import quote
 import httpx
 from .clients import http, IdentidadeClient, GamificacaoClient
@@ -52,12 +53,36 @@ def consultar_fontes(site_id, email):
     fontes["nps"] = {"estado": estado_nps, "dados": dados_nps}
     if not pessoa:
         return fontes
-    jornada = GamificacaoClient().jornada_sandbox(site_id, pessoa)
+    try:
+        resumo = GamificacaoClient().resumo_aluno(site_id, pessoa)
+    except Exception:
+        resumo = None
+    if (not isinstance(resumo, dict) or resumo.get("site_id") != site_id
+            or str(resumo.get("pessoa_id")) != pessoa
+            or not isinstance(resumo.get("sandbox"), dict)
+            or not isinstance(resumo.get("faixa"), dict)):
+        resumo = None
+    perfil = resumo.get("perfil") if isinstance(resumo, dict) else None
+    jornada = resumo.get("sandbox") if isinstance(resumo, dict) else None
     fontes["jornada_sandbox"] = (
         {"estado": "ok" if jornada["avaliacoes"] else "sem_registro", "dados": jornada}
         if isinstance(jornada, dict) and isinstance(jornada.get("avaliacoes"), list)
         else {"estado": "indisponivel", "dados": None}
     )
+    fontes["conquistas"] = ({"estado": "ok" if perfil else "sem_registro", "dados": perfil}
+        if isinstance(resumo, dict) else {"estado": "indisponivel", "dados": None})
+    if isinstance(resumo, dict):
+        atual = (resumo.get("faixa") or {}).get("atual")
+        if isinstance(atual, dict) and atual.get("nome"):
+            cores = [c for c in (atual.get("cores") or []) if isinstance(c, str)
+                     and re.fullmatch(r"#[0-9a-fA-F]{6}", c)]
+            if cores:
+                fundo = cores[0] if len(cores) == 1 else (
+                    f"linear-gradient(90deg,{cores[0]} 50%,{cores[1]} 50%)")
+                fontes["faixa"] = {"nome": atual["nome"], "conquista": atual.get("conquista"),
+                                   "alcancada_em": atual.get("alcancada_em"), "fundo": fundo,
+                                   "ordem": atual.get("ordem"),
+                                   "origem": resumo["faixa"].get("origem")}
     site, pid = quote(site_id, safe=""), quote(pessoa, safe="")
     consultas = {
         "portfolio": ("PAGES_API_URL", "PAGES_API_TOKEN", f"/portfolios/{site}/{pid}"),
@@ -82,31 +107,4 @@ def consultar_fontes(site_id, email):
                     dados[lista] = [dict(i, status=i.get("estado"), prazo=i.get("prazo_ate"))
                                      for i in dados.get(lista, [])]
         fontes[nome] = {"estado": estado, "dados": dados}
-    quadro = GamificacaoClient().quadro()
-    if quadro is None:
-        fontes["conquistas"] = {"estado": "indisponivel", "dados": None}
-    else:
-        dados = next((i for i in quadro if str(i.get("pessoa_id")) == pessoa), None)
-        nomes = {i.get("slug"): i.get("nome") or i.get("slug")
-                 for i in (GamificacaoClient().conquistas() or [])}
-        if dados:
-            dados = dict(dados)
-            dados["conquistas"] = [dict(i, nome=nomes.get(i.get("slug"), i.get("slug")))
-                                     for i in dados.get("conquistas", [])]
-        fontes["conquistas"] = {"estado": "ok" if dados else "sem_registro", "dados": dados}
-    # A faixa é um enfeite da ficha: qualquer falha a omite, sem derrubar o resto.
-    try:
-        faixa = GamificacaoClient().faixa_do_aluno(pessoa)
-        atual = faixa.get("atual") if isinstance(faixa, dict) else None
-        if isinstance(atual, dict) and atual.get("nome"):
-            cores = [c for c in (atual.get("cores") or []) if isinstance(c, str)
-                     and len(c) == 7 and c.startswith("#")]
-            if cores:
-                fundo = cores[0] if len(cores) == 1 else (
-                    f"linear-gradient(90deg,{cores[0]} 50%,{cores[1]} 50%)")
-                fontes["faixa"] = {"nome": atual["nome"], "conquista": atual.get("conquista"),
-                                   "alcancada_em": atual.get("alcancada_em"), "fundo": fundo,
-                                   "ordem": atual.get("ordem")}
-    except Exception:
-        pass
     return fontes
