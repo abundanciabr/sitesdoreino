@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tarfile
 import urllib.request
+import urllib.error
 
 ROOT=Path('/opt/plataforma')
 TARGET=ROOT/'diagnostico-texturas'
@@ -37,7 +38,11 @@ def main():
     TARGET.mkdir(mode=0o755,exist_ok=True)
     bundle=TARGET/ARCHIVE
     if not bundle.is_file() or hashlib.file_digest(bundle.open('rb'),'sha256').hexdigest()!=SHA:
-        urllib.request.urlretrieve('https://download.blender.org/release/Blender4.5/'+ARCHIVE,bundle)
+        print('BAIXANDO_BLENDER_OFICIAL',flush=True)
+        try:
+            urllib.request.urlretrieve('https://download.blender.org/release/Blender4.5/'+ARCHIVE,bundle)
+        except urllib.error.HTTPError:
+            urllib.request.urlretrieve('https://mirror.blender.org/release/Blender4.5/'+ARCHIVE,bundle)
     with bundle.open('rb') as stream:
         if hashlib.file_digest(stream,'sha256').hexdigest()!=SHA:raise RuntimeError('Distribuição do Blender divergente.')
     blender=TARGET/'blender-4.5.9-linux-x64'
@@ -59,7 +64,7 @@ def main():
           '--background','--factory-startup','--disable-autoexec','--threads','2','--python-exit-code','2']
     run(args+['--python','/ferramenta/criar_amostras.py','--','/prova'],stdout=subprocess.DEVNULL)
     proofs={}
-    for name,expected in [('uv-repetida','uv_compartilhada'),('uv-separada',None),('peca-duplicada','geometria_sobreposta'),('imagem-ausente','imagem_indisponivel'),('no-nao-usado',None),('sem-uv','sem_uv')]:
+    for name,expected in [('uv-repetida','uv_compartilhada'),('uv-separada',None),('imagens-diferentes',None),('peca-duplicada','geometria_sobreposta'),('imagem-ausente','imagem_indisponivel'),('no-nao-usado',None),('sem-uv','sem_uv')]:
         output=samples/name
         output.mkdir(mode=0o777)
         output.chmod(0o777)

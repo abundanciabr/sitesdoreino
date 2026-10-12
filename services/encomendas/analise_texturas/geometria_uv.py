@@ -27,9 +27,11 @@ def intersecao(a, b):
     return area(poly)
 
 
-def sobreposicoes(triangles, max_candidates=180000):
+def sobreposicoes(triangles, max_candidates=180000, groups=None):
     boxes,degenerate=[],set()
     for face,uv in triangles:
+        if groups is not None and not groups.get(face):
+            continue
         if area(uv) <= EPS:
             degenerate.add(face)
         else:
@@ -38,6 +40,8 @@ def sobreposicoes(triangles, max_candidates=180000):
     for current in sorted(boxes, key=lambda row:row[0]):
         active=[other for other in active if other[1]>current[0]+EPS]
         for other in active:
+            if groups is not None and not groups.get(other[4],set()).intersection(groups.get(current[4],set())):
+                continue
             if other[4]==current[4] or other[3]<=current[2]+EPS or current[3]<=other[2]+EPS:
                 continue
             checks+=1
