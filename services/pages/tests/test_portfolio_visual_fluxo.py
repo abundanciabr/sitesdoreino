@@ -47,6 +47,54 @@ def montagem_dados(peca, materiais, titulo, *, acao="salvar"):
     }
 
 
+@pytest.mark.parametrize("sufixo", ["", "/"])
+def test_primeiro_acesso_sem_portfolio_abre_sem_criar_dados(
+    aluna, site_declarado, sufixo
+):
+    cliente = Client()
+    url = reverse("apresentacao_publica") + sufixo
+    resposta = cliente.get(url, **como_aluna())
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert "Finalize seu portfólio" in html
+    assert "Adicionar meu primeiro trabalho" in html
+    assert 'name="apelido" value=""' in html
+    assert resposta["Cache-Control"] == "no-store"
+    assert cliente.get(reverse("apresentacao_previa"), **como_aluna()).status_code == 200
+    assert not Portfolio.objects.exists()
+    assert not Peca.objects.exists()
+
+
+@pytest.mark.parametrize("sufixo", ["", "/"])
+def test_montagem_conta_trabalhos_e_mantem_rascunho_no_endereco_com_barra(
+    aluna, site_declarado, criar_portfolio, criar_peca, sufixo
+):
+    portfolio = criar_portfolio(ANA["id"], apelido="ana-3d")
+    peca = criar_peca(portfolio, legenda="Meu trabalho", mostrar_na_pagina_publica=True)
+    criar_peca(portfolio, ordem=2, legenda="Trabalho guardado", mostrar_na_pagina_publica=False)
+    cliente = Client()
+    url = reverse("apresentacao_publica") + sufixo
+    tela = cliente.get(url, **como_aluna())
+    assert tela.status_code == 200
+    assert "1 trabalho selecionado." in tela.content.decode()
+    assert 'name="apelido" value="ana-3d"' in tela.content.decode()
+    salvo = cliente.post(url, montagem_dados(peca, [], "Meu rascunho"),
+                         HTTP_X_REQUESTED_WITH="XMLHttpRequest", **como_aluna())
+    assert salvo.status_code == 200 and salvo.json()["salvo"] is True
+    portfolio.refresh_from_db()
+    assert portfolio.apresentacao_comercial["pagina"]["titulo"] == "Meu rascunho"
+    assert not portfolio.vitrine_publicada
+    assert portfolio.pecas.count() == 2
+    assert "Meu rascunho" in cliente.get(url, **como_aluna()).content.decode()
+
+
+def test_montagem_com_barra_continua_exigindo_login(site_declarado):
+    resposta = Client().get(reverse("apresentacao_publica") + "/")
+    assert b'id="portfolio-montagem"' not in resposta.content
+    assert resposta.status_code == 200
+    assert "entrar" in resposta.content.decode().lower()
+
+
 def test_preparo_upload_ficha_checklist_retorno_e_isolamento(
     aluna, site_declarado, criar_portfolio, criar_peca, rede
 ):

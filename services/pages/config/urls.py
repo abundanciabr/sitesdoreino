@@ -43,6 +43,7 @@ urlpatterns = [
         name="trabalho_contexto",
     ),
     path("apresentacao", jornada.apresentacao_publica, name="apresentacao_publica"),
+    path("apresentacao/", jornada.apresentacao_publica),
     path("apresentacao/previa", montagem.previa, name="apresentacao_previa"),
     path("apresentacao/montagem.js", montagem.script_montagem, name="script_montagem"),
     path("apresentacao/endereco.js", montagem.script_endereco, name="script_endereco"),

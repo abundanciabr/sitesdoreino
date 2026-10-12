@@ -732,11 +732,7 @@ def apresentacao_publica(request):
             "base_endereco_publico": request.build_absolute_uri(vitrine.endereco("")),
             "endereco_publico": request.build_absolute_uri(vitrine.endereco(portfolio.apelido)) if portfolio and portfolio.vitrine_publicada else "",
             "trabalhos": textos_comerciais.preparar_trabalhos(trabalhos, conteudo),
-            "selecionados": (
-                portfolio.pecas.filter(mostrar_na_pagina_publica=True)
-                if portfolio
-                else []
-            ),
+            "selecionados": sum(trabalho.mostrar_na_pagina_publica for trabalho in trabalhos),
         },
     )
 
