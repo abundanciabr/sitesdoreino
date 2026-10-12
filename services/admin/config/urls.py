@@ -292,8 +292,8 @@ from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
-    path('hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
-    path('hotmart/webhooks/', hotmart_webhook),
+    path('interno/hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
+    path('interno/hotmart/webhooks/', hotmart_webhook),
     path("crm/whatsapp/painel.js", crm_whatsapp_javascript, name="crm_whatsapp_javascript"),
     path("crm/whatsapp/<uuid:lead_id>/", crm_whatsapp, name="crm_whatsapp"),
     path("trilha/", trilha_v4, name="trilha_v4"),

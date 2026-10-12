@@ -9,7 +9,7 @@ from apps.core.hotmart import impressao, painel, resumo
 from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart
 
 TOKEN = 'hottok-exclusivo-dos-testes'
-URL = '/hotmart/webhooks'
+URL = '/interno/hotmart/webhooks'
 
 
 @pytest.fixture
