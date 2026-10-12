@@ -9,7 +9,6 @@ import subprocess
 import sys
 import tarfile
 import urllib.request
-import urllib.error
 
 ROOT=Path('/opt/plataforma')
 TARGET=ROOT/'diagnostico-texturas'
@@ -39,10 +38,8 @@ def main():
     bundle=TARGET/ARCHIVE
     if not bundle.is_file() or hashlib.file_digest(bundle.open('rb'),'sha256').hexdigest()!=SHA:
         print('BAIXANDO_BLENDER_OFICIAL',flush=True)
-        try:
-            urllib.request.urlretrieve('https://download.blender.org/release/Blender4.5/'+ARCHIVE,bundle)
-        except urllib.error.HTTPError:
-            urllib.request.urlretrieve('https://mirror.blender.org/release/Blender4.5/'+ARCHIVE,bundle)
+        run(['curl','--fail','--location','--retry','2','--max-time','300','--output',str(bundle),
+             'https://download.blender.org/release/Blender4.5/'+ARCHIVE],timeout=330)
     with bundle.open('rb') as stream:
         if hashlib.file_digest(stream,'sha256').hexdigest()!=SHA:raise RuntimeError('Distribuição do Blender divergente.')
     blender=TARGET/'blender-4.5.9-linux-x64'
