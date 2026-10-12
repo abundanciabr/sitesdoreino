@@ -22,6 +22,8 @@ def imagem(cor):
 
 
 def guardar(cor, passo=2, pessoa=P, site=SITE):
+    from apps.core.perfil import perfil_de
+    perfil_de(pessoa, site)
     corpo = imagem(cor)
     return AnexoDaJornada.objects.create(pessoa_id=pessoa, site_id=site, passo=passo,
         nome='espada.png', conteudo=corpo, tamanho=len(corpo), sha256=hashlib.sha256(corpo).hexdigest())
