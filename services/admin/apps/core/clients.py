@@ -1701,6 +1701,10 @@ class GamificacaoClient:
         except (httpx.HTTPError, ValueError) as erro:
             logger.warning("jornada sandbox: gamificação não respondeu: %s", erro)
             return None
+        return self._jornada_sandbox_validada(corpo, site_id, pessoa_id)
+
+    @staticmethod
+    def _jornada_sandbox_validada(corpo: object, site_id: str, pessoa_id: str) -> "dict | None":
         if (not isinstance(corpo, dict) or corpo.get("fonte") != "gamificacao"
                 or str(corpo.get("site_id")) != site_id
                 or str(corpo.get("pessoa_id")) != pessoa_id
@@ -1714,6 +1718,9 @@ class GamificacaoClient:
             reconhecimento = item.get("reconhecimento") or {}
             if not isinstance(reconhecimento, dict):
                 reconhecimento = {}
+            origem = reconhecimento.get("origem")
+            if not isinstance(origem, dict):
+                origem = None
             url = item.get("url")
             if not isinstance(url, str) or not url.startswith("/encomendas/sandbox/trabalhos/") or url.startswith("//"):
                 url = ""
@@ -1735,10 +1742,81 @@ class GamificacaoClient:
                 "reconhecimento": {
                     "estado": str(reconhecimento.get("estado") or "")[:100],
                     "texto": str(reconhecimento.get("texto") or "")[:1000],
+                    "origem": ({chave: str(origem.get(chave) or "")[:100]
+                                for chave in ("tipo", "versao", "entrega_id", "analise_id", "reconhecida_em")}
+                               if origem else None),
                 },
             })
         return {"fonte": "gamificacao", "site_id": site_id,
                 "pessoa_id": pessoa_id, "avaliacoes": avaliacoes}
+
+    def resumo_aluno(self, site_id: str, pessoa_id: str) -> "dict | None":
+        """Leitura individual única de XP, faixa e Sandbox para a ficha administrativa."""
+        config = self._configuracao()
+        if config is None or not site_id or not pessoa_id:
+            return None
+        base, token = config
+        try:
+            resposta = http().get(
+                f"{base}/resumo-aluno/{quote(site_id, safe='')}/{quote(pessoa_id, safe='')}",
+                headers={"Authorization": f"Bearer {token}"}, timeout=self.TIMEOUT,
+            )
+            if resposta.status_code != 200:
+                logger.warning("resumo aluno: gamificação respondeu HTTP %s", resposta.status_code)
+                return None
+            corpo = resposta.json()
+        except (httpx.HTTPError, ValueError) as erro:
+            logger.warning("resumo aluno: gamificação não respondeu: %s", erro)
+            return None
+        if (not isinstance(corpo, dict) or corpo.get("fonte") != "gamificacao"
+                or str(corpo.get("site_id")) != site_id
+                or str(corpo.get("pessoa_id")) != pessoa_id):
+            return None
+        sandbox = self._jornada_sandbox_validada(corpo.get("sandbox"), site_id, pessoa_id)
+        faixa = corpo.get("faixa")
+        perfil = corpo.get("perfil")
+        if (sandbox is None or not isinstance(faixa, dict)
+                or not isinstance(faixa.get("atual"), dict)
+                or (perfil is not None and (not isinstance(perfil, dict)
+                     or str(perfil.get("pessoa_id")) != pessoa_id
+                     or not isinstance(perfil.get("conquistas"), list)))):
+            return None
+        atual = faixa["atual"]
+        if (type(faixa.get("alcancadas")) is not int
+                or type(atual.get("ordem")) is not int
+                or not isinstance(atual.get("nome"), str)
+                or not isinstance(atual.get("cores"), list)):
+            return None
+        origem = faixa.get("origem")
+        if not isinstance(origem, dict):
+            origem = None
+        faixa = {
+            "alcancadas": faixa["alcancadas"],
+            "atual": {"ordem": atual["ordem"], "nome": atual["nome"][:200],
+                      "cores": [c for c in atual["cores"][:3] if isinstance(c, str)],
+                      "conquista": str(atual.get("conquista") or "")[:300],
+                      "alcancada_em": str(atual.get("alcancada_em") or "")[:100]},
+            "origem": ({chave: str(origem.get(chave) or "")[:100]
+                        for chave in ("tipo", "caminho", "avaliada_em", "analise_id", "entrega_id")}
+                       if origem else None),
+        }
+        if perfil is not None:
+            if type(perfil.get("xp")) is not int or type(perfil.get("nivel")) is not int:
+                return None
+            perfil = {
+                "pessoa_id": pessoa_id,
+                "xp": perfil["xp"],
+                "nivel": perfil["nivel"],
+                "ultima_atividade_em": str(perfil.get("ultima_atividade_em") or "")[:100],
+                "conquistas": [
+                    {"slug": str(item.get("slug") or "")[:100],
+                     "nome": str(item.get("nome") or "")[:200],
+                     "concedida_em": str(item.get("concedida_em") or "")[:100]}
+                    for item in perfil["conquistas"][:100] if isinstance(item, dict)
+                ],
+            }
+        return {"fonte": "gamificacao", "site_id": site_id, "pessoa_id": pessoa_id,
+                "perfil": perfil, "faixa": faixa, "sandbox": sandbox}
 
     def _listar(self, caminho: str, rotulo: str) -> "list | None":
         config = self._configuracao()
