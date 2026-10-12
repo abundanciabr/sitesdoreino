@@ -20,7 +20,6 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from http.cookies import SimpleCookie
 from pathlib import Path
 
 BASE = "/checkout/curso-primeiros-passos-no-blender"
@@ -80,12 +79,15 @@ def vendor(url: str, body: dict, token: str = "", *, form: bool = False) -> dict
 
 
 def flow_cookie(header: str) -> str:
-    try:
-        values = SimpleCookie(header)
-        value = values[FLOW_COOKIE].value
-        return value if len(value) == 64 and all(c in "0123456789abcdef" for c in value) else ""
-    except Exception:
-        return ""
+    # Unrelated analytics cookies must not invalidate the installation cookie.
+    values = []
+    for item in header.split(';'):
+        name, separator, value = item.strip().partition('=')
+        if separator and name == FLOW_COOKIE:
+            value = value.strip('"')
+            if len(value) == 64 and all(c in '0123456789abcdef' for c in value):
+                values.append(value)
+    return values[0] if values and len(set(values)) == 1 else ''
 
 
 class ProductionAdmin:
@@ -356,6 +358,8 @@ class ProductionAdmin:
         if path == PANEL + "/autorizar" and method == "POST":
             form = {k: v[0] for k, v in urllib.parse.parse_qs((await body()).decode()).items()}
             if not cookie or headers.get(b"origin") != ORIGIN or not self.valid_csrf(cookie, form.get("csrf", "")):
+                reason = 'cookie_ausente' if not cookie else 'origem_incompativel' if headers.get(b'origin') != ORIGIN else 'formulario_vencido_ou_incompleto'
+                private_write(self.root/'ultimo-formulario.json', json.dumps({'motivo': reason, 'cookie_recebido': bool(cookie), 'origem_correta': headers.get(b'origin') == ORIGIN, 'codigo_formulario_recebido': bool(form.get('csrf')), 'horario': int(time.time())}).encode())
                 return await reply(403, b"Abra novamente a tela de instalacao.")
             try:
                 location = await asyncio.to_thread(self.begin, form, cookie)

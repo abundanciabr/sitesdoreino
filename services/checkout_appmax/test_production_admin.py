@@ -93,6 +93,18 @@ class ProductionPreviewTests(unittest.TestCase):
         self.assertEqual(result[0]['status'], 403)
         self.assertFalse(self.calls)
 
+    def test_unrelated_cookie_format_cannot_break_installation(self):
+        mixed = 'analytics={x:1}; ' + self.cookie + '; other=value'
+        self.assertEqual(module.flow_cookie(mixed), self.nonce)
+        self.assertEqual(module.flow_cookie(self.cookie + '; ' + module.FLOW_COOKIE + '=' + 'b'*64), '')
+
+    def test_failure_diagnostic_has_no_cookie_or_form_secret(self):
+        self.request(module.PANEL+'/autorizar', cookie=self.cookie, method='POST', body=b'csrf=invalid', origin=module.ORIGIN)
+        data = (self.root/'ultimo-formulario.json').read_text()
+        self.assertNotIn(self.nonce, data)
+        self.assertNotIn('invalid', data)
+        self.assertEqual(json.loads(data)['motivo'], 'formulario_vencido_ou_incompleto')
+
     def test_installation_preserves_pair_and_reuses_it(self):
         self.app.begin({}, self.nonce)
         self.app.finish('singleuseticket')
