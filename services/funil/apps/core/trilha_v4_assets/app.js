@@ -17,7 +17,7 @@ const belts=progress.etapas.map((step,index)=>{
   const name=step.nome||step.conquista;
   const short=totalStages===7?name:name.replace(/^Preta\s*[·-]?\s*/i,'').replace(/\s*Grau/i,'');
   const goal=progress.etapas[index+1];
-  const category=goal?.conquista||'Todas as etapas deste percurso foram concluídas.';
+  const category=goal?.conquista||(step.alcancada?'Todas as etapas deste percurso foram concluídas.':'Último marco deste percurso.');
   return {name,short,category,title:name,summary:goal?.feedback||category,color:theme.color,wash:theme.wash,tone:theme.tone,ink:theme.ink};
 });
 const current = progress.atual_ordem - 1;
