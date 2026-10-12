@@ -150,9 +150,9 @@ def confirmar_entrega(item):
                           + "A medição é pontual e o acompanhamento continua.")
                 return
             if saudaveis and not achado:
-                resultado(item, "resolvida", "Código ativado pelo publicador após o ensaio. Nova leitura do site confirmou as sondas públicas funcionando. "
+                resultado(item, "publicando", "Código ativado pelo publicador após o ensaio. Nova leitura do site confirmou as sondas públicas funcionando. "
                           + "Benefício pretendido: " + item.get("beneficio", "")
-                          + " O efeito específico não tem medição automática; não foi contabilizado como ganho observado.")
+                          + " Aguardando comprovação do efeito específico; a publicação não encerra a melhoria.")
                 return
         resultado(item, "publicando", "Código ativado pelo publicador. Aguardando nova observação da fonte para conferir o benefício.")
         return
@@ -270,7 +270,8 @@ def ciclo():
     fila = api("fila/")
     if not fila["ativa"]:
         return
-    disponiveis = [i for i in fila["melhorias"] if i["situacao"] != "mantenedor"]
+    disponiveis = [i for i in fila["melhorias"] if i["situacao"] != "mantenedor"
+                   and i.get("evidencia", {}).get("operacao") != "armazenamento"]
     disponiveis.sort(key=lambda i: (i["situacao"] != "publicando", i["prioridade"], i["id"]))
     for remoto in disponiveis:
         caminho = RAIZ/(str(remoto["id"])+".json")

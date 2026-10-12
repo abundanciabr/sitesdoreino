@@ -70,3 +70,40 @@ def test_fotografia_antiga_nao_resolve_ocorrencia_nova():
     assert not ex.fonte_recuperada(item, {"faltas": [], "consultado_em": "2026-10-11T10:00:00Z"})
     assert ex.fonte_recuperada(item, {"faltas": [], "consultado_em": "2026-10-11T12:00:00Z"})
     assert not ex.fonte_recuperada(item, {"faltas": ["falha"], "consultado_em": "2026-10-11T12:00:00Z"})
+
+
+def test_publicacao_sem_medicao_do_efeito_permanece_aberta(monkeypatch):
+    monkeypatch.setattr(ex, "publicar", lambda _: {"candidata": "abc", "operacao": {
+        "fase": "ativa", "ativadas": ["aplicacao"], "candidata": "abc"}})
+    monkeypatch.setattr(ex, "api", lambda _: {"observacao": {
+        "consultado_em": datetime.now(timezone.utc).isoformat(),
+        "paginas_publicas": {"itens": [{"estado": "medido", "http": 200}]}}})
+    resultado = Mock()
+    monkeypatch.setattr(ex, "resultado", resultado)
+    ex.confirmar_entrega({"id": 1, "entrega": "012345678abc", "evidencia": {},
+        "ativacao_conferida_em": (datetime.now(timezone.utc)-timedelta(minutes=10)).isoformat()})
+    assert resultado.call_args.args[1] == "publicando"
+
+
+def test_coletor_mede_repeticao_sem_varrer_objetos(tmp_path):
+    import json
+    from types import SimpleNamespace
+    pasta = tmp_path/'entregas'
+    pasta.mkdir()
+    reg = {"id": "a"*12, "estado": "conflito", "tentativas": 8,
+           "commit": "b"*40, "base": "c"*40, "main_observada": "d"*40}
+    (pasta/(reg["id"]+'.json')).write_text(json.dumps(reg))
+    d = SimpleNamespace(total=1000000000, used=600000000, free=400000000)
+    a = co.armazenamento(1000, d, {}, pasta)
+    assert a['integrador']['repeticoes_identicas'] is None
+    reg['tentativas'] += 2
+    (pasta/(reg["id"]+'.json')).write_text(json.dumps(reg))
+    d.used += 1048576
+    d.free -= 1048576
+    b = co.armazenamento(1060, d, a, pasta)
+    assert b['integrador']['repeticoes_identicas'] == 2
+    assert b['crescimento_mb_h'] == 60 and b['pico_entre_coletas_mb'] == 1
+    reg['main_observada'] = 'e'*40
+    reg['tentativas'] += 1
+    (pasta/(reg["id"]+'.json')).write_text(json.dumps(reg))
+    assert co.armazenamento(1120, d, b, pasta)['integrador']['repeticoes_identicas'] == 0
