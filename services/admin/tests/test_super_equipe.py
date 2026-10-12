@@ -7,6 +7,9 @@ from django.test import RequestFactory
 
 from apps.agentes import executor, super_equipe
 from apps.agentes.models import Consumo, Entrega, Execucao
+from apps.agentes.super_equipe_perfis import (
+    PERFIS, VERSAO_PERFIL, contexto_do_perfil, instrucoes, rotulo,
+)
 from apps.agentes.views_super_equipe import super_equipe as pagina, super_equipe_trabalho
 from apps.core.models import MembroDaEquipe
 
@@ -86,6 +89,50 @@ def test_redacao_e_host():
     assert "ana@example.com" not in super_equipe._sem_dados_pessoais("ana@example.com")
     with pytest.raises(ValueError):
         super_equipe._host_proprio("example.com")
+
+
+def test_cinco_perfis_tem_contratos_distintos_sem_alterar_rotulos_historicos():
+    assert len(PERFIS) == 5
+    assert len({p["missao"] for p in PERFIS.values()}) == 5
+    assert len({tuple(p["fontes"]) for p in PERFIS.values()}) == 5
+    assert len({instrucoes(codigo, super_equipe.ESPECIALIDADES) for codigo in PERFIS}) == 5
+    assert rotulo("arquitetura", super_equipe.ESPECIALIDADES) == "Arquitetura e ligação entre as partes do site"
+    assert all("não participa, assina nem endossa" in instrucoes(codigo, super_equipe.ESPECIALIDADES)
+               for codigo in PERFIS)
+
+
+def test_contexto_de_cada_perfil_separa_fontes_e_reserva_revisao_para_shreya():
+    fontes = {"consultado_em": "2026-10-12T12:00:00-03:00",
+              **{nome: {"estado": "medido", "seguro": nome} for nome in (
+                  "fluxo_entregas", "negocio", "experimentos", "entregas", "servidor",
+                  "integridade", "fontes", "execucao_operacional", "robos_ia")}}
+    anteriores = {"nicole_forsgren": {"texto": "resposta conferível"}}
+    contextos = {codigo: contexto_do_perfil(codigo, "pedido", fontes, anteriores)
+                 for codigo in PERFIS}
+    assert set(contextos["nicole_forsgren"]["fontes"]) == {"fluxo_entregas", "negocio", "experimentos"}
+    assert "resultados_anteriores" not in contextos["nicole_forsgren"]
+    assert set(contextos["jez_humble"]["fontes"]) == {"entregas", "fluxo_entregas", "servidor"}
+    assert set(contextos["martin_kleppmann"]["fontes"]) == {"integridade", "entregas", "fontes"}
+    assert set(contextos["liz_fong_jones"]["fontes"]) == {"execucao_operacional", "servidor", "fluxo_entregas"}
+    assert contextos["shreya_shankar"]["fontes"]["resultados_anteriores"] == anteriores
+    assert all(c["versao_perfil"] == VERSAO_PERFIL for c in contextos.values())
+
+
+@pytest.mark.django_db
+def test_pedido_salva_perfis_na_ordem_versionada_e_deixa_historico_antigo_legivel():
+    membro = MembroDaEquipe.objects.create(nome="Responsável")
+    recebidos = list(reversed(PERFIS))
+    trabalho, criado = super_equipe.pedir_trabalho(
+        membro, site_id="site-1", host="meshcraft.top", pedido="Avaliação dos cinco perfis",
+        especialidades=recebidos, chave="cinco-perfis")
+    assert criado
+    assert trabalho.estado["especialidades"] == list(PERFIS)
+    assert trabalho.estado["versoes_perfil"] == {codigo: VERSAO_PERFIL for codigo in PERFIS}
+    legado, _ = super_equipe.pedir_trabalho(
+        membro, site_id="site-1", host="meshcraft.top", pedido="Consulta histórica",
+        especialidades=["desempenho"], chave="perfil-legado")
+    assert legado.estado["especialidades"] == ["desempenho"]
+    assert legado.estado["versoes_perfil"] == {}
 
 
 @pytest.mark.parametrize("status", [301, 302, 403, 404, 500, None])

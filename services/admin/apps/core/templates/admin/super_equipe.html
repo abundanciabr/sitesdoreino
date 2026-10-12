@@ -44,8 +44,8 @@
     <form method="post">{% csrf_token %}
       <input type="hidden" name="chave" value="{{ chave }}">
       <p><label for="pedido">O que precisa ser examinado?</label><br><textarea id="pedido" name="pedido" rows="5" maxlength="4000" required style="width:100%">{{ request.POST.pedido }}</textarea></p>
-      <fieldset><legend>Especialidades</legend>
-        {% for codigo, nome in especialidades %}<label style="display:block"><input type="checkbox" name="especialidades" value="{{ codigo }}" {% if codigo == 'arquitetura' %}checked{% endif %}> {{ nome }}</label>{% endfor %}
+      <fieldset><legend>Perfis especialistas</legend>
+        {% for codigo, perfil in especialidades %}<label style="display:block;margin:.75rem 0"><input type="checkbox" name="especialidades" value="{{ codigo }}" {% if codigo == 'nicole_forsgren' %}checked{% endif %}> <b>{{ perfil.nome }}</b><br><small>{{ perfil.missao }} Ferramentas: {{ perfil.ferramentas|join:", " }}.</small></label>{% endfor %}
       </fieldset>
       <p><label for="tarefa_id">Número de uma tarefa já existente (opcional)</label><br><input id="tarefa_id" name="tarefa_id" type="number" min="1" value="{{ request.POST.tarefa_id }}"></p>
       <button class="botao" type="submit">Pedir trabalho</button>
