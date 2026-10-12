@@ -2,6 +2,7 @@ from django.http import JsonResponse
 from django.urls import path
 
 from config.api import api
+from apps.core.hotmart import teste as hotmart_teste
 from apps.matriculas.editor_turmas import (
     turmas,
     turma_draft,
@@ -15,6 +16,7 @@ def healthz(request):
 
 
 urlpatterns = [
+    path("api/alunos/hotmart/testes", hotmart_teste),
     path("healthz", healthz),
     path("api/alunos/turmas", turmas),
     path("api/alunos/turmas/<slug:slug>/rascunho", turma_draft),

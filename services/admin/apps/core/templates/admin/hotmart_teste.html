@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Teste Hotmart{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <p><a href="{% url 'hotmart_painel' %}">Voltar à integração Hotmart</a></p>
+  <h1>Teste administrativo · compra aprovada</h1>
+  <p><strong>Automação para alunos desligada.</strong> Este teste não processa o comprador da Hotmart.</p>
+  {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+  {% if teste.resultado.erro %}<p role="alert">{{ teste.resultado.erro }}</p>{% endif %}
+  <div class="cartao">
+    <h2>O que será executado</h2>
+    <p><strong>Curso:</strong> {{ teste.plano.curso_nome }}<br>
+       <strong>Conta do administrador:</strong> {{ teste.administrador }}<br>
+       <strong>WhatsApp do teste:</strong> {{ teste.plano.telefone|default:"Não selecionado" }}<br>
+       <strong>Canais:</strong> {{ teste.plano.canais|join:", " }}</p>
+    <p>{% if teste.plano.associacao_aplicada %}Curso resolvido pela associação do produto Hotmart.{% else %}Curso escolhido somente para este ensaio. Isso não cria nem altera a associação do produto Hotmart.{% endif %}</p>
+    <p>Será criada uma matrícula de teste para esta conta. Ela não conta como venda. Depois da confirmação do acesso, serão solicitadas as mensagens abaixo pelos canais selecionados.</p>
+    <p><strong>Link do curso:</strong> <a href="{{ teste.plano.link }}">{{ teste.plano.link }}</a></p>
+    <p><strong>Assunto:</strong> {{ teste.plano.assunto }}</p>
+    <div>{{ teste.plano.corpo|linebreaksbr }}</div>
+  </div>
+  <div class="cartao">
+    <h2>Resultado do teste</h2>
+    {% if teste.resultado.matricula %}
+      <p><strong>Matrícula:</strong> {{ teste.resultado.matricula.status }} · identificada como teste.</p>
+    {% else %}<p>Nenhuma matrícula criada por este teste.</p>{% endif %}
+    {% for envio in envios %}<p><strong>{{ envio.canal }}:</strong> {{ envio.rotulo }}</p>
+    {% empty %}<p>Nenhuma mensagem solicitada por este teste.</p>{% endfor %}
+    <p>Aceitação pelo serviço de envio não confirma leitura. A entrega do WhatsApp aparece quando o provedor informa; o e-mail deve ser conferido na sua caixa de entrada.</p>
+    <p><a href="{% url 'hotmart_teste' teste_id=teste.pk %}">Atualizar resultado</a></p>
+    {% if pode_executar %}
+    <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="executar">
+      <button type="submit">{% if teste.resultado %}Conferir e retomar este teste{% else %}Executar teste na minha conta e enviar as mensagens{% endif %}</button>
+    </form>
+    {% else %}<p>A execução fica disponível na sessão pessoal do administrador que preparou o teste.</p>{% endif %}
+    <p>Repetir esta ação usa a mesma referência e não cria outra matrícula nem outro pedido de mensagem.</p>
+  </div>
+</div>
+{% endblock %}

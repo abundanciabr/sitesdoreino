@@ -6,7 +6,7 @@ from django.db import DatabaseError
 from django.test import Client, RequestFactory
 
 from apps.core.hotmart import impressao, painel, resumo
-from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart
+from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart, ProdutoHotmart, TesteHotmart as Ensaio
 
 TOKEN = 'hottok-exclusivo-dos-testes'
 URL = '/interno/hotmart/webhooks'
@@ -37,6 +37,18 @@ def test_grava_antes_de_confirmar_e_reenvio_nao_duplica(configurada):
     assert registro.dados == dados
     assert registro.recebimentos == 2
     assert resumo(registro)['telefone'] == 'telefone-informado'
+
+
+def test_associacao_nao_ativa_automacao_do_webhook(configurada):
+    ProdutoHotmart.objects.create(site_id='site', produto_hotmart='123', nome='Produto',
+        curso_slug='curso', curso_nome='Curso', produto_site='produto-local')
+    dados = evento()
+    dados['data']['product']['id'] = 123
+    with patch('apps.hotmart.operacao.pedir') as pedir:
+        assert enviar(Client(), dados).status_code == 200
+    pedir.assert_not_called()
+    assert EventoHotmart.objects.count() == 1
+    assert not Ensaio.objects.exists()
 
 
 @pytest.mark.parametrize('tipo', [

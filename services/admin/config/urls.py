@@ -1,7 +1,7 @@
 from apps.core.nps import crm_satisfacao_revisao_salvar
 from django.conf import settings
 from django.urls import path, re_path
-from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook
+from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
 from django.views.decorators.cache import never_cache
@@ -292,6 +292,7 @@ from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
+    path('integracoes/hotmart/testes/<uuid:teste_id>/', hotmart_teste, name='hotmart_teste'),
     path('interno/hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
     path('interno/hotmart/webhooks/', hotmart_webhook),
     path("crm/whatsapp/painel.js", crm_whatsapp_javascript, name="crm_whatsapp_javascript"),
