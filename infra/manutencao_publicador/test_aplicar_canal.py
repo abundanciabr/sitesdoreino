@@ -10,6 +10,8 @@ import tarfile
 import types
 import unittest
 from unittest.mock import patch
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import backup_imagens
 
 sys.modules.setdefault('fcntl', types.SimpleNamespace(LOCK_EX=2, LOCK_NB=4, LOCK_UN=8,
                                                        flock=lambda *_: None))
@@ -353,6 +355,7 @@ class AplicarCanalTest(unittest.TestCase):
             'celulas': {'funil': {'codigo': str(fun_code), 'pacote': {'imagem_id': image}}}}))
         def fake_backup_run(*args, **kwargs):
             if args[0] == 'bash':
+                self.assertEqual(kwargs['env']['PRESERVAR_COPIAS'], '1')
                 database_dir = Path(kwargs['env']['PASTA_DOS_BACKUPS'])
                 (database_dir / 'site-canal.dump').write_bytes(b'dump')
                 (database_dir / 'canal.contagens.tsv').write_bytes(b'1\n')
@@ -369,10 +372,14 @@ class AplicarCanalTest(unittest.TestCase):
                         info.size = len(content)
                         archive.addfile(info, io.BytesIO(content))
             return types.SimpleNamespace(stdout='')
+        def fake_image(reference, destination, store):
+            fake_backup_run('docker', 'save', '-o', str(destination), reference)
+            return {'reused': True, 'new_bytes': 0}
         with patch.multiple(canal, ROOT=self.root, BACKUP_ROOT=self.root / 'backups-de-codigo',
                             INT=self.integrador, ACESSOS=self.acessos, QUEUE=self.queue,
                             POL=self.original / 'mercadopago/politica.json', UNITS=()), \
                 patch.object(canal, 'run', fake_backup_run), \
+                patch.object(backup_imagens, 'backup_image', fake_image), \
                 patch.object(Path, 'resolve', lambda path, *_, **__: path.absolute()):
             destination = canal.backup(self.original, {'teste': True})
         self.assertTrue((destination / 'bancos/site-canal.dump').is_file())

@@ -40,6 +40,41 @@ def test_telemetria_descarta_logs_e_nao_confunde_velha_com_recente(rotina):
     assert not op.operacao_recente(dados)
 
 
+def test_armazenamento_preserva_pausa_e_exige_entrega_util(rotina):
+    rotina.ativa = False
+    rotina.save()
+    agora = timezone.now()
+    def enviar(segundos, evitadas, ativacao=None, repetidas=0):
+        em = (agora+timedelta(seconds=segundos)).isoformat()
+        dados = {"coletada_em": em, "integrador": {"coletada_em": em,
+            "conflitos": 7, "conflitos_protegidos": 7, "repeticoes_identicas": repetidas,
+            "totais": {"conflito_reutilizado": evitadas}, "ultima_ativacao_em": ativacao},
+            "aplicacao": "ativo", "funil": "ativo"}
+        with patch.object(op.timezone, 'now', return_value=agora+timedelta(seconds=segundos)):
+            op.acompanhar_armazenamento(rotina, dados)
+    enviar(0, 7)
+    enviar(60, 14)
+    item = MelhoriaSuperEquipe.objects.get(chave='operacao-integrador-combinacoes')
+    assert item.situacao == 'publicando'
+    enviar(120, 21, (agora+timedelta(seconds=90)).isoformat())
+    item.refresh_from_db()
+    assert item.situacao == 'resolvida'
+    rotina.refresh_from_db()
+    assert not rotina.ativa and rotina.ultimo_trabalho_id is None
+    enviar(180, 21, (agora+timedelta(seconds=90)).isoformat(), repetidas=1)
+    item.refresh_from_db()
+    assert item.situacao == 'publicando' and item.resolvida_em is None
+
+
+def test_telemetria_armazenamento_nao_guarda_campos_arbitrarios():
+    dados = op.receber({"coletada_em": timezone.now().isoformat(),
+        "integrador": {"conflitos": 7, "segredo": "descartar"},
+        "amostra_integrador": {"entrada": "descartar"}, "crescimento_mb_h": -12})
+    assert dados['integrador']['conflitos'] == 7
+    assert 'segredo' not in dados['integrador'] and 'amostra_integrador' not in dados
+    assert dados['crescimento_mb_h'] == -12
+
+
 def test_fonte_recuperada_nao_encerra_publicacao_pendente(rotina, fontes):
     fontes["robos_ia"]["estado"] = "indisponivel"
     rodar(fontes)

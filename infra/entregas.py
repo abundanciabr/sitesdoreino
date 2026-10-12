@@ -60,6 +60,8 @@ RE_ID = re.compile(r"[0-9a-f]{12}")
 RE_REMOTO = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 ILEGIVEL = "registro ilegível"
 IDENT = ["-c", "user.name=integrador", "-c", "user.email=integrador@meshcraft.top"]
+COMBINADOR_VERSAO = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+MEDICAO_GIT = {"merge_tree": 0, "commit_tree": 0}
 
 
 class Recusa(Exception):
@@ -120,6 +122,10 @@ def agora():
 
 
 def git(*args, check=False, cwd=None, timeout=300):
+    if args and args[0] == "merge-tree":
+        MEDICAO_GIT["merge_tree"] += 1
+    if "commit-tree" in args:
+        MEDICAO_GIT["commit_tree"] += 1
     env = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
     r = subprocess.run(
         ["git", "--git-dir", str(repo()), *args],
@@ -531,17 +537,24 @@ def combinar(reg, main):
         apagar_candidata(reg)
         reg["conflitos"] = caminhos_em_conflito(r.stdout)
         reg["tentativas"] = reg.get("tentativas", 0) + 1
+        reg["conflito_entradas"] = {"main": main, "commit": reg["commit"], "base": reg["base"]}
         definir(reg, "conflito", "conflito com a main em: %s; atualize o ramo com a main atual, resolva "
                 "o conflito você mesmo e reenvie com novo commit" % (", ".join(reg["conflitos"]) or "ver git merge-tree"))
     else:
-        apagar_candidata(reg)
-        definir(reg, CORRECAO, "o git não conseguiu combinar com a main (%s); refaça o ramo a partir da "
-                "main atual e reenvie" % sanitizar((r.stderr.strip() or r.stdout.strip())[:300]))
+        raise Recusa("git merge-tree falhou: %s" % sanitizar((r.stderr.strip() or r.stdout.strip())[:300]))
 
 
 def integrar_uma(reg, main, por_id):
     if reg.get("promocao", {}).get("estado") == "intencao":
         return  # promover reconcilia primeiro a resposta remota perdida
+    chave = chave_combinacao(reg, main, por_id)
+    anterior = reg.get("combinacao") or {}
+    if (reg["estado"] == "conflito" and anterior.get("chave") == chave
+            and anterior.get("resultado") == "conflito"):
+        return "conflito_reutilizado"
+    falha = reg.get("falha_integracao") or {}
+    if falha.get("chave") == chave and espera_integracao(falha):
+        return "espera_transitoria"
     if eh_ancestral(reg["commit"], main) and conteudo_presente(main, reg["commit"], reg["base"]):
         apagar_candidata(reg)
         limpar_refs(reg["id"])
@@ -569,15 +582,61 @@ def integrar_uma(reg, main, por_id):
             definir(reg, NA_MAIN, "conteúdo presente na main atual")
         else:
             combinar(reg, main)
+        reg["combinacao"] = {"chave": chave, "resultado": reg["estado"], "concluida_em": agora()}
+    reg.pop("falha_integracao", None)
+    return "conferida"
+
+
+def chave_combinacao(reg, main, por_id):
+    """Só entradas da combinação; relógios e contadores nunca a invalidam."""
+    deps = []
+    for id_ in sorted(set(reg.get("depende_de") or [])):
+        dep = por_id.get(id_) or {}
+        deps.append({"id": id_, **{nome: dep.get(nome) for nome in
+                     ("commit", "base", "estado", "promovida_candidata")}})
+    dados = {"commit": reg.get("commit"), "base": reg.get("base"), "main": main,
+             "dependencias": deps, "combinador": COMBINADOR_VERSAO}
+    return hashlib.sha256(json.dumps(dados, sort_keys=True).encode()).hexdigest()
+
+
+def espera_integracao(falha):
+    try:
+        return datetime.datetime.fromisoformat(falha["tentar_depois"]) > datetime.datetime.now(datetime.timezone.utc)
+    except (KeyError, ValueError, TypeError):
+        return False
+
+
+def registrar_medicao(main, contagens):
+    """Uma fotografia pequena por passagem; não percorre objetos Git."""
+    destino = pasta() / "medicoes" / "combinacoes.json"
+    destino.parent.mkdir(exist_ok=True)
+    try:
+        anterior = json.loads(destino.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        anterior = {}
+    totais = anterior.get("totais") or {}
+    dados = {"coletada_em": agora(), "main": main, "combinador": COMBINADOR_VERSAO,
+             "rodada": contagens,
+             "totais": {k: int(totais.get(k, 0)) + v for k, v in contagens.items()}}
+    fd, temp = tempfile.mkstemp(dir=str(destino.parent), prefix=".medicao-", suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as arquivo:
+        if os.name == "posix":
+            os.fchmod(arquivo.fileno(), 0o640)
+        json.dump(dados, arquivo, sort_keys=True)
+        arquivo.flush()
+        os.fsync(arquivo.fileno())
+    os.replace(temp, destino)
 
 
 def cmd_integrar(a):
     with exclusao():
+        MEDICAO_GIT.update(merge_tree=0, commit_tree=0)
         main = main_atual()
         if not main:
             raise Recusa("o repositório não tem refs/heads/main; sincronize a main antes de integrar")
         regs = todos()
         por_id = {r["id"]: r for r in regs}
+        contagens = {"conflito_reutilizado": 0, "espera_transitoria": 0, "conferida": 0, "falha_transitoria": 0}
         for reg in regs:  # promoção perdida ou conteúdo revertido: volta a ser recebida
             if (reg["estado"] == NA_MAIN
                     and not promocao_sob_conciliacao(reg)
@@ -591,13 +650,25 @@ def cmd_integrar(a):
                 continue
             antes = json.dumps(reg, sort_keys=True)
             try:
-                integrar_uma(reg, main, por_id)
+                resultado = integrar_uma(reg, main, por_id)
+                if resultado in contagens:
+                    contagens[resultado] += 1
             except (Recusa, subprocess.SubprocessError, OSError) as ex:
-                definir(reg, "recebida", "erro ao integrar (%s); será tentada na próxima passagem"
+                chave = chave_combinacao(reg, main, por_id)
+                anterior = reg.get("falha_integracao") or {}
+                vezes = (anterior.get("tentativas", 0) if anterior.get("chave") == chave else 0) + 1
+                segundos = min(300, 15 * (2 ** min(vezes - 1, 5)))
+                reg["falha_integracao"] = {"chave": chave, "tentativas": vezes,
+                    "tentar_depois": (datetime.datetime.now(datetime.timezone.utc)
+                                      + datetime.timedelta(seconds=segundos)).isoformat()}
+                contagens["falha_transitoria"] += 1
+                definir(reg, "recebida", "erro ao integrar (%s); nova tentativa após espera temporária"
                         % sanitizar(ex)[:200])
             if json.dumps(reg, sort_keys=True) != antes:
                 gravar(reg)
-        return 0, {"main": main, "entregas": [resumo(r) for r in regs]}
+        contagens.update(MEDICAO_GIT)
+        registrar_medicao(main, contagens)
+        return 0, {"main": main, "entregas": [resumo(r) for r in regs], "combinacoes": contagens}
 
 
 # ---------------------------------------------------------------- promover

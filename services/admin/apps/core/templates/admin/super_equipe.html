@@ -23,6 +23,16 @@
     {% if rotina.operacao.recebida_em %}
       <p>VPS: {% if operacao_recente %}medição recente{% else %}<b>medição desatualizada</b>{% endif %}. Coletada em {{ rotina.operacao.coletada_em }}. Aplicação: {{ rotina.operacao.aplicacao }} · funil: {{ rotina.operacao.funil }}.</p>
       <p>Amostra de acessos da aplicação nos últimos 15 minutos (até 30 mil linhas): HTTP 5xx {{ rotina.operacao.http_5xx_15m|default_if_none:"não medido" }} · HTTP 404 {{ rotina.operacao.http_404_15m|default_if_none:"não medido" }}. Disco livre: {{ rotina.operacao.disco_livre_mb|default_if_none:"não medido" }} MB.</p>
+      {% if rotina.operacao.integrador.coletada_em %}
+      <h3>Armazenamento e entregas</h3>
+      <p>O integrador evita recombinar conflitos com entradas iguais e retoma falhas temporárias após espera. Esse funcionamento não reativa a rotina de análises pausada.</p>
+      <p>Conflitos: {{ rotina.operacao.integrador.conflitos }} · com resultado reaproveitável: {{ rotina.operacao.integrador.conflitos_protegidos }} · combinações repetidas evitadas: {{ rotina.operacao.integrador.totais.conflito_reutilizado|default_if_none:"não medido" }}.</p>
+      <p>Última passagem: {{ rotina.operacao.integrador.rodada.merge_tree|default_if_none:"não medido" }} combinações Git executadas · {{ rotina.operacao.integrador.rodada.espera_transitoria|default_if_none:"não medido" }} esperas temporárias. Novas tentativas com entradas iguais entre coletas: {{ rotina.operacao.integrador.repeticoes_identicas|default_if_none:"aguardando segunda coleta" }}.</p>
+      <p>Última entrega ativada: {{ rotina.operacao.integrador.ultima_ativacao_em|default_if_none:"não medida" }}. Medição do integrador: {{ rotina.operacao.integrador.coletada_em }}.</p>
+      <p>Variação do disco: {{ rotina.operacao.crescimento_mb_h|default_if_none:"aguardando amostras" }} MB/h, em uma janela de {{ rotina.operacao.janela_segundos }} segundos. Maior aumento entre coletas: {{ rotina.operacao.pico_entre_coletas_mb|default_if_none:"não medido" }} MB.</p>
+      <p>{% if rotina.operacao.horas_ate_esgotar != None %}Mantido esse crescimento, a folga dura aproximadamente {{ rotina.operacao.horas_ate_esgotar }} horas.{% else %}Ainda não há projeção de esgotamento por crescimento positivo nessa janela.{% endif %} Novas operações podem produzir picos maiores.</p>
+      {% endif %}
+      {% if rotina.operacao.imagens_manutencao.coletada_em %}<p>Backups de imagens: {{ rotina.operacao.imagens_manutencao.exportacoes }} exportações · {{ rotina.operacao.imagens_manutencao.reutilizacoes }} reutilizações · {{ rotina.operacao.imagens_manutencao.bytes_evitados }} bytes de cópias evitadas. Bancos e retenção preservados.</p>{% endif %}
     {% else %}<p>Coleta da VPS ainda não conectada; ausência de medição não significa ausência de erros.</p>{% endif %}
   </section>
   <h2>Melhorias e pendências</h2>

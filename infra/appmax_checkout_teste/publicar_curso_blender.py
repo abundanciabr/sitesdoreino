@@ -196,14 +196,11 @@ def complete_backup(backup: Path, approved: dict, originals: dict[str, bytes]) -
             raise RuntimeError('Code and configuration backup incomplete')
     print(json.dumps({'etapa': 'backup_codigo_configuracoes_conferido'}), flush=True)
     image = backup / 'imagem-aprovada.tar'
-    fd = os.open(image, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, 'wb') as stream:
-        result = subprocess.run(['docker', 'image', 'save', approved['imagem']], stdout=stream,
-                                stderr=subprocess.DEVNULL, timeout=300)
-        stream.flush()
-        os.fsync(stream.fileno())
-    if result.returncode:
-        raise RuntimeError('Approved image backup failed')
+    import sys
+    helper = Path('/usr/local/lib/meshcraft-publicador/atual/infra')
+    sys.path.insert(0, str(helper if helper.is_dir() else Path(__file__).resolve().parents[1]))
+    from backup_imagens import backup_image
+    image_reuse = backup_image(approved['imagem'], image, ROOT / 'objetos-imagens-manutencao')
     with tarfile.open(image) as archive:
         manifest = json.loads(archive.extractfile('manifest.json').read())
         config = archive.extractfile(manifest[0]['Config']).read()
@@ -226,7 +223,7 @@ def complete_backup(backup: Path, approved: dict, originals: dict[str, bytes]) -
         raise RuntimeError('Related clone database backups incomplete')
     print(json.dumps({'etapa': 'backup_bancos_conferido', 'bancos': len(databases)}), flush=True)
     return {'code_config_sha256': sha_file(archive_path),
-            'image_sha256': sha_file(image), 'databases': databases}
+            'image_sha256': sha_file(image), 'image_reuse': image_reuse, 'databases': databases}
 
 
 def route_candidate(before: bytes, checker, backup: Path, policy: dict, policy_bytes: bytes) -> tuple[bytes, bytes]:
