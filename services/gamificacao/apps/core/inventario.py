@@ -129,6 +129,7 @@ def inventario(request):
                 passo = ordem if acao == 'ciclo-avaliar' else 2
                 if acao == 'anexo' and not preparados:
                     raise ValueError('Escolha um arquivo para guardar.')
+                anexos_por_campo = {}
                 for campo, (nome, corpo, sha) in preparados:
                     anexo, criado = AnexoDaJornada.objects.get_or_create(
                         pessoa_id=pessoa, site_id=site, passo=passo, sha256=sha,
@@ -141,6 +142,7 @@ def inventario(request):
                                 setattr(anexo, nota, valor)
                         anexo.save(update_fields=['aprendi', 'duvida'])
                     anexos.append(anexo)
+                    anexos_por_campo[campo] = anexo
                 if acao == 'inicio-item':
                     ordem = 3
                 elif acao == 'inicio-envio':
@@ -166,13 +168,21 @@ def inventario(request):
                     if ordem >= 5 and j.inicio.get('item_nome') and analise['item_nome'] != j.inicio['item_nome']:
                         raise ValueError('Continue o mesmo item que apresentou no começo. Use o nome já registrado.')
                     if ordem == 7 and analise['caminho'] == 'aprender':
-                        anterior = AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=6).order_by('-id').first()
+                        final = anexos_por_campo.get('arquivo')
+                        if final is None:
+                            raise ValueError('Apresente a versão final da sua criação para análise.')
+                        anterior = anexos_por_campo.get('arquivo_anterior')
                         if anterior is None:
-                            anterior = AnexoDaJornada.objects.filter(pessoa_id=pessoa, site_id=site, passo=2).order_by('-id').first()
-                        if anterior and anterior.id != anexos[-1].id:
-                            anexos.insert(0, anterior)
+                            # Compare com o começo, não com a versão final já
+                            # apresentada na faixa Marrom. O par enviado pelo
+                            # aluno tem prioridade sobre o arquivo guardado.
+                            anterior = next((a for a in AnexoDaJornada.objects.filter(
+                                pessoa_id=pessoa, site_id=site, passo=2).order_by('id')
+                                if PurePosixPath(a.nome).suffix.lower() in {'.png', '.jpg', '.jpeg', '.webp'}), None)
+                        if anterior is not None:
+                            anexos = [anterior, final]
                             analise['anexo_anterior_id'] = anterior.id
-                            analise['anexo_final_id'] = anexos[-1].id
+                            analise['anexo_final_id'] = final.id
                     pendentes = dict(j.inicio.get('analises_pendentes', {}))
                     pendentes[str(ordem)] = {'chave': token, 'dados': analise, 'anexos': [a.id for a in anexos], 'estado': 'pendente'}
                     j.inicio = {**j.inicio, 'analises_pendentes': pendentes}
