@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.hotmart",
     # A auditoria append-only. Entrou junto com a
     # PRIMEIRA escrita desta área — liberar e recusar quem está na fila —, e
     # nunca depois: um botão que muda a vida de alguém sem deixar rastro é o

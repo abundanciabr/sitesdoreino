@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.debug import sensitive_post_parameters, sensitive_variables
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .models import ConfiguracaoHotmart, EventoHotmart
+from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart
 
 LIMITE = 1024 * 1024
 

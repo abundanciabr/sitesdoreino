@@ -6,7 +6,7 @@ from django.db import DatabaseError
 from django.test import Client, RequestFactory
 
 from apps.core.hotmart import impressao, painel, resumo
-from apps.core.models import ConfiguracaoHotmart, EventoHotmart
+from apps.hotmart.models import ConfiguracaoHotmart, EventoHotmart
 
 TOKEN = 'hottok-exclusivo-dos-testes'
 URL = '/hotmart/webhooks'
