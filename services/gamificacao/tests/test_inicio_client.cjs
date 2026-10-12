@@ -6,6 +6,15 @@ const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'../static/inicio.js'),'utf8');
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 
+test('retornos do motivo e compromisso respeitam a prévia administrativa',async()=>{
+ for(const step of ['motivo','compromisso']) {
+  const ui=await page(step,record(),'',step==='motivo');
+  ui.byId('jornada').dataset.conquistas='/trilha/previa/';
+  await ui.close();
+  assert.deepEqual(ui.redirects,['/trilha/previa/']);
+ }
+});
+
 function record(overrides={}){
   return {pessoa_id:'aluna-a',site_id:'escola-a',csrf:'csrf-teste',revisao:3,
     inicio:{motivo:'ugc',motivo_pessoal:'Motivo reservado',sonho:'SONHO PRIVADO',objetivo:'Criar um chapéu',
