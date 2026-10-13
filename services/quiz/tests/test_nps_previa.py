@@ -82,3 +82,23 @@ def test_estado_assinado_e_isolado_por_admin_curso_e_site(client, config):
 def test_exige_token(client, config):
     response = client.post("/interno/nps/simular", data=json.dumps({**OWNER, "acao": "iniciar"}), content_type="application/json")
     assert response.status_code == 401
+
+
+def test_nao_entendi_nota_tem_resumo_legivel_sem_alterar_resposta(client, config):
+    state = post(client, acao="iniciar").json()
+    state = answer(client, state, "A1", "nenhuma")
+    state = answer(client, state, "R2", "sem_opiniao")
+    state = answer(client, state, "A3", ["nenhuma"])
+    state = answer(client, state, "A8", "sim")
+    state = answer(client, state, "R11", ["nao_falou"])
+    state = post(client, state, acao="nao_entendi", pergunta_id="R12").json()
+    state = answer(client, state, "R13", "")
+    nota = next(item for item in state["respostas_legiveis"] if item["pergunta_id"] == "R12")
+    assert nota["resposta"] == "Não entendi a pergunta"
+    assert any("Não entendi a pergunta" in frase for frase in state["conferencia"]["resumo"])
+    assert all("__nao_entendi__" not in frase for frase in state["conferencia"]["resumo"])
+    assert state["respostas"]["R12"] == "__nao_entendi__"
+    response = post(client, state, acao="concluir", confirmado=True)
+    assert response.status_code == 200 and response.json()["status"] == "concluida"
+    assert response.json()["resultado"]["nps"] is None
+    assert NPSTentativa.objects.count() == 0 and NPSAtendimento.objects.count() == 0
