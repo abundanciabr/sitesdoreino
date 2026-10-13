@@ -133,6 +133,7 @@ def test_administrador_do_forum_mantem_perfil():
 
 
 def test_painel_com_dados(monkeypatch):
+    monkeypatch.setattr("apps.core.porta._emails_autorizados", lambda: frozenset())
     banco = Banco()
     saude.registrar(pedido(), HttpResponse(status=200), banco)
     saude.registrar(pedido("/falha/"), HttpResponse(status=404), banco)
@@ -143,3 +144,44 @@ def test_painel_com_dados(monkeypatch):
     html = resposta.content.decode()
     assert "Pessoa teste" in html and "ERR-404-" in html and "/cursos/aula/" in html
     assert "Seções da administração" in html
+
+
+def test_conferencia_de_admin_preserva_evento_e_filtra_sem_regravar(monkeypatch):
+    from apps.core.clients import IdentidadeClient
+    monkeypatch.setattr(IdentidadeClient, "pessoa_por_id", lambda self, conta: "admin@example.invalid")
+    banco = Banco()
+    r = pedido(perfil="administrador")
+    r.admin["equipe_apenas"] = True
+    saude.registrar(r, HttpResponse(status=404), banco)
+    antes = json.dumps([banco.hashes, banco.listas, banco.valores], sort_keys=True)
+    contas = {}
+    conferir = lambda e: saude.conferir_perfil(e, {"admin@example.invalid"}, contas)
+    resultado = saude.resumo(banco, 1, "administrador", conferir=conferir)
+    assert len(resultado["erros"]) == 1
+    assert resultado["erros"][0]["perfil"] == "administrador"
+    assert resultado["erros"][0]["perfil_coletado_texto"] == "Equipe"
+    assert not saude.resumo(banco, 1, "equipe", conferir=conferir)["erros"]
+    assert json.dumps([banco.hashes, banco.listas, banco.valores], sort_keys=True) == antes
+
+
+@pytest.mark.parametrize("email", [None, "equipe@example.invalid"])
+def test_equipe_nao_e_promovida_sem_confirmacao(monkeypatch, email):
+    from apps.core.clients import IdentidadeClient
+    monkeypatch.setattr(IdentidadeClient, "pessoa_por_id", lambda self, conta: email)
+    assert saude.conferir_perfil({"perfil": "equipe", "conta": "pessoa"}, {"admin@example.invalid"}, {}) == "equipe"
+
+
+def test_previa_icone_fechada_e_mesmos_bytes():
+    from apps.core import saude_icone
+    r = pedido(perfil="outro")
+    assert saude_icone.previa(r).status_code == 404
+    assert saude_icone.imagem(r).status_code == 404
+    r.admin = {"equipe_apenas": True}
+    assert saude_icone.imagem(r).status_code == 404
+    r.admin = {"nome": "Admin"}
+    resposta = saude_icone.imagem(r)
+    assert resposta.status_code == 200
+    assert resposta["Cache-Control"] == "private, no-store"
+    assert b"".join(resposta.streaming_content).startswith(b"\x89PNG\r\n\x1a\n")
+    resposta.close()
+    assert saude_icone.previa(r).status_code == 200
