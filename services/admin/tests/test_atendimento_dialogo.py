@@ -32,8 +32,13 @@ def resposta(texto, fontes=None, suficiente=False):
     return SimpleNamespace(completa=True, texto=json.dumps({'resposta': texto, 'fontes': fontes or [], 'suficiente': suficiente}))
 
 
-def test_sem_base_conversa_e_usa_resposta_anterior(chat, monkeypatch):
+def test_sem_base_conversa_usa_resposta_anterior_e_avisa_equipe(chat, monkeypatch):
     chamadas = []
+    avisos = []
+    def whatsapp(*args):
+        if len(args) == 1: return {'mensagens': []}, ''
+        avisos.append(args[2]); return {'status': 'enviado'}, ''
+    monkeypatch.setattr(service, 'pedir_whatsapp', whatsapp)
     def responder(**kw):
         chamadas.append(json.loads(kw['itens'][0]['content']))
         return resposta('O vídeo mostra algum erro?' if len(chamadas)==1 else 'Experimente recarregar a página. O vídeo chegou a carregar?')
@@ -51,7 +56,8 @@ def test_sem_base_conversa_e_usa_resposta_anterior(chat, monkeypatch):
     assert [m['autor'] for m in chamadas[1]['historico']] == ['aluno', 'robo', 'aluno']
     assert chamadas[1]['historico'][1]['texto'] == 'O vídeo mostra algum erro?'
     service.manutencao_avisos()
-    assert not Aviso.objects.exists()
+    service.manutencao_avisos()
+    assert Aviso.objects.get().estado == 'enviado' and len(avisos) == 1
 
 
 def test_palavra_pessoa_nao_e_pedido_de_encaminhamento(chat, monkeypatch):
