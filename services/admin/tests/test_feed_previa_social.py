@@ -49,6 +49,7 @@ def creation(**extra):
 def test_ciclo_persistido_e_colecao_pessoal():
     initial = load()
     assert len(initial['state']['posts']) == 6
+    assert [p['id'] for p in initial['state']['posts']] == ['sword','first','before','ugc','world','help']
     action({'op': 'follow', 'profile': 'nina', 'active': True})
     action({'op': 'like', 'post': 'before', 'active': True})
     action({'op': 'save', 'post': 'before', 'active': True})
