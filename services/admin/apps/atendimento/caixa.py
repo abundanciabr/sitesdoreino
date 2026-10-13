@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 
 from . import escala, textos_fixos
 from .models import Conversa, Mensagem
+from .expediente import disponibilidade
 
 
 def impressao(c, texto):
@@ -94,7 +95,12 @@ def aprovar(sid, quem, nome, token, tempo_token):
                 raise ValueError('Chegou uma mensagem ou os dados do grupo mudaram. Revise novamente; nada foi enviado.')
             preparados.append((c, candidato_atual[0]))
         tempo = escala.tempo_decorrido(tempo_token, quem, sid, hashlib.sha256(token.encode()).hexdigest())
+        from .service import config
+        agenda = config(sid)
         for c, fixo in preparados:
+            expediente = disponibilidade(agenda)
+            if not expediente['respostas_abertas']:
+                raise ValueError(expediente['mensagem'])
             mensagem = Mensagem.objects.create(conversa=c, referencia=referencia, autor='equipe', nome=nome[:160],
                 texto=fixo['resposta'], fontes=fixo['fontes'], tipo=c.tipo, rodada=c.rodada,
                 tempo_humano_seg=tempo/len(itens) if tempo is not None else None)

@@ -276,14 +276,14 @@ def encaminhar(conversa):
         ultima = conversa.mensagens.filter(autor='aluno').last()
         saudacao = ' '.join(re.findall(r'\w+', unicodedata.normalize('NFKD', (ultima.texto if ultima else '').casefold()).encode('ascii', 'ignore').decode()))
         texto = 'Olá! Como posso ajudar?' if saudacao in ('oi', 'ola', 'bom dia', 'boa tarde', 'boa noite') else c.mensagem
+    expediente = disponibilidade(c)
+    if not expediente['respostas_abertas']:
+        texto = c.mensagem + ' ' + expediente['mensagem']
     Mensagem.objects.get_or_create(conversa=conversa,referencia='recepcao-'+str(conversa.rodada),
         defaults={'autor':'robo','nome':IDENTIDADE,'texto':texto})
 
 
 def avisar(conversa):
-    c = config(conversa.site_id)
-    if not disponibilidade(c)['aberto']:
-        return
     consulta=None
     for r in Responsavel.objects.filter(site_id=conversa.site_id,ativo=True):
         aviso = Aviso.objects.get_or_create(conversa=conversa,responsavel=r,rodada=conversa.rodada)[0]
@@ -295,8 +295,6 @@ def avisar(conversa):
                 if confirmacao and confirmacao.get('status') in ('aceito','enviado','entregue','lido','falhou','desconhecido'):
                     aviso.estado=confirmacao['status'];aviso.save(update_fields=['estado','atualizado_em'])
             continue
-        if not disponibilidade(c)['aberto']:
-            return
         dados,erro = pedir_whatsapp(conversa.site_id,'send',{'destinatario':r.telefone,
             'corpo':f'Suporte Meshcraft: atendimento {str(conversa.pk)[:8]} aguardando a equipe. Assunto: {conversa.assunto.nome}. Abra https://meshcraft.top/admin/equipe/atendimento/{conversa.pk}/',
             'referencia':f'suporte:{conversa.pk}:{conversa.rodada}:{r.pk}'})
@@ -308,7 +306,7 @@ def avisar(conversa):
 def processar_uma():
     # A reserva expira caso o processo seja interrompido. A mensagem tem chave estável.
     fechados = [c.site_id for c in Configuracao.objects.filter(expediente_ativo=True)
-                if not disponibilidade(c)['aberto']]
+                if not disponibilidade(c)['respostas_abertas']]
     with transaction.atomic():
         conversa = Conversa.objects.select_for_update(skip_locked=True).filter(
             Q(trabalhando_ate__isnull=True)|Q(trabalhando_ate__lt=timezone.now()), processar=True).exclude(site_id__in=fechados).first()
@@ -332,7 +330,7 @@ def processar_uma():
     with transaction.atomic():
         atual = Conversa.objects.select_for_update().get(pk=conversa.pk)
         atual.trabalhando_ate = None
-        if not disponibilidade(config(atual.site_id))['aberto']:
+        if not disponibilidade(config(atual.site_id))['respostas_abertas']:
             atual.save(update_fields=['trabalhando_ate'])
             return True
         ultima_atual = atual.mensagens.filter(autor='aluno').last()
@@ -367,7 +365,8 @@ def processar_uma():
 def manutencao_avisos():
     from .escala import manutencao
     manutencao()
-    for conversa in Conversa.objects.filter(estado='aguardando',encaminhada=True).select_related('assunto').iterator(chunk_size=100):
+    for conversa in Conversa.objects.exclude(estado='encerrado').filter(
+            Q(encaminhada=True) | Q(mensagens__autor='aluno')).distinct().select_related('assunto').iterator(chunk_size=100):
         avisar(conversa)
 
 

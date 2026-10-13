@@ -109,9 +109,6 @@ def _conversar(request, identidade):
             if not conversa and Conversa.objects.filter(pk=cid).exists(): raise Http404
         if request.method=='POST':
             acao=d.get('acao','mensagem')
-            if acao in ('novo', 'mensagem', 'pessoa') and not expediente['aberto']:
-                return resposta({'erro':expediente['mensagem'], 'disponibilidade':expediente,
-                                 'csrf':get_token(request)}, 409)
             if acao=='novo':
                 conversa=service.novo_atendimento(sid,dono,identidade.get('nome_exibido'),
                     d['nova_conversa'],d.get('pagina',''),d.get('curso',''),d.get('aula',''))
@@ -219,7 +216,8 @@ def prefixo(request):
 
 
 def contexto(request,sid):
-    return {'admin':request.admin,'suporte_prefixo':prefixo(request),'assuntos':Assunto.objects.filter(site_id=sid),'config':service.config(sid),'modos':MODOS}
+    config = service.config(sid)
+    return {'admin':request.admin,'suporte_prefixo':prefixo(request),'assuntos':Assunto.objects.filter(site_id=sid),'config':config,'modos':MODOS,'expediente':disponibilidade(config)}
 
 
 @require_http_methods(['GET'])
@@ -276,6 +274,9 @@ def conversa_admin(request,conversa_id):
                             return resposta({'erro':'Escreva uma resposta com até 6000 caracteres.'},422)
                         if conversa.mensagens.filter(referencia=ref).exists():
                             return HttpResponseRedirect(prefixo(request)+'/'+str(conversa.pk)+'/?enviado=1')
+                        expediente = disponibilidade(service.config(sid))
+                        if not expediente['respostas_abertas']:
+                            return resposta({'erro':expediente['mensagem'], 'disponibilidade':expediente}, 409)
                     if conversa.estado=='encerrado':
                         escala.reabrir(conversa, 'retomada pela equipe', quem)
                     conversa.encerrada_em=None
@@ -339,6 +340,7 @@ def conversa_admin(request,conversa_id):
             return resposta({'erro':'Confira a última mensagem informada.'},422)
         ctx['conversa']=conversa
         return resposta({'conversa':serializar(conversa,depois),
+            'disponibilidade':ctx['expediente'],
             'rascunho':conversa.sugestao.get('resposta',''),
             'contexto_em':conversa.sugestao.get('contexto',{}).get('atualizado_em','') if conversa.sugestao.get('contexto') else '',
             'contexto_html':render_to_string('admin/atendimento_contexto.html',ctx)})
