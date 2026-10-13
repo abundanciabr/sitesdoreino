@@ -81,6 +81,7 @@ from apps.core.economia import (
     economia_mudar_degrau,
 )
 from apps.core.comunidade import comunidade_da_equipe
+from apps.core.feed_previa import feed_previa, feed_previa_asset
 from apps.core.comentarios_aulas import (
     escola_comentarios_aulas,
     escola_comentario_visibilidade,
@@ -293,6 +294,8 @@ from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
+    path("comunidade/feed/previa/", feed_previa, name="feed_previa"),
+    path("comunidade/feed/previa/assets/<str:nome>", feed_previa_asset, name="feed_previa_asset"),
     path("escola/alunos/medalhas/", medalhas_painel, name="escola_medalhas"),
     path("escola/alunos/medalhas/previa/", medalhas_previa, name="escola_medalhas_previa"),
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
