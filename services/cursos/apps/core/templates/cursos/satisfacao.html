@@ -1,4 +1,5 @@
 {% extends "cursos/moldura.html" %}
+{% load botoes_admin %}
 {% block titulo %}Satisfação{% endblock %}
 {% block conteudo %}
 <style>
@@ -54,7 +55,7 @@
 {% else %}
   {% for item in cursos %}<p><a class="botao" href="{% url 'satisfacao-curso' item.slug %}">{{ item.nome }} · avaliar</a></p>{% empty %}{% if not erro %}<p>Não encontramos um curso vinculado à sua matrícula. Fale com a equipe para conferir o cadastro da escola.</p>{% endif %}{% endfor %}
 {% endif %}
-{% if previa_admin and curso %}<p><a href="{% url 'satisfacao' %}">Ver pesquisas dos cursos</a></p>{% endif %}
+{% somente_admin %}{% if curso %}<p><a class="botao secundario" href="{% url 'satisfacao' %}">Ver pesquisas dos cursos</a></p>{% endif %}{% endsomente_admin %}
 </section>
 <script>
 document.querySelectorAll('.nps input[type="checkbox"][name="valor"]').forEach(function(input){input.addEventListener('change',function(){if(!input.checked)return;document.querySelectorAll('.nps input[type="checkbox"][name="valor"]').forEach(function(other){if(other!==input&&(input.dataset.exclusiva==='sim'||other.dataset.exclusiva==='sim'))other.checked=false;});});});
