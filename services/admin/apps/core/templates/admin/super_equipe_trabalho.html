@@ -36,6 +36,7 @@
     {% for entrada in rastreios %}<details><summary>{{ entrada.etapa }} · {{ entrada.modelo }} · {{ entrada.iniciada_em }}</summary>
       <p>Versão da avaliação {{ entrada.fluxo_avaliacao }} · fontes {{ entrada.fontes_digest }} · contexto {{ entrada.contexto_digest }} · instruções {{ entrada.instrucoes_digest }}.</p>
       <p>{{ entrada.limite }}</p>
+      {% if entrada.economia_contexto %}<p>Contexto desta chamada: {{ entrada.economia_contexto.bytes_antes }} bytes antes; {{ entrada.economia_contexto.bytes_enviados }} enviados; {{ entrada.economia_contexto.bytes_repetidos_evitados }} bytes repetidos evitados. Mesma fotografia, sem corte de fatos; isso não mede tempo poupado.</p>{% endif %}
       <h3>Contexto fornecido</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ entrada.contexto_texto }}</pre>
       <h3>Instruções fornecidas</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ entrada.instrucoes }}</pre>
     </details>{% endfor %}
