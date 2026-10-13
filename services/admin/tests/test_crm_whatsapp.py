@@ -165,6 +165,8 @@ def test_aluno_sem_crm_abre_painel_sem_enviar(tipo):
         "site_id": "site-do-host", "email": pessoa["email"], "name": pessoa["nome_completo"],
         "phone": "+5511988887777", "source": "escola"}
     assert abrir.called
+    consultas = [c.request for c in respx.calls if c.request.method == "GET" and "/leads" in c.request.url.path]
+    assert all(c.url.params.get("origem", "") == "" for c in consultas)
     assert len([c for c in respx.calls if c.request.method == "POST"]) == 2
 
 

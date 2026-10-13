@@ -2544,6 +2544,7 @@ class LeadsClient:
         pagina: int = 1,
         por_pagina: int = 50,
         testes: str = "",
+        origem: str = "crm",
     ) -> "tuple[str, dict | None]":
         """Uma página de contatos vindos dos quizzes, do mais novo ao mais antigo.
 
@@ -2552,7 +2553,7 @@ class LeadsClient:
         `q=` e a ausência de `q` do mesmo jeito, mas mandar só o que foi pedido
         deixa o registro de acesso dela dizer o que a tela de fato procurou.
         """
-        params: dict = {"pagina": pagina, "por_pagina": por_pagina, "origem": "crm"}
+        params: dict = {"pagina": pagina, "por_pagina": por_pagina, "origem": origem}
         for nome, valor in (("q", q), ("site_id", site_id), ("tag", tag), ("testes", testes)):
             if valor:
                 params[nome] = valor

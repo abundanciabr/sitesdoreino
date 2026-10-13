@@ -65,11 +65,13 @@ def javascript(request):
 
 
 @require_http_methods(["GET", "POST"])
-def conversa(request, lead_id):
+def conversa(request, lead_id, *, cadastro_aluno=False):
     site_id = caixa.site_do_pedido(request)
     if not site_id:
         return _erro("Não foi possível identificar o site.")
-    estado, contato = LeadsClient().ficha(lead_id)
+    cliente_leads = LeadsClient()
+    estado, contato = (cliente_leads._pedir(f"/leads/{lead_id}", {}, aceita_404=True)
+                       if cadastro_aluno else cliente_leads.ficha(lead_id))
     if estado == LeadsClient.NAO_EXISTE:
         raise Http404("Contato não encontrado")
     if estado != LeadsClient.OK or not contato:
@@ -177,7 +179,7 @@ def conversa_aluno(request, tipo, aluno_id):
     if not numero or not email:
         return _erro("O aluno precisa ter e-mail e WhatsApp válidos no cadastro.", 422)
     cliente = LeadsClient()
-    estado, dados = cliente.listar(q=email, site_id=site_id, por_pagina=100, testes="mostrar")
+    estado, dados = cliente.listar(q=email, site_id=site_id, por_pagina=100, testes="mostrar", origem="")
     if estado != cliente.OK or not isinstance(dados, dict) or dados.get("tem_mais"):
         return _erro("Não foi possível consultar o contato do aluno agora.")
     contatos = [c for c in dados.get("itens", []) if isinstance(c, dict)
@@ -207,4 +209,4 @@ def conversa_aluno(request, tipo, aluno_id):
             return _erro("Não foi possível conectar o aluno à conversa. Tente novamente.")
     if not lead_id:
         return _erro("Não foi possível identificar o contato do aluno.")
-    return conversa(request, lead_id)
+    return conversa(request, lead_id, cadastro_aluno=True)
