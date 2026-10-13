@@ -28,6 +28,9 @@ def catalogo():
             'servicos reiniciar robo|analisador': 'Reinício existente, quando autorizado na tarefa.',
             'analisador consultar': 'Estado e última operação persistente.',
             'analisador diagnosticar|recuperar': 'Operação existente assíncrona; usar somente no escopo autorizado.',
+            'previas ajuda|listar': 'Catálogo e acompanhamento das prévias isoladas sem credenciais.',
+            'previas aplicar NOME COMMIT BASE_OU_nova': 'Recebe versão por commit; backup, testes isolados e recuperação de código.',
+            'previas consultar|retomar ID': 'Consulta persistente por ID de 24 caracteres; não repete efeitos.',
         },
         'execucao': {
             'identidade': 'Mesmo usuário robo, mesmas operações e permissões existentes.',
@@ -35,7 +38,7 @@ def catalogo():
             'resposta_perdida': 'Consultar ID; não interpretar desconexão como falha da tarefa.',
             'id_entrega': 'Primeiros 12 caracteres do SHA256 de ramo + quebra de linha + commit.',
             'retomada': 'Retomar acompanha. Não repete efeitos nem reabre falhas.',
-            'limite': 'Não oferece shell, SQL, arquivos privados, uploads arbitrários ou edição de prévias.',
+            'limite': 'Sem shell, SQL, arquivos privados ou publicação para alunos. Prévia: código não protegido em ambiente próprio sem credenciais.',
         },
         'referencias': {
             'site': 'https://meshcraft.top/',

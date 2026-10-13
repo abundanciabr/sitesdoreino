@@ -1,0 +1,1 @@
+{"runtime":"python","files":{"index.html":"infra/previas/exemplos/index.html","tests/test_isolation.py":"infra/previas/exemplos/test_isolation.py","tests/__init__.py":"infra/previas/exemplos/empty.py"},"test":"tests/test_isolation.py","page":"index.html"}

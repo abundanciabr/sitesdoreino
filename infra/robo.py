@@ -177,6 +177,8 @@ def main(argv=None):
     seguir.add_argument('--segundos', type=int, default=45, choices=range(0, 51))
     sv = s.add_parser('servicos', help='operações de serviços já disponíveis no servidor')
     sv.add_argument('argumentos', nargs='+')
+    pv = s.add_parser('previas', help='atualização e testes nas prévias isoladas da VPS')
+    pv.add_argument('argumentos', nargs='+')
     an = s.add_parser('analisador', help='estado, diagnóstico real e recuperação da versão preservada')
     an.add_argument('acao', choices=['consultar', 'diagnosticar', 'recuperar'])
     a = p.parse_args(argv)
@@ -203,9 +205,9 @@ def main(argv=None):
             saida = remoto(a.servidor, [a.comando])
         elif a.comando == 'operacoes':
             saida = remoto(a.servidor, ['operacoes', str(a.limite)])
-        elif a.comando == 'servicos':
+        elif a.comando in {'servicos', 'previas'}:
             # A lista e os limites continuam impostos pelo serviço existente.
-            saida = remoto(a.servidor, ['servicos', *a.argumentos])
+            saida = remoto(a.servidor, [a.comando, *a.argumentos])
         else:
             saida = remoto(a.servidor, ['estado'])
         print(saida)
