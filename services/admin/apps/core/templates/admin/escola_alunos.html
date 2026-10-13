@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% load nomes_admin %}
+{% load nomes_admin crm_whatsapp %}
 
 {% block titulo %}Alunos{% endblock %}
 {% block corpo %}
@@ -185,6 +185,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo|primeiro_nome }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
+      {% chamar_whatsapp_aluno pessoa %}
       <div class="nota">
         {% if pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ pessoa.esperando_ha_dias }} dia{{ pessoa.esperando_ha_dias|pluralize }}{% endif %}
         {% if pessoa.comprou_em %} &middot; diz ter comprado em {{ pessoa.comprou_em }}{% endif %}
@@ -417,6 +418,7 @@
         <label class="rotulo" for="zap-{{ pessoa.id }}">WhatsApp</label>
         <input id="zap-{{ pessoa.id }}" type="text" name="whatsapp"
                maxlength="32" value="{{ pessoa.whatsapp }}">
+        {% chamar_whatsapp_aluno pessoa %}
         <label class="rotulo" for="turma-{{ pessoa.id }}">Turma</label>
         <input id="turma-{{ pessoa.id }}" type="text" name="turma"
                maxlength="120" value="{{ pessoa.turma|default_if_none:'' }}">
@@ -570,4 +572,5 @@
     perguntado agora — inclusive quando é zero.
   </p>
 </div>
+{% include "admin/_whatsapp_painel.html" %}
 {% endblock %}
