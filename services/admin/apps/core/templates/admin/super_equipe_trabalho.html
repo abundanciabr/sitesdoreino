@@ -9,6 +9,7 @@
   <section class="cartao"><h2>Acompanhamento</h2>
     <p><b>{{ trabalho.get_situacao_display }}</b> · {% if trabalho.situacao == 'concluida' %}Entrega concluída{% else %}{{ trabalho.etapa_atual|default:"Aguardando" }}{% endif %} · {% if trabalho.estado.especialidades %}{{ trabalho.estado.resultados|length }} de {{ trabalho.estado.especialidades|length }} perfis com resposta salva{% else %}Seleção de perfis não registrada{% endif %}</p>
     <p>{{ trabalho.motivo }}</p>
+    {% if trabalho.estado.fluxo_avaliacao %}<p>Avaliação rastreável v{{ trabalho.estado.fluxo_avaliacao }} · {% if sintese %}síntese final salva depois dos pareceres{% elif trabalho.estado.especialidades|length > 1 %}síntese posterior quando Nicole participa{% else %}parecer individual{% endif %}. Parecer e síntese não confirmam efeito externo.</p>{% endif %}
     <p>Pedido por {{ trabalho.pedido_por }} · {{ trabalho.tentativas }} tentativa(s) · Modelo {{ trabalho.modelo|default:"configurado na conexão" }} · custo registrado US$ {{ custo }}</p>
     {% if trabalho.tarefa_id %}<p>Tarefa da equipe nº {{ trabalho.tarefa_id }}</p>{% endif %}
   </section>
@@ -25,6 +26,20 @@
   {% for nome, resultado in resultados %}<section class="cartao"><h2>{{ nome }}</h2>
     {% if resultado %}<p style="white-space:pre-wrap">{{ resultado.texto }}</p><small>Concluído em {{ resultado.concluido_em }}</small>{% else %}<p>Aguardando esta etapa.</p>{% endif %}
   </section>{% endfor %}
+  {% if sintese %}<section class="cartao"><h2>Nicole · síntese final posterior aos pareceres</h2>
+    <p style="white-space:pre-wrap">{{ sintese.texto }}</p>
+    <p>Concluída em {{ sintese.concluido_em }} · custo estimado US$ {{ sintese.rastreio.custo_estimado_usd }} · {{ sintese.rastreio.duracao_segundos }} segundos.</p>
+    <p>Interpretação do modelo, sem aprovação obrigatória ou efeito comercial certificado.</p>
+  </section>{% endif %}
+  {% if rastreios %}<section class="cartao"><h2>Rastreio das entradas e respostas</h2>
+    <p>Dados do próprio trabalho, persistidos antes da chamada. Fontes e cálculos são registros; avaliação de alegações é interpretação do modelo. Custo registrado não é fatura nem custo por entrega correta.</p>
+    {% for entrada in rastreios %}<details><summary>{{ entrada.etapa }} · {{ entrada.modelo }} · {{ entrada.iniciada_em }}</summary>
+      <p>Versão da avaliação {{ entrada.fluxo_avaliacao }} · fontes {{ entrada.fontes_digest }} · contexto {{ entrada.contexto_digest }} · instruções {{ entrada.instrucoes_digest }}.</p>
+      <p>{{ entrada.limite }}</p>
+      <h3>Contexto fornecido</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ entrada.contexto_texto }}</pre>
+      <h3>Instruções fornecidas</h3><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ entrada.instrucoes }}</pre>
+    </details>{% endfor %}
+  </section>{% endif %}
   {% if entrega %}<section class="cartao"><h2>Entrega {% if entrega.parcial %}parcial{% else %}concluída{% endif %} · versão {{ entrega.versao }}</h2>
     <p style="white-space:pre-wrap">{{ entrega.conteudo }}</p>
     {% for pendencia in entrega.pendencias %}<p>{{ pendencia }}</p>{% endfor %}
