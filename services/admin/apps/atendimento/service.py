@@ -367,7 +367,7 @@ def processar_uma():
 def manutencao_avisos():
     from .escala import manutencao
     manutencao()
-    for conversa in Conversa.objects.filter(estado='aguardando',encaminhada=True).select_related('assunto')[:100]:
+    for conversa in Conversa.objects.filter(estado='aguardando',encaminhada=True).select_related('assunto').iterator(chunk_size=100):
         avisar(conversa)
 
 
