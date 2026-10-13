@@ -82,6 +82,7 @@ from apps.core.economia import (
     economia_mudar_degrau,
 )
 from apps.core.comunidade import comunidade_da_equipe
+from apps.core.feed_previa import feed_previa, feed_previa_asset
 from apps.core.comentarios_aulas import (
     escola_comentarios_aulas,
     escola_comentario_visibilidade,
@@ -297,6 +298,8 @@ urlpatterns = [
     path("comunidade/ganhos/previa/", ganhos_previa, name="ganhos_previa"),
     path("comunidade/ganhos/previa/<int:registro_id>/", ganhos_previa_detalhe, name="ganhos_previa_detalhe"),
     path("comunidade/ganhos/previa/<int:registro_id>/print/", ganhos_previa_print, name="ganhos_previa_print"),
+    path("comunidade/feed/previa/", feed_previa, name="feed_previa"),
+    path("comunidade/feed/previa/assets/<str:nome>", feed_previa_asset, name="feed_previa_asset"),
     path("escola/alunos/medalhas/", medalhas_painel, name="escola_medalhas"),
     path("escola/alunos/medalhas/previa/", medalhas_previa, name="escola_medalhas_previa"),
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
