@@ -18,6 +18,7 @@ class Enviar(Schema):
     canal: str
     destino: str
     codigo: str
+    finalidade: str = "previa"
 
 @router.post("/acesso-previa/enviar")
 def enviar(request, dados: Enviar):
@@ -25,20 +26,20 @@ def enviar(request, dados: Enviar):
     autorizado = os.environ.get("TOKENS_PUBLICACAO_ADMIN", "")
     if not autorizado or request.auth != autorizado:
         raise HttpError(403, "Prévia exclusiva do painel.")
-    if (dados.canal not in {"email", "whatsapp"} or not re.fullmatch(r"[0-9]{6}", dados.codigo)
+    if (dados.finalidade not in {"previa", "aluno"} or dados.canal not in {"email", "whatsapp"} or not re.fullmatch(r"[0-9]{6}", dados.codigo)
         or not re.fullmatch(r"[0-9a-f-]{36}", dados.desafio) or not dados.site_id
         or len(dados.site_id) > 100 or len(dados.destino) > 254):
         raise HttpError(422, "Pedido de envio inválido.")
     with transaction.atomic():
         envio, criado = EnvioRegistrado.objects.get_or_create(site_id=dados.site_id,
-            order_id=dados.desafio, tipo="acesso_previa", canal=dados.canal,
+            order_id=dados.desafio, tipo="acesso_previa" if dados.finalidade == "previa" else "acesso_aluno", canal=dados.canal,
             defaults={"event": "acesso.previa", "destinatario": dados.destino,
                       "assunto": "Seu código de acesso — Meshcraft",
                       "corpo": "Código de acesso temporário [oculto]", "tentativas": 1,
                       "resultado": "desconhecido"})
     if not criado:
         return {"estado": envio.resultado, "repetido": True}
-    texto = (f"Seu código de acesso à prévia da Meshcraft é {dados.codigo}. "
+    texto = (f"Seu código de acesso à Meshcraft é {dados.codigo}. "
              "Válido por 10 minutos, uma única vez. Não compartilhe este código. "
              "Se não pediu este acesso, ignore a mensagem.")
     estado = "desconhecido"

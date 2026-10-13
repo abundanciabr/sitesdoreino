@@ -157,3 +157,15 @@ erro_muitas_tentativas:
   en: "Too many attempts. Wait a bit and try again."
   pt-br: "Muitas tentativas. Espere um pouco e tente de novo."
   es: "Demasiados intentos. Espera un poco e inténtalo de nuevo."
+
+botao_sem_senha:
+  _fonte: "6ff28a"
+  en: "Sign in without a password by email or WhatsApp"
+  pt-br: "Entrar sem senha por e-mail ou WhatsApp"
+  es: "Entrar sin contraseña por correo o WhatsApp"
+
+aviso_sem_senha:
+  _fonte: "f25932"
+  en: "Recover your account and continue your courses where you left off."
+  pt-br: "Recupere sua conta e continue seus cursos de onde parou."
+  es: "Recupera tu cuenta y continúa tus cursos donde los dejaste."

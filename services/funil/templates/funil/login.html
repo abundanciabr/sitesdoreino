@@ -53,6 +53,7 @@
   {% elif erro == "muitas-tentativas" %}<p class="recusa">{% t "login.erro_muitas_tentativas" %}</p>
   {% endif %}
   <p>{% t "login.subtitulo" %}</p>
+  {% if recuperacao_alunos_disponivel %}<a class="cta" href="/admin/recuperar-acesso/">{% t "login.botao_sem_senha" %}</a><p class="aviso">{% t "login.aviso_sem_senha" %}</p>{% endif %}
   <a class="cta" href="{{ url_de_entrada }}">{% t "login.botao_google" %}</a>
   <p class="aviso">{% t "login.aviso_email" %}</p>
   {% if token_de_senha %}

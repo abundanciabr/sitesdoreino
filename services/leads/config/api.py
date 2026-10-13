@@ -38,3 +38,6 @@ from apps.core.pessoas_reais import ContatoDeTeste
 @api.exception_handler(ContatoDeTeste)
 def contato_de_teste_recusado(request, erro):
     return api.create_response(request, {"detail": str(erro)}, status=422)
+
+from apps.core.acesso_alunos import router as acesso_alunos_router
+api.add_router("", acesso_alunos_router)

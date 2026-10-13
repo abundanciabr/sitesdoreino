@@ -168,7 +168,7 @@ def enviar_whatsapp(destinatario: str, corpo: str, *, site_id: str, referencia: 
 def processar_envio(envio_id: int, task=None) -> None:
     """Corpo nu da task — chamado direto pelo teste-guarda, sem passar pelo Huey."""
     envio = EnvioRegistrado.objects.get(id=envio_id)
-    if envio.tipo == "acesso_previa":
+    if envio.tipo in {"acesso_previa", "acesso_aluno"}:
         return  # O código efêmero não é persistido nem reenviado pela fila.
     if envio.status == "enviado" or (
         envio.status == "falhou" and envio.resultado.startswith("endereco bloqueado")

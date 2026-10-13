@@ -442,3 +442,14 @@ class AcompanhamentoAplicado(models.Model):
                 fields=["oportunidade", "chave"], name="uniq_acompanhamento_aplicado"
             ),
         ]
+
+
+class ContatoDeAcesso(models.Model):
+    """Contatos do CRM na liberação. Capturas posteriores não trocam a recuperação."""
+    id = models.UUIDField(primary_key=True, editable=False)
+    site_id = models.CharField(max_length=100)
+    email = models.EmailField()
+    telefone = models.CharField(max_length=15, blank=True, default="")
+    class Meta:
+        indexes = [models.Index(fields=["site_id", "email"], name="crm_acesso_email"),
+                   models.Index(fields=["site_id", "telefone"], name="crm_acesso_telefone")]

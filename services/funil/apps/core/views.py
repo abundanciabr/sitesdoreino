@@ -637,6 +637,7 @@ def entrar(request):
             "erro": erro,
             "destino": destino,
             "token_de_senha": token_de_senha,
+            "recuperacao_alunos_disponivel": request.get_host().split(":")[0].lower() in {"meshcraft.top", "www.meshcraft.top"},
         },
     )
 
