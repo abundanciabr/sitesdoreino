@@ -84,6 +84,7 @@ from apps.core.economia import (
 from apps.core.comunidade import comunidade_da_equipe
 from apps.core.feed_previa import feed_previa, feed_previa_asset
 from apps.core import feed_previa_social
+from apps.feed_previa import notificacoes as feed_notificacoes
 from apps.core.comentarios_aulas import (
     escola_comentarios_aulas,
     escola_comentario_visibilidade,
@@ -302,6 +303,10 @@ urlpatterns = [
     path("comunidade/ganhos/previa/<int:registro_id>/print/", ganhos_previa_print, name="ganhos_previa_print"),
     path("comunidade/feed/previa/", feed_previa, name="feed_previa"),
     path("comunidade/feed/previa/data/", feed_previa_social.dados, name="feed_previa_dados"),
+    path("comunidade/feed/previa/notificacoes/", feed_notificacoes.lista, name="feed_previa_notificacoes"),
+    path("comunidade/feed/previa/notificacoes/ao-vivo/", feed_notificacoes.stream, name="feed_previa_notificacoes_stream"),
+    path("comunidade/feed/previa/notificacoes/ler/", feed_notificacoes.ler, name="feed_previa_notificacoes_ler"),
+    path("comunidade/feed/previa/notificacoes/simular/", feed_notificacoes.simular, name="feed_previa_notificacoes_simular"),
     path("comunidade/feed/previa/action/", feed_previa_social.acao, name="feed_previa_acao"),
     path("comunidade/feed/previa/publish/", feed_previa_social.publicar, name="feed_previa_publicar"),
     path("comunidade/feed/previa/arquivo/<uuid:arquivo_id>/", feed_previa_social.arquivo, name="feed_previa_arquivo"),
