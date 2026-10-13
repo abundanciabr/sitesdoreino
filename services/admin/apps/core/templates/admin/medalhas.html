@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Dar medalha{% endblock %}
+{% block corpo %}
+<style>
+.medalhas-painel{max-width:1150px;margin:28px auto;padding:0 20px}.medalhas-painel h1{margin:14px 0 8px}
+.medalhas-grade{display:grid;grid-template-columns:minmax(280px,1fr) minmax(320px,1fr);gap:26px;margin:24px 0}
+.medalhas-painel label{display:block;font-weight:600;margin:20px 0 8px}.medalhas-painel input,.medalhas-painel textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #bbc6bf;border-radius:10px;font:inherit;background:var(--fundo,#fff);color:inherit}.medalhas-painel textarea{min-height:150px;resize:vertical}
+.medalhas-acoes{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0}.medalhas-acoes button{padding:12px 18px;border-radius:10px;cursor:pointer;border:1px solid #b9c8bc;font:inherit}.medalhas-acoes .conceder{background:#16664e;color:white;border-color:#16664e}.medalhas-acoes button:disabled{opacity:.5;cursor:default}
+.medalhas-previa{border:1px solid #d5ddd6;border-radius:20px;overflow:hidden;background:#faf9f3}.medalhas-previa iframe{width:100%;height:650px;border:0;display:block}.medalhas-nota{background:#f7eaca;color:#614d13;border-radius:12px;padding:14px}.medalhas-sucesso{padding:18px;background:#e1f3e6;color:#165439;border-radius:12px}
+.medalhas-lista{display:grid;gap:12px;padding:0;list-style:none}.medalhas-lista li{border:1px solid #d5ddd6;padding:18px;border-radius:12px}.medalhas-lista p{white-space:pre-line}
+@media(max-width:850px){.medalhas-grade{grid-template-columns:1fr}.medalhas-previa iframe{height:640px}}
+</style>
+<main class="medalhas-painel">
+<a href="{{ voltar }}">← Voltar ao aluno</a>
+<h1>Dar medalha</h1>
+<p>{{ ficha.nome_completo|default:email }} · {{ email }}</p>
+{% if concedida %}<p class="medalhas-sucesso" role="status"><strong>{{ concedida.nome }} está na coleção do aluno.</strong> A celebração aparece quando ele estiver na Trilha ou nos cursos. Se estiver offline, fica guardada para o próximo acesso.</p>{% endif %}
+{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+<div class="medalhas-grade"><section>
+{% if nota == 10 %}<p class="medalhas-nota"><strong>Nota 10 na Pesquisa de Satisfação.</strong><br>Embaixador é a sugestão para reconhecer este aluno. A medalha só é entregue quando você clicar em “Dar medalha ao aluno”.</p>{% endif %}
+<form method="post" id="form-medalha">{% csrf_token %}
+<input type="hidden" name="site_id" value="{{ site_id }}"><input type="hidden" name="email" value="{{ email }}"><input type="hidden" name="avaliacao" value="{{ avaliacao }}">
+<label for="nome-medalha">Nome da medalha</label><input id="nome-medalha" name="nome" value="{{ nome }}" maxlength="120" required>
+<label for="mensagem-medalha">Mensagem que o aluno vai receber</label><textarea id="mensagem-medalha" name="mensagem" maxlength="1000" required>{{ mensagem }}</textarea>
+<div class="medalhas-acoes"><button type="button" id="ver-medalha">Ver animação</button><button class="conceder" type="submit"{% if not pode_conceder %} disabled{% endif %}>Dar medalha ao aluno</button></div>
+<p>A medalha e a mensagem ficam na coleção privada do aluno. Conceder a mesma medalha novamente não cria uma cópia. Este reconhecimento não muda XP ou faixa.</p>
+</form></section>
+<section class="medalhas-previa" aria-label="Prévia da celebração"><iframe id="previa-medalha" title="Animação da medalha — prévia sem concessão" src="{{ previa_url }}"></iframe></section></div>
+<h2>Medalhas concedidas pelo painel</h2>
+{% if medalhas == None %}<p>Não foi possível consultar a coleção agora.</p>{% else %}
+<ul class="medalhas-lista">{% for medalha in medalhas %}<li><strong>🏅 {{ medalha.nome }}</strong><p>{{ medalha.mensagem }}</p><small>{% if medalha.vista %}Celebração já vista pelo aluno{% else %}Celebração aguardando o aluno{% endif %}</small></li>{% empty %}<li>Nenhuma medalha concedida pelo painel para este aluno.</li>{% endfor %}</ul>{% endif %}
+</main>
+<script>
+document.getElementById('ver-medalha').addEventListener('click',function(){
+ const u=new URL("{% url 'escola_medalhas_previa' %}",location.origin);
+ u.searchParams.set('nome',document.getElementById('nome-medalha').value);
+ u.searchParams.set('mensagem',document.getElementById('mensagem-medalha').value);
+ document.getElementById('previa-medalha').src=u.href;
+});
+document.getElementById('form-medalha').addEventListener('submit',function(){
+ const b=this.querySelector('[type=submit]');b.disabled=true;b.textContent='Entregando medalha…';
+});
+</script>
+{% endblock %}

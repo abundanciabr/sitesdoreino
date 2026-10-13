@@ -20,6 +20,7 @@ aconteceu.
   <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
   <h1>Prontuário</h1>
   <p class="subtitulo">Tudo o que a escola sabe sobre esta pessoa, em ordem.</p>
+  {% for p in passagens %}{% ifchanged p.site_id %}{% if p.site_id %}<p><a class="sim" href="{% url 'escola_medalhas' %}?site_id={{ p.site_id|urlencode }}&amp;email={{ email|urlencode }}">🏅 Dar medalha · {{ p.site_id }}</a></p>{% endif %}{% endifchanged %}{% endfor %}
   <section class="cartao">
     <h2 class="titulo-de-bloco">Satisfação</h2>
     <p>As avaliações acompanham a identidade do aluno e o curso. Consulte respostas, qualidade, reclamações e o atendimento da equipe.</p>

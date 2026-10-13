@@ -1036,6 +1036,7 @@ class Concessao(models.Model):
         REVOGADA = "revogada", "Retirada pela equipe"
 
     class PapelDoValidador(models.TextChoices):
+        ADMIN = "admin", "Administrador"
         PROFESSOR = "professor", "Professor"
         MONITOR = "monitor", "Monitor"
         PAR = "par", "Um colega"
@@ -1086,6 +1087,16 @@ class Concessao(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pessoa_id}: {self.conquista_id}"
+
+
+class CelebracaoDeMedalha(models.Model):
+    """Mensagem privada de uma medalha concedida manualmente no painel."""
+
+    concessao = models.OneToOneField(Concessao, on_delete=models.PROTECT, related_name="celebracao_medalha")
+    nome = models.CharField(max_length=120)
+    mensagem = models.CharField(max_length=1000)
+    referencia = models.CharField(max_length=200, blank=True, default="")
+    vista_em = models.DateTimeField(null=True, blank=True)
 
 
 class HistoricoDaConcessao(models.Model):

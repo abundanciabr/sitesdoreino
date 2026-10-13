@@ -1,4 +1,5 @@
 from django.urls import include, path, re_path
+from apps.core.medalhas_painel import minhas, vista
 from apps.core.views import (
     base, ciclo_pagina, inicio_pagina, inicio_conquista, medalhas, healthz, servir_estatico, salvar_jornada, print_recebimento,
     interno_reconhecimentos, decidir_reconhecimento,
@@ -10,6 +11,8 @@ from apps.core.reinicio_faixas import relatorio_reinicio
 from apps.core.teste_branca import teste_branca
 
 urlpatterns = [
+    path("minhas-medalhas/", minhas, name="minhas-medalhas"),
+    path("minhas-medalhas/<int:medalha_id>/vista/", vista, name="medalha-vista"),
     path("interno/teste-faixa-branca/", teste_branca, name="teste-faixa-branca"),
     path("ciclo/", ciclo_pagina, name="ciclo"),
     path("interno/reinicio-faixas/", relatorio_reinicio, name="relatorio-reinicio-faixas"),

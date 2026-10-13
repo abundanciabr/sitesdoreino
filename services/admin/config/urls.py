@@ -1,4 +1,5 @@
 from apps.core.nps import crm_satisfacao_revisao_salvar
+from apps.core.medalhas import painel as medalhas_painel, previa as medalhas_previa
 from django.conf import settings
 from django.urls import path, re_path
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
@@ -291,6 +292,8 @@ from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
+    path("escola/alunos/medalhas/", medalhas_painel, name="escola_medalhas"),
+    path("escola/alunos/medalhas/previa/", medalhas_previa, name="escola_medalhas_previa"),
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
     path('integracoes/hotmart/testes/<uuid:teste_id>/', hotmart_teste, name='hotmart_teste'),
     path('interno/hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
