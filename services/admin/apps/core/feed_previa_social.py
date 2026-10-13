@@ -11,6 +11,7 @@ from django.db import transaction
 from django.db.models import Count, Prefetch
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
@@ -86,12 +87,15 @@ def bootstrap(host, eu):
         posts.append({"id": p.chave, "author": aliases[p.autor_id], "kind": p.categoria,
             "title": p.titulo, "story": p.texto, "art": p.detalhes.get("art", "sword"),
             "tags": p.detalhes.get("tags", []), "amount": p.detalhes.get("amount", 0),
-            "time": p.detalhes.get("time") or p.criado_em.strftime("%d/%m/%Y · %H:%M · prévia"),
+            "time": p.detalhes.get("time") or timezone.localtime(p.criado_em).strftime("%d/%m/%Y · %H:%M · prévia"),
             "demo": p.autor.demonstracao, "images": [a["url"] for a in arquivos if a["tipo"].startswith("image/")],
             "video": next((a["url"] for a in arquivos if a["tipo"].startswith("video/")), None),
             "likes": p.detalhes.get("likes", 0) + totais.get(("like", p.chave), 0),
             "views": totais.get(("view", p.chave), 0), "saves": totais.get(("save", p.chave), 0),
             "comments": comentarios})
+    # Histórias administrativas recentes primeiro; exemplos seguem a cronologia indicada.
+    ordem = {p["id"]: i for i, p in enumerate(SEMENTE["posts"])}
+    posts.sort(key=lambda p: (p["demo"], ordem.get(p["id"], -1)))
     return {"people": pessoas, "state": {"posts": posts,
         "likes": [r["alvo"] for r in minhas if r["tipo"] == "like"],
         "saved": [r["alvo"] for r in minhas if r["tipo"] == "save"],
