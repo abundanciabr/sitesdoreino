@@ -158,3 +158,14 @@ def test_admin_confirma_resumo_apos_corrigir_sem_gravar_aluno(client, env_dos_pa
     assert response.status_code == 200 and "Simulação concluída" in response.content.decode()
     assert json.loads(rota.calls[-1].request.content)["confirmado"] is True
     assert not any("/tentativas" in str(call.request.url) for call in rede.calls)
+
+
+def test_botao_pesquisas_reservado_ao_admin(client, aluna, rede, monkeypatch):
+    url = reverse("satisfacao-curso", args=["profissional"])
+    resposta = client.get(url, HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 200
+    assert "Ver pesquisas dos cursos" not in resposta.content.decode()
+    preparar_admin(rede, monkeypatch)
+    resposta = client.get(url, HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 200
+    assert "Ver pesquisas dos cursos" in resposta.content.decode()
