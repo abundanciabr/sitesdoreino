@@ -16,6 +16,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
 from .feed_previa import _permitido
+from apps.feed_previa.notificacoes import emitir
 from apps.feed_previa.models import (FeedPreviaPerfil as Perfil, FeedPreviaPost as Post,
     FeedPreviaInteracao as Interacao, FeedPreviaComentario as Comentario,
     FeedPreviaPreferencia as Preferencia, FeedPreviaArquivo as Arquivo)
@@ -163,8 +164,13 @@ def acao(request):
                     defaults={"post": post, "texto": corpo, "mencoes": mencoes})
                 if not criado and (comentario.post_id != post.pk or comentario.texto != corpo):
                     raise ValueError("Este envio já foi usado em outro comentário.")
+                if criado:
+                    if post.autor.handle not in mencoes:
+                        emitir(post.autor, eu, "comment", f"comment:{comentario.pk}", post, comentario)
+                    for citado in Perfil.objects.filter(site_host=host, handle__in=mencoes):
+                        emitir(citado, eu, "mention", f"mention:{comentario.pk}:{citado.pk}", post, comentario)
             else:
-                registro, _ = Interacao.objects.get_or_create(autor=eu, tipo=op, alvo=post.chave)
+                registro, novo = Interacao.objects.get_or_create(autor=eu, tipo=op, alvo=post.chave)
                 registro = Interacao.objects.select_for_update().get(pk=registro.pk)
                 if op == "share":
                     chave = pedido(d.get("request_key"))
@@ -175,14 +181,23 @@ def acao(request):
                 else:
                     if type(d.get("active")) is not bool:
                         raise ValueError("Escolha o estado da interação.")
+                    primeira = novo or not registro.ativa
                     registro.ativa = d["active"]
+                    if op == "like" and registro.ativa and primeira:
+                        registro.quantidade += 1
+                        emitir(post.autor, eu, "like", f"like:{registro.pk}:{registro.quantidade}", post)
                     registro.save()
         elif op == "follow":
             alvo = Perfil.objects.get(site_host=host, chave=d.get("profile"))
             if alvo.pk == eu.pk or type(d.get("active")) is not bool:
                 raise ValueError("Escolha outro criador para seguir.")
-            registro, _ = Interacao.objects.get_or_create(autor=eu, tipo="follow", alvo=alvo.chave)
+            registro, novo = Interacao.objects.get_or_create(autor=eu, tipo="follow", alvo=alvo.chave)
+            registro = Interacao.objects.select_for_update().get(pk=registro.pk)
+            primeira = novo or not registro.ativa
             registro.ativa = d["active"]
+            if registro.ativa and primeira:
+                registro.quantidade += 1
+                emitir(alvo, eu, "follow", f"follow:{registro.pk}:{registro.quantidade}")
             registro.save()
         elif op in {"proposal", "application"}:
             registro, _ = Preferencia.objects.get_or_create(autor=eu)

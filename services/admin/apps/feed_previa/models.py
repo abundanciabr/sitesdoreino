@@ -84,3 +84,19 @@ class FeedPreviaArquivo(models.Model):
 
     class Meta:
         db_table = "admin_feed_previa_arquivo"
+
+
+class FeedPreviaNotificacao(models.Model):
+    destinatario = models.ForeignKey(FeedPreviaPerfil, on_delete=models.PROTECT, related_name="notificacoes")
+    autor = models.ForeignKey(FeedPreviaPerfil, on_delete=models.PROTECT, related_name="avisos_enviados")
+    tipo = models.CharField(max_length=20)
+    post = models.ForeignKey(FeedPreviaPost, on_delete=models.PROTECT, null=True, blank=True)
+    comentario = models.ForeignKey(FeedPreviaComentario, on_delete=models.PROTECT, null=True, blank=True)
+    chave_evento = models.CharField(max_length=160, unique=True)
+    demonstracao = models.BooleanField(default=False)
+    lida_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "admin_feed_previa_notificacao"
+        indexes = [models.Index(fields=["destinatario", "-criado_em"], name="feed_previa_notif_destino")]
