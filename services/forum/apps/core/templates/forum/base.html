@@ -37,7 +37,7 @@ contexto (apps/core/menu.py); aqui so se desenha.
     <button type="submit">Procurar</button>
   </form>
 </div>
-<main>{% block conteudo %}{% endblock %}</main>
+<main>{% if ator.eh_admin %}<p class="migalha"><a href="/comunidade">← Comunidade</a></p>{% endif %}{% block conteudo %}{% endblock %}</main>
 {% if rodape %}{% comment %}
 O RODAPÉ (apps/core/rodape.py) — a mesma peça do site, com o mesmo desenho.
 Quem DECIDE qual rodapé cada página mostra é o processador de contexto; aqui

@@ -21,7 +21,11 @@ def _migracoes(repo, commit):
         bits = path.split("/")
         if len(bits) < 3 or bits[-2] != "migrations" or not bits[-1].endswith(".py") or bits[-1] == "__init__.py":
             continue
-        app, name = bits[-3], bits[-1][:-3]
+        # Cada serviço Django tem seu próprio banco e seu próprio app_label.
+        # apps/core de admin e de leads não pertencem ao mesmo grafo.
+        projeto = "/".join(bits[:-4])
+        prefixo = projeto + "/" if projeto else ""
+        app, name = prefixo + bits[-3], bits[-1][:-3]
         source = _git(repo, "show", "%s:%s" % (commit, path))
         try:
             tree = ast.parse(source, filename=path)
@@ -45,7 +49,7 @@ def _migracoes(repo, commit):
                         dynamic = True
                         continue
                     if isinstance(dep, tuple) and len(dep) == 2 and all(isinstance(x, str) for x in dep):
-                        deps.add(dep)
+                        deps.add((prefixo + dep[0], dep[1]))
                     else:
                         dynamic = True
         result[(app, name)] = (path, deps, dynamic)

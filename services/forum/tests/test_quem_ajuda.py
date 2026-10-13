@@ -216,3 +216,33 @@ def test_retrato_png_para_admin_e_perfil_desconhecido_fecha(client, monkeypatch)
         ).status_code
         == 404
     )
+
+
+def test_dados_da_comunidade_exigem_admin_ou_par_e_sessao(client, monkeypatch, settings):
+    membro = pessoa(90)
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: Ator(membro, eh_aluno=True))
+    assert client.get(reverse("dados_da_comunidade")).status_code == 404
+    settings.TOKEN_DO_EDITOR_FORUM = "par-privado-de-teste"
+    assert client.get(reverse("dados_da_comunidade"), HTTP_AUTHORIZATION="Bearer par-privado-de-teste").status_code == 200
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: Ator(None))
+    assert client.get(reverse("dados_da_comunidade"), HTTP_AUTHORIZATION="Bearer par-privado-de-teste").status_code == 404
+
+
+def test_dados_da_comunidade_respeitam_grupo_do_leitor(client, monkeypatch, settings):
+    admin, membro, autor, ajudante = pessoa(90), pessoa(91), pessoa(92), pessoa(1)
+    aberto = area("grupo-acessivel", True, admin)
+    privado = area("grupo-outro", True, admin)
+    MembroDoGrupo.objects.create(grupo=aberto, pessoa=membro, adicionado_por=admin, motivo="Teste")
+    solucao(aberto, autor, ajudante)
+    escondido = solucao(privado, autor, ajudante)
+    escondido.titulo = "Conteúdo reservado de outro grupo"
+    escondido.save(update_fields=["titulo"])
+    monkeypatch.setattr("apps.core.participacao.consultar", lambda ids: {str(i): {"segmento": "promotor"} for i in ids})
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: Ator(membro, eh_aluno=True))
+    settings.TOKEN_DO_EDITOR_FORUM = "par-privado-de-teste"
+    resposta = client.get(reverse("dados_da_comunidade"), HTTP_AUTHORIZATION="Bearer par-privado-de-teste")
+    assert resposta.status_code == 200
+    assert resposta.json()["ranking"][0]["solucoes"] == 1
+    assert [g["nome"] for g in resposta.json()["grupos"]] == ["grupo-acessivel"]
+    assert "Conteúdo reservado" not in resposta.content.decode()
+    assert "example.test" not in resposta.content.decode()
