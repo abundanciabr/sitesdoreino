@@ -233,7 +233,9 @@ def test_dados_da_comunidade_respeitam_grupo_do_leitor(client, monkeypatch, sett
     aberto = area("grupo-acessivel", True, admin)
     privado = area("grupo-outro", True, admin)
     MembroDoGrupo.objects.create(grupo=aberto, pessoa=membro, adicionado_por=admin, motivo="Teste")
-    solucao(aberto, autor, ajudante)
+    from datetime import datetime, timezone
+    conversa = solucao(aberto, autor, ajudante)
+    Topico.objects.filter(pk=conversa.pk).update(criado_em=datetime(2026, 9, 1, 1, 42, tzinfo=timezone.utc))
     escondido = solucao(privado, autor, ajudante)
     escondido.titulo = "Conteúdo reservado de outro grupo"
     escondido.save(update_fields=["titulo"])
@@ -243,6 +245,7 @@ def test_dados_da_comunidade_respeitam_grupo_do_leitor(client, monkeypatch, sett
     resposta = client.get(reverse("dados_da_comunidade"), HTTP_AUTHORIZATION="Bearer par-privado-de-teste")
     assert resposta.status_code == 200
     assert resposta.json()["ranking"][0]["solucoes"] == 1
+    assert resposta.json()["conversas"][0]["data"] == "31/08/2026"
     assert [g["nome"] for g in resposta.json()["grupos"]] == ["grupo-acessivel"]
     assert "Conteúdo reservado" not in resposta.content.decode()
     assert "example.test" not in resposta.content.decode()
