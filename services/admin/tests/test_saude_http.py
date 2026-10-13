@@ -126,6 +126,12 @@ def test_apis_nao_entram_no_ranking():
     assert not saude.observavel(r, HttpResponse(status=500))
 
 
+def test_administrador_do_forum_mantem_perfil():
+    r = pedido()
+    r._ator_desta_requisicao.eh_admin = True
+    assert saude.identificar(r)["perfil"] == "administrador"
+
+
 def test_painel_com_dados(monkeypatch):
     banco = Banco()
     saude.registrar(pedido(), HttpResponse(status=200), banco)
