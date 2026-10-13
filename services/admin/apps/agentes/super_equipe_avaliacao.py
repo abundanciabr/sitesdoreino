@@ -16,6 +16,40 @@ def digest(valor):
                                      default=str).encode()).hexdigest()
 
 
+def compactar_contexto(contexto):
+    """Remove apenas cópias comprovadamente presentes na mesma fotografia."""
+    def tamanho(valor):
+        return len(json.dumps(valor, ensure_ascii=False, default=str).encode())
+
+    antes = tamanho(contexto)
+    confronto = contexto.get("confronto", {})
+    fontes_confronto = confronto.get("fontes_para_confronto", {})
+    fontes = dict(contexto.get("fontes", {}))
+    referencias = {}
+    for nome, valor in list(fontes.items()):
+        if nome in fontes_confronto and valor == fontes_confronto[nome]:
+            del fontes[nome]
+            referencias[nome] = f"confronto.fontes_para_confronto.{nome}"
+    anteriores = fontes.get("resultados_anteriores")
+    pares = {par["perfil"]: par.get("texto", "")
+             for par in confronto.get("pares_do_proprio_trabalho", [])}
+    if anteriores and all(isinstance(texto, str) and codigo in pares
+                          and pares[codigo].startswith(texto)
+                          for codigo, texto in anteriores.items()):
+        del fontes["resultados_anteriores"]
+        referencias["resultados_anteriores"] = "confronto.pares_do_proprio_trabalho (por perfil)"
+    compacto = {**contexto, "fontes": fontes}
+    if referencias:
+        compacto["fontes_reutilizadas_nesta_entrada"] = referencias
+    depois = tamanho(compacto)
+    if depois >= antes:
+        compacto, depois, referencias = contexto, antes, {}
+    return compacto, {"bytes_antes": antes, "bytes_enviados": depois,
+                      "bytes_repetidos_evitados": antes - depois,
+                      "fontes_reutilizadas": list(referencias),
+                      "limite": "Mesma fotografia, sem corte de fatos; bytes não são tokens nem tempo poupado."}
+
+
 def material(estado, digest_fontes, limpar):
     """Só resultados da fotografia atual, sem recuperar fontes revogadas."""
     pares, excluidos = [], []

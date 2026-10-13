@@ -43,6 +43,15 @@ def evidencias(pessoa, curso):
             "ultima_entrega": ultimo.isoformat() if ultimo else None}}
 
 
+def pode_avaliar_curso(ator, curso):
+    if not ator.autenticado or curso.site_id != site_atual():
+        return False
+    return ator.eh_admin or (
+        ator.matricula_conferida and ator.eh_aluno
+        and curso.produto_id in ator.produtos_matriculados
+    )
+
+
 @never_cache
 @require_http_methods(["GET", "POST"])
 def pesquisa(request, slug=None):
