@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 from uuid import uuid4
+from satisfacao_congelada import conferir_codigo_satisfacao
 from mercadopago_congelado import conferir_ambiente, conferir_arvore, conferir_rotas, conferir_pacote as conferir_mp_pacote
 
 
@@ -169,6 +170,7 @@ def sincronizar_infra(sha: str) -> None:
     conferir_arvore(fonte, politica_mp, "infra")
     conferir_rotas(fonte, politica_mp)
     conferir_mp_pacote(Path(versao["codigo"]), versao["imagem"], politica_mp)
+    conferir_codigo_satisfacao(Path(versao["codigo"]))
     ambiente = ambiente_da_aplicacao(versao["imagem"], Path(versao["codigo"]))
     compose("config", "--quiet", arquivo=fonte / "docker-compose.yml", ambiente=ambiente)
     snapshot = PUBLICACOES / "topologias" / ("infra-" + id_tentativa(sha))
