@@ -491,9 +491,7 @@ def test_a_comunidade_sem_grupo_diz_como_pedir_a_entrada(client, env, monkeypatc
     assert "/conquistas/contribuicoes" not in corpo
 
 
-def test_pedido_de_grupo_abre_a_area_geral_existente(
-    client, env, monkeypatch, ana
-):
+def test_pedido_de_grupo_abre_a_area_geral_existente(client, env, monkeypatch, ana):
     Area.objects.create(
         slug="sala-dos-alunos",
         nome="Sala dos alunos",
@@ -539,7 +537,7 @@ def test_a_comunidade_com_grupo_mostra_o_desafio_e_quem_depende_de_voce(
     assert f'{reverse("area", args=[grupo.slug])}#abrir' in corpo
     assert "Primeiro passo: apresente-se ao grupo" in corpo
     assert "Hotmart ou pela Herospark" in corpo
-    assert "Profa. Lia" in corpo
+    assert "Responsável: Profa." in corpo
     assert "Quem depende de você" in corpo
     assert corpo.index("Duvida antiga da Bia") < corpo.index("Duvida nova da Bia")
     assert "há 3 dias" in corpo
@@ -587,3 +585,74 @@ def test_o_formulario_do_grupo_traz_o_molde_de_pedido_de_ajuda(
         "Como pedir ajuda ao grupo"
         not in pedir(client, "area", comum.slug).content.decode()
     )
+
+
+def test_ranking_publicado_conta_apenas_ajuda_em_conversas_acessiveis(
+    client, env, monkeypatch, grupo, ana, bia, professora
+):
+    vincular(grupo, ana, professora)
+    vincular(grupo, bia, professora)
+    pergunta = duvida(
+        grupo, ana, "Pergunta do grupo acessível", "Como ajustar o objeto?"
+    )
+    resposta = Mensagem.objects.create(
+        topico=pergunta, autor=bia, texto="Ajuste o objeto assim."
+    )
+    Topico.objects.filter(pk=pergunta.pk).update(resposta_aceita=resposta)
+    outro = novo_grupo("grupo-privado-outro", professora)
+    externa = Pessoa.objects.create(
+        id_da_plataforma="externa",
+        nome_exibido="Pessoa externa",
+        email="externa@example.test",
+    )
+    escondida = duvida(
+        outro, bia, "Pergunta privada de outro grupo", "Uma dúvida privada"
+    )
+    ajuda = Mensagem.objects.create(
+        topico=escondida, autor=externa, texto="Uma solução privada"
+    )
+    Topico.objects.filter(pk=escondida.pk).update(resposta_aceita=ajuda)
+    como(monkeypatch, ana)
+    pagina = pedir(client, "comunidade")
+    assert pagina.status_code == 200
+    assert [(p["nome"], p["solucoes"]) for p in pagina.context["ranking_de_ajuda"]] == [
+        ("Bia", 1)
+    ]
+    corpo = pagina.content.decode()
+    assert "Quem ajuda a comunidade" in corpo
+    assert "Pessoa externa" not in corpo
+    assert "demonstracao=1" not in corpo
+    assert "Retrato ilustrado fictício" not in corpo
+    assert "/previa/imagem/" not in corpo
+
+
+def test_ranking_nao_e_consultado_para_visitante_ou_sem_matricula(
+    client, env, monkeypatch, ana
+):
+    def nao_consultar(*args, **kwargs):
+        raise AssertionError("Não consultar ranking sem acesso à comunidade")
+
+    monkeypatch.setattr(views, "ranking_de_ajuda", nao_consultar)
+    dublar(monkeypatch, sessao={"autenticado": False})
+    assert "Quem ajuda a comunidade" not in pedir(client, "comunidade").content.decode()
+    como(monkeypatch, ana, categoria="cadastrado")
+    assert "Quem ajuda a comunidade" not in pedir(client, "comunidade").content.decode()
+
+
+def test_aluno_sem_grupo_ve_ajuda_da_area_geral(client, env, monkeypatch, ana, bia):
+    geral = Area.objects.create(
+        slug="duvidas-gerais-ranking",
+        nome="Dúvidas gerais",
+        visibilidade=Area.Visibilidade.ALUNOS,
+        quem_escreve=Area.QuemEscreve.ALUNO,
+    )
+    pergunta = duvida(geral, ana, "Pergunta da área geral", "Como exportar?")
+    resposta = Mensagem.objects.create(
+        topico=pergunta, autor=bia, texto="Use o exportador."
+    )
+    Topico.objects.filter(pk=pergunta.pk).update(resposta_aceita=resposta)
+    como(monkeypatch, ana)
+    pagina = pedir(client, "comunidade")
+    assert pagina.context["estado"] == "sem_grupo"
+    assert pagina.context["ranking_de_ajuda"][0]["nome"] == "Bia"
+    assert "Quem ajuda a comunidade" in pagina.content.decode()

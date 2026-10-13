@@ -16,8 +16,12 @@ def ranking_de_ajuda(ator, area=None):
     areas = [a for a in areas_visiveis(ator) if a.ativa]
     if area is not None:
         areas = [a for a in areas if a.pk == area.pk]
-    respostas_visiveis = mensagens_visiveis(Mensagem.objects.all(), ator)
-    topicos = topicos_visiveis(Topico.objects.all(), ator)
+    topicos = topicos_visiveis(
+        Topico.objects.filter(area__in=areas, estado=Topico.Estado.PUBLICADO), ator
+    )
+    respostas_visiveis = mensagens_visiveis(
+        Mensagem.objects.filter(topico__in=topicos, removida_em__isnull=True), ator
+    )
     linhas = (
         topicos.filter(
             area__in=areas,

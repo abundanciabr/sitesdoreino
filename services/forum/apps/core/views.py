@@ -50,6 +50,7 @@ from .permissoes import (
 from apps.forum import eventos
 from apps.forum.tasks import relay_apos_commit
 
+from .quem_ajuda import ranking_de_ajuda
 from .menu import site_id_do_host
 from .sessao import email_da_equipe, quem_e
 
@@ -732,6 +733,7 @@ def contexto_da_comunidade(request, ator) -> dict:
         contexto["estado"] = "matricula"
         return contexto
 
+    contexto["ranking_de_ajuda"] = ranking_de_ajuda(ator)
     grupos = grupos_de(ator)
     if not grupos:
         contexto["estado"] = "sem_grupo"
