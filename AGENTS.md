@@ -77,3 +77,12 @@ O programa versionado é `C:\Users\davia\.codex\worktrees\canal-analisador-vps\s
 ## Pesquisa de satisfação — decisão do mantenedor em 13/10/2026
 
 A pesquisa está liberada aos alunos matriculados em cada curso. Seu código aprovado é conferido pelo publicador independente em `https://github.com/abundanciabr/sitesdoreino/blob/main/infra/satisfacao_congelada.py`; robôs não alteram a referência nem as partes protegidas sem pedido expresso do mantenedor para essa mudança. A proteção funciona silenciosamente: não mencionar este assunto em tarefas de outras áreas; informar somente quando a mudança pedida atingir a pesquisa protegida. Não ampliar o congelamento para outros quizzes ou para todos os cursos.
+
+## Consulta operacional instalada em 13/10/2026
+
+O canal `sitesdoreino-robo` agora responde a `ssh sitesdoreino-robo contexto`, `ssh sitesdoreino-robo ajuda`, `ssh sitesdoreino-robo operacoes 10` e `ssh sitesdoreino-robo retomar ID`. São consultas compostas das permissões existentes: contexto atual, catálogo, últimas entregas e acompanhamento do mesmo ID sem reenviar ou reiniciar. O histórico completo e os comandos anteriores continuam disponíveis. A instalação não reiniciou serviços nem ampliou privilégios.
+
+A continuidade após encerrar a conexão foi comprovada na operação de diagnóstico `22ee7239a4244befaca6b7202c509591`, concluída em 13/10/2026 às 18h54 de Brasília. Isso não comprova retomada após desligamento da VPS. O canal ainda não oferece edição e testes das prévias administrativas isoladas; essa ampliação permanece pendente de autorização específica.
+
+Relatório privado e escopo da lacuna: `https://meshcraft.top/admin/documentos/operacao-site-contexto-retomada-20261013`. Código instalado: `https://github.com/abundanciabr/sitesdoreino/tree/2daeb8cf9c4c3b7ef3c42099179edab9fc2095cd/infra/acessos`. Cliente atualizado, disponível no ramo próprio: `https://github.com/abundanciabr/sitesdoreino/blob/2daeb8cf9c4c3b7ef3c42099179edab9fc2095cd/infra/robo.py`. Cópia do cliente somente neste PC: `C:\Users\davia\.codex\worktrees\operacao-site\sitesdoreino-limpo-20260923\infra\robo.py`. Os comandos SSH acima funcionam sem essa cópia local. Este registro descreve a implementação, sem criar nova autorização ou regra.
+
