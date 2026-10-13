@@ -851,6 +851,3 @@ class AvisoDaEquipe(models.Model):
 from .acompanhamento_modelo import RegistroAcompanhamentoAluno  # noqa: E402,F401
 
 from .galeria_models import VotoDaGaleria, ComentarioDaGaleria
-
-from .feed_previa_models import (FeedPreviaPerfil, FeedPreviaPost, FeedPreviaInteracao,
-                                FeedPreviaComentario, FeedPreviaPreferencia, FeedPreviaArquivo)

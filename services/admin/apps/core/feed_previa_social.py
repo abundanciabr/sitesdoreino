@@ -15,7 +15,7 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_GET, require_POST
 
 from .feed_previa import _permitido
-from .feed_previa_models import (FeedPreviaPerfil as Perfil, FeedPreviaPost as Post,
+from apps.feed_previa.models import (FeedPreviaPerfil as Perfil, FeedPreviaPost as Post,
     FeedPreviaInteracao as Interacao, FeedPreviaComentario as Comentario,
     FeedPreviaPreferencia as Preferencia, FeedPreviaArquivo as Arquivo)
 

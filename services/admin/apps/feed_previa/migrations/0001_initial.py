@@ -7,9 +7,9 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ('core', '0048_aluno_removido_da_lista'),
-    ]
+    initial = True
+
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
                 ('detalhes', models.JSONField(default=dict)),
                 ('chave_pedido', models.UUIDField(default=uuid.uuid4)),
                 ('criado_em', models.DateTimeField(auto_now_add=True)),
-                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.feedpreviaperfil')),
+                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='feed_previa.feedpreviaperfil')),
             ],
             options={
                 'db_table': 'admin_feed_previa_post',
@@ -55,8 +55,8 @@ class Migration(migrations.Migration):
                 ('mencoes', models.JSONField(default=list)),
                 ('chave_pedido', models.UUIDField()),
                 ('criado_em', models.DateTimeField(auto_now_add=True)),
-                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.feedpreviaperfil')),
-                ('post', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='comentarios', to='core.feedpreviapost')),
+                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='feed_previa.feedpreviaperfil')),
+                ('post', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='comentarios', to='feed_previa.feedpreviapost')),
             ],
             options={
                 'db_table': 'admin_feed_previa_comentario',
@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
                 ('tipo', models.CharField(max_length=60)),
                 ('dados', models.BinaryField()),
                 ('criado_em', models.DateTimeField(auto_now_add=True)),
-                ('post', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='arquivos', to='core.feedpreviapost')),
+                ('post', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='arquivos', to='feed_previa.feedpreviapost')),
             ],
             options={
                 'db_table': 'admin_feed_previa_arquivo',
@@ -81,7 +81,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('detalhes', models.JSONField(default=dict)),
                 ('atualizado_em', models.DateTimeField(auto_now=True)),
-                ('autor', models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, to='core.feedpreviaperfil')),
+                ('autor', models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, to='feed_previa.feedpreviaperfil')),
             ],
             options={
                 'db_table': 'admin_feed_previa_preferencia',
@@ -97,7 +97,7 @@ class Migration(migrations.Migration):
                 ('quantidade', models.PositiveIntegerField(default=0)),
                 ('ultima_chave', models.UUIDField(blank=True, null=True)),
                 ('atualizado_em', models.DateTimeField(auto_now=True)),
-                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='core.feedpreviaperfil')),
+                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='feed_previa.feedpreviaperfil')),
             ],
             options={
                 'db_table': 'admin_feed_previa_interacao',

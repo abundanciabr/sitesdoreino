@@ -11,7 +11,7 @@ from django.urls import reverse
 from PIL import Image
 
 from apps.core import feed_previa_social as social
-from apps.core.feed_previa_models import (FeedPreviaArquivo, FeedPreviaComentario,
+from apps.feed_previa.models import (FeedPreviaArquivo, FeedPreviaComentario,
     FeedPreviaInteracao, FeedPreviaPerfil, FeedPreviaPost)
 
 pytestmark = pytest.mark.django_db
