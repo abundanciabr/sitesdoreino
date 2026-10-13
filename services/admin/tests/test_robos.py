@@ -895,11 +895,11 @@ def test_simulacao_o_mapa_le_o_documento_e_liga_ao_painel(monkeypatch):
 
 
 @respx.mock
-def test_simulacao_o_robo_consulta_o_mapa_na_conversa():
+def test_simulacao_o_robo_nao_consulta_mapa_privado_sem_poder():
     from apps.agentes import conhecimento
 
     livia = _pessoa("Lívia", LIVIA)
-    doc = _documento("ofertas", "A Oferta Anual vende o Curso de Blender.", publico=True)
+    doc = _documento("ofertas", "A Oferta Anual vende o Curso de Blender.", publico=False)
     conhecimento.guardar_leitura(doc, json.loads(_leitura_do_modelo().json()["output"][0]["content"][0]["text"]))
     _guardar_chave()
     robo = trabalhos.robo_de(livia)
@@ -907,12 +907,13 @@ def test_simulacao_o_robo_consulta_o_mapa_na_conversa():
     with respx.mock as rede:
         rede.post(RESPOSTAS).mock(side_effect=[
             _pedido_de_acao("consultar_conhecimento", {"termos": ["Curso de Blender"], "profundidade": 2}),
-            _texto_do_modelo("A Oferta Anual vende o Curso de Blender (documento Ofertas)."),
+            _texto_do_modelo("Não há fonte acessível para confirmar a oferta."),
         ])
         executor.rodar_uma("teste")
     chamada = ChamadaDeFerramenta.objects.get(nome="consultar_conhecimento")
     assert chamada.situacao == "feita"
-    assert any(l["de"] == "Oferta Anual" for l in chamada.resultado["ligacoes"])
+    assert chamada.resultado["achou"] is False
+    assert not chamada.resultado.get("ligacoes")
     assert "consultar_conhecimento" in ferramentas.ROTULOS
 
 

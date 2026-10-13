@@ -89,24 +89,18 @@ def test_emitir_recusa_imprimir_na_tela():
     assert not Registro.objects.filter(acao=Registro.EMITIR_CREDENCIAL_DO_ROBO).exists()
 
 
-def test_robo_cria_rascunho_invisivel_e_desfaz_arquivando():
+def test_robo_nao_cria_documento_pela_conta_de_maquina():
     cliente = robo(emitir())
     criou = cliente.post(
         "/documentos/criar",
         {"titulo": "Rascunho do robô", "nome": "rascunho-do-robo", "corpo": "x"},
     )
-    assert criou.status_code == 302
-    documento = Documento.objects.get(nome="rascunho-do-robo")
-    assert documento.publico is False
-    assert Registro.objects.filter(
+    assert criou.status_code == 403
+    assert not Documento.objects.filter(nome="rascunho-do-robo").exists()
+    assert not Registro.objects.filter(
         acao=Registro.CRIAR_DOCUMENTO, quem_email="robo@conta-do-robo.invalid"
     ).exists()
-    assert cliente.get("/documentos/rascunho-do-robo").status_code == 200
-    assert Client().get("/docs/rascunho-do-robo").status_code == 404
-
-    assert cliente.post("/documentos/rascunho-do-robo/arquivar").status_code == 302
-    documento.refresh_from_db()
-    assert documento.arquivado is True
+    assert cliente.get("/documentos/rascunho-do-robo").status_code == 404
     assert Client().get("/docs/rascunho-do-robo").status_code == 404
 
 

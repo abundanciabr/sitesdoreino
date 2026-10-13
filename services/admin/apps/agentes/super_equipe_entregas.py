@@ -66,11 +66,29 @@ def sanitizar(registro):
                     for nome in ('imagem_confere', 'pacote_confere', 'confirmacao_atual')}
     depois_limpo.update(sha_aprovada=_sha(depois.get('sha_aprovada'), 40),
                         publicada_em=_data(depois.get('publicada_em')), verificada_em=_data(depois.get('verificada_em')))
+    origem, backup = prova.get('proveniencia') or {}, prova.get('backup') or {}
+    if not isinstance(origem, dict) or not isinstance(backup, dict):
+        raise ValueError('Origem ou backup inválidos.')
+    backup_id = backup.get('identidade')
+    if not isinstance(backup_id, str) or not re.fullmatch(r'[0-9]{8}-[0-9]{6}Z-[0-9a-f]{12}-[0-9]{1,12}', backup_id):
+        backup_id = None
+    backup_limpo = {'tempo_codigo_segundos': backup_tempo, 'identidade': backup_id,
+                    'concluido': backup.get('concluido') if type(backup.get('concluido')) is bool else None,
+                    'restauracao_comprovada': backup.get('restauracao_comprovada') if type(backup.get('restauracao_comprovada')) is bool else None,
+                    'sha_manifesto': _sha(backup.get('sha_manifesto')),
+                    'limite': 'Restauração, quando comprovada, ocorreu somente em banco isolado na VPS; produção não foi restaurada.'}
+    for nome in ('bases', 'bases_restauradas', 'tabelas_conferidas', 'divergencias'):
+        valor = backup.get(nome)
+        backup_limpo[nome] = valor if type(valor) is int and 0 <= valor <= 100000 else None
+    proveniencia = {'arvore_git': _sha(origem.get('arvore_git'), 40),
+                    'prova_identidade': _sha(origem.get('prova_identidade')),
+                    'versao_anterior': _sha(origem.get('versao_anterior'), 40)}
+    for nome in ('arvore_confere', 'codigo_confere', 'pacote_confere'):
+        proveniencia[nome] = origem.get(nome) if type(origem.get(nome)) is bool else None
     return {'id': registro['id'], 'commit': _sha(registro.get('commit'), 40), 'candidata': candidata,
             'coletada_em': _data(prova.get('coletada_em')),
             'artefato': {'codigo_sha256': _sha(artefato.get('codigo_sha256')), 'pacote_id': _sha(artefato.get('pacote_id'))},
-            'backup': {'tempo_codigo_segundos': backup_tempo, 'identidade': None, 'restauracao_comprovada': None,
-                       'limite': 'O canal informa tempo de backup do código; não informa identidade nem comprova restauração.'},
+            'backup': backup_limpo, 'proveniencia': proveniencia,
             'ensaio': ensaio_limpo, 'pos_ativacao': depois_limpo,
             'limite': 'Fotografia datada da consulta SSH; confirmação técnica não comprova jornada de aluno.'}
 

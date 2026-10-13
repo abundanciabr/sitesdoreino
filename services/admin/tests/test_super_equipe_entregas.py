@@ -62,6 +62,21 @@ def test_recusa_prova_de_outra_candidata():
         sanitizar(dados)
 
 
+def test_backup_e_proveniencia_tem_campos_restritos():
+    dados = prova()
+    fonte = dados['operacao']['evidencia_publicador']
+    fonte['backup'] = {'identidade': '20261013-011004Z-cccccccccccc-1627307', 'concluido': True,
+                      'restauracao_comprovada': True, 'bases': 19, 'bases_restauradas': 19,
+                      'segredo': 'descartar'}
+    fonte['proveniencia'] = {'arvore_git': '1'*40, 'prova_identidade': '2'*64,
+                            'arvore_confere': True, 'codigo_confere': True, 'caminho': '/privado'}
+    salvo = sanitizar(dados)
+    assert salvo['backup']['bases_restauradas'] == 19
+    assert salvo['backup']['restauracao_comprovada'] is True
+    assert salvo['proveniencia']['codigo_confere'] is True
+    assert 'segredo' not in salvo['backup'] and 'caminho' not in salvo['proveniencia']
+
+
 @pytest.mark.django_db
 def test_importacao_no_admin_e_negativa_para_equipe():
     pedido = RequestFactory().post('/admin/super-equipe/', {'acao': 'registrar_entregas', 'consultas': json.dumps(prova())})
