@@ -45,3 +45,13 @@ def test_sem_admin_recusado(req):
     from ninja.errors import HttpError
     req.auth="outro"
     with pytest.raises(HttpError): consulta(req)
+
+
+def test_matricula_meshcraft_antiga_e_colisao_entre_formatos(req):
+    atual="cc06b8c3-043b-4c06-92c5-5ea624e00586"
+    ContatoDeAcesso.objects.create(id=uuid.uuid4(),site_id="Meshcraft",email="antiga@escola.test",telefone="5596984086018")
+    assert consulta(req,site=atual)["email"]=="antiga@escola.test"
+    assert consulta(req,site="outro")=={"encontrado":False}
+    ContatoDeAcesso.objects.create(id=uuid.uuid4(),site_id=atual,email="outra@escola.test",telefone="5596984086018")
+    assert consulta(req,site=atual)=={"encontrado":False}
+    assert consulta(req,"email","antiga@escola.test",site=atual)["encontrado"]

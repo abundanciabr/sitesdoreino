@@ -1,4 +1,5 @@
 import re
+from django.db.models import Q
 from ninja import Router, Schema
 from .crm import _admin
 from .models import ContatoDeAcesso
@@ -21,7 +22,11 @@ def resolver(request, dados: Consulta):
     if dados.canal == "whatsapp": valor = telefone(valor)
     if not valor or dados.canal not in {"email", "whatsapp"}: return {"encontrado":False}
     filtro = {"email__iexact":valor} if dados.canal == "email" else {"telefone":valor}
-    registros = ContatoDeAcesso.objects.filter(site_id=dados.site_id, **filtro)
+    site = Q(site_id=dados.site_id)
+    # As matrículas antigas da Meshcraft usavam o nome no lugar do UUID.
+    if dados.site_id == "cc06b8c3-043b-4c06-92c5-5ea624e00586":
+        site |= Q(site_id__iexact="Meshcraft")
+    registros = ContatoDeAcesso.objects.filter(site, **filtro)
     emails = list(registros.values_list("email", flat=True).distinct()[:2])
     if len(emails) != 1: return {"encontrado":False}
     return {"encontrado":True, "email":emails[0], "destino":valor}
