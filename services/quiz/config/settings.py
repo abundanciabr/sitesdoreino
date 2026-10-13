@@ -130,3 +130,7 @@ USE_TZ = True
 # capaz de trocar até o DIA, sem nada indicando a troca. Foi assim que a célula
 # `sugestoes` foi pega em 24/08/2026 (EVO-21). Guarda: tests/test_fuso_horario.py.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

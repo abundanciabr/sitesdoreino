@@ -1359,3 +1359,6 @@ if settings.ADMIN_LINK_TOKEN:
 
 handler404 = "site_errors.handlers.page_not_found_shared"
 handler500 = "site_errors.handlers.server_error_shared"
+
+from apps.core.saude_http import painel as saude_http
+urlpatterns += [path("saude-paginas/", saude_http, name="saude_http")]

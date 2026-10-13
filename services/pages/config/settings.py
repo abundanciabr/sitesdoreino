@@ -263,3 +263,7 @@ USE_TZ = True
 # acusaria: CI verde, deploy verde, `/healthz` 200. Guarda:
 # `tests/test_fuso_horario.py`.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

@@ -238,3 +238,7 @@ USE_TZ = True
 # esforço contado na terça — e quem estuda às 23h30 veria a Sequência quebrar
 # num dia em que ele não faltou. Guarda: `tests/test_fuso_horario.py`.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

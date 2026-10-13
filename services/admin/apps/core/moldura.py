@@ -79,6 +79,7 @@ from django.utils import timezone
 #     chamado "Menu" seria a pergunta "menu de quê?" em toda visita.
 SECOES = (
     ("visao_geral", "Visão geral"),
+    ("saude_http", "Saúde das páginas"),
     ("atendimento", "Atendimento aos alunos"),
     # "Pendências", e vem logo depois da capa (07/09/2026): é a tela que diz o
     # que espera por ele, e um item de "o que fazer agora" no fim de uma lista

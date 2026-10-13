@@ -214,3 +214,7 @@ USE_TZ = True
 # aluno brasileiro o horário de Chicago — cinco horas antes, sem nada indicando
 # a troca. É dívida das outras células também, não invenção desta.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

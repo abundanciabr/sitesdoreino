@@ -237,3 +237,7 @@ TIME_ZONE = "America/Sao_Paulo"
 from config.huey import huey as _huey  # noqa: E402  (depois de INSTALLED_APPS)
 
 HUEY = _huey
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]
