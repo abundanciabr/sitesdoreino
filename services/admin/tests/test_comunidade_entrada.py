@@ -76,7 +76,7 @@ def test_cadastro_persistido_entra_com_apple_e_nao_mexe_na_votacao(admin):
     assert "Fórum da comunidade" in corpo and "Bruno" in corpo
     assert "admin@example.test" not in corpo
     assert "Simulação com dados fictícios" not in corpo
-    assert "Ainda não há respostas aceitas" in corpo
+    assert "O ranking ainda não tem alunos" in corpo
     assert admin.get("/galeria-publica?perfil=editar").status_code == 200
 
 

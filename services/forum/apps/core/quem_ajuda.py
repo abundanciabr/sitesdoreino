@@ -108,6 +108,7 @@ def imagem_de_perfil_de_teste(request, perfil):
 def dados_da_comunidade(request):
     from django.conf import settings
     from django.urls import reverse
+    from django.utils import timezone
     from apps.forum.models import assinatura_de
 
     ator = quem_e(request)
@@ -137,7 +138,7 @@ def dados_da_comunidade(request):
                 "texto": primeira.texto[:240] if primeira else "",
                 "respostas": max(0, mensagens.count() - 1),
                 "resolvida": bool(topico.resposta_aceita_id),
-                "data": topico.criado_em.strftime("%d/%m/%Y"),
+                "data": timezone.localtime(topico.criado_em).strftime("%d/%m/%Y"),
                 "url": reverse("topico", args=[topico.pk]),
             }
         )
