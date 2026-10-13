@@ -94,7 +94,7 @@ def previa(request):
         contexto["erro"] = str(erro)
     resposta = render(request, TEMPLATE, contexto)
     resposta["Cache-Control"] = "no-store"
-    resposta["Referrer-Policy"] = "no-referrer"
+    resposta["Referrer-Policy"] = "same-origin"
     if nova_sessao:
         resposta.set_cookie(COOKIE, nova_sessao["sessao"], max_age=nova_sessao["max_age"],
             httponly=True, secure=True, samesite="Lax", path="/")
