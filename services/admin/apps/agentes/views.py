@@ -491,7 +491,7 @@ def execucao_retomar(request, id: int):
 @require_GET
 def entrega_detalhe(request, id: int):
     entrega = get_object_or_404(Entrega.objects.select_related("robo", "robo__membro"), pk=id)
-    if entrega.tipo == "super_equipe" and not _e_admin(request):
+    if entrega.tipo in ("super_equipe", "tomografia_turmas") and not _e_admin(request):
         return _nao_existe(request)
     membro = _membro_da_sessao(request)
     if entrega.tipo in ("satisfacao", "satisfacao_padroes") and not _e_admin(request):

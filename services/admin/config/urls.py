@@ -195,6 +195,7 @@ from apps.core.equipe_acesso import (
     sair_da_equipe,
 )
 from apps.core.perpetuo import perpetuo
+from apps.core.tomografia_turmas import tomografia_turmas
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.coortes import coortes
@@ -896,6 +897,7 @@ urlpatterns = [
     # UMA rota hoje, e a área foi desenhada para ganhar irmãs: cada painel novo
     # entra como `perpetuo/<coisa>/`, e nunca como uma tela solta noutro canto.
     path("perpetuo/", perpetuo, name="perpetuo"),
+    path("tomografia-turmas/20261013/", tomografia_turmas, name="tomografia_turmas_20261013"),
     # O PLACAR (`apps/core/placar.py`, 03/09/2026) — o andar zero do painel de
     # gestão do negócio:
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
