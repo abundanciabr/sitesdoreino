@@ -45,6 +45,17 @@ def super_equipe(request):
     erro = ""
     if request.method == "POST":
         try:
+            if request.POST.get('acao') == 'registrar_entregas':
+                from .super_equipe_entregas import registrar
+                texto = request.POST.get('consultas', '')
+                if len(texto) > 160000:
+                    raise ValueError('Consulta excessiva.')
+                try:
+                    dados = json.loads(texto)
+                except ValueError:
+                    raise ValueError('Informe o JSON da consulta operacional.') from None
+                registrar('meshcraft.top', dados)
+                return HttpResponseRedirect(reverse('super_equipe') + '?fonte=salva#fonte-entregas')
             if request.POST.get("acao") in ("pausar", "retomar"):
                 rotina, _ = RotinaSuperEquipe.objects.get_or_create(host="meshcraft.top")
                 rotina.ativa = request.POST["acao"] == "retomar"
@@ -67,10 +78,12 @@ def super_equipe(request):
     for trabalho in trabalhos:
         trabalho.custo = trabalho.consumos.aggregate(total=Sum("custo_estimado_usd"))["total"] or 0
     rotina = RotinaSuperEquipe.objects.filter(host="meshcraft.top").first()
+    from .super_equipe_entregas import consultar
     return render(request, "admin/super_equipe.html", {
         "admin": request.admin, "especialidades": list(PERFIS.items()),
         "trabalhos": trabalhos, "chave": str(uuid.uuid4()), "erro": erro,
         "rotina": rotina, "executor_situacao": situacao_executor(rotina),
+        'trilha_entregas': consultar(rotina),
         "fila_operacional": coletar(),
         "operacao_recente": operacao_recente(rotina.operacao if rotina else {}),
         "melhorias": MelhoriaSuperEquipe.objects.select_related("trabalho").prefetch_related("eventos").order_by("situacao", "prioridade", "-observada_em")[:100],

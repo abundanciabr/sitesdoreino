@@ -474,6 +474,7 @@ class RotinaSuperEquipe(models.Model):
     executor_local = models.CharField(max_length=30, blank=True, default="")
     operacao = models.JSONField(default=dict)
     fotografia = models.JSONField(default=dict)
+    entregas_operacionais = models.JSONField(default=dict)
 
 
 class MelhoriaSuperEquipe(models.Model):

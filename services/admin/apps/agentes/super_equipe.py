@@ -140,6 +140,7 @@ def _fluxo_entregas(site_id: str) -> dict:
 
 
 def _entregas(host: str) -> dict:
+    from .super_equipe_entregas import consultar
     rotina = RotinaSuperEquipe.objects.filter(host=host).first()
     melhorias = MelhoriaSuperEquipe.objects.filter(rotina__host=host)
     estados = list(melhorias.values("situacao").annotate(total=Count("id")).order_by("situacao"))
@@ -151,6 +152,7 @@ def _entregas(host: str) -> dict:
                          "resolvida_em": item.resolvida_em.isoformat() if item.resolvida_em else None})
     rotina_automatica = ("indisponivel" if rotina is None else "ativa" if rotina.ativa else "pausada")
     return {"estado": "medido", "rotina_automatica": rotina_automatica,
+            "canal_operacional": consultar(rotina),
             "melhorias_por_estado": estados, "ultimas_20": recentes,
             "limite": "Estado administrativo do site; uma entrega registrada não comprova efeito posterior."}
 
