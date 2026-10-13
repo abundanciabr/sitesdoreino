@@ -32,3 +32,6 @@ api = NinjaAPI(
 )
 api.add_router("", sessao_router)
 api.add_router("", recuperacao_router)
+
+from apps.core.acesso_previa import router as acesso_previa_router
+api.add_router("", acesso_previa_router)
