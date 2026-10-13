@@ -62,6 +62,20 @@ def test_recusa_prova_de_outra_candidata():
         sanitizar(dados)
 
 
+def test_duracao_com_fusos_distintos_e_datas_ausentes():
+    dados = sanitizar(prova())
+    dados['fluxo'].update(recebida_em='2026-10-13T11:44:38+00:00',
+                         iniciada_em='2026-10-13T09:01:50-03:00',
+                         concluida_em='2026-10-13T12:07:42+00:00')
+    from types import SimpleNamespace
+    rotina = SimpleNamespace(entregas_operacionais={'a'*12: [dados]})
+    assert consultar(rotina)['itens'][0]['duracoes'] == {
+        'antes_inicio': 1032.0, 'execucao': 352.0, 'total': 1384.0}
+    dados['fluxo']['iniciada_em'] = None
+    assert consultar(rotina)['itens'][0]['duracoes'] == {
+        'antes_inicio': None, 'execucao': None, 'total': 1384.0}
+
+
 def test_backup_e_proveniencia_tem_campos_restritos():
     dados = prova()
     fonte = dados['operacao']['evidencia_publicador']

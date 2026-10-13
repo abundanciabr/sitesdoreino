@@ -311,6 +311,61 @@ def test_dependencia_sem_estado_local_aguarda_ativacao(tmp_path):
     assert ponte.chamadas == []
 
 
+def test_entrega_nova_nao_espera_conciliacao_historica_independente(tmp_path):
+    antiga = entrega(I1, C1)
+    antiga.update(estado=entregas.NA_MAIN, promovida_candidata=C1,
+                  promocao={"estado": "remota", "candidata": C1, "remoto": "integrador"})
+
+    class PonteHistoricaLenta(PonteFalsa):
+        def __init__(self):
+            super().__init__(conciliacao={(I1, "aplicacao"): {"situacao": "conflito"}})
+            self.relogio = 0
+            self.inicio_nova = None
+
+        def conferir_preservacao(self, id_, candidata, celula):
+            if id_ == I1:
+                self.relogio += 120  # tempo controlado; nenhuma espera real no teste
+            return super().conferir_preservacao(id_, candidata, celula)
+
+        def preparar(self, id_, candidata, celula):
+            if id_ == I2:
+                self.inicio_nova = self.relogio
+            return super().preparar(id_, candidata, celula)
+
+    ponte = PonteHistoricaLenta()
+    worker, integ, _ = servico(tmp_path, [antiga, entrega(I2, C2)], ponte=ponte)
+    worker.estados.salvar({"id": I1, "candidata": C1, "fase": "ativação pendente",
+                           "tentativas": 0, "celulas": ["aplicacao"]})
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[I2]["fase"] == "ativa"
+    assert saida[I1]["fase"] == "preservação não comprovada"
+    assert ponte.inicio_nova == 0
+    assert ponte.relogio == 120  # a conferência histórica continua sendo executada
+    assert integ.promocoes == [I2]
+    assert ("publicar", I1) not in ponte.chamadas
+
+
+def test_ordem_prioriza_dependencias_transitivas_da_nova_entrega():
+    antiga = entrega(I1, C1)
+    antiga["estado"] = entregas.NA_MAIN
+    intermediaria = entrega(I2, C2, [I1])
+    nova = entrega("333333333333", "3" * 40, [I2])
+    independente = entrega("444444444444", "4" * 40)
+    independente["estado"] = entregas.NA_MAIN
+    ordem = Servico._ordem_dependencias([independente, antiga, nova, intermediaria])
+    assert [r["id"] for r in ordem] == [I1, I2, nova["id"], independente["id"]]
+
+
+def test_ordem_com_ciclo_nao_duplica_registro_nem_libera_dependencia(tmp_path):
+    regs = [entrega(I1, C1, [I2]), entrega(I2, C2, [I1])]
+    worker, integ, ponte = servico(tmp_path, regs)
+    saida = worker.rodada()
+    assert len(saida) == 2
+    assert {r["fase"] for r in saida} == {"aguardando dependência"}
+    assert integ.promocoes == []
+    assert ponte.chamadas == []
+
+
 def test_promocao_superada_preservada_libera_dependente_sem_publicar_antiga(tmp_path):
     antiga = entrega(I1, C1)
     antiga.update(estado=entregas.NA_MAIN, promovida_candidata=C1,

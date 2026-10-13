@@ -142,5 +142,14 @@ def consultar(rotina):
         recente = bool(data and timezone.is_aware(data) and -60 <= (agora-data).total_seconds() <= 300)
         item['atualidade'] = 'recente' if recente else 'historica'
         item['confirmacao_atual'] = recente and item['pos_ativacao'].get('confirmacao_atual') is True
+        fluxo = item.get('fluxo') or {}
+        def intervalo(inicio, fim):
+            a, b = parse_datetime(fluxo.get(inicio) or ''), parse_datetime(fluxo.get(fim) or '')
+            return round((b-a).total_seconds(), 3) if a and b and b >= a else None
+        item['duracoes'] = {
+            'antes_inicio': intervalo('recebida_em', 'iniciada_em'),
+            'execucao': intervalo('iniciada_em', 'concluida_em'),
+            'total': intervalo('recebida_em', 'concluida_em'),
+        }
     return {'estado': 'medido' if itens else 'indisponivel', 'itens': itens,
             'limite': 'Última fotografia por entrega; anteriores preservadas. Não atualiza automaticamente nem reativa a rotina.'}
