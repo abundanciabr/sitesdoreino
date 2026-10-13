@@ -1,0 +1,10 @@
+{
+  "runtime": "node",
+  "files": {
+    "index.html": "services/comunidade_sintetica/previa/index.html",
+    "motor.cjs": "services/comunidade_sintetica/previa/motor.cjs",
+    "tests/motor.test.cjs": "services/comunidade_sintetica/previa/tests/motor.test.cjs"
+  },
+  "test": "tests/motor.test.cjs",
+  "page": "index.html"
+}
