@@ -246,3 +246,7 @@ USE_TZ = True
 # 20h em São Paulo teria o relógio congelado às 17h, e o aluno perderia três
 # horas de decisão sem ninguém ver. Guarda: `tests/test_fuso_horario.py`.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

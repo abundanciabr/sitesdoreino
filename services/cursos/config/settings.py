@@ -226,3 +226,7 @@ USE_TZ = True
 # ainda seria "segunda" para o sistema, e a data de retorno "terça" passaria
 # como se fosse amanhã, sem ninguém ver. Guarda: `tests/test_fuso_horario.py`.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

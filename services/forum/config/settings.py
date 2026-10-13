@@ -228,3 +228,7 @@ USE_TZ = True
 # mensagem carrega "há 3 minutos", isso apareceria na primeira tela e seria
 # lido como bug de dado.
 TIME_ZONE = "America/Sao_Paulo"
+
+# Consulta privada no admin da aplicação unificada.
+if os.environ.get("APLICACAO_ENV_DIR"):
+    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

@@ -231,3 +231,6 @@ SITE_ERRORS_REDIS_URL = (
     or os.environ.get("REDIS_STREAMS_URL")
     or ("" if DEBUG else "redis://redis:6379/0")
 )
+
+# A medição envolve o registrador existente para conservar a referência do erro.
+MIDDLEWARE = ["apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]
