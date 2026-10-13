@@ -18,16 +18,20 @@
     {% empty %}<p>Ainda não há consulta operacional registrada.</p>{% endfor %}
     <h3>Tempos das entregas de código</h3>
     <div style="overflow-x:auto"><table>
-      <thead><tr><th>Entrega</th><th>Recebimento → início</th><th>Início → conclusão</th><th>Total técnico</th><th>Fonte</th></tr></thead>
+      <thead><tr><th>Entrega</th><th>Recebimento → início</th><th>Início → conclusão</th><th>Total técnico</th><th>Ensaio (aplicação)</th><th>Ativação (aplicação)</th><th>Ensaio reaproveitado</th><th>Fonte</th></tr></thead>
       <tbody>{% for item in trilha_entregas.itens %}<tr>
         <td><code>{{ item.id }}</code></td>
         <td>{{ item.duracoes.antes_inicio|default_if_none:"não medido" }} s</td>
         <td>{{ item.duracoes.execucao|default_if_none:"não medido" }} s</td>
         <td>{{ item.duracoes.total|default_if_none:"não medido" }} s</td>
+        <td>{% if item.fluxo.tempos_segundos.ensaio_aplicacao != None %}{{ item.fluxo.tempos_segundos.ensaio_aplicacao }} s{% else %}não medido{% endif %}</td>
+        <td>{% if item.fluxo.tempos_segundos.ativacao_aplicacao != None %}{{ item.fluxo.tempos_segundos.ativacao_aplicacao }} s{% else %}não medido{% endif %}</td>
+        <td>{% if item.fluxo.ensaio_reaproveitado == True %}sim{% elif item.fluxo.ensaio_reaproveitado == False %}não{% else %}não informado{% endif %}</td>
         <td>{{ item.coletada_em }} · {{ item.atualidade }}</td>
-      </tr>{% empty %}<tr><td colspan="5">Ainda não há consulta de entrega registrada.</td></tr>{% endfor %}</tbody>
+      </tr>{% empty %}<tr><td colspan="8">Ainda não há consulta de entrega registrada.</td></tr>{% endfor %}</tbody>
     </table></div>
     <p>Recebimento → início pode incluir integração e tentativas; não é espera pura. Conclusão técnica não mede o tempo de desenvolvimento nem confirma a funcionalidade. Fotografias históricas não são uma medição da versão atual.</p>
+    <p>Ensaio e ativação mostram as etapas da aplicação dentro do total técnico; não são tempos adicionais. O reaproveitamento informa se o ensaio utilizou uma prova anterior. Valores ausentes permanecem como não medidos.</p>
     <details><summary>Atualizar a fonte pela consulta operacional</summary>
       <form method="post">{% csrf_token %}
         <input type="hidden" name="acao" value="registrar_entregas">
