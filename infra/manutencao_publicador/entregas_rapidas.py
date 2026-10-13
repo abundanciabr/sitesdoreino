@@ -6,10 +6,9 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import shutil
 
-ANTES = '29d347511a6ac6bde693b4f9cab7a7c5c76194a789dccfa5c7002020dda8311d'
-DEPOIS = '2a6de6f9971e5820f5799e8e650d697d85f8be303c701e752a5e7a7f72b554b0'
+ANTES = '2a6de6f9971e5820f5799e8e650d697d85f8be303c701e752a5e7a7f72b554b0'
+DEPOIS = '17917ea2002d3a0fc5d47eb2033472639f54f4a2e72db246ecfb7b1bd03ac415'
 PROVA_ID = 'e2dbc7098214'
 INSTALADOR = Path('/opt/plataforma/manutencoes/publicacao-estrutural-c19960b9e7c1/aplicar_canal.py')
 
@@ -40,7 +39,7 @@ def main():
     if args.aplicar:
         if os.geteuid() != 0:
             raise RuntimeError('Instalação exige o console administrativo autorizado.')
-        destino = Path('/opt/plataforma/manutencoes/entregas-rapidas-20261013/pacote')
+        destino = Path('/opt/plataforma/manutencoes/entregas-rapidas-retomada-20261013/pacote')
     elif args.preparar:
         destino = args.preparar.resolve()
     else:
