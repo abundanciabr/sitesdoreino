@@ -100,3 +100,33 @@ class FeedPreviaNotificacao(models.Model):
     class Meta:
         db_table = "admin_feed_previa_notificacao"
         indexes = [models.Index(fields=["destinatario", "-criado_em"], name="feed_previa_notif_destino")]
+
+
+class FeedPreviaConversa(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    site_host = models.CharField(max_length=253)
+    participante_a = models.ForeignKey(FeedPreviaPerfil, on_delete=models.PROTECT, related_name="conversas_a")
+    participante_b = models.ForeignKey(FeedPreviaPerfil, on_delete=models.PROTECT, related_name="conversas_b")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "admin_feed_previa_conversa"
+        constraints = [
+            models.UniqueConstraint(fields=["participante_a", "participante_b"], name="feed_previa_conversa_dupla"),
+            models.CheckConstraint(condition=models.Q(participante_a__lt=models.F("participante_b")), name="feed_previa_conversa_ordem"),
+        ]
+
+
+class FeedPreviaMensagem(models.Model):
+    conversa = models.ForeignKey(FeedPreviaConversa, on_delete=models.PROTECT, related_name="mensagens")
+    autor = models.ForeignKey(FeedPreviaPerfil, on_delete=models.PROTECT)
+    texto = models.TextField()
+    chave_pedido = models.UUIDField()
+    demonstracao = models.BooleanField(default=False)
+    lida_em = models.DateTimeField(null=True, blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "admin_feed_previa_mensagem"
+        constraints = [models.UniqueConstraint(fields=["conversa", "chave_pedido"], name="feed_previa_mensagem_pedido")]
+        indexes = [models.Index(fields=["conversa", "-id"], name="feed_previa_msg_conversa")]
