@@ -81,3 +81,14 @@ def test_entrada_direta_no_catalogo_e_na_pagina_do_curso(client, aluna, esquelet
     assert mapa.status_code == 200
     assert 'href="' + propria + '">Avaliar este curso</a>' in mapa.content.decode()
     sem_chamadas_pesquisa(rede)
+
+
+def test_sala_da_comunidade_sem_matricula_nao_ganha_link_de_pesquisa(client, aluna, rede):
+    comunidade = Curso.objects.create(site_id=SITE, slug="comunidade", nome="Comunidade", produto_id="")
+    url = reverse("satisfacao-curso", args=[comunidade.slug])
+    catalogo = client.get(reverse("catalogo"), HTTP_COOKIE=COOKIE)
+    assert catalogo.status_code == 200 and url not in catalogo.content.decode()
+    mapa = client.get(reverse("curso", args=[comunidade.slug]), HTTP_COOKIE=COOKIE)
+    assert mapa.status_code == 200 and url not in mapa.content.decode()
+    assert client.get(url, HTTP_COOKIE=COOKIE).status_code == 404
+    sem_chamadas_pesquisa(rede)

@@ -89,6 +89,7 @@ from apps.cursos.models import (
 from .markdown import para_html
 from . import arquivos_privados
 from .sessao import quem_e, site_atual
+from .satisfacao import pode_avaliar_curso
 from . import praticas_3d
 
 # Os recados que uma tela manda para si mesma depois de um POST. São CÓDIGOS e
@@ -610,7 +611,8 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         "situacao": situacao,
     }
     if situacao == "seu":
-        cartao["url_pesquisa"] = reverse("satisfacao-curso", args=[curso.slug])
+        if pode_avaliar_curso(ator, curso):
+            cartao["url_pesquisa"] = reverse("satisfacao-curso", args=[curso.slug])
         cartao.update(_resumo_do_progresso(curso, ator.pessoa))
         cartao["acao"] = (
             "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
@@ -694,6 +696,8 @@ def mapa(request, curso: str):
             "partes": partes,
             "atual": atual,
             **resumo,
+            "url_pesquisa": reverse("satisfacao-curso", args=[curso.slug])
+                if pode_avaliar_curso(quem_e(request), curso) else "",
             "recado": RECADOS.get(request.GET.get("recado", "")),
             **_de_fora(curso),
         },
