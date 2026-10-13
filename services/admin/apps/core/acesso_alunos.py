@@ -30,7 +30,7 @@ def _limitar(request, contato):
     if not url: raise Indisponivel("O envio está temporariamente indisponível. Tente novamente em alguns minutos.")
     try:
         r = redis.Redis.from_url(url,socket_timeout=2,socket_connect_timeout=2)
-        for tipo,valor,limite in (("ip",request.META.get("REMOTE_ADDR", ""),20),("contato",contato,5)):
+        for tipo,valor,limite in (("contato",contato,5),):
             digest = hmac.new(settings.SECRET_KEY.encode(),valor.encode(),hashlib.sha256).hexdigest()
             n = r.eval("local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],3600) end; return n",1,"acesso-aluno:"+tipo+":"+digest)
             if n>limite: raise Indisponivel("Muitas solicitações. Aguarde antes de pedir outro código.")
