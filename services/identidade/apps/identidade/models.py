@@ -143,6 +143,7 @@ class AcessoPrevia(models.Model):
     canal = models.CharField(max_length=12)
     destino = models.CharField(max_length=254)
     codigo_hash = models.CharField(max_length=64)
+    vinculo_hash = models.CharField(max_length=64, blank=True, default="")
     criado_em = models.DateTimeField(auto_now_add=True)
     expira_em = models.DateTimeField()
     consumido_em = models.DateTimeField(null=True, blank=True)

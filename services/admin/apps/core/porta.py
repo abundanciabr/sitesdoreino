@@ -251,6 +251,9 @@ class PortaAdministrativa:
         return self._responder(request)
 
     def _responder(self, request):
+        # Recuperação pública autorizada: somente esta rota, sem conceder acesso ao admin.
+        if request.path_info == "/recuperar-acesso/":
+            return self._com_seguranca(self.get_response(request))
         from .galeria_comunidade import caminho_publico
         if caminho_publico(request.path_info):
             return self._com_seguranca(self.get_response(request))

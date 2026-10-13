@@ -1386,3 +1386,6 @@ urlpatterns += [
     path("saude-paginas/icone/", saude_icone_previa, name="saude_icone_previa"),
     path("saude-paginas/icone/imagem/", saude_icone_imagem, name="saude_icone_imagem"),
 ]
+
+from apps.core.acesso_alunos import recuperar as recuperar_acesso_aluno
+urlpatterns += [path("recuperar-acesso/", recuperar_acesso_aluno, name="recuperar_acesso_aluno")]
