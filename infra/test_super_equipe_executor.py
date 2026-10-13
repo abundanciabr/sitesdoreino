@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone
 import importlib.util
 from pathlib import Path
 from unittest.mock import Mock
+from types import SimpleNamespace
+import sys
 
 import pytest
 
@@ -15,6 +17,20 @@ def carregar(nome):
 
 ex = carregar("super_equipe_executor")
 co = carregar("super_equipe_coletor")
+
+
+def test_novas_metricas_preservam_coleta_de_comprovacoes(monkeypatch, tmp_path):
+    comprovacoes = Mock()
+    monkeypatch.setitem(sys.modules, 'evidencias_publicador', SimpleNamespace(collect=comprovacoes))
+    monkeypatch.setattr(co, 'DESTINO', tmp_path/'telemetria.json')
+    monkeypatch.setattr(co.shutil, 'disk_usage', lambda _: SimpleNamespace(total=1000, free=800, used=200))
+    monkeypatch.setattr(co, 'armazenamento', lambda *a: {})
+    monkeypatch.setattr(co, 'capacidade', lambda *a: {'cpu_ocupada_percentual': 0})
+    monkeypatch.setattr(co, 'sondas', lambda: [{'alvo': 'inicio', 'http': 200, 'tempo_ms': 10}])
+    monkeypatch.setattr(co.subprocess, 'run', lambda *a, **k: SimpleNamespace(stdout='', stderr=''))
+    dados = co.coletar()
+    comprovacoes.assert_called_once_with()
+    assert dados['cpu_ocupada_percentual'] == 0 and dados['sondas_http'][0]['tempo_ms'] == 10
 
 
 def test_capacidade_deltas_primeira_coleta_reset_e_lacuna(tmp_path):
