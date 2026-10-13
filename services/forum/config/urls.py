@@ -24,6 +24,7 @@ from apps.core.views import (
     ver_area,
     ver_topico,
 )
+from apps.core.quem_ajuda import previa_quem_ajuda
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/forum`): quem o aplica é
@@ -35,6 +36,7 @@ from config.api import api
 # `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
 # endereço. Caminho cravado em string quebra em produção e SÓ lá.
 urlpatterns = [
+    path("comunidade/quem-ajuda/previa/", previa_quem_ajuda, name="previa_quem_ajuda"),
     path("healthz", healthz),
     # A superficie de MAQUINA (`/interno/...`): o que outra celula pode
     # perguntar ao forum. Fica FORA do `/forum` publico de proposito — o
