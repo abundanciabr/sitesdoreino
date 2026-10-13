@@ -26,10 +26,33 @@ def autorizar(request, site_id):
 
 
 def registros(site_id):
-    return RecebimentoDeclarado.objects.filter(
-        site_id=site_id, fora_da_progressao=False, estado="confirmado",
-        print_bytes__isnull=False,
-    ).exclude(print_sha256="").select_related("pessoa").defer("print_bytes")
+    # Histórico financeiro é independente da progressão das faixas.
+    return RecebimentoDeclarado.objects.filter(site_id=site_id).select_related("pessoa")
+
+
+def comprovacao(registro):
+    conteudo = bytes(registro.print_bytes or b"")
+    print_integro = bool(conteudo and registro.print_sha256 and
+                         hashlib.sha256(conteudo).hexdigest() == registro.print_sha256)
+    motivos = []
+    estados = {"pendente": "Aguardando análise", "analisando": "Análise em andamento",
+               "falha": "Falha na análise", "esclarecer": "Análise pede esclarecimento",
+               "anulado": "Registro anulado", "confirmado": "Confirmado"}
+    estado = estados.get(registro.estado, "Estado não reconhecido")
+    if registro.estado != "confirmado":
+        motivos.append(estado + ": sem confirmação para o bloco.")
+    if not conteudo:
+        motivos.append("Sem imagem do print armazenada.")
+    elif not registro.print_sha256:
+        motivos.append("Sem identificação de integridade do print.")
+    elif not print_integro:
+        motivos.append("A imagem não corresponde à integridade registrada.")
+    leitura = registro.leitura if isinstance(registro.leitura, dict) else {}
+    if not registro.analisada_em or leitura.get("status") != "recebido":
+        motivos.append("Sem leitura concluída reconhecendo o recebimento.")
+    return {"historico": registro.fora_da_progressao, "estado_texto": estado,
+            "print_disponivel": print_integro, "elegivel": not motivos,
+            "motivos_exclusao": motivos}
 
 
 def projetar(registro):
@@ -37,6 +60,7 @@ def projetar(registro):
     nome = registro.pessoa.nome_exibido.strip()
     nome = nome.split()[0] if nome and "@" not in nome else "Aluno"
     return {
+        **comprovacao(registro),
         "id": registro.pk, "nome": nome,
         "trabalho": registro.referencia_trabalho,
         "origem": registro.origem,
