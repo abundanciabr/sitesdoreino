@@ -60,7 +60,7 @@ Todo endereço sai de `{% url %}` ou do contexto, nunca escrito à mão
   <p class="miudo">Este curso ainda não está ligado às matrículas.
   Ninguém entra aqui ainda. Fale com a escola pela <a href="{{ url_da_capa }}">página inicial</a>.</p>
   {% endif %}
-  {% if curso.situacao == "seu" %}<p class="entrar"><a href="{{ curso.url_pesquisa }}">Avaliar este curso</a></p>{% endif %}
+  {% if curso.url_pesquisa %}<p class="entrar"><a href="{{ curso.url_pesquisa }}">Avaliar este curso</a></p>{% endif %}
   {% if curso.entra %}
   <p class="entrar"><a href="{{ curso.url }}">{{ curso.acao|default:"Entrar no curso" }}</a></p>
   {% endif %}
