@@ -162,7 +162,20 @@ class SaudeMiddleware:
         return response
 
 
-def resumo(banco, dias, perfil="", referencia=""):
+def conferir_perfil(evento, administradores, contas):
+    """Conferência atual para exibição; não reescreve a observação histórica."""
+    original = evento["perfil"]
+    conta = evento.get("conta")
+    if original != "equipe" or not conta:
+        return original
+    if conta not in contas:
+        from .clients import IdentidadeClient
+        email = IdentidadeClient().pessoa_por_id(conta)
+        contas[conta] = bool(email and email.strip().lower() in administradores)
+    return "administrador" if contas[conta] else original
+
+
+def resumo(banco, dias, perfil="", referencia="", conferir=None):
     hoje = datetime.now(FUSO).date()
     paginas = defaultdict(lambda: {"sucesso": 0, "erro": 0, "redirecionamento": 0})
     erros = []
@@ -179,7 +192,11 @@ def resumo(banco, dias, perfil="", referencia=""):
             lote = banco.lrange(chave + ":erros", inicio, inicio + 499)
             for bruto in lote:
                 evento = json.loads(bruto)
-                if perfil and evento["perfil"] != perfil:
+                original = evento["perfil"]
+                atual = conferir(evento) if conferir else original
+                evento["perfil_coletado_texto"] = PERFIS.get(original, original) if atual != original else ""
+                evento["perfil"] = atual
+                if perfil and atual != perfil:
                     continue
                 if referencia and referencia != evento["referencia"]:
                     continue
@@ -215,7 +232,11 @@ def painel(request):
         banco = cliente()
         if banco is None:
             raise RuntimeError()
-        contexto.update(resumo(banco, dias, perfil, referencia))
+        from .porta import _emails_autorizados
+        administradores = _emails_autorizados()
+        contas = {}
+        contexto.update(resumo(banco, dias, perfil, referencia,
+                              conferir=lambda evento: conferir_perfil(evento, administradores, contas)))
     except Exception:
         contexto["indisponivel"] = True
     resposta = render(request, "admin/saude_http.html", contexto)

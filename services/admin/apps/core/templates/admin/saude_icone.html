@@ -1,0 +1,10 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Ícone proposto{% endblock %}
+{% block corpo %}
+<h1>Ícone do site · prévia privada</h1>
+<p>Cubo branco sobre fundo verde, a mesma imagem já usada pelo aplicativo instalado.</p>
+<p><img src="{% url 'saude_icone_imagem' %}" width="16" height="16" alt="Ícone em 16 pixels"> 16 pixels · <img src="{% url 'saude_icone_imagem' %}" width="32" height="32" alt="Ícone em 32 pixels"> 32 pixels · <img src="{% url 'saude_icone_imagem' %}" width="48" height="48" alt="Ícone em 48 pixels"> 48 pixels</p>
+<p><img src="{% url 'saude_icone_imagem' %}" width="192" height="192" alt="Cubo branco sobre fundo verde"></p>
+<p>A correção proposta fará https://meshcraft.top/favicon.ico responder com esta imagem, eliminando o 404 do ícone. O endereço público ainda não foi alterado. Aguarda confirmação do mantenedor.</p>
+<p><a href="{% url 'saude_http' %}">Voltar à saúde das páginas</a></p>
+{% endblock %}

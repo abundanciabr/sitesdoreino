@@ -7,6 +7,7 @@
 <main class="saude-http">
 <h1>Saúde das páginas</h1>
 <p>Quem encontrou uma falha e quais páginas responderam sem erros no período observado.</p>
+<p><a href="{% url 'saude_icone_previa' %}">Conferir ícone proposto · somente admins</a></p>
 <form method="get" class="cartao">
   <label>Período <select name="dias"><option value="1" {% if dias == 1 %}selected{% endif %}>Hoje</option><option value="7" {% if dias == 7 %}selected{% endif %}>7 dias</option><option value="30" {% if dias == 30 %}selected{% endif %}>30 dias</option></select></label>
   <label>Perfil <select name="perfil"><option value="">Todos</option>{% for valor, nome in perfis %}<option value="{{ valor }}" {% if perfil == valor %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></label>
@@ -19,7 +20,7 @@
 <p><strong>{{ acessos }}</strong> respostas observadas · <strong>{{ falhas_total }}</strong> falhas HTTP · <strong>{{ saudaveis|length }}</strong> páginas com sucesso e sem erros.</p>
 <p>Horário de São Paulo. Medição iniciada em {% if inicio %}{{ inicio|date:"d/m/Y H:i:s" }}{% else %}ainda sem registros{% endif %}. Não há reconstrução de acessos anteriores.</p>
 <h2>Páginas sem erros registrados</h2>
-<p>Ordenadas pelo número de respostas bem-sucedidas. Uma página sem acessos não entra no ranking. Redirecionamentos não contam como sucesso. Os endereços com parâmetros são agrupados.</p>
+<p>Ordenadas pelo número de respostas bem-sucedidas. Uma página sem acessos não entra no ranking. Redirecionamentos não contam como sucesso. Os endereços com parâmetros são agrupados. Totais e rankings usam o perfil registrado na coleta; não reclassificam acessos antigos.</p>
 <div class="tabela-envolucro"><table><thead><tr><th>Posição</th><th>Página</th><th>Sucessos</th><th>Redirecionamentos</th><th>Falhas</th></tr></thead><tbody>
 {% for p in saudaveis %}<tr><td>{{ forloop.counter }}</td><td>{{ p.host }}{{ p.pagina }}<br><small>{{ p.servico }}</small></td><td>{{ p.sucesso }}</td><td>{{ p.redirecionamento }}</td><td>0</td></tr>{% empty %}<tr><td colspan="5">Ainda não há páginas com acessos bem-sucedidos e zero erros neste filtro.</td></tr>{% endfor %}
 </tbody></table></div>
@@ -28,9 +29,9 @@
 {% for p in falhas %}<tr><td>{{ p.host }}{{ p.pagina }}</td><td>{{ p.total }}</td><td>{{ p.erro }}</td><td>{{ p.taxa }}%</td></tr>{% empty %}<tr><td colspan="4">Nenhuma falha registrada neste filtro. Isso não comprova páginas que não foram acessadas.</td></tr>{% endfor %}
 </tbody></table></div>
 <h2>Quem encontrou o erro</h2>
-<p>Até 200 ocorrências mais recentes do filtro. A referência pesquisa o período selecionado; os rankings continuam mostrando todas as páginas do perfil e período.</p>
+<p>Até 200 ocorrências mais recentes do filtro. A referência pesquisa o período selecionado; nas ocorrências, contas registradas como Equipe são conferidas na lista atual de administradores. O filtro destas ocorrências usa o perfil conferido; totais e rankings mantêm o perfil da coleta. A conferência atual não afirma qual era a permissão na data do erro.</p>
 <div class="tabela-envolucro"><table><thead><tr><th>Quando</th><th>Perfil e conta</th><th>Página</th><th>Erro</th><th>Referência</th></tr></thead><tbody>
-{% for e in erros %}<tr><td>{{ e.quando|date:"d/m/Y H:i:s" }}</td><td><strong>{{ e.perfil_texto }}</strong><br>{{ e.nome }}<br><small>{% if e.conta %}Conta: {{ e.conta }}{% else %}Sem conta identificada{% endif %}</small></td><td>{{ e.host }}{{ e.pagina }}<br>{{ e.metodo }}</td><td>HTTP {{ e.status }}</td><td>{{ e.referencia|default:"Sem referência na resposta" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma ocorrência encontrada neste filtro.</td></tr>{% endfor %}
+{% for e in erros %}<tr><td>{{ e.quando|date:"d/m/Y H:i:s" }}</td><td><strong>{{ e.perfil_texto }}</strong>{% if e.perfil_coletado_texto %}<br><small>Conferido agora · na coleta: {{ e.perfil_coletado_texto }}</small>{% endif %}<br>{{ e.nome }}<br><small>{% if e.conta %}Conta: {{ e.conta }}{% else %}Sem conta identificada{% endif %}</small></td><td>{{ e.host }}{{ e.pagina }}<br>{{ e.metodo }}</td><td>HTTP {{ e.status }}</td><td>{{ e.referencia|default:"Sem referência na resposta" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma ocorrência encontrada neste filtro.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endif %}
 <p>Escopo: páginas HTML e envios de formulários dos módulos {{ servicos|join:", " }}, incluindo a vitrine isolada. Checkout e pagamentos não participam desta medição. Erros de JavaScript, respostas servidas somente pelo cache e falhas anteriores à chegada na aplicação não são medidos aqui. Visitantes sem sessão não têm nome ou conta conhecidos; falhas na identificação aparecem como “Sessão não identificada”.</p>

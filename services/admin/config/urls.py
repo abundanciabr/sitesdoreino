@@ -1372,3 +1372,9 @@ handler500 = "site_errors.handlers.server_error_shared"
 
 from apps.core.saude_http import painel as saude_http
 urlpatterns += [path("saude-paginas/", saude_http, name="saude_http")]
+
+from apps.core.saude_icone import previa as saude_icone_previa, imagem as saude_icone_imagem
+urlpatterns += [
+    path("saude-paginas/icone/", saude_icone_previa, name="saude_icone_previa"),
+    path("saude-paginas/icone/imagem/", saude_icone_imagem, name="saude_icone_imagem"),
+]
