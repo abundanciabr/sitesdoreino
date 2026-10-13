@@ -2,6 +2,7 @@ from apps.core.nps import crm_satisfacao_revisao_salvar
 from apps.core.medalhas import painel as medalhas_painel, previa as medalhas_previa
 from django.conf import settings
 from django.urls import path, re_path
+from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
@@ -315,6 +316,8 @@ urlpatterns = [
     path("atendimento/desempenho/", suporte_indicadores.desempenho, name="suporte_desempenho_admin"),
     path("atendimento/supervisor/", suporte_indicadores.supervisor, name="suporte_supervisor_admin"),
     path("atendimento/<uuid:conversa_id>/aluno/", suporte_gestao.aluno, name="suporte_aluno_admin"),
+    path("atendimento/pedidos-prontos/", suporte_pedidos.previa, name="suporte_pedidos_previa"),
+    path("atendimento/pedidos-prontos/arquivo/<str:nome>", suporte_pedidos.arquivo, name="suporte_pedidos_arquivo"),
     path("atendimento/chat/arquivo/<str:nome>", suporte.chat_arquivo, name="suporte_arquivo_admin"),
 
     path("equipe/atendimento/", suporte.fila, name="atendimento_equipe"),

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pedidos prontos · Suporte da Meshcraft</title>
+  <link rel="stylesheet" href="{% url 'suporte_pedidos_arquivo' 'suporte.css' %}">
+  <style>body{margin:0;background:#0b1522;color:#e8eef9;font:16px/1.6 system-ui,sans-serif}main{max-width:680px;padding:32px 24px}h1{font-size:28px;line-height:1.2}a{color:#b8dcff}.etiqueta{color:#9fc6e9;font-size:13px}button{font:inherit}</style>
+</head>
+<body>
+  <main>
+    <p class="etiqueta">Prévia exclusiva de administradores</p>
+    <h1>Ajuda começa com um clique</h1>
+    <p>Abra o suporte e escolha um pedido pronto, ou escreva sua dúvida. Cada botão envia a frase que aparece nele pelo chat existente.</p>
+    <p>O envio é real e fica no histórico privado do seu atendimento de administrador. A equipe recebe o pedido pelo fluxo atual do suporte.</p>
+    <p>Os botões aparecem quando o atendimento está sem mensagens. Para testar outro pedido, use Novo atendimento. Se houver uma mensagem escrita, ela fica preservada e os atalhos aguardam o campo ficar livre.</p>
+    <p><a href="https://meshcraft.top/admin/atendimento/">Voltar ao atendimento</a></p>
+  </main>
+  <script defer src="{% url 'suporte_pedidos_arquivo' 'suporte.js' %}" data-api="/admin/equipe/atendimento/chat/"></script>
+</body>
+</html>
