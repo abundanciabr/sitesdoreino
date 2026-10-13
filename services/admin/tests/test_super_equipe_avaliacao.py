@@ -33,6 +33,43 @@ def test_material_explicita_truncamento_e_exclui_contexto_revogado():
     assert dados["fontes_para_confronto"]["fluxo_entregas"]["processamento_ativo"] is None
 
 
+def test_contexto_compacto_preserva_fatos_e_nao_muda_fotografia_salva():
+    fonte = {"estado": "medido", "serie": list(range(1000)), "ausente": None, "zero": 0}
+    contexto = {"fontes": {"servidor": fonte, "outra": {"estado": "indisponivel"},
+                           "resultados_anteriores": {"jez_humble": "Alegação"}},
+                "confronto": {"fontes_para_confronto": {"servidor": fonte},
+                              "pares_do_proprio_trabalho": [
+                                  {"perfil": "jez_humble", "texto": "Alegação com evidência"}]}}
+    original = json.dumps(contexto, ensure_ascii=False)
+    compacto, medicao = avaliacao.compactar_contexto(contexto)
+    assert json.dumps(contexto, ensure_ascii=False) == original
+    assert "servidor" not in compacto["fontes"]
+    assert "resultados_anteriores" not in compacto["fontes"]
+    assert compacto["confronto"] == contexto["confronto"]
+    assert compacto["fontes"]["outra"] == contexto["fontes"]["outra"]
+    assert compacto["fontes_reutilizadas_nesta_entrada"]["servidor"] == "confronto.fontes_para_confronto.servidor"
+    assert medicao["bytes_antes"] == len(original.encode())
+    assert medicao["bytes_enviados"] == len(json.dumps(compacto, ensure_ascii=False).encode())
+    assert medicao["bytes_repetidos_evitados"] > 4000
+
+
+def test_nao_reutiliza_fonte_divergente_ou_parecer_truncado_incompativel():
+    contexto = {"fontes": {"servidor": {"versao": "nova"},
+                           "resultados_anteriores": {"jez_humble": "Parecer completo"}},
+                "confronto": {"fontes_para_confronto": {"servidor": {"versao": "antiga"}},
+                              "pares_do_proprio_trabalho": [{"perfil": "jez_humble", "texto": "Parecer"}]}}
+    compacto, medicao = avaliacao.compactar_contexto(contexto)
+    assert compacto == contexto
+    assert medicao["bytes_repetidos_evitados"] == 0
+
+
+def test_perfil_individual_sem_confronto_conserva_contexto_integral():
+    contexto = {"pedido": "Diagnóstico", "fontes": fotografia()}
+    compacto, medicao = avaliacao.compactar_contexto(contexto)
+    assert compacto == contexto
+    assert medicao["bytes_repetidos_evitados"] == 0
+
+
 @pytest.mark.django_db
 def test_cinco_pareceres_revisao_com_fontes_e_sintese_posterior_persistidas():
     membro = MembroDaEquipe.objects.create(nome="Ensaio privado")
@@ -67,6 +104,10 @@ def test_cinco_pareceres_revisao_com_fontes_e_sintese_posterior_persistidas():
     resposta = super_equipe_trabalho(request, trabalho.pk)
     assert resposta.status_code == 200
     assert b"Rastreio das entradas" in resposta.content and b"PARECER_6" in resposta.content
+    assert b"Contexto desta chamada" in resposta.content
+    for entrada in trabalho.estado["entradas_avaliacao"].values():
+        assert entrada["economia_contexto"]["bytes_enviados"] == len(json.dumps(
+            entrada["contexto"], ensure_ascii=False, default=str).encode())
 
 
 @pytest.mark.django_db

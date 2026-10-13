@@ -464,12 +464,18 @@ def executar(execucao: Execucao) -> None:
         if rastreavel and (sintese or codigo == "shreya_shankar"):
             contexto["confronto"] = avaliacao.material(estado, digest_fontes, _sem_dados_pessoais)
             instrucao += avaliacao.orientacao(codigo)
+        contexto, economia_contexto = avaliacao.compactar_contexto(contexto)
+        instrucao += ("\nQuando houver fontes_reutilizadas_nesta_entrada, leia a informação no caminho "
+                      "indicado da mesma entrada; ela não está ausente. Para pedidos delimitados, "
+                      "responda com até três achados e a próxima ação, sem recapitular todo o histórico. "
+                      "Detalhe mais somente quando o pedido ou um risco concreto exigir.")
         inicio = timezone.now()
         if rastreavel:
             entrada = {"perfil": papel, "etapa": codigo, "fluxo_avaliacao": avaliacao.VERSAO,
                        "modelo": conexao.modelo_forte, "instrucoes_digest": avaliacao.digest(instrucao),
                        "fontes_digest": digest_fontes, "iniciada_em": inicio.isoformat(),
                        "contexto_digest": avaliacao.digest(contexto), "contexto": contexto,
+                       "economia_contexto": economia_contexto,
                        "instrucoes": instrucao,
                        "limite": "Leitura determinística de fontes minimizadas; capacidades declaradas não são chamadas de ferramenta. Efeito externo não observado por esta etapa."}
             entradas = estado.setdefault("entradas_avaliacao", {})
