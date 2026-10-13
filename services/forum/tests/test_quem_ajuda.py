@@ -182,3 +182,37 @@ def test_demonstracao_nao_cria_pessoas_topicos_mensagens_ou_aceites(
         real.resposta_aceita_id,
     )
     assert ranking_de_ajuda(ator)[0]["solucoes"] == 1
+
+
+@pytest.mark.parametrize("papel", ["visitante", "aluno", "professor"])
+def test_retratos_de_teste_sao_exclusivos_de_admin(client, monkeypatch, papel):
+    ator = (
+        Ator(None)
+        if papel == "visitante"
+        else Ator(
+            pessoa(1), eh_aluno=papel == "aluno", eh_professor=papel == "professor"
+        )
+    )
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: ator)
+    assert (
+        client.get(reverse("imagem_de_perfil_de_teste", args=["ana"])).status_code
+        == 404
+    )
+
+
+def test_retrato_png_para_admin_e_perfil_desconhecido_fecha(client, monkeypatch):
+    ator = Ator(pessoa(90), eh_admin=True)
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: ator)
+    resposta = client.get(reverse("imagem_de_perfil_de_teste", args=["ana"]))
+    assert resposta.status_code == 200
+    assert resposta["Content-Type"] == "image/png"
+    assert "no-store" in resposta["Cache-Control"]
+    assert "noindex" in resposta["X-Robots-Tag"]
+    assert next(iter(resposta.streaming_content)).startswith(b"\x89PNG\r\n\x1a\n")
+    resposta.close()
+    assert (
+        client.get(
+            reverse("imagem_de_perfil_de_teste", args=["nao-existe"])
+        ).status_code
+        == 404
+    )
