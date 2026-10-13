@@ -73,7 +73,7 @@ def test_arquivo_fora_da_lista_nao_e_servido():
 
 
 @respx.mock
-def test_previa_nao_tem_escrita_no_banco_nem_aceita_post():
+def test_endpoint_da_pagina_nao_aceita_post_de_xp():
     respx.get(f"{BASE}/sessao/completa").mock(return_value=httpx.Response(
         200, json=sessao("admin@exemplo.com", "admin")))
     assert cliente().post(reverse("feed_previa"), {"xp": 999}).status_code == 405

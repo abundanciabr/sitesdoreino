@@ -1,0 +1,207 @@
+{
+  "people": [
+    {
+      "id": "lia",
+      "name": "Lia Martins",
+      "initials": "LM",
+      "color": "coral",
+      "focus": "Props e itens de jogos",
+      "city": "São Paulo, SP",
+      "tools": [
+        "Blender",
+        "Roblox"
+      ],
+      "quote": "Minha primeira criação virou meu primeiro cliente.",
+      "badge": "Verified Dev",
+      "path": "Clientes"
+    },
+    {
+      "id": "davi",
+      "name": "Davi Rocha",
+      "initials": "DR",
+      "color": "violet",
+      "focus": "Acessórios UGC",
+      "city": "Recife, PE",
+      "tools": [
+        "Blender",
+        "UGC"
+      ],
+      "quote": "Um item meu dentro do mundo que eu gosto.",
+      "badge": "UGC Creator Elite",
+      "path": "Itens UGC"
+    },
+    {
+      "id": "nina",
+      "name": "Nina Souza",
+      "initials": "NS",
+      "color": "green",
+      "focus": "Cenários e ambientes",
+      "city": "Curitiba, PR",
+      "tools": [
+        "Blender",
+        "Roblox Studio"
+      ],
+      "quote": "Do primeiro cubo a um mundo inteiro.",
+      "badge": "Dev Aprendiz",
+      "path": "Visual do jogo"
+    },
+    {
+      "id": "caio",
+      "name": "Caio Alves",
+      "initials": "CA",
+      "color": "slate",
+      "focus": "Personagens estilizados",
+      "city": "Belo Horizonte, MG",
+      "tools": [
+        "Blender",
+        "ZBrush"
+      ],
+      "quote": "Cada versão conta um pedaço da minha evolução.",
+      "badge": "Dev Aprendiz",
+      "path": "Aprender modelagem"
+    },
+    {
+      "id": "bela",
+      "name": "Bela Santos",
+      "initials": "BS",
+      "color": "amber",
+      "focus": "Modelagem de produtos",
+      "city": "Salvador, BA",
+      "tools": [
+        "Blender",
+        "Texturas"
+      ],
+      "quote": "Compartilhar me ajuda a enxergar o próximo passo.",
+      "badge": "Verified Dev",
+      "path": "Clientes"
+    },
+    {
+      "id": "leo",
+      "name": "Leo Costa",
+      "initials": "LC",
+      "color": "mine",
+      "focus": "Game assets",
+      "city": "Porto Alegre, RS",
+      "tools": [
+        "Blender",
+        "Roblox"
+      ],
+      "quote": "Conectando ideias, pessoas e novas oportunidades.",
+      "badge": "Mythic Developer",
+      "path": "Clientes"
+    }
+  ],
+  "posts": [
+    {
+      "id": "sword",
+      "author": "caio",
+      "kind": "creation",
+      "title": "Espada Aurora — do desenho ao game asset",
+      "story": "Queria uma espada com personalidade. Trabalhei a silhueta, simplifiquei a malha e experimentei cores frias com detalhes dourados. Qual versão você usaria no seu jogo?",
+      "art": "sword",
+      "tags": [
+        "Blender",
+        "Game assets"
+      ],
+      "likes": 41,
+      "comments": [
+        {
+          "name": "Nina · exemplo",
+          "text": "O contraste da lâmina com o cabo ficou muito bom!"
+        }
+      ],
+      "time": "há 20 minutos · exemplo"
+    },
+    {
+      "id": "first",
+      "author": "lia",
+      "kind": "result",
+      "title": "Meu primeiro cliente veio pelo portfólio",
+      "story": "Compartilhei meus props, conversei sobre o que o jogo precisava e combinei a entrega de um conjunto de itens. Aqui está o formato de uma história de primeiro trabalho.",
+      "art": "sword",
+      "tags": [
+        "Primeiro cliente",
+        "Blender"
+      ],
+      "amount": 500,
+      "likes": 56,
+      "comments": [
+        {
+          "name": "Bela · exemplo",
+          "text": "Conta como você organizou o portfólio para apresentar as peças?"
+        }
+      ],
+      "time": "há 1 hora · exemplo"
+    },
+    {
+      "id": "before",
+      "author": "nina",
+      "kind": "evolution",
+      "title": "Eu também comecei sem saber onde clicar.",
+      "story": "Minha primeira espada era um retângulo. Na versão seguinte, comecei a entender proporção, materiais e silhueta. Quero guardar essa comparação para lembrar de onde saí.",
+      "art": "evolution",
+      "tags": [
+        "Antes e depois",
+        "Minha evolução"
+      ],
+      "likes": 73,
+      "comments": [
+        {
+          "name": "Caio · exemplo",
+          "text": "Essa comparação dá muita vontade de continuar criando."
+        }
+      ],
+      "time": "há 2 horas · exemplo"
+    },
+    {
+      "id": "ugc",
+      "author": "davi",
+      "kind": "creation",
+      "title": "Uma coroa feita para entrar em outro mundo",
+      "story": "Explorei um acessório estilizado para Roblox. A ideia é mostrar a criação, as versões e uma demonstração dentro do jogo — tudo junto na história do item.",
+      "art": "ugc",
+      "tags": [
+        "UGC",
+        "Roblox"
+      ],
+      "likes": 38,
+      "comments": [],
+      "time": "há 3 horas · exemplo"
+    },
+    {
+      "id": "world",
+      "author": "nina",
+      "kind": "creation",
+      "title": "Uma pequena ilha, muitas possibilidades",
+      "story": "Primeiro estudo de cenário com formas simples e cores suaves. Agora quero construir o caminho do jogador e testar a composição dentro do jogo.",
+      "art": "island",
+      "tags": [
+        "Ambiente",
+        "Roblox Studio"
+      ],
+      "likes": 29,
+      "comments": [],
+      "time": "há 4 horas · exemplo"
+    },
+    {
+      "id": "help",
+      "author": "bela",
+      "kind": "help",
+      "title": "Como deixar essa lâmina mais legível?",
+      "story": "Quero melhorar a silhueta quando o item aparece pequeno na tela. Vocês mudariam a guarda ou aumentariam a diferença entre as cores?",
+      "art": "sword",
+      "tags": [
+        "Feedback",
+        "Silhueta"
+      ],
+      "likes": 12,
+      "comments": [
+        {
+          "name": "Leo · exemplo",
+          "text": "Eu começaria comparando as versões em tamanho pequeno e em fundo claro e escuro."
+        }
+      ],
+      "time": "há 5 horas · exemplo"
+    }
+  ]
+}
