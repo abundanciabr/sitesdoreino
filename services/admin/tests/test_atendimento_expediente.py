@@ -135,8 +135,8 @@ def test_painel_guarda_agenda_e_mostra_estado(escola, monkeypatch):
     assert escola.expediente_ativo and 'Segunda a sexta' in escola.horario
     r = rf.get('/atendimento/configuracao/?salvo=1'); r.admin = {'id': 'admin-test', 'nome': 'Equipe'}
     tela = views.configuracao(r)
-    assert b'Chat aberto 24 horas' in tela.content and 'Configuração guardada'.encode() in tela.content
-    assert 'Respostas no próximo expediente'.encode() in tela.content
+    assert b'24 horas' not in tela.content and 'Configuração guardada'.encode() in tela.content
+    assert 'Suporte fechado agora.'.encode() in tela.content
 
 
 @pytest.mark.parametrize('instante,permitido', [
@@ -175,7 +175,7 @@ def test_respostas_em_lote_esperam_o_expediente(escola, monkeypatch):
     from apps.atendimento import caixa
     agora(monkeypatch, '2026-10-13T06:00:00+00:00')
     c, grupo = grupo_de_ensaio(monkeypatch)
-    with pytest.raises(ValueError, match='expediente'):
+    with pytest.raises(ValueError, match='Suporte fechado'):
         caixa.aprovar(SID, 'admin-test', 'Equipe fictícia', grupo['token'], grupo['tempo_token'])
     assert not c.mensagens.filter(autor='equipe').exists()
     agora(monkeypatch, '2026-10-13T17:00:00+00:00')
