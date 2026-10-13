@@ -58,6 +58,10 @@ def previa_quem_ajuda(request):
     ator = quem_e(request)
     if not ator.autenticado or not ator.eh_admin:
         raise Http404("página não encontrada")
+    if request.GET.get("demonstracao") == "1":
+        resposta = render(request, "forum/demonstracao_quem_ajuda.html", {"ator": ator})
+        resposta["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+        return resposta
     areas = [a for a in areas_visiveis(ator) if a.ativa]
     grupo_slug = request.GET.get("grupo", "")
     grupo = next((a for a in areas if a.slug == grupo_slug), None)

@@ -1,0 +1,84 @@
+<script>
+(() => {
+  'use strict';
+  const perfis = [
+    {id:'ana',nome:'Ana · teste',iniciais:'AT',especialidade:'Modelagem de personagens'},
+    {id:'bruno',nome:'Bruno · teste',iniciais:'BT',especialidade:'Exportação e materiais'},
+    {id:'clara',nome:'Clara · teste',iniciais:'CT',especialidade:'Iluminação e render'},
+    {id:'diego',nome:'Diego · teste',iniciais:'DT',especialidade:'Objetos para jogos'},
+    {id:'elisa',nome:'Elisa · teste',iniciais:'ET',especialidade:'Texturas e UV'},
+    {id:'fabio',nome:'Fábio · teste',iniciais:'FT',especialidade:'Primeiros projetos 3D'}
+  ];
+  const perfil = id => perfis.find(p => p.id === id);
+  const historico = [];
+  const bases = {ana:[3,2],bruno:[3,1],clara:[1,2],diego:[1,1],elisa:[1,0],fabio:[0,1]};
+  Object.entries(bases).forEach(([id, totais]) => totais.forEach((total,g) => {
+    for(let i=0;i<total;i++) historico.push({grupo:g===0?'modelagem':'render',aceita:id});
+  }));
+  const perguntas = [
+    {id:'exportar',grupo:'modelagem',titulo:'Como exportar um objeto em GLB?',respostas:[
+      {autor:'bruno',texto:'Selecione o objeto e use Exportar → glTF 2.0, escolhendo o formato GLB.'},
+      {autor:'clara',texto:'Confira também se os materiais e as texturas foram incluídos na exportação.'}]},
+    {id:'textura',grupo:'render',titulo:'Por que minha textura aparece esticada?',respostas:[
+      {autor:'bruno',texto:'Aplique a escala do objeto e confira a abertura UV antes de reposicionar a textura.'},
+      {autor:'elisa',texto:'Use uma textura quadriculada para encontrar as ilhas UV que estão deformadas.'}]},
+    {id:'normal',grupo:'modelagem',titulo:'Por que um lado do objeto fica invisível?',respostas:[
+      {autor:'fabio',texto:'No modo de edição, selecione as faces e recalcule as normais para fora.'},
+      {autor:'diego',texto:'Ative a orientação das faces para localizar as faces invertidas.'}]},
+    {id:'luz',grupo:'render',titulo:'Como reduzir o ruído desta imagem?',respostas:[
+      {autor:'fabio',texto:'Experimente ativar a redução de ruído e aumentar as amostras do render.'},
+      {autor:'clara',texto:'Confira a iluminação da cena e compare um recorte antes de renderizar tudo.'}]}
+  ];
+  const aceites = new Map();
+  const elemento = (tag,classe,texto) => {
+    const el = document.createElement(tag);
+    if(classe) el.className = classe;
+    if(texto !== undefined) el.textContent = texto;
+    return el;
+  };
+  const acesso = () => document.querySelector('#visao').value;
+  const visivel = item => acesso()==='admin' || item.grupo===acesso();
+  function contagens(){
+    const totais = Object.fromEntries(perfis.map(p => [p.id,0]));
+    historico.filter(visivel).forEach(item => totais[item.aceita]++);
+    perguntas.filter(visivel).forEach(q => { const id=aceites.get(q.id); if(id) totais[id]++; });
+    return totais;
+  }
+  function informar(texto){ document.querySelector('#status').textContent=texto; }
+  function renderizar(){
+    const totais=contagens();
+    const lista=perfis.filter(p=>totais[p.id]>0).sort((a,b)=>totais[b.id]-totais[a.id] || a.nome.localeCompare(b.nome,'pt-BR'));
+    const ranking=document.querySelector('#ranking'); ranking.replaceChildren();
+    lista.slice(0,5).forEach((p,i)=>{
+      const linha=elemento('li','linha'); linha.dataset.perfil=p.id;
+      linha.append(elemento('span','posicao',String(i+1)),elemento('span','avatar',p.iniciais),elemento('span','nome',p.nome),elemento('span','numero',String(totais[p.id])));
+      linha.querySelector('.numero').setAttribute('aria-label',totais[p.id]+' soluções fictícias'); ranking.append(linha);
+    });
+    document.querySelector('#fora').textContent=lista.length>5 ? lista.slice(5).map(p=>p.nome+' tem '+totais[p.id]+' solução e está fora dos cinco primeiros.').join(' ') : 'Só aparecem os perfis com soluções neste recorte.';
+    const cards=document.querySelector('#perfis'); cards.replaceChildren();
+    perfis.forEach(p=>{
+      const card=elemento('article','perfil'); card.append(elemento('div','avatar',p.iniciais),elemento('strong','',p.nome),elemento('span','teste','Perfil fictício · sem conta de acesso'),elemento('p','',p.especialidade),elemento('p','',totais[p.id]+' soluções neste acesso simulado')); cards.append(card);
+    });
+    const conversas=document.querySelector('#perguntas'); conversas.replaceChildren();
+    perguntas.filter(visivel).forEach(q=>{
+      const card=elemento('article','pergunta'); card.dataset.pergunta=q.id;
+      card.append(elemento('span','grupo','Grupo fictício · '+(q.grupo==='modelagem'?'Modelagem':'Render')),elemento('h3','',q.titulo));
+      const aceita=aceites.get(q.id);
+      card.append(elemento('p',aceita?'aceita':'sub',aceita?'Solução aceita: '+perfil(aceita).nome:'Ainda sem solução aceita · estas respostas não aumentaram o ranking.'));
+      q.respostas.forEach(r=>{
+        const caixa=elemento('div','resposta'); caixa.append(elemento('strong','',perfil(r.autor).nome),elemento('p','',r.texto));
+        const btn=elemento('button',aceita===r.autor?'secundario':'',aceita===r.autor?'Desfazer aceite':aceita?'Trocar solução para esta resposta':'Marcar como solução'); btn.type='button';
+        btn.addEventListener('click',()=>{
+          const anterior=aceites.get(q.id);
+          if(anterior===r.autor){aceites.delete(q.id);informar('Aceite desfeito. '+perfil(r.autor).nome+' perdeu uma solução nesta simulação.');}
+          else {aceites.set(q.id,r.autor);informar(anterior?'Solução trocada: saiu uma de '+perfil(anterior).nome+' e entrou uma para '+perfil(r.autor).nome+'.':'Solução aceita! '+perfil(r.autor).nome+' ganhou uma solução nesta simulação.');}
+          renderizar();
+        }); caixa.append(btn);card.append(caixa);
+      }); conversas.append(card);
+    });
+  }
+  document.querySelector('#visao').addEventListener('change',()=>{informar('Acesso simulado alterado. Perguntas e contagens do outro grupo ficam fora deste recorte.');renderizar();});
+  document.querySelector('#reiniciar').addEventListener('click',()=>{aceites.clear();document.querySelector('#visao').value='admin';informar('Demonstração reiniciada. Os dados reais do Fórum continuam preservados.');renderizar();});
+  renderizar();
+})();
+</script>
