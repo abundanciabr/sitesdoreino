@@ -67,7 +67,7 @@ def identificar(request):
         papel = getattr(ator, "papel_do_site", "")
         email = (getattr(request, "_identidade_nps", {}) or {}).get("email", "")
         administradores = {v.strip().lower() for v in os.environ.get("ADMIN_EMAILS", "").split(",") if v.strip()}
-        perfil = "administrador" if papel in ("admin", "administrador") or email.lower() in administradores else "professor" if getattr(ator, "eh_professor", False) else "aluno" if getattr(ator, "eh_aluno", False) else "autenticado"
+        perfil = "administrador" if getattr(ator, "eh_admin", False) or papel in ("admin", "administrador") or email.lower() in administradores else "professor" if getattr(ator, "eh_professor", False) else "aluno" if getattr(ator, "eh_aluno", False) else "autenticado"
         return {"perfil": perfil, "conta": str(pessoa.id_da_plataforma), "nome": str(getattr(pessoa, "nome_exibido", ""))[:120]}
     dados = getattr(request, "_sessao_desta_requisicao", None)
     vitrine = getattr(request, "ator", None)
