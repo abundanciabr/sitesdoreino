@@ -8,6 +8,12 @@ from django.utils.dateparse import parse_datetime
 
 from .models import Execucao, RotinaSuperEquipe
 
+CAPACIDADE = ('cpu_ocupada_percentual', 'cpu_iowait_percentual', 'memoria_total_mb',
+    'memoria_disponivel_mb', 'memoria_usada_mb', 'io_leitura_bytes_s',
+    'io_escrita_bytes_s', 'intervalo_capacidade_segundos')
+PONTO = ('coletada_em', 'disco_livre_mb', 'http_5xx_15m', 'http_404_15m',
+         *CAPACIDADE, 'sondas_http')
+
 
 def coletar():
     agora = timezone.now()
@@ -95,6 +101,29 @@ def receber(dados):
         if valor not in ("ativo", "inativo", "indisponivel"):
             raise ValueError("estado inválido")
         saida[nome] = valor
+    for nome in CAPACIDADE:
+        valor = dados.get(nome)
+        if valor is not None and (type(valor) not in (int, float) or not math.isfinite(valor)
+                or valor < 0 or ('percentual' in nome and valor > 100)):
+            raise ValueError('medição inválida')
+        saida[nome] = valor
+    sondas = dados.get('sondas_http') or []
+    if not isinstance(sondas, list):
+        raise ValueError('medição inválida')
+    saida['sondas_http'] = []
+    vistos = set()
+    for sonda in sondas:
+        if not isinstance(sonda, dict) or sonda.get('alvo') not in ('inicio', 'robots') or sonda['alvo'] in vistos:
+            raise ValueError('alvo inválido')
+        vistos.add(sonda['alvo'])
+        http, tempo = sonda.get('http'), sonda.get('tempo_ms')
+        if http is not None and (type(http) is not int or not 100 <= http <= 599):
+            raise ValueError('HTTP inválido')
+        if tempo is not None and (type(tempo) not in (int, float) or not math.isfinite(tempo) or tempo < 0):
+            raise ValueError('tempo inválido')
+        saida['sondas_http'].append({'alvo': sonda['alvo'], 'http': http, 'tempo_ms': tempo,
+            'estado': 'medido' if http is not None else 'indisponivel'})
+    saida['capacidade_limite'] = 'CPU e I/O do host entre coletas, não por serviço; primeira coleta/reinício/lacuna maior que 5 minutos não produz taxa. Memória usada = total - disponível. I/O cobre discos inteiros sd/vd/xvd/nvme, sem partições/loop/dm. Sondas fixas medem tempo até cabeçalhos, não navegação de aluno.'
     return saida
 
 
@@ -176,12 +205,10 @@ def guardar_operacao(rotina, campos):
                 for ponto in anterior.get("serie") or []:
                     data = parse_datetime(ponto.get("coletada_em") or "")
                     if data and timezone.is_aware(data) and timedelta(0) <= data_nova-data <= timedelta(minutes=30):
-                        pontos.append({k: ponto.get(k) for k in (
-                            "coletada_em", "disco_livre_mb", "http_5xx_15m", "http_404_15m")})
-                pontos.append({k: nova.get(k) for k in (
-                    "coletada_em", "disco_livre_mb", "http_5xx_15m", "http_404_15m")})
+                        pontos.append({k: ponto.get(k) for k in PONTO})
+                pontos.append({k: nova.get(k) for k in PONTO})
                 nova["serie"] = pontos[-30:]
-                nova["serie_limite"] = "Até 30 coletas em 30 minutos. HTTP usa janelas móveis de 15 minutos sobrepostas; não somar como eventos distintos. CPU, memória, I/O e latência não coletados."
+                nova["serie_limite"] = "Até 30 coletas em 30 minutos. HTTP usa janelas móveis de 15 minutos sobrepostas; não somar como eventos distintos. Capacidade usa intervalos entre coletas; sondas são observações pontuais, não disponibilidade contínua. Campos não presentes nas coletas antigas permanecem ausentes."
         for nome, valor in campos.items():
             setattr(atual, nome, valor)
         atual.save(update_fields=list(campos))

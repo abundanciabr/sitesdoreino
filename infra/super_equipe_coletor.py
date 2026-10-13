@@ -8,10 +8,88 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import time
+import urllib.request
+import urllib.error
 
 DESTINO = Path("/run/meshcraft-super-equipe/telemetria.json")
 ACESSO = re.compile(r'HTTP/[12](?:\.[01])?"\s+(\d{3})\b')
 ENTREGAS = Path("/var/lib/meshcraft-integrador/entregas")
+
+
+def capacidade(agora, anterior, proc=Path('/proc')):
+    """Contadores do host entre coletas; não atribui uso a um serviço."""
+    saida = dict(cpu_ocupada_percentual=None, cpu_iowait_percentual=None,
+        memoria_total_mb=None, memoria_disponivel_mb=None, memoria_usada_mb=None,
+        io_leitura_bytes_s=None, io_escrita_bytes_s=None, intervalo_capacidade_segundos=None)
+    contadores = {'instante': agora}
+    try:
+        cpu = [int(x) for x in (proc/'stat').read_text().splitlines()[0].split()[1:9]]
+        if len(cpu) != 8:
+            raise ValueError()
+        contadores['cpu'] = cpu
+        memoria = {l.split(':')[0]: int(l.split()[1]) for l in (proc/'meminfo').read_text().splitlines() if l.split()[1].isdigit()}
+        total, disponivel = memoria['MemTotal'], memoria['MemAvailable']
+        if not 0 <= disponivel <= total:
+            raise ValueError()
+        saida.update(memoria_total_mb=round(total/1024, 3),
+            memoria_disponivel_mb=round(disponivel/1024, 3), memoria_usada_mb=round((total-disponivel)/1024, 3))
+    except (OSError, ValueError, KeyError, IndexError):
+        pass
+    try:
+        discos = {}
+        for linha in (proc/'diskstats').read_text().splitlines():
+            campos = linha.split()
+            # Somente discos inteiros físicos/virtuais; exclui partições e camadas dm/loop.
+            if re.fullmatch(r'(?:sd|vd|xvd)[a-z]+|nvme[0-9]+n[0-9]+', campos[2]):
+                discos[campos[2]] = [int(campos[5])*512, int(campos[9])*512]
+        if discos:
+            contadores['discos'] = discos
+    except (OSError, ValueError, IndexError):
+        pass
+    antes = anterior.get('_capacidade_contadores') or {}
+    janela = agora - antes.get('instante', agora)
+    if 0 < janela <= 300:
+        saida['intervalo_capacidade_segundos'] = round(janela, 3)
+        cpu_antes = antes.get('cpu')
+        if len(contadores.get('cpu', [])) == 8 and isinstance(cpu_antes, list) and len(cpu_antes) == 8:
+            delta = [b-a for a, b in zip(cpu_antes, contadores['cpu'])]
+            total = sum(delta)
+            if min(delta) >= 0 and total > 0:
+                saida['cpu_ocupada_percentual'] = round(100*(total-delta[3]-delta[4])/total, 3)
+                saida['cpu_iowait_percentual'] = round(100*delta[4]/total, 3)
+        discos, velhos = contadores.get('discos'), antes.get('discos')
+        if discos and velhos and discos.keys() == velhos.keys():
+            delta = [[b-a for a,b in zip(velhos[n], discos[n])] for n in discos]
+            if all(min(d) >= 0 for d in delta):
+                saida['io_leitura_bytes_s'] = round(sum(d[0] for d in delta)/janela, 3)
+                saida['io_escrita_bytes_s'] = round(sum(d[1] for d in delta)/janela, 3)
+    saida['_capacidade_contadores'] = contadores
+    return saida
+
+
+class SemRedirecionar(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def sondas():
+    """Dois GETs fixos públicos: tempo até cabeçalhos, sem guardar corpo."""
+    itens = []
+    for alvo, url in (('inicio', 'https://meshcraft.top/'), ('robots', 'https://meshcraft.top/robots.txt')):
+        inicio = time.monotonic()
+        http = None
+        try:
+            with urllib.request.build_opener(SemRedirecionar()).open(url, timeout=5) as resposta:
+                http = resposta.status
+        except urllib.error.HTTPError as erro:
+            http = erro.code
+        except (OSError, ValueError):
+            pass
+        itens.append({'alvo': alvo, 'http': http,
+            'tempo_ms': round((time.monotonic()-inicio)*1000, 3) if http is not None else None,
+            'estado': 'medido' if http is not None else 'indisponivel'})
+    return itens
 
 
 def ler_json(path, default=None):
@@ -82,6 +160,8 @@ def coletar():
              "disco_livre_mb": disco.free//(1024*1024),
              "aplicacao": "indisponivel", "funil": "indisponivel",
              "http_5xx_15m": None, "http_404_15m": None}
+    dados.update(capacidade(agora.timestamp(), anterior))
+    dados['sondas_http'] = sondas()
     try:
         dados.update(armazenamento(agora.timestamp(), disco, anterior))
         dados["imagens_manutencao"] = ler_json(Path("/opt/plataforma/objetos-imagens-manutencao/uso.json"), {})

@@ -17,6 +17,24 @@ ex = carregar("super_equipe_executor")
 co = carregar("super_equipe_coletor")
 
 
+def test_capacidade_deltas_primeira_coleta_reset_e_lacuna(tmp_path):
+    (tmp_path/'stat').write_text('cpu  10 0 10 70 10 0 0 0 0 0\n')
+    (tmp_path/'meminfo').write_text('MemTotal: 1024000 kB\nMemAvailable: 512000 kB\n')
+    (tmp_path/'diskstats').write_text('8 0 sda 0 0 100 0 0 0 200 0 0 0 0\n8 1 sda1 0 0 999 0 0 0 999 0 0 0 0\n')
+    primeiro = co.capacidade(1000, {}, tmp_path)
+    assert primeiro['cpu_ocupada_percentual'] is None and primeiro['io_escrita_bytes_s'] is None
+    assert primeiro['memoria_usada_mb'] == 500
+    (tmp_path/'stat').write_text('cpu  30 0 30 120 20 0 0 0\n')
+    (tmp_path/'diskstats').write_text('8 0 sda 0 0 160 0 0 0 320 0 0 0 0\n')
+    novo = co.capacidade(1060, primeiro, tmp_path)
+    assert novo['cpu_ocupada_percentual'] == 40 and novo['cpu_iowait_percentual'] == 10
+    assert novo['io_leitura_bytes_s'] == 512 and novo['io_escrita_bytes_s'] == 1024
+    assert co.capacidade(1500, primeiro, tmp_path)['cpu_ocupada_percentual'] is None
+    assert co.capacidade(1060, novo, tmp_path)['io_escrita_bytes_s'] is None
+    (tmp_path/'stat').write_text('cpu  1 0 1 1 0 0 0 0\n')
+    assert co.capacidade(1120, novo, tmp_path)['cpu_ocupada_percentual'] is None
+
+
 @pytest.mark.parametrize("caminho", ["services/checkout/apps/core/views.py", "services/aplicacao/executor.py",
     "services/pagamentos/apps/core/views.py", "packages/site_errors/a.py", "services/admin/apps/core/documentos.py",
     "services/admin/apps/agentes/super_equipe.py", "services/admin/apps/core/../../settings.py", "infra/publicar.py", None])
