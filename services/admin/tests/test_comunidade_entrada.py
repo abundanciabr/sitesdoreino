@@ -49,6 +49,9 @@ def test_admin_primeiro_acesso_pede_foto_e_handle_sem_criar_perfil(admin):
     assert "Seu primeiro acesso" in pagina.content.decode()
     assert "Seu nome de usuário" in pagina.content.decode()
     assert not PerfilDaComunidade.objects.exists()
+    assert (
+        PerfilDaComunidade._meta.original_attrs["db_table"] == "core_perfildacomunidade"
+    )
     assert "no-store" in pagina["Cache-Control"]
     assert "noindex" in pagina["X-Robots-Tag"]
     assert pagina.cookies["admin_csrf"]["path"] == "/comunidade"
