@@ -55,11 +55,26 @@ class ProductionPreviewTests(unittest.TestCase):
 
     def test_all_published_urls_open_without_login(self):
         self.assertNotIn('/admin/', module.PANEL)
-        for suffix in ('', '/checkout', '/assets/checkout.css', '/autorizar', '/retorno', '/validacao', '/webhooks'):
+        for suffix in ('', '/homologacao', '/checkout', '/assets/checkout.css', '/autorizar', '/retorno', '/validacao', '/webhooks'):
             result = self.request(module.PANEL + suffix)
             self.assertEqual(result[0]['status'], 200, suffix)
             self.assertNotIn(b'/login', result[1]['body'])
         self.assertFalse(self.calls)
+
+    def test_support_handoff_has_no_credentials_and_never_starts_installation(self):
+        self.app.begin({}, self.nonce)
+        self.app.finish('singleuseticket')
+        self.calls.clear()
+        before = (self.root/'instalacao.json').read_bytes()
+        result = self.request(module.PANEL+'/homologacao')
+        self.assertEqual(result[0]['status'], 200)
+        self.assertEqual((self.root/'instalacao.json').read_bytes(), before)
+        self.assertFalse(self.calls)
+        page = result[1]['body']
+        for value in ('private-application-key', 'private-merchant-key', 'merchant-key', 'singleuseticket', self.nonce):
+            self.assertNotIn(value.encode(), page)
+        self.assertIn(b'homologacao@appmax.com.br', page)
+        self.assertNotIn(b'<form', page)
 
     def test_public_panel_has_existing_ids_and_no_secrets(self):
         result = self.request(module.PANEL)

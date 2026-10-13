@@ -292,25 +292,65 @@ class ProductionAdmin:
 
     def panel(self, cookie, message=""):
         state = self.state()
-        status = {"preparacao": "Aplicativo reaproveitado. Falta autorizar a loja em produção.",
-                  "autorizacao": "Conclua a autorização da loja no painel da Appmax.",
+        status = {"preparacao": "Ambiente preparado para homologação. Aguardando a vinculação da loja e as credenciais de produção pela Appmax.",
+                  "autorizacao": "Aguardando a conclusão da vinculação da loja pela Appmax e o recebimento das credenciais de produção.",
                   "gerando": "Aguardando a validação da instalação pela Appmax.",
                   "credenciais_recebidas": "Credenciais emitidas e preservadas. Falta conferir a instalação.",
                   "preparada": "Instalação de produção concluída. Cobranças continuam desabilitadas nesta prévia."}.get(state.get("status"), "Preparação em andamento")
         esc = html.escape
         urls = {"Host e URL de webhook": ORIGIN + PANEL + "/webhooks", "URL do sistema": ORIGIN + PANEL, "URL de validação": ORIGIN + PANEL + "/validacao", "Retorno da autorização": ORIGIN + PANEL + "/retorno"}
         fields = ''.join('<p><strong>' + name + '</strong><br><code>' + value + '</code></p>' for name, value in urls.items())
-        action = "Conferir a instalação já autorizada" if state.get("merchant") else "Autorizar minha loja na Appmax de produção"
+        action = "Conferir a instalação já autorizada" if state.get("merchant") else "Iniciar instalação Appmax para homologação"
         return ('<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Appmax de produção · Meshcraft</title>'
                 '<style>body{font:17px/1.6 system-ui;background:#f3f5fa;color:#182037;margin:0}main{max-width:820px;margin:40px auto;padding:30px;background:white;border-radius:18px}h1{line-height:1.2}code{overflow-wrap:anywhere}input{display:block;width:95%;padding:12px;margin:8px 0 20px;border:1px solid #acb5c9;border-radius:8px}button,.link{display:inline-block;padding:13px 20px;border:0;border-radius:8px;background:#164bd5;color:white;text-decoration:none;cursor:pointer}.notice{padding:18px;background:#edf3ff;border-radius:10px}.error{color:#ad2831}small{color:#56617a}</style><main>'
                 '<a href="/curso-primeiros-passos-no-blender">← Página do produto</a><h1>Appmax de produção</h1><p>Curso Primeiros Passos com 3D no Blender · <strong>R$ 27,00</strong></p>'
                 '<p class="notice">' + esc(status) + '</p><p class="error">' + esc(message) + '</p>'
                 '<p>As credenciais do aplicativo já estão guardadas. Esta preparação usa uma cópia isolada e preserva o Mercado Pago aprovado.</p>'
-                '<p><a class="link" href="' + PANEL + '/checkout">Abrir prévia do checkout de R$ 27</a></p>'
-                '<h2>O passo para autorizar a loja</h2><p>Abra o aplicativo já existente em <a href="https://appstore.appmax.com.br" target="_blank" rel="noreferrer">https://appstore.appmax.com.br</a>. Em Desenvolver, confira os endereços desta cópia:</p>' + fields +
-                '<p>Use o UUID e o ID numérico desse mesmo aplicativo. Clique no botão abaixo e, na Appmax, selecione a loja de produção que você já possui e confirme a instalação. O retorno salva as credenciais automaticamente; não é preciso copiá-las.</p>'
+                '<p><a class="link" href="' + PANEL + '/homologacao">Entrega para a equipe Appmax</a></p><p><a class="link" href="' + PANEL + '/checkout">Abrir prévia do checkout de R$ 27</a></p>'
+                '<h2>Instalação para a equipe de homologação</h2><p>Equipe Appmax: confiram o aplicativo existente em <a href="https://appstore.appmax.com.br" target="_blank" rel="noreferrer">https://appstore.appmax.com.br</a> e os endereços de produção desta cópia:</p>' + fields +
+                '<p>A vinculação da loja e a emissão das credenciais seguem o fluxo oficial da Appmax. Solicitamos à equipe responsável a conclusão assistida dessa etapa. O retorno salva as credenciais automaticamente nesta cópia isolada. Estas páginas não pedem login na Meshcraft.</p>'
                 '<form method="post" action="' + PANEL + '/autorizar"><input type="hidden" name="csrf" value="' + self.csrf(cookie) + '"><label>UUID público do aplicativo existente<input name="app_uuid" value="' + esc(state.get("app_uuid", "")) + '" readonly></label><label>ID numérico do mesmo aplicativo<input name="app_id" value="' + esc(state.get("app_id", "")) + '" readonly></label><button>' + action + '</button></form>'
                 '<p><small>Esta tela não cria compras. O produto e o checkout públicos continuam como estão até a autorização para disponibilizar produção à homologação.</small></p></main></html>').encode()
+
+    def support_handoff(self):
+        state = self.state()
+        received = bool(state.get('merchant'))
+        status = ('Credenciais da loja recebidas. A conferência da conexão está disponível abaixo.' if received else
+                  'Aguardando a vinculação da loja e a emissão das credenciais de produção pela Appmax.')
+        connection_note = ('Use a conferência de conexão para consultar a autenticação da loja e as parcelas. Operações financeiras reais não foram testadas nesta cópia.' if received else
+                           'A autenticação da loja, as parcelas e as operações financeiras de produção ainda não estão comprovadas enquanto faltar a instalação.')
+        urls = {
+            'Produto de R$ 27': ORIGIN + '/curso-primeiros-passos-no-blender',
+            'Checkout de homologação de R$ 27': ORIGIN + PANEL + '/checkout',
+            'Instalação de produção / URL do sistema': ORIGIN + PANEL,
+            'Conferência de conexão e parcelas (GET)': ORIGIN + PANEL + '/conferencia',
+            'Host e URL de webhook (POST)': ORIGIN + PANEL + '/webhooks',
+            'URL de validação da instalação (POST)': ORIGIN + PANEL + '/validacao',
+            'Retorno da autorização (GET)': ORIGIN + PANEL + '/retorno',
+        }
+        esc = html.escape
+        rows = ''.join('<div class="address"><strong>' + esc(label) + '</strong><a href="' + esc(url) + '">' + esc(url) + '</a></div>' for label, url in urls.items())
+        pending = ('Solicitamos a conferência da instalação e a continuidade da homologação em produção.' if received else
+                   'Ainda aguardamos as credenciais da loja de produção. Solicitamos que a equipe Appmax informe e conclua a vinculação autorizada da loja e a emissão dessas credenciais pelo fluxo oficial ou por atendimento assistido.')
+        message = ('Olá, equipe de homologação da Appmax.\n\n'
+                   'Disponibilizamos o produto Curso Primeiros Passos com 3D no Blender, no valor de R$ 27,00, e seu checkout para conferência. As páginas abaixo são públicas e não pedem login na Meshcraft.\n\n'
+                   + '\n'.join(label + ': ' + url for label, url in urls.items())
+                   + '\n\n' + pending
+                   + '\n\nAs credenciais do aplicativo existente já estão configuradas no servidor. O recebimento das credenciais da loja será feito pelo fluxo da Appmax e preservado na cópia isolada.\n\n'
+                   'Esta cópia mantém os pagamentos desativados e não foram feitas cobranças reais durante a preparação. O Mercado Pago aprovado permanece preservado.\n\n'
+                   'Após essa etapa, solicitamos a continuidade da homologação e a confirmação do que falta para a liberação de produção.')
+        return ('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Homologação Appmax · Meshcraft · R$ 27</title>'
+                '<style>body{font:16px/1.6 system-ui;color:#182037;background:#f3f5fa;margin:0}main{max-width:880px;margin:32px auto;padding:32px;background:#fff;border-radius:18px}h1{font-size:30px;line-height:1.2}h2{font-size:22px;margin-top:30px}.eyebrow{font-weight:700;color:#164bd5}.notice{padding:18px;border-radius:10px;background:#edf3ff}.actions{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0}.button{padding:12px 18px;border-radius:8px;background:#164bd5;color:#fff;text-decoration:none}.secondary{background:#edf3ff;color:#164bd5}.address{padding:12px 0;border-bottom:1px solid #e6eaf2}.address strong,.address a{display:block}.address a,code{overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.6 system-ui;background:#f6f8fc;padding:20px;border:1px solid #dce3ef;border-radius:10px}small{color:#56617a}@media(max-width:600px){main{margin:0;padding:22px;border-radius:0}h1{font-size:26px}}</style></head><body><main>'
+                '<p class="eyebrow">Meshcraft · Equipe de homologação Appmax</p><h1>Checkout de R$ 27 para homologação</h1>'
+                '<p>Curso Primeiros Passos com 3D no Blender · <strong>R$ 27,00</strong></p><p>Destinatário: <strong>homologacao@appmax.com.br</strong>. Produto, checkout e acompanhamento disponíveis sem login no site.</p>'
+                '<div class="notice"><strong>Estado da instalação de produção</strong><p>' + esc(status) + '</p><p>Pagamentos desativados nesta cópia. ' + esc(connection_note) + '</p></div>'
+                '<div class="actions"><a class="button" href="' + esc(urls['Checkout de homologação de R$ 27']) + '">Abrir checkout de R$ 27</a><a class="button secondary" href="' + esc(urls['Produto de R$ 27']) + '">Abrir produto</a><a class="button secondary" href="' + esc(urls['Conferência de conexão e parcelas (GET)']) + '">Conferir conexão</a></div>'
+                '<h2>Endereços para a equipe Appmax</h2>' + rows +
+                '<p>Aplicativo existente: UUID <code>' + esc(str(state.get('app_uuid', ''))) + '</code> · ID numérico <code>' + esc(str(state.get('app_id', ''))) + '</code>.</p>'
+                '<p>A validação e o retorno atendem ao fluxo oficial de instalação; o webhook está preparado para receber as confirmações após a instalação. As consultas acima não criam compras.</p>'
+                '<h2>Conferência disponível no site</h2><p>Preço de R$ 27,00; identificação do pagador com nome completo, CPF e e-mail; formulários de cartão e Pix; recepção das credenciais na cópia isolada; conferência de conexão e parcelas após a instalação. Os campos de cartão e os botões de pagamento estão desativados nesta prévia.</p>'
+                '<h2>Mensagem pronta para a Appmax</h2><p>Copie o texto abaixo para responder à equipe de homologação.</p><pre>' + esc(message) + '</pre>'
+                '<p><small>Preparação para conferência técnica. A liberação para vendas depende da conclusão da instalação e da homologação pela Appmax. Esta página não exibe credenciais nem dados de clientes.</small></p></main></body></html>').encode()
 
     async def __call__(self, scope, receive, send):
         path = scope.get("path", "")
@@ -332,6 +372,8 @@ class ProductionAdmin:
             query = scope.get("query_string", b"")
             location = PANEL + path[len(OLD_PANEL):] + ("?" + query.decode() if query else "")
             return await reply(307, location=location)
+        if path == PANEL + '/homologacao' and method == 'GET':
+            return await reply(200, self.support_handoff())
         async def body():
             data = bytearray()
             while True:

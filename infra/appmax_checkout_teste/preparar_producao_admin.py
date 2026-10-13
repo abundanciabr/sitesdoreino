@@ -163,7 +163,7 @@ def main(source):
             try:
                 public_status, public_body = http('https://meshcraft.top/checkout/curso-primeiros-passos-no-blender')
                 admin_status, admin_body = http(PANEL)
-                urls = [http(PANEL + suffix)[0] for suffix in ('/checkout', '/validacao', '/webhooks', '/retorno', '/autorizar')]
+                urls = [http(PANEL + suffix)[0] for suffix in ('/homologacao', '/checkout', '/validacao', '/webhooks', '/retorno', '/autorizar')]
                 if public_status == 200 and b'scripts.sandboxappmax.com.br' in public_body and admin_status == 200 and all(value == 200 for value in urls) and b'/admin/' not in admin_body:
                     good = True
                     break
