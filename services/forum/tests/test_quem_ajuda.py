@@ -138,3 +138,47 @@ def test_previa_vazia_e_filtro_inexistente(client, monkeypatch):
         client.get(reverse("previa_quem_ajuda"), {"grupo": "inexistente"}).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize("papel", ["visitante", "aluno", "professor"])
+def test_demonstracao_tambem_fecha_para_nao_admin(client, monkeypatch, papel):
+    ator = (
+        Ator(None)
+        if papel == "visitante"
+        else Ator(
+            pessoa(1), eh_aluno=papel == "aluno", eh_professor=papel == "professor"
+        )
+    )
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: ator)
+    assert (
+        client.get(reverse("previa_quem_ajuda"), {"demonstracao": "1"}).status_code
+        == 404
+    )
+
+
+def test_demonstracao_nao_cria_pessoas_topicos_mensagens_ou_aceites(
+    client, monkeypatch
+):
+    admin, autor, ajudante = pessoa(90), pessoa(91), pessoa(1)
+    real = solucao(area(), autor, ajudante)
+    ator = Ator(admin, eh_admin=True)
+    monkeypatch.setattr("apps.core.quem_ajuda.quem_e", lambda request: ator)
+    antes = (
+        Pessoa.objects.count(),
+        Topico.objects.count(),
+        Mensagem.objects.count(),
+        real.resposta_aceita_id,
+    )
+    resposta = client.get(reverse("previa_quem_ajuda"), {"demonstracao": "1"})
+    assert resposta.status_code == 200
+    assert "Simulação com dados fictícios" in resposta.content.decode()
+    assert "Ana · teste" in resposta.content.decode()
+    assert "no-store" in resposta["Cache-Control"]
+    real.refresh_from_db()
+    assert antes == (
+        Pessoa.objects.count(),
+        Topico.objects.count(),
+        Mensagem.objects.count(),
+        real.resposta_aceita_id,
+    )
+    assert ranking_de_ajuda(ator)[0]["solucoes"] == 1
