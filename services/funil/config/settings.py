@@ -129,4 +129,4 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Consulta privada no admin da aplicação unificada.
 if os.environ.get("APLICACAO_ENV_DIR"):
-    MIDDLEWARE = ["modules.admin.apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]
+    MIDDLEWARE = ["apps.core.saude_http.SaudeMiddleware", *MIDDLEWARE]

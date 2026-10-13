@@ -29,6 +29,9 @@ api.add_router("", perfil_router)
 api.add_router("", receita_router)
 api.add_router("", resultados_router)
 
+from apps.core.saude_http import router as saude_http_router
+api.add_router("", saude_http_router)
+
 from apps.core.pessoas_reais import ContatoDeTeste
 
 
