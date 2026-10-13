@@ -4,3 +4,38 @@
 @media(max-width:520px){.header .search{width:150px}.brand{font-size:15px;gap:9px}.brandmark{font-size:29px}.nav{padding:8px 5px;font-size:10px}.people-strip{gap:8px}.personcard{padding:11px}.personcard b{font-size:10px}.personcard .muted{font-size:9px}.chip{font-size:8px;padding:3px 5px}.people-strip .toolchips{gap:3px}.feedgrid{grid-template-columns:1fr}.post{padding:17px}.postkind{display:inline}.postmedia svg{aspect-ratio:1.65}.sidebar{grid-template-columns:1fr}.tabs{gap:5px}.tabs button{padding:7px 9px;font-size:10px}.composer{padding:10px;gap:9px}.composer button{font-size:11px;padding:11px}.composer .avatar{width:35px;height:35px;font-size:10px}.resultbox{flex-direction:row;align-items:center;gap:15px}.peoplegrid,.steps{grid-template-columns:1fr 1fr}.step{padding:13px}.formcols{grid-template-columns:1fr;gap:0}dialog{padding:21px}.dialoghead h2{font-size:21px}.profilehero{padding:16px;gap:12px}.profilefacts{gap:10px;flex-wrap:wrap}.jobfoot{flex-wrap:wrap}.sectionhead h2{font-size:16px}}
 
 .hero-note{display:none}#detail-body label{display:block;margin-top:16px;font-size:12px;font-weight:600}#application-story{display:block;width:100%;margin-top:8px;border:1px solid #dae4f2;border-radius:9px;padding:12px;color:#354765;background:white}
+
+/* Interações em destaque na prévia, com os mesmos totais da demonstração. */
+.engagement{margin-top:18px;padding-top:15px;border-top:1px solid #edf0f7}
+.reaction-proof{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#68758b;font-size:11px;margin-bottom:12px}
+.reaction-proof b{color:#29334b;font-weight:800}.reaction-stack{display:flex;padding-right:3px}
+.reaction-stack i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border:2px solid white;border-radius:50%;color:white;background:#ff557c;font-size:11px;box-shadow:0 2px 6px #ef507929}
+.reaction-stack i+i{margin-left:-7px;background:#9b73ff}.reaction-stack i:last-child{background:#4389fb}
+.top-reaction{margin-left:auto;background:#fff1cf;color:#9d7020;border:1px solid #ffe2a0;padding:4px 7px;border-radius:20px;font-size:9px;font-weight:700}
+.engagement .postactions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:0}
+.engagement .postactions button{border:1px solid #e6ebf6;border-radius:13px;min-width:0;min-height:94px;padding:11px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:transform .18s,box-shadow .18s,background .18s;position:relative}
+.engagement .postactions button:hover{transform:translateY(-3px);box-shadow:0 7px 16px #436daf16}
+.engagement .postactions button:active{transform:scale(.97)}
+.engagement svg{width:23px;height:23px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.engagement .postactions strong{font-size:22px;line-height:1.15;font-weight:800;letter-spacing:-.5px}
+.engagement .postactions span{font-size:10px;font-weight:700}.engagement .postactions small{font-size:9px;font-weight:400;line-height:1.3}
+.engagement .postactions .metric-comment{color:#2875de;background:#eff5ff;border-color:#d9e8ff}
+.engagement .postactions .metric-save{color:#8456d1;background:#f6f0ff;border-color:#e8dcff}
+.engagement .postactions .metric-save.saved{color:white;background:#9865e0;border-color:#9865e0;box-shadow:0 4px 12px #9865e030}
+.metric-save.saved svg{fill:currentColor;stroke:white}
+.engagement .postactions .metric-share{color:#269988;background:#effaf7;border-color:#d7eee7}
+.engagement .postactions .metric-like{grid-column:1/-1;display:grid;grid-template-columns:46px minmax(55px,.75fr) minmax(110px,1.5fr);gap:11px;min-height:94px;padding:14px 16px;text-align:left;align-items:center;justify-content:initial;color:#e94372;background:linear-gradient(115deg,#ffedf2,#fff7fa);border:1.5px solid #ffc2d3;box-shadow:0 5px 17px #ed497217;overflow:hidden}
+.metric-like .heart-mark{display:grid;place-items:center;width:46px;height:46px;background:white;border-radius:50%;box-shadow:0 3px 12px #ec477221}.metric-like .heart-mark svg{width:28px;height:28px;stroke-width:2;fill:#ffe1eb}
+.engagement .postactions .like-total{font-size:38px;line-height:1;letter-spacing:-1.4px;font-weight:850;font-variant-numeric:tabular-nums}.like-total small{display:block;margin-top:6px;letter-spacing:0;font-size:10px!important;font-weight:600!important}
+.engagement .postactions .like-prompt{font-size:12px;font-weight:750;line-height:1.25;letter-spacing:-.1px}.like-prompt small{display:block;margin-top:5px;color:#af657e;font-size:9px!important}
+.engagement .postactions .metric-like.liked{color:white;background:linear-gradient(115deg,#ef3e75,#ff718d);border-color:#ee4f7d;box-shadow:0 7px 21px #ed497232}.metric-like.liked .heart-mark{background:#ffffff25;box-shadow:none}.metric-like.liked svg{fill:white;stroke:white}.metric-like.liked .like-prompt small{color:#ffe5ee}
+.engagement-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}.engagement-tags span{background:#f4f6fa;color:#8792a9;border-radius:6px;font-size:9px;padding:3px 7px}
+.celebrate .heart-mark{animation:heart-pop .6s ease both}.celebrate .like-total{animation:number-pop .5s ease both}
+.celebrate .metric-like:after,.celebrate .metric-like:before{content:'♥';position:absolute;pointer-events:none;font-size:20px;color:white;left:29px;bottom:35px;animation:heart-rise 1.05s ease-out both}.celebrate .metric-like:after{left:56px;font-size:13px;animation-delay:.12s}
+.profilefacts{gap:14px}.profilefacts>span{background:white;border:1px solid #e3e9f4;border-radius:11px;padding:12px 16px}.profilefacts b{display:block;font-size:28px;line-height:1.2;font-weight:800;color:#e9507d}
+@keyframes heart-pop{0%{transform:scale(.75) rotate(-15deg)}40%{transform:scale(1.25) rotate(8deg)}70%{transform:scale(.94)}100%{transform:scale(1)}}
+@keyframes number-pop{0%{transform:translateY(6px);opacity:.5}100%{transform:translateY(0);opacity:1}}
+@keyframes heart-rise{0%{opacity:0;transform:translateY(10px) scale(.5)}30%{opacity:1}100%{opacity:0;transform:translateY(-60px) translateX(15px) scale(1.2)}}
+@media(max-width:800px){.engagement .postactions{gap:6px}.engagement .postactions .metric-like{grid-template-columns:38px minmax(40px,.65fr) minmax(86px,1.3fr);padding:12px;gap:7px}.metric-like .heart-mark{width:38px;height:38px}.metric-like .heart-mark svg{width:25px;height:25px}.engagement .postactions .like-total{font-size:30px}.engagement .postactions .like-prompt{font-size:11px}.engagement .postactions small{font-size:8px}.profilefacts>span{padding:10px 12px}}
+@media(max-width:520px){.engagement .postactions .metric-like{grid-template-columns:43px minmax(55px,.75fr) minmax(110px,1.4fr);padding:14px;gap:10px}.metric-like .heart-mark{width:43px;height:43px}.engagement .postactions .like-total{font-size:36px}.engagement .postactions .like-prompt{font-size:12px}.engagement .postactions button{min-height:98px}.engagement .postactions small{font-size:9px}.reaction-proof{font-size:11px}.engagement .postactions strong{font-size:24px}}
+@media(prefers-reduced-motion:reduce){.engagement *{animation:none!important;transition:none!important}.engagement .postactions button:hover,.engagement .postactions button:active{transform:none}.celebrate .metric-like:before,.celebrate .metric-like:after{display:none}}
