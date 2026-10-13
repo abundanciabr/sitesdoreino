@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.feed_previa",
     "apps.hotmart",
     # A auditoria append-only. Entrou junto com a
     # PRIMEIRA escrita desta área — liberar e recusar quem está na fila —, e
