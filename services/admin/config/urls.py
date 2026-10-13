@@ -106,7 +106,7 @@ from apps.core.links_rastreados import (
     destinos_rastreados_novo, destinos_rastreados_versao,
 )
 from apps.core.crm_conversas import crm_conversa, crm_conversas
-from apps.core.crm_whatsapp import conversa as crm_whatsapp, javascript as crm_whatsapp_javascript
+from apps.core.crm_whatsapp import conversa as crm_whatsapp, javascript as crm_whatsapp_javascript, conversa_aluno as escola_aluno_whatsapp
 from apps.core.crm_agentes import (
     crm_agentes,
     crm_agentes_analisar,
@@ -327,6 +327,7 @@ urlpatterns = [
     path('integracoes/hotmart/testes/<uuid:teste_id>/', hotmart_teste, name='hotmart_teste'),
     path('interno/hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
     path('interno/hotmart/webhooks/', hotmart_webhook),
+    path("escola/alunos/whatsapp/<str:tipo>/<int:aluno_id>/", escola_aluno_whatsapp, name="escola_aluno_whatsapp"),
     path("crm/whatsapp/painel.js", crm_whatsapp_javascript, name="crm_whatsapp_javascript"),
     path("crm/whatsapp/<uuid:lead_id>/", crm_whatsapp, name="crm_whatsapp"),
     path("trilha/", trilha_v4, name="trilha_v4"),

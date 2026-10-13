@@ -145,3 +145,53 @@ def test_botao_so_aparece_com_numero_e_painel_usa_script_proprio():
     html = render_to_string("admin/_whatsapp_painel.html")
     assert 'name="texto"' in html and "Enviar no WhatsApp" in html
     assert reverse("crm_whatsapp_javascript") in html
+
+
+@pytest.mark.parametrize("tipo", ["fila", "aluno"])
+@respx.mock
+def test_aluno_sem_crm_abre_painel_sem_enviar(tipo):
+    pessoa = {"id": 7, "site_id": "site-do-host", "email": "contato@example.test",
+              "nome_completo": "Contato de teste", "whatsapp": "11988887777"}
+    respx.get(LEADS + "/leads").respond(200, json={"itens": [], "total": 0})
+    criar = respx.post(LEADS + "/leads").respond(200, json={"lead_id": LEAD, "created": True})
+    abrir, _ = fontes()
+    metodo = "fila" if tipo == "fila" else "alunos"
+    with patch("apps.core.crm_whatsapp.AlunosClient." + metodo, return_value=[pessoa]):
+        r = dentro().post(reverse("escola_aluno_whatsapp", args=[tipo, 7]),
+                          {"acao": "abrir", "telefone": "outro", "email": "outro@example.test"})
+    assert r.status_code == 200
+    assert r.json()["conversa_id"] == CONVERSA
+    assert json.loads(criar.calls.last.request.content) == {
+        "site_id": "site-do-host", "email": pessoa["email"], "name": pessoa["nome_completo"],
+        "phone": "+5511988887777", "source": "escola"}
+    assert abrir.called
+    assert len([c for c in respx.calls if c.request.method == "POST"]) == 2
+
+
+@respx.mock
+def test_aluno_com_crm_reutiliza_contato_e_historico():
+    pessoa = {"id": 7, "site_id": "site-do-host", "email": "contato@example.test", "whatsapp": "11988887777"}
+    respx.get(LEADS + "/leads").respond(200, json={"itens": [ficha()], "total": 1})
+    fontes()
+    with patch("apps.core.crm_whatsapp.AlunosClient.alunos", return_value=[pessoa]):
+        r = dentro().post(reverse("escola_aluno_whatsapp", args=["aluno", 7]), {"acao": "abrir"})
+    assert r.status_code == 200
+    assert r.json()["mensagens"][0]["texto"] == "Olá da pessoa"
+    assert len([c for c in respx.calls if c.request.method == "POST"]) == 1
+
+
+@respx.mock
+def test_aluno_de_outro_site_nao_abre_conversa():
+    with patch("apps.core.crm_whatsapp.AlunosClient.fila", return_value=[{"id": 7, "site_id": "outro"}]):
+        r = dentro().post(reverse("escola_aluno_whatsapp", args=["fila", 7]), {"acao": "abrir"})
+    assert r.status_code == 404
+    assert not [c for c in respx.calls if c.request.method == "POST"]
+
+
+def test_botao_aluno_sempre_abre_painel_interno():
+    from django.template import Template, Context
+    html = Template('{% load crm_whatsapp %}{% chamar_whatsapp_aluno pessoa "fila" %}').render(
+        Context({"pessoa": {"id": 7, "nome_completo": "Ana", "whatsapp": "11988887777"}}))
+    assert 'data-whatsapp-url="' + reverse("escola_aluno_whatsapp", args=["fila", 7]) in html
+    assert "wa.me" not in html
+    assert "<button" in html
