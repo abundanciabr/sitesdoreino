@@ -7,7 +7,9 @@ from django.http import Http404, HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
-from .clients import LeadsClient
+import httpx
+
+from .clients import LeadsClient, AlunosClient, http
 from . import crm_conversas as caixa
 
 
@@ -153,3 +155,56 @@ def conversa(request, lead_id):
                       for m in mensagens],
         "antes_de": dados.get("proxima_antes_de") if len(mensagens) >= caixa.MENSAGENS_POR_PAGINA else "",
     })
+
+
+@require_http_methods(["GET", "POST"])
+def conversa_aluno(request, tipo, aluno_id):
+    site_id = caixa.site_do_pedido(request)
+    if not site_id:
+        return _erro("Não foi possível identificar o site.")
+    if tipo not in ("fila", "aluno"):
+        raise Http404("Aluno não encontrado")
+    alunos = AlunosClient()
+    pessoas = alunos.fila("aguardando") if tipo == "fila" else alunos.alunos()
+    if pessoas is None:
+        return _erro("Não foi possível consultar o cadastro do aluno agora.")
+    pessoa = next((p for p in pessoas if str(p.get("id")) == str(aluno_id)
+                   and str(p.get("site_id")) == str(site_id)), None)
+    if pessoa is None:
+        raise Http404("Aluno não encontrado neste site")
+    numero = telefone_whatsapp(pessoa.get("whatsapp"))
+    email = str(pessoa.get("email") or "").strip().lower()
+    if not numero or not email:
+        return _erro("O aluno precisa ter e-mail e WhatsApp válidos no cadastro.", 422)
+    cliente = LeadsClient()
+    estado, dados = cliente.listar(q=email, site_id=site_id, por_pagina=100, testes="mostrar")
+    if estado != cliente.OK or not isinstance(dados, dict) or dados.get("tem_mais"):
+        return _erro("Não foi possível consultar o contato do aluno agora.")
+    contatos = [c for c in dados.get("itens", []) if isinstance(c, dict)
+                and str(c.get("email") or "").strip().lower() == email
+                and str(c.get("site_id")) == str(site_id)]
+    if len(contatos) > 1:
+        return _erro("Há mais de um contato para este aluno. Confira os contatos no CRM.", 409)
+    contato = contatos[0] if contatos else None
+    lead_id = contato.get("id") if contato else None
+    if not contato or telefone_whatsapp(contato.get("telefone")) != numero:
+        if request.method != "POST" or request.POST.get("acao") != "abrir":
+            return _erro("O cadastro mudou. Feche e reabra a conversa.", 409)
+        config = cliente._configuracao()
+        if config is None:
+            return _erro("Não foi possível conectar o cadastro à conversa.")
+        base, token = config
+        corpo = {"site_id": site_id, "email": contato.get("email") if contato else email,
+                 "phone": "+" + numero}
+        if not contato:
+            corpo.update(name=pessoa.get("nome_completo") or "", source="escola")
+        try:
+            resposta = http().post(base + "/leads", json=corpo,
+                headers={"Authorization": "Bearer " + token}, timeout=cliente.TIMEOUT)
+            resposta.raise_for_status()
+            lead_id = str(uuid.UUID(resposta.json()["lead_id"]))
+        except (httpx.HTTPError, ValueError, KeyError, TypeError):
+            return _erro("Não foi possível conectar o aluno à conversa. Tente novamente.")
+    if not lead_id:
+        return _erro("Não foi possível identificar o contato do aluno.")
+    return conversa(request, lead_id)

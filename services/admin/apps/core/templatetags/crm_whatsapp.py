@@ -13,9 +13,7 @@ def chamar_whatsapp(lead_id, telefone, nome="Contato"):
 
 
 @register.inclusion_tag("admin/_whatsapp_botao.html")
-def chamar_whatsapp_aluno(pessoa):
+def chamar_whatsapp_aluno(pessoa, tipo="aluno"):
     numero = telefone_whatsapp(pessoa.get("whatsapp"))
-    origem = pessoa.get("origem_identificada") or {}
-    dados = chamar_whatsapp(origem.get("contato_crm_id"), pessoa.get("whatsapp"), pessoa.get("nome_completo"))
-    dados["whatsapp_aplicativo"] = "https://wa.me/" + numero if numero else ""
-    return dados
+    return {"whatsapp_url": reverse("escola_aluno_whatsapp", args=[tipo, pessoa["id"]]) if numero else "",
+            "whatsapp_nome": pessoa.get("nome_completo") or "Aluno"}

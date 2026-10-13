@@ -185,7 +185,7 @@
       <div class="valor"><b>{{ pessoa.nome_completo|primeiro_nome }}</b></div>
       <div class="nota">{{ pessoa.email }}</div>
       <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
-      {% chamar_whatsapp_aluno pessoa %}
+      {% chamar_whatsapp_aluno pessoa "fila" %}
       <div class="nota">
         {% if pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ pessoa.esperando_ha_dias }} dia{{ pessoa.esperando_ha_dias|pluralize }}{% endif %}
         {% if pessoa.comprou_em %} &middot; diz ter comprado em {{ pessoa.comprou_em }}{% endif %}
