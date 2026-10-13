@@ -154,10 +154,10 @@ def super_equipe_executor(request):
                 raise ValueError()
             campos["operacao"] = receber(dados["operacao"])
         rotina, _ = RotinaSuperEquipe.objects.get_or_create(host="meshcraft.top")
-        RotinaSuperEquipe.objects.filter(pk=rotina.pk).update(**campos)
-        if "operacao" in campos:
-            from .super_equipe_operacao import acompanhar_armazenamento
-            acompanhar_armazenamento(rotina, campos["operacao"])
+        from .super_equipe_operacao import acompanhar_armazenamento, guardar_operacao
+        operacao = guardar_operacao(rotina, campos)
+        if operacao is not None:
+            acompanhar_armazenamento(rotina, operacao)
         return JsonResponse({"recebido": True, "consultado_em": campos["executor_consultado_em"]})
     except (ValueError, TypeError):
         return JsonResponse({"erro": "Contato inválido."}, status=400)

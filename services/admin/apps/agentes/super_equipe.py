@@ -11,7 +11,7 @@ import uuid
 
 import httpx
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 from django.utils import timezone
 
 from apps.core.clients import CatalogoClient
@@ -174,6 +174,32 @@ def _integridade(site_id: str) -> dict:
             "limite": "Contagens agregadas dos trabalhos técnicos; não medem unicidade de efeitos comerciais."}
 
 
+def _contratos_tecnicos(site_id: str) -> dict:
+    """Contrato instalado e estados da fila própria, sem conteúdo dos pedidos."""
+    base = Execucao.objects.filter(tipo=Execucao.Tipo.SUPER_EQUIPE,
+                                   estado__site_id=str(site_id)).order_by("-id")[:20]
+    itens = []
+    for e in base:
+        itens.append({"id": e.pk, "url": f"https://meshcraft.top/admin/super-equipe/{e.pk}/",
+            "situacao": e.situacao, "tentativas": e.tentativas,
+            "tem_chave": bool(e.chave_de_repeticao),
+            "posse_vencida": bool(e.ocupada_ate and e.ocupada_ate < timezone.now()
+                                  and e.situacao == Execucao.Situacao.EXECUTANDO),
+            "versoes_perfil": {c: v for c, v in (e.estado.get("versoes_perfil") or {}).items()
+                                if c in PERFIS and isinstance(v, str)},
+            "respostas_salvas": len(e.estado.get("resultados") or {}),
+            "entregas": e.entregas.count()})
+    return {"estado": "medido", "origem": "Modelos instalados e fila técnica deste site",
+        "contratos": {
+            "execucao": {"estados": list(Execucao.Situacao.values),
+                "chave_unica": Execucao._meta.get_field("chave_de_repeticao").unique,
+                "posse": "ocupada_ate; tentativa e trabalhador conferidos ao persistir"},
+            "ferramenta": {"unicidade": [list(c.fields) for c in ChamadaDeFerramenta._meta.constraints]},
+            "consumo": {"incerto": "desconhecido; reserva conservada sem reenvio automático"}},
+        "amostra": len(itens), "janela": "20 trabalhos técnicos mais recentes", "itens": itens,
+        "limite": "Contrato e estado locais. Não consulta pagamentos, eventos externos, código arbitrário ou confirmações do provedor."}
+
+
 def _experimentos(site_id: str) -> dict:
     cliente = CatalogoClient()
     situacao, lista = cliente.experimentos_da_pagina(site_id, SLUG_DA_PAGINA)
@@ -242,6 +268,7 @@ def coletar_fontes(site_id: str, host: str) -> dict:
                            ("fluxo_entregas", lambda: _fluxo_entregas(site_id)),
                            ("entregas", lambda: _entregas(host)),
                            ("integridade", lambda: _integridade(site_id)),
+                           ("fontes", lambda: _contratos_tecnicos(site_id)),
                            ("paginas_publicas", lambda: _probes(host))):
         try:
             fontes[nome] = consulta()
@@ -257,6 +284,8 @@ def _robos_ia(site_id: str) -> dict:
                                        estado__site_id=str(site_id))
     consumos = Consumo.objects.filter(execucao__in=tecnicos)
     totais = consumos.aggregate(custo=Sum("custo_estimado_usd"),
+                               uso=Sum("custo_estimado_usd", filter=Q(desconhecido=False)),
+                               reserva=Sum("custo_estimado_usd", filter=Q(desconhecido=True)),
                                entrada=Sum("tokens_entrada"), saida=Sum("tokens_saida"))
     return {"estado": "medido", "fonte": "Fila, entregas, consumo e autorização de IA do site",
             "modelo_tecnico": conexao.modelo_forte,
@@ -264,6 +293,12 @@ def _robos_ia(site_id: str) -> dict:
             "concluidos": tecnicos.filter(situacao=Execucao.Situacao.CONCLUIDA).count(),
             "respostas_registradas": consumos.count(),
             "custo_tecnico_registrado_usd": totais["custo"] or 0,
+            "uso_com_resposta_registrada_usd": totais["uso"] or 0,
+            "reserva_incerta_usd": totais["reserva"] or 0,
+            "chamadas_incertas": consumos.filter(desconhecido=True).count(),
+            "ultimas_20_chamadas": list(consumos.order_by("-criado_em", "-id").values(
+                "execucao_id", "modelo", "desconhecido", "custo_estimado_usd",
+                "tokens_entrada", "tokens_saida", "criado_em")[:20]),
             "tokens_entrada": totais["entrada"] or 0, "tokens_saida": totais["saida"] or 0,
             "gasto_mensal_equipe_usd": modelo.gasto_do_mes(autorizacao.pk) if autorizacao else None,
             "teto_mensal_equipe_usd": autorizacao.teto_mensal_usd if autorizacao else None,
