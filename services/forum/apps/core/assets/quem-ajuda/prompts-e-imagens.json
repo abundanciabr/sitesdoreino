@@ -1,0 +1,41 @@
+{
+  "metodo": "image_gen integrado",
+  "perfis": [
+    {
+      "id": "ana",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\ana.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/ana/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Ana, fictional Brazilian woman about 28, warm brown skin, shoulder-length dark curly hair, navy blue sweater. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    },
+    {
+      "id": "bruno",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\bruno.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/bruno/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Bruno, fictional Brazilian man about 30, light warm skin, short dark hair, neat short beard, round glasses, blue T-shirt. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    },
+    {
+      "id": "clara",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\clara.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/clara/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Clara, fictional Brazilian woman about 27, dark skin, short natural curly hair, white crewneck shirt. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    },
+    {
+      "id": "diego",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\diego.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/diego/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Diego, fictional Brazilian man about 25, medium tan skin, short wavy dark hair, navy T-shirt, no beard. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    },
+    {
+      "id": "elisa",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\elisa.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/elisa/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Elisa, fictional Brazilian woman about 29, light warm skin, straight shoulder-length black hair, teal sweater. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    },
+    {
+      "id": "fabio",
+      "path": "C:\\Users\\davia\\.codex\\worktrees\\quem-ajuda-comunidade\\sitesdoreino-limpo-20260923\\services\\forum\\apps\\core\\assets\\quem-ajuda\\fabio.png",
+      "url": "https://meshcraft.top/forum/comunidade/quem-ajuda/previa/imagem/fabio/",
+      "prompt": "Use case: stylized-concept. Asset type: square portrait avatar for a fictitious test profile in the Meshcraft community website. Subject: Fabio, fictional Brazilian man about 24, brown skin, short curly dark hair, gray T-shirt, no beard. Style: polished friendly 3D character illustration, clean contemporary educational community aesthetic. Head and shoulders facing camera, relaxed smile, centered, generous padding for circular cropping, face clearly readable at thumbnail size. Pale blue seamless background, soft studio lighting, restrained navy/blue/white palette. Exactly one fictional adult, no text, no numbers, no logo, no watermark, no interface. This is an illustrative avatar, not a photograph of a real student."
+    }
+  ]
+}

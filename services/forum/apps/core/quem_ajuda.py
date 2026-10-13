@@ -1,5 +1,7 @@
+from pathlib import Path
+
 from django.db.models import Count, F
-from django.http import Http404
+from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
@@ -77,5 +79,21 @@ def previa_quem_ajuda(request):
             "ranking": ranking_de_ajuda(ator, grupo),
         },
     )
+    resposta["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return resposta
+
+
+@require_GET
+@never_cache
+def imagem_de_perfil_de_teste(request, perfil):
+    ator = quem_e(request)
+    if not ator.autenticado or not ator.eh_admin:
+        raise Http404("página não encontrada")
+    if perfil not in ("ana", "bruno", "clara", "diego", "elisa", "fabio"):
+        raise Http404("imagem não encontrada")
+    alvo = Path(__file__).resolve().parent / "assets" / "quem-ajuda" / f"{perfil}.png"
+    if not alvo.is_file():
+        raise Http404("imagem não encontrada")
+    resposta = FileResponse(alvo.open("rb"), content_type="image/png")
     resposta["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return resposta

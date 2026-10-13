@@ -36,6 +36,21 @@
     if(texto !== undefined) el.textContent = texto;
     return el;
   };
+  const imagens = {
+    ana:"{% url 'imagem_de_perfil_de_teste' 'ana' %}",bruno:"{% url 'imagem_de_perfil_de_teste' 'bruno' %}",
+    clara:"{% url 'imagem_de_perfil_de_teste' 'clara' %}",diego:"{% url 'imagem_de_perfil_de_teste' 'diego' %}",
+    elisa:"{% url 'imagem_de_perfil_de_teste' 'elisa' %}",fabio:"{% url 'imagem_de_perfil_de_teste' 'fabio' %}"
+  };
+  function retrato(p){
+    const caixa=elemento('span','avatar retrato');
+    const img=document.createElement('img');img.src=imagens[p.id];img.alt='Retrato ilustrado fictício de '+p.nome;img.width=64;img.height=64;
+    caixa.append(img);return caixa;
+  }
+  function destaque(posicao){
+    const pin=elemento('span','pin pin-'+posicao,posicao+'º');
+    const rotulo=posicao+'º lugar · '+['ouro','prata','bronze'][posicao-1];
+    pin.title=rotulo;pin.setAttribute('aria-label',rotulo);return pin;
+  }
   const acesso = () => document.querySelector('#visao').value;
   const visivel = item => acesso()==='admin' || item.grupo===acesso();
   function contagens(){
@@ -51,13 +66,14 @@
     const ranking=document.querySelector('#ranking'); ranking.replaceChildren();
     lista.slice(0,5).forEach((p,i)=>{
       const linha=elemento('li','linha'); linha.dataset.perfil=p.id;
-      linha.append(elemento('span','posicao',String(i+1)),elemento('span','avatar',p.iniciais),elemento('span','nome',p.nome),elemento('span','numero',String(totais[p.id])));
+      const nome=elemento('span','nome',p.nome);if(i<3) nome.append(destaque(i+1));
+      linha.append(elemento('span','posicao',String(i+1)),retrato(p),nome,elemento('span','numero',String(totais[p.id])));
       linha.querySelector('.numero').setAttribute('aria-label',totais[p.id]+' soluções fictícias'); ranking.append(linha);
     });
     document.querySelector('#fora').textContent=lista.length>5 ? lista.slice(5).map(p=>p.nome+' tem '+totais[p.id]+' solução e está fora dos cinco primeiros.').join(' ') : 'Só aparecem os perfis com soluções neste recorte.';
     const cards=document.querySelector('#perfis'); cards.replaceChildren();
     perfis.forEach(p=>{
-      const card=elemento('article','perfil'); card.append(elemento('div','avatar',p.iniciais),elemento('strong','',p.nome),elemento('span','teste','Perfil fictício · sem conta de acesso'),elemento('p','',p.especialidade),elemento('p','',totais[p.id]+' soluções neste acesso simulado')); cards.append(card);
+      const card=elemento('article','perfil'); card.append(retrato(p),elemento('strong','',p.nome),elemento('span','teste','Perfil fictício · sem conta de acesso'),elemento('p','',p.especialidade),elemento('p','',totais[p.id]+' soluções neste acesso simulado')); cards.append(card);
     });
     const conversas=document.querySelector('#perguntas'); conversas.replaceChildren();
     perguntas.filter(visivel).forEach(q=>{
