@@ -1,0 +1,1 @@
+{"runtime":"node","files":{"index.html":"infra/previas/exemplos/index.html","tests/test_trilha_v4_client.cjs":"services/funil/tests/test_trilha_v4_client.cjs","apps/core/trilha_v4_assets/app.js":"services/funil/apps/core/trilha_v4_assets/app.js"},"test":"tests/test_trilha_v4_client.cjs","page":"index.html"}
