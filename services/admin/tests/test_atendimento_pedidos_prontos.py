@@ -6,6 +6,22 @@ from django.urls import resolve
 from apps.atendimento import pedidos_prontos
 
 
+@pytest.mark.parametrize('texto,tipo', [
+    ('Não consigo entrar na minha conta.', 2),
+    ('Paguei o curso e meu acesso não foi liberado.', 8),
+    ('Preciso de ajuda no Blender ou no Roblox.', 10),
+    ('Preciso de ajuda com a análise do meu trabalho no Sandbox.', 9),
+    ('O site apresentou um erro.', 12),
+    ('Preciso de ajuda com uma aula.', 0),
+])
+def test_pedidos_entram_na_triagem_atual_sem_inventar_resposta(texto, tipo):
+    from types import SimpleNamespace
+    from apps.atendimento import escala
+    conversa = SimpleNamespace(interesse={}, site_id='teste-pedidos', rodada=1)
+    escala.classificar(conversa, texto)
+    assert conversa.tipo == tipo
+
+
 @pytest.mark.parametrize('identidade', [None, {'id': 'aluno', 'equipe_apenas': True}])
 def test_previa_e_assets_recusam_quem_nao_e_admin(identidade):
     request = RequestFactory().get('/atendimento/pedidos-prontos/')
