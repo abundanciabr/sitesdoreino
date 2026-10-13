@@ -1,0 +1,208 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Tomografia das turmas{% endblock %}
+{% block corpo %}
+<style>
+  .tomo { max-width: 1220px; margin: auto; padding: 30px clamp(16px,3vw,36px) 80px; }
+  .tomo * { min-width: 0; }
+  .tomo h1 { font-size: clamp(30px,4vw,52px); line-height: 1.08; letter-spacing: -.035em; margin: 8px 0 16px; max-width: 820px; }
+  .tomo h2 { font-size: clamp(22px,2.5vw,31px); line-height: 1.2; margin: 0 0 12px; }
+  .tomo h3 { font-size: 18px; line-height: 1.3; margin: 0 0 8px; }
+  .tomo p { margin: 0 0 12px; }
+  .tomo a { color: #9ec5ff; }
+  .tomo .eyebrow { color: #a9bbd5; font-size: 12px; letter-spacing: .13em; text-transform: uppercase; font-weight: 750; }
+  .tomo .intro { color: #c4ccda; max-width: 770px; font-size: 17px; }
+  .tomo .hero { background: radial-gradient(circle at 86% 8%,#294071 0,transparent 39%),linear-gradient(145deg,#1e2844,#171a25 68%); border: 1px solid #4a5a79; border-radius: 20px; padding: clamp(20px,4vw,42px); }
+  .tomo .hero-note { color: #d1ddf2; max-width: 900px; padding-top: 9px; font-size: 14px; }
+  .tomo .anchor-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+  .tomo .anchor-nav a { display: inline-flex; align-items: center; border: 1px solid #7185a9; border-radius: 999px; padding: 6px 13px; color: #f1f6ff; background: #18233b; font-size: 13px; text-decoration: none; }
+  .tomo .anchor-nav a:hover, .tomo .anchor-nav a:focus { background: #314a78; outline: 2px solid #b4d1ff; }
+  .tomo .section { padding-top: 62px; scroll-margin-top: 18px; }
+  .tomo .section-head { display: flex; gap: 12px; align-items: baseline; border-bottom: 1px solid #3c4657; padding-bottom: 12px; margin-bottom: 18px; }
+  .tomo .section-no { color: #8ba9d4; font-size: 12px; font-weight: 800; letter-spacing: .1em; }
+  .tomo .section-intro { color: #b7c1d0; max-width: 900px; }
+  .tomo .summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin: 22px 0; }
+  .tomo .stat { border: 1px solid #455269; background: #1c2434; border-radius: 14px; padding: 19px; }
+  .tomo .stat strong { display: block; font-size: clamp(26px,3vw,38px); line-height: 1; margin-bottom: 9px; }
+  .tomo .stat span { display: block; color: #bfc9d8; font-size: 13px; }
+  .tomo .stat.missing { border-color: #68707b; background: #232831; }
+  .tomo .stat.missing strong { color: #d3d7dc; font-size: 18px; line-height: 1.2; }
+  .tomo .callout { padding: 15px 19px; border-radius: 12px; border-left: 4px solid #82a8e3; background: #1c293e; color: #e2e9f6; margin: 18px 0; }
+  .tomo .callout.missing { border-left-color: #a7adb7; background: #242a31; }
+  .tomo .legend { display: flex; flex-wrap: wrap; gap: 9px; padding: 0; list-style: none; margin: 18px 0; }
+  .tomo .pill { display: inline-flex; align-items: center; gap: 7px; border: 1px solid; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; line-height: 1.35; }
+  .tomo .pill.impacto { color: #ffc4a3; border-color: #995337; background: #37251f; }
+  .tomo .pill.atrito { color: #f5d892; border-color: #856b33; background: #342e1b; }
+  .tomo .pill.avanco { color: #a8e4c0; border-color: #376d53; background: #1c3328; }
+  .tomo .pill.hipotese { color: #b6c8ff; border-color: #5369ad; background: #242d51; }
+  .tomo .pill.sem_dados { color: #c5cbd4; border-color: #676f7a; background: #30353d; }
+  .tomo .grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+  .tomo .card { border: 1px solid #414b5c; background: #1a1f2a; border-radius: 15px; padding: 20px; overflow-wrap: anywhere; }
+  .tomo .card p:last-child, .tomo .card ul:last-child { margin-bottom: 0; }
+  .tomo .card .meta { color: #aeb9ca; font-size: 13px; }
+  .tomo .card .subhead { color: #b7cfff; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; margin: 18px 0 6px; }
+  .tomo ul { margin: 0 0 12px; padding-left: 20px; }
+  .tomo li { margin: 5px 0; }
+  .tomo .table-wrap { overflow-x: auto; border: 1px solid #455167; border-radius: 14px; }
+  .tomo table { width: 100%; border-collapse: collapse; min-width: 690px; }
+  .tomo th,.tomo td { border-bottom: 1px solid #3b4657; padding: 12px 14px; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+  .tomo th { color: #dbe9ff; background: #243149; font-size: 13px; }
+  .tomo tr:last-child td { border-bottom: 0; }
+  .tomo .empty-cell { color: #c6cbd2; background: #292d36; }
+  .tomo .row-label { font-weight: 700; width: 23%; }
+  .tomo .finding { border-left: 5px solid #67778d; margin-bottom: 15px; scroll-margin-top: 20px; }
+  .tomo .finding.impacto { border-left-color: #e88b5a; }
+  .tomo .finding.atrito { border-left-color: #dfbb61; }
+  .tomo .finding.avanco { border-left-color: #64bd87; }
+  .tomo .finding.hipotese { border-left-color: #859eea; }
+  .tomo .finding .titleline { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tomo .finding details { border-top: 1px solid #3b4657; padding-top: 10px; margin-top: 15px; }
+  .tomo summary { cursor: pointer; font-weight: 700; color: #b5d0fa; }
+  .tomo .evidence { border-left: 2px solid #7e96be; padding: 9px 0 9px 15px; margin: 12px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tomo .evidence .source { display: block; color: #a8b9d0; font-size: 12px; margin-bottom: 7px; }
+  .tomo .finding-index { display: flex; gap: 8px; flex-wrap: wrap; margin: 18px 0; }
+  .tomo .finding-index a { border: 1px solid #54647e; color: #d4e3ff; border-radius: 8px; padding: 7px 10px; text-decoration: none; font-size: 13px; }
+  .tomo .timeline-track { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+  .tomo .timeline-item { border-left: 3px solid #7ca6e6; padding-left: 15px; }
+  .tomo .timeline-item small { color: #b4c1d4; }
+  .tomo .timeline-item meter { display: block; width: 100%; height: 14px; margin: 3px 0 15px; }
+  .tomo .muted { color: #aeb9c9; }
+  .tomo .source-path { font-family: ui-monospace,Consolas,monospace; overflow-wrap: anywhere; font-size: 12px; color: #c4d2e6; }
+  .tomo .top-link { font-size: 12px; white-space: nowrap; }
+  .tomo .decision-title { margin-top: 30px; }
+  .tomo .import-box { margin-top: 24px; padding: 16px 20px; border: 1px solid #65758c; border-radius: 12px; background: #1b2536; }
+  .tomo .import-box input { display: block; margin: 12px 0; max-width: 100%; }
+  .tomo .import-box button { background: #314c78; border: 1px solid #8fb4ed; border-radius: 8px; padding: 8px 14px; color: #fff; font: inherit; cursor: pointer; }
+  .tomo .import-box button:hover,.tomo .import-box button:focus { background: #456b9e; }
+  .tomo .atlas-recorte { border: 1px solid #485776; border-radius: 13px; background: #1b2332; margin: 14px 0; padding: 15px 19px; }
+  .tomo .atlas-recorte > summary { font-size: 16px; color: #d9e7ff; }
+  .tomo .atlas-recorte > summary span { color: #aebdd1; font-size: 13px; font-weight: 400; margin-left: 8px; }
+  .tomo .atlas-note { margin: 14px 0; }
+  .tomo .atlas-case { border-top: 1px solid #465167; padding: 12px 0; }
+  .tomo .evidence-ids { color: #bdd0ee; font-size: 12px; overflow-wrap: anywhere; }
+  @media (max-width: 760px) { .tomo .summary,.tomo .grid,.tomo .timeline-track { grid-template-columns: 1fr; } .tomo .section { padding-top: 45px; } }
+</style>
+<main class="tomo">
+  <header class="hero">
+    <span class="eyebrow">Pesquisa de produto · uso administrativo</span>
+    <h1>{{ titulo_relatorio }}</h1>
+    <p class="intro">{{ subtitulo_relatorio }}{% if periodo_relatorio %} · {{ periodo_relatorio }}{% endif %}</p>
+    {% if aviso_cobertura %}<p class="hero-note">{{ aviso_cobertura }}</p>{% endif %}
+    <nav class="anchor-nav" aria-label="Partes da tomografia">
+      <a href="#visao">Visão geral</a><a href="#mapa">Matriz</a><a href="#tempo">Atividade</a><a href="#achados">Achados</a><a href="#atlas">Atlas da leitura</a><a href="#comparacoes">Comparações</a><a href="#quadros">Quadros</a><a href="#oportunidades">Oportunidades</a><a href="#metodo">Fontes e limites</a>
+    </nav>
+    <details class="import-box"><summary>Importar versão privada</summary>
+      <p>Selecione o JSON curado. A versão anterior continua guardada no banco privado.</p>
+      <form method="post" enctype="multipart/form-data" action="{% url 'tomografia_turmas_20261013' %}">{% csrf_token %}
+        <label for="arquivo-tomografia">Arquivo JSON UTF-8 (até 2 MB)</label>
+        <input id="arquivo-tomografia" name="arquivo" type="file" accept=".json,application/json" required>
+        <button type="submit">Importar versão privada</button>
+      </form>
+    </details>
+  </header>
+
+  <section class="section" id="visao" aria-labelledby="h-visao">
+    <div class="section-head"><span class="section-no">01</span><h2 id="h-visao">Visão geral</h2></div>
+    {% if erro_importacao %}<p class="callout missing" role="alert">{{ erro_importacao }}</p>{% endif %}
+    {% if importado %}<p class="callout" role="status">Versão privada importada com sucesso.</p>{% endif %}
+    {% if not dados_disponiveis %}<p class="callout missing"><strong>Conteúdo analítico ainda indisponível.</strong> Importe um JSON curado nesta página para visualizar o relatório.</p>{% endif %}
+    {% if versao %}<p class="muted">Versão privada {{ versao }}.</p>{% endif %}
+    <div class="summary">
+      {% for turma in turmas %}<article class="stat{% if turma.estado == 'sem dados' %} missing{% endif %}">
+        <span class="eyebrow">{{ turma.nome }}</span>
+        {% if turma.estado == 'sem dados' %}<strong>{{ turma.estado }}</strong><span>{{ turma.leitura }}</span>
+        {% else %}<strong>{{ turma.mensagens }}</strong><span>mensagens · {{ turma.identificadores }} identificadores da exportação · {{ turma.periodo }}</span>{% endif %}
+      </article>{% endfor %}
+    </div>
+    {% if total_mensagens %}<div class="callout"><strong>Total de mensagens da amostra: {{ total_mensagens }}.</strong> {{ aviso_cobertura }}</div>{% endif %}
+    {% for texto in sumario %}<p>{{ texto }}</p>{% empty %}<p class="muted">A síntese analítica será exibida aqui quando os dados curados estiverem disponíveis.</p>{% endfor %}
+    <ul class="legend" aria-label="Legenda qualitativa">
+      {% for chave, nome in sinais.items %}<li><span class="pill {{ chave }}">{{ nome }}</span></li>{% endfor %}
+    </ul>
+    <p class="muted">As cores indicam o tipo de evidência e de leitura qualitativa. Não são nota de qualidade, escala estatística nem prevalência entre alunos.</p>
+  </section>
+
+  <section class="section" id="mapa" aria-labelledby="h-mapa">
+    <div class="section-head"><span class="section-no">02</span><h2 id="h-mapa">Matriz de áreas e turmas</h2></div>
+    <p class="section-intro">Cada linha é um achado. A célula vazia significa ausência de evidência suficiente naquele material, nunca ausência do problema na turma.</p>
+    <div class="table-wrap"><table><thead><tr><th scope="col">Área / achado</th>{% for turma in turmas %}<th scope="col">{{ turma.nome }}</th>{% endfor %}</tr></thead><tbody>
+      {% for achado in achados %}<tr>
+        <th scope="row" class="row-label"><a href="#{{ achado.ancora }}">{{ achado.area }} · {{ achado.titulo }}</a><br><span class="pill {{ achado.sinal }}">{{ achado.sinal_nome }}</span></th>
+        {% for celula in achado.celulas %}<td{% if celula.sem_dados %} class="empty-cell"{% endif %}>{{ celula.texto }}</td>{% endfor %}
+      </tr>{% empty %}<tr><td colspan="4">A matriz aparecerá com os achados curados.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="section" id="tempo" aria-labelledby="h-tempo">
+    <div class="section-head"><span class="section-no">03</span><h2 id="h-tempo">Atividade ao longo do tempo</h2></div>
+    <p class="section-intro">Contagens mensais da exportação, na mesma unidade (mensagens). Para comparar as turmas, observe sobretudo os meses em que ambas têm cobertura. Menos mensagens não prova evasão.</p>
+    <div class="timeline-track">{% for ponto in linha_do_tempo %}<article class="card timeline-item"><small>{{ ponto.turma }} · {{ ponto.periodo }}</small><h3>{{ ponto.mensagens }} mensagens</h3><meter value="{{ ponto.mensagens }}" min="0" max="{{ max_mensagens_tempo }}">{{ ponto.mensagens }}</meter><p>{{ ponto.leitura }}</p></article>{% empty %}<p class="muted">A distribuição temporal será adicionada ao relatório.</p>{% endfor %}</div>
+  </section>
+
+  <section class="section" id="achados" aria-labelledby="h-achados">
+    <div class="section-head"><span class="section-no">04</span><h2 id="h-achados">Achados e evidências</h2></div>
+    <p class="section-intro">Cada interpretação vem acompanhada de exemplos localizáveis, limites da leitura e ações possíveis. As falas são recortes curados e aparecem na íntegra aqui, sem reduzir o texto ao passar o mouse.</p>
+    <nav class="finding-index" aria-label="Ir para um achado">{% for achado in achados %}<a href="#{{ achado.ancora }}">{{ forloop.counter }} · {{ achado.titulo }}</a>{% endfor %}</nav>
+    {% for achado in achados %}<article class="card finding {{ achado.sinal }}" id="{{ achado.ancora }}">
+      <div class="titleline"><div><span class="eyebrow">{{ achado.area }} · achado {{ forloop.counter }}</span><h3>{{ achado.titulo }}</h3></div><span class="pill {{ achado.sinal }}">{{ achado.sinal_nome }}</span></div>
+      <p>{{ achado.resumo }}</p>
+      {% if achado.interpretacao %}<div class="subhead">Interpretação</div>{% for item in achado.interpretacao %}<p>{{ item }}</p>{% endfor %}{% endif %}
+      {% if achado.causas_observadas %}<div class="subhead">Causas observadas</div><ul>{% for item in achado.causas_observadas %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      {% if achado.hipoteses %}<div class="subhead">Hipóteses</div><ul>{% for item in achado.hipoteses %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      {% if achado.estado_desfecho %}<div class="subhead">Estado ou desfecho observado</div>{% for item in achado.estado_desfecho %}<p>{{ item }}</p>{% endfor %}{% endif %}
+      {% if achado.evidencias %}<details><summary>Abrir evidências curadas ({{ achado.evidencias|length }})</summary>
+        {% for evidencia in achado.evidencias %}<blockquote class="evidence"><span class="source">{{ evidencia.id }} · {{ evidencia.turma }}{% if evidencia.data %} · {{ evidencia.data }}{% endif %}{% if evidencia.autor %} · {{ evidencia.autor }}{% endif %}{% if evidencia.tipo %} · {{ evidencia.tipo }}{% endif %}</span>{{ evidencia.texto }}{% if evidencia.contexto %}<p class="muted">Contexto: {{ evidencia.contexto }}</p>{% endif %}</blockquote>{% endfor %}
+      </details>{% endif %}
+      {% if achado.limites %}<div class="subhead">Limites desta leitura</div><ul>{% for item in achado.limites %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      {% if achado.oportunidades %}<div class="subhead">Oportunidades</div><ul>{% for item in achado.oportunidades %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      {% if achado.acoes %}<div class="subhead">Ações possíveis</div><ul>{% for item in achado.acoes %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      <a class="top-link" href="#achados">Voltar ao índice de achados</a>
+    </article>{% empty %}<p class="muted">Os achados estão sendo preparados.</p>{% endfor %}
+  </section>
+
+  <section class="section" id="atlas" aria-labelledby="h-atlas">
+    <div class="section-head"><span class="section-no">05</span><h2 id="h-atlas">Atlas da leitura</h2></div>
+    <p class="section-intro">Recortes cronológicos preservam a leitura detalhada de cada período. As notas são observações do material; várias notas podem tratar do mesmo problema. Abra um recorte para ver achados, exemplos localizáveis e o que ainda é hipótese.</p>
+    {% for recorte in atlas %}<details class="atlas-recorte" id="{{ recorte.ancora }}">
+      <summary>{{ recorte.escopo }} · {{ recorte.periodo }} <span>{{ recorte.mensagens_lidas }} mensagens lidas · {{ recorte.achados|length }} notas</span></summary>
+      {% for achado in recorte.achados %}<article class="card finding atlas-note {{ achado.sinal }}" id="{{ achado.ancora }}">
+        <div class="titleline"><div><span class="eyebrow">{{ achado.area }} · nota {{ forloop.counter }}</span><h3>{{ achado.titulo }}</h3></div><span class="pill {{ achado.sinal }}">{{ achado.sinal_nome }}</span></div>
+        {% if achado.resumo %}<p>{{ achado.resumo }}</p>{% endif %}
+        {% if achado.interpretacao %}<div class="subhead">Interpretação</div>{% for item in achado.interpretacao %}<p>{{ item }}</p>{% endfor %}{% endif %}
+        {% if achado.causas_observadas %}<div class="subhead">Causas observadas</div><ul>{% for item in achado.causas_observadas %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+        {% if achado.hipoteses %}<div class="subhead">Hipóteses</div><ul>{% for item in achado.hipoteses %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+        {% if achado.estado_desfecho %}<div class="subhead">Estado ou desfecho observado</div>{% for item in achado.estado_desfecho %}<p>{{ item }}</p>{% endfor %}{% endif %}
+        {% if achado.evidencias %}<details><summary>Abrir evidências curadas ({{ achado.evidencias|length }})</summary>
+          {% for evidencia in achado.evidencias %}<blockquote class="evidence"><span class="source">{{ evidencia.id }} · {{ evidencia.turma }}{% if evidencia.data %} · {{ evidencia.data }}{% endif %}{% if evidencia.autor %} · {{ evidencia.autor }}{% endif %}{% if evidencia.tipo %} · {{ evidencia.tipo }}{% endif %}</span>{{ evidencia.texto }}{% if evidencia.contexto %}<p class="muted">Contexto: {{ evidencia.contexto }}</p>{% endif %}</blockquote>{% endfor %}
+        </details>{% endif %}
+        {% if achado.limites %}<div class="subhead">Limites desta leitura</div><ul>{% for item in achado.limites %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+      </article>{% endfor %}
+      {% if recorte.casos %}<h3>Casos do período</h3>{% for caso in recorte.casos %}<div class="atlas-case"><strong>{{ caso.titulo }}</strong><p>{{ caso.leitura }}</p>{% if caso.ids %}<p class="evidence-ids">IDs: {% for id in caso.ids %}{{ id }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>{% endif %}</div>{% endfor %}{% endif %}
+      {% if recorte.surpresas %}<h3>Surpresas deste recorte</h3><ul>{% for item in recorte.surpresas %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}
+    </details>{% empty %}<p class="muted">Os recortes cronológicos serão exibidos aqui quando constarem da versão privada importada.</p>{% endfor %}
+  </section>
+
+  <section class="section" id="comparacoes" aria-labelledby="h-comparacoes">
+    <div class="section-head"><span class="section-no">06</span><h2 id="h-comparacoes">Comparações entre turmas</h2></div>
+    <div class="grid">{% for comparacao in comparacoes %}<article class="card"><h3>{{ comparacao.titulo }}</h3><p>{{ comparacao.leitura }}</p>{% for leitura in comparacao.turmas %}<div class="subhead">{{ leitura.id }}</div><p>{{ leitura.texto }}</p>{% endfor %}</article>{% empty %}<p class="muted">As comparações serão exibidas aqui.</p>{% endfor %}</div>
+  </section>
+
+  <section class="section" id="quadros" aria-labelledby="h-quadros">
+    <div class="section-head"><span class="section-no">07</span><h2 id="h-quadros">Quadros de leitura e casos</h2></div>
+    <div class="grid">{% for quadro in quadros %}<article class="card"><span class="eyebrow">{{ quadro.tipo }}</span><h3>{{ quadro.titulo }}</h3><p>{{ quadro.resumo }}</p>{% for item in quadro.itens %}<p><strong>{{ item.titulo }}</strong><br>{{ item.texto }}</p>{% endfor %}{% if quadro.limite %}<p class="muted">Limite: {{ quadro.limite }}</p>{% endif %}</article>{% empty %}<p class="muted">Os casos e roteiros serão exibidos aqui.</p>{% endfor %}</div>
+  </section>
+
+  <section class="section" id="oportunidades" aria-labelledby="h-oportunidades">
+    <div class="section-head"><span class="section-no">08</span><h2 id="h-oportunidades">Oportunidades de produto e vendas</h2></div>
+    <div class="grid">{% for oportunidade in oportunidades %}<article class="card"><h3>{{ oportunidade.titulo }}</h3><div class="subhead">Fundamento observado</div><p>{{ oportunidade.fundamento }}</p><div class="subhead">Potencial</div><p>{{ oportunidade.potencial }}</p>{% if oportunidade.cautela %}<p class="muted">Limite: {{ oportunidade.cautela }}</p>{% endif %}</article>{% empty %}<p class="muted">As oportunidades serão exibidas aqui.</p>{% endfor %}</div>
+    {% if decisoes %}<h3 class="decision-title">Questões a conferir</h3><ul>{% for decisao in decisoes %}<li>{{ decisao }}</li>{% endfor %}</ul>{% endif %}
+  </section>
+
+  <section class="section" id="metodo" aria-labelledby="h-metodo">
+    <div class="section-head"><span class="section-no">09</span><h2 id="h-metodo">Fontes, método e limites</h2></div>
+    {% for texto in metodologia %}<p>{{ texto }}</p>{% endfor %}
+    <div class="grid">{% for fonte in fontes %}<article class="card"><h3>{{ fonte.turma }}</h3><p class="source-path">{{ fonte.caminho_completo_windows }}</p>{% if fonte.sha256 %}<p class="source-path">SHA-256: {{ fonte.sha256 }}</p>{% endif %}<p>{{ fonte.cobertura }}</p><p class="muted">Mídias ausentes: {{ fonte.midias_ausentes }}</p></article>{% endfor %}</div>
+    {% for turma in turmas %}{% if turma.estado == 'sem dados' %}<div class="callout missing"><strong>{{ turma.nome }} · {{ turma.estado }}:</strong> {{ turma.leitura }}</div>{% endif %}{% endfor %}
+    {% for texto in limites %}<p>{{ texto }}</p>{% endfor %}
+  </section>
+</main>
+{% endblock %}

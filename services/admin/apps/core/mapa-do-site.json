@@ -2656,6 +2656,17 @@
     },
     {
       "celula": "admin",
+      "rota": "tomografia-turmas/20261013/",
+      "endereco": "/admin/tomografia-turmas/20261013/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Tomografia das turmas",
+      "descricao": "Leitura administrativa privada de conversas de alunos: dificuldades, avanços, comparações, evidências curadas e oportunidades de produto e vendas. O conteúdo é importado para uma entrega privada no banco.",
+      "observacao": "Acesso restrito aos administradores; não é uma página dos alunos nem um item de menu."
+    },
+    {
+      "celula": "admin",
       "rota": "perpetuo/",
       "endereco": "/admin/perpetuo/",
       "alcance": "publico",
