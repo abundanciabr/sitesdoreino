@@ -1,0 +1,89 @@
+#!/usr/bin/python3
+import argparse,fcntl,hashlib,json,os,shutil,pathlib,re,subprocess,sys,datetime
+ROOT=pathlib.Path('/opt/plataforma')
+SRC=ROOT/'backups-de-banco'
+STATE=pathlib.Path('/var/lib/meshcraft-backup-drive')
+CONF=pathlib.Path('/etc/meshcraft-backup-drive/rclone.conf')
+TAG=re.compile(r'[0-9]{8}-[0-9]{6}Z(?:-[A-Za-z0-9_-]+)?')
+def sha(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1024*1024),b''): h.update(b)
+ return h.hexdigest()
+def scan():
+ out=[]
+ for count in sorted(SRC.glob('*.contagens.tsv')):
+  tag=count.name.removesuffix('.contagens.tsv')
+  if not TAG.fullmatch(tag): continue
+  names={count.name,'papeis-'+tag+'.sql'}
+  dbs=set()
+  for line in count.read_text().splitlines():
+   parts=line.split(chr(9))
+   if len(parts)!=3 or not re.fullmatch('[a-z0-9_]+',parts[0]) or not parts[2].isdigit(): raise ValueError('contagens invalidas')
+   dbs.add(parts[0])
+  if not dbs: continue
+  dumps=list(SRC.glob('*-'+tag+'.dump'))
+  names.update(f.name for f in dumps)
+  if any(db+'-'+tag+'.dump' not in names for db in dbs): continue
+  for prefix,suffix in [('redis-','.rdb'),('evolution-instancias-','.tar.gz')]:
+   n=prefix+tag+suffix
+   if (SRC/n).exists(): names.add(n)
+  if any((SRC/n).is_symlink() or not (SRC/n).is_file() or (SRC/n).stat().st_size==0 for n in names): continue
+  if list(SRC.glob('*'+tag+'*.parcial')): continue
+  out.append((tag,sorted(names),len(dumps)))
+ return out
+def rc(*args):
+ p=subprocess.run(['/usr/bin/rclone','--config',str(CONF),'--log-level','ERROR','--stats','0',*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=7200)
+ if p.returncode:
+  text=p.stderr.decode(errors='replace').lower(); signals=[x for x in ('immutable','modified','permission','quota','401','403','not found','read-only','token','directory','crypt','checksum') if x in text]
+  print(json.dumps({'rclone_codigo':p.returncode,'sinais':signals}),flush=True)
+  raise RuntimeError('rclone '+args[0]+' falhou; detalhes privados suprimidos')
+ return p.stdout
+def configured():
+ if not CONF.is_file(): raise RuntimeError('PENDENTE: autorizacao Google e chave de recuperacao')
+ if CONF.stat().st_mode & 0o077: raise RuntimeError('configuracao deve ser privada 0600')
+ c=json.loads(rc('config','dump')); crypt=c.get('meshcraft_crypt',{}); drive=c.get('meshcraft_drive',{})
+ if crypt.get('type')!='crypt' or crypt.get('filename_encryption','standard')!='standard' or crypt.get('directory_name_encryption','true')!='false' or not crypt.get('password'): raise RuntimeError('configuracao crypt incompleta')
+ if crypt.get('remote')!='meshcraft_drive:backups-criptografados' or drive.get('type')!='drive' or not drive.get('root_folder_id') or not drive.get('token'): raise RuntimeError('destino Google incompleto')
+def main():
+ os.umask(0o077); STATE.mkdir(mode=0o700,parents=True,exist_ok=True)
+ parser=argparse.ArgumentParser(); parser.add_argument('--inventario',action='store_true'); parser.add_argument('--todos',action='store_true'); args=parser.parse_args()
+ with (STATE/'envio.lock').open('a') as own, (ROOT/'.backup.lock').open('a') as lock:
+  fcntl.flock(own,fcntl.LOCK_EX|fcntl.LOCK_NB); fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  sets=scan()
+  if not sets: raise RuntimeError('nenhum conjunto completo encontrado')
+  if args.inventario:
+   tag,names,bases=sets[-1]; print(json.dumps({'conjuntos':len(sets),'ultimo_utc':tag,'arquivos_ultimo':len(names),'bases_ultimo':bases,'bytes_ultimo':sum((SRC/n).stat().st_size for n in names),'drive_configurado':CONF.exists()})); return
+  configured()
+  fcntl.flock(lock,fcntl.LOCK_UN)
+  for tag,names,bases in ([sets[-1]]+sets[:-1] if args.todos else sets[-1:]):
+   fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+   dest='meshcraft_crypt:'+tag[:4]+'-'+tag[4:6]+'-'+tag[6:8]+'/'+tag
+   stage=STATE/tag; stage.mkdir(mode=0o700,exist_ok=True)
+   listing=stage/'arquivos.txt'; listing.write_text(chr(10).join(names)+chr(10))
+   manifest={'carimbo_utc':tag,'bases':bases,'arquivos':{n:{'bytes':(SRC/n).stat().st_size,'sha256':sha(SRC/n)} for n in names}}
+   mf=stage/'manifesto.json'; body=json.dumps(manifest,sort_keys=True,ensure_ascii=True)+chr(10)
+   if mf.exists() and mf.read_text()!=body: raise RuntimeError('origem divergiu do manifesto preservado')
+   if (stage/"resultado.json").exists() and mf.exists() and mf.read_text()==body:
+    fcntl.flock(lock,fcntl.LOCK_UN)
+    continue
+   mf.write_text(body)
+   local=stage/'originais'; local.mkdir(mode=0o700,exist_ok=True)
+   for n in names:
+    if not (local/n).exists():
+     partial=local/(n+".part"); shutil.copy2(SRC/n,partial); os.replace(partial,local/n)
+    if sha(local/n)!=manifest['arquivos'][n]['sha256']: raise RuntimeError('copia local divergente')
+    shutil.copystat(SRC/n,local/n)
+   fcntl.flock(lock,fcntl.LOCK_UN)
+   rc('copy',str(local),dest,'--files-from-raw',str(listing),'--immutable','--transfers','2')
+   rc('check',str(local),dest,'--files-from-raw',str(listing),'--download','--one-way','--checkers','2')
+   if any(sha(local/n)!=manifest['arquivos'][n]['sha256'] for n in names): raise RuntimeError('origem mudou durante transferencia')
+   rc('copyto',str(mf),dest+'/manifesto.json','--immutable')
+   if hashlib.sha256(rc('cat',dest+'/manifesto.json')).hexdigest()!=sha(mf): raise RuntimeError('manifesto remoto divergiu')
+   report={'estado':'copia conferida por leitura integral','carimbo_utc':tag,'bases':bases,'arquivos':len(names),'verificado_em':datetime.datetime.now(datetime.timezone.utc).isoformat(),'restauracao_banco':'nao executada'}
+   (stage/'resultado.json').write_text(json.dumps(report)); (STATE/'ultimo-resultado.json').write_text(json.dumps(report)); print(json.dumps(report))
+   fcntl.flock(lock,fcntl.LOCK_UN)
+if __name__=='__main__':
+ try: main()
+ except Exception as e:
+  print(json.dumps({'estado':'nao concluido','motivo':str(e) if isinstance(e,(RuntimeError,ValueError,BlockingIOError)) else type(e).__name__})); sys.exit(1)
