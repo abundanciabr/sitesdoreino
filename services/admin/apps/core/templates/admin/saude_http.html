@@ -13,7 +13,7 @@
 <p role="alert">A medição está indisponível. Não é possível afirmar que não houve erros. Tente consultar novamente.</p>
 {% else %}
 <p><strong>{{ acessos }}</strong> respostas observadas · <strong>{{ falhas_total }}</strong> falhas HTTP · <strong>{{ saudaveis|length }}</strong> páginas com sucesso e sem erros.</p>
-<p>Horário de São Paulo. Medição iniciada em {{ inicio|default:"ainda sem registros" }}. Não há reconstrução de acessos anteriores.</p>
+<p>Horário de São Paulo. Medição iniciada em {% if inicio %}{{ inicio|date:"d/m/Y H:i:s" }}{% else %}ainda sem registros{% endif %}. Não há reconstrução de acessos anteriores.</p>
 <h2>Páginas sem erros registrados</h2>
 <p>Ordenadas pelo número de respostas bem-sucedidas. Uma página sem acessos não entra no ranking. Redirecionamentos não contam como sucesso. Os endereços com parâmetros são agrupados.</p>
 <div class="tabela-envolucro"><table><thead><tr><th>Posição</th><th>Página</th><th>Sucessos</th><th>Redirecionamentos</th><th>Falhas</th></tr></thead><tbody>
@@ -29,5 +29,5 @@
 {% for e in erros %}<tr><td>{{ e.quando|date:"d/m/Y H:i:s" }}</td><td><strong>{{ e.perfil_texto }}</strong><br>{{ e.nome }}<br><small>{% if e.conta %}Conta: {{ e.conta }}{% else %}Sem conta identificada{% endif %}</small></td><td>{{ e.host }}{{ e.pagina }}<br>{{ e.metodo }}</td><td>HTTP {{ e.status }}</td><td>{{ e.referencia|default:"Sem referência na resposta" }}</td></tr>{% empty %}<tr><td colspan="5">Nenhuma ocorrência encontrada neste filtro.</td></tr>{% endfor %}
 </tbody></table></div>
 {% endif %}
-<p>Escopo: páginas HTML e envios de formulários dos módulos {{ servicos|join:", " }} na aplicação principal. Checkout e pagamentos não participam desta medição. Erros de JavaScript, respostas servidas somente pelo cache e falhas anteriores à chegada na aplicação não são medidos aqui. Visitantes sem sessão não têm nome ou conta conhecidos; falhas na identificação aparecem como “Sessão não identificada”.</p>
+<p>Escopo: páginas HTML e envios de formulários dos módulos {{ servicos|join:", " }}, incluindo a vitrine isolada. Checkout e pagamentos não participam desta medição. Erros de JavaScript, respostas servidas somente pelo cache e falhas anteriores à chegada na aplicação não são medidos aqui. Visitantes sem sessão não têm nome ou conta conhecidos; falhas na identificação aparecem como “Sessão não identificada”.</p>
 {% endblock %}

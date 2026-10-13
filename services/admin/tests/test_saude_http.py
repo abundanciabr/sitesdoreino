@@ -136,3 +136,4 @@ def test_painel_com_dados(monkeypatch):
     assert resposta.status_code == 200
     html = resposta.content.decode()
     assert "Pessoa teste" in html and "ERR-404-" in html and "/cursos/aula/" in html
+    assert "Seções da administração" in html
