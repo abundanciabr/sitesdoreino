@@ -356,6 +356,30 @@ def test_ordem_prioriza_dependencias_transitivas_da_nova_entrega():
     assert [r["id"] for r in ordem] == [I1, I2, nova["id"], independente["id"]]
 
 
+def test_entrega_recebida_durante_ensaio_entra_na_mesma_rodada_antes_do_historico(tmp_path):
+    antiga = entrega(I1, C1)
+    antiga.update(estado=entregas.NA_MAIN, promovida_candidata=C1,
+                  promocao={"estado": "remota", "candidata": C1, "remoto": "integrador"})
+    nova_id = "333333333333"
+    ponte = PonteFalsa(conciliacao={(I1, "aplicacao"): {"situacao": "conflito"}})
+    worker, integ, _ = servico(tmp_path, [antiga, entrega(I2, C2)], ponte=ponte)
+    worker.estados.salvar({"id": I1, "candidata": C1, "fase": "ativação pendente",
+                           "tentativas": 0, "celulas": ["aplicacao"]})
+    integrar = integ.cmd_integrar
+
+    def integrar_com_nova(arg):
+        if I2 in integ.promocoes:
+            integ.regs[nova_id] = entrega(nova_id, "3" * 40, [I2])
+        return integrar(arg)
+
+    integ.cmd_integrar = integrar_com_nova
+    saida = {r["id"]: r for r in worker.rodada()}
+    assert saida[nova_id]["fase"] == "ativa"
+    assert integ.promocoes == [I2, nova_id]
+    assert ponte.chamadas.index(("publicar", nova_id)) < ponte.chamadas.index(("conferir-preservacao", I1))
+    assert saida[I1]["fase"] == "preservação não comprovada"
+
+
 def test_ordem_com_ciclo_nao_duplica_registro_nem_libera_dependencia(tmp_path):
     regs = [entrega(I1, C1, [I2]), entrega(I2, C2, [I1])]
     worker, integ, ponte = servico(tmp_path, regs)

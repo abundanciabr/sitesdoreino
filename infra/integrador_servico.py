@@ -546,8 +546,12 @@ class Servico:
                 self._canal("infraestrutura indisponível", diagnostico)
                 return [{"fase": "infraestrutura indisponível", "motivo": diagnostico["motivo"],
                          "diagnostico": diagnostico}]
-            for original in self._ordem_dependencias(registros):
+            pendentes = self._ordem_dependencias(registros)
+            processados = set()
+            while pendentes:
+                original = pendentes.pop(0)
                 id_ = original["id"]
+                processados.add(id_)
                 try:
                     reg = self.integrador.ler(id_)
                 except (entregas.Recusa, OSError, ValueError, KeyError):
@@ -568,6 +572,10 @@ class Servico:
                         try:
                             self._sincronizar_main()
                             self.integrador.cmd_integrar(SimpleNamespace())
+                            # A promoção também combina entregas recebidas durante
+                            # o ensaio. Atendê-las nesta rodada antes do histórico.
+                            pendentes = self._ordem_dependencias([
+                                r for r in self.integrador.todos() if r["id"] not in processados])
                         except (entregas.Recusa, OSError):
                             # Proxima rodada retomara a sincronizacao; entregas anteriores ficam registradas.
                             self._canal("infraestrutura indisponível",
