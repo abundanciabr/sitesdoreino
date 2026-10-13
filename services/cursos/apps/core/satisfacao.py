@@ -67,7 +67,11 @@ def pesquisa(request, slug=None):
         if status != 200:
             contexto["erro"] = (dados or {}).get("detail", "Não conseguimos consultar a pesquisa agora.")
             return render(request, "cursos/satisfacao.html", contexto, status=status)
-        contexto["perguntas_previa"] = (dados.get("documento") or {}).get("perguntas", {}).values()
+        documento = dados.get("documento") or {}
+        perguntas = {chave: dict(pergunta) for chave, pergunta in documento.get("perguntas", {}).items()}
+        if "A3" in perguntas:
+            perguntas["A3"]["opcoes"] = (documento.get("situacoes") or {}).get("aluno_pagante", [])
+        contexto["perguntas_previa"] = perguntas.values()
         return render(request, "cursos/satisfacao.html", contexto)
     if not ator.matricula_conferida or not ator.eh_aluno:
         contexto["erro"] = "Não conseguimos confirmar uma matrícula ativa. Entre com o e-mail cadastrado na escola ou fale com a equipe."

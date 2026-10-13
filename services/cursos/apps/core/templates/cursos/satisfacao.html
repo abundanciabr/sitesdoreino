@@ -15,7 +15,7 @@
     <h2>{{ pergunta.texto }}</h2>
     {% if pergunta.aviso %}<p>{{ pergunta.aviso }}</p>{% endif %}
     {% if pergunta.ajuda %}<p>{{ pergunta.ajuda }}</p>{% endif %}
-    {% if pergunta.tipo == 'nota' %}<p>Nota de 0 a 10.</p>{% elif pergunta.opcoes %}<ul>{% for opcao in pergunta.opcoes %}<li>{{ opcao.texto }}</li>{% endfor %}</ul>{% else %}<p>Resposta em texto.</p>{% endif %}
+    {% if pergunta.tipo == 'nota' %}<p>Nota de 0 a 10.</p>{% elif pergunta.opcoes %}<ul>{% for opcao in pergunta.opcoes %}<li>{{ opcao.texto }}</li>{% endfor %}</ul>{% elif pergunta.tipo == "texto" %}<p>Resposta em texto.</p>{% else %}<p>As opções são definidas pelas respostas anteriores do aluno.</p>{% endif %}
   </section>
   {% endfor %}
   <p><a href="{% url 'satisfacao' %}">Ver pesquisas dos cursos</a></p>
