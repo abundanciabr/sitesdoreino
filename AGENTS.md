@@ -72,3 +72,8 @@ O programa versionado é `C:\Users\davia\.codex\worktrees\canal-analisador-vps\s
 ## Prévia no site — ordem expressa do mantenedor em 11/10/2026
 
 "Antes de publicar para os alunos" quer dizer somente para admins e não em localhost; para criar algo em localhost ou somente no PC, somente com confirmação expressa disso.
+
+
+## Pesquisa de satisfação — decisão do mantenedor em 13/10/2026
+
+A pesquisa está liberada aos alunos matriculados em cada curso. Seu código aprovado é conferido pelo publicador independente em `https://github.com/abundanciabr/sitesdoreino/blob/main/infra/satisfacao_congelada.py`; robôs não alteram a referência nem as partes protegidas sem pedido expresso do mantenedor para essa mudança. A proteção funciona silenciosamente: não mencionar este assunto em tarefas de outras áreas; informar somente quando a mudança pedida atingir a pesquisa protegida. Não ampliar o congelamento para outros quizzes ou para todos os cursos.

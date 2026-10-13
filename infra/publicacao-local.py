@@ -13,6 +13,7 @@ import re
 import subprocess
 from protecao_publicacao import identificar, conferir_relatorio
 from docs_somente_admin import conferir_codigo_docs
+from satisfacao_congelada import conferir_fontes_satisfacao, conferir_codigo_satisfacao
 from mercadopago_congelado import conferir_ambiente, conferir_pacote as conferir_mp_pacote
 import sys
 import time
@@ -105,6 +106,7 @@ def conferir_pacote(tag, versao):
             raise ValueError("código não corresponde ao artefato da entrega")
         if CELULA == "aplicacao":
             conferir_codigo_docs(codigo)
+            conferir_codigo_satisfacao(codigo)
             politica_mp = politica_mercadopago()
             conferir_ambiente(RAIZ, politica_mp)
             conferir_mp_pacote(codigo, versao["imagem"], politica_mp)
@@ -129,6 +131,7 @@ def conferir_pacote(tag, versao):
         raise ValueError("código fora das versões do publicador")
     if CELULA == "aplicacao":
         conferir_codigo_docs(Path(versao.get("codigo") or ""))
+        conferir_codigo_satisfacao(Path(versao.get("codigo") or ""))
         politica_mp = politica_mercadopago()
         conferir_ambiente(RAIZ, politica_mp)
         conferir_mp_pacote(codigo, versao["imagem"], politica_mp)
@@ -267,6 +270,7 @@ def retomar(caminho, estado):
                 raise ValueError("configuração de recuperação diverge da aprovada")
             if CELULA == "aplicacao":
                 conferir_codigo_docs(Path(versao.get("codigo") or ""))
+                conferir_codigo_satisfacao(Path(versao.get("codigo") or ""))
                 politica = politica_mercadopago()
                 conferir_ambiente(RAIZ, politica)
                 if not versao["codigo"]:
@@ -449,6 +453,7 @@ def executar(acao):
     versao = {"imagem": alvo.get("imagem") or imagem_padrao(tag), "codigo": alvo.get("codigo")}
     if CELULA == "aplicacao":
         conferir_codigo_docs(Path(versao.get("codigo") or ""))
+        conferir_codigo_satisfacao(Path(versao.get("codigo") or ""))
         politica_mp = politica_mercadopago()
         conferir_ambiente(RAIZ, politica_mp)
         if not versao["codigo"]:

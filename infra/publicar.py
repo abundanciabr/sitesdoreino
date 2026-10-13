@@ -33,6 +33,7 @@ import time
 from contextlib import contextmanager
 from protecao_publicacao import arvore, identificar, montar, ensaiar, imagem_id, conferir_relatorio
 from docs_somente_admin import conferir_fontes_docs, conferir_codigo_docs
+from satisfacao_congelada import conferir_fontes_satisfacao, conferir_codigo_satisfacao
 from mercadopago_congelado import conferir_fontes, conferir_ambiente, conferir_pacote as conferir_mp_pacote
 from datetime import datetime, timezone
 from pathlib import Path
@@ -512,6 +513,7 @@ def _publicar_entrega(id_entrega: str, celula: str) -> int:
         if imagem_id(imagem) != imagem:
             raise ValueError("imagem carregada difere da imagem ensaiada")
         conferir_codigo_docs(codigo)
+        conferir_codigo_satisfacao(codigo)
         etapa_entrega("mercadopago")
         politica = politica_mercadopago()
         conferir_ambiente(RAIZ, politica)
@@ -609,6 +611,7 @@ def _publicar_funil_entrega(id_entrega: str, sha: str, promocao: dict, estado: d
     conferir_mp_pacote(bundle, imagem, politica)
     conferir_ambiente(Path(artefato["configuracao_final"]), politica)
     conferir_codigo_docs(bundle)
+    conferir_codigo_satisfacao(bundle)
     # O snapshot privado representa a rota final. A configuração real ainda é a base ensaiada.
     if identificar(codigo, imagem, Path(artefato["configuracao_final"]) / "docker-compose.yml") != prova["pacote_publicador"]:
         raise ValueError("pacote funil alterado antes da ativação")
@@ -683,6 +686,7 @@ def _publicar_travado(celula: str, sha: str, pedido_em: str | None = None) -> in
             extrair(sha, fonte)
             if celula == "aplicacao":
                 conferir_fontes_docs(fonte)
+                conferir_fontes_satisfacao(fonte)
             politica_mp = politica_mercadopago() if celula == "aplicacao" else None
             if politica_mp is not None:
                 conferir_fontes(fonte, politica_mp)
@@ -691,6 +695,7 @@ def _publicar_travado(celula: str, sha: str, pedido_em: str | None = None) -> in
             imagem = imagem_id(imagem)
             if celula == "aplicacao":
                 conferir_codigo_docs(codigo)
+                conferir_codigo_satisfacao(codigo)
             if politica_mp is not None:
                 conferir_mp_pacote(codigo, imagem, politica_mp)
             pacote = identificar(codigo, imagem, RAIZ / "docker-compose.yml")
