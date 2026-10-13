@@ -86,3 +86,49 @@ def test_conferencia_tem_confirmacao_explicita_e_correcao(client, aluna, rede, m
     response = client.post(reverse("satisfacao-curso", args=["profissional"]),
         {"tentativa_id": tid, "acao": "concluir", "confirmado": "sim"}, HTTP_COOKIE=COOKIE)
     assert json.loads(post.calls[0].request.content)["confirmado"] is True
+
+
+def preparar_admin(rede, monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", ANA["email"])
+    monkeypatch.setenv("QUIZ_API_URL", "http://quiz:8000")
+    monkeypatch.setenv("QUIZ_API_TOKEN", "par-nps")
+    dublar_sessao(rede, ANA)
+
+
+def test_admin_sem_matricula_lista_cursos_e_visualiza_roteiro(client, env_dos_pares, rede, esqueleto, monkeypatch):
+    preparar_admin(rede, monkeypatch)
+    rota = rede.get("http://quiz:8000/interno/nps/config").mock(return_value=httpx.Response(200, json={
+        "documento": {"perguntas": {"nota": {"texto": "Recomendaria o curso?", "tipo": "nota"}}}}))
+    lista = client.get(reverse("satisfacao"), HTTP_COOKIE=COOKIE)
+    assert lista.status_code == 200
+    assert reverse("satisfacao-curso", args=[esqueleto.slug]) in lista.content.decode()
+    resposta = client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 200
+    texto = resposta.content.decode()
+    assert "Visualização administrativa" in texto and "Recomendaria o curso?" in texto
+    assert "Começar avaliação" not in texto
+    assert rota.calls[0].request.url.params["site_id"] == esqueleto.site_id
+    assert not any(call.request.method == "POST" for call in rede.calls)
+
+
+def test_admin_nao_cria_tentativa_nem_responde(client, env_dos_pares, rede, esqueleto, monkeypatch):
+    preparar_admin(rede, monkeypatch)
+    for corpo in ({"acao": "iniciar"}, {"acao": "concluir", "tentativa_id": "bc7d35fc-c822-409c-a308-a2a9458e60f0"}):
+        resposta = client.post(reverse("satisfacao-curso", args=[esqueleto.slug]), corpo, HTTP_COOKIE=COOKIE)
+        assert resposta.status_code == 403
+    assert not any(call.request.method == "POST" for call in rede.calls)
+
+
+def test_admin_nao_visualiza_curso_de_outro_site(client, env_dos_pares, rede, esqueleto, monkeypatch):
+    preparar_admin(rede, monkeypatch)
+    esqueleto.site_id = "outro-site"
+    esqueleto.save(update_fields=["site_id"])
+    assert client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE).status_code == 404
+
+
+def test_admin_ve_indisponibilidade_da_pesquisa(client, env_dos_pares, rede, esqueleto, monkeypatch):
+    preparar_admin(rede, monkeypatch)
+    rede.get("http://quiz:8000/interno/nps/config").mock(return_value=httpx.Response(503, json={"detail": "Pesquisa indisponível."}))
+    resposta = client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 503
+    assert "Pesquisa indisponível." in resposta.content.decode()
