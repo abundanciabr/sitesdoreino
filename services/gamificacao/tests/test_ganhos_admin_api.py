@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 from django.http import HttpResponse
+from django.utils import timezone
 from ninja.errors import HttpError
 
 from apps.core import ganhos_admin_api as ganhos
@@ -27,7 +28,7 @@ def criar(**campos):
                     valor_original_cents=80000, moeda_original='BRL', origem='proprio',
                     referencia_trabalho='Modelo 3D', estado='confirmado',
                     print_bytes=b'print-reservado', print_sha256=hashlib.sha256(b'print-reservado').hexdigest(),
-                    recebido_em=date(2026,10,12), leitura={'status': 'recebido', 'segredo': 'nao-projetar'})
+                    recebido_em=date(2026,10,12), analisada_em=timezone.now(), leitura={'status': 'recebido', 'segredo': 'nao-projetar'})
     defaults.update(campos)
     return RecebimentoDeclarado.objects.create(**defaults)
 
@@ -51,7 +52,9 @@ def test_lista_preserva_privacidade_e_nao_muda_registros(ambiente):
     criar(site_id='outro'); criar(print_bytes=None); criar(print_sha256='')
     response = HttpResponse()
     resultado = ganhos.listar(ambiente, response, 'meshcraft')
-    assert resultado['total'] == 1 and resultado['itens'][0]['id'] == r.pk
+    assert resultado['total'] == 6
+    assert sum(i['elegivel'] for i in resultado['itens']) == 2
+    assert any(i['historico'] and i['elegivel'] for i in resultado['itens'])
     assert resultado['itens'][0]['nome'] == 'Maria'
     assert 'privado@example' not in str(resultado)
     assert 'print-reservado' not in str(resultado) and 'nao-projetar' not in str(resultado)
@@ -88,3 +91,33 @@ def test_rotas_da_api_exigem_par_admin(client, settings, ambiente):
         assert client.get(caminho).status_code == 401
         assert client.get(caminho, HTTP_AUTHORIZATION='Bearer par-forum').status_code == 403
         assert client.get(caminho, HTTP_AUTHORIZATION='Bearer somente-admin').status_code == 200
+
+
+def test_historico_consultado_sem_mudar_progressao_ou_analise(ambiente):
+    r = criar(fora_da_progressao=True)
+    antes = list(RecebimentoDeclarado.objects.values())
+    item = ganhos.detalhe(ambiente, HttpResponse(), 'meshcraft', r.pk)['item']
+    assert item['historico'] and item['elegivel'] and item['print_disponivel']
+    assert item['motivos_exclusao'] == []
+    assert ganhos.imagem(ambiente, 'meshcraft', r.pk).content == b'print-reservado'
+    assert list(RecebimentoDeclarado.objects.values()) == antes
+
+
+def test_historico_sem_print_ou_leitura_nao_e_prova_de_ganho(ambiente):
+    r = criar(fora_da_progressao=True, print_bytes=None, print_sha256='',
+              analisada_em=None, leitura={})
+    item = ganhos.detalhe(ambiente, HttpResponse(), 'meshcraft', r.pk)['item']
+    assert not item['elegivel'] and not item['print_disponivel']
+    assert 'Sem imagem do print armazenada.' in item['motivos_exclusao']
+    assert 'Sem leitura concluída reconhecendo o recebimento.' in item['motivos_exclusao']
+    with pytest.raises(HttpError):
+        ganhos.imagem(ambiente, 'meshcraft', r.pk)
+
+
+def test_print_corrompido_e_estado_pendente_ficam_so_na_consulta(ambiente):
+    r = criar(estado='pendente', print_sha256='divergente')
+    antes = list(RecebimentoDeclarado.objects.values())
+    item = ganhos.projetar(r)
+    assert not item['elegivel'] and not item['print_disponivel']
+    assert len(item['motivos_exclusao']) == 2
+    assert list(RecebimentoDeclarado.objects.values()) == antes

@@ -61,6 +61,7 @@ def _item(dados):
         raise ValueError
     item = {chave: dados.get(chave) for chave in (
         "id", "nome", "trabalho", "origem", "recebido_em", "analisada_em", "revisao", "leitura_status",
+        "historico", "estado_texto", "print_disponivel", "elegivel", "motivos_exclusao",
     )}
     item["nome"] = str(item["nome"] or "Aluno")[:120]
     item["inicial"] = item["nome"][0].upper()
@@ -97,7 +98,7 @@ def previa(request):
         except (KeyError, ValueError, TypeError):
             dados = None
     return render(request, "admin/ganhos_previa.html", {
-        "admin": request.admin, "itens": itens, "destaques": itens[:3],
+        "admin": request.admin, "itens": itens, "destaques": [i for i in itens if i["elegivel"]][:3],
         "indisponivel": dados is None and not erro, "erro": erro,
         "de": de, "ate": ate, "pagina": pagina, "total": dados.get("total", 0) if dados else None,
         "anterior": "?" + urlencode({"de": de, "ate": ate, "pagina": pagina-1}) if pagina > 1 else "",

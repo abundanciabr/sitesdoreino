@@ -63,3 +63,23 @@ def test_print_privado_e_periodo_invalido(monkeypatch):
     assert r.content == b'print-reservado' and 'no-store' in r['Cache-Control']
     assert r['Referrer-Policy'] == 'no-referrer'
     assert cliente().get(reverse('ganhos_previa'),{'de':'2026-99-99'}).status_code == 400
+
+
+@respx.mock
+def test_historico_excluido_aparece_na_lista_mas_nao_no_bloco(monkeypatch):
+    item = dict(id=1, nome='Ana', trabalho='Modelo histórico', valor_cents=80000,
+                moeda_original='BRL', recebido_em='2026-10-10', historico=True,
+                estado_texto='Confirmado', elegivel=False, print_disponivel=False,
+                motivos_exclusao=['Sem imagem do print armazenada.'])
+    monkeypatch.setattr(ganhos, '_consultar', lambda *a, **kw: {
+        'itens': [item], 'item': item, 'total': 1, 'mais': False})
+    texto = cliente().get(reverse('ganhos_previa')).content.decode()
+    assert 'Modelo histórico' in texto and 'Sem imagem do print armazenada.' in texto
+    assert 'Modelo histórico' not in texto.split('<aside')[1]
+    detalhe = cliente().get(reverse('ganhos_previa_detalhe', args=[1])).content.decode()
+    assert 'Recebimento histórico' in detalhe and '<img' not in detalhe
+    item.update(elegivel=True, print_disponivel=True, motivos_exclusao=[])
+    texto = cliente().get(reverse('ganhos_previa')).content.decode()
+    assert 'Modelo histórico' in texto.split('<aside')[1]
+    detalhe = cliente().get(reverse('ganhos_previa_detalhe', args=[1])).content.decode()
+    assert 'Ver imagem do print privado' in detalhe
