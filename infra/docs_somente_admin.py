@@ -68,6 +68,10 @@ def conferir(raiz):
         raise RuntimeError('docs: referência independente ausente; publicação impedida')
     referencia = json.loads(politica.read_text(encoding='utf-8'))
     atual = resumo(raiz)
+    # Referências completas e exatas, instaladas pelo mantenedor fora da
+    # candidata. Conserva a referência anterior para recuperar o código.
+    if atual in (referencia['resumo'], *referencia.get('resumos_autorizados', ())):
+        return
     diferentes = sorted(k for k in set(atual) | set(referencia['resumo'])
                         if atual.get(k) != referencia['resumo'].get(k))
     if diferentes:

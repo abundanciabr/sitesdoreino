@@ -85,6 +85,7 @@ def _do_formulario(request) -> dict:
     `_campos_de_apendice_vivo`, abaixo.
     """
     return {
+        "versao_base": request.POST.get("versao_base", ""),
         "titulo": (request.POST.get("titulo") or "").strip(),
         "nome": (request.POST.get("nome") or "").strip().lower(),
         "corpo": (request.POST.get("corpo") or "").replace("\r\n", "\n"),
@@ -320,14 +321,17 @@ def documento_criar(request):
 
 
 @require_GET
+@transaction.atomic
 def documento_editar(request, nome):
-    """O formulário com o documento de hoje dentro."""
+    """O formulário e sua versão lidos sob a mesma trava curta."""
     documento = documentos.ler(nome)
     if documento is None:
         raise Http404("documento não encontrado")
+    documento = Documento.objects.select_for_update().get(pk=documento.pk)
     return _tela(
         request,
         {
+            "versao_base": documento.versoes.order_by("-id").values_list("id", flat=True).first() or 0,
             "titulo": documento.titulo,
             "nome": documento.nome,
             "corpo": documento.corpo,
@@ -351,6 +355,7 @@ def documento_editar(request, nome):
 
 @require_POST
 @somente_admin_manual
+@transaction.atomic
 def documento_salvar(request, nome):
     """Grava a edição. O ENDEREÇO nunca muda por aqui.
 
@@ -364,6 +369,7 @@ def documento_salvar(request, nome):
     if documento is None:
         raise Http404("documento não encontrado")
 
+    documento = Documento.objects.select_for_update().get(pk=documento.pk)
     rascunho = _do_formulario(request)
     rascunho["nome"] = documento.nome
 
@@ -386,6 +392,15 @@ def documento_salvar(request, nome):
             erro=erro_apendice,
             status=422,
             documento=documento,
+        )
+
+    versao_atual = documento.versoes.order_by("-id").values_list("id", flat=True).first() or 0
+    if _inteiro(rascunho["versao_base"], -1) != versao_atual:
+        return _tela(
+            request, rascunho, criando=False, documento=documento, status=409,
+            erro=("Outra edição foi salva depois que este formulário foi aberto. "
+                  "Seu texto está preservado abaixo. Abra a versão atual em outra aba, "
+                  "compare os textos e junte suas alterações antes de salvar no formulário atual."),
         )
 
     era_apendice_vivo = documento.apendice_vivo

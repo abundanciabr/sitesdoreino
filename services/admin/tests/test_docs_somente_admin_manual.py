@@ -135,6 +135,7 @@ def test_editar_arquivar_e_restaurar_nao_republicam(gesto):
     cliente = admin()
     assert publico(cliente, doc).status_code == 302
     dados = {'titulo': 'Alvo', 'corpo': 'editado',
+             'versao_base': doc.versoes.order_by('-id').first().pk,
              'csrfmiddlewaretoken': cliente.cookies[settings.CSRF_COOKIE_NAME].value}
     if gesto == 'restaurar':
         dados['versao'] = doc.versoes.first().pk

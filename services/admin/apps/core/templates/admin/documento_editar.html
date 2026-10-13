@@ -55,6 +55,7 @@ renderizador escapa antes de formatar (documentos.para_html).
   <form method="post" class="editor"
         action="{% if criando %}{% url 'documento_criar' %}{% else %}{% url 'documento_salvar' rascunho.nome %}{% endif %}">
     {% csrf_token %}
+    {% if not criando %}<input type="hidden" name="versao_base" value="{{ rascunho.versao_base }}">{% endif %}
 
     <label class="rotulo" for="titulo">Título</label>
     <input type="text" id="titulo" name="titulo" value="{{ rascunho.titulo }}"
