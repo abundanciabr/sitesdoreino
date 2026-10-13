@@ -511,17 +511,26 @@ class Servico:
 
     @staticmethod
     def _ordem_dependencias(registros):
-        """Reconfere cada dependencia antes de processar quem depende dela."""
+        """Entrega nova antes de histórico independente, mantendo as dependências."""
         pendentes = {reg["id"]: reg for reg in registros}
         ordem = []
-        while pendentes:
-            prontos = [id_ for id_, reg in pendentes.items()
-                       if not any(dep in pendentes for dep in reg.get("depende_de") or [])]
-            if not prontos:
-                ordem.extend(pendentes.values())  # ciclo continua aguardando dependencia
-                break
-            for id_ in prontos:
-                ordem.append(pendentes.pop(id_))
+        visitando = set()
+
+        def visitar(id_):
+            if id_ not in pendentes or id_ in visitando:
+                return  # ciclo continua aguardando dependência em processar
+            visitando.add(id_)
+            reg = pendentes[id_]
+            for dep in reg.get("depende_de") or []:
+                visitar(dep)
+            visitando.remove(id_)
+            ordem.append(pendentes.pop(id_))
+
+        # Conferências de versões antigas podem fazer Git remoto e ler provas.
+        # Elas continuam na mesma rodada, depois das entregas novas que não
+        # dependem delas. A chave só muda a ordem, nunca a elegibilidade/prova.
+        for reg in sorted(registros, key=lambda r: r.get("estado") == entregas.NA_MAIN):
+            visitar(reg["id"])
         return ordem
 
     def rodada(self):

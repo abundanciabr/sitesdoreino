@@ -11,6 +11,18 @@
       <p>SHA do código: <code>{{ item.artefato.codigo_sha256|default:"não informada" }}</code>. Ensaio: {{ item.ensaio.estado }} · {{ item.ensaio.aprovados|default_if_none:"não informado" }} aprovados · {{ item.ensaio.falhas|default_if_none:"não informado" }} falhas · {{ item.ensaio.ignorados|default_if_none:"não informado" }} ignorados.</p>
       <p>Fonte coletada em {{ item.coletada_em }} · {{ item.atualidade }}. Confirmação atual: {{ item.confirmacao_atual|yesno:"sim,não" }}. Backup do código: {{ item.backup.tempo_codigo_segundos|default_if_none:"não informado" }} s. Backup: <code>{{ item.backup.identidade|default:"não identificado" }}</code>; restauração isolada: {{ item.backup.restauracao_comprovada|yesno:"comprovada,não comprovada,não informada" }}.</p>
     {% empty %}<p>Ainda não há consulta operacional registrada.</p>{% endfor %}
+    <h3>Tempos das entregas de código</h3>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Entrega</th><th>Recebimento → início</th><th>Início → conclusão</th><th>Total técnico</th><th>Fonte</th></tr></thead>
+      <tbody>{% for item in trilha_entregas.itens %}<tr>
+        <td><code>{{ item.id }}</code></td>
+        <td>{{ item.duracoes.antes_inicio|default_if_none:"não medido" }} s</td>
+        <td>{{ item.duracoes.execucao|default_if_none:"não medido" }} s</td>
+        <td>{{ item.duracoes.total|default_if_none:"não medido" }} s</td>
+        <td>{{ item.coletada_em }} · {{ item.atualidade }}</td>
+      </tr>{% empty %}<tr><td colspan="5">Ainda não há consulta de entrega registrada.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    <p>Recebimento → início pode incluir integração e tentativas; não é espera pura. Conclusão técnica não mede o tempo de desenvolvimento nem confirma a funcionalidade. Fotografias históricas não são uma medição da versão atual.</p>
     <details><summary>Atualizar a fonte pela consulta operacional</summary>
       <form method="post">{% csrf_token %}
         <input type="hidden" name="acao" value="registrar_entregas">
