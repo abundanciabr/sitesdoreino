@@ -25,6 +25,10 @@ def _data(valor):
         return None
 
 
+def _segundos(valor):
+    return valor if type(valor) in (int, float) and math.isfinite(valor) and valor >= 0 else None
+
+
 def sanitizar(registro):
     if not isinstance(registro, dict) or not _sha(registro.get('id'), 12):
         raise ValueError('Consulta sem ID válido de entrega.')
@@ -85,10 +89,25 @@ def sanitizar(registro):
                     'versao_anterior': _sha(origem.get('versao_anterior'), 40)}
     for nome in ('arvore_confere', 'codigo_confere', 'pacote_confere'):
         proveniencia[nome] = origem.get(nome) if type(origem.get(nome)) is bool else None
+    duracoes = operacao.get('tempos_segundos') or {}
+    if not isinstance(duracoes, dict):
+        raise ValueError('Tempos da operação inválidos.')
+    fluxo = {nome: _data(valor) for nome, valor in (
+        ('recebida_em', registro.get('recebida_em')),
+        ('iniciada_em', operacao.get('iniciada_em')),
+        ('concluida_em', operacao.get('concluida_em')))}
+    fluxo['tempos_segundos'] = {nome: _segundos(duracoes.get(nome)) for nome in (
+        'espelhamento', 'ensaio_aplicacao', 'promocao', 'registro_aplicacao',
+        'ativacao_aplicacao', 'conferencia_aplicacao')}
+    fluxo['ensaio_segundos'] = {nome: _segundos(tempos.get(nome)) for nome in (
+        'backup_codigo', 'imagem', 'montagem', 'reaproveitamento', 'testes_comerciais')}
+    fluxo['ensaio_reaproveitado'] = (operacao.get('ensaios') or {}).get('aplicacao', {}).get('reaproveitado')
+    if type(fluxo['ensaio_reaproveitado']) is not bool:
+        fluxo['ensaio_reaproveitado'] = None
     return {'id': registro['id'], 'commit': _sha(registro.get('commit'), 40), 'candidata': candidata,
             'coletada_em': _data(prova.get('coletada_em')),
             'artefato': {'codigo_sha256': _sha(artefato.get('codigo_sha256')), 'pacote_id': _sha(artefato.get('pacote_id'))},
-            'backup': backup_limpo, 'proveniencia': proveniencia,
+            'backup': backup_limpo, 'proveniencia': proveniencia, 'fluxo': fluxo,
             'ensaio': ensaio_limpo, 'pos_ativacao': depois_limpo,
             'limite': 'Fotografia datada da consulta SSH; confirmação técnica não comprova jornada de aluno.'}
 

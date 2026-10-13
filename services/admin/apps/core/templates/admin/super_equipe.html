@@ -32,6 +32,7 @@
       <form method="post">{% csrf_token %}<button class="botao" name="acao" value="{% if rotina.ativa %}pausar{% else %}retomar{% endif %}">{% if rotina.ativa %}Pausar acompanhamento{% else %}Retomar acompanhamento{% endif %}</button></form>
     {% else %}<p>Aguardando o primeiro ciclo no servidor.</p>{% endif %}
     <p>As consultas e a correção de ressalvas não usam IA paga. As análises usam o orçamento já autorizado, com consumo registrado por trabalho. Custo externo não informado não é contado como zero.</p>
+    <p>Novas análises automáticas usam Nicole, Jez, Martin, Liz e Shreya, cada um com suas fontes. Trabalhos anteriores conservam as especialidades originais.</p>
   </section>
   <section class="cartao">
     <h2>Operação observada</h2>
@@ -40,6 +41,12 @@
     {% if rotina.operacao.recebida_em %}
       <p>VPS: {% if operacao_recente %}medição recente{% else %}<b>medição desatualizada</b>{% endif %}. Coletada em {{ rotina.operacao.coletada_em }}. Aplicação: {{ rotina.operacao.aplicacao }} · funil: {{ rotina.operacao.funil }}.</p>
       <p>Amostra de acessos da aplicação nos últimos 15 minutos (até 30 mil linhas): HTTP 5xx {{ rotina.operacao.http_5xx_15m|default_if_none:"não medido" }} · HTTP 404 {{ rotina.operacao.http_404_15m|default_if_none:"não medido" }}. Disco livre: {{ rotina.operacao.disco_livre_mb|default_if_none:"não medido" }} MB.</p>
+      <h3>Capacidade e sondas</h3>
+      <p>CPU ocupada: {{ rotina.operacao.cpu_ocupada_percentual|default_if_none:"não medida" }}% · espera de I/O: {{ rotina.operacao.cpu_iowait_percentual|default_if_none:"não medida" }}%. Intervalo: {{ rotina.operacao.intervalo_capacidade_segundos|default_if_none:"aguardando segunda coleta" }} s.</p>
+      <p>Memória total: {{ rotina.operacao.memoria_total_mb|default_if_none:"não medida" }} MB · usada: {{ rotina.operacao.memoria_usada_mb|default_if_none:"não medida" }} MB · disponível: {{ rotina.operacao.memoria_disponivel_mb|default_if_none:"não medida" }} MB.</p>
+      <p>I/O de discos inteiros: leitura {{ rotina.operacao.io_leitura_bytes_s|default_if_none:"não medida" }} bytes/s · escrita {{ rotina.operacao.io_escrita_bytes_s|default_if_none:"não medida" }} bytes/s.</p>
+      {% for sonda in rotina.operacao.sondas_http %}<p>Sonda {{ sonda.alvo }}: HTTP {{ sonda.http|default_if_none:"não medido" }} · {{ sonda.tempo_ms|default_if_none:"não medido" }} ms até cabeçalhos.</p>{% endfor %}
+      <p>Série: {{ rotina.operacao.serie|length }} coletas preservadas. {{ rotina.operacao.capacidade_limite }} {{ rotina.operacao.serie_limite }}</p>
       {% if rotina.operacao.integrador.coletada_em %}
       <h3>Armazenamento e entregas</h3>
       <p>O integrador evita recombinar conflitos com entradas iguais e retoma falhas temporárias após espera. Esse funcionamento não reativa a rotina de análises pausada.</p>

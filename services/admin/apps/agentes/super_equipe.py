@@ -113,7 +113,7 @@ def _painel(site_id: str) -> dict:
     return negocio
 
 
-def _fluxo_entregas(site_id: str) -> dict:
+def _fluxo_entregas(site_id: str, host: str = "meshcraft.top") -> dict:
     """Tempos do próprio fluxo técnico, com amostra e ausências explícitas."""
     base = Execucao.objects.filter(tipo=Execucao.Tipo.SUPER_EQUIPE,
                                    estado__site_id=str(site_id))
@@ -136,10 +136,29 @@ def _fluxo_entregas(site_id: str) -> dict:
                 "p95_segundos": round(valores[math.ceil(.95 * len(valores)) - 1], 3)
                 if len(valores) >= 20 else None}
 
+    from .super_equipe_entregas import consultar
+    from django.utils.dateparse import parse_datetime
+    fotografias = consultar(RotinaSuperEquipe.objects.filter(host=host, site_id=str(site_id)).first())
+    codigo = []
+    for item in fotografias['itens']:
+        fluxo = item.get('fluxo') or {}
+        recebida, iniciada, concluida = [parse_datetime(fluxo.get(k) or '') for k in (
+            'recebida_em', 'iniciada_em', 'concluida_em')]
+        def intervalo(a, b):
+            return round((b-a).total_seconds(), 3) if a and b and b >= a else None
+        codigo.append({'id': item['id'], 'candidata': item['candidata'],
+            'coletada_em': item.get('coletada_em'), 'atualidade': item['atualidade'],
+            'confirmacao_atual': item['confirmacao_atual'],
+            'espera_recebimento_inicio_segundos': intervalo(recebida, iniciada),
+            'duracao_inicio_conclusao_segundos': intervalo(iniciada, concluida),
+            'duracao_recebimento_conclusao_segundos': intervalo(recebida, concluida),
+            **fluxo})
     return {"estado": "medido", "universo": "trabalhos da Super Equipe deste site",
             "total": base.count(), "estados": estados, "janela": "200 trabalhos mais recentes",
             "espera_pedido_inicio": resumo(espera), "duracao_inicio_fim": resumo(execucao),
-            "limite": "Não representa entregas de código em geral; datas ausentes não entram como zero."}
+            "entregas_codigo": {"amostra": len(codigo), "itens": codigo,
+                "limite": "Última consulta importada por ID, inclusive entregas não concluídas. Cobertura limitada às importadas; datas ausentes não são zero. Tempo entre recebimento/início não é espera pura: pode incluir integração e tentativas. Tempos de etapas podem se sobrepor, não somar. Conclusão técnica não mede jornada comercial."},
+            "limite": "Trabalhos administrativos e entregas importadas são populações separadas; processamento ativo não inferido de duração. Datas ausentes não entram como zero."}
 
 
 def _entregas(host: str) -> dict:
@@ -266,7 +285,7 @@ def coletar_fontes(site_id: str, host: str) -> dict:
                            ("negocio", lambda: _painel(site_id)),
                            ("experimentos", lambda: _experimentos(site_id)),
                            ("robos_ia", lambda: _robos_ia(site_id)),
-                           ("fluxo_entregas", lambda: _fluxo_entregas(site_id)),
+                           ("fluxo_entregas", lambda: _fluxo_entregas(site_id, host)),
                            ("entregas", lambda: _entregas(host)),
                            ("integridade", lambda: _integridade(site_id)),
                            ("fontes", lambda: _contratos_tecnicos(site_id)),

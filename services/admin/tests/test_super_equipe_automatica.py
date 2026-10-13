@@ -67,6 +67,38 @@ def test_ciclo_duravel_nao_duplica_analise_nem_ocorrencia(rotina, fontes):
     assert Consumo.objects.count() == 0  # observação e agendamento não chamam IA
 
 
+def test_novo_ciclo_migra_selecao_sem_reescrever_ultimo_legado(rotina, fontes):
+    antigo, _ = super_equipe.pedir_trabalho(None, site_id='site-1', host=rotina.host,
+        pedido='Pedido antigo', especialidades=['arquitetura'], chave='legado')
+    antigo.situacao = 'aguardando_informacao'
+    antigo.estado['resultados'] = {'arquitetura': {'texto': 'Resposta antiga'}}
+    antigo.save()
+    rotina.ultimo_trabalho = antigo
+    rotina.save()
+    assert rodar(fontes)
+    rotina.refresh_from_db()
+    novo = rotina.ultimo_trabalho
+    assert novo.pk != antigo.pk and novo.estado['especialidades'] == list(super_equipe.PERFIS)
+    assert novo.estado['versoes_perfil'] == {p: super_equipe.VERSAO_PERFIL for p in super_equipe.PERFIS}
+    antigo.refresh_from_db()
+    assert antigo.estado['resultados']['arquitetura']['texto'] == 'Resposta antiga'
+    assert antigo.estado['especialidades'] == ['arquitetura']
+    adiantar(rotina)
+    assert rodar(fontes) and Execucao.objects.count() == 2
+
+
+def test_agenda_preserva_trabalho_legado_em_execucao(rotina, fontes):
+    antigo, _ = super_equipe.pedir_trabalho(None, site_id='site-1', host=rotina.host,
+        pedido='Pedido ainda executando', especialidades=['arquitetura'], chave='em-curso')
+    antigo.situacao = 'executando'
+    antigo.save()
+    rotina.ultimo_trabalho = antigo
+    rotina.save()
+    assert rodar(fontes)
+    rotina.refresh_from_db()
+    assert rotina.ultimo_trabalho_id == antigo.pk and Execucao.objects.count() == 1
+
+
 def test_posse_ativa_impede_segundo_observador_e_vencida_retoma(rotina, fontes):
     adiantar(rotina, posse="anterior", ocupada_ate=timezone.now() + timedelta(minutes=2))
     assert not rodar(fontes)
