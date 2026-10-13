@@ -61,17 +61,23 @@ def pesquisa(request, slug=None):
             raise Http404("Curso inexistente neste site")
         contexto["curso"] = curso
         if request.method == "POST":
-            contexto["erro"] = "A visualização administrativa não registra avaliações de alunos."
-            return render(request, "cursos/satisfacao.html", contexto, status=403)
-        status, dados = pedir("GET", "config", {"site_id": site_atual()})
-        if status != 200:
-            contexto["erro"] = (dados or {}).get("detail", "Não conseguimos consultar a pesquisa agora.")
+            corpo = {"acao": request.POST.get("acao", "responder"),
+                "estado_previa": request.POST.get("estado_previa", ""),
+                "curso": {"slug": curso.slug},
+                "pergunta_id": request.POST.get("pergunta_id", ""),
+                "valor": request.POST.getlist("valor") if len(request.POST.getlist("valor")) > 1 else request.POST.get("valor", ""),
+                "complemento": request.POST.get("complemento", ""),
+                "confirmado": request.POST.get("confirmado") == "sim"}
+            # A3 e R11 são múltiplas mesmo quando só uma opção foi marcada.
+            if corpo["pergunta_id"] in ("A3", "R11"):
+                corpo["valor"] = request.POST.getlist("valor")
+            status, dados = pedir("POST", "simular", {"site_id": site_atual(),
+                "admin_id": str(ator.pessoa.pk)}, corpo)
+            if status != 200:
+                contexto["erro"] = (dados or {}).get("detail", "Não conseguimos consultar a pesquisa agora.")
+            if isinstance(dados, dict) and dados.get("estado_previa"):
+                preencher_tentativa(contexto, dados)
             return render(request, "cursos/satisfacao.html", contexto, status=status)
-        documento = dados.get("documento") or {}
-        perguntas = {chave: dict(pergunta) for chave, pergunta in documento.get("perguntas", {}).items()}
-        if "A3" in perguntas:
-            perguntas["A3"]["opcoes"] = (documento.get("situacoes") or {}).get("aluno_pagante", [])
-        contexto["perguntas_previa"] = perguntas.values()
         return render(request, "cursos/satisfacao.html", contexto)
     if not ator.matricula_conferida or not ator.eh_aluno:
         contexto["erro"] = "Não conseguimos confirmar uma matrícula ativa. Entre com o e-mail cadastrado na escola ou fale com a equipe."
@@ -137,12 +143,17 @@ def pesquisa(request, slug=None):
                 dados = atual
     contexto["tentativa"] = dados if isinstance(dados, dict) and dados.get("id") else None
     if contexto["tentativa"]:
-        pergunta = dados.get("proxima_pergunta") or {}
-        contexto["pergunta"] = pergunta
-        contexto["nota_opcoes"] = range(11)
-        atual = (dados.get("respostas") or {}).get(pergunta.get("id"), "")
-        contexto["valor_atual"] = atual.get("valor", "") if isinstance(atual, dict) else atual
-        contexto["complemento_atual"] = atual.get("complemento", "") if isinstance(atual, dict) else ""
-        contexto["revisado"] = (dados.get("config_documento") or {}).get("roteiro") == "revisado"
-        contexto["primeira_pergunta"] = pergunta.get("id") in ("nota", "P1", "A1")
+        preencher_tentativa(contexto, dados)
     return render(request, "cursos/satisfacao.html", contexto, status=status if status not in (200, 201) else 200)
+
+
+def preencher_tentativa(contexto, dados):
+    contexto["tentativa"] = dados
+    pergunta = dados.get("proxima_pergunta") or {}
+    contexto["pergunta"] = pergunta
+    contexto["nota_opcoes"] = range(11)
+    atual = (dados.get("respostas") or {}).get(pergunta.get("id"), "")
+    contexto["valor_atual"] = atual.get("valor", "") if isinstance(atual, dict) else atual
+    contexto["complemento_atual"] = atual.get("complemento", "") if isinstance(atual, dict) else ""
+    contexto["revisado"] = (dados.get("config_documento") or {}).get("roteiro") == "revisado"
+    contexto["primeira_pergunta"] = pergunta.get("id") in ("nota", "P1", "A1")
