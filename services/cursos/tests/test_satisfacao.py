@@ -138,3 +138,13 @@ def test_admin_ve_indisponibilidade_da_pesquisa(client, env_dos_pares, rede, esq
     resposta = client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 503
     assert "Pesquisa indisponível." in resposta.content.decode()
+
+
+def test_admin_com_matricula_real_preserva_avaliacao_como_aluno(client, aluna, rede, monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", ANA["email"])
+    monkeypatch.setenv("QUIZ_API_URL", "http://quiz:8000")
+    monkeypatch.setenv("QUIZ_API_TOKEN", "par-nps")
+    rota = rede.post("http://quiz:8000/interno/nps/tentativas").mock(return_value=httpx.Response(201, json={"id": "bc7d35fc-c822-409c-a308-a2a9458e60f0"}))
+    resposta = client.post(reverse("satisfacao-curso", args=["profissional"]), {"acao": "iniciar"}, HTTP_COOKIE=COOKIE)
+    assert resposta.status_code == 302
+    assert json.loads(rota.calls[0].request.content)["matricula"]["status"] == "ativa"
