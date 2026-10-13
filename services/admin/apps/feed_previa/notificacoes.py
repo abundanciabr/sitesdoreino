@@ -137,7 +137,7 @@ def simular(request):
         chave = pedido(d.get("request_key"))
         semear(host)
         autor = Perfil.objects.get(site_host=host, chave={"like": "lia", "follow": "davi", "comment": "caio", "mention": "nina"}[d["kind"]])
-        post = Post.objects.filter(autor=eu).order_by("-pk").first()
+        post = Post.objects.filter(autor=eu).order_by("-pk").first() if d["kind"] != "follow" else None
         emitir(eu, autor, d["kind"], f"demo:{eu.pk}:{d['kind']}:{chave}", post=post, demonstracao=True)
         return resposta(retrato(eu))
     except (ValueError, TypeError, json.JSONDecodeError) as erro:
