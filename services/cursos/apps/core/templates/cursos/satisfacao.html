@@ -5,10 +5,20 @@
 .nps{max-width:720px;margin:auto;padding:20px}.nps h1{font-size:clamp(1.6rem,5vw,2.4rem)}.nps form{display:grid;gap:14px}.nps label{display:flex;align-items:center;gap:12px;border:1px solid #536277;border-radius:12px;padding:15px;cursor:pointer}.nps input[type=radio]{width:22px;height:22px;flex-shrink:0}.nps textarea{width:100%;box-sizing:border-box;min-height:140px;font:inherit;padding:12px;border-radius:10px}.nps button,.nps .botao{padding:14px 20px;border-radius:10px;font:inherit;cursor:pointer}.nps .notas{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.nps .notas label{justify-content:center;padding:12px 4px;flex-wrap:wrap}.nps .secundario{background:transparent;color:inherit;border:1px solid #536277}.nps .aviso{padding:16px;border:1px solid #c69749;border-radius:12px}.nps small{opacity:.8}
 </style>
 <section class="nps">
-<p class="rotulo">Experiência do aluno</p><h1>{% if curso %}Avaliar {{ curso.nome }}{% else %}Satisfação com meu curso{% endif %}</h1>
-<p>Sua opinião ajuda a escola a cuidar da sua experiência.</p>
+<p class="rotulo">Experiência do aluno</p><h1>{% if curso %}{% if previa_admin %}Pesquisa de satisfação · {% else %}Avaliar {% endif %}{{ curso.nome }}{% else %}Satisfação com meu curso{% endif %}</h1>
+{% if previa_admin %}<p class="aviso">Visualização administrativa. As perguntas abaixo são do roteiro vigente; nenhuma resposta ou avaliação de aluno é registrada aqui.</p>{% else %}<p>Sua opinião ajuda a escola a cuidar da sua experiência.</p>{% endif %}
 {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
 {% if entrar %}<p><a class="botao" href="/entrar?next=/cursos/satisfacao/">Entrar com meu cadastro da escola</a></p>
+{% elif previa_admin and curso %}
+  {% for pergunta in perguntas_previa %}
+  <section style="margin-top:24px">
+    <h2>{{ pergunta.texto }}</h2>
+    {% if pergunta.aviso %}<p>{{ pergunta.aviso }}</p>{% endif %}
+    {% if pergunta.ajuda %}<p>{{ pergunta.ajuda }}</p>{% endif %}
+    {% if pergunta.tipo == 'nota' %}<p>Nota de 0 a 10.</p>{% elif pergunta.opcoes %}<ul>{% for opcao in pergunta.opcoes %}<li>{{ opcao.texto }}</li>{% endfor %}</ul>{% else %}<p>Resposta em texto.</p>{% endif %}
+  </section>
+  {% endfor %}
+  <p><a href="{% url 'satisfacao' %}">Ver pesquisas dos cursos</a></p>
 {% elif curso %}
   {% if not tentativa %}
   <p>Queremos saber como está o curso para você. São poucas perguntas. Não existe resposta certa nem errada.</p>

@@ -50,6 +50,25 @@ def pesquisa(request, slug=None):
     contexto = {"curso": None, "erro": "", "cursos": [], "tentativa": None}
     if not ator.autenticado:
         return render(request, "cursos/satisfacao.html", {**contexto, "entrar": True})
+    if ator.eh_admin:
+        # O admin inspeciona a pesquisa sem se passar por um aluno matriculado.
+        cursos = Curso.objects.filter(site_id=site_atual()).order_by("slug")
+        contexto.update(cursos=cursos, previa_admin=True)
+        if slug is None:
+            return render(request, "cursos/satisfacao.html", contexto)
+        curso = cursos.filter(slug=slug).first()
+        if not curso:
+            raise Http404("Curso inexistente neste site")
+        contexto["curso"] = curso
+        if request.method == "POST":
+            contexto["erro"] = "A visualização administrativa não registra avaliações de alunos."
+            return render(request, "cursos/satisfacao.html", contexto, status=403)
+        status, dados = pedir("GET", "config", {"site_id": site_atual()})
+        if status != 200:
+            contexto["erro"] = (dados or {}).get("detail", "Não conseguimos consultar a pesquisa agora.")
+            return render(request, "cursos/satisfacao.html", contexto, status=status)
+        contexto["perguntas_previa"] = (dados.get("documento") or {}).get("perguntas", {}).values()
+        return render(request, "cursos/satisfacao.html", contexto)
     if not ator.matricula_conferida or not ator.eh_aluno:
         contexto["erro"] = "Não conseguimos confirmar uma matrícula ativa. Entre com o e-mail cadastrado na escola ou fale com a equipe."
         return render(request, "cursos/satisfacao.html", contexto, status=403)
