@@ -61,6 +61,12 @@ def simular(request):
             return nps._error("Simulação concluída. Comece novamente.", 409)
         error = nps_revisado.process(attempt, data)
     result = nps_revisado.serialize(attempt)
+    # O estado mantém o marcador do motor; a prévia mostra a resposta por extenso.
+    for item in result.get("respostas_legiveis", []):
+        if item.get("resposta") == nps_revisado.NAO_ENTENDI:
+            item["resposta"] = "Não entendi a pergunta"
+    if result.get("conferencia"):
+        result["conferencia"]["resumo"] = nps_revisado.conference_summary(result["respostas_legiveis"])
     result["estado_previa"] = signing.dumps(
         {"admin_id": admin_id, "tentativa": result}, salt=SALT, compress=True)
     if error:
