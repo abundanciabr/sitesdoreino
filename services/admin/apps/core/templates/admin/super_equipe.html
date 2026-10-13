@@ -9,7 +9,7 @@
     {% for item in trilha_entregas.itens %}
       <p>Entrega <code>{{ item.id }}</code> · candidata <code>{{ item.candidata }}</code> · pacote <code>{{ item.artefato.pacote_id|default:"não informado" }}</code>.</p>
       <p>SHA do código: <code>{{ item.artefato.codigo_sha256|default:"não informada" }}</code>. Ensaio: {{ item.ensaio.estado }} · {{ item.ensaio.aprovados|default_if_none:"não informado" }} aprovados · {{ item.ensaio.falhas|default_if_none:"não informado" }} falhas · {{ item.ensaio.ignorados|default_if_none:"não informado" }} ignorados.</p>
-      <p>Fonte coletada em {{ item.coletada_em }} · {{ item.atualidade }}. Confirmação atual: {{ item.confirmacao_atual|yesno:"sim,não" }}. Backup do código: {{ item.backup.tempo_codigo_segundos|default_if_none:"não informado" }} s; identidade e restauração não informadas.</p>
+      <p>Fonte coletada em {{ item.coletada_em }} · {{ item.atualidade }}. Confirmação atual: {{ item.confirmacao_atual|yesno:"sim,não" }}. Backup do código: {{ item.backup.tempo_codigo_segundos|default_if_none:"não informado" }} s. Backup: <code>{{ item.backup.identidade|default:"não identificado" }}</code>; restauração isolada: {{ item.backup.restauracao_comprovada|yesno:"comprovada,não comprovada,não informada" }}.</p>
     {% empty %}<p>Ainda não há consulta operacional registrada.</p>{% endfor %}
     <details><summary>Atualizar a fonte pela consulta operacional</summary>
       <form method="post">{% csrf_token %}
