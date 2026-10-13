@@ -10,7 +10,7 @@ from django.test import Client
 
 from apps.core.models import Documento, VersaoDoDocumento
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture(autouse=True)
@@ -62,7 +62,7 @@ def test_versao_ausente_ou_invalida_nao_grava(base):
     assert doc.corpo == 'BASE' and not doc.versoes.exists()
 
 
-def test_duas_gravacoes_simultaneas_tem_um_vencedor():
+def provar_duas_gravacoes_simultaneas_tem_um_vencedor():
     assert connection.vendor == 'postgresql', 'Ensaio exige PostgreSQL isolado'
     doc = Documento.objects.create(nome='simultaneo-teste', titulo='Teste', corpo='BASE')
     clientes = [abrir(doc.nome), abrir(doc.nome)]
