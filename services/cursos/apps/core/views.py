@@ -610,6 +610,7 @@ def _cartao_do_catalogo(ator, curso: Curso) -> dict:
         "situacao": situacao,
     }
     if situacao == "seu":
+        cartao["url_pesquisa"] = reverse("satisfacao-curso", args=[curso.slug])
         cartao.update(_resumo_do_progresso(curso, ator.pessoa))
         cartao["acao"] = (
             "Continuar curso" if cartao["aulas_concluidas"] else "Entrar no curso"
