@@ -98,7 +98,11 @@ def preparar_admin(rede, monkeypatch):
 def test_admin_sem_matricula_lista_cursos_e_visualiza_roteiro(client, env_dos_pares, rede, esqueleto, monkeypatch):
     preparar_admin(rede, monkeypatch)
     rota = rede.get("http://quiz:8000/interno/nps/config").mock(return_value=httpx.Response(200, json={
-        "documento": {"perguntas": {"nota": {"texto": "Recomendaria o curso?", "tipo": "nota"}}}}))
+        "documento": {"perguntas": {
+            "nota": {"texto": "Recomendaria o curso?", "tipo": "nota"},
+            "A3": {"texto": "Que situações aconteceram?", "tipo": "multipla"},
+            "R4": {"texto": "Qual foi a mais grave?", "tipo": "escolha"}},
+            "situacoes": {"aluno_pagante": [{"id": "video", "texto": "O vídeo não abre"}]}}}))
     lista = client.get(reverse("satisfacao"), HTTP_COOKIE=COOKIE)
     assert lista.status_code == 200
     assert reverse("satisfacao-curso", args=[esqueleto.slug]) in lista.content.decode()
@@ -106,6 +110,8 @@ def test_admin_sem_matricula_lista_cursos_e_visualiza_roteiro(client, env_dos_pa
     assert resposta.status_code == 200
     texto = resposta.content.decode()
     assert "Visualização administrativa" in texto and "Recomendaria o curso?" in texto
+    assert "O vídeo não abre" in texto
+    assert "As opções são definidas pelas respostas anteriores do aluno." in texto
     assert "Começar avaliação" not in texto
     assert rota.calls[0].request.url.params["site_id"] == esqueleto.site_id
     assert not any(call.request.method == "POST" for call in rede.calls)
