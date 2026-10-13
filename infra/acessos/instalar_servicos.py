@@ -155,7 +155,7 @@ def main():
         for name, args in (
             ('listar', ['servicos', 'listar']), ('saude', ['servicos', 'saude']),
             ('logs', ['servicos', 'logs', 'analisador', '60', '20']),
-            ('analisador', ['analisador', 'consultar']), ('entregas', ['estado']),
+            ('analisador', ['analisador', 'consultar']), ('entregas', ['consultar', '8c6e5065c027']),
             ('reinicio', ['servicos', 'reiniciar', 'analisador']),
             ('apos_reinicio', ['analisador', 'consultar']),
         ):
