@@ -153,6 +153,14 @@ def contar(linhas):
 
 
 def coletar():
+    # Integração já instalada no canal operacional; preserva sua atualização.
+    import sys
+    sys.path.insert(0, "/usr/local/lib/meshcraft-acessos")
+    try:
+        from evidencias_publicador import collect
+        collect()
+    except (ImportError, OSError, ValueError, TypeError, KeyError, subprocess.SubprocessError):
+        pass
     agora = datetime.now(timezone.utc)
     disco = shutil.disk_usage("/opt/plataforma")
     anterior = ler_json(DESTINO, {})
