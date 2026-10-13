@@ -25,6 +25,7 @@ from . import modelo, trabalhos
 from .models import (ChamadaDeFerramenta, Consumo, Entrega, Execucao,
                      MelhoriaSuperEquipe, RoboPessoal, RotinaSuperEquipe)
 from .super_equipe_perfis import PERFIS, VERSAO_PERFIL, contexto_do_perfil, instrucoes, rotulo
+from . import super_equipe_avaliacao as avaliacao
 
 ESPECIALIDADES = {
     "arquitetura": "Arquitetura e ligação entre as partes do site",
@@ -89,6 +90,7 @@ def pedir_trabalho(membro, *, site_id: str, host: str, pedido: str,
                 chave_de_repeticao=marca, etapa_atual="Na fila do servidor",
                 estado={"site_id": str(site_id), "host": host,
                         "especialidades": escolhidas, "resultados": {},
+                        "fluxo_avaliacao": avaliacao.VERSAO if any(c in PERFIS for c in escolhidas) else "",
                         "versoes_perfil": {codigo: VERSAO_PERFIL for codigo in escolhidas if codigo in PERFIS}},
             )
             trabalhos.registrar(execucao, "Pedido da equipe técnica recebido no site.")
@@ -393,6 +395,10 @@ def _entrega(execucao: Execucao, *, parcial: bool, pendencias: list[str]) -> Ent
             blocos += ["", f"## {rotulo(codigo, ESPECIALIDADES)}{complemento}", resultado["texto"]]
     if pendencias:
         blocos += ["", "## Limites e pendências", *[f"- {p}" for p in pendencias]]
+    sintese = estado.get("sintese_final")
+    if sintese:
+        blocos += ["", "## Nicole Forsgren · síntese final posterior aos pareceres", sintese["texto"],
+                   "", "Síntese do modelo; não é aprovação obrigatória nem comprovação independente de efeito externo."]
     conteudo = "\n".join(blocos)
     entrega = execucao.entregas.filter(tipo="super_equipe").first()
     if entrega:
@@ -426,14 +432,22 @@ def executar(execucao: Execucao) -> None:
         Execucao.objects.filter(pk=execucao.pk, trabalhador=execucao.trabalhador).update(
             modelo=conexao.modelo_forte)
         execucao.modelo = conexao.modelo_forte
-    total = len(estado["especialidades"])
-    for indice, codigo in enumerate(estado["especialidades"]):
-        if codigo in estado["resultados"]:
+    etapas = list(estado["especialidades"])
+    rastreavel = estado.get("fluxo_avaliacao") == avaliacao.VERSAO
+    if rastreavel and "nicole_forsgren" in etapas and len(etapas) > 1:
+        etapas.append(avaliacao.SINTESE)
+    total = len(etapas)
+    for indice, codigo in enumerate(etapas):
+        sintese = codigo == avaliacao.SINTESE
+        if (estado.get("sintese_final") if sintese else codigo in estado["resultados"]):
             continue
-        batimento(execucao, f"{rotulo(codigo, ESPECIALIDADES)} em análise", 15 + 75 * indice // total)
+        papel = "nicole_forsgren" if sintese else codigo
+        nome = "Nicole · síntese final" if sintese else rotulo(codigo, ESPECIALIDADES)
+        batimento(execucao, f"{nome} em análise", 15 + 75 * indice // total)
         # Chamada paga que retornou sem ponto de retomada não é repetida
         # silenciosamente; a reserva/consumo existente permanece visível.
-        if Consumo.objects.filter(execucao=execucao).count() > len(estado["resultados"]):
+        salvas = len(estado["resultados"]) + bool(estado.get("sintese_final"))
+        if Consumo.objects.filter(execucao=execucao).count() > salvas:
             pendencias = ["Uma resposta paga ficou sem resultado salvo após interrupção. Requer conferência antes de retomar."]
             _entrega(execucao, parcial=True, pendencias=pendencias)
             terminar(execucao, Execucao.Situacao.FALHOU, pendencias[0])
@@ -443,29 +457,59 @@ def executar(execucao: Execucao) -> None:
                     if r.get("fontes_digest") == digest_fontes
                     or (not estado.get("fontes_anteriores") and not r.get("fontes_digest"))}
         contexto = contexto_do_perfil(
-            codigo, _sem_dados_pessoais(execucao.pedido), estado["fontes"], anterior)
+            papel, _sem_dados_pessoais(execucao.pedido), estado["fontes"], anterior)
+        instrucao = instrucoes(papel, ESPECIALIDADES) + "\n\n" + orientacao_dos_robos()
+        if rastreavel and (sintese or codigo == "shreya_shankar"):
+            contexto["confronto"] = avaliacao.material(estado, digest_fontes, _sem_dados_pessoais)
+            instrucao += avaliacao.orientacao(codigo)
+        inicio = timezone.now()
+        if rastreavel:
+            entrada = {"perfil": papel, "etapa": codigo, "fluxo_avaliacao": avaliacao.VERSAO,
+                       "modelo": conexao.modelo_forte, "instrucoes_digest": avaliacao.digest(instrucao),
+                       "fontes_digest": digest_fontes, "iniciada_em": inicio.isoformat(),
+                       "contexto_digest": avaliacao.digest(contexto), "contexto": contexto,
+                       "instrucoes": instrucao,
+                       "limite": "Leitura determinística de fontes minimizadas; capacidades declaradas não são chamadas de ferramenta. Efeito externo não observado por esta etapa."}
+            entradas = estado.setdefault("entradas_avaliacao", {})
+            if codigo in entradas:
+                estado.setdefault("entradas_avaliacao_anteriores", []).append(entradas[codigo])
+            entradas[codigo] = entrada
+            guardar_estado(execucao)
         resposta = modelo.responder(
             modelo=conexao.modelo_forte,
-            instrucoes=instrucoes(codigo, ESPECIALIDADES) + "\n\n" + orientacao_dos_robos(),
+            instrucoes=instrucao,
             itens=[{"role": "user", "content": json.dumps(contexto, ensure_ascii=False, default=str)}],
             max_saida=3000, esforco="medium", execucao=execucao,
             robo=execucao.robo, origem="super_equipe")
         if not resposta.completa or not resposta.texto.strip():
-            pendencias = [f"{rotulo(codigo, ESPECIALIDADES)}: resposta paga incompleta ou vazia; consumo registrado."]
+            pendencias = [f"{nome}: resposta paga incompleta ou vazia; consumo registrado."]
             _entrega(execucao, parcial=True, pendencias=pendencias)
             terminar(execucao, Execucao.Situacao.FALHOU, pendencias[0])
             return
-        estado["resultados"][codigo] = {"texto": _sem_dados_pessoais(resposta.texto.strip()),
+        resultado = {"texto": _sem_dados_pessoais(resposta.texto.strip()),
                                          "resposta_id": resposta.id,
                                          "consumo_id": resposta.consumo.pk,
                                          "fontes_digest": digest_fontes,
                                          "fontes_consultadas_em": estado["fontes"].get("consultado_em"),
                                          "concluido_em": timezone.now().isoformat()}
+        if rastreavel:
+            resultado["rastreio"] = {k: v for k, v in entrada.items() if k not in ("contexto", "instrucoes")}
+            resultado["rastreio"].update({"consumo_id": resposta.consumo.pk,
+                "custo_estimado_usd": str(resposta.consumo.custo_estimado_usd),
+                "desconhecido": resposta.consumo.desconhecido,
+                "tokens_entrada": resposta.consumo.tokens_entrada,
+                "tokens_saida": resposta.consumo.tokens_saida,
+                "duracao_segundos": (timezone.now() - inicio).total_seconds()})
+        if sintese:
+            estado["sintese_final"] = resultado
+        else:
+            estado["resultados"][codigo] = resultado
         guardar_estado(execucao)
         _entrega(execucao, parcial=True, pendencias=["Outros especialistas ainda trabalham."])
     pendencias = _pendencias(estado["fontes"])
     if estado.get("fontes_anteriores") and any(
-            r.get("fontes_digest") != digest_fontes for r in estado["resultados"].values()):
+            r.get("fontes_digest") != digest_fontes for r in (
+                list(estado["resultados"].values()) + ([estado["sintese_final"]] if estado.get("sintese_final") else []))):
         pendencias.append("Respostas anteriores preservadas usam outra fotografia das fontes; não foram regeneradas nem reutilizadas na nova análise.")
     entrega = _entrega(execucao, parcial=bool(pendencias), pendencias=pendencias)
     if pendencias:

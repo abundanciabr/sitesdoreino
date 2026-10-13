@@ -100,9 +100,13 @@ def super_equipe_trabalho(request, trabalho_id: int):
         pk=trabalho_id, tipo=Execucao.Tipo.SUPER_EQUIPE)
     resultados = [(rotulo(codigo, ESPECIALIDADES), trabalho.estado.get("resultados", {}).get(codigo))
                   for codigo in trabalho.estado.get("especialidades", [])]
+    rastreios = [{**entrada, "contexto_texto": json.dumps(entrada.get("contexto", {}),
+                    ensure_ascii=False, indent=2, default=str)}
+                for entrada in trabalho.estado.get("entradas_avaliacao", {}).values()]
     return render(request, "admin/super_equipe_trabalho.html", {
         "admin": request.admin, "trabalho": trabalho,
         "resultados": resultados,
+        "rastreios": rastreios, "sintese": trabalho.estado.get("sintese_final"),
         "fontes": trabalho.estado.get("fontes", {}),
         "entrega": trabalho.entregas.first(),
         "custo": trabalho.consumos.aggregate(total=Sum("custo_estimado_usd"))["total"] or 0,
