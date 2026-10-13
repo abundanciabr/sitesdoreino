@@ -158,11 +158,11 @@ def test_contexto_de_cada_perfil_separa_fontes_e_reserva_revisao_para_shreya():
     anteriores = {"nicole_forsgren": {"texto": "resposta conferível"}}
     contextos = {codigo: contexto_do_perfil(codigo, "pedido", fontes, anteriores)
                  for codigo in PERFIS}
-    assert set(contextos["nicole_forsgren"]["fontes"]) == {"fluxo_entregas", "negocio", "experimentos"}
+    assert set(contextos["nicole_forsgren"]["fontes"]) == {"fluxo_entregas", "negocio", "experimentos", "percurso_comercial"}
     assert "resultados_anteriores" not in contextos["nicole_forsgren"]
     assert set(contextos["jez_humble"]["fontes"]) == {"entregas", "fluxo_entregas", "servidor"}
-    assert set(contextos["martin_kleppmann"]["fontes"]) == {"integridade", "entregas", "fontes"}
-    assert set(contextos["liz_fong_jones"]["fontes"]) == {"execucao_operacional", "servidor", "fluxo_entregas"}
+    assert set(contextos["martin_kleppmann"]["fontes"]) == {"integridade", "entregas", "fontes", "percurso_comercial"}
+    assert set(contextos["liz_fong_jones"]["fontes"]) == {"execucao_operacional", "servidor", "fluxo_entregas", "percurso_comercial"}
     assert contextos["shreya_shankar"]["fontes"]["resultados_anteriores"] == anteriores
     assert all(c["versao_perfil"] == VERSAO_PERFIL for c in contextos.values())
 

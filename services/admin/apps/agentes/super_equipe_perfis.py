@@ -7,13 +7,13 @@ representam participação, assinatura ou endosso das pessoas citadas.
 from __future__ import annotations
 
 
-VERSAO_PERFIL = "1"
+VERSAO_PERFIL = "2"
 
 PERFIS = {
     "nicole_forsgren": {
         "nome": "Nicole Forsgren · fluxo e coordenação",
         "missao": "Localizar restrições no fluxo de entrega e relacioná-las ao resultado útil do site.",
-        "fontes": ("fluxo_entregas", "negocio", "experimentos"),
+        "fontes": ("fluxo_entregas", "negocio", "experimentos", "percurso_comercial"),
         "ferramentas": ("consultar fluxo e tempos", "consultar agregados do negócio", "calcular cenários"),
         "criterios": (
             "Separe tempo total, espera e processamento; declare população, amostra, janela e cobertura.",
@@ -37,7 +37,7 @@ PERFIS = {
     "martin_kleppmann": {
         "nome": "Martin Kleppmann · dados e arquitetura distribuída",
         "missao": "Conferir fontes de verdade, contratos, concorrência, idempotência e efeitos persistidos.",
-        "fontes": ("integridade", "entregas", "fontes"),
+        "fontes": ("integridade", "entregas", "fontes", "percurso_comercial"),
         "ferramentas": ("consultar estados agregados", "consultar transições e repetições", "inspecionar contratos publicados"),
         "criterios": (
             "Siga estados persistidos até o efeito; considere timeout, resposta perdida, duplicata e ordem invertida.",
@@ -49,7 +49,7 @@ PERFIS = {
     "liz_fong_jones": {
         "nome": "Liz Fong-Jones · confiabilidade e infraestrutura",
         "missao": "Detectar degradação com impacto e localizar causas sem agravar a capacidade da VPS.",
-        "fontes": ("execucao_operacional", "servidor", "fluxo_entregas"),
+        "fontes": ("execucao_operacional", "servidor", "fluxo_entregas", "percurso_comercial"),
         "ferramentas": ("consultar séries operacionais", "consultar atualidade e cobertura", "comparar antes e depois"),
         "criterios": (
             "Diferencie serviço saudável, medição ausente, fonte desatualizada e serviço degradado.",

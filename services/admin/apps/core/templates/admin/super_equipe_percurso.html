@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Percurso comercial | Super Equipe{% endblock %}
+{% block corpo %}
+<main class="envolucro copy">
+  <p><a href="{% url 'super_equipe' %}">← Super Equipe</a> · <a href="{% url 'perpetuo' %}">Lançamentos perpétuos</a></p>
+  <h1>Medição do percurso comercial</h1>
+  <p>Próximo lote escolhido pelo mantenedor: observar tráfego → quiz → compra → entrada na plataforma com os registros existentes. Esta consulta é privada e não faz compras, altera dados ou chama IA paga.</p>
+  <form method="get" class="cartao">
+    <label>Início <input type="date" name="inicio" value="{{ r.periodo.inicio }}" required></label>
+    <label>Fim <input type="date" name="fim" value="{{ r.periodo.fim }}" required></label>
+    <button class="botao" type="submit">Consultar período</button>
+    <p><a href="?janela=dia">Hoje</a> · <a href="?janela=semana">Esta semana</a> · <a href="?janela=mes">Este mês</a> · <a href="?janela=45">45 dias</a> · <a href="?janela=84">12 semanas</a></p>
+  </form>
+  {% if erro %}<p role="alert">{{ erro }}</p>{% else %}
+  <p><strong>{{ r.periodo.inicio }} a {{ r.periodo.fim }}</strong> · {{ r.periodo.fuso }}.<br>
+    Início da coleta: {{ r.periodo.observado_em }} · término: {{ r.concluido_em|default:"não concluída" }}.<br>
+    <a href="?inicio={{ r.periodo.inicio }}&amp;fim={{ r.periodo.fim }}&amp;formato=json">Consultar os agregados em JSON</a> (nova leitura; os valores podem mudar).</p>
+  {% if r.motivo %}<p role="alert">{{ r.motivo }}</p>{% endif %}
+
+  <section class="cartao">
+    <h2>1. Tráfego que chegou → quiz concluído</h2>
+    <p>Fonte: API de campanhas dos quizzes, primeira abertura por sessão no período. Conclusões e saídas são acompanhadas até a consulta, inclusive depois do fim do período. Testes reconhecidos pela fonte ficam fora.</p>
+    <p>Cada linha usa a mesma população de sessões do quiz. Pessoas podem usar mais de uma sessão ou quiz. O começo da medição é a abertura registrada; não há impressões, cliques faturados ou gasto de anúncios nesta fonte.</p>
+    {% if r.inventario.estado == "medido" %}
+    <p>Quizzes encontrados: {{ r.inventario.total }} · omitidos nesta leitura: {{ r.inventario.omitidos }}. Limite de 30 quizzes por consulta.</p>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Quiz</th><th>Aberturas</th><th>Conclusões vinculadas</th><th>Conclusão / abertura</th><th>Saídas para oferta</th><th>Conclusões sem abertura</th><th>Testes fora (aberturas / conclusões)</th></tr></thead>
+      <tbody>{% for q in r.quizzes %}<tr>
+        <td>{{ q.quiz }}</td>
+        {% if q.estado == "medido" %}
+        <td>{{ q.visitas }}</td><td>{{ q.conclusoes }}</td><td>{{ q.taxa|default_if_none:"sem denominador" }}{% if q.taxa != None %}%{% endif %}</td>
+        <td>{{ q.saidas }}</td><td>{{ q.orfas }}</td><td>{{ q.teste_visitas }} / {{ q.teste_conclusoes }}</td>
+        {% else %}<td colspan="6">Fonte indisponível ou incompleta; contagens desconhecidas.</td>{% endif %}
+      </tr>{% empty %}<tr><td colspan="7">Inventário vazio nesta fonte.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p>Inventário indisponível. Ausência de leitura não significa zero tráfego.</p>{% endif %}
+    <p><strong>Tempo abertura → conclusão: indisponível.</strong> Esta API entrega contagens, sem os instantes individuais. Uma saída para oferta não comprova compra. Taxas pequenas têm pouca amostra; não demonstram ganho causal.</p>
+  </section>
+
+  <section class="cartao">
+    <h2>2. Registro do quiz no CRM → compra aprovada</h2>
+    <p>Fonte: API de resultados comerciais do CRM. Entrada na população pela criação da oportunidade no período, uma oportunidade por contato e quiz; aprovação acompanhada até o início desta coleta, mesmo depois do período. Compras sem oportunidade de quiz estão fora.</p>
+    {% if r.crm.estado != "indisponivel" %}
+    <p><strong>{{ r.crm.contatos }} contatos distintos</strong> em {{ r.crm.oportunidades }} oportunidades lidas → <strong>{{ r.crm.compradores }} compradores</strong> e {{ r.crm.pedidos }} pedidos aprovados. Desses pedidos, {{ r.crm.revertidas }} foram revertidos posteriormente.</p>
+    <p>Compradores / contatos da mesma população: {{ r.crm.taxa|default_if_none:"não calculável" }}{% if r.crm.taxa != None %}%{% endif %}. Pessoas são deduplicadas pelo contato do CRM, não pelo número de compras.</p>
+    <p>Totais informados pela fonte: {{ r.crm.totais_fonte_oportunidades }} oportunidades e {{ r.crm.totais_fonte_compras }} compras. Truncamento: {{ r.crm.truncado|yesno:"sim,não" }} · registros inconsistentes/duplicados: {{ r.crm.inconsistentes }} · aprovações após o corte: {{ r.crm.posteriores }}. {% if not r.crm.completa %}<strong>Leitura parcial: números lidos não representam o total; taxa suprimida.</strong>{% endif %}</p>
+    <p>Oportunidades sem campanha registrada: {{ r.crm.sem_campanha }}. Testes excluídos pela fonte: {{ r.crm.testes_oportunidades }} oportunidades e {{ r.crm.testes_compras }} compras sandbox. Campanha preenchida não comprova tráfego pago nem seu custo.</p>
+    <h3>Tempo entre criação da oportunidade e aprovação</h3>
+    <p>Amostra: {{ r.crm.tempos.amostra }} pedidos · mediana: {{ r.crm.tempos.mediana_s|default_if_none:"indisponível" }} s · p95: {{ r.crm.tempos.p95_s|default_if_none:"indisponível" }} s · mínimo: {{ r.crm.tempos.min_s|default_if_none:"indisponível" }} s · máximo: {{ r.crm.tempos.max_s|default_if_none:"indisponível" }} s.</p>
+    <p>Fora da duração: {{ r.crm.sem_tempo }} sem data de aprovação legível e {{ r.crm.invertidos }} com aprovação anterior ao registro no CRM. O instante do CRM pode ser posterior à conclusão real do quiz; não é uma medição completa do tempo de compra.</p>
+    {% else %}<p>Fonte indisponível ou fora do contrato. Contatos, compras e tempos desconhecidos.</p>{% endif %}
+    <p><strong>Ligação sessão do quiz → contato do CRM: não exposta pelas fontes consultadas.</strong> Por isso, compradores não são divididos pelas aberturas da primeira seção.</p>
+  </section>
+
+  <section class="cartao">
+    <h2>3. Compra → acesso à plataforma</h2>
+    <p>Fonte: API de matrículas da escola, filtrada por este site. População independente: vendas reconhecidas pela escola cuja data de liberação (<code>virou_aluno_em</code>) está no período. Não usa a data de compra preenchida pelo aluno. Segue o critério de venda já usado pelo placar.</p>
+    {% if r.escola.estado != "indisponivel" %}
+    <p><strong>{{ r.escola.matriculas }} matrículas de venda</strong> para {{ r.escola.pessoas }} pessoas identificadas. Dessas pessoas, {{ r.escola.pessoas_com_registro_anterior }} têm outra matrícula de venda anterior ao período e {{ r.escola.pessoas_sem_registro_anterior }} não têm registro anterior na fonte atual.</p>
+    <p>Matrículas reembolsadas no estado atual, com liberação no período: {{ r.escola.reembolsadas }} (fora da contagem de vendas). Vendas sem data de liberação na base: {{ r.escola.sem_data }}; matrículas do período sem identidade para deduplicação: {{ r.escola.sem_identidade }}. {% if r.escola.estado == "parcial" %}<strong>Contagem parcial; não equivale ao total de pessoas.</strong>{% endif %}</p>
+    {% else %}<p>Escola indisponível ou fora do contrato. Matrículas e pessoas desconhecidas.</p>{% endif %}
+    {% if r.ligacao %}
+    <h3>Vínculo de contato existente</h3>
+    <p>Entre {{ r.ligacao.compradores_observados }} compradores lidos no CRM, {{ r.ligacao.com_matricula }} têm matrícula de venda associada ao mesmo contato; {{ r.ligacao.sem_matricula_vinculada }} não têm esse vínculo localizado. Na escola, {{ r.ligacao.matriculas_sem_contato }} matrículas de venda anteriores à coleta não informam contato do CRM.</p>
+    <p>{{ r.ligacao.limite }} {% if not r.crm.completa %}A população do CRM está parcial.{% endif %}</p>
+    {% endif %}
+    <p><strong>Tempo compra → liberação: indisponível.</strong> A API da escola não expõe o pedido que originou a matrícula. <strong>Primeiro acesso efetivo e tempo até o primeiro login: indisponíveis.</strong> Acesso liberado não comprova entrada do aluno.</p>
+    <p>Esta leitura não substitui as metas do placar nem adiciona a base anterior à meta de pessoas únicas. O placar e o ciclo continuam com seus registros e critérios existentes.</p>
+  </section>
+  <section class="cartao">
+    <h2>Cobertura e prova desta leitura</h2>
+    <p>Fontes consultadas por leitura: quizzes (inventário e campanhas), CRM (<code>/resultados/comerciais</code>) e escola (<code>/matriculas</code>). A consulta JSON acima expõe somente agregados, períodos e lacunas; não contém nomes, e-mails, CPFs, identificadores de contatos ou pedidos.</p>
+    <p>Os mesmos agregados alimentam novas análises da Super Equipe nos perfis Nicole, Martin e Liz. Fotografias e pareceres anteriores permanecem com as fontes e versões que usaram.</p>
+    <ul>{% for limite in r.limites %}<li>{{ limite }}</li>{% endfor %}</ul>
+    <p>Resultado entregue: medição observacional das passagens que têm registro. Não demonstra aumento de vendas. Melhorias 2 e 7, reserva incerta, orçamento e Mercado Pago permanecem fora das alterações deste lote.</p>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

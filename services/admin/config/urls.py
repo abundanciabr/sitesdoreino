@@ -202,7 +202,7 @@ from apps.core.contatos import contato, contato_atendimento, contatos
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
-from apps.agentes.views_super_equipe import super_equipe, super_equipe_trabalho, super_equipe_fila, super_equipe_acao, super_equipe_executor
+from apps.agentes.views_super_equipe import super_equipe, super_equipe_trabalho, super_equipe_fila, super_equipe_acao, super_equipe_executor, super_equipe_percurso
 from apps.agentes.super_equipe_desenvolvimento import desenvolver as super_equipe_desenvolver
 from apps.core.pagamentos import pagamentos, pagamentos_devolver
 from apps.core.gestao_do_placar import gestao_do_placar
@@ -894,6 +894,7 @@ urlpatterns = [
     # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
     path("placar/", placar, name="placar"),
     path("super-equipe/", super_equipe, name="super_equipe"),
+    path("super-equipe/percurso-comercial/", super_equipe_percurso, name="super_equipe_percurso_comercial"),
     path("super-equipe/fila/", super_equipe_fila, name="super_equipe_fila"),
     path("super-equipe/executor/", super_equipe_executor, name="super_equipe_executor"),
     path("super-equipe/desenvolver/<int:melhoria_id>/", super_equipe_desenvolver, name="super_equipe_desenvolver"),

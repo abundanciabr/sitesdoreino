@@ -37,6 +37,31 @@ def _site(request):
     return host, (site or {}).get("id")
 
 
+@require_GET
+def super_equipe_percurso(request):
+    impedimento = _admin(request)
+    if impedimento:
+        return impedimento
+    from .super_equipe_percurso import coletar, periodo
+    try:
+        p = periodo(request.GET.get("inicio", ""), request.GET.get("fim", ""),
+                    request.GET.get("janela", "semana"))
+    except ValueError:
+        return render(request, "admin/super_equipe_percurso.html", {
+            "admin": request.admin, "erro": "Informe um período válido de até 366 dias, sem datas futuras.",
+        }, status=400)
+    host, site_id = _site(request)
+    relatorio = coletar(site_id, host, p)
+    if request.GET.get("formato") == "json":
+        resposta = JsonResponse(relatorio)
+    else:
+        resposta = render(request, "admin/super_equipe_percurso.html", {
+            "admin": request.admin, "r": relatorio,
+        })
+    resposta["Cache-Control"] = "private, no-store"
+    return resposta
+
+
 @require_http_methods(["GET", "POST"])
 def super_equipe(request):
     impedimento = _admin(request)

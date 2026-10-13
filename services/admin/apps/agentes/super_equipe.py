@@ -282,9 +282,11 @@ def coletar_fontes(site_id: str, host: str) -> dict:
             "entrega_parcial": entrega.parcial if entrega else None,
         })
     from .super_equipe_operacao import coletar, servidor
+    from .super_equipe_percurso import coletar as coletar_percurso
     for nome, consulta in (("execucao_operacional", coletar),
                            ("servidor", servidor),
                            ("negocio", lambda: _painel(site_id)),
+                           ("percurso_comercial", lambda: coletar_percurso(site_id, host)),
                            ("experimentos", lambda: _experimentos(site_id)),
                            ("robos_ia", lambda: _robos_ia(site_id)),
                            ("fluxo_entregas", lambda: _fluxo_entregas(site_id, host)),
