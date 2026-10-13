@@ -30,3 +30,6 @@
 #suporte-escola .sup-expediente-compacto>.sup-estado{margin:7px 0 12px}
 #suporte-escola .sup-historico{min-height:0}
 @media(max-height:600px){#suporte-escola .sup-janela{display:block;overflow-y:auto;overscroll-behavior:contain}#suporte-escola .sup-historico{min-height:90px;max-height:200px}}
+
+/* A janela do chat não herda o espaçamento das seções da página. */
+#suporte-escola .sup-janela{padding:0;margin:0}
