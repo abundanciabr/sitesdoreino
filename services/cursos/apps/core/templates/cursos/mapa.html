@@ -26,6 +26,7 @@ pronta da view; o template só desenha.
   <div>
     <p class="rotulo">Sua sala de aula</p>
     <h1>{{ curso.nome }}</h1>
+    <p><a class="botao" href="{% url 'satisfacao-curso' curso.slug %}">Avaliar este curso</a></p>
     <p class="passo">Entre. Entregue. Receba. Uma entrega por vez, com a próxima porta sempre à vista.</p>
   </div>
   {% if aulas_publicadas %}
