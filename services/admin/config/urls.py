@@ -85,6 +85,7 @@ from apps.core.comunidade import comunidade_da_equipe
 from apps.core.feed_previa import feed_previa, feed_previa_asset
 from apps.core import feed_previa_social
 from apps.feed_previa import notificacoes as feed_notificacoes
+from apps.feed_previa import mensagens as feed_mensagens
 from apps.core.comentarios_aulas import (
     escola_comentarios_aulas,
     escola_comentario_visibilidade,
@@ -303,6 +304,13 @@ urlpatterns = [
     path("comunidade/ganhos/previa/<int:registro_id>/print/", ganhos_previa_print, name="ganhos_previa_print"),
     path("comunidade/feed/previa/", feed_previa, name="feed_previa"),
     path("comunidade/feed/previa/data/", feed_previa_social.dados, name="feed_previa_dados"),
+    path("comunidade/feed/previa/mensagens/", feed_mensagens.lista, name="feed_previa_mensagens"),
+    path("comunidade/feed/previa/mensagens/iniciar/", feed_mensagens.iniciar, name="feed_previa_mensagens_iniciar"),
+    path("comunidade/feed/previa/mensagens/enviar/", feed_mensagens.enviar, name="feed_previa_mensagens_enviar"),
+    path("comunidade/feed/previa/mensagens/ler/", feed_mensagens.ler, name="feed_previa_mensagens_ler"),
+    path("comunidade/feed/previa/mensagens/simular/", feed_mensagens.simular, name="feed_previa_mensagens_simular"),
+    path("comunidade/feed/previa/mensagens/ao-vivo/", feed_mensagens.stream, name="feed_previa_mensagens_stream"),
+    path("comunidade/feed/previa/mensagens/conversa/<uuid:conversa_id>/", feed_mensagens.conversa, name="feed_previa_mensagens_conversa"),
     path("comunidade/feed/previa/notificacoes/", feed_notificacoes.lista, name="feed_previa_notificacoes"),
     path("comunidade/feed/previa/notificacoes/ao-vivo/", feed_notificacoes.stream, name="feed_previa_notificacoes_stream"),
     path("comunidade/feed/previa/notificacoes/ler/", feed_notificacoes.ler, name="feed_previa_notificacoes_ler"),

@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 ASSETS = Path(__file__).resolve().parent / "feed_previa_assets"
-TIPOS = {"feed.css": "text/css", "feed.js": "application/javascript", "hero.png": "image/png"}
+TIPOS = {"feed.css": "text/css", "feed.js": "application/javascript", "mensagens.js": "application/javascript", "hero.png": "image/png"}
 
 
 def _permitido(request):
