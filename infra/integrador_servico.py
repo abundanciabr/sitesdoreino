@@ -254,9 +254,41 @@ class Servico:
         self.estados.salvar(estado)
         return celulas
 
-    def _dependencias_ativas(self, reg):
+    def _dependencia_por_conteudo(self, id_):
+        """Consulta a autoridade; estar na main, sozinho, não prova ativação."""
+        try:
+            dep = self.integrador.ler(id_)
+        except KeyError:
+            return None
+        if (not dep or dep.get("estado") != entregas.NA_MAIN
+                or not SHA.fullmatch(dep.get("commit") or "")
+                or not SHA.fullmatch(dep.get("base") or "")):
+            return None
+        diff = self.integrador.git("diff", "--name-only", "--no-renames", "-z",
+                                   dep["base"], dep["commit"], "--", check=True)
+        caminhos = [p for p in diff.stdout.split("\0") if p]
+        if not caminhos:
+            return None
+        celulas = sorted({"funil" if p.startswith("services/funil/") else "aplicacao"
+                          for p in caminhos})
+        provas = {}
+        for celula in celulas:
+            prova = self.ponte.conferir_dependencia(id_, dep["commit"], celula)
+            if (prova.get("situacao") != "preservada"
+                    or not SHA.fullmatch(prova.get("sha_aprovada") or "")
+                    or not re.fullmatch(r"[0-9a-f]{64}", prova.get("prova_identidade") or "")
+                    or not isinstance(prova.get("arquivos_conferidos"), int)
+                    or prova["arquivos_conferidos"] <= 0):
+                return None
+            provas[celula] = prova
+        return {"commit": dep["commit"], "conferida_em": agora(), "celulas": provas}
+
+    def _dependencias_ativas(self, reg, estado=None):
         bloqueadas = []
         registro_ilegivel = False
+        comprovadas = {}
+        if estado is not None:
+            estado.pop("dependencias_comprovadas", None)
         for dep in reg.get("depende_de") or []:
             try:
                 fase = self.estados.ler(dep)
@@ -265,7 +297,11 @@ class Servico:
                 registro_ilegivel = True
                 continue
             if not fase:
-                bloqueadas.append(dep)
+                prova = self._dependencia_por_conteudo(dep)
+                if prova:
+                    comprovadas[dep] = prova
+                else:
+                    bloqueadas.append(dep)
                 continue
             if fase.get("fase") == "ativa":
                 continue
@@ -278,6 +314,8 @@ class Servico:
                            or not re.fullmatch(r"[0-9a-f]{64}", provas[c].get("prova_identidade") or "")
                            for c in celulas)):
                 bloqueadas.append(dep)
+        if estado is not None and comprovadas:
+            estado["dependencias_comprovadas"] = comprovadas
         return bloqueadas, registro_ilegivel
 
     def _conciliar_promovida(self, reg, estado, celulas):
@@ -332,7 +370,7 @@ class Servico:
             if self._espera_vigente(estado):
                 return {"id": id_, "fase": estado["fase"], "motivo": estado.get("motivo")}
             etapa = "dependencia"
-            bloqueadas, registro_ilegivel = self._dependencias_ativas(reg)
+            bloqueadas, registro_ilegivel = self._dependencias_ativas(reg, estado)
             if bloqueadas:
                 codigo = "registro_ilegivel" if registro_ilegivel else "dependencia_pendente"
                 diagnostico = criar_diagnostico(codigo, etapa="dependencia")

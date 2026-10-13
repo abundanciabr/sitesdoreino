@@ -35,6 +35,7 @@ SHA = re.compile(r"[0-9a-f]{40}\Z")
 DIGEST = re.compile(r"[0-9a-f]{64}\Z")
 ETAPA_ACAO = {"espelhar": "espelhamento", "preparar": "preparacao", "registrar": "prova",
               "verificar-prova": "prova", "conferir-preservacao": "preservacao",
+              "conferir-dependencia": "dependencia",
               "publicar": "ativacao", "reconciliar": "ativacao"}
 
 
@@ -119,6 +120,9 @@ class ClientePonte:
     def conferir_preservacao(self, id_, candidata, celula):
         return self.pedir("conferir-preservacao", id_, candidata, celula)
 
+    def conferir_dependencia(self, id_, commit, celula):
+        return self.pedir("conferir-dependencia", id_, commit, celula)
+
     def verificar_prova(self, id_, candidata, celula):
         return self.pedir("verificar-prova", id_, candidata, celula)
 
@@ -155,10 +159,22 @@ class Autoridade:
 
     def conferir_preservacao(self, id_, candidata, celula):
         """Confere entrega superada sem importar objetos, mover refs ou publicar."""
+        return self._conferir_conteudo(id_, candidata, celula)
+
+    def conferir_dependencia(self, id_, commit, celula):
+        """Reconhece conteúdo ativo, inclusive quando entrou com outro ID."""
+        return self._conferir_conteudo(id_, commit, celula, dependencia=True)
+
+    def _conferir_conteudo(self, id_, candidata, celula, *, dependencia=False):
         reg = self._registro(self.origem, id_)
-        self._candidata(reg, candidata)
         promocao = reg.get("promocao") or {}
-        if (reg.get("estado") != "integrada na main" or reg.get("promovida_candidata") != candidata
+        if dependencia:
+            if (reg.get("estado") != "integrada na main" or reg.get("commit") != candidata
+                    or not SHA.fullmatch(reg.get("base") or "")):
+                raise ErroPonte("dependencia nao incorporada ou identidade divergente", "recusa")
+        else:
+            self._candidata(reg, candidata)
+        if not dependencia and (reg.get("estado") != "integrada na main" or reg.get("promovida_candidata") != candidata
                 or promocao.get("estado") != "remota" or promocao.get("candidata") != candidata
                 or promocao.get("remoto") != "integrador"):
             raise ErroPonte("promocao historica nao confirmada", "recusa")
@@ -182,9 +198,9 @@ class Autoridade:
             capture_output=True, text=True, timeout=60, cwd=destino_repo.parent, env=ambiente)
         if remoto.returncode or remoto.stdout.splitlines() != [f"{main_sha}\trefs/heads/main"]:
             raise ErroPonte("main remota mudou durante a conciliacao", "infra")
-        if main_sha == candidata:
+        if main_sha == candidata and not dependencia:
             return {"ok": True, "situacao": "publicavel"}
-        if subprocess.run([*git_origem, "merge-base", "--is-ancestor", candidata, main_sha],
+        if not dependencia and subprocess.run([*git_origem, "merge-base", "--is-ancestor", candidata, main_sha],
                           capture_output=True, timeout=30).returncode:
             raise ErroPonte("candidata antiga nao pertence a main", "recusa")
 
@@ -196,12 +212,14 @@ class Autoridade:
                 import fcntl
                 fcntl.flock(aberto, fcntl.LOCK_EX)
             try:
-                return self._conferir_versao_posterior(reg, candidata, celula, main_sha, git_destino)
+                return self._conferir_versao_posterior(
+                    reg, candidata, celula, main_sha,
+                    git_origem if dependencia else git_destino, dependencia=dependencia)
             finally:
                 if os.name == "posix":
                     fcntl.flock(aberto, fcntl.LOCK_UN)
 
-    def _conferir_versao_posterior(self, reg, candidata, celula, main_sha, git):
+    def _conferir_versao_posterior(self, reg, candidata, celula, main_sha, git, *, dependencia=False):
         arquivo = self.plataforma / "publicacoes" / (celula + ".json")
         if arquivo.is_symlink() or not arquivo.is_file():
             return {"ok": True, "situacao": "aguardando", "motivo": "versao posterior ainda nao aprovada"}
@@ -213,14 +231,15 @@ class Autoridade:
         ativa = aprovada.get("sha")
         if not SHA.fullmatch(ativa or "") or journal.get("atual") != ativa:
             return {"ok": True, "situacao": "aguardando", "motivo": "versao aprovada nao esta no ar"}
-        if subprocess.run([*git, "merge-base", "--is-ancestor", candidata, ativa],
+        if not dependencia and subprocess.run([*git, "merge-base", "--is-ancestor", candidata, ativa],
                           capture_output=True, timeout=30).returncode:
             return {"ok": True, "situacao": "aguardando", "motivo": "versao posterior ainda nao aprovada"}
         if subprocess.run([*git, "merge-base", "--is-ancestor", ativa, main_sha],
                           capture_output=True, timeout=30).returncode:
             raise ErroPonte("versao aprovada nao pertence a main remota", "recusa")
 
-        base = (reg.get("promocao") or {}).get("main_esperada") or reg.get("base_da_candidata")
+        base = (reg.get("base") if dependencia else
+                (reg.get("promocao") or {}).get("main_esperada") or reg.get("base_da_candidata"))
         if not SHA.fullmatch(base or ""):
             return {"ok": True, "situacao": "conflito", "motivo": "base da entrega ausente"}
         if subprocess.run([*git, "merge-base", "--is-ancestor", base, candidata],
@@ -238,6 +257,8 @@ class Autoridade:
             return caminho.startswith(b"services/funil/") == (celula == "funil")
         tocados = {p for p in mudancas.stdout.rstrip(b"\0").split(b"\0") if desta_celula(p)}
         alterados = {p for p in posteriores.stdout.rstrip(b"\0").split(b"\0") if p and desta_celula(p)}
+        if dependencia and not tocados:
+            return {"ok": True, "situacao": "sem alteracoes", "arquivos_conferidos": 0}
         if tocados & alterados:
             return {"ok": True, "situacao": "conflito", "sha_aprovada": ativa,
                     "motivo": "versao posterior alterou arquivos desta entrega"}
@@ -245,13 +266,13 @@ class Autoridade:
         ensaio = self._ensaio()
         chave = "prova_funil_identidade" if celula == "funil" else "prova_identidade"
         try:
-            prova_antiga = ensaio.verificar_prova_historica(
+            prova_antiga = None if dependencia else ensaio.verificar_prova_historica(
                 self.plataforma, candidata, self.ferramentas, celula,
                 identidade=(reg.get("promocao") or {}).get(chave))
             prova_ativa = ensaio.verificar_prova_historica(self.plataforma, ativa, self.ferramentas, celula)
         except ensaio.RecusaEnsaio as erro:
             raise ErroPonte("prova da entrega ou da versao aprovada indisponivel", "recusa") from erro
-        if ((reg.get("promocao") or {}).get(chave) != prova_antiga.get("identidade")
+        if ((not dependencia and (reg.get("promocao") or {}).get(chave) != prova_antiga.get("identidade"))
                 or prova_ativa.get("candidata") != ativa or prova_ativa.get("celula") != celula
                 or aprovada.get("pacote") != prova_ativa.get("pacote_publicador")):
             raise ErroPonte("prova nao corresponde a promocao e a versao aprovada", "recusa")
@@ -658,6 +679,7 @@ class Autoridade:
                 or celula not in ("aplicacao", "funil")):
             raise ErroPonte("identidade do pedido invalida", "recusa")
         acoes = {"espelhar": self.espelhar, "conferir-preservacao": self.conferir_preservacao,
+                 "conferir-dependencia": self.conferir_dependencia,
                  "preparar": self.preparar,
                  "registrar": self.registrar, "verificar-prova": self.verificar_prova,
                  "publicar": self.publicar, "reconciliar": self.reconciliar}
