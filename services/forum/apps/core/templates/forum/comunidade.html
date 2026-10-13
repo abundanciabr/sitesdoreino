@@ -14,6 +14,10 @@ contribuições dela, sem pedir nada a mais que o caminho.
 <h1>Comunidade</h1>
 <p class="sub">Comece pela prática, acompanhe seus envios e laudos e converse com colegas no fórum.</p>
 
+{% if estado == "sem_grupo" or estado == "com_grupo" %}
+  {% include "forum/_quadro_quem_ajuda.html" %}
+{% endif %}
+
 {% if estado == "entrar" %}
   <div class="cartao recado">
     <strong>Entre para ver a sua Comunidade.</strong>
