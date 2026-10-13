@@ -157,3 +157,32 @@ def servidor():
     rotina = RotinaSuperEquipe.objects.filter(host="meshcraft.top").first()
     dados = rotina.operacao if rotina else {}
     return {**dados, "estado": "medido" if operacao_recente(dados) else "indisponivel"}
+
+
+def guardar_operacao(rotina, campos):
+    """Acrescenta amostras sanitizadas sob a trava da linha, sem logs brutos."""
+    from django.db import transaction
+    with transaction.atomic():
+        atual = RotinaSuperEquipe.objects.select_for_update().get(pk=rotina.pk)
+        nova = campos.get("operacao")
+        if nova is not None:
+            anterior = atual.operacao or {}
+            data_nova = parse_datetime(nova["coletada_em"])
+            data_anterior = parse_datetime(anterior.get("coletada_em") or "")
+            if data_anterior and data_nova <= data_anterior:
+                campos = {k: v for k, v in campos.items() if k != "operacao"}
+            else:
+                pontos = []
+                for ponto in anterior.get("serie") or []:
+                    data = parse_datetime(ponto.get("coletada_em") or "")
+                    if data and timezone.is_aware(data) and timedelta(0) <= data_nova-data <= timedelta(minutes=30):
+                        pontos.append({k: ponto.get(k) for k in (
+                            "coletada_em", "disco_livre_mb", "http_5xx_15m", "http_404_15m")})
+                pontos.append({k: nova.get(k) for k in (
+                    "coletada_em", "disco_livre_mb", "http_5xx_15m", "http_404_15m")})
+                nova["serie"] = pontos[-30:]
+                nova["serie_limite"] = "Até 30 coletas em 30 minutos. HTTP usa janelas móveis de 15 minutos sobrepostas; não somar como eventos distintos. CPU, memória, I/O e latência não coletados."
+        for nome, valor in campos.items():
+            setattr(atual, nome, valor)
+        atual.save(update_fields=list(campos))
+        return campos.get("operacao")
