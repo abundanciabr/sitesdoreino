@@ -22,8 +22,15 @@ ID = re.compile(r'[0-9a-f]{24}\Z')
 NAME = re.compile(r'[a-z][a-z0-9-]{2,39}\Z')
 TERMINAL = {'concluida', 'recuperada', 'recusada'}
 LOCK = threading.RLock()
-PREFIXES = ('services/gamificacao/', 'services/funil/', 'services/cursos/',
-            'services/escola/', 'infra/previas/exemplos/')
+PREFIXES = ('services/', 'packages/', 'infra/previas/exemplos/')
+PROTECTED = ('services/aplicacao/', 'services/checkout/', 'services/pagamentos/',
+             'packages/site_errors/', 'packages/outbox-relay/',
+             'services/cursos/apps/core/templatetags/botoes_admin.py',
+             'services/cursos/apps/core/views.py',
+             'services/cursos/apps/core/templates/cursos/catalogo.html',
+             'services/cursos/apps/core/templates/cursos/mapa.html',
+             'services/quiz/apps/quiz/models.py', 'services/quiz/apps/quiz/editor.py',
+             'services/quiz/apps/quiz/nps', 'services/quiz/apps/quiz/participacao.py')
 EXTENSIONS = {'.py', '.js', '.mjs', '.cjs', '.html', '.css', '.json', '.txt'}
 
 
@@ -68,7 +75,7 @@ def plan_valid(plan):
     if plan['runtime'] not in {'node', 'python'} or not isinstance(files, dict) or not 1 <= len(files) <= 80:
         return False
     for target, source in files.items():
-        if not safe_path(target) or not safe_path(source) or not source.startswith(PREFIXES):
+        if not safe_path(target) or not safe_path(source) or not source.startswith(PREFIXES) or source.startswith(PROTECTED):
             return False
         if target.startswith(('node_modules/', '__pycache__/')) or '/config/' in source or '/migrations/' in source:
             return False
@@ -125,6 +132,8 @@ def dispatch(args):
             return {'comandos': ['previas listar', 'previas aplicar NOME COMMIT BASE_OU_nova',
                                  'previas consultar ID', 'previas retomar ID'],
                     'manifesto': 'infra/previas/candidatas/NOME.json',
+                    'formato': {'runtime': 'node ou python', 'files': {'destino.py': 'services/AREA/arquivo.py'}, 'test': 'tests/arquivo_de_teste.py', 'page': 'index.html'},
+                    'origens': list(PREFIXES), 'arvores_protegidas_recusadas': list(PROTECTED),
                     'runtime': ['node --test', 'python unittest'], 'limite': 'Bibliotecas já presentes; sem instalação de dependências.',
                     'escopo': 'Somente novas prévias deste canal. Trilha, produção e demais trabalhos não são destinos.',
                     'documentacao': 'https://meshcraft.top/admin/documentos/operacao-site-contexto-retomada-20261013'}
@@ -269,9 +278,11 @@ def execute(record):
                 raise ValueError('base_divergente')
             record.update(estado='concluida', fim=now(), codigo_atual=record['id'])
             save(record)
-    except Exception:
+    except Exception as error:
         # Sem imprimir erros potencialmente derivados do código recebido.
-        restore(record, 'preparacao_ou_execucao_falhou')
+        reason = str(error) if type(error) is ValueError and str(error) in {
+            'manifesto_recusado', 'origem_divergente', 'arquivo_grande', 'pacote_grande', 'base_divergente'} else 'preparacao_ou_execucao_falhou'
+        restore(record, reason)
 
 
 def worker():
