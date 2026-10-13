@@ -53,6 +53,7 @@ def contexto_fila(request, sid):
     consulta = todas.select_related('assunto').prefetch_related('mensagens')
     q = request.GET.get('q','').strip()[:120]
     filtro = request.GET.get('estado','todos')
+    consulta = consulta.filter(arquivada_em__isnull=filtro != 'arquivadas')
     responsavel = request.GET.get('responsavel','')
     prioridade = request.GET.get('prioridade','')
     curso = request.GET.get('curso','')
@@ -73,7 +74,7 @@ def contexto_fila(request, sid):
             When(prioridade='alta',then=Value(2)),default=Value(3))).order_by('_ordem','criada_em')
     pagina = Paginator(consulta,25).get_page(request.GET.get('pagina'))
     numeros = {e:0 for e in ESTADOS}
-    numeros.update({i['estado']:i['total'] for i in todas.values('estado').annotate(total=Count('id'))})
+    numeros.update({i['estado']:i['total'] for i in todas.filter(arquivada_em__isnull=True).values('estado').annotate(total=Count('id'))})
     ctx.update(conversas=preparar_linhas(pagina.object_list),consulta=consulta,pagina_obj=pagina,
         numeros=numeros,filtro=filtro,q=q,responsavel=responsavel,prioridade=prioridade,curso=curso,
         responsaveis=responsaveis(request,sid),cursos=list(todas.exclude(curso='').order_by('curso').values_list('curso',flat=True).distinct()),

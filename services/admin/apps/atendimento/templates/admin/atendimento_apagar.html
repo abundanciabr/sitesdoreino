@@ -1,0 +1,18 @@
+{% extends 'admin/atendimento_layout.html' %}
+{% block suporte_titulo %}Apagar pedido de suporte{% endblock %}
+{% block suporte_conteudo %}
+<section class="sg-card">
+  <h1>{% if etapa == 1 %}Apagar este pedido?{% else %}Confirmação final: apagar definitivamente{% endif %}</h1>
+  <p>Confirmação {{ etapa }} de 2</p>
+  <h2>{{ conversa.nome|default:'Aluno' }} · {{ conversa.assunto.nome }}</h2>
+  <p>Pedido {{ conversa.id }} · {{ conversa.criada_em|date:'d/m/Y H:i' }}</p>
+  <p>O pedido de suporte, suas mensagens e os registros vinculados de atendimento serão removidos definitivamente. Não será possível desfazer. A conta e as conquistas do aluno serão preservadas.</p>
+  <form method="post" action="{{ suporte_prefixo }}/">
+    {% csrf_token %}<input type="hidden" name="conversa" value="{{ conversa.id }}">
+    <input type="hidden" name="confirmacao" value="{{ confirmacao }}">
+    <input type="hidden" name="acao" value="{% if etapa == 1 %}confirmar_apagar{% else %}apagar_definitivamente{% endif %}">
+    <div class="sg-inline"><a class="sg-button secondary" href="{{ suporte_prefixo }}/">Cancelar</a>
+    <button class="sg-button" style="background:#8f2433;color:white" type="submit">{% if etapa == 1 %}Confirmar e continuar{% else %}Apagar definitivamente{% endif %}</button></div>
+  </form>
+</section>
+{% endblock %}
