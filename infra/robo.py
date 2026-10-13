@@ -7,6 +7,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -78,6 +79,30 @@ def remoto(servidor, argumentos):
                      '-o', 'ConnectionAttempts=1', servidor, shlex.join(argumentos)])
 
 
+def acompanhar(servidor, id_, segundos=45):
+    """Espera limitada e retomável; só consulta, sem reenviar a operação."""
+    if not re.fullmatch(r'[0-9a-f]{12}', id_) or not 0 <= segundos <= 50:
+        raise ValueError('ID ou duração inválidos')
+    prazo = time.monotonic() + segundos
+    anterior = None
+    while True:
+        data = json.loads(remoto(servidor, ['retomar', id_]))
+        reg = data.get('entrega', {})
+        op = reg.get('operacao', {})
+        assinatura = json.dumps([reg.get('estado'), op], sort_keys=True)
+        if assinatura != anterior:
+            print(json.dumps(data, ensure_ascii=False), flush=True)
+            anterior = assinatura
+        if op.get('fase') in {'ativa', 'preservada em versão posterior', 'falha no ensaio',
+                              'precisa de correção', 'incompatibilidade'} or reg.get('estado') in {
+                                  'conflito', 'precisa de correção', 'recusada'}:
+            return
+        falta = prazo - time.monotonic()
+        if falta <= 0:
+            return
+        time.sleep(min(10, falta))
+
+
 def confirma_entrega(resposta, esperado):
     """Confirma os parâmetros persistidos, sem inferir sucesso apenas pelo ID."""
     try:
@@ -141,6 +166,17 @@ def main(argv=None):
     c = s.add_parser('consultar')
     c.add_argument('id', nargs='?')
     s.add_parser('estado')
+    s.add_parser('contexto', help='contexto operacional atual na VPS')
+    s.add_parser('ajuda', help='catálogo do canal instalado')
+    op = s.add_parser('operacoes', help='últimas entregas, sem o histórico volumoso')
+    op.add_argument('limite', type=int, nargs='?', default=10, choices=range(1, 51))
+    reter = s.add_parser('retomar', help='consulta existente, sem repetir efeitos')
+    reter.add_argument('id')
+    seguir = s.add_parser('acompanhar', help='consultar até 50 segundos; pode repetir depois')
+    seguir.add_argument('id')
+    seguir.add_argument('--segundos', type=int, default=45, choices=range(0, 51))
+    sv = s.add_parser('servicos', help='operações de serviços já disponíveis no servidor')
+    sv.add_argument('argumentos', nargs='+')
     an = s.add_parser('analisador', help='estado, diagnóstico real e recuperação da versão preservada')
     an.add_argument('acao', choices=['consultar', 'diagnosticar', 'recuperar'])
     a = p.parse_args(argv)
@@ -156,6 +192,20 @@ def main(argv=None):
             saida = remoto(a.servidor, ['consultar'] + ([a.id] if a.id else []))
         elif a.comando == 'analisador':
             saida = remoto(a.servidor, ['analisador', a.acao])
+        elif a.comando == 'acompanhar':
+            acompanhar(a.servidor, a.id, a.segundos)
+            return 0
+        elif a.comando == 'retomar':
+            if not re.fullmatch(r'[0-9a-f]{12}', a.id):
+                raise ValueError('id inválido')
+            saida = remoto(a.servidor, ['retomar', a.id])
+        elif a.comando in {'contexto', 'ajuda'}:
+            saida = remoto(a.servidor, [a.comando])
+        elif a.comando == 'operacoes':
+            saida = remoto(a.servidor, ['operacoes', str(a.limite)])
+        elif a.comando == 'servicos':
+            # A lista e os limites continuam impostos pelo serviço existente.
+            saida = remoto(a.servidor, ['servicos', *a.argumentos])
         else:
             saida = remoto(a.servidor, ['estado'])
         print(saida)

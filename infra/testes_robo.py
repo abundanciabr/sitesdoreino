@@ -9,6 +9,33 @@ r = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(r)
 
 
+def test_acompanhar_so_consulta_sem_reenviar(monkeypatch, capsys):
+    calls = []
+    def remoto(server, args):
+        calls.append(args)
+        return json.dumps({'entrega': {'id': 'a'*12, 'operacao': {'fase': 'ativa'}}})
+    monkeypatch.setattr(r, 'remoto', remoto)
+    r.acompanhar('sitesdoreino-robo', 'a'*12, 0)
+    assert calls == [['retomar', 'a'*12]]
+    assert 'ativa' in capsys.readouterr().out
+
+
+def test_acompanhar_rejeita_id_antes_de_conectar(monkeypatch):
+    monkeypatch.setattr(r, 'remoto', lambda *args: pytest.fail('não deve conectar'))
+    with pytest.raises(ValueError):
+        r.acompanhar('sitesdoreino-robo', '../arquivo', 0)
+
+
+def test_contexto_consulta_canal_instalado(monkeypatch, capsys):
+    calls = []
+    def remoto(server, args):
+        calls.append(args)
+        return '{"completo":true}'
+    monkeypatch.setattr(r, 'remoto', remoto)
+    assert r.main(['contexto']) == 0
+    assert calls == [['contexto']]
+
+
 def test_entrega_envia_commit_observado_e_base(monkeypatch, tmp_path):
     chamadas = []
     sha, base = 'a' * 40, 'b' * 40
