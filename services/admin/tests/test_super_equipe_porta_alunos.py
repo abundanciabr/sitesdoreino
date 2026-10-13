@@ -12,7 +12,9 @@ from django.test import Client
     '/equipe/robo/entregas/33', '/equipe/robo/andamento?execucao=98',
     '/documentos/auditoria-super-equipe-cinco-especialistas-20261012',
 ])
-def test_sessao_reconhecida_de_aluno_ou_professor_nao_abre_admin(settings, papel, caminho):
+def test_sessao_reconhecida_de_aluno_ou_professor_nao_abre_admin(settings, monkeypatch, papel, caminho):
+    monkeypatch.setenv("IDENTIDADE_API_URL", "http://identidade:8000/interno")
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-isolado-sem-credencial-real")
     settings.ADMIN_EMAILS = 'admin-isolado@exemplo.invalid'
     respx.get('http://identidade:8000/interno/sessao/completa').mock(
         return_value=httpx.Response(200, json={
