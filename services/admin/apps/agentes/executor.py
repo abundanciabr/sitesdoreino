@@ -150,6 +150,8 @@ def terminar(execucao: Execucao, situacao: str, motivo: str = "", resultado: str
     for chave, valor in campos.items():
         setattr(execucao, chave, valor)
     registrar(execucao, motivo or dict(S.choices).get(situacao, situacao), situacao)
+    from .super_equipe_checklist import acompanhar
+    acompanhar(execucao)
 
 
 def _avisar_na_conversa(execucao: Execucao, texto: str) -> None:
