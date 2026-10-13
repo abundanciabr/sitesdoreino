@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -190,6 +191,8 @@ def main():
 if __name__ == '__main__':
     try:
         main()
-    except Exception:
-        print('{"erro":"instalacao_nao_concluida; detalhes privados preservados no servidor"}')
+    except Exception as exc:
+        message = str(exc)
+        reason = message if re.fullmatch(r'[a-z_]{1,100}', message) else type(exc).__name__
+        print(json.dumps({'erro': 'instalacao_nao_concluida', 'motivo': reason}))
         sys.exit(1)
