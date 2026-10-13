@@ -138,3 +138,23 @@ def test_admin_ve_indisponibilidade_da_pesquisa(client, env_dos_pares, rede, esq
     resposta = client.post(reverse("satisfacao-curso", args=[esqueleto.slug]), {"acao": "iniciar"}, HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 503
     assert "Pesquisa indisponível." in resposta.content.decode()
+
+
+def test_admin_confirma_resumo_apos_corrigir_sem_gravar_aluno(client, env_dos_pares, rede, esqueleto, monkeypatch):
+    preparar_admin(rede, monkeypatch)
+    dados = {"id": "previa", "estado_previa": "estado-assinado", "status": "em_andamento",
+        "config_documento": {"roteiro": "revisado"}, "respostas": {}, "proxima_pergunta": None,
+        "conferencia": {"resumo": ["Resumo corrigido da simulação."], "corrigir": True},
+        "respostas_legiveis": [{"pergunta_id": "R13", "pergunta": "Comentário?", "resposta": "Teste"}]}
+    final = {**dados, "status": "concluida", "resultado": {"nps": None}}
+    rota = rede.post("http://quiz:8000/interno/nps/simular").mock(side_effect=[
+        httpx.Response(200, json=dados), httpx.Response(200, json=final)])
+    url = reverse("satisfacao-curso", args=[esqueleto.slug])
+    response = client.post(url, {"acao": "responder", "estado_previa": "estado-assinado", "pergunta_id": "R13", "valor": "Teste"}, HTTP_COOKIE=COOKIE)
+    assert response.status_code == 200
+    assert "Resumo corrigido da simulação." in response.content.decode()
+    assert "Sim, é isso" in response.content.decode()
+    response = client.post(url, {"acao": "concluir", "estado_previa": "estado-assinado", "confirmado": "sim"}, HTTP_COOKIE=COOKIE)
+    assert response.status_code == 200 and "Simulação concluída" in response.content.decode()
+    assert json.loads(rota.calls[-1].request.content)["confirmado"] is True
+    assert not any("/tentativas" in str(call.request.url) for call in rede.calls)
