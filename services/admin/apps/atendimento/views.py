@@ -131,6 +131,9 @@ def _conversar(request, identidade):
                     conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid,pessoa_id=dono)
                     if conversa.mensagens.filter(referencia=ref).exists():
                         return resposta({'conversa':serializar(conversa),'csrf':get_token(request)})
+                    if conversa.arquivada_em:
+                        conversa.arquivada_em = None
+                        conversa.save(update_fields=['arquivada_em'])
                     if not d.get('assunto'):
                         conversa.assunto=assunto
                     if d.get('pagina'):
@@ -220,14 +223,22 @@ def contexto(request,sid):
     return {'admin':request.admin,'suporte_prefixo':prefixo(request),'assuntos':Assunto.objects.filter(site_id=sid),'config':config,'modos':MODOS,'expediente':disponibilidade(config)}
 
 
-@require_http_methods(['GET'])
+@require_http_methods(['GET','POST'])
 def fila(request):
     from .gestao import contexto_fila,identidade_atendente
     admin(request);sid=site(request)
+    if request.method == 'POST':
+        from .acoes_fila import executar
+        return executar(request, sid)
     ctx=contexto_fila(request,sid)
+    if request.GET.get('arquivada'):
+        try:
+            ctx['arquivada'] = Conversa.objects.filter(site_id=sid, pk=uuid.UUID(request.GET['arquivada']), arquivada_em__isnull=False).first()
+        except ValueError:
+            pass
     if request.path_info.endswith('/conversas/'):
-        abertas=Conversa.objects.filter(site_id=sid).exclude(estado='encerrado')
-        selecionada=abertas.filter(atendente_id__in=[identidade_atendente(request)[0],str(request.admin['id'])]).first() or abertas.first() or Conversa.objects.filter(site_id=sid).first()
+        abertas=Conversa.objects.filter(site_id=sid,arquivada_em__isnull=True).exclude(estado='encerrado')
+        selecionada=abertas.filter(atendente_id__in=[identidade_atendente(request)[0],str(request.admin['id'])]).first() or abertas.first() or Conversa.objects.filter(site_id=sid,arquivada_em__isnull=True).first()
         if selecionada: return HttpResponseRedirect(prefixo(request)+'/'+str(selecionada.pk)+'/')
         ctx['entrada_conversas']=True
     return render(request,'admin/atendimento_fila.html',ctx)

@@ -54,6 +54,7 @@ class Conversa(models.Model):
     curso = models.CharField(max_length=200, blank=True)
     aula = models.CharField(max_length=200, blank=True)
     estado = models.CharField(max_length=20, default='aguardando')
+    arquivada_em = models.DateTimeField(null=True, blank=True, db_index=True)
     prioridade = models.CharField(max_length=10, choices=[('baixa','Baixa'),('normal','Normal'),('alta','Alta')], default='normal')
     primeira_resposta_em = models.DateTimeField(null=True, blank=True)
     encerrada_em = models.DateTimeField(null=True, blank=True)
