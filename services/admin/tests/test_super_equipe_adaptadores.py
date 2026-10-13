@@ -119,7 +119,8 @@ def test_nicole_recebe_tempos_importados_sem_somar_etapas_ou_excluir_incompleta(
     registrar(r.host, incompleta)
     fluxo = equipe._fluxo_entregas('ensaio')['entregas_codigo']
     assert fluxo['amostra'] == 2
-    a, b = fluxo['itens']
+    a = next(i for i in fluxo['itens'] if i['id'] == 'a'*12)
+    b = next(i for i in fluxo['itens'] if i['id'] == '1'*12)
     assert a['espera_recebimento_inicio_segundos'] == 10
     assert a['duracao_recebimento_conclusao_segundos'] == 40
     assert a['tempos_segundos']['ensaio_aplicacao'] == 30
