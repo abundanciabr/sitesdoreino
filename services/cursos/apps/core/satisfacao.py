@@ -50,9 +50,7 @@ def pesquisa(request, slug=None):
     contexto = {"curso": None, "erro": "", "cursos": [], "tentativa": None}
     if not ator.autenticado:
         return render(request, "cursos/satisfacao.html", {**contexto, "entrar": True})
-    if ator.eh_admin and (slug is None or not Curso.objects.filter(
-        site_id=site_atual(), slug=slug, produto_id__in=ator.produtos_matriculados
-    ).exists()):
+    if ator.eh_admin:
         # O admin inspeciona a pesquisa sem se passar por um aluno matriculado.
         cursos = Curso.objects.filter(site_id=site_atual()).order_by("slug")
         contexto.update(cursos=cursos, previa_admin=True)
