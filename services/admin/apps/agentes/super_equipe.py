@@ -92,6 +92,8 @@ def pedir_trabalho(membro, *, site_id: str, host: str, pedido: str,
                         "versoes_perfil": {codigo: VERSAO_PERFIL for codigo in escolhidas if codigo in PERFIS}},
             )
             trabalhos.registrar(execucao, "Pedido da equipe técnica recebido no site.")
+            from .super_equipe_checklist import acompanhar
+            transaction.on_commit(lambda: acompanhar(execucao))
             transaction.on_commit(__import__("apps.agentes.executor", fromlist=["acordar"]).acordar)
             return execucao, True
     except IntegrityError:
