@@ -83,3 +83,6 @@ api.add_router("", consentimentos_router)
 api.add_router("audio/", audio_router)
 # Links rastreados de WhatsApp (/links...).
 api.add_router("", links_router)
+
+from apps.eventos.acesso_previa import router as acesso_previa_router
+api.add_router("", acesso_previa_router)

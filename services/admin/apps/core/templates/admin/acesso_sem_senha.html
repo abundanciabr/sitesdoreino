@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Entrar sem senha · Prévia{% endblock %}
+{% block corpo %}
+<div style="max-width:760px;margin:32px auto;padding:24px">
+<p style="color:#9cb8ff">PRÉVIA PRIVADA · SOMENTE ADMINISTRADORES</p>
+<h1>Entrar sem senha</h1>
+<p>Receba um código no seu e-mail ou WhatsApp e confirme o acesso à mesma conta.</p>
+<p>Seu cadastro, seus cursos, suas conquistas e seu progresso permanecem os mesmos.</p>
+{% if erro %}<p role="alert" style="padding:16px;border:1px solid #f85149;border-radius:10px">{{ erro }}</p>{% endif %}
+{% if aviso %}<p role="status">{{ aviso }}</p>{% endif %}
+{% if sucesso %}
+<section role="status" style="padding:24px;border:1px solid #3fb950;border-radius:14px">
+<h2>Acesso confirmado</h2><p>Código recebido por {{ canal_confirmado }} em {{ destino_confirmado }}.</p>
+<p>Uma nova sessão foi aberta com o mesmo identificador da sua conta. Nenhuma senha foi alterada e nenhum cadastro foi criado.</p>
+<a href="/trilha/">Conferir minha trilha</a> · <a href="/">Voltar ao site</a>
+</section>
+{% endif %}
+{% if pronto %}
+<p><strong>Conta em teste:</strong> {{ email }}</p>
+<section style="padding:24px;border:1px solid #454d5a;border-radius:14px;margin:24px 0">
+<h2>1. Receber meu código</h2>
+<form method="post">{% csrf_token %}
+<input type="hidden" name="acao" value="enviar">
+<p><label for="canal">Como você quer receber?</label><br>
+<select id="canal" name="canal"><option value="email">E-mail</option><option value="whatsapp">WhatsApp</option></select></p>
+<p><label for="destino">Meu e-mail ou WhatsApp</label><br>
+<input id="destino" name="destino" type="text" maxlength="254" value="{{ email }}" required autocomplete="off" style="width:100%;padding:12px;box-sizing:border-box">
+<br><small>Para e-mail, use a conta mostrada acima. Para WhatsApp, informe DDI e DDD, como +55.</small></p>
+<p><label><input type="checkbox" name="autorizado" value="sim" required> Este contato é meu e autorizo esta mensagem de teste.</label></p>
+<button type="submit">Enviar meu código</button>
+<p><small>O código vale por 10 minutos e só pode ser usado uma vez.</small></p>
+</form></section>
+{% if desafio %}
+<section style="padding:24px;border:1px solid #454d5a;border-radius:14px">
+<h2>2. Confirmar meu acesso</h2>
+<p>Pedido por {{ desafio.canal }} para {{ desafio.destino_mascarado }}.</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="confirmar">
+<input type="hidden" name="desafio" value="{{ desafio.desafio }}">
+<p><label for="codigo">Código de seis números</label><br>
+<input id="codigo" name="codigo" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="font-size:24px;letter-spacing:6px;width:190px;padding:12px"></p>
+<button type="submit">Confirmar e entrar na mesma conta</button>
+</form></section>
+{% endif %}
+{% endif %}
+<p style="margin-top:28px;color:#a8b0bf">Esta prévia exige sua sessão administrativa atual. Ela testa o recebimento do código e a abertura de uma nova sessão da mesma conta. A entrada pública para alunos ainda não foi liberada.</p>
+</div>
+{% endblock %}

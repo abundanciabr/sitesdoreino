@@ -179,7 +179,7 @@ def enviar_mensagem(*, site_id: str, destinatario: str, corpo: str, origem: str,
         mensagem, criada = MensagemWhatsApp.objects.select_for_update().get_or_create(
             site_id=site_id, origem=origem, referencia=referencia,
             defaults={"instancia": config.instancia if config else "", "destinatario": numero,
-                      "corpo": corpo, "status": "desconhecido"},
+                      "corpo": "Código de acesso temporário [oculto]" if origem == "acesso_previa" else corpo, "status": "desconhecido"},
         )
         if not criada and mensagem.status != "falhou":
             return mensagem

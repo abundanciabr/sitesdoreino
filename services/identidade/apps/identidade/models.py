@@ -133,3 +133,20 @@ class RecuperacaoSenha(models.Model):
     class Meta:
         indexes = [models.Index(fields=["identidade", "consumida_em"], name="idt_rec_pendente")]
         constraints = [models.UniqueConstraint(fields=["identidade", "pedido_key"], name="idt_rec_pedido_unico")]
+
+
+class AcessoPrevia(models.Model):
+    """Desafio privado do admin; nunca cria nem altera a identidade do aluno."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    identidade = models.ForeignKey(Identidade, on_delete=models.PROTECT)
+    site_id = models.CharField(max_length=100)
+    canal = models.CharField(max_length=12)
+    destino = models.CharField(max_length=254)
+    codigo_hash = models.CharField(max_length=64)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()
+    consumido_em = models.DateTimeField(null=True, blank=True)
+    tentativas = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        indexes = [models.Index(fields=["identidade", "criado_em"], name="idt_previa_pessoa_data")]
