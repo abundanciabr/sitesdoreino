@@ -168,10 +168,11 @@ def _integridade(site_id: str) -> dict:
     consumos = Consumo.objects.filter(execucao_id__in=ids)
     return {"estado": "medido", "trabalhos_amostrados": len(ids),
             "trabalhos_com_chave_de_repeticao": trabalhos.exclude(chave_de_repeticao__isnull=True).exclude(chave_de_repeticao="").count(),
+            "chamadas_registradas": chamadas.count(),
             "chamadas_por_estado": list(chamadas.values("situacao").annotate(total=Count("id")).order_by("situacao")),
             "consumos_com_resposta_desconhecida": consumos.filter(desconhecido=True).count(),
             "entregas_salvas": Entrega.objects.filter(execucao_id__in=ids).count(),
-            "limite": "Contagens agregadas dos trabalhos técnicos; não medem unicidade de efeitos comerciais."}
+            "limite": "Contagens dos trabalhos técnicos; não medem unicidade de efeitos comerciais. Chamadas de ferramenta não incluem a coleta determinística das fontes pelo servidor. Lista vazia com chamadas_registradas=0 é zero registrado nessa amostra, não fonte indisponível."}
 
 
 def _contratos_tecnicos(site_id: str) -> dict:
