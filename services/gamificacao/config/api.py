@@ -5,6 +5,7 @@ from apps.core.api import router as gamificacao_router
 from apps.core.trilha_api import router as trilha_router
 from apps.core.medalhas_painel import router as medalhas_router
 from apps.core.auth import bearerAuth
+from apps.core.ganhos_admin_api import router as ganhos_admin_router
 
 # `servers` aponta para a REDE INTERNA do Docker — é o endereço que outra célula
 # porá no env dela. O valor corresponde ao endereço em
@@ -58,3 +59,4 @@ api = NinjaAPI(
 api.add_router("", gamificacao_router)
 api.add_router("", trilha_router)
 api.add_router("", medalhas_router)
+api.add_router("", ganhos_admin_router)

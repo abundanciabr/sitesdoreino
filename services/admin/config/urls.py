@@ -2,6 +2,7 @@ from apps.core.nps import crm_satisfacao_revisao_salvar
 from apps.core.medalhas import painel as medalhas_painel, previa as medalhas_previa
 from django.conf import settings
 from django.urls import path, re_path
+from apps.core.ganhos_previa import previa as ganhos_previa, detalhe as ganhos_previa_detalhe, print_privado as ganhos_previa_print
 from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
@@ -293,6 +294,9 @@ from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
+    path("comunidade/ganhos/previa/", ganhos_previa, name="ganhos_previa"),
+    path("comunidade/ganhos/previa/<int:registro_id>/", ganhos_previa_detalhe, name="ganhos_previa_detalhe"),
+    path("comunidade/ganhos/previa/<int:registro_id>/print/", ganhos_previa_print, name="ganhos_previa_print"),
     path("escola/alunos/medalhas/", medalhas_painel, name="escola_medalhas"),
     path("escola/alunos/medalhas/previa/", medalhas_previa, name="escola_medalhas_previa"),
     path('integracoes/hotmart/', hotmart_painel, name='hotmart_painel'),
