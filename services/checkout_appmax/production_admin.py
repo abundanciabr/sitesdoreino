@@ -322,6 +322,7 @@ class ProductionAdmin:
         urls = {
             'Produto de R$ 27': ORIGIN + '/curso-primeiros-passos-no-blender',
             'Checkout de homologação de R$ 27': ORIGIN + PANEL + '/checkout',
+            'Checkout de testes sem cobrança real (sandbox)': ORIGIN + BASE,
             'Instalação de produção / URL do sistema': ORIGIN + PANEL,
             'Conferência de conexão e parcelas (GET)': ORIGIN + PANEL + '/conferencia',
             'Host e URL de webhook (POST)': ORIGIN + PANEL + '/webhooks',
@@ -347,7 +348,7 @@ class ProductionAdmin:
                 '<div class="actions"><a class="button" href="' + esc(urls['Checkout de homologação de R$ 27']) + '">Abrir checkout de R$ 27</a><a class="button secondary" href="' + esc(urls['Produto de R$ 27']) + '">Abrir produto</a><a class="button secondary" href="' + esc(urls['Conferência de conexão e parcelas (GET)']) + '">Conferir conexão</a></div>'
                 '<h2>Endereços para a equipe Appmax</h2>' + rows +
                 '<p>Aplicativo existente: UUID <code>' + esc(str(state.get('app_uuid', ''))) + '</code> · ID numérico <code>' + esc(str(state.get('app_id', ''))) + '</code>.</p>'
-                '<p>A validação e o retorno atendem ao fluxo oficial de instalação; o webhook está preparado para receber as confirmações após a instalação. As consultas acima não criam compras.</p>'
+                '<p>O checkout sandbox continua disponível para os testes de compra sem cobrança real. A prévia de produção permite conferir a interface enquanto a Appmax conclui a instalação. A validação e o retorno atendem ao fluxo oficial de instalação; o webhook está preparado para receber as confirmações após a instalação. As consultas acima não criam compras.</p>'
                 '<h2>Conferência disponível no site</h2><p>Preço de R$ 27,00; identificação do pagador com nome completo, CPF e e-mail; formulários de cartão e Pix; recepção das credenciais na cópia isolada; conferência de conexão e parcelas após a instalação. Os campos de cartão e os botões de pagamento estão desativados nesta prévia.</p>'
                 '<h2>Mensagem pronta para a Appmax</h2><p>Copie o texto abaixo para responder à equipe de homologação.</p><pre>' + esc(message) + '</pre>'
                 '<p><small>Preparação para conferência técnica. A liberação para vendas depende da conclusão da instalação e da homologação pela Appmax. Esta página não exibe credenciais nem dados de clientes.</small></p></main></body></html>').encode()
