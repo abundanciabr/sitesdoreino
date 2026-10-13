@@ -98,6 +98,10 @@ def test_nao_entendi_nota_tem_resumo_legivel_sem_alterar_resposta(client, config
     assert any("Não entendi a pergunta" in frase for frase in state["conferencia"]["resumo"])
     assert all("__nao_entendi__" not in frase for frase in state["conferencia"]["resumo"])
     assert state["respostas"]["R12"] == "__nao_entendi__"
+    state = post(client, state, acao="revisar_conferencia").json()
+    state = post(client, state, acao="corrigir", pergunta_id="R13").json()
+    state = answer(client, state, "R13", "Conferência administrativa")
+    assert state["conferencia"]["corrigir"] is True
     response = post(client, state, acao="concluir", confirmado=True)
     assert response.status_code == 200 and response.json()["status"] == "concluida"
     assert response.json()["resultado"]["nps"] is None
