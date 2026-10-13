@@ -95,34 +95,34 @@ def preparar_admin(rede, monkeypatch):
     dublar_sessao(rede, ANA)
 
 
-def test_admin_sem_matricula_lista_cursos_e_visualiza_roteiro(client, env_dos_pares, rede, esqueleto, monkeypatch):
+def test_admin_sem_matricula_abre_previa_interativa(client, env_dos_pares, rede, esqueleto, monkeypatch):
     preparar_admin(rede, monkeypatch)
-    rota = rede.get("http://quiz:8000/interno/nps/config").mock(return_value=httpx.Response(200, json={
-        "documento": {"perguntas": {
-            "nota": {"texto": "Recomendaria o curso?", "tipo": "nota"},
-            "A3": {"texto": "Que situações aconteceram?", "tipo": "multipla"},
-            "R4": {"texto": "Qual foi a mais grave?", "tipo": "escolha"}},
-            "situacoes": {"aluno_pagante": [{"id": "video", "texto": "O vídeo não abre"}]}}}))
     lista = client.get(reverse("satisfacao"), HTTP_COOKIE=COOKIE)
     assert lista.status_code == 200
     assert reverse("satisfacao-curso", args=[esqueleto.slug]) in lista.content.decode()
     resposta = client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 200
-    texto = resposta.content.decode()
-    assert "Visualização administrativa" in texto and "Recomendaria o curso?" in texto
-    assert "O vídeo não abre" in texto
-    assert "As opções são definidas pelas respostas anteriores do aluno." in texto
-    assert "Começar avaliação" not in texto
-    assert rota.calls[0].request.url.params["site_id"] == esqueleto.site_id
-    assert not any(call.request.method == "POST" for call in rede.calls)
+    assert "Prévia interativa" in resposta.content.decode()
+    assert "Começar avaliação" in resposta.content.decode()
+    assert not any("/nps/" in str(call.request.url) for call in rede.calls)
 
 
-def test_admin_nao_cria_tentativa_nem_responde(client, env_dos_pares, rede, esqueleto, monkeypatch):
+def test_admin_simula_sem_chamar_tentativas_reais(client, env_dos_pares, rede, esqueleto, monkeypatch):
     preparar_admin(rede, monkeypatch)
-    for corpo in ({"acao": "iniciar"}, {"acao": "concluir", "tentativa_id": "bc7d35fc-c822-409c-a308-a2a9458e60f0"}):
-        resposta = client.post(reverse("satisfacao-curso", args=[esqueleto.slug]), corpo, HTTP_COOKIE=COOKIE)
-        assert resposta.status_code == 403
-    assert not any(call.request.method == "POST" for call in rede.calls)
+    dados = {"id": "previa", "estado_previa": "estado-assinado", "status": "em_andamento",
+        "config_documento": {"roteiro": "revisado"}, "respostas": {},
+        "proxima_pergunta": {"id": "A3", "texto": "Situações?", "tipo": "multipla", "opcoes": [{"valor": "video", "texto": "Vídeo trava"}]}}
+    rota = rede.post("http://quiz:8000/interno/nps/simular").mock(return_value=httpx.Response(200, json=dados))
+    url = reverse("satisfacao-curso", args=[esqueleto.slug])
+    response = client.post(url, {"acao": "iniciar"}, HTTP_COOKIE=COOKIE)
+    assert response.status_code == 200
+    assert 'type="checkbox"' in response.content.decode()
+    assert 'name="estado_previa"' in response.content.decode()
+    response = client.post(url, {"acao": "responder", "estado_previa": "estado-assinado", "pergunta_id": "A3", "valor": "video"}, HTTP_COOKIE=COOKIE)
+    body = json.loads(rota.calls[-1].request.content)
+    assert body["valor"] == ["video"]
+    assert body["curso"] == {"slug": esqueleto.slug} and body["admin_id"]
+    assert not any("/tentativas" in str(call.request.url) for call in rede.calls)
 
 
 def test_admin_nao_visualiza_curso_de_outro_site(client, env_dos_pares, rede, esqueleto, monkeypatch):
@@ -134,7 +134,7 @@ def test_admin_nao_visualiza_curso_de_outro_site(client, env_dos_pares, rede, es
 
 def test_admin_ve_indisponibilidade_da_pesquisa(client, env_dos_pares, rede, esqueleto, monkeypatch):
     preparar_admin(rede, monkeypatch)
-    rede.get("http://quiz:8000/interno/nps/config").mock(return_value=httpx.Response(503, json={"detail": "Pesquisa indisponível."}))
-    resposta = client.get(reverse("satisfacao-curso", args=[esqueleto.slug]), HTTP_COOKIE=COOKIE)
+    rede.post("http://quiz:8000/interno/nps/simular").mock(return_value=httpx.Response(503, json={"detail": "Pesquisa indisponível."}))
+    resposta = client.post(reverse("satisfacao-curso", args=[esqueleto.slug]), {"acao": "iniciar"}, HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 503
     assert "Pesquisa indisponível." in resposta.content.decode()

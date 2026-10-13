@@ -12,6 +12,7 @@ from apps.quiz import conversa as quiz_conversa
 from apps.quiz import evolucao
 from apps.quiz import comprador
 from apps.quiz import crm as quiz_crm
+from apps.quiz.nps_previa import simular as nps_simular
 from apps.quiz import nps
 from apps.quiz.participacao import estados as participacao_estados
 from apps.quiz.nps_acoes import acoes as nps_acoes
@@ -24,6 +25,7 @@ urlpatterns = [
     path("interno/nps/respondentes", respondentes),
     path("interno/nps/acoes", nps_acoes),
     path("interno/nps/config", nps.config),
+    path("interno/nps/simular", nps_simular),
     path("interno/nps/tentativas", nps.tentativas),
     path("interno/nps/tentativas/<uuid:tentativa_id>", nps.tentativa),
     path("interno/nps/tentativas/<uuid:tentativa_id>/respostas", nps.respostas),
