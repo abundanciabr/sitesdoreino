@@ -14,6 +14,7 @@ class PerfilDaComunidade(models.Model):
     atualizado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table = "core_perfildacomunidade"
         constraints = [
             models.UniqueConstraint(
                 fields=["site_host", "identidade_id"],
