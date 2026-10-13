@@ -48,6 +48,7 @@ def test_sessao_da_identidade_repassada_com_seguranca(preparado,monkeypatch):
     c=r.cookies[a.COOKIE]
     assert c.value=="emitida-pela-identidade" and c["secure"] and c["httponly"] and c["samesite"]=="Lax"
     assert r["Cache-Control"]=="no-store"
+    assert r["Referrer-Policy"]=="same-origin"
 
 def test_conta_diferente_nao_recebe_cookie(preparado,monkeypatch):
     monkeypatch.setattr(a,"_pedir",Mock(side_effect=[{"id":"p1","email":"admin@example.test"},
