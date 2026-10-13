@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from django.db.models import Count, F
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
@@ -100,4 +100,57 @@ def imagem_de_perfil_de_teste(request, perfil):
         raise Http404("imagem não encontrada")
     resposta = FileResponse(alvo.open("rb"), content_type="image/png")
     resposta["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return resposta
+
+
+@require_GET
+@never_cache
+def dados_da_comunidade(request):
+    from django.conf import settings
+    from django.urls import reverse
+    from apps.forum.models import assinatura_de
+
+    ator = quem_e(request)
+    token = getattr(settings, "TOKEN_DO_EDITOR_FORUM", "")
+    par_admin = bool(
+        token and request.headers.get("Authorization") == "Bearer " + token
+    )
+    if not ator.autenticado or not (ator.eh_admin or par_admin):
+        raise Http404
+    areas = [a for a in areas_visiveis(ator) if a.ativa]
+    topicos = topicos_visiveis(
+        Topico.objects.filter(area__in=areas, estado=Topico.Estado.PUBLICADO), ator
+    )
+    conversas = []
+    for topico in topicos.select_related("autor", "area").order_by("-criado_em", "-pk")[
+        :8
+    ]:
+        mensagens = mensagens_visiveis(
+            Mensagem.objects.filter(topico=topico, removida_em__isnull=True), ator
+        ).order_by("criado_em", "pk")
+        primeira = mensagens.first()
+        conversas.append(
+            {
+                "titulo": topico.titulo,
+                "autor": assinatura_de(topico.autor, topico.publicado_pela_escola),
+                "area": topico.area.nome,
+                "texto": primeira.texto[:240] if primeira else "",
+                "respostas": max(0, mensagens.count() - 1),
+                "resolvida": bool(topico.resposta_aceita_id),
+                "data": topico.criado_em.strftime("%d/%m/%Y"),
+                "url": reverse("topico", args=[topico.pk]),
+            }
+        )
+    resposta = JsonResponse(
+        {
+            "ranking": ranking_de_ajuda(ator),
+            "conversas": conversas,
+            "grupos": [
+                {"nome": a.nome, "url": reverse("area", args=[a.slug])}
+                for a in areas
+                if a.visibilidade == Area.Visibilidade.TURMA
+            ],
+        }
+    )
+    resposta["X-Robots-Tag"] = "noindex, nofollow"
     return resposta

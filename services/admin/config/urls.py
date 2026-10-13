@@ -8,6 +8,7 @@ from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
+from apps.core import comunidade_entrada
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
@@ -380,6 +381,12 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/perfil", comunidade_entrada.salvar_perfil, name="comunidade_salvar_perfil"),
+    path("galeria-publica/tema", comunidade_entrada.salvar_tema, name="comunidade_salvar_tema"),
+    path("galeria-publica/disponivel", comunidade_entrada.disponibilidade, name="comunidade_disponibilidade"),
+    path("galeria-publica/foto/<int:perfil_id>", comunidade_entrada.foto, name="comunidade_foto"),
+    path("galeria-publica/avatar/<slug:escolha>", comunidade_entrada.avatar, name="comunidade_avatar"),
+    path("galeria-publica/assets/<str:nome>", comunidade_entrada.recurso, name="comunidade_recurso"),
     path("galeria-publica", galeria_votacao.galeria, name="galeria_publica"),
     path("previa-aula-1", never_cache(require_GET(galeria_aula1.pagina)), name="galeria_aula1"),
     path("previa-aula-1/", never_cache(require_GET(galeria_aula1.pagina))),

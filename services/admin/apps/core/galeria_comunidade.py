@@ -45,7 +45,7 @@ class CookieDaGaleria:
 
     def __call__(self, request):
         response = self.get_response(request)
-        if caminho_publico(request.path_info) and settings.CSRF_COOKIE_NAME in response.cookies:
+        if (caminho_publico(request.path_info) or request.path_info.startswith('/galeria-publica/')) and settings.CSRF_COOKIE_NAME in response.cookies:
             from .galeria_aula1 import BASE
             response.cookies[settings.CSRF_COOKIE_NAME]['path'] = BASE if request.path_info.startswith('/previa-aula-1') else '/comunidade'
         return response
@@ -56,7 +56,7 @@ def aluno(request):
     if not cookie:
         return None
     try:
-        sessao = IdentidadeClient().sessao_completa(cookie)
+        sessao = getattr(request, '_comunidade_sessao', None) or IdentidadeClient().sessao_completa(cookie)
     except IdentidadeIndisponivel:
         return None
     email = (sessao.get('email') or '').strip().lower()
@@ -79,6 +79,9 @@ def classificacao(pessoa=None, *, imagens=IMAGENS, base='/comunidade', ordem_fix
 @require_GET
 @never_cache
 def galeria(request):
+    from . import comunidade_entrada
+    if comunidade_entrada.reconhecer_admin(request):
+        return comunidade_entrada.entrada(request)
     pessoa = aluno(request)
     return render(request, 'admin/galeria_publica.html', {'imagens': classificacao(pessoa), 'aluno': pessoa, 'csrf': get_token(request)})
 
