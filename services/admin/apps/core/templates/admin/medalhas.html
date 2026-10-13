@@ -30,15 +30,5 @@
 {% if medalhas == None %}<p>Não foi possível consultar a coleção agora.</p>{% else %}
 <ul class="medalhas-lista">{% for medalha in medalhas %}<li><strong>🏅 {{ medalha.nome }}</strong><p>{{ medalha.mensagem }}</p><small>{% if medalha.vista %}Celebração já vista pelo aluno{% else %}Celebração aguardando o aluno{% endif %}</small></li>{% empty %}<li>Nenhuma medalha concedida pelo painel para este aluno.</li>{% endfor %}</ul>{% endif %}
 </main>
-<script>
-document.getElementById('ver-medalha').addEventListener('click',function(){
- const u=new URL("{% url 'escola_medalhas_previa' %}",location.origin);
- u.searchParams.set('nome',document.getElementById('nome-medalha').value);
- u.searchParams.set('mensagem',document.getElementById('mensagem-medalha').value);
- document.getElementById('previa-medalha').src=u.href;
-});
-document.getElementById('form-medalha').addEventListener('submit',function(){
- const b=this.querySelector('[type=submit]');b.disabled=true;b.textContent='Entregando medalha…';
-});
-</script>
+<script defer src="/conquistas/static/medalhas-form.js?v=20261012-1" data-previa-url="{% url 'escola_medalhas_previa' %}"></script>
 {% endblock %}
