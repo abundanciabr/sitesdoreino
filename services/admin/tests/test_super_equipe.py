@@ -1,6 +1,9 @@
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import patch
+import json
+from datetime import timedelta
+from django.utils import timezone
 
 import pytest
 from django.test import RequestFactory
@@ -12,6 +15,52 @@ from apps.agentes.super_equipe_perfis import (
 )
 from apps.agentes.views_super_equipe import super_equipe as pagina, super_equipe_trabalho
 from apps.core.models import MembroDaEquipe
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("mudanca", ["valor", "versao", "janela", "acesso"])
+def test_retomada_reconsulta_fontes_sem_reutilizar_contexto_antigo(mudanca):
+    membro = MembroDaEquipe.objects.create(nome="Ensaio de retomada")
+    trabalho, _ = super_equipe.pedir_trabalho(
+        membro, site_id="ensaio", host="meshcraft.top", pedido="Conferir retomada",
+        especialidades=["jez_humble", "shreya_shankar"], chave="retomada-" + mudanca)
+    anterior = {"consultado_em": "2026-10-12T10:00:00Z", "integridade": {
+        "valor": 1, "versao": "v1", "janela": "15min", "acesso": "admin"}}
+    trabalho.estado["fontes"] = anterior
+    trabalho.estado["fontes_tentativa"] = 1
+    trabalho.estado["resultados"] = {"jez_humble": {"texto": "CONTEXTO_ANTIGO",
+        "concluido_em": "2026-10-12T10:01:00Z"}}
+    trabalho.situacao = Execucao.Situacao.EXECUTANDO
+    trabalho.tentativas = 1
+    trabalho.trabalhador = "interrompido"
+    trabalho.ocupada_ate = timezone.now() - timedelta(seconds=1)
+    trabalho.save()
+    Consumo.objects.create(execucao=trabalho, modelo="gpt-6-sol",
+                           custo_estimado_usd=Decimal("0.001"))
+    nova = json.loads(json.dumps(anterior))
+    nova["integridade"][mudanca] = "alterado"
+    if mudanca == "acesso":
+        nova["integridade"] = {"estado": "indisponivel", "acesso": "revogado"}
+    vistos = []
+
+    def responder(**kwargs):
+        vistos.append(json.loads(kwargs["itens"][0]["content"]))
+        consumo = Consumo.objects.create(execucao=kwargs["execucao"], modelo="gpt-6-sol",
+            custo_estimado_usd=Decimal("0.001"))
+        return SimpleNamespace(completa=True, texto="Nova análise", id="ensaio", consumo=consumo)
+
+    with patch.object(super_equipe, "coletar_fontes", return_value=nova) as coleta, \
+         patch.object(super_equipe.modelo, "conexao", return_value=SimpleNamespace(modelo_forte="gpt-6-sol")), \
+         patch.object(super_equipe.modelo, "responder", side_effect=responder):
+        executor.rodar_uma("retomou")
+    trabalho.refresh_from_db()
+    assert coleta.call_count == 1 and len(vistos) == 1
+    assert "CONTEXTO_ANTIGO" not in json.dumps(vistos)
+    assert trabalho.estado["fontes_anteriores"] == [anterior]
+    assert trabalho.estado["fontes"] == nova
+    assert trabalho.estado["resultados"]["jez_humble"]["texto"] == "CONTEXTO_ANTIGO"
+    assert trabalho.consumos.count() == 2
+    assert any("outra fotografia" in p for p in trabalho.entregas.get().pendencias)
 
 
 @pytest.mark.django_db

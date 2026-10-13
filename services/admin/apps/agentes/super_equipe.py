@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 import statistics
@@ -353,11 +354,16 @@ def executar(execucao: Execucao) -> None:
     from .executor import batimento, guardar_estado, terminar
 
     estado = execucao.estado
-    if "fontes" not in estado:
+    if "fontes" not in estado or estado.get("fontes_tentativa", 1) != execucao.tentativas:
         batimento(execucao, "Consultando fontes atuais do site", 8)
+        if "fontes" in estado:
+            estado.setdefault("fontes_anteriores", []).append(estado["fontes"])
         estado["fontes"] = coletar_fontes(estado["site_id"], estado["host"])
+        estado["fontes_tentativa"] = execucao.tentativas
         guardar_estado(execucao)
         _entrega(execucao, parcial=True, pendencias=["Análise dos especialistas em andamento."])
+    digest_fontes = hashlib.sha256(json.dumps(
+        estado["fontes"], sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
     conexao = modelo.conexao()
     if execucao.modelo != conexao.modelo_forte:
         Execucao.objects.filter(pk=execucao.pk, trabalhador=execucao.trabalhador).update(
@@ -376,7 +382,9 @@ def executar(execucao: Execucao) -> None:
             terminar(execucao, Execucao.Situacao.FALHOU, pendencias[0])
             return
         anterior = {c: _sem_dados_pessoais(r["texto"][:1800])
-                    for c, r in estado["resultados"].items()}
+                    for c, r in estado["resultados"].items()
+                    if r.get("fontes_digest") == digest_fontes
+                    or (not estado.get("fontes_anteriores") and not r.get("fontes_digest"))}
         contexto = contexto_do_perfil(
             codigo, _sem_dados_pessoais(execucao.pedido), estado["fontes"], anterior)
         resposta = modelo.responder(
@@ -393,10 +401,15 @@ def executar(execucao: Execucao) -> None:
         estado["resultados"][codigo] = {"texto": _sem_dados_pessoais(resposta.texto.strip()),
                                          "resposta_id": resposta.id,
                                          "consumo_id": resposta.consumo.pk,
+                                         "fontes_digest": digest_fontes,
+                                         "fontes_consultadas_em": estado["fontes"].get("consultado_em"),
                                          "concluido_em": timezone.now().isoformat()}
         guardar_estado(execucao)
         _entrega(execucao, parcial=True, pendencias=["Outros especialistas ainda trabalham."])
     pendencias = _pendencias(estado["fontes"])
+    if estado.get("fontes_anteriores") and any(
+            r.get("fontes_digest") != digest_fontes for r in estado["resultados"].values()):
+        pendencias.append("Respostas anteriores preservadas usam outra fotografia das fontes; não foram regeneradas nem reutilizadas na nova análise.")
     entrega = _entrega(execucao, parcial=bool(pendencias), pendencias=pendencias)
     if pendencias:
         terminar(execucao, Execucao.Situacao.AGUARDANDO_INFORMACAO,
