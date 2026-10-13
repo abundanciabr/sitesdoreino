@@ -1,6 +1,7 @@
 import copy
 import json
 from datetime import datetime
+from contextvars import ContextVar
 from unittest.mock import patch
 
 import httpx
@@ -132,6 +133,30 @@ def test_sem_site_nao_consulta_outra_escola(janela):
         r = coletar(None, "meshcraft.top", janela)
     fonte.assert_not_called()
     assert r["escola"]["estado"] == "indisponivel"
+
+
+def test_leituras_concorrentes_preservam_contexto_do_modulo(crm, janela):
+    contexto = ContextVar("modulo_do_ensaio", default=None)
+    token = contexto.set("admin")
+    vistos = []
+    def quiz(*args, **kwargs):
+        vistos.append(contexto.get())
+        return (200, {"items": [{"slug": "q"}]}) if len(args) == 3 else (503, None)
+    def ler_crm(*args, **kwargs):
+        vistos.append(contexto.get())
+        return "ok", crm
+    def escola(*args):
+        vistos.append(contexto.get())
+        return []
+    try:
+        with patch("apps.core.conteudos.pedir_por_host", side_effect=quiz), \
+             patch("apps.core.clients.LeadsClient._pedir", side_effect=ler_crm), \
+             patch("apps.core.clients.AlunosClient.alunos", side_effect=escola):
+            r = coletar("s", "meshcraft.top", janela)
+        assert len(vistos) == 4 and set(vistos) == {"admin"}
+        assert r["crm"]["pedidos"] == 2
+    finally:
+        contexto.reset(token)
 
 
 @pytest.mark.parametrize("admin", [None, {"equipe_apenas": True}])

@@ -22,7 +22,7 @@
     <p>Fonte: API de campanhas dos quizzes, primeira abertura por sessão no período. Conclusões e saídas são acompanhadas até a consulta, inclusive depois do fim do período. Testes reconhecidos pela fonte ficam fora.</p>
     <p>Cada linha usa a mesma população de sessões do quiz. Pessoas podem usar mais de uma sessão ou quiz. O começo da medição é a abertura registrada; não há impressões, cliques faturados ou gasto de anúncios nesta fonte.</p>
     {% if r.inventario.estado == "medido" %}
-    <p>Quizzes encontrados: {{ r.inventario.total }} · omitidos nesta leitura: {{ r.inventario.omitidos }}. Limite de 30 quizzes por consulta.</p>
+    <p>Quizzes encontrados: {{ r.inventario.total }} · omitidos nesta leitura: {{ r.inventario.omitidos }}. Limite de 20 quizzes por consulta.</p>
     <div style="overflow-x:auto"><table>
       <thead><tr><th>Quiz</th><th>Aberturas</th><th>Conclusões vinculadas</th><th>Conclusão / abertura</th><th>Saídas para oferta</th><th>Conclusões sem abertura</th><th>Testes fora (aberturas / conclusões)</th></tr></thead>
       <tbody>{% for q in r.quizzes %}<tr>

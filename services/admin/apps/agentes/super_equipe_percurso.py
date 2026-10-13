@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from datetime import date, datetime, time, timedelta
 from math import ceil
 from statistics import median
@@ -11,7 +12,7 @@ from zoneinfo import ZoneInfo
 from django.utils import timezone
 
 FUSO = ZoneInfo("America/Sao_Paulo")
-MAX_QUIZZES = 30
+MAX_QUIZZES = 20
 
 
 def periodo(inicio="", fim="", janela="semana", agora=None):
@@ -118,7 +119,7 @@ def resumir_crm(dados, site_id, p):
                 invertidos += 1
             else:
                 tempos.append(segundos)
-    completa = not (truncado or inconsistentes or posteriores)
+    completa = not (truncado or inconsistentes or posteriores or sem_tempo or invertidos)
     return {"estado": "medido" if completa else "parcial", "completa": completa,
             "oportunidades": len(por_id), "contatos": len(pessoas),
             "pedidos": len(pedidos), "compradores": len(compradores),
@@ -250,12 +251,16 @@ def coletar(site_id, host, p=None):
         except (TypeError, ValueError, KeyError):
             return {"quiz": slug, "estado": "indisponivel"}
     with ThreadPoolExecutor(max_workers=4) as pool:
-        c, e = pool.submit(crm), pool.submit(escola)
+        # O runtime compartilhado escolhe configurações/credenciais pelo contexto
+        # da requisição. Cada leitura precisa de sua própria cópia desse contexto.
+        c = pool.submit(copy_context().run, crm)
+        e = pool.submit(copy_context().run, escola)
         status, inventario = pedir_por_host(host, "quiz", "GET")
         if status == 200 and isinstance(inventario, dict) and isinstance(inventario.get("items"), list):
             slugs = sorted({i["slug"] for i in inventario["items"] if isinstance(i, dict) and isinstance(i.get("slug"), str)})
             resultado["inventario"] = {"estado": "medido", "total": len(slugs), "omitidos": max(0, len(slugs) - MAX_QUIZZES)}
-            resultado["quizzes"] = list(pool.map(quiz, slugs[:MAX_QUIZZES]))
+            tarefas = [pool.submit(copy_context().run, quiz, slug) for slug in slugs[:MAX_QUIZZES]]
+            resultado["quizzes"] = [tarefa.result() for tarefa in tarefas]
         else:
             resultado["inventario"] = {"estado": "indisponivel"}
         resultado["crm"], crm_dados = c.result()
