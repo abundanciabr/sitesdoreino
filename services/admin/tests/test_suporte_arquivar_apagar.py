@@ -1,3 +1,4 @@
+import json
 import re
 from datetime import timedelta
 import pytest
@@ -108,3 +109,27 @@ def test_botoes_visiveis_e_confirmacoes_sem_javascript(conversa):
     assert 'Confirmação 1 de 2' in r.content.decode()
     r = post(conversa, 'confirmar_apagar', confirmacao=token(r))
     assert 'Confirmação 2 de 2' in r.content.decode() and '>Apagar definitivamente</button>' in r.content.decode()
+
+
+def test_nova_mensagem_retorna_a_fila_sem_perder_historico(conversa, monkeypatch):
+    monkeypatch.setattr(service, 'orcamento', lambda *a: None)
+    post(conversa, 'arquivar')
+    pedido = RequestFactory().post('/interno/atendimento-aluno/', json.dumps({
+        'acao': 'mensagem', 'conversa': str(conversa.pk), 'assunto': conversa.assunto_id,
+        'referencia': 'mensagem-nova-ficticia', 'texto': 'Ainda preciso de ajuda',
+    }), content_type='application/json')
+    r = views._conversar(pedido, {'autenticado': True, 'id': conversa.pessoa_id})
+    assert r.status_code == 200
+    conversa.refresh_from_db()
+    assert conversa.arquivada_em is None
+    assert conversa.mensagens.filter(referencia='ficticia').exists()
+    assert conversa.mensagens.filter(referencia='mensagem-nova-ficticia').exists()
+
+
+def test_confirmacao_de_outro_admin_nao_apaga(conversa):
+    primeiro = token(post(conversa, 'apagar'))
+    segundo = token(post(conversa, 'confirmar_apagar', confirmacao=primeiro))
+    r = requisicao({'acao': 'apagar_definitivamente', 'conversa': str(conversa.pk), 'confirmacao': segundo})
+    r.admin['id'] = 'outro-admin'
+    assert views.fila(r).status_code == 409
+    assert Conversa.objects.filter(pk=conversa.pk).exists()
