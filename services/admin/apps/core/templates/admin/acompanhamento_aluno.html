@@ -7,6 +7,7 @@
   <a class="volta" href="{% url 'acompanhamento_alunos' %}">&larr; Acompanhamento</a>
   <h1>{{ nome|primeiro_nome|default:"Aluno" }}</h1>
   <p class="subtitulo">{{ email }} · {{ site_id }}</p>
+  <p><a class="sim" href="{% url 'escola_medalhas' %}?site_id={{ site_id|urlencode }}&amp;email={{ email|urlencode }}">🏅 Dar medalha</a></p>
   {% if fonte_indisponivel %}<p class="aviso">Não foi possível consultar as matrículas agora. Tente novamente.</p>
   {% else %}
     {% if salvo %}<p class="recado">Registro acrescentado ao histórico.</p>{% endif %}
