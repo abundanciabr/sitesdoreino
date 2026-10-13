@@ -5,13 +5,12 @@
 {% if salvo %}<p role="status">Configuração guardada.</p>{% endif %}
 {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
 <section class="cartao"><h2>Recepção dos alunos</h2>
-<p><strong>Chat aberto 24 horas por dia, todos os dias.</strong></p>
-{% if expediente.programado %}<p><strong>{% if expediente.respostas_abertas %}Equipe no expediente agora.{% else %}Respostas no próximo expediente.{% endif %}</strong> {{ expediente.horario }}</p>{% if not expediente.respostas_abertas %}<p>{{ expediente.mensagem }}</p>{% endif %}{% endif %}
+{% if expediente.programado %}<p><strong>{% if expediente.respostas_abertas %}Suporte aberto agora.{% else %}Suporte fechado agora.{% endif %}</strong> {{ expediente.horario }}</p>{% if not expediente.respostas_abertas %}<p>{{ expediente.mensagem }}</p>{% endif %}{% endif %}
 <form method="post">{% csrf_token %}<input name="acao" value="geral" type="hidden">
 <label><input type="checkbox" name="expediente_ativo" value="sim" {% if config.expediente_ativo %}checked{% endif %}> Responder somente no expediente de segunda a sexta</label>
 <label>Início das respostas <input type="time" name="expediente_inicio" value="{{ config.expediente_inicio|time:'H:i' }}" required></label>
 <label>Fim das respostas <input type="time" name="expediente_fim" value="{{ config.expediente_fim|time:'H:i' }}" required></label>
-<p>Horário de Brasília. O chat recebe mensagens e os avisos aos WhatsApps dos atendentes funcionam 24 horas por dia, inclusive aos sábados e domingos. Com a agenda ligada, as respostas individuais, em lote e automáticas saem somente no expediente acima.</p>
+<p>Horário de Brasília. Sábados e domingos: sem atendimento. Com a agenda ligada, as respostas individuais, em lote e automáticas saem somente no expediente acima. O envio de mensagens e os avisos aos atendentes continuam disponíveis enquanto a equipe está fora do expediente.</p>
 <label>Horário informado pela escola <input name="horario" maxlength="200" value="{{ config.horario }}" placeholder="Informe dias, horários e fuso"></label>
 <label>Mensagem de atendimento <textarea name="mensagem" rows="4" maxlength="2000">{{ config.mensagem }}</textarea></label>
 <label><input type="checkbox" name="ia_ativa" value="sim" {% if config.ia_ativa %}checked{% endif %}> Permitir respostas e sugestões de IA dentro do orçamento já autorizado</label><button>Guardar configuração</button></form>

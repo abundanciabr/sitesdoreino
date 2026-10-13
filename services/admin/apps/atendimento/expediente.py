@@ -14,7 +14,7 @@ def disponibilidade(config, agora=None):
                 'proxima_abertura': None, 'mensagem': ''}
     inicio, fim = config.expediente_inicio, config.expediente_fim
     horario = (f'Segunda a sexta, das {inicio:%H:%M} às {fim:%H:%M} '
-               '(horário de Brasília). Sábados e domingos: sem respostas.')
+               '(horário de Brasília). Sábados e domingos: sem atendimento.')
     aberto = agora.weekday() < 5 and inicio <= agora.time() < fim
     proxima = None
     if not aberto:
@@ -24,9 +24,9 @@ def disponibilidade(config, agora=None):
             if data.weekday() < 5 and candidata > agora:
                 proxima = candidata
                 break
-    mensagem = 'Você pode enviar mensagens 24 horas por dia, todos os dias. As respostas são dadas no expediente. ' + horario
+    mensagem = '' if aberto else 'Suporte fechado. ' + horario
     if proxima:
-        mensagem += f' Próximo expediente: {proxima:%d/%m/%Y às %H:%M}.'
+        mensagem += f' Próxima abertura: {proxima:%d/%m/%Y às %H:%M}.'
     return {'aberto': True, 'respostas_abertas': aberto, 'programado': True, 'horario': horario,
             'proxima_abertura': proxima.isoformat() if proxima else None,
             'mensagem': mensagem}
