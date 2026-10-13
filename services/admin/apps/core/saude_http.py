@@ -197,7 +197,8 @@ def resumo(banco, dias, perfil="", referencia=""):
                        "taxa": round(100 * contagem["erro"] / total, 2), **contagem})
     saudaveis = sorted((p for p in linhas if p["sucesso"] > 0 and p["erro"] == 0), key=lambda p: (-p["sucesso"], p["pagina"]))
     falhas = sorted((p for p in linhas if p["erro"]), key=lambda p: (-p["erro"], -p["taxa"], p["pagina"]))
-    return {"saudaveis": saudaveis, "falhas": falhas, "erros": erros, "inicio": banco.get(PREFIXO + "inicio"),
+    inicio = banco.get(PREFIXO + "inicio")
+    return {"saudaveis": saudaveis, "falhas": falhas, "erros": erros, "inicio": datetime.fromisoformat(inicio).astimezone(FUSO) if inicio else None,
             "acessos": sum(p["total"] for p in linhas), "falhas_total": sum(p["erro"] for p in linhas)}
 
 
@@ -209,7 +210,7 @@ def painel(request):
     perfil = request.GET.get("perfil", "")
     perfil = perfil if perfil in PERFIS else ""
     referencia = request.GET.get("referencia", "").strip()[:100]
-    contexto = {"dias": dias, "perfil": perfil, "perfis": PERFIS.items(), "referencia": referencia, "servicos": SERVICOS}
+    contexto = {"admin": admin, "dias": dias, "perfil": perfil, "perfis": PERFIS.items(), "referencia": referencia, "servicos": SERVICOS}
     try:
         banco = cliente()
         if banco is None:
