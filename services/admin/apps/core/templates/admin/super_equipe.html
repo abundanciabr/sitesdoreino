@@ -3,6 +3,23 @@
 {% block corpo %}
 <main class="envolucro copy">
   <h1>Equipe de especialistas técnicos</h1>
+  <section class="cartao" id="fonte-entregas">
+    <h2>Fonte de entregas para Jez</h2>
+    <p>Consultas do canal operacional salvas em privado e fornecidas às próximas análises. Cada leitura mantém sua data e preserva as anteriores.</p>
+    {% for item in trilha_entregas.itens %}
+      <p>Entrega <code>{{ item.id }}</code> · candidata <code>{{ item.candidata }}</code> · pacote <code>{{ item.artefato.pacote_id|default:"não informado" }}</code>.</p>
+      <p>SHA do código: <code>{{ item.artefato.codigo_sha256|default:"não informada" }}</code>. Ensaio: {{ item.ensaio.estado }} · {{ item.ensaio.aprovados|default_if_none:"não informado" }} aprovados · {{ item.ensaio.falhas|default_if_none:"não informado" }} falhas · {{ item.ensaio.ignorados|default_if_none:"não informado" }} ignorados.</p>
+      <p>Fonte coletada em {{ item.coletada_em }} · {{ item.atualidade }}. Confirmação atual: {{ item.confirmacao_atual|yesno:"sim,não" }}. Backup do código: {{ item.backup.tempo_codigo_segundos|default_if_none:"não informado" }} s; identidade e restauração não informadas.</p>
+    {% empty %}<p>Ainda não há consulta operacional registrada.</p>{% endfor %}
+    <details><summary>Atualizar a fonte pela consulta operacional</summary>
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="acao" value="registrar_entregas">
+        <label for="consultas">JSON devolvido por ssh sitesdoreino-robo consultar ID</label>
+        <textarea id="consultas" name="consultas" rows="8" required style="width:100%"></textarea>
+        <button class="botao" type="submit">Salvar fonte sanitizada</button>
+      </form>
+    </details>
+  </section>
   <p class="subtitulo">A equipe acompanha as fontes do site, identifica problemas e mantém as melhorias na fila. Análises, ações executadas e publicações têm acompanhamento separado.</p>
   <section class="cartao">
     <h2>Acompanhamento automático</h2>
