@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import selectors
 import shutil
 import socket
 import struct
@@ -170,13 +171,37 @@ def sandbox(record, plan, stage):
     else:
         args += ['--env', 'PYTHONDONTWRITEBYTECODE=1', '--entrypoint', 'python', image,
                  '-B', '-m', 'unittest', plan['test'].replace('/', '.').removesuffix('.py')]
+    process = None
     try:
-        # O código não controla o volume de saída nem publica texto no registro.
-        run = subprocess.run(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90)
-        return run.returncode
-    except subprocess.TimeoutExpired:
-        return 124
+        # Drena continuamente, guarda no máximo 64 KiB e publica apenas contadores.
+        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+        tail = b''
+        deadline = time.monotonic() + 90
+        with selectors.DefaultSelector() as selector:
+            selector.register(process.stdout, selectors.EVENT_READ)
+            while selector.get_map():
+                if time.monotonic() > deadline:
+                    process.kill()
+                    return 124
+                for key, _ in selector.select(0.5):
+                    chunk = os.read(key.fd, 8192)
+                    if chunk:
+                        tail = (tail + chunk)[-65536:]
+                    else:
+                        selector.unregister(key.fileobj)
+            rc = process.wait(timeout=5)
+        output = tail.decode('utf-8', errors='replace')
+        counts = {name: int(value) for name, value in re.findall(r'^# (tests|pass|fail|cancelled|skipped) ([0-9]{1,6})$', output, re.M)}
+        python_count = re.search(r'Ran ([0-9]{1,6}) tests?', output)
+        if python_count:
+            counts['tests'] = int(python_count.group(1))
+        record['testes'] = counts
+        record['classes_de_falha'] = [name for name in ('AssertionError', 'SyntaxError', 'ImportError', 'ModuleNotFoundError', 'TypeError', 'ReferenceError', 'PermissionError') if name in output]
+        return rc
     finally:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
         subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
