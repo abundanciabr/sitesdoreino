@@ -23,6 +23,8 @@ def corpus():
 
 def leitura(codigo='iniciante'):
     return {'compra': 'indeciso', 'porque': 'Falta detalhe', 'onde_parou': 'Primeiro passo',
+            'secao_decisao': 'cubo.headline', 'trecho_decisao': 'Aprenda modelagem 3D',
+            'evidencia_decisao': 'real1' if codigo == 'calibrado' else '',
             'objecoes': [{'secao': 'cubo.headline', 'trecho': 'Aprenda modelagem 3D',
                          'objecao': 'Como começo?', 'faltou': 'Primeiro passo',
                          'evidencia_id': 'real1' if codigo == 'calibrado' else ''}]}
@@ -39,6 +41,14 @@ def test_calibrado_exige_evidencia_existente():
     with pytest.raises(ValueError, match='evidência'):
         banca.validar_leitura(leitura(), foto(), corpus(), 'calibrado')
     assert banca.validar_leitura(leitura('calibrado'), foto(), corpus(), 'calibrado')
+
+
+def test_compra_sem_objecao_ainda_exige_citacao():
+    dados = leitura()
+    dados['objecoes'] = []
+    dados['trecho_decisao'] = 'Texto inventado'
+    with pytest.raises(ValueError, match='decisão'):
+        banca.validar_leitura(dados, foto(), corpus(), 'iniciante')
 
 
 def test_comparacao_declara_mudanca_da_banca():
