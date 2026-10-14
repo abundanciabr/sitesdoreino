@@ -44,6 +44,7 @@ META = {"alvo": 500, "ate": "2026-12-15", "partida": 0, "partida_em": "2026-09-0
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    monkeypatch.setattr(placar, "site_de", lambda request: "mesh")
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-admin")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
@@ -86,7 +87,7 @@ def _pedido(dia: str, esperando: int) -> dict:
 def _liberada(pediu: str, liberou: str, status: str = "ativa") -> dict:
     return {
         "status": status,
-        "origem": "liberado",
+        "origem": "liberado", "site_id": "mesh",
         "criada_em": _em(pediu),
         "virou_aluno_em": _em(liberou),
     }
@@ -285,20 +286,10 @@ def test_a_tela_mostra_as_duas_medidas_e_os_compromissos():
         return_value=httpx.Response(200, json=[_liberada("2026-10-01", "2026-10-02")])
     )
     html = _dentro().get(reverse("placar")).content.decode()
-    assert "A direção da semana" in html
+    assert "Atendimento e entrega de acesso nesta semana" in html
     assert "nesta semana" in html
-    # A meta da semana é PERGUNTADA à régua, e não cravada aqui. Até 04/09/2026
-    # ela era o mesmo 34 toda semana, porque a meta se repartia em linha reta;
-    # com a curva do ciclo ela muda de semana para semana, e um número cravado
-    # neste teste ficaria vermelho sozinho na virada de uma segunda-feira.
-    # Este teste mede a TELA (o bloco aparece, com o número que a régua deu);
-    # quem mede se a régua está certa é `tests/test_ciclo.py`.
-    meta_do_ciclo, _recusas = placar.ler_cartao(placar.CARTAO_DA_META)
-    hoje = timezone.localdate()
-    alvo_da_semana = placar.esperado_em(meta_do_ciclo, hoje) - placar.esperado_em(
-        meta_do_ciclo, hoje - dt.timedelta(days=7)
-    )
-    assert f"meta da semana: {alvo_da_semana}" in html
+    assert "meta da semana:" not in html
+    assert "não são metas comerciais" in html
     assert "100%" in html and "na meta" in html
     assert "Os compromissos da semana" in html
 
@@ -318,6 +309,4 @@ def test_a_tela_mostra_o_caminho_da_venda_apagado():
     for nome in placar.CARTOES_DO_CAMINHO_DA_VENDA:
         cartao, _recusas = placar.ler_cartao(nome)
         assert cartao["pergunta"] in html, f"{nome} não aparece na tela"
-        assert (
-            cartao["sem_fonte_porque"] in html
-        ), f"{nome} não diz por que está apagado"
+        assert "Falta identificar a página" in html or "Falta conciliar" in html

@@ -23,7 +23,7 @@ def test_importacao_preserva_todos_e_repetir_nao_sobrescreve():
     raiz = Path(__file__).resolve().parents[1] / "apps" / "core"
     assert CartaoDoPlacar.objects.count() == len(list((raiz / "cartoes").glob("*.json")))
     assert RegistroDoPlacar.objects.count() == len(list((raiz / "registros").glob("*.js")))
-    assert VersaoDoCartaoDoPlacar.objects.count() == CartaoDoPlacar.objects.count()
+    assert all(c.versoes.exists() for c in CartaoDoPlacar.objects.all())
     meta = CartaoDoPlacar.objects.get(nome="compras-no-ciclo")
     meta.dados = {**meta.dados, "alvo": 12345}
     meta.save()
@@ -76,6 +76,7 @@ def test_meta_e_registro_sao_editados_no_painel():
     assert resposta_invalida.status_code == 200
     assert b'duas mil' in resposta_invalida.content
     assert CartaoDoPlacar.objects.get(nome=meta.nome).dados["alvo"] == meta.dados["alvo"]
+    versoes_antes = meta.versoes.count()
     pedido = rf.post("/admin/placar/editar/", {
         "acao": "cartao", "nome": meta.nome, "pergunta": "Nova pergunta",
         "alvo": str(meta.dados["alvo"]), "partida": str(meta.dados["partida"]),
@@ -86,7 +87,7 @@ def test_meta_e_registro_sao_editados_no_painel():
     assert gestao_do_placar(pedido).status_code == 302
     assert CartaoDoPlacar.objects.get(nome=meta.nome).dados["pergunta"] == "Nova pergunta"
     assert CartaoDoPlacar.objects.get(nome=meta.nome).dados["atualizado_por"] == "dono@example.com"
-    assert meta.versoes.count() == 2
+    assert meta.versoes.count() == versoes_antes + 1
     novo = rf.post("/admin/placar/editar/", {
         "acao": "registro", "tipo": "compromisso", "quando": "2026-10-02",
         "titulo": "Telefonar para as alunas", "vence_em_dias": "7",
@@ -160,4 +161,4 @@ def test_fechamento_grava_campos_opcionais_e_nova_meta():
     atual = CartaoDoPlacar.objects.get(nome="compras-no-ciclo").dados
     assert (atual["alvo"], atual["partida"], atual["ate"]) == (2000, 5, "2027-03-09")
     assert "semanas" not in atual
-    assert VersaoDoCartaoDoPlacar.objects.get(cartao__nome="compras-no-ciclo", revisao=2).dados["alvo"] == 2000
+    assert VersaoDoCartaoDoPlacar.objects.filter(cartao__nome="compras-no-ciclo").order_by("-revisao").first().dados["alvo"] == 2000

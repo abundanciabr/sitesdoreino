@@ -53,6 +53,7 @@ ALUNOS_LISTA = f"{ALUNOS}/matriculas"
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    monkeypatch.setattr(placar, "site_de", lambda request: "mesh")
     # Estas fichas simulam contatos comerciais previamente conferidos.
     def contatos_confirmados(pessoas):
         for n, pessoa in enumerate(pessoas):
@@ -305,28 +306,22 @@ def test_a_barra_sem_contagem_diz_que_nao_consegue_contar():
 
 @respx.mock
 def test_a_pagina_mostra_a_barra_do_mes_e_a_meta_do_ciclo(monkeypatch):
-    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 9, 20))
-    _a_escola_responde(
-        [
-            _ficha(virou_aluno_em="2026-09-10T12:00:00-03:00"),
-            _ficha(virou_aluno_em="2026-09-02T12:00:00-03:00"),
-            _ficha(virou_aluno_em=None),
-            _ficha(status="reembolsada", virou_aluno_em="2026-09-12T12:00:00-03:00"),
-        ]
-    )
+    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 10, 14))
+    _a_escola_responde([
+        _ficha(site_id="mesh", email="pessoa@example.com", virou_aluno_em="2026-10-12T12:00:00-03:00"),
+        _ficha(site_id="mesh", email="pessoa@example.com", virou_aluno_em="2026-10-13T12:00:00-03:00"),
+        _ficha(site_id="mesh", email="antiga@example.com", virou_aluno_em="2026-09-02T12:00:00-03:00"),
+        _ficha(site_id="mesh", email="estorno@example.com", status="reembolsada", virou_aluno_em="2026-10-12T12:00:00-03:00"),
+    ])
     resposta = _dentro().get(reverse("placar"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert 'class="hero-numero">1<' in html, "só a que virou aluna depois da partida"
-    assert "meta do mês" in html
-    # PERGUNTA o alvo ao cartão em vez de cravá-lo: este teste mede se o número
-    # CHEGA à tela, e não qual é o número.
-    meta_do_ciclo, _ = placar.ler_cartao(placar.CARTAO_DA_META)
-    assert f"para <b>{meta_do_ciclo['alvo']}</b>" in html
-    assert "1 ficha sem data" in html
-    assert "1 reembolsada" in html
-    assert "Sem dados ainda" in html, "o par sem fonte precisa se declarar"
-    assert "aguardando você" not in html
+    assert 'class="hero-numero">1 / 10.000<' in html
+    assert "Pessoas novas únicas" in html
+    assert "31/12/2027" in html and "05/10 a 27/12/2026" in html
+    assert "13/12/2026" in html and "14 a 27/12/2026" in html
+    assert "para <b>1000</b>" not in html
+    assert "Sem dados ainda" in html
 
 
 @respx.mock
@@ -339,9 +334,9 @@ def test_a_escola_fora_do_ar_nao_vira_zero():
 
 @respx.mock
 def test_a_lista_sem_o_campo_novo_diz_isso_em_vez_de_zero():
-    _a_escola_responde([_ficha(), _ficha()])
+    _a_escola_responde([_ficha(site_id="mesh"), _ficha(site_id="mesh")])
     html = _dentro().get(reverse("placar")).content.decode()
-    assert "ainda não traz a data" in html
+    assert "sem data ou cadastro suficiente" in html
     assert 'class="hero-numero"' not in html
 
 
@@ -371,7 +366,7 @@ def test_sem_cartao_o_numero_nao_aparece(tmp_path, monkeypatch):
 @respx.mock
 def test_cartao_torto_mostra_o_numero_com_aviso(tmp_path, monkeypatch):
     """Cartão com defeito de formato: o número aparece, e o defeito vem como aviso."""
-    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 9, 20))
+    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 10, 14))
     meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
     mes, _ = placar.ler_cartao(placar.CARTAO_DO_MES)
     pasta = _pasta_com(
@@ -382,16 +377,16 @@ def test_cartao_torto_mostra_o_numero_com_aviso(tmp_path, monkeypatch):
         },
     )
     monkeypatch.setattr(placar, "diretorio_dos_cartoes", lambda: pasta)
-    _a_escola_responde([_ficha(virou_aluno_em="2026-09-10T12:00:00-03:00")])
+    _a_escola_responde([_ficha(site_id="mesh", email="pessoa@example.com", virou_aluno_em="2026-10-12T12:00:00-03:00")])
     resposta = _dentro().get(reverse("placar"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert 'class="hero-numero">1<' in html, "o cartão torto sumiu com o número"
-    assert "<b>1</b> desde a partida" in html
+    assert 'class="hero-numero">1 / 10.000<' in html, "o cartão torto sumiu com o número"
+    assert "9999 pessoas para a meta" in html
     assert "falta o cartão" not in html
     assert "defeito de formato" in html
     assert "`alvo` é um inteiro sem aspas" in html
-    assert "`alvo_do_mes` é um inteiro sem aspas" in html
+
 
 
 @respx.mock

@@ -103,6 +103,7 @@ def medir_os_doze(
     partida_em: dt.date,
     hoje: dt.date,
     pasta=None,
+    inicio_aprendizados=None,
 ) -> list[dict]:
     """Os doze, cada um com o cartão, o valor (ou o motivo de não ter) e o veredito.
 
@@ -164,14 +165,15 @@ def medir_os_doze(
                     texto=f"{pct}% ({liberacao['liberados_28']} de {liberacao['pedidos_28']} em 28 dias)",
                 )
         elif nome == "aprendizados-validados-no-ciclo":
-            n = aprendizados_validados(registros, partida_em)
+            inicio = inicio_aprendizados or partida_em
+            n = aprendizados_validados(registros, inicio)
             if n is None:
                 item["veredito"] = "nao-consigo-medir"
             else:
                 item.update(
                     veredito="medido",
                     valor=n,
-                    texto=f"{n} desde {partida_em.strftime('%d/%m')}",
+                    texto=f"{n} desde {inicio.strftime('%d/%m')}",
                 )
         else:
             item["veredito"] = "nao-consigo-medir"

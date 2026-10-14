@@ -1,0 +1,31 @@
+{% load l10n %}
+<section aria-label="Pessoas únicas e períodos da meta de 2027">
+  <h2>10.000 pessoas únicas até 31/12/2027</h2>
+  <p>{{ meta.definicao }}</p>
+  {% if alunos_2027.total is None %}
+    <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> {{ alunos_2027.motivo }} Isto não é zero.</p>
+  {% else %}
+    <p class="hero-numero">{{ alunos_2027.total }} / 10.000</p>
+    <p>{{ alunos_2027.faltam }} pessoas para a meta · {{ alunos_2027.vendas }} vendas elegíveis desde 12/10/2026.</p>
+    {% if placar.veredito == 'cumprida' %}<p>Meta cumprida.</p>{% elif placar.veredito == 'vencida' %}<p>O prazo de 31/12/2027 encerrou; este é o resultado da janela.</p>{% else %}<p>Em andamento. Faltam {{ placar.dias_restantes }} dias até 31/12/2027.</p>{% endif %}
+    <table><thead><tr><th>Período</th><th>Janela em São Paulo</th><th>Pessoas novas únicas</th></tr></thead><tbody>
+      {% for p in alunos_2027.periodos %}<tr><th>{{ p.nome }}</th><td>{{ p.de|date:'d/m/Y' }} a {{ p.ate|date:'d/m/Y' }}</td><td>{{ p.total }}</td></tr>{% endfor %}
+    </tbody></table>
+    <p class="nota">Cada cadastro entra na data de sua primeira compra elegível nesta janela. Recompras em outro período não acrescentam uma nova pessoa. Os períodos se sobrepõem e não devem ser somados.</p>
+  {% endif %}
+  <p class="nota">A identidade disponível é o e-mail normalizado. Cadastros diferentes da mesma pessoa ainda precisam de conciliação. A base anterior não é somada automaticamente. Não há distribuição mensal ou semanal aprovada para a meta de pessoas de 2027; o ritmo comercial segue o calendário de produtos abaixo.</p>
+</section>
+<section aria-label="Vendas por produto no primeiro ciclo">
+  <h2>Primeiro ciclo · 05/10 a 27/12/2026</h2>
+  <p>Plano principal até <b>13/12/2026</b>; recuperação de <b>14 a 27/12/2026</b>. As metas e distribuições semanais são as do <a href="{% url 'ciclo' %}">calendário comercial</a>.</p>
+  {% for p in produtos_ciclo %}
+  <h3>{% if p.chave == 'desafio' %}Low ticket{% else %}Mid ticket · Curso Primeiros Dólares{% endif %}</h3>
+  <p><b>{{ p.total_texto }} / {{ p.meta_texto }}</b> vendas no ciclo{% if p.saldo is not None %} · faltam {{ p.saldo }}{% endif %}.</p>
+  {% if p.sem_contagem %}<p class="aviso borda-amarela">Não foi possível contar este produto: matrícula, data ou oferta indisponível. Isto não é zero.</p>{% endif %}
+  {% if p.atual %}<p>Semana {{ p.atual.n }} · {{ p.atual.de|date:'d/m' }} a {{ p.atual.ate|date:'d/m' }}: <b>{{ p.atual.real_texto }}</b> vendas de <b>{{ p.atual.meta_texto }}</b> previstas para a semana completa. Foco: {{ p.atual.foco }}.</p>{% endif %}
+  {% for r in p.recuperacoes %}{% if r.atual %}<p>Semana {{ r.n }} de recuperação · {{ r.de|date:'d/m' }} a {{ r.ate|date:'d/m' }}: {{ r.meta|default_if_none:'—' }} vendas a recuperar, conforme o saldo do calendário.</p>{% endif %}{% endfor %}
+  <a href="{% url 'ciclo' %}?produto={{ p.chave }}">Conferir vendas e semanas deste produto →</a>
+  {% endfor %}
+  <p>Uma compra low e uma mid são duas vendas e podem pertencer à mesma pessoa. Testes, pedidos sem pagamento, reembolsos e liberações comuns ficam fora. Nova venda paga registrada pela escola é elegível.</p>
+  <p><b>Próxima ação:</b> conferir anúncio → quiz → oferta → compra → entrega, comparar as vendas low e mid com a semana e ajustar o gargalo observado. Ausência de dados não comprova qual etapa limita as vendas. A oferta, o preço e a meta do high ticket ainda não foram definidos.</p>
+</section>

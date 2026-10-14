@@ -558,23 +558,23 @@ def dossie_do_placar(contexto: dict, hoje) -> str:
         f"  medido hoje: {_numero((contexto.get('alunos_2027') or {}).get('total'))}",
         "  deduplicação por cadastro (e-mail); cadastros distintos ainda exigem conciliação.",
         "",
-        "CARTÃO ANTERIOR DO PLACAR (PERÍODO PRÓPRIO; NÃO SUBSTITUI AS METAS CENTRAIS)",
+        "META ATUAL DE PESSOAS ÚNICAS (12/10/2026 A 31/12/2027)",
         f"  alvo: {_numero(meta.get('alvo'))} pessoas até {_numero(meta.get('ate'))}",
         f"  medido hoje: {_numero(placar.get('x'))}",
-        f"  esperado pela curva para hoje: {_numero(placar.get('esperado_hoje'))}",
+        f"  distribuição intermediária aprovada (ausente significa não definida): {_numero(placar.get('esperado_hoje'))}",
         f"  veredito: {_numero(placar.get('veredito'))}",
         "",
         "O MÊS",
         f"  {_numero(barra.get('x'))} pessoas em {_numero(barra.get('mes'))},"
         f" meta do mês {_numero(barra.get('alvo'))}",
         "",
-        "AS DUAS MEDIDAS DA SEMANA",
+        "ATENDIMENTO DA SALA DE ESPERA (NÃO É META DE VENDAS)",
         f"  pedidos de entrada: {_numero(pedidos.get('esta_semana'))}"
         f" de {_numero(pedidos.get('meta'))} ({_numero(pedidos.get('veredito'))})",
         f"  liberações em 48 horas: {_numero(liberacoes.get('por_cento'))} por cento"
         f" ({_numero(liberacoes.get('veredito'))})",
         "",
-        "A RESTRIÇÃO DESTA SEMANA",
+        "ENTREGA DE ACESSO (NÃO COMPROVA GARGALO COMERCIAL)",
         f"  suspeita: {_numero(restricao.get('veredito'))}",
         f"  gesto sugerido: {_numero(restricao.get('gesto'))}",
         "  confirmada por ele:"
@@ -614,6 +614,10 @@ def dossie_do_placar(contexto: dict, hoje) -> str:
         linhas.append("  sem foto anterior com que comparar")
     else:
         linhas += [f"  {linha.get('texto', linha)}" for linha in mudou]
+    for produto in contexto.get("produtos_ciclo") or []:
+        linhas.append(f"VENDAS DO PRIMEIRO CICLO — {produto['nome']}: "
+                      f"{produto['total_texto']} de {produto['meta_texto']}; "
+                      "05/10 a 27/12/2026, plano até 13/12 e recuperação 14 a 27/12.")
     return "\n".join(linhas)
 
 

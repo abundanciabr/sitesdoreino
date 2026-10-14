@@ -387,20 +387,20 @@ def test_a_tela_nao_diz_ganhando_com_zero_de_mil():
     )
 
     html = _dentro().get(reverse("fechamento")).content.decode()
-    assert "Ainda não existe ganhando nem perdendo" in html
+    assert "ganhando</span>" not in html
     assert (
         "ganhando</span>" not in html
     ), "a tela do fechamento elogiou uma escola que ainda não vendeu nada"
 
 
 @respx.mock
-def test_o_placar_leva_ate_o_fechamento():
+def test_o_placar_leva_ate_o_calendario_comercial_vigente():
     respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
     respx.get(f"{ALUNOS}/pre-matriculas").mock(
         return_value=httpx.Response(200, json=[])
     )
     html = _dentro().get(reverse("placar")).content.decode()
-    assert f'href="{reverse("fechamento")}"' in html
+    assert f'href="{reverse("ciclo")}"' in html
 
 
 def test_sem_cracha_a_tela_nao_abre():

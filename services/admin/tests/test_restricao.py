@@ -39,6 +39,7 @@ HOJE = dt.date(2026, 9, 20)
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    monkeypatch.setattr(placar, "site_de", lambda request: "mesh")
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-admin")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
@@ -81,7 +82,7 @@ def _pedido(dia: str, esperando: int) -> dict:
 def _liberada(pediu: str, liberou: str, status: str = "ativa") -> dict:
     return {
         "status": status,
-        "origem": "liberado",
+        "origem": "liberado", "site_id": "mesh",
         "criada_em": _em(pediu),
         "virou_aluno_em": _em(liberou),
     }
@@ -235,13 +236,14 @@ def test_a_tela_mostra_a_restricao_o_gesto_e_pede_confirmacao():
         [_liberada("2026-09-10", "2026-09-11")],
     )
     html = _dentro().get(reverse("placar")).content.decode()
-    assert "A restrição desta semana" in html
+    assert "Atenção à entrega de acesso" in html
     assert "pediu entrada → foi liberada" in html
-    assert "Abra a fila" in html
+    assert "Confira a fila" in html
     assert "cadastrou → pediu entrada" in html, "as etapas sem dados são nomeadas"
     assert "2 pessoas esperando na fila" in html
     assert "1 há 2 dias ou mais" in html
-    assert "+2" in html, "o impacto é a fila inteira: cada pessoa parada é +1 na meta"
+    assert "+1 na meta" not in html
+    assert "Liberação comum não soma" in html
 
 
 @respx.mock

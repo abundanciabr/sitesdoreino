@@ -29,7 +29,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
   {% include "admin/_painel_negocio.html" %}
   <p class="recado-fraco"><a href="{% url 'funil' %}">Ver o funil de vendas</a> · <a href="{% url 'experimentos' %}">Experimentos da oferta</a></p>
   <p class="recado-fraco"><a href="{% url 'gestao_do_placar' %}">Editar metas, medições e compromissos</a></p>
-  <p class="subtitulo">Indicadores complementares e cartões já configurados, com seus próprios períodos. Eles não substituem as metas centrais acima. A contagem de 2027 inclui a liberação marcada como nova venda paga; a liberação da base antiga fica fora.</p>
+  <p class="subtitulo">Pessoas únicas até 2027 e vendas por produto no primeiro ciclo, com os mesmos critérios e calendário da operação perpétua. A liberação administrativa só entra quando marcada como nova venda paga.</p>
 
   {% comment %}
   A LINHA DA MEMÓRIA (degrau 7.6). Não é um bloco, e isso é de propósito: a
@@ -66,8 +66,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
   {% elif medicao.veredito == "sem-configuracao" %}
   <p class="aviso borda-amarela">
     <b>A memória existe, mas esta tela ainda não tem a senha para perguntar a ela.</b>
-    Falta rodar o passo do servidor que liga as duas (o robô do próximo
-    despacho te manda a linha). Nada aqui está quebrado: o que falta é a senha.
+    A conexão interna com a medição precisa ser conferida pela operação do site.
   </p>
   {% elif medicao.veredito == "nao-respondeu" %}
   <p class="aviso borda-amarela">
@@ -106,6 +105,9 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
   {% else %}
   {% include "admin/_avisos_do_cartao.html" with avisos=recusas %}
 
+  {% if meta.criterio == 'pessoas-unicas-2027' %}
+    {% include "admin/_placar_atual.html" %}
+  {% else %}
   {% if placar.veredito == "nao-consigo-contar" %}
     {% if contagem.campo_ausente %}
     <div class="aviso borda-amarela">
@@ -230,6 +232,8 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     {% endif %}
   {% endif %}
 
+  {% endif %}
+
   {% comment %}
   A porta para as coortes (05/09/2026, degrau 10 do plano). Um LINK abaixo do
   bloco 1, e nunca um bloco novo: a capa tem teto de nove e se recusa a crescer.
@@ -243,7 +247,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     <a href="{% url 'coortes' %}">Ver quem entrou em cada mês, grupo a grupo &rarr;</a>
   </p>
 
-  <h2 class="titulo-de-bloco espaco-20">A direção da semana</h2>
+  <h2 class="titulo-de-bloco espaco-20">Atendimento e entrega de acesso nesta semana</h2>
   {% if not cartao_pedidos or not cartao_48h %}
     <p class="aviso borda-vermelha"><b>Um cartão da direção está ausente ou inválido</b>, e sem ele a medida não aparece.</p>
     <ul class="notas">
@@ -253,7 +257,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
   {% else %}
     {% include "admin/_avisos_do_cartao.html" with avisos=recusas_da_direcao %}
-    <p class="recado">A confirmação das compras externas nesta semana, acompanhada separadamente da atividade de venda no site.</p>
+    <p class="recado">A sala de espera mede atendimento às compras externas. Sua fila e seu prazo de confirmação não são metas comerciais low ou mid, nem metas de novas pessoas.</p>
 
     <p class="recado">
       <b>{{ cartao_pedidos.pergunta }}</b>
@@ -319,7 +323,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     <a href="{% url 'funil' %}">Ver o funil da página de venda, degrau a degrau &rarr;</a>
   </p>
 
-  <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
+  <h2 class="titulo-de-bloco espaco-20">Atenção à entrega de acesso</h2>
   {% if not cartao_da_restricao %}
     <p class="aviso borda-vermelha"><b>O cartão da restrição está ausente ou inválido</b>, e sem ele o bloco não aparece.</p>
     <ul class="notas">
@@ -329,7 +333,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     <p class="recado-fraco">Sem a meta válida, a restrição não é calculada.</p>
   {% else %}
     {% include "admin/_avisos_do_cartao.html" with avisos=recusas_da_restricao %}
-    <p class="recado">{{ cartao_da_restricao.pergunta }} Uma só por semana: melhorar o resto é encher um cano furado.</p>
+    <p class="recado">Esta leitura examina a fila de acesso. Ela não identifica, sozinha, o gargalo comercial do motor perpétuo.</p>
 
     {% if restricao.veredito == "nao-consigo-medir" %}
       <div class="aviso borda-amarela"><b>Hoje não consegui medir a restrição.</b> A fila ou a lista de alunos não respondeu a tempo. Isto não é "está tudo bem": é a pergunta que não chegou.</div>
@@ -339,7 +343,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
         {{ restricao.medida.esperando }} pessoa{{ restricao.medida.esperando|pluralize:"s" }} esperando na fila,
         {{ restricao.medida.esperando_ha_muito }} há 2 dias ou mais.
         {% if restricao.medida.mediana_dias is not None %}Tempo típico de liberação nos últimos 28 dias: {{ restricao.medida.mediana_dias }} dia{{ restricao.medida.mediana_dias|pluralize:"s" }}.{% endif %}
-        Até <b>{{ restricao.impacto }}</b> acessos externos podem ser liberados hoje. Essa liberação não aumenta as vendas do site. Confiança: alta (medido ao vivo).
+        Até <b>{{ restricao.impacto }}</b> acessos externos podem ser liberados hoje. Liberação comum não aumenta as metas. Confiança: alta (medido ao vivo).
       </div>
       <p class="recado"><b>O gesto:</b> {{ restricao.gesto }}</p>
     {% elif restricao.veredito == "entrada" %}
@@ -359,7 +363,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
     {% if restricao.confirmada %}
       <p class="recado"><b>Confirmada por você</b> em {{ restricao.confirmada.em }}: {{ restricao.confirmada.etapa }} (registro {{ restricao.confirmada.registro }}).</p>
     {% else %}
-      <p class="recado-fraco">A suspeita é cálculo; a restrição de verdade aguarda sua confirmação. <a href="{% url 'gestao_do_placar' %}">Registre-a no painel</a>.</p>
+      <p class="recado-fraco">A suspeita se refere à entrega de acesso e não comprova o gargalo das vendas. <a href="{% url 'gestao_do_placar' %}">Registre-a no painel</a>.</p>
     {% endif %}
 
     <ul class="notas">
@@ -486,7 +490,7 @@ número e o defeito como aviso. É a lei do plano (§2), e os testes
 
   <p class="recado-fraco espaco-20">
     O par acompanha a atividade no site; não comprova estudo na Hotmart ou Herospark.
-    A meta de vendas usa compras reais do site e não aumenta com liberações administrativas.
+    As metas contam compras confirmadas pelo checkout ou liberações expressamente marcadas como nova venda paga. Liberações comuns não aumentam as metas; pessoas são deduplicadas e vendas ficam separadas por produto.
     A data da venda é a confirmação do pagamento, nunca a que a pessoa digitou. Cartão da meta: versão
     {{ meta.versao }}, desde {{ meta.desde }}.
   </p>

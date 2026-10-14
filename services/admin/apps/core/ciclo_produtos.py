@@ -97,6 +97,7 @@ def montar_painel(chave, alunos, hoje):
         dia_em_sao_paulo(a.get(CAMPO_DA_DATA)) for a in alunos if vendeu_pelo_site(a)
     ]
     desconhecidas = sum(d is None for d in datas)
+    datas = [d for d in datas if d is not None and d <= hoje]
     total = None if alunos is None or desconhecidas else sum(INICIO <= d <= FIM for d in datas)
     semanas, acumulado = [], 0
     for n, meta in enumerate(perfil["metas"], 1):
@@ -145,3 +146,31 @@ def montar_painel(chave, alunos, hoje):
             "progresso": min(100, total * 100 / perfil["meta"]) if total is not None else 0,
             "semanas": semanas[1:], "preparacao": semanas[0], "recuperacoes": recuperacoes,
             "sem_contagem": total is None, "datas_ausentes": desconhecidas}
+
+
+def matriculas_do_produto(fichas, site_id, produto_id):
+    """Vendas elegíveis por produto; a existência de contato CRM não é condição.
+
+    A API de matrículas já distingue checkout real, nova venda paga manual,
+    testes e liberações comuns. A deduplicação entre produtos só cabe na meta
+    de pessoas, nunca na contagem de vendas low e mid.
+    """
+    if fichas is None or not site_id or not produto_id:
+        return None
+    return [a for a in fichas if str(a.get("site_id")) == str(site_id)
+            and str(a.get("product_id")) == str(produto_id)]
+
+
+def paineis_do_site(fichas, site_id, hoje, catalogo):
+    paineis = []
+    for chave, perfil in PAINEIS.items():
+        produto = None
+        if site_id:
+            estado, oferta = catalogo.oferta_do_site(str(site_id), perfil["oferta"])
+            if estado == catalogo.OK and isinstance(oferta, dict):
+                produto = (oferta.get("product") or {}).get("id")
+        painel = montar_painel(chave, matriculas_do_produto(fichas, site_id, produto), hoje)
+        painel["atual"] = next((s for s in [painel["preparacao"], *painel["semanas"]]
+                                if s["atual"]), None)
+        paineis.append(painel)
+    return paineis

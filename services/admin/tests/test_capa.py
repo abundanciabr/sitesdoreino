@@ -28,6 +28,7 @@ HOJE = dt.date(2026, 9, 21)
 
 @pytest.fixture(autouse=True)
 def ambiente(settings, monkeypatch):
+    monkeypatch.setattr(placar, "site_de", lambda request: "mesh")
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-admin")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
@@ -68,13 +69,13 @@ def _a_escola_responde():
             json=[
                 {
                     "status": "ativa",
-                    "origem": "liberado",
+                    "origem": "liberado", "site_id": "mesh",
                     "criada_em": "2026-09-10T12:00:00-03:00",
                     "virou_aluno_em": "2026-09-11T12:00:00-03:00",
                 },
                 {
                     "status": "ativa",
-                    "origem": "liberado",
+                    "origem": "liberado", "site_id": "mesh",
                     "criada_em": "2026-09-12T12:00:00-03:00",
                     "virou_aluno_em": "2026-09-13T12:00:00-03:00",
                 },
@@ -91,5 +92,5 @@ def test_a_capa_mostra_os_doze_e_as_estrelas_sem_nota_composta():
     assert "As estrelas-guia" in html
     assert "de 12 chegaram medidos" in html
     assert "100% (2 de 2 em 28 dias)" in html, "a conversão da fila, medida"
-    assert "Quanto sobra por mês" in html and "Sem dados até o site vender" in html
+    assert "Quanto sobra por mês" in html and "Faltam receitas confirmadas" in html
     assert "/100" not in html, "nada de nota composta"
