@@ -22,6 +22,13 @@ def painel(request, site):
             if acao == 'coletar':
                 corpus = banca_fontes.coletar(site_id)
                 recado = f"Coleta guardada: {len(corpus.conteudo['itens'])} objeções ou perguntas distintas."
+            elif acao == 'evidencia':
+                if request.POST.get('real') != 'sim':
+                    raise ValueError('Confirme que o trecho veio de uma pessoa real, e não de uma simulação.')
+                banca_fontes.registrar(site_id, request.POST.get('fonte', ''), request.POST.get('texto', ''),
+                    request.POST.get('referencia', ''), request.POST.get('data', '')[:40], request.POST.get('produto', ''))
+                banca_fontes.coletar(site_id)
+                recado = 'Relato minimizado guardado e coleta atualizada. As rodadas antigas mantêm suas evidências.'
             elif acao == 'perfil':
                 codigo = request.POST.get('perfil', '')
                 texto = request.POST.get('texto', '').strip()

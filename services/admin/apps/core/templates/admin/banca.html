@@ -8,6 +8,14 @@
 {% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
 {% if recado %}<p role="status">{{ recado }}</p>{% endif %}
 <h2>1. Objeções reais e cético calibrado</h2>
+<details><summary>Registrar uma objeção real de outra fonte</summary>
+<p>Copie apenas o trecho relevante. Retire nomes, contatos e dados pessoais. Não registre exemplos inventados como relatos reais.</p>
+<form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="evidencia">
+<p><label>Origem <select name="fonte"><option>reembolso</option><option>suporte</option><option>quiz</option><option>comentário do lançamento</option></select></label></p>
+<p><label>Referência da origem, sem dados pessoais <input name="referencia" maxlength="200" required></label></p>
+<p><label>Data do relato <input name="data" type="date"></label> <label>Produto <input name="produto" maxlength="200"></label></p>
+<p><label>Trecho real <textarea name="texto" rows="5" cols="75" minlength="10" maxlength="1200" required></textarea></label></p>
+<p><label><input type="checkbox" name="real" value="sim" required> Este trecho veio de uma pessoa real.</label></p><button>Guardar relato e atualizar coleta</button></form></details>
 <form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="coletar"><button>Coletar objeções reais das fontes disponíveis</button></form>
 {% if corpus %}
 <p>Coleta: {{ corpus.coletado_em }} · {{ corpus.itens|length }} itens distintos · assinatura {{ corpus.digest }}.</p>
