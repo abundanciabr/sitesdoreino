@@ -42,9 +42,7 @@
     </form>
   </div>
   <h2 class="espaco-28">Avisos de acesso à escola</h2>
-  <p>Novos pedidos: e-mail após aprovação ou recusa; WhatsApp somente com autorização
-    e confirmação do número por resposta. Responder PARAR cancela os avisos no WhatsApp.
-    A confirmação do número não libera a escola.</p>
+  <p>Novos pedidos: confirmação por e-mail e WhatsApp autorizado, sem links. A aprovação envia um link pessoal de uso único, sem prazo antes do primeiro uso, com entrada automática e sessão mantida no navegador. A recusa inicial abre um atendimento no suporte. A decisão final do suporte libera o acesso ou envia a explicação ao aluno. A confirmação do número não libera a escola.</p>
   <div class="tabela-envolucro"><table>
     <thead><tr><th>Quando</th><th>Aviso</th><th>Canal</th><th>Estado</th><th>Detalhe</th></tr></thead>
     <tbody>{% for aviso in avisos_acesso %}<tr><td>{{ aviso.quando }}</td><td>{{ aviso.tipo }}</td>

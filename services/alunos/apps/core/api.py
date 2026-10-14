@@ -1896,6 +1896,8 @@ def get_access_notice(request, id: str, site_id: str, event_id: str):
     return JsonResponse({"site_id": linha.site_id, "matricula_id": str(linha.pk),
         "event_id": str(linha.aviso_event_id), "status": linha.status,
         "email": linha.email, "nome": linha.name, "whatsapp": linha.whatsapp,
+        "acesso_consumido": bool(linha.acesso_consumido_em), "motivo": linha.motivo_recusa, "suporte_pendente": bool(linha.suporte_event_id and not linha.suporte_resolvido_em),
+        "link_acesso": ("https://meshcraft.top/entrar/escola/#" + __import__("apps.matriculas.avisos_acesso", fromlist=["token_de_acesso"]).token_de_acesso(linha)) if linha.status == "ativa" else "",
         "whatsapp_avisos": linha.whatsapp_avisos,
         "whatsapp_confirmado": linha.whatsapp_confirmado_em is not None,
         "whatsapp_consentido_em": linha.whatsapp_consentido_em.isoformat()
@@ -1916,7 +1918,7 @@ def get_whatsapp_access_confirmation(request, id: str, site_id: str, event_id: s
         return JsonResponse({"detail": "confirmação não pendente"}, status=404)
     return JsonResponse({"site_id": linha.site_id, "matricula_id": str(linha.pk),
         "event_id": str(linha.whatsapp_pedido_id), "whatsapp": linha.whatsapp,
-        "codigo": linha.whatsapp_confirmacao_codigo})
+        "codigo": linha.whatsapp_confirmacao_codigo, "nome": linha.name})
 
 
 def _chave_numero_aviso(valor):

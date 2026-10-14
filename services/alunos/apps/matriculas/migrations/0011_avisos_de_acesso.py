@@ -3,6 +3,10 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
     dependencies = [("matriculas", "0010_identificador_meshcraft_legado")]
     operations = [
+        migrations.AddField(model_name="matricula", name="recibo_event_id", field=models.UUIDField(null=True, blank=True)),
+        migrations.AddField(model_name="matricula", name="suporte_event_id", field=models.UUIDField(null=True, blank=True)),
+        migrations.AddField(model_name="matricula", name="suporte_resolvido_em", field=models.DateTimeField(null=True, blank=True)),
+        migrations.AddField(model_name="matricula", name="acesso_consumido_em", field=models.DateTimeField(null=True, blank=True)),
         migrations.AddField(model_name="matricula", name="whatsapp_pedido_id", field=models.UUIDField(null=True, blank=True)),
         migrations.AddField(model_name="matricula", name="whatsapp_confirmacao_codigo", field=models.CharField(max_length=10, blank=True, default="", db_index=True)),
         migrations.AddField(model_name="matricula", name="whatsapp_confirmado_em", field=models.DateTimeField(null=True, blank=True)),

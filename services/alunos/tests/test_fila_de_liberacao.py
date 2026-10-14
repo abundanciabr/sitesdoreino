@@ -223,26 +223,16 @@ def test_reenviar_atualiza_e_nao_duplica(client, auth):
 
 
 @pytest.mark.django_db
-def test_recusado_que_reenvia_volta_para_a_fila_sem_o_motivo_antigo(client, auth):
-    """Lei §7: V1 não edita dados — correção é o admin recusar e a pessoa
-    reenviar. O motivo da recusa anterior não pode ficar pendurado na linha."""
+def test_recusa_inicial_permanece_com_suporte_ao_reenviar(client, auth):
     pedir_entrada(client, auth)
     linha = Matricula.objects.get()
-    post(
-        client,
-        f"{PRE_MATRICULAS}/{linha.pk}/decisao",
-        {"decisao": "recusar", "decidido_por": "admin-1", "motivo": "faltou o DDD"},
-        auth,
-    )
-
-    assert pedir_entrada(client, auth, whatsapp="(96) 96666-3333").status_code == 200
-
+    post(client,f"{PRE_MATRICULAS}/{linha.pk}/decisao",{"decisao":"recusar","decidido_por":"admin-1","motivo":"faltou o DDD"},auth)
+    assert pedir_entrada(client,auth,whatsapp="(96) 96666-3333").status_code==200
     linha.refresh_from_db()
-    assert linha.status == Matricula.STATUS_AGUARDANDO
-    assert linha.motivo_recusa == ""
-    assert linha.decidido_em is None
-    assert linha.decidido_por == ""
-    assert Matricula.objects.count() == 1
+    assert linha.status==Matricula.STATUS_RECUSADA
+    assert linha.suporte_event_id and not linha.suporte_resolvido_em
+    assert linha.motivo_recusa=="faltou o DDD"
+    assert Matricula.objects.count()==1
 
 
 @pytest.mark.django_db

@@ -109,7 +109,7 @@ MIDDLEWARE = [
 # troca de nada — e por isso `django.contrib.sessions` NÃO entra em
 # INSTALLED_APPS: este backend não tem model. Trocar por sessão em banco no dia
 # em que for preciso revogar sessão de longe é mudar esta linha.
-SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+SESSION_ENGINE = "apps.core.sessao_persistente"
 
 # O MESMO nome que a Caixa usava (`meshcraft_sessao`, Path=/): a partir da
 # DECISAO-celula-de-identidade quem emite e lê este cookie é SÓ esta célula.

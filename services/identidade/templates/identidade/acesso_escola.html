@@ -1,0 +1,9 @@
+<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Entrando na Meshcraft</title>
+<h1>Entrando na Meshcraft…</h1><p id="estado">Seu acesso está sendo aberto automaticamente.</p>
+<form method="post" id="acesso">{% csrf_token %}<input type="hidden" name="token" id="token"></form>
+<noscript>Ative o JavaScript neste navegador para abrir o acesso automaticamente.</noscript>
+<script>
+const token=location.hash.slice(1);history.replaceState(null,'',location.pathname);
+if(token){document.getElementById('token').value=token;document.getElementById('acesso').submit();}
+else{document.getElementById('estado').textContent='Abra o link enviado pela escola. Se já entrou neste navegador, acesse a página inicial.';}
+</script></html>

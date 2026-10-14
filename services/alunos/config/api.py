@@ -17,3 +17,6 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", alunos_router)
+
+from apps.core.jornada_acesso import router as jornada_router
+api.add_router("", jornada_router)

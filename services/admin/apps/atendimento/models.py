@@ -50,6 +50,8 @@ class Conversa(models.Model):
     site_id = models.CharField(max_length=100, db_index=True)
     pessoa_id = models.CharField(max_length=100, db_index=True)
     canal = models.CharField(max_length=20, default='site')
+    pedido_escola_id = models.CharField(max_length=30, blank=True)
+    pedido_escola_event_id = models.UUIDField(null=True, blank=True)
     origem_conversa = models.CharField(max_length=100, blank=True)
     origem_lead = models.CharField(max_length=100, blank=True)
     origem_ultima_mensagem = models.CharField(max_length=100, blank=True)

@@ -179,11 +179,11 @@ def processar_envio(envio_id: int, task=None) -> None:
         if envio.canal == "email"
         else nullcontext()
     )
-    if envio.canal == "whatsapp" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado", "acesso_confirmacao"}:
+    if envio.canal == "whatsapp" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado", "acesso_confirmacao", "acesso_recebido"}:
         from .avisos_acesso import processar_whatsapp
         processar_whatsapp(envio)
         return
-    if envio.canal == "email" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado"}:
+    if envio.canal == "email" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado", "acesso_recebido"}:
         from .avisos_acesso import decisao_vigente
         if not decisao_vigente(envio):
             envio.status = "falhou"

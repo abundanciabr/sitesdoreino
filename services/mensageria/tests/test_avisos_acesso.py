@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import Mock
 import pytest
@@ -60,7 +61,7 @@ def test_decisao_antiga_nao_busca_contato(monkeypatch):
 def test_email_e_whatsapp_registrados_independentemente(monkeypatch, estado, tipo):
     from contextlib import nullcontext
     monkeypatch.setattr(a.transaction, "atomic", nullcontext)
-    monkeypatch.setattr(a, "_consultar", lambda *args: dict(status=estado,email="aluno@example.test",
+    monkeypatch.setattr(a, "_consultar", lambda *args: dict(status=estado,nome="Aluno",link_acesso="https://meshcraft.top/entrar/escola/#segredo",motivo="Motivo explicado",email="aluno@example.test",
         whatsapp="11987654321",whatsapp_avisos=True,whatsapp_consentido_em="2026-10-14"))
     registrar = Mock()
     monkeypatch.setattr(a, "_registrar", registrar)
@@ -68,7 +69,7 @@ def test_email_e_whatsapp_registrados_independentemente(monkeypatch, estado, tip
         situacao_anterior="aguardando"), "evento")
     assert [c.kwargs["canal"] for c in registrar.call_args_list] == ["email","whatsapp"]
     assert all(c.kwargs["tipo"] == tipo for c in registrar.call_args_list)
-    assert "https://meshcraft.top/" in registrar.call_args_list[0].kwargs["corpo"]
+    assert ("https://meshcraft.top/" in registrar.call_args_list[0].kwargs["corpo"]) == (estado == "ativa")
 
 def test_formato_confirmacao_exato():
     assert a.codigo_da_confirmacao("CONFIRMAR ESCOLA A123456789") == "A123456789"
@@ -85,3 +86,19 @@ def test_email_de_decisao_substituida_nao_e_valido(monkeypatch):
     monkeypatch.setattr(a, "_matricula_do_evento", lambda *args: dict(email=e.destinatario, status="ativa"))
     assert a.decisao_vigente(e)
 
+
+def test_recibo_email_sem_links_e_independente_do_whatsapp(monkeypatch):
+    monkeypatch.setattr(a,"_alunos",lambda *args,**kw:dict(email="aluno@example.test",nome="Pessoa",whatsapp_avisos=False))
+    monkeypatch.setattr(a.transaction,"atomic",nullcontext)
+    registrar=Mock();monkeypatch.setattr(a,"_registrar",registrar)
+    a.ao_pedido_recebido(dict(site_id="meshcraft",matricula_id="1"),"evento")
+    assert registrar.call_count==1
+    assert registrar.call_args.kwargs["canal"]=="email"
+    assert "http" not in registrar.call_args.kwargs["corpo"]
+    assert "Olá, Pessoa!" in registrar.call_args.kwargs["corpo"]
+
+def test_recusa_inicial_nao_envia_recusa_final(monkeypatch):
+    monkeypatch.setattr(a,"_consultar",lambda *args:dict(status="recusada",suporte_pendente=True))
+    registrar=Mock();monkeypatch.setattr(a,"_registrar",registrar)
+    a.ao_decisao_de_acesso(dict(site_id="meshcraft",matricula_id="1",situacao_nova="recusada",situacao_anterior="aguardando"),"evento")
+    registrar.assert_not_called()
