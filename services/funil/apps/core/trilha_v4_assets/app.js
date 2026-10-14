@@ -437,7 +437,7 @@ async function loadMotivo(url) {
     const page = new DOMParser().parseFromString(await response.text(), 'text/html');
     const form = page.querySelector('#inicio-jornada'), receipt = page.querySelector('.celebracao');
     if (!form && !receipt) throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');
-    await loadMotivoScript(form ? '/trilha/faixas-static/inicio.js?v=14' : '/trilha/faixas-static/inicio_conquista.js?v=3');
+    await loadMotivoScript(form ? '/trilha/faixas-static/inicio.js?v=16' : '/trilha/faixas-static/inicio_conquista.js?v=3');
     if (currentLoad !== motivoLoad || !motivoDialog.open) return;
     const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/trilha/faixas-static/'));
     const base = document.createElement('style');

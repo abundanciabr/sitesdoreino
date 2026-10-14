@@ -316,7 +316,13 @@ window.iniciarJornada = (scope = document, host = {}) => {
       }
     } else if (compromissoStep === 2 && event.submitter?.value === 'assumir') {
       if (await save(forms.compromisso, 'inicio-compromisso', {assumir: 'sim'})) {
-        if (data.inicio.etapas?.[1]?.concluida && !(data.avaliacao_atual?.ordem === 2 && data.avaliacao_atual.resultado !== 'reconhecida')) showCompromissoStep(3, true);
+        if (data.inicio.etapas?.[1]?.concluida && !(data.avaliacao_atual?.ordem === 2 && data.avaliacao_atual.resultado !== 'reconhecida')) {
+          if (data.conquista_xp > 0 && data.conquista_url) {
+            let destination = data.conquista_url;
+            if (embedded) destination += (destination.includes('?') ? '&' : '?') + 'embutido=1';
+            navigate(destination);
+          } else showCompromissoStep(3, true);
+        }
       }
     }
   });

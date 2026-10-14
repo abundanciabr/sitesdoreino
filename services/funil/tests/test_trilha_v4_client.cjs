@@ -289,3 +289,9 @@ test('ultimo marco concluido mostra a conclusao sem repetir tarefas ou progresso
   const incompleto=await load({ok:true,status:200,json:async()=>withChecklist(4,'jogo')});
   assert.equal(incompleto.context.journeyChecklist(incompleto.payload.progresso,6,incompleto.payload.atividades).concluido,false);
 });
+
+test('painel da Trilha carrega a mesma versão do cliente declarada no formulário',()=>{
+  const template=fs.readFileSync(path.join(__dirname,'../../gamificacao/apps/core/templates/gamificacao/_inicio.html'),'utf8');
+  const version=template.match(/'inicio\.js' %}\?v=(\d+)/)[1];
+  assert.ok(source.includes('/trilha/faixas-static/inicio.js?v='+version));
+});

@@ -205,7 +205,7 @@ def inicio_conquista(request, etapa):
     contexto = {"entrou": bool(pessoa_id and site), "inicio_etapa": etapa,
                 "inicio_titulo": titulos[etapa], "conquista_xp": 0,
                 "conquista_ja_recebida": False,
-                "inicio_embutido": etapa == 1 and request.GET.get("embutido") == "1",
+                "inicio_embutido": etapa in (1, 2) and request.GET.get("embutido") == "1",
                 "url_de_entrada": settings.URL_DE_ENTRADA,
                 "url_da_capa": settings.URL_DA_CAPA}
     if pessoa_id and site:

@@ -22,6 +22,7 @@ def conta(monkeypatch):
     monkeypatch.setenv('SITE_ID', SITE)
     monkeypatch.setattr('apps.core.inventario._sessao',
         lambda cookie: {'autenticado': True, 'id': PESSOA})
+    monkeypatch.setattr('apps.core.views.quem_e', lambda request: PESSOA)
 
 
 def ler(client):
@@ -67,6 +68,16 @@ def test_quatro_caminhos_e_compromisso_avaliado(client, motivo):
     assert reconhecido.status_code == 200
     assert reconhecido.json()['inicio']['etapas'][1]['resultado'] == 'reconhecida'
     assert reconhecido.json()['atual_ordem'] == 2
+    dados = reconhecido.json()
+    assert dados['conquista_xp_tarefa'] == 100
+    assert dados['conquista_xp_faixa'] == 5000
+    assert dados['conquista_xp'] == 5100
+    assert 'comprovante=' in dados['conquista_url']
+    assert PerfilJogador.objects.get(pessoa_id=PESSOA, site_id=SITE).xp_total == 5200
+    recibo = client.get(dados['conquista_url'] + '&embutido=1', HTTP_COOKIE='meshcraft_sessao=A')
+    assert recibo.status_code == 200
+    assert recibo.context['inicio_embutido'] is True
+    assert 'data-xp="5100"' in recibo.content.decode()
     assert len(AvaliacaoDaJornada.objects.filter(ordem=2)) == 1
     assert 'proximo_passo_resposta' not in JornadaPessoal.objects.get().inicio
     assert len(LancamentoDeXP.objects.filter(pontos=5000)) == 1
