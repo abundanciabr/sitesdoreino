@@ -205,6 +205,17 @@ class PageDraft(models.Model):
         return super().save(*args, **kwargs)
 
 
+class BancaRegistro(models.Model):
+    site = models.ForeignKey('sites.Site', on_delete=models.PROTECT)
+    page = models.ForeignKey(Page, on_delete=models.PROTECT, null=True)
+    rodada = models.CharField(max_length=100, unique=True)
+    assinatura = models.CharField(max_length=64, blank=True)
+    completa = models.BooleanField(default=False)
+    exigida = models.BooleanField(default=True)
+    rastreio = models.JSONField(default=dict)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+
 class VarianteCongelada(Exception):
     """Tentativa de alterar ou apagar uma variante de experimento que já saiu do rascunho."""
 

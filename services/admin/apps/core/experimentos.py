@@ -393,6 +393,13 @@ def experimento_novo(request):
             parte_b="50",
             metrica_principal=next(iter(METRICAS)),
         )
+        if request.GET.get('banca_hipotese'):
+            h = RascunhoDeConfiguracao.objects.filter(pk=request.GET['banca_hipotese'],
+                tipo='banca_hipotese', site_id=str(site['id'])).first()
+            if h and h.base.get('slug') == SLUG_DA_PAGINA:
+                escrito['hipotese'] = h.conteudo.get('hipotese', '')
+                if h.conteudo.get('metrica') in METRICAS:
+                    escrito['metrica_principal'] = h.conteudo['metrica']
         if request.GET.get("primeiro") == "1":
             pendente = _primeiro_ab(site["id"])
             if pendente:

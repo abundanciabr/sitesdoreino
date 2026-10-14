@@ -79,6 +79,7 @@ class Execucao(models.Model):
         CONHECIMENTO = "conhecimento", "Leitura dos documentos para o mapa de conhecimento"
         SATISFACAO = "satisfacao", "Cuidado com a satisfação dos alunos"
         SUPER_EQUIPE = "super_equipe", "Equipe de especialistas técnicos"
+        BANCA = "banca_clientes", "Banca de clientes simulados"
 
     class Situacao(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"
