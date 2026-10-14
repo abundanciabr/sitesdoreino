@@ -1,4 +1,5 @@
 import mimetypes
+import re
 import os
 import uuid
 from pathlib import Path
@@ -32,6 +33,8 @@ SLUGS = frozenset(i[0] for i in IMAGENS)
 
 
 def caminho_publico(caminho):
+    if caminho in {'/galeria-publica/alunos', '/galeria-publica/alunos/', '/galeria-publica/alunos/interface.css', '/galeria-publica/alunos/interface.js'} or re.fullmatch(r'/galeria-publica/alunos/foto/[a-f0-9]{64}', caminho):
+        return True
     from .comunidade_seguidores import CAMINHOS, caminho_perfil
     if caminho in CAMINHOS or caminho_perfil(caminho):
         return True

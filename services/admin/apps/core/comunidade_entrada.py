@@ -208,15 +208,10 @@ def entrada(request):
     perfil = _perfil(request)
     if not perfil or request.GET.get("perfil") == "editar":
         return _configurar(request)
-    alunos, forum = _alunos(request), _forum(request)
-    from .comunidade_seguidores import decorar
-    decorar(alunos, perfil)
+    forum = _forum(request)
     contexto = {
         "perfil": perfil,
         "temas": TEMAS,
-        "alunos": alunos,
-        "destaques": (alunos or [])[:6],
-        "total_alunos": len(alunos) if alunos is not None else None,
         "forum": forum,
         "ranking": (forum or {}).get("ranking", []),
         "grupos": (forum or {}).get("grupos", []),

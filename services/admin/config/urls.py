@@ -8,7 +8,7 @@ from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
-from apps.core import comunidade_entrada, comunidade_seguidores
+from apps.core import comunidade_entrada, comunidade_seguidores, comunidade_alunos
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
@@ -385,6 +385,10 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/alunos", comunidade_alunos.pagina, name="comunidade_alunos"),
+    path("galeria-publica/alunos/", comunidade_alunos.pagina),
+    re_path(r"^galeria-publica/alunos/foto/(?P<alvo>[a-f0-9]{64})$", comunidade_alunos.foto),
+    path("galeria-publica/alunos/<str:nome>", comunidade_alunos.interface),
     path("galeria-publica/pessoas/<str:alvo>", comunidade_seguidores.perfil_aluno),
     path("galeria-publica/seguidores", comunidade_seguidores.dados),
     path("galeria-publica/seguidores/solicitar", comunidade_seguidores.solicitar),
