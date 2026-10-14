@@ -126,7 +126,7 @@ def test_menu_sem_grupos_e_botoes_sem_emails(rede):
     assert 'href="/comunidade/alunos"' in pagina
     assert 'id="buscar-aluno"' not in pagina
     assert 'href="/comunidade/pessoas/' not in pagina
-    assert 'href="/comunidade/pessoas/' + alvo() + '"' in rede["ana"].get("/galeria-publica/alunos").content.decode()
+    assert 'href="/comunidade/pessoas/' + alvo() + '"' in rede["ana"].get("/galeria-publica/alunos?q=Bia").content.decode()
     assert 'Notificações · seguidores' in pagina
     assert "bia@example.test" not in pagina
     voto = rede["bia"].get("/galeria-publica").content.decode()
@@ -179,7 +179,7 @@ def test_perfil_acessivel_a_alunos_sem_auto_seguir_e_isolado_por_site(rede):
 
 def test_alunos_pagina_independente_para_aluno_sem_perfil(rede):
     antes = PerfilDaComunidade.objects.count()
-    pagina = rede["bia"].get("/galeria-publica/alunos")
+    pagina = rede["bia"].get("/galeria-publica/alunos?q=Bia")
     html = pagina.content.decode()
     assert pagina.status_code == 200
     assert 'id="buscar-aluno"' in html and "Buscar por nome ou @" in html
@@ -195,9 +195,9 @@ def test_alunos_pagina_independente_para_aluno_sem_perfil(rede):
 
 def test_alunos_preserva_usuario_foto_tema_e_nome_do_perfil(rede):
     perfil = PerfilDaComunidade.objects.create(site_host="meshcraft.top", identidade_id="bia-id", email="bia@example.test", nome="Bia Artista", usuario="bia.3d", tema="premium", foto=b"foto-existente")
-    html = rede["bia"].get("/galeria-publica/alunos").content.decode()
+    html = rede["bia"].get("/galeria-publica/alunos?q=Bia").content.decode()
     assert 'data-tema="premium"' in html and "@bia.3d" in html
-    assert "Bia Artista" in html and 'src="/comunidade/alunos/foto/' + alvo() + '"' in html
+    assert "Bia" in html and 'src="/comunidade/alunos/foto/' + alvo() + '"' in html
     foto = rede["caio"].get("/galeria-publica/alunos/foto/" + alvo())
     assert foto.status_code == 200 and foto.content == b"foto-existente"
     perfil.refresh_from_db()
@@ -222,7 +222,7 @@ def test_alunos_interface_disponivel_sem_admin_e_erros_reais(rede, monkeypatch):
     assert js.status_code == 200
     assert rede["bia"].get("/galeria-publica/alunos/segredo.env").status_code == 404
     monkeypatch.setattr(comunidade, "_alunos", lambda request: None)
-    pagina = rede["bia"].get("/galeria-publica/alunos")
+    pagina = rede["bia"].get("/galeria-publica/alunos?q=Bia")
     assert pagina.status_code == 503 and "Não foi possível carregar os alunos" in pagina.content.decode()
     assert not PedidoSeguidor.objects.exists()
 
@@ -233,3 +233,31 @@ def test_alunos_votacao_tem_navegacao_e_perfil_volta_a_lista(rede):
     html = rede["caio"].get("/galeria-publica/pessoas/" + alvo()).content.decode()
     assert 'href="/comunidade/alunos"' in html and "Voltar aos alunos" in html
     assert "/comunidade#alunos" not in html
+
+
+def test_busca_inicial_vazia_nao_carrega_nem_embute_pessoas(rede, monkeypatch):
+    def nao_carregar(request):
+        raise AssertionError("Diretório não deve ser carregado sem busca")
+    monkeypatch.setattr(comunidade, "_alunos", nao_carregar)
+    for query in ("", "?q=", "?q=%20%20"):
+        r = rede["bia"].get("/galeria-publica/alunos" + query)
+        html = r.content.decode()
+        assert r.status_code == 200
+        assert 'id="buscar-aluno"' in html and 'name="q"' in html
+        assert 'class="aluno-linha"' not in html and "Ver perfil" not in html
+        assert "alunos ativos" not in html and "Alunos da comunidade" not in html
+        assert "Notificações · seguidores" not in html
+        assert "Nenhum aluno encontrado" not in html
+
+
+def test_busca_por_nome_ou_handle_devolve_so_correspondencias(rede):
+    PerfilDaComunidade.objects.create(site_host="meshcraft.top", identidade_id="bia-id", email="bia@example.test", nome="Bia Artista", usuario="bia.3d", avatar="azul")
+    for q in ("Bia", "Bia Artista", "@bia.3d", "bia.3d", "BÍA"):
+        html = rede["caio"].get("/galeria-publica/alunos", {"q":q}).content.decode()
+        assert 'href="/comunidade/pessoas/' + alvo() + '"' in html
+        assert 'href="/comunidade/pessoas/' + alvo("caio") + '"' not in html
+        assert "alunos ativos" not in html and "example.test" not in html
+    for q in ("B", "@bia", "@Bia", "*", "@", "inexistente"):
+        html = rede["caio"].get("/galeria-publica/alunos", {"q":q}).content.decode()
+        assert "Nenhum aluno encontrado" in html
+        assert 'class="aluno-linha"' not in html
