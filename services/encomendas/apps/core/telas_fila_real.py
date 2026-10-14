@@ -215,7 +215,7 @@ def confirmar(request, pedido_id):
     if _papel(site, pessoa) != "aluno":
         raise Http404
     dados = fila_real.catalogo(site_id=site, pessoa_id=pessoa, categoria=None)
-    pedido = next((p for p in dados["pedidos"] if p.pk == pedido_id), None)
+    pedido = next((p for p in dados["pedidos"] if str(p.pk) == str(pedido_id)), None)
     if pedido is None:
         raise Http404
     return render(request, "fila_real_confirmar.html", {"pedido": _apresentar(pedido)})

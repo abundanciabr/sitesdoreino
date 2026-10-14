@@ -233,12 +233,15 @@ def responder(
     autorizacao_id=None,
     origem="equipe",
     formato: dict | None = None,
+    diagnostico: dict | None = None,
 ) -> Resposta:
     """Uma rodada da Responses API. Não guarda nada na OpenAI (`store`
     falso): o histórico mora aqui, e a retomada reenvia os itens.
 
     `formato` pede a resposta num esquema JSON fixo (`text.format`), para o
     sistema ler a resposta sem adivinhar."""
+    if diagnostico is not None:
+        diagnostico["etapa"] = "autorizacao"
     segredo_da_conta = chave()
     if not segredo_da_conta:
         raise SemChave()
@@ -259,6 +262,8 @@ def responder(
         corpo["reasoning"] = {"effort": esforco}
     reserva = _reservar(modelo, corpo, max_saida, execucao=execucao, robo=robo,
                        autorizacao_id=autorizacao_id, origem=origem)
+    if diagnostico is not None:
+        diagnostico.update(etapa="requisicao", consumo_id=reserva.pk)
     try:
         resposta = httpx.post(
             f"{URL}/responses",
@@ -267,10 +272,14 @@ def responder(
             timeout=ESPERA_SEGUNDOS,
         )
     except httpx.ConnectError:
+        if diagnostico is not None:
+            diagnostico["codigo"] = "conexao_falhou"
         # Não conectou: o pedido não saiu, não houve cobrança.
         reserva.delete()
         raise Temporario()
     except httpx.HTTPError:
+        if diagnostico is not None:
+            diagnostico["codigo"] = "transporte_sem_resposta"
         # Saiu e não voltou: resultado desconhecido. A reserva fica como está.
         log.warning("Chamada ao modelo %s sem resposta; reserva mantida", modelo)
         raise Temporario(
@@ -278,9 +287,16 @@ def responder(
             "robô tenta de novo."
         )
 
+    if diagnostico is not None:
+        diagnostico.update(etapa="resposta_http", http_status=resposta.status_code)
+        if resposta.status_code >= 400:
+            diagnostico["codigo"] = "api_recusou_pedido"
     if resposta.status_code >= 400:
         reserva.delete()
         codigo, mensagem = _erro_da_api(resposta)
+        if diagnostico is not None:
+            diagnostico["codigo_api"] = codigo if codigo in ("rate_limit_exceeded", "insufficient_quota", "credit_balance_exhausted", "invalid_api_key", "model_not_found", "invalid_json_schema", "invalid_request_error", "context_length_exceeded", "billing_hard_limit_reached") else "outro"
+            diagnostico["reserva_cancelada"] = True
         if resposta.status_code == 400 and "reasoning" in corpo and _recusou_o_esforco(mensagem):
             # O modelo não deixa escolher o esforço: pede de novo sem ele.
             _SEM_ESFORCO.add(modelo)
@@ -295,6 +311,7 @@ def responder(
                 autorizacao_id=autorizacao_id,
                 origem=origem,
                 formato=formato,
+                diagnostico=diagnostico,
             )
         if resposta.status_code == 429 and codigo != "insufficient_quota":
             raise Temporario()
@@ -322,7 +339,14 @@ def responder(
         )
         raise problema
 
+    if diagnostico is not None:
+        diagnostico["etapa"] = "decodificar_resposta_api"
     dados = resposta.json()
+    if diagnostico is not None:
+        status = dados.get("status", "completed")
+        motivo = (dados.get("incomplete_details") or {}).get("reason")
+        diagnostico.update(status=status if status in ("completed", "incomplete", "failed", "cancelled", "queued", "in_progress") else "desconhecido", motivo_incompleto=motivo if motivo in ("max_output_tokens", "content_filter") else ("outro" if motivo else None))
+        diagnostico["recusa"] = any(p.get("type") == "refusal" for i in dados.get("output", []) if i.get("type") == "message" for p in i.get("content", []))
     uso = dados.get("usage") or {}
     entrada = int(uso.get("input_tokens") or 0)
     em_cache = int((uso.get("input_tokens_details") or {}).get("cached_tokens") or 0)
@@ -334,6 +358,8 @@ def responder(
     reserva.resposta_id = str(dados.get("id") or "")[:120]
     reserva.desconhecido = False
     reserva.save()
+    if diagnostico is not None:
+        diagnostico.update(tokens_entrada=entrada, tokens_saida=saida, tokens_cache=em_cache, resposta_id=reserva.resposta_id if reserva.resposta_id.startswith("resp_") and reserva.resposta_id.replace("_", "").isalnum() else None, etapa="resposta_recebida")
 
     itens_de_saida = list(dados.get("output") or [])
     textos, chamadas = [], []

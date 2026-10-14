@@ -107,23 +107,22 @@ function renderBelts(shownSteps){
     const trigger=el('button','');trigger.type='button';trigger.className='stage-trigger';trigger.disabled=locked;trigger.id=`inventory-trigger-${step.ordem}`;trigger.setAttribute('aria-expanded',String(selected));trigger.setAttribute('aria-controls',`inventory-panel-${step.ordem}`);
     const swatch=el('span',number);swatch.className='swatch';swatch.setAttribute('aria-hidden','true');
     const title=el('span','');title.className='stage-text';const name=el('span',`Faixa ${step.nome}`);name.className='stage-name';title.append(name);
-    const status=el('span',locked?'Bloqueada':step.ordem===data.atual_ordem?'Faixa atual':'Concluída');status.className='stage-status';trigger.append(swatch,title,status);trigger.insertAdjacentHTML('beforeend',icon(locked?'lock':'chevron'));
+    const status=el('span',locked?'Bloqueada':step.ordem===data.atual_ordem?'Faixa atual':'Conquistada');status.className='stage-status';trigger.append(swatch,title,status);trigger.insertAdjacentHTML('beforeend',icon(locked?'lock':'chevron'));
     trigger.addEventListener('click',()=>selectBelt(step.ordem));card.append(trigger);
     const panel=el('div','');panel.id=`inventory-panel-${step.ordem}`;panel.className='expanded';panel.inert=!selected;panel.setAttribute('role','region');panel.setAttribute('aria-labelledby',trigger.id);
     if(selected&&!locked){
       const inner=el('div','');inner.className='expanded-inner';const body=el('div','');body.className='inventory-panel';
-      const label=el('p',step.ordem===data.atual_ordem?'SUA FAIXA ATUAL':'PARTE DA SUA HISTÓRIA');label.className='selected-label';body.append(label);
-      const summary=el('p',step.conquista);summary.className='belt-result';body.append(summary);
+      const label=el('p',step.ordem===data.atual_ordem?'CONQUISTA REGISTRADA · FAIXA ATUAL':'CONQUISTA REGISTRADA · HISTÓRICO');label.className='selected-label';body.append(label);
+      const summary=el('p',`${step.ordem===1?'Ponto de partida registrado':'Realização que trouxe esta faixa'}: ${step.conquista}`);summary.className='belt-result';body.append(summary);
       const next=data.etapas.find(e=>e.ordem===step.ordem+1);
-      if(step.ordem===data.atual_ordem&&next){const hint=el('p',`Próximo marco: Faixa ${next.nome}`);hint.className='next-milestone';body.append(hint);}
+      if(next&&(step.ordem===data.atual_ordem||next.alcancada)){const hint=el('p',`${next.alcancada?'Trabalho já concluído':'Próximo trabalho'} · para conquistar Faixa ${next.nome}`);hint.className='next-milestone';body.append(hint);const target=el('p',next.conquista);target.className='belt-result';body.append(target);}
       if(step.ordem===1)body.append(q('#branca-requisitos'));
       if(shownSteps.includes(3))body.append(q('#primeiro-item'));
       if(shownSteps.includes(4))body.append(q('#apresentar-item'));
       if(shownSteps.some(n=>n===5||n===6)&&q('#deliveries').children.length)body.append(q('#minhas-entregas'));
       if(data.etapas.length===13&&shownSteps.some(n=>n>=6)&&step.ordem<13)body.append(q('#minha-meta'));
       if(data.etapas.length===13&&shownSteps.some(n=>n>=5)&&step.ordem<13)body.append(q('#recebimentos'));
-      if(step.ordem>=5&&next&&step.ordem===data.atual_ordem){const target=el('p',next.conquista);target.className='belt-result';body.append(target);}
-      if(step.ordem===data.etapas.length){const finish=el('p','Sua jornada está registrada. Veja abaixo o caminho que você construiu.');finish.className='belt-result';body.append(finish);}
+      if(step.ordem===data.etapas.length){const finish=el('p','Percurso concluído. Neste caminho, não há outra faixa por conquistar. Seus XP e o histórico continuam registrados.');finish.className='belt-result';body.append(finish);}
       const history=el('details','');history.className='belt-history';history.append(el('summary','Meu histórico registrado'),q('#minha-historia'));body.append(history);
       inner.append(body);panel.append(inner);
     }

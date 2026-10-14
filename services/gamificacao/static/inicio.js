@@ -64,14 +64,14 @@ window.iniciarJornada = (scope = document, host = {}) => {
     if (busy) return;
     if (dirty.size && !await save(forms.motivo, 'inicio-motivo', {concluir: 'nao', motivo_etapa: String(motivoStep)})) return;
     if (embedded) host.close();
-    else navigate('/trilha/');
+    else navigate(root.dataset.conquistas || '/trilha/');
   }
   async function leaveInicio() {
     if (forms.motivo) return leaveMotivo();
     if (busy) return;
     if (forms.compromisso && dirty.has(forms.compromisso.id) && !await save(forms.compromisso, 'inicio-compromisso', {compromisso_etapa: String(Math.min(compromissoStep, 2))})) return;
     if (embedded) host.close();
-    else navigate('/trilha/');
+    else navigate(root.dataset.conquistas || '/trilha/');
   }
   const date = value => new Date(value).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
   const announce = (message, error = false) => {

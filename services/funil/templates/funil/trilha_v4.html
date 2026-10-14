@@ -8,10 +8,12 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Ateliê — Trilha de {{ trilha.aluno.nome }}</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="{% url 'trilha_v4_css' %}">
-  <script src="{% url 'trilha_v4_js' %}" defer></script>
+  {% if request.previa_trilha_url %}<link rel="stylesheet" href="{{ request.previa_trilha_url }}style.css">
+  <script src="{{ request.previa_trilha_url }}app.js?v=imagens20261013v2" defer></script>{% else %}<link rel="stylesheet" href="{% url 'trilha_v4_css' %}">
+  <script src="{% url 'trilha_v4_js' %}" defer></script>{% endif %}
 </head>
 <body>
+  {% if request.previa_trilha_url %}<div role="status" style="background:#1f4060;color:white;padding:10px 16px;text-align:center;font:700 14px system-ui,sans-serif">Prévia administrativa — progresso separado</div>{% endif %}
   {{ trilha|json_script:"trilha-data" }}
   <svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
     <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
@@ -53,7 +55,7 @@
       <div class="summary-stat"><strong id="remaining-count">—</strong><span>POR CONQUISTAR</span></div>
     </section>
     <section class="journey" id="journey" aria-labelledby="journey-title">
-      <div class="journey-heading"><div><p class="eyebrow">01 — O PERCURSO</p><h2 id="journey-title">A arte de <em>continuar.</em></h2></div><p class="explore-hint">Concentre-se na faixa atual.<br>As próximas se abrem com suas conquistas.</p></div>
+      <div class="journey-heading"><div><p class="eyebrow">01 — O PERCURSO</p><h2 id="journey-title">A arte de <em>continuar.</em></h2></div><p class="explore-hint">Sua faixa mostra uma conquista registrada.<br>O próximo trabalho leva à faixa seguinte.</p></div>
       <nav class="stage-dock" aria-label="Acesso direto às faixas da sua jornada"><div class="dock-inner" id="dock"></div></nav>
       <ol class="timeline" id="timeline"></ol>
       <nav class="bottom-nav" aria-label="Navegação entre faixas">
@@ -61,7 +63,7 @@
         <div><span id="position">—</span><span class="position-total"> / <span class="stage-total">—</span></span><small id="selected-label">—</small></div>
         <button class="nav-arrow" id="next" disabled aria-label="Próxima faixa"><span>Próxima</span><svg aria-hidden="true"><use href="#arrow"/></svg></button>
       </nav>
-      <div class="closing"><span aria-hidden="true">✧</span><p>A próxima grande criação<br>começa no <em>próximo passo.</em></p></div>
+      <div class="closing"><span aria-hidden="true">✧</span><p>Cada criação deixa uma conquista.<br>Seu histórico guarda <em>o caminho percorrido.</em></p></div>
     </section>
   </main>
   <footer><span class="footer-brand">MESHCRAFT <i>/</i> ATELIÊ</span><span>{{ trilha.aluno.nome }} · Sua jornada</span><span>Atividades e progresso da sua Trilha.</span></footer>
@@ -70,10 +72,9 @@
     <div class="dialog-content">
       <div id="dialog-panel"><h2 id="dialog-title">Um passo de cada vez.</h2></div>
       <div class="checklist-update"><span id="checklist-updated" role="status" aria-live="polite"></span><button type="button" id="checklist-refresh">Atualizar</button></div>
-      <a class="checklist-back" style="text-align:center" href="/trilha/inventario/">Abrir meu inventário</a>
+      <a class="checklist-back" style="text-align:center" href="{{ request.previa_trilha_url|default:'/trilha/' }}inventario/">Abrir meu inventário</a>
       <button class="checklist-back" id="back-to-journey">Voltar à trilha</button>
     </div>
   </dialog>
-<script defer src="/conquistas/static/medalhas-painel.js?v=20261012-1"></script>
 </body>
 </html>

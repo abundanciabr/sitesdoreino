@@ -17,7 +17,7 @@ const belts=progress.etapas.map((step,index)=>{
   const name=step.nome||step.conquista;
   const short=totalStages===7?name:name.replace(/^Preta\s*[·-]?\s*/i,'').replace(/\s*Grau/i,'');
   const goal=progress.etapas[index+1];
-  const category=goal?.conquista||(step.alcancada?'Todas as etapas deste percurso foram concluídas.':'Último marco deste percurso.');
+  const category=goal?`${goal.alcancada?'Trabalho já concluído':step.ordem===progress.atual_ordem?'Próximo trabalho':'Trabalho desta etapa'} · conquistar Faixa ${goal.nome||goal.conquista}: ${goal.conquista}`:(step.alcancada?'Percurso concluído. Todas as faixas deste caminho foram conquistadas.':'Último marco deste percurso.');
   return {name,short,category,title:name,summary:goal?.feedback||category,color:theme.color,wash:theme.wash,tone:theme.tone,ink:theme.ink};
 });
 const current = progress.atual_ordem - 1;
@@ -34,7 +34,7 @@ const dockButtons = [];
 let openedIndex=view.detailIndex!=null&&view.detailIndex===view.current?current:view.detailIndex??null;
 timeline.replaceChildren();dock.replaceChildren();
 const number = index=>String(index+1).padStart(2,'0');
-const state = index=>index===current?'Faixa atual':reached(index)?'Concluída':'Bloqueada';
+const state = index=>index===current?'Faixa atual':reached(index)?'Conquistada':'Bloqueada';
 const adjacent = direction=>available[available.indexOf(selected)+direction];
 
 const doneCount=progress.etapas.filter(step=>step.alcancada).length;
@@ -108,7 +108,8 @@ function beltPanel(index,modal=false){
   const panel=createProgressPanel(journeyChecklist(progress,index,payload.atividades),{
     name:belts[index].name,number:number(index),white:index===0,modal,
     next:belts[index+1]?belts[index+1].name:null,
-    summary:belts[index].category
+    summary:belts[index].category, achievement:progress.etapas[index].conquista,
+    nextReached:progress.etapas[index+1]?.alcancada===true
   });
   if(index===3&&progress.caminho==='freelancer')panel.append(sandboxEvaluationPanel(progress.avaliacoes_sandbox));
   return panel;
@@ -223,13 +224,15 @@ function createProgressPanel(details,options){
   const panel=node('section','progress-panel');panel.setAttribute('aria-label',`Progresso da faixa ${options.name}`);
   const header=node('div','progress-heading');
   const copy=node('div','progress-heading-copy');
-  const title=node(options.modal?'h2':'h3','progress-title','Um passo de cada vez.');if(options.modal)title.id='dialog-title';
-  const summary=node('p','progress-summary',options.next?'Próximo marco: ':options.summary);
+  const title=node(options.modal?'h2':'h3','progress-title',details.concluido?'Percurso concluído.':options.nextReached?'Trabalho já concluído.':options.next?'Meu próximo trabalho.':'Um passo de cada vez.');if(options.modal)title.id='dialog-title';
+  const summary=node('p','progress-summary',options.next?(options.nextReached?'Trabalho concluído para conquistar ':'Próximo trabalho para conquistar '):options.summary);
   if(options.next)summary.append(node('strong','',`Faixa ${options.next}`));
-  copy.append(node('span','dialog-eyebrow',`FAIXA ${options.name.toLocaleUpperCase('pt-BR')} · SEU PROGRESSO`),title,summary);
+  copy.append(node('span','dialog-eyebrow',`FAIXA ${options.name.toLocaleUpperCase('pt-BR')} · CONQUISTA REGISTRADA`));
+  if(typeof options.achievement==='string')copy.append(node('p','progress-note achievement-note',`${options.white?'Ponto de partida registrado':'Realização que trouxe esta faixa'}: ${options.achievement}`));
+  copy.append(title,summary);
   const badge=node('div','progress-badge');badge.setAttribute('aria-hidden','true');badge.append(node('span','',options.number));
   header.append(copy,badge);panel.append(header);
-  if(details.concluido){panel.append(node('p','progress-note','Você concluiu todas as etapas deste percurso. Suas conquistas e os XP continuam registrados.'));return panel;}
+  if(details.concluido){panel.append(node('p','progress-note','Você concluiu todas as etapas deste percurso. Neste caminho, não há outra faixa por conquistar. Suas conquistas, os XP e o histórico continuam registrados.'));return panel;}
   const available=details.disponivel&&(!options.white||details.itens.length>0);
   if(!available){panel.append(node('p','checklist-observation','Não foi possível consultar suas etapas agora. Atualize em instantes.'));return panel;}
   const total=details.itens.length,done=details.itens.filter(item=>item.estado==='concluido'&&!item.bloqueado).length;

@@ -541,6 +541,10 @@ def reconciliar_recebimentos(pessoa_id, site_id):
         fora_da_progressao=False,
     ).order_by("recebido_em", "id") if r.referencia_trabalho and
         (r.leitura or {}).get("correspondencia_trabalho") is True]
+    reconhecidas = set(AvaliacaoDaJornada.objects.filter(
+        pessoa_id=pessoa_id, site_id=site_id, caminho="freelancer",
+        resultado="reconhecida", ordem__gte=7,
+    ).values_list("ordem", flat=True))
     total = 0
     for r in recebimentos:
         total += r.valor_cents
@@ -551,11 +555,15 @@ def reconciliar_recebimentos(pessoa_id, site_id):
             "conferencia": "leitura visual; sem autenticacao bancaria",
             "chave": f"recebimento:{r.pk}:revisao:{r.revisao}:primeiro",
         }
-        registrar_avaliacao(pessoa_id, site_id, 7, "reconhecida",
-            f"Conferi o identificador do trabalho e o recebimento de {reais(r.valor_cents)} "
-            "no material. A leitura visual não autentica o pagamento.", evidencia)
+        if 7 not in reconhecidas:
+            registrar_avaliacao(pessoa_id, site_id, 7, "reconhecida",
+                f"Conferi o identificador do trabalho e o recebimento de {reais(r.valor_cents)} "
+                "no material. A leitura visual não autentica o pagamento.", evidencia)
+            reconhecidas.add(7)
         if j.meta_cents:
             for ordem, percentual in PERCENTUAIS.items():
+                if ordem in reconhecidas:
+                    continue
                 if total * 100 < j.meta_cents * percentual:
                     continue
                 registrar_avaliacao(pessoa_id, site_id, ordem, "reconhecida",
@@ -565,6 +573,7 @@ def reconciliar_recebimentos(pessoa_id, site_id):
                     {**evidencia, "meta_cents": j.meta_cents, "total_cents": total,
                      "percentual": str(percentual),
                      "chave": f"recebimento:{r.pk}:revisao:{r.revisao}:grau:{ordem}:meta:{j.meta_cents}"})
+                reconhecidas.add(ordem)
     return situacao(pessoa_id, site_id)
 
 
