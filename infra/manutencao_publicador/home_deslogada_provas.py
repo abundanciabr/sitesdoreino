@@ -59,15 +59,7 @@ def main():
             assert path.is_file() and not path.is_symlink()
             fd = path.open('rb')
             locks.append(fd)
-            deadline = time.monotonic() + 1800
-            while True:
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    break
-                except BlockingIOError:
-                    if time.monotonic() >= deadline:
-                        raise TimeoutError('operacoes continuam em andamento; nenhum arquivo alterado')
-                    time.sleep(1)
+            fcntl.flock(fd, fcntl.LOCK_EX)
         pointer = PUB / 'atual'
         assert pointer.is_symlink()
         original = pointer.resolve(strict=True)
