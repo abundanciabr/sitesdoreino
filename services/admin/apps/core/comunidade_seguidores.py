@@ -1,8 +1,11 @@
 """Pedidos reais para seguir, confirmados somente pelo destinatário."""
 from pathlib import Path
+import re
+import base64
 
 from django.db import transaction
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, Http404
+from django.shortcuts import render
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -123,3 +126,34 @@ def interface(request, nome):
         return resposta({"erro": "Recurso não encontrado."}, 404)
     arquivo = Path(__file__).with_name("comunidade_assets") / ("seguidores." + nome.rsplit(".", 1)[1])
     return comunidade._resposta(HttpResponse(arquivo.read_bytes(), content_type="text/javascript" if nome.endswith(".js") else "text/css"))
+
+
+def caminho_perfil(caminho):
+    return re.fullmatch(r"/galeria-publica/pessoas/[a-f0-9]{64}", caminho) is not None
+
+
+@require_GET
+@never_cache
+def perfil_aluno(request, alvo):
+    dono = pessoa(request)
+    if not dono:
+        return resposta({"erro": "Entre com sua conta para ver o perfil."}, 403)
+    alunos = comunidade._alunos(request)
+    if alunos is None:
+        return resposta({"erro": "Não foi possível carregar o perfil agora. Tente novamente."}, 503)
+    aluno = next((item for item in alunos if item.get("seguir_chave") == alvo), None)
+    if aluno is None:
+        raise Http404
+    host = comunidade._host(request)
+    meu_perfil = PerfilDaComunidade.objects.filter(site_host=host, identidade_id=str(dono["id"])).first()
+    if meu_perfil:
+        decorar([aluno], meu_perfil)
+    else:
+        aluno["sou_eu"] = alvo == chave(host, dono["email"])
+    perfil = aluno.get("perfil")
+    foto = ""
+    if perfil:
+        aluno["nome"] = perfil.nome
+        if perfil.foto:
+            foto = "data:image/jpeg;base64," + base64.b64encode(bytes(perfil.foto)).decode("ascii")
+    return comunidade._resposta(render(request, "admin/comunidade_perfil_aluno.html", {"aluno": aluno, "foto": foto}))
