@@ -385,6 +385,7 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/pessoas/<str:alvo>", comunidade_seguidores.perfil_aluno),
     path("galeria-publica/seguidores", comunidade_seguidores.dados),
     path("galeria-publica/seguidores/solicitar", comunidade_seguidores.solicitar),
     path("galeria-publica/seguidores/responder", comunidade_seguidores.responder),

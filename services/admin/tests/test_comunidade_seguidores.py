@@ -122,7 +122,8 @@ def test_menu_sem_grupos_e_botoes_sem_emails(rede):
     assert 'href="#grupos"' not in pagina
     assert '<span class="matricula">Aluno ativo</span>' not in pagina
     assert '<span class="matricula">Ativo</span>' not in pagina
-    assert 'data-seguir="' + alvo() + '"' in pagina
+    assert 'data-seguir="' not in pagina
+    assert 'href="/comunidade/pessoas/' + alvo() + '"' in pagina
     assert 'Notificações · seguidores' in pagina
     assert "bia@example.test" not in pagina
     voto = rede["bia"].get("/galeria-publica").content.decode()
@@ -146,3 +147,28 @@ def test_falha_de_diretorio_nao_simula_seguidor(rede,monkeypatch):
     monkeypatch.setattr(comunidade,"_alunos",lambda request:None)
     assert rede["ana"].post(BASE + "/solicitar", {"alvo":alvo()}).status_code == 503
     assert not PedidoSeguidor.objects.exists()
+
+
+def test_seguir_apenas_dentro_do_perfil_e_estado_persistente(rede):
+    url = "/galeria-publica/pessoas/" + alvo()
+    pagina = rede["ana"].get(url)
+    assert pagina.status_code == 200
+    assert 'data-seguir="' + alvo() + '"' in pagina.content.decode()
+    assert "example.test" not in pagina.content.decode()
+    assert not PedidoSeguidor.objects.exists()
+    pedir(rede)
+    assert "Solicitação enviada" in rede["ana"].get(url).content.decode()
+    pedido = PedidoSeguidor.objects.get()
+    rede["bia"].post(BASE + "/responder", {"pedido": pedido.pk, "acao": "aceitar"})
+    assert "Seguindo" in rede["ana"].get(url).content.decode()
+
+
+def test_perfil_acessivel_a_alunos_sem_auto_seguir_e_isolado_por_site(rede):
+    url = "/galeria-publica/pessoas/" + alvo()
+    r = rede["bia"].get(url)
+    assert r.status_code == 200 and "Você" in r.content.decode()
+    assert 'data-seguir="' not in r.content.decode()
+    assert rede["caio"].get(url).status_code == 200
+    assert Client(HTTP_HOST="meshcraft.top").get(url).status_code == 403
+    assert rede["ana"].get("/galeria-publica/pessoas/" + alvo(host="outro.site")).status_code == 404
+    assert rede["ana"].post(url).status_code == 405

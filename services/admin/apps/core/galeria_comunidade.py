@@ -32,8 +32,8 @@ SLUGS = frozenset(i[0] for i in IMAGENS)
 
 
 def caminho_publico(caminho):
-    from .comunidade_seguidores import CAMINHOS
-    if caminho in CAMINHOS:
+    from .comunidade_seguidores import CAMINHOS, caminho_perfil
+    if caminho in CAMINHOS or caminho_perfil(caminho):
         return True
     prefixo_aula = '/previa-aula-1'
     if caminho in {prefixo_aula, prefixo_aula + '/', prefixo_aula + '/voto', prefixo_aula + '/comentario', prefixo_aula + '/galeria.css', prefixo_aula + '/galeria.js'} or caminho.startswith(prefixo_aula + '/imagens/') or caminho.startswith(prefixo_aula + '/midia/'):
