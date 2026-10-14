@@ -108,7 +108,8 @@ def evidencias(entrega, incluir_imagens=False):
 
 def requisitos(termos):
     rows = []
-    for campo in ('briefing', 'referencias', 'entregaveis', 'criterios'):
+    # Referencias contextualizam a comparacao; nao sao um entregavel adicional.
+    for campo in ('briefing', 'entregaveis', 'criterios'):
         value = termos.get(campo) or []
         values = value if isinstance(value, list) else re.split('[;\\n]', str(value))
         for texto in values:
