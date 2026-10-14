@@ -164,41 +164,55 @@ def test_a_pagina_marcada_sem_menu_nao_mostra_menu(client, rede):
     assert "menu-topo" not in corpo
 
 
-def test_cada_pagina_pode_ter_uma_versao_diferente(client, rede):
+def test_cada_pagina_pode_ter_uma_versao_diferente(client, rede, logado):
     """A outra metade: a mesma configuração desenha menus diferentes em páginas
     diferentes."""
     com_menu(rede, SITE_MESH, HOST_MESH)
-    inicial = client.get("/", HTTP_HOST=HOST_MESH).content.decode()
-    cadastro = client.get("/cadastro", HTTP_HOST=HOST_MESH).content.decode()
+    inicial = client.get("/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).content.decode()
+    cadastro = client.get(
+        "/cadastro", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
     assert "Forum" in so_o_menu(inicial)  # versão completa (o site nasce em inglês)
     assert "menu-topo" in cadastro
     assert "Forum" not in so_o_menu(cadastro)  # versão enxuta: só a página inicial
 
 
 @pytest.mark.parametrize(
-    "idioma,inicio,cadastro",
+    "idioma,entrar,cadastro",
     [
-        ("en", "Home", "Sign up"),
-        ("pt-br", "Início", "Cadastro"),
-        ("es", "Inicio", "Registro"),
+        ("en", "Sign in", "Sign up"),
+        ("pt-br", "Entrar", "Cadastro"),
+        ("es", "Entrar", "Registro"),
     ],
 )
-def test_o_rotulo_sai_no_idioma_de_quem_le(client, rede, idioma, inicio, cadastro):
+def test_o_rotulo_sai_no_idioma_de_quem_le(client, rede, idioma, entrar, cadastro):
     com_menu(rede, SITE_MESH, HOST_MESH)
     corpo = client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH).content.decode()
-    assert inicio in corpo
-    assert cadastro in corpo
+    menu = so_o_menu(corpo)
+    assert f">{entrar}</a>" in menu
+    assert f">{cadastro}</a>" in menu
+    assert menu.count("<a ") == 2
+    assert 'href="/forum' not in corpo
+    assert 'href="/docs/' not in corpo
+    assert 'class="marca"' not in corpo
+    assert 'class="descricao"' not in corpo
+    assert 'class="links"' not in corpo
+    assert "/cursos/static/cursos/suporte.css?v=20261014-publico24h2" in corpo
+    assert "/cursos/static/cursos/suporte.js?v=20261014-publico24h2" in corpo
 
 
-def test_link_traduzido_ganha_o_prefixo_e_o_de_outra_celula_nao(client, rede):
-    """A armadilha do R12, e a razão de `localized` ser um dado e não um
-    palpite: `/pt-br/cadastro` existe, `/pt-br/forum` é 404 — e o erro só
-    apareceria fora do idioma padrão, que não é o que se abre para conferir."""
+def test_link_traduzido_ganha_o_prefixo_e_o_de_outra_celula_nao(client, rede, logado):
+    """Os links da home deslogada preservam o idioma; o fórum da home
+    autenticada continua apontando para a outra célula sem prefixo."""
     com_menu(rede, SITE_MESH, HOST_MESH)
     corpo = client.get(caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH).content.decode()
     assert 'href="/pt-br/cadastro"' in corpo
-    assert 'href="/forum"' in corpo
-    assert "/pt-br/forum" not in corpo
+    assert 'href="/pt-br/login?next=' in corpo
+    logado_corpo = client.get(
+        caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+    assert 'href="/forum"' in logado_corpo
+    assert "/pt-br/forum" not in logado_corpo
 
 
 def test_no_idioma_padrao_o_link_nasce_sem_prefixo(client, rede):
@@ -363,7 +377,7 @@ def test_fora_da_raiz_o_item_inicio_volta(client, rede):
 
 
 @pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
-def test_o_item_inicio_so_some_na_raiz_daquele_idioma(client, rede, idioma):
+def test_o_item_inicio_so_some_na_raiz_daquele_idioma(client, rede, idioma, logado):
     """O guarda que pega o erro mais traiçoeiro desta regra.
 
     Se a comparação usasse o endereço JÁ prefixado, `/es/` seria prefixo de
@@ -372,7 +386,9 @@ def test_o_item_inicio_so_some_na_raiz_daquele_idioma(client, rede, idioma):
     """
     com_menu(rede, SITE_MESH, HOST_MESH)
     na_raiz = so_o_menu(
-        client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH).content.decode()
+        client.get(
+            caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+        ).content.decode()
     )
     no_cadastro = so_o_menu(
         client.get(
@@ -516,7 +532,9 @@ def test_o_atalho_da_equipe_some_para_visitante(client, rede):
     com_menu(rede, SITE_MESH, HOST_MESH, MENU_COM_EQUIPE)
     menu = so_o_menu(client.get("/", HTTP_HOST=HOST_MESH).content.decode())
     assert ">Admin</a>" not in menu
-    assert ">Fórum</a>" in menu
+    assert ">Sign in</a>" in menu
+    assert ">Sign up</a>" in menu
+    assert ">Fórum</a>" not in menu
 
 
 def test_plateia_desconhecida_nao_aparece_para_ninguem(client, rede, logado_equipe):
