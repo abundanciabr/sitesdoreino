@@ -11,6 +11,7 @@ from .banca_assinatura import assinatura
 
 INDICIOS = re.compile(r'\?|não|nao|dúvida|duvida|medo|difícil|dificil|preço|preco|caro|tempo|dinheiro|renda|reembols|devol|cancel|garant|consegu|compr|mercado|vender|suporte', re.I)
 REEMBOLSO = re.compile(r'reembols|devolu[çc]|cancel.*(?:compra|curso)|estorno', re.I)
+VERSAO_SELECAO = 'banca-fontes-v2'
 TESTE = re.compile(r'\b(?:ensaio|fict[ií]ci[oa]|teste t[eé]cnico|teste autorizado|confer[eê]ncia t[eé]cnica|apenas uma confer[eê]ncia|segunda rodada|test[-_]|teste[-_])', re.I)
 MENU_AUTOMATICO = re.compile(r'escolha (?:abaixo|uma op[çc][aã]o)|lista de assuntos|toque em (?:tirar d[uú]vidas|escolher assunto)|vamos testar agora', re.I)
 
@@ -130,6 +131,7 @@ def coletar(site_id):
     corpus = {'coletado_em': timezone.now().isoformat(), 'itens': list(unicos.values())[:250],
               'cobertura': cobertura, 'limite': 'Amostra de mensagens, não estimativa de prevalência no público.'}
     corpus['selecao'] = 'Somente entradas da pessoa; testes identificáveis e textos de menus excluídos. A ausência de marcador não comprova a autenticidade de uma mensagem.'
+    corpus['selecao_versao'] = VERSAO_SELECAO
     corpus['digest'] = assinatura(corpus)
     registro = RascunhoDeConfiguracao.objects.create(tipo='banca_corpus', site_id=str(site_id),
                   alvo=str(uuid.uuid4()), conteudo=corpus)
