@@ -268,11 +268,8 @@ class Porta:
 
     @property
     def esta_dentro(self) -> bool:
-        resposta = self.abrir()
-        return (
-            resposta.status_code == 200
-            and "Ver o quadro de sugestões" in resposta.content.decode()
-        )
+        # A entrada antiga só encaminha. A participação é conferida no recurso.
+        return self.client.get(reverse("quadro")).status_code == 200
 
     @property
     def identidade(self) -> Identidade:
@@ -305,7 +302,7 @@ def sessao_do_site(
 
 
 @pytest.fixture
-def entrar_como(rede, matricula, db):
+def entrar_como(rede, matricula, db, quadro):
     """Uma pessoa com sessão do site e matrícula dublada: o aluno participante."""
 
     def _entrar(
@@ -343,7 +340,7 @@ def lista_da_staff(monkeypatch):
 
 
 @pytest.fixture
-def entrar_como_staff(rede, lista_da_staff, db, gestao):
+def entrar_como_staff(rede, lista_da_staff, db, gestao, quadro):
     """Alguém da equipe pela porta real, sem dublar a `alunos`.
     `pessoa.gestao` é o atalho para a moderação pelo contrato do Admin."""
 

@@ -70,7 +70,7 @@ def test_visitante_sem_sessao_e_200_dizendo_que_nao_ha_ninguem(
     assert resposta.json() == {"autenticado": False}
 
 
-def test_a_sessao_do_site_nao_e_lida_aqui(rede, db, matricula, par_autorizado):
+def test_a_sessao_do_site_nao_e_lida_aqui(rede, db, matricula, par_autorizado, quadro):
     """Quem está logado NO SITE é 'ninguém' para o endpoint legado.
 
     Duas coisas numa tacada: (1) o cookie central não valida na assinatura

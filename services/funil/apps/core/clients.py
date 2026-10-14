@@ -901,7 +901,8 @@ class AlunosClient:
     RESULTADO_FALHOU = "falhou"
 
     def criar_pre_matricula(
-        self, *, site_id: str, email: str, nome_completo: str, whatsapp: str
+        self, *, site_id: str, email: str, nome_completo: str, whatsapp: str,
+        comprou_em: str = "", turma: str = ""
     ) -> str:
         """`createPreEnrollment` — a pessoa pede entrada e fica AGUARDANDO.
 
@@ -928,15 +929,18 @@ class AlunosClient:
             return self.RESULTADO_FALHOU
         base, token = config
 
+        corpo = {
+            "site_id": site_id, "email": email,
+            "nome_completo": nome_completo, "whatsapp": whatsapp,
+        }
+        if comprou_em:
+            corpo["comprou_em"] = comprou_em
+        if turma:
+            corpo["turma"] = turma
         try:
             r = http().post(
                 f"{base}/pre-matriculas",
-                json={
-                    "site_id": site_id,
-                    "email": email,
-                    "nome_completo": nome_completo,
-                    "whatsapp": whatsapp,
-                },
+                json=corpo,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
             )

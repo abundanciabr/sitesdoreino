@@ -477,7 +477,7 @@ def test_a_tela_convida_a_entrar_quem_nao_esta_logado(client, env, monkeypatch, 
     ).content.decode()
     assert "Entre para escrever aqui." in corpo
     # E o convite volta PARA CÁ depois de entrar.
-    assert "/entrar/google?next=" in corpo
+    assert "/login?next=" in corpo
     assert "csrfmiddlewaretoken" not in corpo
 
 
@@ -500,7 +500,7 @@ def test_a_porta_unica_manda_entrar_quem_nao_esta_logado(client, env, monkeypatc
     sem_login(monkeypatch)
     resposta = client.get(reverse("abrir_conversa"), headers={"cookie": COOKIE})
     assert resposta.status_code == 302
-    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert resposta["Location"].startswith("/login?next=")
     assert parse_qs(urlparse(resposta["Location"]).query)["next"] == [
         reverse("abrir_conversa")
     ]
@@ -509,7 +509,7 @@ def test_a_porta_unica_manda_entrar_quem_nao_esta_logado(client, env, monkeypatc
 def test_a_porta_unica_manda_entrar_quem_nao_tem_cookie(client):
     resposta = client.get(reverse("abrir_conversa"))
     assert resposta.status_code == 302
-    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert resposta["Location"].startswith("/login?next=")
 
 
 def test_o_aluno_ve_so_as_areas_onde_escreve(client, env, monkeypatch, sala, avisos):
@@ -574,7 +574,7 @@ def test_a_porta_unica_recusa_o_post_de_quem_nao_esta_logado(
         headers={"cookie": COOKIE},
     )
     assert resposta.status_code == 302
-    assert resposta["Location"].startswith("/entrar/google?next=")
+    assert resposta["Location"].startswith("/login?next=")
     assert Topico.objects.count() == 0
 
 

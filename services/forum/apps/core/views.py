@@ -219,7 +219,9 @@ def _porta_de_entrada(request) -> str:
       público — em produção ele é `/forum/a/duvidas`, em dev `/a/duvidas`, sem
       uma string cravada em lugar nenhum.
     """
-    porta = (os.environ.get("URL_DE_ENTRADA") or "").strip() or "/entrar/google"
+    porta = (os.environ.get("URL_DE_ENTRADA") or "").strip() or "/login"
+    if porta in ("/entrar/google", "/forms/sugestoes/entrar", "/forms/sugestoes/entrar/google"):
+        porta = "/login"
     return f"{porta}?{urlencode({'next': request.get_full_path()})}"
 
 

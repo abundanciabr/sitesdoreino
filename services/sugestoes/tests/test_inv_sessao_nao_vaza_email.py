@@ -14,7 +14,7 @@ TOKEN = "token-do-par-funil-sugestoes"
 
 
 def test_a_resposta_nao_tem_email_nem_para_quem_esta_no_site(
-    rede, db, matricula, settings
+    rede, db, matricula, settings, quadro
 ):
     settings.TOKENS_ACEITOS = {TOKEN}
     rede.alunos_diz("joao.silva@exemplo.test", [matricula])

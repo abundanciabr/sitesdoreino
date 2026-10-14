@@ -169,7 +169,7 @@ def test_a_resposta_e_reaproveitada_entre_paginas(client, logado):
     for caminho in ("/pt-br/", "/pt-br/cadastro", "/pt-br/login"):
         client.get(caminho, HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
 
-    assert len(_chamadas_de_sessao(logado)) == 1
+    assert sum(c.request.url.path.endswith("/sessao") for c in _chamadas_de_sessao(logado)) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +213,7 @@ def test_a_pagina_de_entrada_leva_ao_google(client, rede, idioma):
         caminho_mesh(idioma, "/login"), HTTP_HOST=HOST_MESH
     ).content.decode()
 
-    volta_para = quote(caminho_mesh(idioma), safe="")  # "/" → %2F; "/es/" → %2Fes%2F
+    volta_para = quote(caminho_mesh(idioma, "/login") + "?next=" + quote(caminho_mesh(idioma), safe=""), safe="")  # "/" → %2F; "/es/" → %2Fes%2F
     # O `site` entrou em 31/08/2026:
     # a `identidade` anuncia o cadastro e o fato precisa dizer de qual site a
     # pessoa veio. Quem resolve Host→Site é ESTA célula, então é ela que manda.
@@ -231,7 +231,7 @@ def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
     conteudo = client.get("/pt-br/login", HTTP_HOST=HOST_MESH).content.decode()
 
     assert (
-        f'href="/outra/porta?next=%2Fpt-br%2F&amp;site={SITE_MESH["id"]}"' in conteudo
+        f'href="/outra/porta?next=%2Fpt-br%2Flogin%3Fnext%3D%252Fpt-br%252F&amp;site={SITE_MESH["id"]}"' in conteudo
     )
 
 

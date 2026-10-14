@@ -44,21 +44,10 @@ def _bater(caminho: str):
     return async_to_sync(AsyncClient().get)(PREFIXO + caminho)
 
 
-def test_o_next_do_botao_carrega_o_prefixo_publico(sob_prefixo, db):
-    resposta = _bater("/entrar/google")
-
-    assert resposta.status_code == 302, resposta.content
-    destino = urlparse(resposta["Location"])
-    assert destino.path == "/entrar/google", "a porta central é SEM prefixo"
-    proximo = parse_qs(destino.query)["next"][0]
-    assert proximo == f"{PREFIXO}/entrar", (
-        "o next sem o prefixo devolveria quem entrou para um /entrar que não "
-        "existe — armadilhas/029, em produção e só lá"
-    )
-
-
-def test_o_retorno_legado_aterrissa_na_porta_com_prefixo(sob_prefixo, db):
-    resposta = _bater("/entrar/google/retorno")
-
+@pytest.mark.parametrize('caminho',['/entrar','/entrar/google','/entrar/google/retorno'])
+def test_entrada_antiga_sempre_usa_login_central_sem_prefixo_da_caixa(sob_prefixo,db,caminho):
+    resposta=_bater(caminho)
     assert resposta.status_code == 302
-    assert resposta["Location"] == f"{PREFIXO}/entrar"
+    destino=urlparse(resposta['Location'])
+    assert destino.path == '/login'
+    assert parse_qs(destino.query)['next'] == ['/']

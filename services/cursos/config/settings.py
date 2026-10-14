@@ -147,7 +147,9 @@ CSRF_COOKIE_SECURE = not DEBUG
 # conhece. Com PADRÃO, de propósito: o provisionamento não escreve estas
 # chaves, e a trava de deriva dele reprova env com variável que ele não sabe
 # gerar. Molde: `services/gamificacao/config/settings.py`.
-URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+URL_DE_ENTRADA = (os.environ.get("URL_DE_ENTRADA") or "/login").strip()
+if URL_DE_ENTRADA in ("/entrar/google", "/forms/sugestoes/entrar", "/forms/sugestoes/entrar/google"):
+    URL_DE_ENTRADA = "/login"
 URL_DA_CAPA = os.environ.get("URL_DA_CAPA", "/")
 
 TEMPLATES = [

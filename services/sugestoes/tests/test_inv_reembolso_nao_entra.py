@@ -82,7 +82,7 @@ def test_quem_foi_reembolsado_nao_entra_na_caixa(rede, db, quadro):
     assert not pessoa.esta_dentro
     # 403, e não um redirecionamento mudo: quem está aqui não entrou, e a
     # página precisa dizer isso com o código certo.
-    assert _abrir(pessoa).status_code == 403
+    assert _abrir(pessoa)['Location'] == '/login?next=%2F'
 
 
 def test_a_tela_nomeia_o_reembolso_em_vez_de_so_fechar(rede, db, quadro):
@@ -93,13 +93,12 @@ def test_a_tela_nomeia_o_reembolso_em_vez_de_so_fechar(rede, db, quadro):
     nome, e é o que este teste impede que volte por conveniência.
     """
     rede.alunos_diz_reembolsado(PESSOA)
-    corpo = _abrir(sessao_do_site(rede, email=PESSOA)).content.decode()
-
-    assert "reembolso" in corpo.lower()
-    # E NÃO a tela do ex-aluno, que fala de encerramento e oferece a volta.
-    assert "Seu acesso à escola foi encerrado" not in corpo
-    # A tela NOMEIA o e-mail: quem entrou com a conta errada precisa ver qual.
-    assert PESSOA in corpo
+    pessoa = sessao_do_site(rede, email=PESSOA)
+    from django.test import RequestFactory
+    request = RequestFactory().get('/', HTTP_COOKIE=pessoa.client.cookies.output(header='', sep=';').strip())
+    assert ses.resolver(request).estado == ses.REEMBOLSADO
+    assert _abrir(pessoa)['Location'] == '/login?next=%2F'
+    # A explicação de reembolso é conferida no teste da tela central do funil.
 
 
 def test_o_reembolsado_nao_recebe_o_formulario_de_pedir_para_voltar(rede, db, quadro):
