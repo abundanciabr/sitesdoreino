@@ -9,7 +9,7 @@ from test_comunidade_entrada import admin, cadastrar
 def test_comunidade_admin_liga_percurso_sem_criar_grupos(admin):
     cadastrar(admin)
     corpo=admin.get('/galeria-publica').content.decode()
-    assert '/admin/comunidade/percurso/' in corpo
+    assert '/comunidade/nova-20261014' in corpo
     assert '/cursos/comunidade/pratica' in corpo
     assert 'não há grupos' in corpo.lower()
     assert 'D02 não foi liberada' in corpo

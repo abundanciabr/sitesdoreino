@@ -79,12 +79,19 @@ def _admin(request):
     return admin
 
 
+def _dono(request):
+    dono = getattr(request, "_comunidade_participante", None)
+    if dono and dono.get("id") and dono.get("email"):
+        return dono
+    return _admin(request)
+
+
 def _host(request):
     return request.get_host().split(":")[0].lower()
 
 
 def _perfil(request):
-    admin = _admin(request)
+    admin = _dono(request)
     return PerfilDaComunidade.objects.filter(
         site_host=_host(request), identidade_id=str(admin["id"])
     ).first()
@@ -107,7 +114,7 @@ def _configurar(request, erro="", status=200, usuario="", avatar=""):
     return _resposta(
         render(
             request,
-            "admin/comunidade_perfil.html",
+            getattr(request, "_comunidade_template_perfil", "admin/comunidade_perfil.html"),
             {
                 "perfil": perfil,
                 "usuario": usuario or (perfil.usuario if perfil else ""),
@@ -201,11 +208,12 @@ def alunos_atual(request):
 
 
 def entrada(request):
-    _admin(request)
+    _dono(request)
     perfil = _perfil(request)
     if not perfil or request.GET.get("perfil") == "editar":
         return _configurar(request)
-    alunos, forum = _alunos(request), _forum(request)
+    alunos = request._comunidade_alunos if hasattr(request, "_comunidade_alunos") else _alunos(request)
+    forum = _forum(request)
     contexto = {
         "perfil": perfil,
         "temas": TEMAS,
@@ -217,13 +225,13 @@ def entrada(request):
         "conversas": (forum or {}).get("conversas", []),
         "grupos": (forum or {}).get("grupos", []),
     }
-    return _resposta(render(request, "admin/comunidade_apple.html", contexto))
+    return _resposta(render(request, getattr(request, "_comunidade_template", "admin/comunidade_apple.html"), contexto))
 
 
 @require_POST
 @never_cache
 def salvar_perfil(request):
-    admin = _admin(request)
+    admin = _dono(request)
     usuario = str(request.POST.get("usuario") or "").strip().lstrip("@").lower()
     avatar = str(request.POST.get("avatar") or "")
     existente = _perfil(request)
@@ -294,7 +302,7 @@ def salvar_perfil(request):
         return _configurar(
             request, "Esse @ já está em uso. Escolha outro nome.", 409, usuario, avatar
         )
-    return _resposta(HttpResponseRedirect("/comunidade"))
+    return _resposta(HttpResponseRedirect(getattr(request, "_comunidade_raiz", "/comunidade")))
 
 
 @require_POST
@@ -306,13 +314,13 @@ def salvar_tema(request):
         raise Http404
     perfil.tema = tema
     perfil.save(update_fields=["tema", "atualizado_em"])
-    return _resposta(HttpResponseRedirect("/comunidade"))
+    return _resposta(HttpResponseRedirect(getattr(request, "_comunidade_raiz", "/comunidade")))
 
 
 @require_GET
 @never_cache
 def disponibilidade(request):
-    admin = _admin(request)
+    admin = _dono(request)
     usuario = str(request.GET.get("usuario") or "").strip().lstrip("@").lower()
     existe = (
         PerfilDaComunidade.objects.filter(site_host=_host(request), usuario=usuario)
@@ -332,7 +340,7 @@ def disponibilidade(request):
 @require_GET
 @never_cache
 def foto(request, perfil_id):
-    _admin(request)
+    _dono(request)
     perfil = PerfilDaComunidade.objects.filter(
         pk=perfil_id, site_host=_host(request)
     ).first()
@@ -346,7 +354,7 @@ def foto(request, perfil_id):
 @require_GET
 @never_cache
 def avatar(request, escolha):
-    _admin(request)
+    _dono(request)
     if escolha not in AVATARES:
         raise Http404
     _, fundo, cor = AVATARES[escolha]

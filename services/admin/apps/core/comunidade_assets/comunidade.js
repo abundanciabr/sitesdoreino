@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const base = document.body.dataset.base || '/comunidade';
   const form = document.getElementById('form-perfil');
   if (form) {
     const imagem = document.getElementById('foto-preview');
@@ -8,7 +9,7 @@
     form.querySelectorAll('input[name="avatar"]').forEach(radio => radio.addEventListener('change', () => {
       if (objeto) URL.revokeObjectURL(objeto);
       foto.value = '';
-      imagem.src = '/comunidade/avatar/' + radio.value;
+      imagem.src = base + '/avatar/' + radio.value;
     }));
     foto.addEventListener('change', () => {
       if (!foto.files.length) return;
@@ -25,7 +26,7 @@
       atraso = setTimeout(async () => {
         controlador = new AbortController();
         try {
-          const r = await fetch('/comunidade/disponivel?usuario=' + encodeURIComponent(nome), {signal: controlador.signal});
+          const r = await fetch(base + '/disponivel?usuario=' + encodeURIComponent(nome), {signal: controlador.signal});
           if (!r.ok) return;
           const dado = await r.json(); status.textContent = dado.disponivel ? 'Esse @ está disponível.' : 'Escolha outro @: esse nome está em uso ou não está no formato indicado.';
         } catch (_) {}
