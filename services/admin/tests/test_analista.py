@@ -648,7 +648,7 @@ def test_o_dossie_do_fechamento_leva_o_ciclo_e_o_placar_de_hoje():
     assert "achando" in texto and "0 de 8" in texto
     assert "[em aberto] Demanda" in texto
     assert "META CENTRAL DE ALUNOS ATÉ 2027" in texto, "o placar de hoje vem junto"
-    assert "CARTÃO ANTERIOR DO PLACAR" in texto, "o cartão antigo conserva seu período"
+    assert "META ATUAL DE PESSOAS ÚNICAS" in texto
 
 
 def test_livro_ausente_no_fechamento_nao_vira_nenhum_portao_provado():

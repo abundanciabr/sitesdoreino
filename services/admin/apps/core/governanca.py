@@ -79,9 +79,15 @@ def contar_alunos(fichas, site_id, hoje):
             "total": None,
             "motivo": "Não foi possível consultar as matrículas deste site.",
         }
-    pessoas, vendas, incompletas = set(), 0, 0
+    pessoas, vendas, incompletas = {}, 0, 0
     for ficha in fichas:
+        if not ficha.get("site_id"):
+            incompletas += 1
+            continue
         if str(ficha.get("site_id")) != str(site_id):
+            continue
+        if not ficha.get("origem") or not ficha.get("status"):
+            incompletas += 1
             continue
         if not vendeu_pelo_site(ficha):
             continue
@@ -95,18 +101,37 @@ def contar_alunos(fichas, site_id, hoje):
         if not email or "@" not in email:
             incompletas += 1
             continue
-        pessoas.add(email)
+        pessoas[email] = min(pessoas.get(email, dia), dia)
         vendas += 1
     if incompletas:
         return {
             "total": None,
             "motivo": "Há compras sem data ou cadastro suficiente para uma contagem completa.",
         }
+    inicio_ciclo = calendario(hoje)["inicio"]
+    periodos = [
+        ("Hoje", hoje),
+        ("Semana", hoje - dt.timedelta(days=hoje.weekday())),
+        ("Mês", hoje.replace(day=1)),
+        ("Últimos 45 dias", hoje - dt.timedelta(days=44)),
+        ("Ciclo de 12 semanas", inicio_ciclo),
+    ]
+    por_mes = {}
+    for dia in pessoas.values():
+        chave = (dia.year, dia.month)
+        por_mes[chave] = por_mes.get(chave, 0) + 1
     return {
         "total": len(pessoas),
         "vendas": vendas,
         "faltam": max(0, META_ALUNOS - len(pessoas)),
         "percentual": min(100, len(pessoas) * 100 / META_ALUNOS),
+        "por_mes": por_mes,
+        "mes": por_mes.get((hoje.year, hoje.month), 0),
+        "periodos": [{"nome": nome, "de": max(inicio, INICIO_ALUNOS),
+                      "ate": min(hoje, PRAZO_ALUNOS),
+                      "total": sum(max(inicio, INICIO_ALUNOS) <= d <= min(hoje, PRAZO_ALUNOS)
+                                   for d in pessoas.values())}
+                     for nome, inicio in periodos],
     }
 
 

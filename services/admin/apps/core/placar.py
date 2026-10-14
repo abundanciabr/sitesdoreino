@@ -1,70 +1,11 @@
-"""`/admin/placar/` — o andar zero do painel de gestão do negócio.
+"""Placar administrativo: pessoas únicas até 2027 e vendas por produto.
 
-Nasceu em 03/09/2026 de manhã medindo o total de alunos; à noite do mesmo dia
-o mantenedor reformulou a Meta Crucialmente Importante nº 1 (registro
-`20260903-036`), e esta tela passou a responder DUAS perguntas com o MESMO
-número de fichas:
-
-- **a barra do mês:** quantas pessoas viraram alunas neste mês (zera todo dia
-  1), com a meta do mês ao lado;
-- **a meta grande, por cima:** as pessoas somadas de 03/09 a 15/12/2026, no
-  formato das 4 Disciplinas da Execução (*de X para Y até quando*), com a régua
-  do ciclo dizendo se estamos ganhando ou perdendo. O alvo NÃO é repetido neste
-  texto: ele mora no cartão e já mudou duas vezes em 04/09/2026 (de 500 para
-  1000). Número copiado para dentro de um docstring é a segunda verdade que
-  ninguém lembra de corrigir.
-
-## As leis desta tela, e de onde vêm
-
-1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica fica
-   no banco e diz o que o número é, de onde vem, quem pode declará-lo e qual
-   métrica o segura (o "par"). Os JSON antigos foram sementes da importação.
-   Cartão ausente ⇒ a página abre, DIZ o que faltou, e não mostra o número.
-   Cartão com defeito de formato ⇒ o número aparece, a parte torta fica fora
-   da conta, e o defeito vai para a tela como aviso.
-2. **X é medido, nunca digitado**, e vem da célula `alunos`, por HTTP e em
-   tempo real (decisão do mantenedor de 25/08/2026). A data que conta é
-   `virou_aluno_em` (a confirmação do pagamento), campo do Rito de Contrato
-   de 03/09/2026 (PR #933). Nunca `comprou_em`, que é o que a pessoa digita
-   ao pedir entrada.
-3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ *"não consigo
-   contar"*. A lista chegou mas ainda sem o campo ⇒ *"a lista ainda não traz
-   a data"*. Ficha sem data ⇒ contada à
-   parte e dita na tela, nunca escondida (`RETROSPECTIVA-FASE-D.md`, padrão 1).
-4. **Reembolsada não é compra.** A compra foi desfeita;
-   a tela diz quantas foram.
-5. **Quem ficou antes da partida não entra.** A turma liberada em lote pela
-   lista de WhatsApp em 02/09/2026 é venda de outros meses (palavras do
-   mantenedor: neste mês ainda não houve venda). A partida é 03/09.
-6. **Só conta venda feita pelo NOSSO site** (correção do mantenedor em
-   02/10/2026): *"esse painel é só para vendas feitas através do nosso site e
-   não através de outros sites"*. Quem foi liberado pela sala de espera
-   (`origem == "liberado"`) comprou em outro site, e quem entrou por gesto do
-   painel (`administrativo`) não comprou: nenhum dos dois entra. Até essa data
-   o placar somava os liberados, e mostrava 69 alunas num site que ainda não
-   tinha vendido nada.
-
-## O que mora no cartão e o que NÃO mora
-
-O **alvo** (Y), a **data** e a **partida** moram no cartão do banco, com versões
-guardadas a cada edição no painel. A decisão pode ser registrada no histórico
-do painel (tipo `decisao`). A meta do mês
-(`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da régua do ciclo que
-cai no mês; ele fixa um número quando quiser.
-
-Desde 04/09/2026 essa régua tem uma peça a mais, `semanas`: a CURVA do ciclo.
-Ela reparte a meta semana a semana, quase
-zero no começo e pesada no fim, em vez de em partes iguais. O cartão que não
-declara `semanas` continua medido em linha reta, como antes.
-
-## O veredito, sem índice
-
-Ganhando ou perdendo é a comparação de X com o **esperado de hoje**, que sai de
-`esperado_em`: a curva de `semanas` quando o cartão a declara, e a linha reta da
-partida ao alvo quando não. Não há ponderação, não há nota de 0 a 100: o plano
-proíbe número composto no andar zero (§2), e o mantenedor marcou "sem
-preferência" quando os documentos do Scale OS propuseram a nota; ficou a
-regra da casa (registro `20260903-036`).
+A referência vigente é a orientação do mantenedor em 12/10/2026, corrigida
+expressamente em 14/10. A API de matrículas distingue compra real (inclusive
+nova venda paga administrativa), testes e liberações comuns. A contagem de
+pessoas usa a primeira compra elegível por cadastro dentro da janela; vendas
+low e mid usam o calendário comercial compartilhado. Cartões históricos e
+suas versões permanecem preservados, sem reger as metas atuais.
 """
 
 from __future__ import annotations
@@ -481,6 +422,13 @@ def calcular_placar(cartao: dict, x: int | None, hoje: dt.date) -> dict:
     if cartao.get("alvo") is None:
         return {**base, "veredito": "sem-alvo"}
 
+    if cartao.get("criterio") == "pessoas-unicas-2027":
+        faltam = max(0, int(cartao["alvo"]) - x)
+        dias = max(0, (_data(cartao["ate"]) - hoje).days)
+        return {**base, "distancia": faltam, "dias_restantes": dias,
+                "veredito": "cumprida" if not faltam else (
+                    "vencida" if hoje > _data(cartao["ate"]) else "em-andamento")}
+
     alvo = int(cartao["alvo"])
     ate = _data(cartao["ate"])
     esperado = esperado_em(cartao, hoje)
@@ -522,7 +470,8 @@ def calcular_o_mes(
     inicio = hoje.replace(day=1)
     alvo = cartao_do_mes.get("alvo_do_mes")
     derivada = False
-    if alvo is None and meta is not None and meta.get("alvo") is not None:
+    if (alvo is None and meta is not None and meta.get("alvo") is not None
+            and meta.get("criterio") != "pessoas-unicas-2027"):
         vespera = inicio - dt.timedelta(days=1)
         alvo = esperado_em(meta, ultimo_dia) - esperado_em(meta, vespera)
         derivada = True
@@ -636,6 +585,8 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     from .governanca import contar_alunos
     fichas_do_site = AlunosClient().alunos()
     alunos_2027 = contar_alunos(fichas_do_site, site_id, hoje)
+    from .ciclo_produtos import paineis_do_site
+    produtos_ciclo = paineis_do_site(fichas_do_site, site_id, hoje, CatalogoClient())
 
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
@@ -644,10 +595,15 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         # direção e os doze olham as MESMAS listas, senão discordariam entre si
         # por um segundo de diferença.
         from .vendas_do_crm import para_o_placar
-        alunos = para_o_placar(fichas_do_site)
+        atual = meta.get("criterio") == "pessoas-unicas-2027"
+        alunos = (None if fichas_do_site is None or not site_id else [
+            a for a in fichas_do_site if str(a.get("site_id")) == str(site_id)
+        ]) if atual else para_o_placar(fichas_do_site)
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
         contagem = contar_compras(alunos, partida_em, hoje)
+        if atual:
+            contagem.update(ciclo=alunos_2027["total"], mes=alunos_2027.get("mes"))
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
             barra = calcular_o_mes(mes, meta, contagem["mes"], hoje)
@@ -658,7 +614,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
             direcao = dir_.calcular_direcao(
                 cartao_pedidos,
                 cartao_48h,
-                meta,
+                None if atual else meta,
                 dir_.medir_pedidos(aguardando, recusados, alunos, hoje),
                 dir_.medir_liberacoes_em_48h(aguardando, alunos, hoje),
                 hoje,
@@ -666,12 +622,13 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
             compromissos = dir_.compromissos(registros, hoje)
         os_doze = doze_.medir_os_doze(
             barra=barra,
-            por_mes=doze_.compras_por_mes(alunos, partida_em),
+            por_mes=alunos_2027.get("por_mes") if atual else doze_.compras_por_mes(alunos, partida_em),
             liberacao=medida,
             registros=registros,
             partida_em=partida_em,
             hoje=hoje,
             pasta=pasta,
+            inicio_aprendizados=dt.date(2026, 10, 5) if atual else None,
         )
         confianca_dos_doze = doze_.confianca(os_doze)
         estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
@@ -701,6 +658,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
 
     contexto = {
         "alunos_2027": alunos_2027,
+        "produtos_ciclo": produtos_ciclo,
         "medicao": med_.a_memoria(site_id, timezone.now()),
         "registros": registros,
         "mudancas": mudancas,

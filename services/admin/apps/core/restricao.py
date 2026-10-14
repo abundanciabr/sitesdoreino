@@ -197,7 +197,7 @@ def escolher_restricao(medida: dict | None, cartao: dict) -> dict:
             "veredito": "liberacao",
             "confianca": "alta",
             "impacto": medida["esperando"],
-            "gesto": "Abra a fila em /admin/escola/ e confirme quem já pagou: cada pessoa parada ali comprou fora do site e é +1 na meta hoje.",
+            "gesto": "Confira a fila em https://meshcraft.top/admin/escola/ e confirme o acesso de quem já pagou. Liberação comum não soma às metas; somente nova venda paga expressamente marcada é elegível, sem duplicar pessoas.",
         }
     if medida["pedidos_28"] == 0:
         return {
@@ -206,6 +206,6 @@ def escolher_restricao(medida: dict | None, cartao: dict) -> dict:
             "veredito": "entrada",
             "confianca": "media",
             "impacto": None,
-            "gesto": "Ninguém chegou à sala de espera em 28 dias, ou seja, nenhuma venda feita fora do site chegou para confirmação. Hoje a compra acontece na sua divulgação (a home não convida, por decisão sua de 28/08), e o caminho da venda dentro do site ainda está apagado.",
+            "gesto": "Nenhuma chegada à sala de espera nos últimos 28 dias. Isso não mede a aquisição nem a conversão do checkout. Confira anúncio, quiz, oferta e compra no funil antes de escolher o ajuste comercial.",
         }
     return {**base, "veredito": "sem-restricao-medivel", "confianca": "alta"}

@@ -87,7 +87,7 @@ def montar_as_semanas(faixas: list[dict], reais: "list | None", hoje: dt.date) -
 def ciclo(request):
     """Visão do ciclo e dois planos comerciais, com vendas por produto."""
     from .ciclo_produtos import PAINEIS, INICIO, FIM, montar_painel, montar_visao_ciclo
-    from .vendas_do_crm import para_o_placar
+    from .ciclo_produtos import matriculas_do_produto
     produto_pedido = request.GET.get("produto")
     visao_ciclo = produto_pedido not in PAINEIS
     chave = "desafio" if visao_ciclo else produto_pedido
@@ -103,11 +103,7 @@ def ciclo(request):
     if site and produto:
         fichas = AlunosClient().alunos()
         if fichas is not None:
-            # Filtrar ANTES da deduplicação: comprar o desafio não apaga a compra do curso.
-            alunos = para_o_placar([
-                a for a in fichas if str(a.get("product_id")) == str(produto["id"])
-                and str(a.get("site_id")) == str(site["id"])
-            ])
+            alunos = matriculas_do_produto(fichas, site["id"], produto["id"])
     hoje = timezone.localdate()
     painel = montar_painel(chave, alunos, hoje)
     receita = None
