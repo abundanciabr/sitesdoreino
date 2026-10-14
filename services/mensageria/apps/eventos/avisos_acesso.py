@@ -28,6 +28,8 @@ def corpo_recibo(contato):
 
 def corpo_decisao(contato):
     if contato["status"] == "ativa":
+        if contato.get("acesso_consumido"):
+            return (saudacao(contato)+" Aqui é a Meshcraft. Seu acesso à escola foi liberado e você já utilizou o link de entrada. Abra https://meshcraft.top/ no navegador em que entrou; sua sessão fica mantida nele. Se precisar entrar em outro navegador, responda esta mensagem para o suporte ajudar.")
         return (saudacao(contato)+" Aqui é a Meshcraft. Seu acesso à escola foi liberado! "
             "Clique para entrar automaticamente: "+contato["link_acesso"]+
             " Este link é pessoal, não tem prazo antes do primeiro uso e funciona uma única vez. "
@@ -142,8 +144,8 @@ def processar_whatsapp(envio):
         envio.status, envio.resultado = "falhou", "pedido ou decisão substituídos"
         envio.save(update_fields=["status", "resultado", "updated_at"])
         return
-    if envio.tipo in TIPOS_DECISAO and (matricula.get("suporte_pendente") or matricula.get("acesso_consumido")):
-        envio.status, envio.resultado = "falhou", "acesso já utilizado ou pedido com suporte"
+    if envio.tipo in TIPOS_DECISAO and matricula.get("suporte_pendente"):
+        envio.status, envio.resultado = "falhou", "pedido com suporte"
         envio.save(update_fields=["status", "resultado", "updated_at"])
         return
     if envio.tipo in (*TIPOS_DECISAO, "acesso_recebido") and not matricula.get("whatsapp_confirmado"):
@@ -158,6 +160,9 @@ def processar_whatsapp(envio):
     if chave_telefone(matricula.get("whatsapp")) != chave_telefone(numero):
         raise RuntimeError("número do pedido foi alterado")
     existente = _contexto_envio(envio)
+    if not existente and envio.tipo == "acesso_liberado" and matricula.get("acesso_consumido"):
+        envio.corpo=corpo_decisao(matricula)+" Para cancelar os avisos, responda PARAR."
+        envio.save(update_fields=["corpo", "updated_at"])
     if existente and existente.status != "falhou":
         mensagem = existente
     else:
@@ -182,8 +187,11 @@ def _matricula_do_evento(envio):
 
 def decisao_vigente(envio):
     contato = _matricula_do_evento(envio)
+    if contato and envio.tipo == "acesso_liberado" and contato.get("acesso_consumido"):
+        envio.corpo=corpo_decisao(contato)
+        envio.save(update_fields=["corpo", "updated_at"])
     return bool(contato and contato.get("email", "").strip().lower() == envio.destinatario.strip().lower()
-        and (envio.tipo == "acesso_recebido" or (not contato.get("suporte_pendente") and not contato.get("acesso_consumido")
+        and (envio.tipo == "acesso_recebido" or (not contato.get("suporte_pendente")
             and contato.get("status") == ("ativa" if envio.tipo == "acesso_liberado" else "recusada"))))
 
 

@@ -1884,6 +1884,7 @@ def update_enrollment(request, id: str):
 def get_access_notice(request, id: str, site_id: str, event_id: str):
     """Destinatário de uma decisão concreta, somente pela API interna autenticada."""
     import uuid
+    from apps.matriculas.avisos_acesso import token_de_acesso
     try:
         evento = uuid.UUID(event_id)
         linha = Matricula.objects.filter(pk=id, site_id=site_id, aviso_event_id=evento,
@@ -1897,7 +1898,7 @@ def get_access_notice(request, id: str, site_id: str, event_id: str):
         "event_id": str(linha.aviso_event_id), "status": linha.status,
         "email": linha.email, "nome": linha.name, "whatsapp": linha.whatsapp,
         "acesso_consumido": bool(linha.acesso_consumido_em), "motivo": linha.motivo_recusa, "suporte_pendente": bool(linha.suporte_event_id and not linha.suporte_resolvido_em),
-        "link_acesso": ("https://meshcraft.top/entrar/escola/#" + __import__("apps.matriculas.avisos_acesso", fromlist=["token_de_acesso"]).token_de_acesso(linha)) if linha.status == "ativa" else "",
+        "link_acesso": ("https://meshcraft.top/entrar/escola/#" + token_de_acesso(linha)) if linha.status == "ativa" else "",
         "whatsapp_avisos": linha.whatsapp_avisos,
         "whatsapp_confirmado": linha.whatsapp_confirmado_em is not None,
         "whatsapp_consentido_em": linha.whatsapp_consentido_em.isoformat()
