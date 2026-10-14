@@ -1,0 +1,93 @@
+# Proposal for owner review. Not a Compose file, installer, or active policy.
+version: 1
+status: awaiting_owner_authorization
+observed_on: '2026-10-14'
+private_network:
+  name: meshcraft-revisor
+  internal: true
+  proposed_subnet: 172.16.20.0/24
+  recheck_host_routes_and_docker_ipam_before_apply: true
+  published_host_ports: []
+services:
+  web:
+    networks: [meshcraft-revisor]
+    listen_port: 8000
+  worker:
+    networks: [meshcraft-revisor]
+    concurrency: 1
+  parser:
+    network_mode: none
+    credentials: []
+    database_access: false
+  ingress:
+    networks: [edge, meshcraft-revisor]
+    proposed_edge_ip: 172.16.1.250
+    allowed_source_observed: 172.16.1.6/32
+    upstream: http://revisor-web:8000
+    arbitrary_proxy: false
+  database_relay:
+    networks: [interna, meshcraft-revisor]
+    proposed_interna_ip: 172.16.2.250
+    upstream: postgres:5432
+    protocol: tcp_passthrough
+    credentials: []
+    listen_only_on_private_interface: true
+  contracts_gateway:
+    networks: [edge, meshcraft-revisor]
+    proposed_edge_ip: 172.16.1.251
+    upstream: http://aplicacao:8000
+    upstream_host_header: meshcraft.top
+    listen_only_on_private_interface: true
+    follow_redirects: false
+    arbitrary_proxy: false
+    connect_timeout_seconds: 2
+    total_timeout_seconds: 5
+    allowed_requests:
+      - method: GET
+        path: /api/identidade/sessao/completa
+        token_pair: revisor_identidade
+        cookie: meshcraft_sessao_only
+      - method: GET
+        path_template: /api/alunos/alunos/{email_encoded}/matriculas
+        token_pair: revisor_alunos
+        cookie: none
+      - method: GET
+        path_template: /api/cursos/cursos/{curso}/aulas
+        query: [site_id, parte]
+        token_pair: revisor_cursos
+        cookie: none
+      - method: GET
+        path_template: /api/cursos/cursos/{curso}/aulas/{numero}
+        query: [site_id, parte]
+        token_pair: revisor_cursos
+        cookie: none
+    all_other_requests: deny
+public_route:
+  host: meshcraft.top
+  exact_path: /ferramentas/revisor-de-modelos-3d
+  path_prefix: /ferramentas/revisor-de-modelos-3d/
+  upstream: http://172.16.1.250:8080
+  strip_prefix: false
+  admin_only: false
+  disclosure: awaiting_separate_owner_authorization
+  enable_only_when_service_ready: true
+database:
+  name: revisor
+  role: revisor
+  hba_prepend_candidate: postgres-revisor.conf
+  other_database_connect: reject_before_public_acl
+  modify_other_database_acls: false
+narration_egress:
+  enabled: false
+  reason: provider_endpoint_and_credentials_not_yet_selected
+  future_scope: HTTPS POST to one fixed provider endpoint with measured report only
+shared_constraints:
+  no_docker_socket_in_application: true
+  no_shared_secret_directory_mount: true
+  no_ip_forwarding_in_relays: true
+  cap_drop: [ALL]
+  no_new_privileges: true
+  deny_egress_except_declared_upstreams: true
+  filter_ipv4_and_ipv6: true
+  sensitive_logs: disabled
+  protected_payment_files: unchanged
