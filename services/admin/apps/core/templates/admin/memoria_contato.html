@@ -1,0 +1,36 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Memória do contato | CRM{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'contato' lead_id %}">← Voltar à ficha</a>
+  <h1>Memória do contato</h1>
+  <p class="subtitulo">{{ nome }} · Prévia exclusiva para administradores · Somente consulta</p>
+  {% if erro %}<p class="aviso borda-amarela" role="alert">{{ erro }}</p>{% else %}
+  <p>{{ memoria.escopo }}</p>
+  <div class="cartoes">
+    <section class="cartao"><h2 class="titulo-de-bloco">Eventos examinados</h2><p>{{ memoria.cobertura.eventos_exibidos }} de {{ memoria.cobertura.eventos_total }}</p></section>
+    <section class="cartao"><h2 class="titulo-de-bloco">Tentativas de quiz</h2><p>{{ memoria.cobertura.quizzes_exibidos }} de {{ memoria.cobertura.quizzes_total }}</p></section>
+    <section class="cartao"><h2 class="titulo-de-bloco">Origem registrada</h2><p>{{ memoria.origem|default:"Não informada" }}</p></section>
+  </div>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">Vínculos com evidência</h2>
+    {% for v in memoria.vinculos %}<div class="espaco-20"><b>{{ v.tipo }}</b>: <span style="overflow-wrap:anywhere">{{ v.valor }}</span>{% if v.escopo %} · Quiz {{ v.escopo }}{% endif %}<p class="nota">{{ v.observacao }}</p><p class="nota">Fonte: {{ v.fonte }} · Registro: {{ v.registrado_em }}</p></div>
+    {% empty %}<p>Nenhum vínculo encontrado nas fontes examinadas. Não foi feita associação por semelhança de nome ou e-mail.</p>{% endfor %}
+  </section>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">Quizzes registrados</h2>
+    {% for q in memoria.quizzes %}<div class="espaco-20"><b>{{ q.quiz }}</b> · {{ q.situacao }}<p>Resultado: {{ q.resultado|default:"Não informado" }} · {{ q.respostas_registradas }} respostas registradas</p><p>Campanha: {{ q.campanha|default:"Não informada" }}</p><p class="nota">Fonte: {{ q.fonte }} · Atualizado: {{ q.registrado_em }}</p></div>{% empty %}<p>Nenhum quiz registrado.</p>{% endfor %}
+    <p><a href="{% url 'contato' lead_id %}">Ver as respostas na ficha do contato</a></p>
+  </section>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">Linha do tempo</h2>
+    {% for e in memoria.eventos %}<div class="espaco-20"><b>{{ e.descricao }}</b>{% if e.quiz %} · {{ e.quiz }}{% endif %}<p class="nota">Gravado: {{ e.registrado_em }} · Fonte: {{ e.fonte }}{% if e.event_id %} · Evento: {{ e.event_id }}{% endif %}</p></div>{% empty %}<p>Nenhum evento neste recorte.</p>{% endfor %}
+  </section>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">Fatos nas métricas</h2>
+    {% if memoria.metricas != None %}<p>{{ memoria.metricas.exibidos }} de {{ memoria.metricas.total }} registros com referência explícita a este contato e site. Podem repetir fatos da linha do tempo; os totais não são somados.</p>
+    {% for e in memoria.metricas.eventos %}<p><b>{{ e.descricao }}</b><br>Aconteceu: {{ e.ocorrido_em }}<br><span class="nota">Fonte: {{ e.fonte }} · Recebido: {{ e.registrado_em }}</span></p>{% empty %}<p>Nenhum fato encontrado com referência explícita a este contato.</p>{% endfor %}
+    {% else %}<p>A fonte de métricas está indisponível para esta consulta.</p>{% endif %}
+  </section>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">O que ainda não sabemos</h2><ul>{% for lacuna in memoria.lacunas %}<li>{{ lacuna }}</li>{% endfor %}</ul></section>
+  <section class="cartao espaco-20"><h2 class="titulo-de-bloco">Contexto disponível aos agentes</h2><p>Os agentes de análise, abordagem e atendimento podem consultar esta mesma memória para o contato e o site do trabalho. Esta página não inicia trabalhos nem envia mensagens.</p><p>{{ memoria.interpretacao }}</p><details><summary>Conferir o contexto estruturado</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">{{ contexto_json }}</pre></details></section>
+  <p class="nota">Consulta: {{ memoria.consultado_em }}</p>
+  {% endif %}
+</div>
+{% endblock %}

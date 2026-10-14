@@ -207,6 +207,7 @@ from apps.core.coortes import coortes
 from apps.core.fechamento import fechamento
 from apps.core.funil import funil
 from apps.core.contatos import contato, contato_atendimento, contatos
+from apps.core.memoria_contato import previa as memoria_contato_previa
 from apps.core.decisao_do_experimento import decidir_experimento, decisao_do_experimento
 from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
@@ -1021,6 +1022,7 @@ urlpatterns = [
     # e telefone de cliente são dado de dono, e `equipe/` abre para o crachá.
     path("contatos/", contatos, name="contatos"),
     path("contatos/<uuid:lead_id>/", contato, name="contato"),
+    path("contatos/<uuid:lead_id>/memoria/", memoria_contato_previa, name="memoria_contato_previa"),
     path(
         "contatos/<uuid:lead_id>/atendimento/",
         contato_atendimento,
