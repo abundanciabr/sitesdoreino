@@ -46,6 +46,12 @@ def lesson_metadata(data):
     return one(data)
 
 
+def upstream_path(path, service):
+    if service == 'identidade':
+        return '/entrar/revisor/sessao/completa'
+    return '/' + service + path
+
+
 class HTTPGateway(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.0'
     def setup(self):
@@ -90,11 +96,13 @@ class HTTPGateway(BaseHTTPRequestHandler):
             connection = http.client.HTTPConnection(c['upstream_ip'], 8000, timeout=2)
             connection.connect()
             connection.sock.settimeout(max(.01, deadline-time.monotonic()))
-            connection.request('GET', self.path, headers=headers)
+            connection.request('GET', upstream_path(self.path, service), headers=headers)
             response = connection.getresponse()
             # A redirect is never followed and never handed to the caller.
             if response.status not in (200, 401, 403, 404):
                 raise OSError('upstream status')
+            if 'application/json' not in response.getheader('Content-Type', ''):
+                raise ValueError('not a contracted JSON response')
             raw = bytearray()
             while True:
                 remaining = deadline-time.monotonic()
