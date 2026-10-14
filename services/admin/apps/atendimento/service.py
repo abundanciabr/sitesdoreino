@@ -269,16 +269,11 @@ def encaminhar(conversa):
     conversa.processar = False
     conversa.save()
     c = config(conversa.site_id)
-    texto = 'Sou o assistente de suporte da escola. Encaminhei este atendimento para a equipe no painel. '+c.mensagem+(
-        ' Horário informado pela escola: '+c.horario+'.' if c.horario else ' A escola ainda não informou um horário de atendimento.')+(
-        ' Isso não confirma que há uma pessoa disponível agora.')
+    texto = 'Sou o assistente de suporte da escola. Encaminhei este atendimento para a equipe no painel. '+c.mensagem
     if conversa.assunto.modo == 'assistido':
         ultima = conversa.mensagens.filter(autor='aluno').last()
         saudacao = ' '.join(re.findall(r'\w+', unicodedata.normalize('NFKD', (ultima.texto if ultima else '').casefold()).encode('ascii', 'ignore').decode()))
         texto = 'Olá! Como posso ajudar?' if saudacao in ('oi', 'ola', 'bom dia', 'boa tarde', 'boa noite') else c.mensagem
-    expediente = disponibilidade(c)
-    if not expediente['respostas_abertas']:
-        texto = c.mensagem + ' ' + expediente['mensagem']
     Mensagem.objects.get_or_create(conversa=conversa,referencia='recepcao-'+str(conversa.rodada),
         defaults={'autor':'robo','nome':IDENTIDADE,'texto':texto})
 

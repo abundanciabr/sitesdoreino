@@ -122,11 +122,11 @@ def test_novo_antes_da_primeira_mensagem_e_contexto_da_pagina(chat):
     assert post(chat, {'texto': 'Oi.', 'referencia': uuid.uuid4().hex}).json()['conversa']['id'] == str(c.pk)
 
 
-def test_recomeco_exige_sessao_e_csrf(chat, monkeypatch):
+def test_recomeco_preserva_csrf_e_aceita_visitante(chat, monkeypatch):
     c = Client(enforce_csrf_checks=True)
     csrf = c.get('/interno/atendimento-aluno/').json()['csrf']
     d = pedido()
     assert post(c, d).status_code == 403 and not Conversa.objects.exists()
     assert post(c, d, HTTP_X_CSRFTOKEN=csrf).status_code == 200
     monkeypatch.setattr(views.IdentidadeClient, 'sessao_completa', lambda *a: {'autenticado': False})
-    assert post(chat, pedido()).status_code == 401 and Conversa.objects.count() == 1
+    assert post(chat, pedido()).status_code == 200 and Conversa.objects.count() == 2
