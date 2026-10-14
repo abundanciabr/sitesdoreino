@@ -110,6 +110,14 @@ def validar_leitura(dados, foto, corpus, codigo):
     if dados.get('compra') not in {'sim', 'nao', 'indeciso'} or not dados.get('porque') or not dados.get('onde_parou'):
         raise ValueError('Resposta sem decisão simulada e justificativas.')
     textos = blocos(foto['conteudo']['secoes'])
+    def localizar(secao, trecho):
+        if trecho and trecho in textos.get(secao, ''):
+            return secao
+        # Aceita o nome da seção apenas se o trecho literal identifica um único slot nela.
+        candidatos = [chave for chave, texto in textos.items()
+                      if trecho and trecho in texto and chave.startswith(str(secao) + '.')]
+        return candidatos[0] if len(candidatos) == 1 else secao
+    dados['secao_decisao'] = localizar(dados.get('secao_decisao'), dados.get('trecho_decisao'))
     ids = {i['id'] for i in corpus['itens']}
     if not dados.get('trecho_decisao', '').strip() or dados['trecho_decisao'] not in textos.get(dados.get('secao_decisao'), ''):
         raise ValueError('A decisão simulada também precisa citar um trecho real da página.')
@@ -119,6 +127,7 @@ def validar_leitura(dados, foto, corpus, codigo):
         raise ValueError('Lista de objeções inválida.')
     for item in dados['objecoes']:
         trecho = item.get('trecho', '')
+        item['secao'] = localizar(item.get('secao'), trecho)
         if not trecho.strip() or trecho not in textos.get(item.get('secao'), ''):
             raise ValueError('Citação não encontrada no conteúdo congelado.')
         if not item.get('objecao') or 'faltou' not in item:
@@ -152,6 +161,15 @@ def executar(execucao):
             terminar(execucao, Execucao.Situacao.FALHOU, 'Chamada paga sem resposta salva. Conferência necessária; nenhuma chamada reenviada.')
             return
         if codigo in estado['chamadas']:
+            if codigo != 'sintese':
+                try:
+                    dados = json.loads(estado['chamadas'][codigo]['texto'])
+                    validar_leitura(dados, estado['fotografia'], estado['corpus'], codigo)
+                    estado['resultados'][codigo] = dados
+                    guardar_estado(execucao)
+                    continue
+                except (ValueError, KeyError, TypeError):
+                    pass
             terminar(execucao, Execucao.Situacao.FALHOU, 'Resposta anterior inválida preservada; crie nova rodada após conferir.')
             return
         batimento(execucao, 'Síntese' if codigo == 'sintese' else PERFIS[codigo], 8 + indice * 12)
