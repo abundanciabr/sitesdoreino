@@ -102,7 +102,8 @@ def test_duplo_clique_preserva_fotografia_e_perfis():
 
 @pytest.mark.django_db
 @pytest.mark.parametrize('modo_teste', [False, True])
-def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste):
+@pytest.mark.parametrize('reaproveitar', [False, True])
+def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste, reaproveitar):
     RascunhoDeConfiguracao.objects.create(tipo='banca_corpus', site_id='s1', alvo='c1', conteudo=corpus())
     with patch.object(banca, 'fotografia', return_value=foto()), patch.object(banca.modelo, 'conexao', return_value=SimpleNamespace(modelo_forte='teste')):
         trabalho = banca.pedir('s1', 'oferta', 'publicada', '', '', 'sete', 'Equipe', modo_teste=modo_teste)
@@ -110,10 +111,16 @@ def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste):
         assert banca_fontes.ultimo('s1').conteudo == corpus()
         assert trabalho.estado['corpus']['modo'] == 'teste_sintetico'
     entradas = []
+    if reaproveitar:
+        anterior = leitura()
+        anterior['secao_decisao'] = 'cubo'
+        trabalho.estado['chamadas']['iniciante'] = {'texto': json.dumps(anterior)}
+        trabalho.save(update_fields=['estado'])
     def responder(**kwargs):
         entrada = json.loads(kwargs['itens'][0]['content'])
         entradas.append(entrada)
-        codigo = list(banca.PERFIS)[len(entradas)-1] if len(entradas) <= 6 else 'sintese'
+        indice = len(entradas) - 1 + int(reaproveitar)
+        codigo = list(banca.PERFIS)[indice] if indice < 6 else 'sintese'
         dados = leitura(codigo) if codigo != 'sintese' else {'resumo': 'Hipóteses', 'divergencias': 'Nenhuma', 'limites': 'Simulação',
             'consertos': [{'titulo': 'Explicar início', 'porque_priorizar': 'Dúvida', 'referencias': ['iniciante:0'],
                           'conserto': 'Explicar', 'hipotese': 'Clareza aumenta entradas', 'metrica': 'checkout_iniciado'}]}
@@ -127,8 +134,9 @@ def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste):
         assert catalogo.call_count == (0 if modo_teste else 1)
     trabalho.refresh_from_db()
     assert trabalho.situacao == Execucao.Situacao.CONCLUIDA
-    assert len(entradas) == 7
-    assert all('leituras' not in e for e in entradas[:6])
+    assert len(entradas) == 7 - int(reaproveitar)
+    assert all('leituras' not in e for e in entradas[:-1])
+    assert trabalho.estado['resultados']['iniciante']['secao_decisao'] == 'cubo.headline'
     assert len(entradas[-1]['leituras']) == 6
     assert not executor.rodar_uma('banca-teste')
 
