@@ -657,7 +657,7 @@ def test_todo_endereco_interno_sai_com_o_prefixo_publico(
             alvo
             for alvo in re.findall(r'(?:href|action)="([^"]+)"', corpo)
             if alvo.startswith("/")
-            and alvo not in ("/", "/docs/", "/entrar/google", "/forum/comunidade")
+            and alvo not in ("/", "/docs/", "/login", "/forum/comunidade")
         ]
         assert internos, endereco
         fora = [alvo for alvo in internos if not alvo.startswith("/cursos/")]

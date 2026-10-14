@@ -1,0 +1,69 @@
+{% extends "base_mobile.html" %}
+{% load t %}{% load url_i18n %}
+{% block titulo %}{% t "acesso.titulo" %}{% endblock %}
+{% block head_extra %}
+<meta name="robots" content="noindex, nofollow">
+{% if esperando_acesso %}<meta http-equiv="refresh" content="10;url={{ url_do_acesso }}">{% endif %}
+{% endblock %}
+{% block estilo %}
+.acesso { max-width: 38rem; margin: 2rem auto; }
+.acesso h1 { margin-bottom: .5rem; }
+.acesso .painel { padding: 1.25rem; border: 1px solid #666; border-radius: .8rem; margin: 1.5rem 0; }
+.acesso label { display: block; margin-top: 1rem; }
+.acesso input { box-sizing: border-box; width: 100%; padding: .9rem; border: 1px solid #777; border-radius: .5rem; font: inherit; background: transparent; color: inherit; }
+.acesso input[type=checkbox] { width: auto; margin-right: .5rem; }
+.acesso .botao { display: block; box-sizing: border-box; width: 100%; margin: 1rem 0; padding: 1rem; border: 1px solid #888; border-radius: .5rem; font: inherit; font-weight: 600; text-align: center; color: inherit; background: transparent; text-decoration: none; cursor: pointer; }
+.acesso .principal { background: #16a34a; color: #fff; border-color: #16a34a; }
+.acesso .erro { color: #b91c1c; }
+.acesso .conta { overflow-wrap: anywhere; }
+.acesso .voltar { display: block; text-align: center; margin: 1.5rem 0; }
+{% endblock %}
+{% block conteudo %}
+<main class="acesso">
+  <h1>{% t "acesso.titulo" %}</h1>
+  <p>{% t "acesso.subtitulo" %}</p>
+  {% if email_do_acesso %}<p class="conta">{% t "acesso.conta" %} <strong>{{ email_do_acesso }}</strong></p>{% endif %}
+  <section class="painel" aria-live="polite">
+  {% if esperando_acesso %}
+    <h2>{% t "acesso.recebido" %}</h2>
+    <p>{% t "acesso.espera" %}</p>
+  {% elif categoria_do_acesso == "na_fila" %}
+    <h2>{% t "acesso.recusado" %}</h2>
+    {% if fila_do_acesso.motivo_recusa %}<p>{{ fila_do_acesso.motivo_recusa }}</p>{% endif %}
+    <p>{% t "acesso.fale_escola" %}</p>
+  {% elif pode_pedir %}
+    {% if categoria_do_acesso == "ex_aluno" %}<h2>{% t "acesso.voltar" %}</h2>{% else %}<h2>{% t "acesso.sem_matricula" %}</h2>{% endif %}
+    <p>{% t "acesso.explicacao" %}</p>
+    {% if form.errors %}<p class="erro" role="alert">{% t "acesso.corrija" %}</p>{% endif %}
+    {% if erro_envio %}<p class="erro" role="alert">{% t "acesso.falha_envio" %}</p>{% endif %}
+    <form method="post" action="{{ url_do_acesso }}">
+      {% csrf_token %}
+      <label for="nome-completo">{% t "acesso.nome" %}</label>
+      <input id="nome-completo" name="nome_completo" autocomplete="name" maxlength="200" required value="{{ form.nome_completo.value|default_if_none:'' }}"{% if form.nome_completo.errors %} aria-invalid="true"{% endif %}>
+      <label for="whatsapp">{% t "acesso.whatsapp" %}</label>
+      <input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" maxlength="30" required value="{{ form.whatsapp.value|default_if_none:'' }}"{% if form.whatsapp.errors %} aria-invalid="true"{% endif %}>
+      <label for="whatsapp-confirmacao">{% t "acesso.whatsapp_confirmacao" %}</label>
+      <input id="whatsapp-confirmacao" name="whatsapp_confirmacao" type="tel" autocomplete="off" maxlength="30" value="{{ form.whatsapp_confirmacao.value|default_if_none:'' }}"{% if form.whatsapp_confirmacao.errors %} aria-invalid="true"{% endif %}>
+      {% if form.whatsapp_confirmacao.errors %}<p class="erro" role="alert">{% t "acesso.whatsapp_confira" %}</p>{% endif %}
+      <label><input type="checkbox" name="whatsapp_avisos" value="sim"{% if whatsapp_avisos_marcado %} checked{% endif %}>{% t "acesso.whatsapp_autorizacao" %}</label>
+      <p>{% t "acesso.whatsapp_explicacao" %}</p>
+      <p>{% t "acesso.opcionais" %}</p>
+      <label for="compra">{% t "acesso.compra" %}</label>
+      <input id="compra" name="comprou_em" type="date" value="{{ form.comprou_em.value|default_if_none:'' }}"{% if form.comprou_em.errors %} aria-invalid="true"{% endif %}>
+      <label for="turma">{% t "acesso.turma" %}</label>
+      <input id="turma" name="turma" maxlength="200" value="{{ form.turma.value|default_if_none:'' }}">
+      <button class="botao principal" type="submit">{% if categoria_do_acesso == "ex_aluno" %}{% t "acesso.pedir_volta" %}{% else %}{% t "acesso.pedir" %}{% endif %}</button>
+    </form>
+  {% elif categoria_do_acesso == "pausado" %}
+    <h2>{% t "acesso.pausado" %}</h2><p>{% t "acesso.pausa_texto" %}</p>
+  {% elif categoria_do_acesso == "reembolsado" %}
+    <h2>{% t "acesso.reembolsado" %}</h2><p>{% t "acesso.fale_escola" %}</p>
+  {% else %}
+    <h2>{% t "acesso.indisponivel" %}</h2><p>{% t "acesso.tente_novamente" %}</p>
+  {% endif %}
+  </section>
+  <a class="botao" href="{{ url_trocar_conta }}">{% t "acesso.trocar" %}</a>
+  <form method="post" action="/entrar/sair"><input type="hidden" name="next" value="{{ url_do_acesso }}"><button class="botao" type="submit">{% t "acesso.sair" %}</button></form>
+  <a class="voltar" href="{% url_i18n 'landing' %}">{% t "acesso.site" %}</a>
+</main>
+{% endblock %}

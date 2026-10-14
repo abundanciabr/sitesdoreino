@@ -22,6 +22,8 @@ from django.views.decorators.http import (
     require_safe,
 )
 from django.views.static import serve as serve_do_django
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.cache import never_cache
 
 from apps.core.clients import (
     SEM_RESPOSTA,
@@ -608,7 +610,9 @@ CHAVES_DE_RECUSA = {
 }
 
 
-@require_safe
+@require_http_methods(["GET", "HEAD", "POST"])
+@never_cache
+@csrf_protect
 def entrar(request):
     """Tela de entrada: botão do Google, formulário de senha e a mensagem de `?erro=`.
     Não abre sessão; o `?next=` diz à `identidade` aonde devolver a pessoa."""
@@ -621,10 +625,24 @@ def entrar(request):
     # Volta para a página de onde veio (`?next=`); sem ele, para a home do idioma.
     home = caminho_publico(request.i18n, request.idioma, "/")
     destino = destino_local(request.GET.get("next"), home)
+    from apps.core.acesso_aluno import acesso_do_aluno, endereco_do_login
+
+    # Links antigos e o próprio login não podem virar destinos circulares.
+    caminho_destino = urlsplit(destino).path.rstrip('/')
+    if caminho_destino.endswith('/login') or caminho_destino in (
+        '/entrar', '/forms/sugestoes/entrar',
+        '/forms/sugestoes/entrar/google', '/forms/sugestoes/entrar/google/retorno',
+    ):
+        destino = home
+    if request.GET.get('trocar') != '1':
+        acesso = acesso_do_aluno(request, destino)
+        if acesso is not None:
+            return acesso
+    retorno = endereco_do_login(request, destino)
     # O `site` viaja junto com o `next`, para a `identidade` anunciar de qual
     # site a pessoa entrou.
     entrada = f"{url_de_entrada()}?" + urlencode(
-        {"next": destino, "site": request.site["id"]}
+        {"next": retorno, "site": request.site["id"]}
     )
     # Token de CSRF do formulário de senha; sem ele o template não o desenha.
     token_de_senha = IdentidadeClient().emitir_token_de_senha()
@@ -635,7 +653,7 @@ def entrar(request):
             "url_de_entrada": entrada,
             "url_de_entrada_por_senha": url_de_entrada_por_senha(),
             "erro": erro,
-            "destino": destino,
+            "destino": retorno,
             "token_de_senha": token_de_senha,
             "recuperacao_alunos_disponivel": request.get_host().split(":")[0].lower() in {"meshcraft.top", "www.meshcraft.top"},
         },

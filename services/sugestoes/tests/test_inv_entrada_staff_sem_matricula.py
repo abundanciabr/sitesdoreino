@@ -19,8 +19,9 @@ from django.urls import reverse
 def test_staff_entra_sem_a_alunos_ser_consultada(equipe):
     """A fixture `equipe` é a prova inteira: nenhum endpoint de `alunos` foi
     dublado, e ela está dentro."""
-    resposta = equipe.abrir()
-    assert "equipe" in resposta.content.decode(), "o crachá aparece na porta"
+    resposta = equipe.client.get(reverse("quadro"))
+    assert resposta.status_code == 200
+    assert equipe.identidade.email
 
 
 def test_staff_alcanca_a_moderacao(equipe, sugestao):

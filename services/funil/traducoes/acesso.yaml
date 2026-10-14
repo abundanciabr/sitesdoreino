@@ -1,0 +1,185 @@
+titulo:
+  _fonte: 65240a
+  en: Student access
+  pt-br: Acesso do aluno
+  es: Acceso del alumno
+subtitulo:
+  _fonte: ca09f7
+  en: Sign-in, enrollment and access requests in one place.
+  pt-br: Entrada, matrícula e pedidos de acesso em um só lugar.
+  es: Entrada, matrícula y solicitudes de acceso en un solo lugar.
+conta:
+  _fonte: e3f757
+  en: 'Your account:'
+  pt-br: 'Sua conta:'
+  es: 'Tu cuenta:'
+recebido:
+  _fonte: e3c0f2
+  en: We have received your request
+  pt-br: Seu pedido já está com a gente
+  es: Ya recibimos tu solicitud
+espera:
+  _fonte: f12573
+  en: Our team will check your enrollment. This page updates automatically and takes
+    you to the site when access is released. You do not need to request again.
+  pt-br: A equipe vai conferir sua matrícula. Esta página se atualiza sozinha e leva
+    você para o site assim que o acesso for liberado. Não precisa pedir novamente.
+  es: El equipo revisará tu matrícula. Esta página se actualiza sola y te lleva al
+    sitio cuando se habilite el acceso. No necesitas volver a solicitarlo.
+recusado:
+  _fonte: ed533c
+  en: Your request was not approved
+  pt-br: Seu pedido não foi aprovado
+  es: Tu solicitud no fue aprobada
+fale_escola:
+  _fonte: bd641d
+  en: Contact the school if you need help with your enrollment.
+  pt-br: Fale com a escola se precisar de ajuda com sua matrícula.
+  es: Contacta con la escuela si necesitas ayuda con tu matrícula.
+voltar:
+  _fonte: 43cb5e
+  en: Your student access has ended
+  pt-br: Seu acesso de aluno foi encerrado
+  es: Tu acceso de alumno ha terminado
+sem_matricula:
+  _fonte: f58b92
+  en: We could not find an enrollment for this account
+  pt-br: Não encontramos matrícula para esta conta
+  es: No encontramos una matrícula para esta cuenta
+explicacao:
+  _fonte: efb80f
+  en: Already purchased? Send your details below so our team can check and release
+    your access. If you used a different account for your purchase, switch accounts
+    below.
+  pt-br: Já comprou? Preencha seus dados abaixo para a equipe conferir e liberar seu
+    acesso. Se usou outra conta na compra, você pode trocar de conta abaixo.
+  es: ¿Ya compraste? Completa tus datos para que el equipo los revise y habilite tu
+    acceso. Si usaste otra cuenta para comprar, puedes cambiar de cuenta abajo.
+corrija:
+  _fonte: 22aee7
+  en: Check the required name, phone number with area code, and any purchase date
+    entered.
+  pt-br: Confira o nome, o WhatsApp com DDD e a data da compra, se preenchida.
+  es: Revisa el nombre, el teléfono con código de área y la fecha de compra, si la
+    indicaste.
+falha_envio:
+  _fonte: 942e51
+  en: We could not confirm your request. Your details are still here; try again shortly.
+  pt-br: Não conseguimos confirmar o registro do pedido. Seus dados continuam aqui;
+    tente novamente em instantes.
+  es: No pudimos confirmar el registro de la solicitud. Tus datos siguen aquí; inténtalo
+    de nuevo en unos momentos.
+nome:
+  _fonte: f13a64
+  en: Full name
+  pt-br: Seu nome completo
+  es: Tu nombre completo
+whatsapp:
+  _fonte: 0454c8
+  en: WhatsApp with area code
+  pt-br: Seu WhatsApp, com DDD
+  es: Tu WhatsApp, con código de área
+opcionais:
+  _fonte: 75c4ee
+  en: The following two fields are optional. Leave them empty if you do not know.
+  pt-br: Os dois campos abaixo são opcionais. Se não souber, deixe em branco.
+  es: Los dos campos siguientes son opcionales. Si no lo sabes, déjalos en blanco.
+compra:
+  _fonte: e42377
+  en: Purchase date
+  pt-br: Quando você comprou
+  es: Cuándo compraste
+turma:
+  _fonte: 4f3a9b
+  en: Class
+  pt-br: Sua turma
+  es: Tu grupo
+pedir_volta:
+  _fonte: e87d63
+  en: Request access again
+  pt-br: Pedir para voltar
+  es: Solicitar volver
+pedir:
+  _fonte: b06f16
+  en: Request access
+  pt-br: Pedir liberação
+  es: Solicitar acceso
+pausado:
+  _fonte: 1c2541
+  en: Your access is paused
+  pt-br: Seu acesso está pausado
+  es: Tu acceso está pausado
+pausa_texto:
+  _fonte: 3ec031
+  en: Your enrollment is preserved. Access returns when the team resumes it; you do
+    not need to submit another request.
+  pt-br: Seu cadastro está preservado. O acesso volta quando a equipe religar; não
+    precisa enviar outro pedido.
+  es: Tu matrícula se conserva. El acceso vuelve cuando el equipo lo reactive; no
+    necesitas enviar otra solicitud.
+reembolsado:
+  _fonte: 42bc32
+  en: Your access ended with the refund
+  pt-br: Seu acesso terminou com o reembolso
+  es: Tu acceso terminó con el reembolso
+indisponivel:
+  _fonte: f25f6a
+  en: We could not check your enrollment now
+  pt-br: Não conseguimos conferir sua matrícula agora
+  es: No pudimos comprobar tu matrícula ahora
+tente_novamente:
+  _fonte: 9ffa94
+  en: Your enrollment is preserved. Try again shortly; no request was registered on
+    this screen.
+  pt-br: Sua matrícula está preservada. Tente novamente em instantes; nenhum pedido
+    foi registrado nesta tela.
+  es: Tu matrícula se conserva. Inténtalo de nuevo en unos momentos; no se registró
+    ninguna solicitud en esta pantalla.
+trocar:
+  _fonte: d55f33
+  en: Switch accounts
+  pt-br: Entrar com outra conta
+  es: Entrar con otra cuenta
+sair:
+  _fonte: 48f0d3
+  en: Sign out
+  pt-br: Sair do site
+  es: Salir del sitio
+site:
+  _fonte: 0bc438
+  en: Back to the site
+  pt-br: Voltar ao site
+  es: Volver al sitio
+whatsapp_confirmacao:
+  _fonte: 1fdb01
+  en: Confirm your WhatsApp to receive notices (optional)
+  pt-br: Confirme seu WhatsApp para receber avisos (opcional)
+  es: Confirma tu WhatsApp para recibir avisos (opcional)
+whatsapp_confira:
+  _fonte: 6cb761
+  en: Confirm the same WhatsApp number to receive notices.
+  pt-br: Confirme o mesmo número de WhatsApp para receber os avisos.
+  es: Confirma el mismo número de WhatsApp para recibir avisos.
+whatsapp_autorizacao:
+  _fonte: 683eac
+  en: This WhatsApp number is mine and I authorize Meshcraft to send notices about
+    my request and whether school access is released.
+  pt-br: Este WhatsApp é meu e autorizo a Meshcraft a enviar avisos sobre meu pedido
+    e a liberação ou não do acesso à escola.
+  es: Este WhatsApp es mío y autorizo a Meshcraft a enviar avisos sobre mi solicitud
+    y la habilitación o no del acceso a la escuela.
+whatsapp_explicacao:
+  _fonte: 8266fc
+  en: 'If you authorize WhatsApp notices, we will ask you to confirm your number by
+    replying with a code. This does not release school access: the team reviews your
+    request. The result is also sent by email. WhatsApp notices are optional and do
+    not affect the review.'
+  pt-br: 'Se autorizar os avisos, enviaremos uma mensagem no WhatsApp pedindo sua
+    confirmação. Responda com o código indicado para confirmar que o número é seu.
+    Isso não libera o acesso: a equipe analisa seu pedido. O resultado também será
+    enviado ao seu e-mail. Receber avisos pelo WhatsApp é opcional e não interfere
+    na análise do seu pedido.'
+  es: 'Si autorizas los avisos, te pediremos confirmar tu número de WhatsApp respondiendo
+    con un código. Esto no habilita el acceso: el equipo revisa tu solicitud. El resultado
+    también se envía por correo. Los avisos por WhatsApp son opcionales y no afectan
+    la revisión.'

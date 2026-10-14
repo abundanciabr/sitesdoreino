@@ -164,7 +164,8 @@ def test_o_cadastrado_ve_o_convite_para_pedir_entrada(client, com_email):
     conteudo = _abrir(client)
     assert "Quer estudar no Meshcraft?" in conteudo
     assert "Pedir entrada" in conteudo
-    assert CAIXA in conteudo, "o botão leva à Caixa, onde mora o formulário"
+    assert 'href="/pt-br/login?next=' in conteudo
+    assert CAIXA not in conteudo
     assert "análise" not in conteudo
     assert "não foi aprovado" not in conteudo
 
@@ -477,7 +478,8 @@ def test_ex_aluno_ve_que_o_acesso_acabou_e_como_voltar(client, com_email):
     conteudo = _abrir(client)
     assert "acesso à escola foi encerrado" in conteudo
     assert "Pedir para voltar" in conteudo
-    assert CAIXA in conteudo, "o botão leva à Caixa, onde mora o formulário"
+    assert 'href="/pt-br/login?next=' in conteudo
+    assert CAIXA not in conteudo
 
 
 def test_pausado_ve_que_volta_sozinho(client, com_email):

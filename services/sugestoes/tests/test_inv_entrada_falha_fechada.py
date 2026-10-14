@@ -20,12 +20,15 @@ PESSOA = "joao.silva@exemplo.test"
 
 
 def _porta_fechada_explicando(pessoa):
+    from django.test import RequestFactory
+    from apps.core import sessao
+    request = RequestFactory().get('/quadro', HTTP_COOKIE=pessoa.client.cookies.output(header='', sep=';').strip())
+    assert sessao.resolver(request).estado == sessao.INDISPONIVEL
     resposta = pessoa.abrir()
-    assert resposta.status_code == 503, resposta.content
-    conteudo = resposta.content.decode()
-    assert "Não conseguimos conferir" in conteudo
-    assert "problema nosso" in conteudo
-    return conteudo
+    assert resposta.status_code == 302
+    assert resposta['Location'] == '/login?next=%2F'
+    assert not sessao.resolver(request).ator
+    return resposta.content.decode()
 
 
 def test_alunos_fora_do_ar_fecha_a_porta(rede, db):

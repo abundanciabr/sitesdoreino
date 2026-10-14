@@ -36,7 +36,7 @@ import pytest
 from django.urls import reverse
 
 from apps.core import sessao as ses
-from apps.core.views import DEPOIS_DE_LIBERADO, MARCA_DE_ESPERA
+
 from tests.conftest import sessao_do_site
 
 PESSOA = "quem.espera@exemplo.test"
@@ -115,99 +115,18 @@ def test_liberado_entra_assim_que_o_nao_envelhece(rede, db, matricula):
     )
 
 
-# ------------------------------------------- 2. o recibo se recarrega sozinho
 
-
-def test_o_recibo_se_recarrega_sozinho_e_aponta_para_a_marca(rede, db, quadro):
-    rede.alunos_nao_conhece(PESSOA)
-    pessoa = sessao_do_site(rede, email=PESSOA)
-    rede.alunos_aceita_o_pedido()
-    resposta = pessoa.client.post(
-        reverse("pedir_entrada"),
-        {"nome_completo": "Quem Espera", "whatsapp": "(96) 99999-0000"},
-    )
-    conteudo = resposta.content.decode()
-
-    assert 'http-equiv="refresh"' in conteudo
-    assert f"{MARCA_DE_ESPERA}=1" in conteudo
-
-
-def test_o_formulario_nao_se_recarrega(rede, db, quadro):
-    """Um refresh aqui apagaria o que a pessoa está digitando.
-
-    E ela ainda não tem nada para esperar: o pedido não foi feito.
-    """
-    rede.alunos_nao_conhece(PESSOA)
-    pessoa = sessao_do_site(rede, email=PESSOA)
-    conteudo = pessoa.abrir().content.decode()
-
-    assert "Pedir liberação" in conteudo, "não é a tela do formulário"
-    assert 'http-equiv="refresh"' not in conteudo
-
-
-def test_a_tela_nao_promete_mais_o_que_nao_acontece(rede, db, quadro):
-    """A frase antiga dizia "esta página abre a Caixa" — e não abria.
-
-    Trocar o texto sem trocar o comportamento seria maquiagem; trocar o
-    comportamento sem trocar o texto deixaria a tela mentindo para o outro
-    lado. Este guarda cobra os dois.
-    """
-    rede.alunos_nao_conhece(PESSOA)
-    pessoa = sessao_do_site(rede, email=PESSOA)
-    rede.alunos_aceita_o_pedido()
-    conteudo = pessoa.client.post(
-        reverse("pedir_entrada"),
-        {"nome_completo": "Quem Espera", "whatsapp": "(96) 99999-0000"},
-    ).content.decode()
-
-    assert "esta página abre a Caixa" not in conteudo
-    assert "se atualiza sozinha" in conteudo
-
-
-# --------------------------------------- 3. liberado vai para o SITE
-
-
-def test_quem_esperava_e_foi_liberado_vai_para_o_site(entrar_como):
-    pessoa = entrar_como(PESSOA)
-    resposta = pessoa.client.get(f"{reverse('entrar')}?{MARCA_DE_ESPERA}=1")
-
+@pytest.mark.parametrize('marca',['','?esperando=1'])
+def test_liberado_e_encaminhado_pelo_login_sem_marca_de_caixa(entrar_como,marca):
+    pessoa=entrar_como(PESSOA)
+    resposta=pessoa.client.get(reverse('entrar')+marca)
     assert resposta.status_code == 302
-    assert resposta["Location"] == DEPOIS_DE_LIBERADO
+    assert resposta['Location'] == '/login?next=%2F'
+    assert pessoa.esta_dentro
 
-
-def test_sem_a_marca_quem_entra_continua_caindo_na_porta(entrar_como):
-    """Quem acabou de fazer login pela Caixa NÃO pode ser jogado para a home.
-
-    O `_abrir` do login volta para esta porta de propósito. Sem a distinção
-    pela marca, a pessoa teria de clicar de novo para entrar onde já estava
-    indo — e o defeito seria invisível, porque "foi para a home" parece certo.
-    """
-    pessoa = entrar_como(PESSOA)
-    resposta = pessoa.client.get(reverse("entrar"))
-
-    assert resposta.status_code == 200
-    assert "Ver o quadro de sugestões" in resposta.content.decode()
-
-
-def test_a_marca_sozinha_nao_abre_porta_nenhuma(rede, db, quadro):
-    """A marca é um SINAL de origem, nunca uma credencial.
-
-    Quem ainda não foi liberado continua no recibo, com 403 — mesmo pedindo a
-    página com a marca na mão.
-    """
+@pytest.mark.parametrize('marca',['','?esperando=1'])
+def test_marca_antiga_nao_concede_acesso(rede,db,quadro,marca):
     rede.alunos_nao_conhece(PESSOA)
-    pessoa = sessao_do_site(rede, email=PESSOA)
-    resposta = pessoa.client.get(f"{reverse('entrar')}?{MARCA_DE_ESPERA}=1")
-
-    assert resposta.status_code == 403
-    assert "Location" not in resposta
-
-
-def test_visitante_com_a_marca_nao_vira_ninguem(rede, db, quadro):
-    """Sem sessão do site, a marca não muda nada."""
-    from django.test import Client
-
-    resposta = Client().get(f"{reverse('entrar')}?{MARCA_DE_ESPERA}=1")
-
-    assert resposta.status_code == 200
-    assert "Location" not in resposta
+    pessoa=sessao_do_site(rede,email=PESSOA)
+    assert pessoa.client.get(reverse('entrar')+marca)['Location'] == '/login?next=%2F'
+    assert not pessoa.esta_dentro

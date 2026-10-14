@@ -1,0 +1,16 @@
+{
+  "estado": "leitura_sanitizada_operacional",
+  "projeto": "meshcraft-leitura-ed31-20261014",
+  "catalogo_instalado": true,
+  "referencia_console_removida": true,
+  "retorno_atual": "857 testes: 849 aprovados, 8 expectativas antigas reprovadas",
+  "permissao_pendente": null,
+  "aprovada_ate_agora": "Instalacao restrita pelo Gerenciador Docker, com todas as capacidades removidas",
+  "instalador_original_sha256": "6e6069346698959797cf8e4243be4643726906230281b6e47405094938f68965",
+  "modulo_ssh_instalado_sha256": "04dd715132f24d857ff83622291566122cca4d2a0b050531a2979f6f2545e5fc",
+  "pacote_leitor_ativo_sha256": "974706a1f60530ecb77f43359b77d3c3a5bc505cc949b1ea85389645370e0765",
+  "provas_linux": "19 testes aprovados",
+  "acesso_centralizado_em_producao": false,
+  "observacao": "Diagnostico sanitizado e retirada da referencia ao console conferidos por SSH em 14/10/2026.",
+  "permissao_autorizada": "DAC_READ_SEARCH"
+}

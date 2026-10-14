@@ -102,7 +102,7 @@ def test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila(
     )
 
     assert resposta.status_code == 302
-    assert resposta["Location"] == reverse("entrar")
+    assert resposta["Location"] == "/login?next=%2F"
 
 
 def test_anonimo_e_mandado_para_a_porta_em_toda_rota_de_participacao(client, sugestao):

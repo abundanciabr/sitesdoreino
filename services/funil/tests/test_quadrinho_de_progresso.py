@@ -201,7 +201,8 @@ def test_pagina_que_nao_desenha_o_quadrinho_nao_pergunta(
     logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
 
     resposta = client.get(
-        caminho_mesh("pt-br", pagina), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+        caminho_mesh("pt-br", pagina), {"trocar": "1"} if pagina == "/login" else {},
+        HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     )
 
     assert resposta.status_code == 200
