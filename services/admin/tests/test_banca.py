@@ -65,6 +65,13 @@ def test_minimizacao_remove_identificadores_e_segredos():
         assert segredo not in texto
 
 
+def test_testes_tecnicos_nao_sao_objeções_reais():
+    assert banca_fontes.parece_teste('Teste técnico autorizado pelo mantenedor: conferir suporte')
+    assert banca_fontes.parece_teste('Quando começa o curso?', ['Aluno Teste'])
+    assert not banca_fontes.parece_teste('Testei um programa 3D e não consegui usar')
+    assert banca_fontes.MENU_AUTOMATICO.search('Escolha uma opção ou escreva sua dúvida')
+
+
 @pytest.mark.django_db
 def test_pedido_sem_corpus_nao_inventa_calibracao():
     with pytest.raises(ValueError, match='Colete'):

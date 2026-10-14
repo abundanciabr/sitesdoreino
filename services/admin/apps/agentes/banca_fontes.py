@@ -11,6 +11,13 @@ from .banca_assinatura import assinatura
 
 INDICIOS = re.compile(r'\?|não|nao|dúvida|duvida|medo|difícil|dificil|preço|preco|caro|tempo|dinheiro|renda|reembols|devol|cancel|garant|consegu|compr|mercado|vender|suporte', re.I)
 REEMBOLSO = re.compile(r'reembols|devolu[çc]|cancel.*(?:compra|curso)|estorno', re.I)
+TESTE = re.compile(r'\b(?:ensaio|fict[ií]ci[oa]|teste t[eé]cnico|teste autorizado|confer[eê]ncia t[eé]cnica|apenas uma confer[eê]ncia|segunda rodada|test[-_]|teste[-_])', re.I)
+MENU_AUTOMATICO = re.compile(r'escolha (?:abaixo|uma op[çc][aã]o)|lista de assuntos|toque em (?:tirar d[uú]vidas|escolher assunto)|vamos testar agora', re.I)
+
+
+def parece_teste(texto, nomes=(), origem=''):
+    return bool(TESTE.search(str(texto) + ' ' + str(origem)) or any(
+        re.search(r'\b(?:teste|test|ensaio|admin|rob[oô])\b', str(n), re.I) for n in nomes if n))
 
 
 def anonimizar(texto, nomes=()):
@@ -30,6 +37,8 @@ def anonimizar(texto, nomes=()):
 def coletar(site_id):
     itens, cobertura = [], []
     def incluir(fonte, referencia, texto, data='', produto='', nomes=()):
+        if parece_teste(texto, nomes) or MENU_AUTOMATICO.search(str(texto or '')):
+            return
         texto = anonimizar(texto, nomes)
         if not texto or not INDICIOS.search(texto):
             return
@@ -42,6 +51,8 @@ def coletar(site_id):
         consulta = list(Mensagem.objects.filter(conversa__site_id=site_id, autor='aluno')
                         .select_related('conversa').order_by('-id')[:500])
         for m in consulta:
+            if parece_teste(m.texto, (m.nome, m.conversa.nome), m.conversa.origem_conversa):
+                continue
             incluir('suporte', m.pk, m.texto, m.criada_em.isoformat(), m.conversa.curso,
                     (m.nome, m.conversa.nome))
         cobertura.append({'fonte': 'suporte', 'estado': 'consultada', 'examinados': len(consulta),
@@ -60,7 +71,7 @@ def coletar(site_id):
                 falhas += 1
                 continue
             for m in dados['mensagens']:
-                if m.get('autor') != 'pessoa':
+                if m.get('autor') != 'pessoa' or m.get('direcao') != 'entrada':
                     continue
                 mensagens += 1
                 incluir('mensagens do lançamento', m.get('id'), m.get('texto'), m.get('ocorrida_em', ''),
@@ -118,6 +129,7 @@ def coletar(site_id):
             unicos[chave]['referencias'].append(item['id'])
     corpus = {'coletado_em': timezone.now().isoformat(), 'itens': list(unicos.values())[:250],
               'cobertura': cobertura, 'limite': 'Amostra de mensagens, não estimativa de prevalência no público.'}
+    corpus['selecao'] = 'Somente entradas da pessoa; testes identificáveis e textos de menus excluídos. A ausência de marcador não comprova a autenticidade de uma mensagem.'
     corpus['digest'] = assinatura(corpus)
     registro = RascunhoDeConfiguracao.objects.create(tipo='banca_corpus', site_id=str(site_id),
                   alvo=str(uuid.uuid4()), conteudo=corpus)

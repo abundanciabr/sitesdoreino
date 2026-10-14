@@ -12,6 +12,7 @@
 {% if corpus %}
 <p>Coleta: {{ corpus.coletado_em }} · {{ corpus.itens|length }} itens distintos · assinatura {{ corpus.digest }}.</p>
 <p>{{ corpus.limite }}</p>
+<p>{{ corpus.selecao }}</p>
 <table><thead><tr><th>Fonte</th><th>Leitura</th><th>Examinados</th><th>Cobertura</th></tr></thead><tbody>
 {% for fonte in corpus.cobertura %}<tr><td>{{ fonte.fonte }}</td><td>{{ fonte.estado }}</td><td>{{ fonte.examinados|default:0 }}</td><td>{{ fonte.limite }} {{ fonte.motivo }}</td></tr>{% endfor %}
 </tbody></table>
