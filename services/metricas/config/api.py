@@ -70,3 +70,5 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", fatos_router)
+from apps.fatos.memoria_contato import router as memoria_contato_router
+api.add_router("", memoria_contato_router)

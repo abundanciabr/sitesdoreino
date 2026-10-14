@@ -127,6 +127,7 @@ INSTRUCOES_V1 = {
 
 FERRAMENTAS_DO_PAPEL = {
     P.ANALISTA: (
+        "consultar_memoria_contato",
         "consultar_contato",
         "consultar_respostas_quiz",
         "consultar_oportunidade",
@@ -135,6 +136,7 @@ FERRAMENTAS_DO_PAPEL = {
         "registrar_nota_proximo_passo",
     ),
     P.ABORDAGEM: (
+        "consultar_memoria_contato",
         "consultar_contato",
         "consultar_respostas_quiz",
         "consultar_oportunidade",
@@ -146,6 +148,7 @@ FERRAMENTAS_DO_PAPEL = {
         "registrar_nota_proximo_passo",
     ),
     P.ATENDIMENTO: (
+        "consultar_memoria_contato",
         "consultar_contato",
         "solicitar_recuperacao_acesso",
         "consultar_respostas_quiz",

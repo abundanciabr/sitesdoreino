@@ -18,6 +18,7 @@
   {% else %}
   <h1>{{ tela.nome|primeiro_nome }}</h1>
   <p class="subtitulo">Ficha do contato · {% if tela.criado_em %}chegou em {{ tela.criado_em|date:"d/m/Y H:i" }}{% else %}data de chegada desconhecida{% endif %}</p>
+  {% if tela.id %}<p><a class="botao" href="{% url 'memoria_contato_previa' tela.id %}">Memória do contato · prévia administrativa</a></p>{% endif %}
 
   <div class="cartoes">
     <section class="cartao">
