@@ -290,3 +290,32 @@ def test_dados_do_forum_mantem_sessao_e_links_da_comunidade(monkeypatch):
     resultado = comunidade._forum(request)
     assert [c["url"] for c in resultado["conversas"]] == ["/forum/t/11", "/forum/t/12"]
     assert resultado["grupos"][0]["url"] == "/forum/a/grupo/"
+
+
+def test_nome_exibido_editavel_persistido_sem_trocar_outro_perfil(admin):
+    cadastrar(admin, nome="Açainite")
+    outro = PerfilDaComunidade.objects.create(site_host="meshcraft.top", identidade_id="outro", email="outro@example.test", nome="Outro", usuario="outro", avatar="verde")
+    pagina = admin.get("/galeria-publica?perfil=editar")
+    assert 'name="nome"' in pagina.content.decode()
+    assert 'value="Açainite"' in pagina.content.decode()
+    assert cadastrar(admin, nome="  Açaí   Artista  ").status_code == 302
+    perfil = PerfilDaComunidade.objects.get(identidade_id="admin-real")
+    assert perfil.nome == "Açaí Artista"
+    assert perfil.usuario == "ana.3d"
+    assert "Açaí Artista" in admin.get("/galeria-publica").content.decode()
+    assert cadastrar(admin).status_code == 302
+    perfil.refresh_from_db()
+    assert perfil.nome == "Açaí Artista"
+    outro.refresh_from_db()
+    assert outro.nome == "Outro"
+
+
+def test_nome_invalido_nao_sobrescreve_perfil_e_preserva_formulario(admin):
+    cadastrar(admin, nome="Açainite")
+    for nome in (" ", "a" * 121):
+        resposta = cadastrar(admin, nome=nome)
+        assert resposta.status_code == 400
+        assert PerfilDaComunidade.objects.get().nome == "Açainite"
+    resposta = cadastrar(admin, nome="Nome Editado", usuario="inválido")
+    assert resposta.status_code == 400
+    assert 'value="Nome Editado"' in resposta.content.decode()
