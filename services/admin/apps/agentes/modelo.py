@@ -175,9 +175,12 @@ class Resposta:
 
 
 def _reservar(modelo: str, corpo: dict, max_saida: int, *, execucao, robo,
-              autorizacao_id=None, origem="equipe") -> Consumo:
+              autorizacao_id=None, origem="equipe", revisor=False) -> Consumo:
     entrada_estimada = len(json.dumps(corpo, ensure_ascii=False)) // 3 + 500
     pior_caso = custo(modelo, entrada_estimada, 0, max_saida)
+    if revisor:
+        entrada_estimada = 6000
+        pior_caso = Decimal("0.001750")
     with transaction.atomic():
         autorizacoes = AutorizacaoDeGasto.objects.select_for_update().filter(ativa=True)
         autorizacao = (
@@ -234,6 +237,7 @@ def responder(
     origem="equipe",
     formato: dict | None = None,
     diagnostico: dict | None = None,
+    revisor: bool = False,
 ) -> Resposta:
     """Uma rodada da Responses API. Não guarda nada na OpenAI (`store`
     falso): o histórico mora aqui, e a retomada reenvia os itens.
@@ -260,8 +264,17 @@ def responder(
         corpo["parallel_tool_calls"] = False
     if esforco and modelo not in _SEM_ESFORCO:
         corpo["reasoning"] = {"effort": esforco}
+    if revisor:
+        if (modelo != "gpt-6-luna" or ferramentas or max_saida != 2000
+                or esforco != "none" or not formato):
+            raise PedidoRecusado("Contrato do Revisor inválido.")
+        corpo.pop("include", None)
+        corpo["reasoning"] = {"effort": "none"}
+        # UTF-8 bytes are a conservative token bound, with framing allowance.
+        if len(json.dumps(corpo, ensure_ascii=False).encode("utf-8")) > 5000:
+            raise PedidoRecusado("Boletim acima do limite de entrada.")
     reserva = _reservar(modelo, corpo, max_saida, execucao=execucao, robo=robo,
-                       autorizacao_id=autorizacao_id, origem=origem)
+                       autorizacao_id=autorizacao_id, origem=origem, revisor=revisor)
     if diagnostico is not None:
         diagnostico.update(etapa="requisicao", consumo_id=reserva.pk)
     try:
@@ -269,7 +282,7 @@ def responder(
             f"{URL}/responses",
             json=corpo,
             headers={"Authorization": f"Bearer {segredo_da_conta}"},
-            timeout=ESPERA_SEGUNDOS,
+            timeout=20 if revisor else ESPERA_SEGUNDOS,
         )
     except httpx.ConnectError:
         if diagnostico is not None:
@@ -297,7 +310,7 @@ def responder(
         if diagnostico is not None:
             diagnostico["codigo_api"] = codigo if codigo in ("rate_limit_exceeded", "insufficient_quota", "credit_balance_exhausted", "invalid_api_key", "model_not_found", "invalid_json_schema", "invalid_request_error", "context_length_exceeded", "billing_hard_limit_reached") else "outro"
             diagnostico["reserva_cancelada"] = True
-        if resposta.status_code == 400 and "reasoning" in corpo and _recusou_o_esforco(mensagem):
+        if not revisor and resposta.status_code == 400 and "reasoning" in corpo and _recusou_o_esforco(mensagem):
             # O modelo não deixa escolher o esforço: pede de novo sem ele.
             _SEM_ESFORCO.add(modelo)
             return responder(
@@ -329,14 +342,15 @@ def responder(
             raise PedidoRecusado(f"A OpenAI recusou o pedido: {mensagem or codigo}")
         # A conexão deixa de valer até o administrador conferir de novo: é o
         # que impede o servidor de retomar e bater na mesma recusa sem fim.
-        Conexao.objects.filter(provedor="openai").update(
-            situacao=(
-                Conexao.Situacao.RECUSADA
-                if isinstance(problema, ChaveRecusada)
-                else Conexao.Situacao.FALHOU
-            ),
-            detalhe=problema.frase,
-        )
+        if not revisor:
+            Conexao.objects.filter(provedor="openai").update(
+                situacao=(
+                    Conexao.Situacao.RECUSADA
+                    if isinstance(problema, ChaveRecusada)
+                    else Conexao.Situacao.FALHOU
+                ),
+                detalhe=problema.frase,
+            )
         raise problema
 
     if diagnostico is not None:
@@ -355,6 +369,10 @@ def responder(
     reserva.tokens_entrada_em_cache = em_cache
     reserva.tokens_saida = saida
     reserva.custo_estimado_usd = custo(modelo, entrada, em_cache, saida)
+    if revisor:
+        # Conservative accounting includes cache-write price; no cache discount.
+        reserva.custo_estimado_usd = ((Decimal(entrada)*Decimal("0.125")
+            + Decimal(saida)*Decimal("0.50"))/MILHAO).quantize(Decimal("0.000001"), rounding="ROUND_CEILING")
     reserva.resposta_id = str(dados.get("id") or "")[:120]
     reserva.desconhecido = False
     reserva.save()

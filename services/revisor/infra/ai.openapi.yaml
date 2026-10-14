@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Revisor explanation via existing school AI executor
+  version: 1.0.0
+  description: 'Text-only machine contract. No student identity or uploaded content. Provider owns vault and cost ledger. No cross-cell imports/database access.'
+servers:
+  - url: http://172.16.20.3:8080
+paths:
+  /api/revisor/v1/explicacao:
+    post:
+      security: [{pairToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [version, language, profile, grade, coverage_complete, omitted_checks, checks]
+              properties:
+                version: {const: 1}
+                language: {enum: [en, pt-br, es]}
+                profile: {enum: [game, rigid, layered]}
+                grade: {enum: [ready, almost, needs_work]}
+                coverage_complete: {type: boolean}
+                omitted_checks: {type: integer, minimum: 0, maximum: 100000}
+                checks:
+                  type: array
+                  minItems: 1
+                  maxItems: 15
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [index, code, state, severity, count, evidence]
+                    properties:
+                      index: {type: integer, minimum: 0, maximum: 14}
+                      code: {enum: [open_edges, non_manifold, winding, inverted_component, duplicate_faces, degenerate_faces, loose_vertices, ngons, triangle_budget, multiple_materials, missing_texture, texture_budget, dimensions, author_transforms, origin, names, supplied_normals, multiple_meshes, rig, inner_cage, outer_cage]}
+                      state: {enum: [fail, pass, unverifiable]}
+                      severity: {enum: [null, blocks, warns, tip]}
+                      count: {type: [number, 'null']}
+                      evidence:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          value: {$ref: '#/components/schemas/Measure'}
+                          limit: {$ref: '#/components/schemas/Measure'}
+                          value_studs: {$ref: '#/components/schemas/Measure'}
+                          limit_studs: {$ref: '#/components/schemas/Measure'}
+                          scale_declared: {$ref: '#/components/schemas/Measure'}
+                          reason: {enum: [null, export_triangulated, import_scale_required, destination_specific_box, original_blender_state_unknown, destination_pivot_not_specified, no_universal_name_rule, importer_may_recalculate, outside_initial_scope]}
+      responses:
+        '200': {description: 'Validated narrative and usage, or fallback with usage after invalid model output. Never changes grade or checks.'}
+        '400': {description: Invalid report}
+        '401': {description: Invalid pair token}
+        '403': {description: Invalid provider peer}
+        '405': {description: Method denied}
+        '413': {description: Body limit}
+        '503': {description: 'Narrative unavailable: use local catalogue, retain technical report.'}
+components:
+  securitySchemes:
+    pairToken: {type: http, scheme: bearer}
+  schemas:
+    Measure:
+      oneOf:
+        - {type: [number, 'null'], minimum: -1000000000000, maximum: 1000000000000}
+        - type: array
+          maxItems: 3
+          items: {type: [number, 'null'], minimum: -1000000000000, maximum: 1000000000000}

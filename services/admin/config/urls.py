@@ -1,3 +1,4 @@
+from apps.agentes.revisor_ai import explicar as explicar_revisor
 from apps.core.acesso_sem_senha import previa as previa_acesso_sem_senha
 from apps.core.nps import crm_satisfacao_revisao_salvar
 from apps.core.medalhas import painel as medalhas_painel, previa as medalhas_previa
@@ -302,6 +303,7 @@ from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
 urlpatterns = [
+    path("interno/revisor/v1/explicacao", explicar_revisor),
     path("acesso-sem-senha/previa/", previa_acesso_sem_senha, name="previa_acesso_sem_senha"),
     path("comunidade/ganhos/previa/", ganhos_previa, name="ganhos_previa"),
     path("comunidade/ganhos/previa/<int:registro_id>/", ganhos_previa_detalhe, name="ganhos_previa_detalhe"),
