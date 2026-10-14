@@ -191,7 +191,6 @@ window.iniciarJornada = (scope = document, host = {}) => {
     }
     if (forms.compromisso) {
       root.querySelectorAll('input[name="compromisso_checks"]').forEach(check => { check.checked = (data.inicio.compromisso_checks || []).includes(check.value); });
-      forms.compromisso.elements.proximo_passo.value = data.inicio.proximo_passo_resposta || '';
       showCompromissoStep(data.inicio.etapas?.[1]?.concluida ? 3 : data.inicio.compromisso_curso_em ? 2 : data.inicio.compromisso_etapa === 2 ? 2 : 1);
     }
   }

@@ -120,8 +120,7 @@ def salvar_inicio(jornada, dados):
                 inicio['compromisso_curso_em'] = timezone.now().isoformat()
                 inicio['compromisso_motivos'] = {chave: inicio.get(chave) for chave in
                     ('motivo', 'motivo_outro', 'motivo_pessoal', 'motivo_sonhos')}
-            inicio['proximo_passo_resposta'] = texto(dados, 'proximo_passo', 40)
-            inicio['compromisso_etapa'] = 3 if inicio['proximo_passo_resposta'] == 'criar_item' else 2
+            inicio['compromisso_etapa'] = 3
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
             raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')
@@ -158,13 +157,13 @@ def salvar_inicio(jornada, dados):
     jornada.save(update_fields=['inicio', 'apoio', 'revisao', 'atualizada_em'])
     if dados['acao'] == 'inicio-compromisso' and dados.get('assumir') == 'sim':
         from .jornada import registrar_avaliacao
-        correto = inicio.get('motivo') in {m[0] for m in MOTIVOS} and inicio.get('proximo_passo_resposta') == 'criar_item'
+        correto = inicio.get('motivo') in {m[0] for m in MOTIVOS} and bool(inicio.get('compromisso_curso_em'))
         registrar_avaliacao(jornada.pessoa_id, jornada.site_id, 2,
             'reconhecida' if correto else 'incompleta',
-            'Você definiu seu motivo, identificou como começar e assumiu seu compromisso.' if correto else
-            'Seu compromisso está guardado. O próximo passo é criar um primeiro item simples nas aulas. Confira a resposta e tente novamente.',
+            'Você definiu seu motivo e assumiu seu compromisso.' if correto else
+            'Seu compromisso está guardado. Confira seu motivo para continuar.',
             {'tipo': 'exercicio-compromisso', 'motivo': inicio.get('motivo'),
-             'compromisso_em': inicio.get('compromisso_curso_em'), 'resposta': inicio.get('proximo_passo_resposta')})
+             'compromisso_em': inicio.get('compromisso_curso_em')})
         jornada.refresh_from_db()
     if dados['acao'] == 'inicio-motivo' and inicio.get('motivo') == 'freelancer' and not inicio.get('motivo_rascunho'):
         from .jornada import reconciliar_recebimentos
