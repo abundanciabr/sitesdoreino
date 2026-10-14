@@ -78,14 +78,17 @@ def prepare():
     backup = ROOT/'backups-de-codigo'/('revisor-http-'+stamp)
     backup.mkdir(mode=0o700)
     originals = {}
+    ownership = {}
     for name in ['identidade', 'alunos', 'cursos']:
         path = ROOT/'env'/(name+'.env')
         originals[name] = path.read_bytes()
+        ownership[name] = (path.stat().st_uid, path.stat().st_gid)
         shutil.copy2(path, backup/path.name)
         os.chmod(backup/path.name, 0o600)
         assert not any(line.startswith(b'TOKENS_ACEITOS_REVISOR=') or line.startswith(b'TOKENS_COMPLETOS_REVISOR=') for line in originals[name].splitlines())
     (backup/'iptables.txt').write_text(run(['iptables-save']))
     (backup/'manifest.json').write_text(json.dumps({n:hashlib.sha256(v).hexdigest() for n,v in originals.items()}))
+    (backup/'ownership.json').write_text(json.dumps(ownership))
     OWN.mkdir(mode=0o755, exist_ok=True)
     PRIVATE.mkdir(mode=0o700, exist_ok=True)
     app_ip = app['NetworkSettings']['Networks']['edge']['IPAddress']
@@ -125,6 +128,7 @@ def prepare():
         tmp = path.with_suffix('.revisor.tmp')
         tmp.write_bytes(original+suffix.encode())
         shutil.copystat(path,tmp)
+        os.chown(tmp, *ownership[name])
         os.replace(tmp,path)
     freeze()
     unit = '''[Unit]
