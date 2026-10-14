@@ -1,0 +1,11 @@
+{
+  "runtime": "python",
+  "files": {
+    "index.html": "services/comunidade_previa/index.html",
+    "motor.cjs": "services/comunidade_previa/motor.cjs",
+    "permissoes.py": "services/forum/apps/core/permissoes.py",
+    "tests/test_permissoes.py": "services/comunidade_previa/tests/test_permissoes.py"
+  },
+  "test": "tests/test_permissoes.py",
+  "page": "index.html"
+}
