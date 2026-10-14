@@ -9,7 +9,7 @@ from apps.core.models import RascunhoDeConfiguracao
 from . import modelo
 from .models import Execucao, Consumo
 from .banca_assinatura import assinatura, blocos
-from .banca_fontes import ultimo, anonimizar, VERSAO_SELECAO
+from .banca_fontes import ultimo, anonimizar, VERSAO_SELECAO, dados_de_teste
 
 PERFIS = {'iniciante': 'Renda extra e primeiro contato com 3D',
           'curso_inacabado': 'Já comprou curso e não terminou',
@@ -56,13 +56,13 @@ def fotografia(site_id, slug, origem='publicada', experimento_id='', variante=''
     return foto
 
 
-def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
+def pedir(site_id, slug, origem, experimento_id, variante, chave, por, modo_teste=False):
     existente = Execucao.objects.filter(chave_de_repeticao='banca:' + chave).first()
     if existente:
         if existente.tipo != Execucao.Tipo.BANCA or existente.estado.get('site_id') != str(site_id):
             raise ValueError('Identificação de pedido inválida.')
         return existente
-    corpus = ultimo(site_id)
+    corpus = dados_de_teste(site_id) if modo_teste else ultimo(site_id)
     if not corpus or not corpus.conteudo.get('itens'):
         raise ValueError('Colete as objeções reais antes de atacar. Sem fontes, o cético não está calibrado.')
     if corpus.conteudo.get('selecao_versao') != VERSAO_SELECAO:
@@ -71,10 +71,17 @@ def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
     if foto['conteudo']['idioma'] not in {'pt-br', 'pt'}:
         raise ValueError('Esta banca usa somente conteúdo em português brasileiro.')
     perfis = {codigo: perfil_atual(site_id, codigo) for codigo in PERFIS}
+    instrucoes = ORIENTACAO
+    if modo_teste:
+        instrucoes = ORIENTACAO.replace('IDs reais', 'IDs sintéticos de teste').replace('ID real', 'ID sintético de teste')
+        instrucoes += '\nRODADA DE TESTE: todos os itens do corpus são inventados. Nunca os apresente como mensagens reais. Avalie o fluxo e a página, mantendo explícita essa limitação na síntese.'
+        perfis['calibrado']['texto'] = 'Cético em teste funcional, apoiado exclusivamente nas objeções sintéticas identificadas do corpus. Cite seus IDs. Nenhuma delas é evidência real de comprador.'
+        perfis['calibrado']['digest'] = assinatura(perfis['calibrado']['texto'])
     estado = {'site_id': str(site_id), 'fotografia': foto,
+              'modo_teste': bool(modo_teste),
               'corpus': corpus.conteudo, 'perfis': perfis, 'resultados': {}, 'chamadas': {},
               'fluxo': VERSAO, 'perfis_digest': assinatura(perfis), 'modelo': modelo.conexao().modelo_forte,
-              'instrucoes_digest': assinatura(ORIENTACAO), 'instrucoes': ORIENTACAO}
+              'instrucoes_digest': assinatura(instrucoes), 'instrucoes': instrucoes}
     with transaction.atomic():
         execucao, _ = Execucao.objects.get_or_create(chave_de_repeticao='banca:' + chave,
             defaults={'tipo': Execucao.Tipo.BANCA, 'origem': 'banca_clientes', 'pedido_por': por[:200],
@@ -185,6 +192,11 @@ def executar(execucao):
             terminar(execucao, Execucao.Situacao.FALHOU, str(erro))
             return
     foto = estado['fotografia']
+    if estado.get('modo_teste'):
+        estado['registro_catalogo'] = {'situacao': 'teste', 'resposta': 'Rodada sintética preservada no histórico; não é comprovante de calibração real.'}
+        guardar_estado(execucao)
+        terminar(execucao, Execucao.Situacao.CONCLUIDA, 'Teste concluído: seis leituras e síntese com dados sintéticos identificados.')
+        return
     corpo = {'rodada': 'banca:' + str(execucao.pk), 'assinatura': foto['assinatura'],
              'perfis_digest': estado['perfis_digest'], 'corpus_digest': estado['corpus']['digest'],
              'leituras': 6, 'sintese': True, 'origem': foto['origem'],

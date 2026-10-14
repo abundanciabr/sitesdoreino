@@ -43,9 +43,13 @@
 <p><label for="experimento_id">Experimento do catálogo (somente para variante)</label> <select id="experimento_id" name="experimento_id"><option value="">Escolha a página e consulte os experimentos abaixo</option>{% for exp in experimentos %}<option value="{{ exp.id }}">{{ exp.slug }} · {{ exp.id }} · {{ exp.hipotese }}</option>{% endfor %}</select></p>
 <p><label for="variante">Braço da variante</label> <select id="variante" name="variante"><option value="a">a · controle</option><option value="b">b · alteração</option>{% for braco in outros_bracos %}<option value="{{ braco }}">{{ braco }}</option>{% endfor %}</select></p>
 <p>Esta banca usa somente português brasileiro, conforme orientação do mantenedor.</p>
+<p><label><input type="checkbox" name="modo_teste" value="sim"> Testar com seis objeções sintéticas criadas automaticamente</label></p>
+<p>O teste executa as seis leituras e a síntese pela mesma fila e guarda o resultado. Os dados ficam identificados como inventados e separados dos relatos reais.</p>
 <p>Não cria tradução nem altera conteúdo. A análise lê textos e preço do catálogo; não avalia imagens, vídeos ou navegação.</p><button {% if not paginas %}disabled{% endif %}>Atacar</button></form>
 {% if trabalho %}
 <h2>Rodada {{ trabalho.pk }} · {{ trabalho.get_situacao_display }}</h2><p>{{ trabalho.etapa_atual }} · {{ trabalho.motivo }}</p><p><a href="?banca=1&amp;rodada={{ trabalho.pk }}">Atualizar andamento</a></p>
+{% if trabalho.estado.modo_teste %}<p><strong>TESTE COM DADOS SINTÉTICOS: as objeções de origem foram criadas pelo robô. Não são relatos de compradores nem calibração real.</strong></p>{% endif %}
+<details><summary>Objeções de origem guardadas nesta rodada</summary>{% for item in trabalho.estado.corpus.itens %}<p>{{ item.id }} · {{ item.fonte }}</p><blockquote>{{ item.texto }}</blockquote><p>{{ item.origem }}</p>{% endfor %}</details>
 <p>Página {{ trabalho.estado.fotografia.conteudo.slug }} · versão {{ trabalho.estado.fotografia.conteudo.version }} · {{ trabalho.estado.fotografia.origem }} · {{ trabalho.estado.fotografia.variante }}</p>
 <p>Assinatura da página: {{ trabalho.estado.fotografia.assinatura }}</p><p>Modelo: {{ trabalho.estado.modelo }} · perfis: {{ trabalho.estado.perfis_digest }} · corpus: {{ trabalho.estado.corpus.digest }}</p>
 {% for resultado in resultados %}<article><h3>{{ resultado.nome }}</h3>{% if resultado.leitura %}<p>Compra simulada: {{ resultado.leitura.compra }}. {{ resultado.leitura.porque }}</p><blockquote>{{ resultado.leitura.trecho_decisao }}</blockquote><p>{{ resultado.leitura.secao_decisao }}{% if resultado.leitura.evidencia_decisao %} · evidência real {{ resultado.leitura.evidencia_decisao }}{% endif %}</p><p>Onde parou: {{ resultado.leitura.onde_parou }}</p>
