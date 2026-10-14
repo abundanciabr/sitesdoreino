@@ -168,7 +168,7 @@ def _executar(execucao: Execucao) -> None:
     from . import conhecimento, conversa, panorama, quiz, super_equipe
     from .models import RoboPessoal
 
-    if execucao.tipo not in (Execucao.Tipo.BANCA, Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO) and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
+    if execucao.tipo not in (Execucao.Tipo.BANCA, Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO, Execucao.Tipo.PROCEDIMENTO) and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
         terminar(execucao, S.PAUSADA, "O robô está pausado. Volta quando for reativado.")
         return
     if execucao.tipo == Execucao.Tipo.CONVERSA:
@@ -189,6 +189,9 @@ def _executar(execucao: Execucao) -> None:
         banca.executar(execucao)
     elif execucao.tipo == Execucao.Tipo.SUPER_EQUIPE:
         super_equipe.executar(execucao)
+    elif execucao.tipo == Execucao.Tipo.PROCEDIMENTO:
+        from .procedimentos import executar as executar_procedimento
+        executar_procedimento(execucao)
     else:  # pragma: no cover - tipo novo sem executor
         terminar(execucao, S.FALHOU, "Este tipo de trabalho ainda não tem executor.")
 
@@ -377,6 +380,8 @@ def rodar_para_sempre(parar: threading.Event) -> None:
     ligar_suporte(parar)
     from .super_equipe_automatica import ligar as ligar_super_equipe
     ligar_super_equipe(parar)
+    from .procedimentos import ligar as ligar_procedimentos
+    ligar_procedimentos(parar)
     ultimo_reacordar = timezone.now() - INTERVALO_DE_REACORDAR
     ultimo_audio = timezone.now() - INTERVALO_DO_AUDIO
     log.info("Executor dos robôs ligado: %s", trabalhador)

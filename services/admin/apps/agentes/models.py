@@ -79,6 +79,7 @@ class Execucao(models.Model):
         CONHECIMENTO = "conhecimento", "Leitura dos documentos para o mapa de conhecimento"
         SATISFACAO = "satisfacao", "Cuidado com a satisfação dos alunos"
         SUPER_EQUIPE = "super_equipe", "Equipe de especialistas técnicos"
+        PROCEDIMENTO = "procedimento", "Redação de procedimento em rascunho"
         BANCA = "banca_clientes", "Banca de clientes simulados"
 
     class Situacao(models.TextChoices):
@@ -524,3 +525,5 @@ class EventoSuperEquipe(models.Model):
 
     class Meta:
         ordering = ["momento", "id"]
+
+from .procedimentos_models import RotinaProcedimentos, AgrupamentoProcedimento, CasoProcedimento, RedacaoProcedimento

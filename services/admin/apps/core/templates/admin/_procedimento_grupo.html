@@ -1,0 +1,14 @@
+<section class="cartao" id="grupo-{{ g.pk }}">
+<h3>{{ g.titulo }}</h3>
+<p>{{ g.get_publico_display }} · {{ g.contagem_atual }} casos independentes nos últimos 14 dias · {% if g.contagem_atual >= 3 %}{% if g.tem_solucao %}repetição elegível para rascunho{% else %}aguarda solução confirmada{% endif %}{% else %}aguarda três casos{% endif %}.</p>
+<p>Custo calculado US$ {{ g.custos.calculado|default_if_none:"0" }} · reserva sem confirmação US$ {{ g.custos.reserva|default_if_none:"0" }}.</p>
+{% for r in g.redacoes_tela %}<p>Redação {{ r.pk }} · {{ r.execucao.get_situacao_display }}{% if r.execucao.motivo %} · {{ r.execucao.motivo }}{% endif %} · {{ r.criada_em|date:"d/m/Y H:i" }}.</p>{% endfor %}
+<details><summary>Evidências e fios de origem</summary>
+{% for c in g.casos_tela %}<article><h4>{{ c.fonte }} · {{ c.ocorrida_em|date:"d/m/Y H:i" }}</h4><p>{{ c.sintoma|linebreaksbr }}</p><p>{% if c.confirmada %}Solução confirmada na fonte{% else %}Solução não confirmada{% endif %}</p>{% if c.solucao %}<p>{{ c.solucao|linebreaksbr }}</p>{% endif %}<a href="{{ c.referencia }}">{{ c.referencia }}</a></article>{% endfor %}
+{% for r in g.redacoes_tela %}<details><summary>Fontes preservadas da redação {{ r.pk }}</summary>{% for e in r.evidencias %}<p>{{ e.fonte }} · {{ e.sintoma }} · {{ e.solucao }}</p><a href="{{ e.referencia }}">{{ e.referencia }}</a>{% endfor %}</details>{% endfor %}
+</details>
+{% if g.rascunho %}<h4>Rascunho · revisão {{ g.revisao }}</h4><p>{{ g.rascunho|linebreaksbr }}</p>
+<details><summary>Editar rascunho</summary><form method="post">{% csrf_token %}<input type="hidden" name="acao" value="editar"><input type="hidden" name="grupo" value="{{ g.pk }}"><label>Texto do procedimento <textarea name="rascunho" rows="14" maxlength="10000">{{ g.rascunho }}</textarea></label><button>Guardar rascunho</button></form></details>
+{% for idioma, texto in g.respostas.items %}<h4>Resposta pronta · {{ idioma }}</h4><p>{{ texto|linebreaksbr }}</p>{% endfor %}
+{% endif %}
+</section>
