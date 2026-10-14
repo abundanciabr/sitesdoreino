@@ -158,6 +158,6 @@ def test_resposta_antiga_nao_bloqueia_nem_duplica_amarela(client):
     dados = resposta.json()
     assert dados['atual_ordem'] == 2
     assert dados['avaliacao_atual']['resultado'] == 'reconhecida'
-    assert dados['avaliacao_atual']['conquistada'] is False
+    assert dados['avaliacao_atual']['conquistada'] is True
     assert dados['conquista_xp'] == 0
     assert LancamentoDeXP.objects.filter(pontos=5000).count() == 1
