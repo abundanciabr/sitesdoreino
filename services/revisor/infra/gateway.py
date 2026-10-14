@@ -126,8 +126,41 @@ class HTTPGateway(BaseHTTPRequestHandler):
             if connection:
                 connection.close()
     def do_POST(self):
-        self.send_json(405, {'error': 'method_denied'})
-    do_PUT = do_PATCH = do_DELETE = do_CONNECT = do_TRACE = do_OPTIONS = do_HEAD = do_POST
+        if self.path != '/api/revisor/v1/explicacao':
+            return self.send_json(405, {'error': 'method_denied'})
+        c = self.server.config
+        if not c.get('ai_enabled'):
+            return self.send_json(503, {'error': 'ai_closed'})
+        supplied = self.headers.get_all('Authorization', [])
+        if len(supplied) != 1 or not hmac.compare_digest(supplied[0], 'Bearer '+c['client_token']):
+            return self.send_json(401, {'error': 'unauthorized'})
+        if self.headers.get('Transfer-Encoding') or len(self.headers.get_all('Content-Length', [])) != 1:
+            return self.send_json(400, {'error':'invalid_body'})
+        connection = None
+        try:
+            size = int(self.headers['Content-Length'])
+            if not 0 < size <= 8192:
+                return self.send_json(413, {'error':'body_limit'})
+            body = self.rfile.read(size)
+            if len(body) != size or socket.gethostbyname('aplicacao') != c['upstream_ip']:
+                raise ValueError('invalid body or upstream')
+            connection = http.client.HTTPConnection(c['upstream_ip'], 8000, timeout=25)
+            connection.request('POST', '/admin/interno/revisor/v1/explicacao', body=body,
+                headers={'Host':'meshcraft.top','Content-Type':'application/json',
+                         'Authorization':'Bearer '+c['tokens']['revisor_ai']})
+            response = connection.getresponse()
+            raw = response.read(65537)
+            if len(raw)>65536 or response.status not in (200,400,401,403,413,429,503):
+                raise ValueError('invalid provider response')
+            self.send_json(response.status, json.loads(raw))
+        except (OSError, ValueError, http.client.HTTPException):
+            self.send_json(503, {'error':'ai_unavailable'})
+        finally:
+            if connection:
+                connection.close()
+    def denied(self):
+        self.send_json(405, {'error':'method_denied'})
+    do_PUT = do_PATCH = do_DELETE = do_CONNECT = do_TRACE = do_OPTIONS = do_HEAD = denied
 
 
 class DBRelay(socketserver.BaseRequestHandler):
