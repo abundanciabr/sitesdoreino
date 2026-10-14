@@ -18,7 +18,7 @@ def foto(texto='Aprenda modelagem 3D', versao=1):
 
 def corpus():
     return {'itens': [{'id': 'real1', 'texto': 'Não sei como começar', 'fonte': 'suporte'}],
-            'digest': 'corpus1', 'cobertura': []}
+            'digest': 'corpus1', 'cobertura': [], 'selecao_versao': banca_fontes.VERSAO_SELECAO}
 
 
 def leitura(codigo='iniciante'):

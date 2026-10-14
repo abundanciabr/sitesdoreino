@@ -9,7 +9,7 @@ from apps.core.models import RascunhoDeConfiguracao
 from . import modelo
 from .models import Execucao, Consumo
 from .banca_assinatura import assinatura, blocos
-from .banca_fontes import ultimo, anonimizar
+from .banca_fontes import ultimo, anonimizar, VERSAO_SELECAO
 
 PERFIS = {'iniciante': 'Renda extra e primeiro contato com 3D',
           'curso_inacabado': 'Já comprou curso e não terminou',
@@ -65,6 +65,8 @@ def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
     corpus = ultimo(site_id)
     if not corpus or not corpus.conteudo.get('itens'):
         raise ValueError('Colete as objeções reais antes de atacar. Sem fontes, o cético não está calibrado.')
+    if corpus.conteudo.get('selecao_versao') != VERSAO_SELECAO:
+        raise ValueError('Atualize a coleta para excluir testes e mensagens automáticas. A coleta anterior fica no histórico.')
     foto = fotografia(site_id, slug, origem, experimento_id, variante)
     if foto['conteudo']['idioma'] not in {'pt-br', 'pt'}:
         raise ValueError('Esta banca usa somente conteúdo em português brasileiro.')
