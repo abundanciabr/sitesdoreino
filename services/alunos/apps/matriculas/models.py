@@ -225,6 +225,12 @@ class Matricula(models.Model):
     # Caixa também poder ler) oferecida e recusada: cada peça a mais que guarda
     # um telefone é mais um lugar de onde ele pode vazar (lei §5).
     whatsapp = models.CharField(max_length=32, blank=True, default="")
+    whatsapp_avisos = models.BooleanField(default=False)
+    whatsapp_consentido_em = models.DateTimeField(null=True, blank=True)
+    aviso_event_id = models.UUIDField(null=True, blank=True)
+    whatsapp_pedido_id = models.UUIDField(null=True, blank=True)
+    whatsapp_confirmacao_codigo = models.CharField(max_length=10, blank=True, default="", db_index=True)
+    whatsapp_confirmado_em = models.DateTimeField(null=True, blank=True)
     # [FILA] Pistas de CONFERÊNCIA, não dados de cadastro — servem para o
     # mantenedor achar a pessoa na lista dele, e por isso são opcionais.
     comprou_em = models.DateField(null=True, blank=True)

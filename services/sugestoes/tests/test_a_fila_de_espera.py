@@ -39,6 +39,19 @@ def pedir(pessoa, **campos):
     return pessoa.client.post(reverse("pedir_entrada"), {**PEDIDO, **campos})
 
 
+def test_autorizacao_whatsapp_confere_numero_e_viaja_na_fila(na_porta):
+    na_porta.rede.alunos_aceita_o_pedido()
+    resposta = pedir(na_porta, whatsapp_avisos="sim", whatsapp_confirmacao="5596999990000")
+    assert resposta.status_code == 200
+    assert na_porta.rede.um_pedido["whatsapp_avisos"] is True
+
+
+def test_numero_diferente_na_confirmacao_nao_registra_pedido(na_porta):
+    resposta = pedir(na_porta, whatsapp_avisos="sim", whatsapp_confirmacao="11999990000")
+    assert resposta.status_code == 400
+    assert "Confirme o mesmo número" in resposta.content.decode()
+
+
 # ---------------------------------------------------------------------------
 # A tela: o "não" com destino
 # ---------------------------------------------------------------------------

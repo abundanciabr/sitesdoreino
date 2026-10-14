@@ -41,6 +41,16 @@
       <button type="submit">Enviar esta mensagem de teste</button>
     </form>
   </div>
+  <h2 class="espaco-28">Avisos de acesso à escola</h2>
+  <p>Novos pedidos: e-mail após aprovação ou recusa; WhatsApp somente com autorização
+    e confirmação do número por resposta. Responder PARAR cancela os avisos no WhatsApp.
+    A confirmação do número não libera a escola.</p>
+  <div class="tabela-envolucro"><table>
+    <thead><tr><th>Quando</th><th>Aviso</th><th>Canal</th><th>Estado</th><th>Detalhe</th></tr></thead>
+    <tbody>{% for aviso in avisos_acesso %}<tr><td>{{ aviso.quando }}</td><td>{{ aviso.tipo }}</td>
+      <td>{{ aviso.canal }}</td><td>{{ aviso.estado }}</td><td>{{ aviso.detalhe|default:"—" }}</td></tr>
+      {% empty %}<tr><td colspan="5">Nenhum novo aviso de acesso registrado. O histórico anterior não é reenviado.</td></tr>{% endfor %}</tbody>
+  </table></div>
   <h2 class="espaco-28">Mensagens recentes</h2>
   <p>Aceita pelo provedor significa que o pedido foi recebido. A entrega só aparece quando o WhatsApp a confirma. Resultado desconhecido exige consulta; repetir pode duplicar a mensagem.</p>
   <div class="tabela-envolucro"><table>

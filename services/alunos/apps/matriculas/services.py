@@ -252,6 +252,7 @@ def entrar_na_fila(
     whatsapp: str,
     comprou_em=None,
     turma: str = "",
+    whatsapp_avisos: bool = False,
 ) -> tuple[Matricula | None, bool]:
     """[FILA] Alguém pede entrada e fica AGUARDANDO decisão humana.
 
@@ -287,6 +288,9 @@ def entrar_na_fila(
     campos = {
         "name": nome_completo,
         "whatsapp": whatsapp,
+        "whatsapp_avisos": whatsapp_avisos is True,
+        "whatsapp_consentido_em": timezone.now() if whatsapp_avisos is True else None,
+        "aviso_event_id": None,
         "comprou_em": comprou_em,
         "turma": turma,
         "status": Matricula.STATUS_AGUARDANDO,
@@ -300,9 +304,16 @@ def entrar_na_fila(
 
     def _atualizar(linha: Matricula) -> Matricula:
         antes = linha.status
+        novo_numero = linha.whatsapp != whatsapp or linha.whatsapp_avisos != whatsapp_avisos
+        consentido_em = linha.whatsapp_consentido_em
         for campo, valor in campos.items():
             setattr(linha, campo, valor)
+        if not novo_numero and consentido_em:
+            linha.whatsapp_consentido_em = consentido_em
         linha.save(update_fields=list(campos))
+        if novo_numero or not linha.whatsapp_pedido_id:
+            from .avisos_acesso import preparar_confirmacao
+            preparar_confirmacao(linha)
         # [FATO] Quem foi recusado e reenvia volta para `aguardando`, e isso e
         # uma mudanca de situacao como qualquer outra. Mora AQUI e nao nos dois
         # chamadores (o caminho normal e o de perder a corrida) para nenhum dos
@@ -336,6 +347,8 @@ def entrar_na_fila(
                 # [FATO] Nasceu aguardando: alguem pediu entrada pela sala de
                 # espera. E o caminho dos alunos das turmas anteriores.
                 fato_de_situacao(nova)
+                from .avisos_acesso import preparar_confirmacao
+                preparar_confirmacao(nova)
             return nova, True
         except IntegrityError:
             # Perdeu a corrida contra outra requisição da mesma pessoa: quem
@@ -479,7 +492,10 @@ def decidir_na_fila(
         # [FATO] SEMPRE, e antes da carta: liberar e recusar sao os dois
         # desfechos da fila, e o livro precisa dos dois. A carta so sai num
         # deles, e so para quem tem identidade da plataforma.
-        fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
+        fato = fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
+        if fato:
+            linha.aviso_event_id = fato.event_id
+            linha.save(update_fields=["aviso_event_id"])
 
         if destinatario_id and ganhou_acesso(antes, linha.status):
             carta_de_situacao(

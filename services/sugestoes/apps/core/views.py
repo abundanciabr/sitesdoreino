@@ -250,7 +250,15 @@ def pedir_entrada(request):
         "comprou_em": (request.POST.get("comprou_em") or "").strip(),
         "turma": (request.POST.get("turma") or "").strip(),
     }
+    rascunho["whatsapp_avisos"] = request.POST.get("whatsapp_avisos") == "sim"
+    rascunho["whatsapp_confirmacao"] = (request.POST.get("whatsapp_confirmacao") or "").strip()
     erros: list[str] = []
+    if rascunho["whatsapp_avisos"]:
+        def numero(valor):
+            digitos = _so_digitos(valor)
+            return "55" + digitos if len(digitos) in (10, 11) else digitos
+        if numero(rascunho["whatsapp"]) != numero(rascunho["whatsapp_confirmacao"]):
+            erros.append("Confirme o mesmo número de WhatsApp para receber os avisos.")
 
     if not rascunho["nome_completo"]:
         erros.append("Escreva seu nome completo, como está na sua compra.")
@@ -294,6 +302,7 @@ def pedir_entrada(request):
             whatsapp=rascunho["whatsapp"],
             comprou_em=rascunho["comprou_em"],
             turma=rascunho["turma"],
+            whatsapp_avisos=rascunho["whatsapp_avisos"],
         )
     except (AlunosIndisponivel, ConfiguracaoAusente):
         return _recado(

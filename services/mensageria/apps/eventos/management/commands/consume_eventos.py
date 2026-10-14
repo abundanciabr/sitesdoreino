@@ -30,7 +30,11 @@ log = logging.getLogger(__name__)
 
 GRUPO = "mensageria"  # nome DESTA célula
 CONSUMIDOR = "worker-1"
+from apps.eventos.avisos_acesso import ao_decisao_de_acesso, ao_pedido_whatsapp
+
 STREAMS = {
+    "eventos.matricula.situacao-alterada": ao_decisao_de_acesso,
+    "eventos.escola.whatsapp-solicitado": ao_pedido_whatsapp,
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pix.expirado": ao_pix_expirado,
     "eventos.pix.codigo_trocado": ao_pix_codigo_trocado,
