@@ -1,0 +1,34 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Procedimentos em rascunho{% endblock %}
+{% block corpo %}
+<main class="envolucro copy">
+<h1>Procedimentos em rascunho</h1>
+<p>A rotina reúne casos independentes em quatorze dias. Três casos permitem redigir quando há uma solução confirmada. Os textos permanecem em revisão.</p>
+{% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+<section class="cartao"><h2>Rotina noturna</h2>
+<p>Coleta às 02:00, horário de São Paulo, no servidor. Última coleta: {{ rotina.coletada_em|date:"d/m/Y H:i"|default:"ainda não realizada" }}. Próxima: {{ rotina.proxima_em|date:"d/m/Y H:i" }}.</p>
+<p>Contato do executor: {{ rotina.executor_em|date:"d/m/Y H:i"|default:"aguardando" }}.</p>
+{% if rotina.erro %}<p role="status">{{ rotina.erro }}</p>{% endif %}
+<table><thead><tr><th>Fonte</th><th>Estado</th><th>Casos na janela</th><th>Testes excluídos</th><th>Consultada em</th></tr></thead><tbody>
+{% for nome, f in rotina.fontes.items %}<tr><td>{{ nome }}</td><td>{{ f.estado }} {% if f.erro %}({{ f.erro }}){% endif %}</td><td>{{ f.casos|default_if_none:"—" }}</td><td>{{ f.testes_excluidos|default_if_none:"—" }}</td><td>{{ f.consultada_em }}</td></tr>{% empty %}<tr><td colspan="5">Aguardando primeira coleta.</td></tr>{% endfor %}
+</tbody></table><p>Uma fonte indisponível mantém o histórico, mas impede nova redação naquela coleta. Testes identificados são excluídos. Observações repetidas do monitor não são novos casos.</p></section>
+<section class="cartao"><h2>Idiomas das respostas prontas</h2>
+<p>{% if rotina.idiomas %}Configurados para as próximas redações. Rascunhos anteriores são preservados.{% else %}Aguardando sua definição. A coleta e o rascunho em português continuam; traduções ainda não são geradas.{% endif %}</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="acao" value="idiomas">
+<label>Idioma 1 <input name="idioma1" maxlength="40" value="{{ idioma1 }}"></label>
+<label>Idioma 2 <input name="idioma2" maxlength="40" value="{{ idioma2 }}"></label>
+<label>Idioma 3 <input name="idioma3" maxlength="40" value="{{ idioma3 }}"></label>
+<button type="submit">Guardar idiomas</button></form></section>
+<section class="cartao"><h2>Custos compartilhados dos robôs</h2>
+<p>Procedimentos: {{ chamadas }} chamadas · custo calculado pelo uso recebido: US$ {{ totais.calculado|default_if_none:"0" }} · reserva sem confirmação: US$ {{ totais.reserva|default_if_none:"0" }}.</p>
+<p>Orçamento compartilhado: gasto e reservas do mês US$ {{ gasto_compartilhado|default_if_none:"não disponível" }} · teto US$ {{ teto|default_if_none:"sem autorização ativa" }}.</p>
+<p>Coleta e agrupamento não fazem chamadas pagas de IA. Custo externo da infraestrutura e do desenvolvimento: não informado.</p>
+<a href="{% url 'super_equipe' %}">Ver Super equipe</a></section>
+<h2>Procedimentos para alunos</h2>
+{% for g in grupos %}{% if g.publico == 'alunos' %}{% include "admin/_procedimento_grupo.html" %}{% endif %}{% endfor %}
+<h2>Procedimentos técnicos internos</h2>
+{% for g in grupos %}{% if g.publico == 'interno' %}{% include "admin/_procedimento_grupo.html" %}{% endif %}{% endfor %}
+{% if not grupos %}<p>Nenhum agrupamento nesta janela. Isso não comprova ausência de problemas quando uma fonte está indisponível.</p>{% endif %}
+<p>A publicação de documentos continua manual no <a href="{% url 'documentos_admin' %}">painel de documentos</a>. Esta fila não publica, não acrescenta links ao fórum e não retira documentos do ar.</p>
+</main>
+{% endblock %}

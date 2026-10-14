@@ -301,7 +301,10 @@ from apps.atendimento import gestao as suporte_gestao
 from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
+from apps.agentes.views_procedimentos import painel as procedimentos_painel
+
 urlpatterns = [
+    path("procedimentos/", procedimentos_painel, name="procedimentos_painel"),
     path("acesso-sem-senha/previa/", previa_acesso_sem_senha, name="previa_acesso_sem_senha"),
     path("comunidade/ganhos/previa/", ganhos_previa, name="ganhos_previa"),
     path("comunidade/ganhos/previa/<int:registro_id>/", ganhos_previa_detalhe, name="ganhos_previa_detalhe"),
