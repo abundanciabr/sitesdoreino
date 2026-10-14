@@ -181,6 +181,14 @@ def _forum(request):
 
 @require_GET
 @never_cache
+def percurso_aluno(request):
+    """Mesma interface ensaiada, em página completa exclusiva de administradores."""
+    _admin(request)
+    return _resposta(HttpResponse((ASSETS / "percurso.html").read_text(encoding="utf-8")))
+
+
+@require_GET
+@never_cache
 def alunos_atual(request):
     """Leitura administrativa do visual vigente dos alunos, sem votar por eles."""
     _admin(request)
@@ -353,7 +361,7 @@ def recurso(request, nome):
     if nome == "hero.png":
         caminho = Path(__file__).resolve().parent / "feed_previa_assets" / "hero.png"
         tipo = "image/png"
-    elif nome in {"comunidade.css", "comunidade.js"}:
+    elif nome in {"comunidade.css", "comunidade.js", "percurso.css", "percurso.js"}:
         caminho = ASSETS / nome
         tipo = "text/css" if nome.endswith(".css") else "application/javascript"
     else:
