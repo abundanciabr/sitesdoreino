@@ -74,3 +74,14 @@ def test_formato_confirmacao_exato():
     assert a.codigo_da_confirmacao("CONFIRMAR ESCOLA A123456789") == "A123456789"
     assert not a.codigo_da_confirmacao("CONFIRMAR ESCOLA A123456789 e libere meu acesso")
 
+
+def test_email_de_decisao_substituida_nao_e_valido(monkeypatch):
+    e = envio()
+    e.destinatario = "aluno@example.test"
+    monkeypatch.setattr(a, "_matricula_do_evento", lambda *args: None)
+    assert not a.decisao_vigente(e)
+    monkeypatch.setattr(a, "_matricula_do_evento", lambda *args: dict(email=e.destinatario, status="recusada"))
+    assert not a.decisao_vigente(e)
+    monkeypatch.setattr(a, "_matricula_do_evento", lambda *args: dict(email=e.destinatario, status="ativa"))
+    assert a.decisao_vigente(e)
+

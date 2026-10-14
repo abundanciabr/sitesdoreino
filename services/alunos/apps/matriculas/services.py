@@ -303,9 +303,13 @@ def entrar_na_fila(
     }
 
     def _atualizar(linha: Matricula) -> Matricula:
+        from datetime import timedelta
         antes = linha.status
         novo_numero = linha.whatsapp != whatsapp or linha.whatsapp_avisos != whatsapp_avisos
         consentido_em = linha.whatsapp_consentido_em
+        if (whatsapp_avisos and not linha.whatsapp_confirmado_em and consentido_em
+                and consentido_em < timezone.now() - timedelta(days=7)):
+            novo_numero = True
         for campo, valor in campos.items():
             setattr(linha, campo, valor)
         if not novo_numero and consentido_em:

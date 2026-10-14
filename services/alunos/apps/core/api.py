@@ -217,6 +217,11 @@ _CREATE_PRE_ENROLLMENT_OPENAPI = {
                             "type": "string",
                             "minLength": 1,
                         },
+                        "whatsapp_avisos": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Aceite opcional dos avisos sobre o pedido de acesso. Não concede acesso.",
+                        },
                         "whatsapp": {
                             "type": "string",
                             "description": "Com DDD. PII: mora aqui e so a porta do admin o devolve —\nnunca `GET /alunos/{email}/matriculas`, nunca evento. Mesma\ndisciplina que DECISAO-EVO-01 §3 deu ao e-mail, decidida\nnominalmente pelo mantenedor em 27/08/2026.\n",

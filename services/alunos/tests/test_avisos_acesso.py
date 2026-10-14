@@ -48,6 +48,9 @@ def test_codigo_expirado_nao_confirma():
     linha = pedido(whatsapp_avisos=True)
     Matricula.objects.filter(pk=linha.pk).update(whatsapp_consentido_em=timezone.now()-timedelta(days=8))
     assert confirmar(linha).status_code == 404
+    renovada = pedido(whatsapp_avisos=True)
+    assert renovada.whatsapp_pedido_id != linha.whatsapp_pedido_id
+    assert confirmar(renovada).status_code == 200
 
 def test_reenvio_identico_preserva_confirmacao_e_nao_duplica():
     linha = pedido(whatsapp_avisos=True)

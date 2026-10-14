@@ -165,6 +165,12 @@ def _matricula_do_evento(envio):
         "event_id": envio.order_id, "confirmacao": envio.tipo == "acesso_confirmacao"})
 
 
+def decisao_vigente(envio):
+    contato = _matricula_do_evento(envio)
+    return bool(contato and contato.get("email", "").strip().lower() == envio.destinatario.strip().lower()
+        and contato.get("status") == ("ativa" if envio.tipo == "acesso_liberado" else "recusada"))
+
+
 def confirmar_recebida(mensagem_id):
     mensagem = MensagemDaConversa.objects.select_related("conversa").get(pk=mensagem_id)
     codigo = codigo_da_confirmacao(mensagem.texto)
