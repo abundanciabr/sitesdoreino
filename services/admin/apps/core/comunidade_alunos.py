@@ -1,4 +1,6 @@
 """Diretório de alunos autenticados, com os perfis existentes da comunidade."""
+import unicodedata
+
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
@@ -7,6 +9,21 @@ from django.views.decorators.http import require_GET
 from . import comunidade_entrada as comunidade
 from .comunidade_seguidores import pessoa, resposta
 from .comunidade_modelos import PerfilDaComunidade
+
+
+def normalizar(texto):
+    texto = unicodedata.normalize("NFD", str(texto or ""))
+    return " ".join("".join(c for c in texto if not unicodedata.combining(c)).casefold().split())
+
+
+def corresponde(aluno, busca):
+    termo = normalizar(busca)
+    usuario = normalizar(aluno.get("usuario"))
+    if termo.startswith("@"):
+        return bool(usuario) and termo[1:] == usuario
+    perfil = aluno.get("perfil")
+    nomes = {normalizar(aluno.get("nome")), normalizar(perfil.nome if perfil else "")}
+    return bool(termo) and (termo in nomes or (bool(usuario) and termo == usuario))
 
 
 @require_GET
@@ -18,10 +35,14 @@ def pagina(request):
     perfil = PerfilDaComunidade.objects.filter(
         site_host=comunidade._host(request), identidade_id=str(dono["id"])
     ).first()
-    alunos = comunidade._alunos(request)
+    busca = str(request.GET.get("q") or "").strip()
+    alunos = []
+    if normalizar(busca):
+        encontrados = comunidade._alunos(request)
+        alunos = None if encontrados is None else [a for a in encontrados if corresponde(a, busca)]
     return comunidade._resposta(render(request, "admin/comunidade_alunos.html", {
         "perfil": perfil, "tema": perfil.tema if perfil else "apple",
-        "alunos": alunos, "total_alunos": len(alunos) if alunos is not None else None,
+        "alunos": alunos, "busca": busca, "pesquisou": bool(normalizar(busca)),
     }, status=503 if alunos is None else 200))
 
 
