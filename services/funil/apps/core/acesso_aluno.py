@@ -16,6 +16,21 @@ class PedidoDeAcesso(forms.Form):
     whatsapp = forms.CharField(max_length=30)
     comprou_em = forms.DateField(required=False, input_formats=['%Y-%m-%d'])
     turma = forms.CharField(required=False, max_length=200)
+    whatsapp_avisos = forms.BooleanField(required=False)
+    whatsapp_confirmacao = forms.CharField(required=False, max_length=30)
+
+    def clean_whatsapp_avisos(self):
+        return self.data.get('whatsapp_avisos') == 'sim'
+
+    def clean(self):
+        dados = super().clean()
+        if dados.get('whatsapp_avisos') and dados.get('whatsapp'):
+            def numero(valor):
+                digitos = ''.join(c for c in valor if c.isdigit())
+                return '55' + digitos if len(digitos) in (10, 11) else digitos
+            if numero(dados['whatsapp']) != numero(dados.get('whatsapp_confirmacao', '')):
+                self.add_error('whatsapp_confirmacao', 'confirme_numero')
+        return dados
 
     def clean_whatsapp(self):
         valor = self.cleaned_data['whatsapp']
@@ -62,6 +77,7 @@ def acesso_do_aluno(request, destino):
                 nome_completo=dados['nome_completo'], whatsapp=dados['whatsapp'],
                 comprou_em=dados['comprou_em'].isoformat() if dados['comprou_em'] else '',
                 turma=dados['turma'],
+                whatsapp_avisos=dados['whatsapp_avisos'],
             )
             limpar_cache_de_categoria()
             if resultado in (alunos.RESULTADO_NA_FILA, alunos.RESULTADO_JA_TEM_MATRICULA):
@@ -77,6 +93,7 @@ def acesso_do_aluno(request, destino):
         'fila_do_acesso': fila, 'form': form, 'erro_envio': erro_envio,
         'url_do_acesso': login,
         'url_trocar_conta': login + '&trocar=1',
+        'whatsapp_avisos_marcado': form.data.get('whatsapp_avisos') == 'sim',
     }, status=status)
     resposta['Cache-Control'] = 'private, no-store'
     resposta['X-Robots-Tag'] = 'noindex, nofollow'

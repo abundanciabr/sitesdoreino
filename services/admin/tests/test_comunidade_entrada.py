@@ -74,7 +74,9 @@ def test_cadastro_persistido_entra_com_apple_e_nao_mexe_na_votacao(admin):
     assert pagina.status_code == 200
     corpo = pagina.content.decode()
     assert 'data-tema="apple"' in corpo
-    assert '<a href="/forum/">Fórum</a>' in corpo and "Bruno" in corpo
+    assert '<a href="/forum/">Fórum</a>' in corpo
+    assert "Bruno" not in corpo and 'id="buscar-aluno"' not in corpo
+    assert 'href="/comunidade/alunos"' in corpo
     assert 'id="forum"' not in corpo and 'href="#forum"' not in corpo
     assert 'conversa-card' not in corpo
     assert corpo.count('href="/forum/') == 1

@@ -171,6 +171,35 @@ def test_acesso_nos_idiomas_existentes(client, com_email, idioma):
     assert 'forms/sugestoes' not in resposta.content.decode()
 
 
+def test_autorizacao_whatsapp_confere_numero_e_viaja_na_fila(client, com_email):
+    import json
+    _situacao(com_email, 'cadastrado')
+    envio = com_email.post(f'{ALUNOS}/pre-matriculas').mock(return_value=httpx.Response(201))
+    resposta = abrir(client, 'post', {**PEDIDO, 'whatsapp_avisos': 'sim',
+                                    'whatsapp_confirmacao': '+55 (11) 99999-0000'})
+    assert resposta.status_code == 302
+    assert json.loads(envio.calls[0].request.content)['whatsapp_avisos'] is True
+
+
+def test_numero_diferente_na_confirmacao_nao_registra_pedido(client, com_email):
+    _situacao(com_email, 'cadastrado')
+    resposta = abrir(client, 'post', {**PEDIDO, 'whatsapp_avisos': 'sim',
+                                    'whatsapp_confirmacao': '21999990000'})
+    assert resposta.status_code == 400
+    assert 'Confirme o mesmo número' in resposta.content.decode()
+    assert not any('/pre-matriculas' in str(c.request.url) for c in com_email.calls)
+
+
+def test_sem_autorizacao_whatsapp_nao_envia_optin(client, com_email):
+    import json
+    _situacao(com_email, 'cadastrado')
+    envio = com_email.post(f'{ALUNOS}/pre-matriculas').mock(return_value=httpx.Response(201))
+    resposta = abrir(client, 'post', {**PEDIDO, 'whatsapp_avisos': 'nao',
+                                    'whatsapp_confirmacao': '21999990000'})
+    assert resposta.status_code == 302
+    assert 'whatsapp_avisos' not in json.loads(envio.calls[0].request.content)
+
+
 def test_troca_de_conta_abre_google_e_senha_no_login(client, com_email):
     _situacao(com_email, 'cadastrado')
     resposta = client.get(LOGIN + '&trocar=1', HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)

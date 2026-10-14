@@ -161,6 +161,7 @@ class AlunosClient:
         whatsapp: str,
         comprou_em: str = "",
         turma: str = "",
+        whatsapp_avisos: bool = False,
     ) -> str:
         """Pede entrada (`createPreEnrollment`): `NA_FILA` ou `JA_TEM_MATRICULA`.
         Os opcionais só vão com valor; outra resposta é `AlunosIndisponivel`."""
@@ -172,6 +173,8 @@ class AlunosClient:
             "nome_completo": nome_completo,
             "whatsapp": whatsapp,
         }
+        if whatsapp_avisos:
+            corpo["whatsapp_avisos"] = True
         if comprou_em:
             corpo["comprou_em"] = comprou_em
         if turma:

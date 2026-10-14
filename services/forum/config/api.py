@@ -65,3 +65,5 @@ api.add_router("/editor", editor_router)
 api.add_router("/editor/topicos", topicos_editor_router)
 api.add_router("", acompanhamento_router)
 api.add_router("", questoes_pendentes_router)
+from apps.core.procedimentos import router as procedimentos_router
+api.add_router("", procedimentos_router)

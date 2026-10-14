@@ -7,6 +7,7 @@
 # palavra: aqui o código é o espelho, e o contrato é a fonte.
 import datetime as dt
 import uuid
+import os
 from typing import Literal, Optional
 
 from django.core.exceptions import ValidationError
@@ -30,6 +31,70 @@ from apps.sites.models import Site
 #: O slug da página que vende. É o único que nasce amarrado a uma oferta, porque
 #: é o único cujo preço e botão saem do catálogo em vez do texto escrito à mão.
 SLUG_DA_OFERTA = "oferta"
+router = Router()
+
+
+class ComprovanteBanca(Schema):
+    rodada: str
+    assinatura: str
+    perfis_digest: str
+    corpus_digest: str
+    leituras: int
+    sintese: bool
+    origem: Literal['publicada', 'rascunho', 'variante'] = 'publicada'
+    experimento_id: str = ''
+    variante: str = ''
+
+
+def _admin_banca(request):
+    token = os.environ.get('TOKENS_ACEITOS_ADMIN', '')
+    if not token or request.auth != token:
+        raise HttpError(403, 'Somente o par administrativo registra a banca.')
+
+
+@router.get('/sites/{site_id}/paginas-banca')
+def paginas_banca(request, site_id: str):
+    return [{'id': str(p.pk), 'slug': p.slug, 'tipo': p.tipo,
+             'idioma': p.site.default_language or 'pt-br'}
+            for p in Page.objects.filter(site_id=site_id).select_related('site').order_by('slug')]
+
+
+@router.get('/sites/{site_id}/paginas/{slug}/banca')
+def fotografia_banca(request, site_id: str, slug: str, origem: str = 'publicada',
+                     experimento_id: str = '', variante: str = ''):
+    from .banca import fotografia
+    return fotografia(_pagina(site_id, slug), origem, experimento_id, variante)
+
+
+@router.post('/sites/{site_id}/banca/exigir')
+def exigir_banca(request, site_id: str):
+    from .models import BancaRegistro
+    _admin_banca(request)
+    site = _site(site_id)
+    BancaRegistro.objects.get_or_create(rodada='exigir:' + str(site.pk), defaults={'site': site})
+    return {'exigida': True}
+
+
+@router.post('/sites/{site_id}/paginas/{slug}/banca')
+def registrar_banca(request, site_id: str, slug: str, payload: ComprovanteBanca):
+    from .banca import fotografia
+    from .models import BancaRegistro
+    _admin_banca(request)
+    page = _pagina(site_id, slug)
+    if payload.leituras != 6 or not payload.sintese or not payload.perfis_digest or not payload.corpus_digest:
+        raise HttpError(422, 'O comprovante exige seis leituras, síntese e revisões utilizadas.')
+    if len(payload.rodada) > 100 or not payload.rodada:
+        raise HttpError(422, 'Identificação de rodada inválida.')
+    atual = fotografia(page, payload.origem, payload.experimento_id, payload.variante)
+    if payload.assinatura != atual['assinatura']:
+        raise HttpError(409, 'O conteúdo mudou depois da análise. Histórico preservado; rode a nova versão.')
+    registro, _ = BancaRegistro.objects.get_or_create(rodada=payload.rodada,
+        defaults={'site': page.site, 'page': page, 'assinatura': payload.assinatura,
+                  'completa': True, 'rastreio': {'perfis_digest': payload.perfis_digest,
+                                               'corpus_digest': payload.corpus_digest}})
+    if registro.page_id != page.pk or registro.assinatura != payload.assinatura:
+        raise HttpError(409, 'Rodada já registrada para outro conteúdo.')
+    return {'registrada': True, 'assinatura': registro.assinatura}
 
 # A descrição do mapa de slots é a do contrato, palavra por palavra: ela é a
 # única lista do vocabulário que quem consome a API enxerga, e duas cópias
@@ -65,9 +130,6 @@ provedor, e a sentinela da ferramenta 74 mede a peça.
 O nome do slot é o que os eventos `funil.cta-clicado` carregam no campo
 `slot`. O texto muda a cada versão; o nome do slot não muda, e é por isso
 que ele serve de identificador e a copy não serve."""
-
-
-router = Router()
 
 
 class Secao(Schema):
@@ -952,6 +1014,8 @@ def change_experiment_state(
         # criação, porque a página pode ter sido publicada de novo no meio. A
         # atualização vem antes da troca de estado: depois dela, a variante já
         # está congelada.
+        from .banca import conferir_experimento
+        conferir_experimento(experimento)
         controle = _texto_publicado(
             experimento.page, experimento.secao, experimento.slot
         )

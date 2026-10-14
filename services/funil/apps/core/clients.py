@@ -902,7 +902,7 @@ class AlunosClient:
 
     def criar_pre_matricula(
         self, *, site_id: str, email: str, nome_completo: str, whatsapp: str,
-        comprou_em: str = "", turma: str = ""
+        comprou_em: str = "", turma: str = "", whatsapp_avisos: bool = False
     ) -> str:
         """`createPreEnrollment` — a pessoa pede entrada e fica AGUARDANDO.
 
@@ -937,6 +937,8 @@ class AlunosClient:
             corpo["comprou_em"] = comprou_em
         if turma:
             corpo["turma"] = turma
+        if whatsapp_avisos:
+            corpo["whatsapp_avisos"] = True
         try:
             r = http().post(
                 f"{base}/pre-matriculas",

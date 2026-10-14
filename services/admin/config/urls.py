@@ -8,7 +8,7 @@ from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
-from apps.core import comunidade_entrada, comunidade_seguidores
+from apps.core import comunidade_entrada, comunidade_seguidores, comunidade_alunos
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
@@ -301,7 +301,10 @@ from apps.atendimento import gestao as suporte_gestao
 from apps.atendimento import indicadores as suporte_indicadores
 from apps.atendimento.caixa import caixa as suporte_caixa
 
+from apps.agentes.views_procedimentos import painel as procedimentos_painel
+
 urlpatterns = [
+    path("procedimentos/", procedimentos_painel, name="procedimentos_painel"),
     path("acesso-sem-senha/previa/", previa_acesso_sem_senha, name="previa_acesso_sem_senha"),
     path("comunidade/ganhos/previa/", ganhos_previa, name="ganhos_previa"),
     path("comunidade/ganhos/previa/<int:registro_id>/", ganhos_previa_detalhe, name="ganhos_previa_detalhe"),
@@ -385,6 +388,10 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/alunos", comunidade_alunos.pagina, name="comunidade_alunos"),
+    path("galeria-publica/alunos/", comunidade_alunos.pagina),
+    re_path(r"^galeria-publica/alunos/foto/(?P<alvo>[a-f0-9]{64})$", comunidade_alunos.foto),
+    path("galeria-publica/alunos/<str:nome>", comunidade_alunos.interface),
     path("galeria-publica/pessoas/<str:alvo>", comunidade_seguidores.perfil_aluno),
     path("galeria-publica/seguidores", comunidade_seguidores.dados),
     path("galeria-publica/seguidores/solicitar", comunidade_seguidores.solicitar),

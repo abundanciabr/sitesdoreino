@@ -55,6 +55,7 @@ def _resumo(msg: MensagemWhatsApp) -> dict:
 
 @router.get("/{site_id}")
 def consultar(request, site_id: str):
+    from apps.eventos.avisos_acesso import resumo_dos_avisos
     site_id = _site(site_id)
     config = ConfiguracaoWhatsApp.objects.filter(site_id=site_id).first()
     mensagens = MensagemWhatsApp.objects.filter(site_id=site_id).order_by("-id")[:50]
@@ -64,6 +65,7 @@ def consultar(request, site_id: str):
                           if config else None),
         "conexao": estado_da_conexao(site_id),
         "mensagens": [_resumo(msg) for msg in mensagens],
+        "avisos_acesso": resumo_dos_avisos(site_id),
     }
 
 

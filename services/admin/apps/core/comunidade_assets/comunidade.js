@@ -44,7 +44,4 @@
     });
     document.getElementById('busca-vazia').hidden = total > 0;
   });
-  document.querySelectorAll('a[href="#alunos"]').forEach(link => link.addEventListener('click', () => {
-    const lista = document.querySelector('#alunos details'); if (lista) lista.open = true;
-  }));
 })();

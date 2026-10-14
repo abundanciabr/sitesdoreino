@@ -150,3 +150,36 @@ site:
   en: Back to the site
   pt-br: Voltar ao site
   es: Volver al sitio
+whatsapp_confirmacao:
+  _fonte: 1fdb01
+  en: Confirm your WhatsApp to receive notices (optional)
+  pt-br: Confirme seu WhatsApp para receber avisos (opcional)
+  es: Confirma tu WhatsApp para recibir avisos (opcional)
+whatsapp_confira:
+  _fonte: 6cb761
+  en: Confirm the same WhatsApp number to receive notices.
+  pt-br: Confirme o mesmo número de WhatsApp para receber os avisos.
+  es: Confirma el mismo número de WhatsApp para recibir avisos.
+whatsapp_autorizacao:
+  _fonte: 683eac
+  en: This WhatsApp number is mine and I authorize Meshcraft to send notices about
+    my request and whether school access is released.
+  pt-br: Este WhatsApp é meu e autorizo a Meshcraft a enviar avisos sobre meu pedido
+    e a liberação ou não do acesso à escola.
+  es: Este WhatsApp es mío y autorizo a Meshcraft a enviar avisos sobre mi solicitud
+    y la habilitación o no del acceso a la escuela.
+whatsapp_explicacao:
+  _fonte: 8266fc
+  en: 'If you authorize WhatsApp notices, we will ask you to confirm your number by
+    replying with a code. This does not release school access: the team reviews your
+    request. The result is also sent by email. WhatsApp notices are optional and do
+    not affect the review.'
+  pt-br: 'Se autorizar os avisos, enviaremos uma mensagem no WhatsApp pedindo sua
+    confirmação. Responda com o código indicado para confirmar que o número é seu.
+    Isso não libera o acesso: a equipe analisa seu pedido. O resultado também será
+    enviado ao seu e-mail. Receber avisos pelo WhatsApp é opcional e não interfere
+    na análise do seu pedido.'
+  es: 'Si autorizas los avisos, te pediremos confirmar tu número de WhatsApp respondiendo
+    con un código. Esto no habilita el acceso: el equipo revisa tu solicitud. El resultado
+    también se envía por correo. Los avisos por WhatsApp son opcionales y no afectan
+    la revisión.'

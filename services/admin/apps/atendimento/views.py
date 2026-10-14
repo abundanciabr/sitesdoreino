@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from django.utils import timezone
+from django.core import signing
 from django.db import transaction
 from django.db.models import Q, Count, Avg
 from django.http import JsonResponse, Http404, HttpResponseRedirect, FileResponse
@@ -65,7 +66,19 @@ def aluno(request):
         identidade=IdentidadeClient().sessao_completa(request.META.get('HTTP_COOKIE',''))
     except IdentidadeIndisponivel:
         return resposta({'erro':'Não foi possível conferir sua sessão. Tente novamente.'},503)
-    return _conversar(request, identidade)
+    visitante = None
+    if not identidade.get('autenticado') or not identidade.get('id'):
+        try:
+            visitante = request.get_signed_cookie('meshcraft_suporte', salt='suporte-visitante', max_age=31536000)
+            uuid.UUID(visitante)
+        except (KeyError, ValueError, signing.BadSignature):
+            visitante = str(uuid.uuid4())
+        identidade = {'autenticado': True, 'id': 'visitante-' + visitante, 'nome_exibido': 'Visitante'}
+    resultado = _conversar(request, identidade)
+    if visitante:
+        resultado.set_signed_cookie('meshcraft_suporte', visitante, salt='suporte-visitante',
+            max_age=31536000, secure=True, httponly=True, samesite='Lax', path='/admin/')
+    return resultado
 
 
 @require_http_methods(['GET','POST'])
@@ -130,7 +143,8 @@ def _conversar(request, identidade):
                             'estado':'aguardando' if assunto.modo=='assistido' else 'robo'})
                     conversa=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid,pessoa_id=dono)
                     if conversa.mensagens.filter(referencia=ref).exists():
-                        return resposta({'conversa':serializar(conversa),'csrf':get_token(request)})
+                        return resposta({'conversa':serializar(conversa),'csrf':get_token(request),
+                            'disponibilidade':expediente,'aviso_horario':not expediente['respostas_abertas']})
                     if conversa.arquivada_em:
                         conversa.arquivada_em = None
                         conversa.save(update_fields=['arquivada_em'])
@@ -204,6 +218,7 @@ def _conversar(request, identidade):
             conversa=service.conversa_atual(sid,dono)
         return resposta({'csrf':get_token(request),'pessoa':dono,'horario':expediente['horario'],
             'disponibilidade':expediente,
+            'aviso_horario':request.method == 'POST' and d.get('acao','mensagem') == 'mensagem' and not expediente['respostas_abertas'],
             'mensagem':c.mensagem,'assuntos':list(Assunto.objects.filter(site_id=sid).values('id','nome')),
             'historico':[{'id':str(i.pk),'assunto':i.assunto.nome,'estado':i.estado,'em':i.atualizada_em.isoformat()}
                         for i in Conversa.objects.filter(site_id=sid,pessoa_id=dono).select_related('assunto')[:50]],
@@ -255,6 +270,18 @@ def conversa_admin(request,conversa_id):
         acao=request.POST.get('acao','')
         if conversa.origem_conversa and acao in ('responder', 'robo', 'sugerir', 'avisar'):
             return resposta({'erro':'Este histórico pertence ao canal original. Confira e responda pela caixa do CRM.'},409)
+        if acao in ('escola_liberar', 'escola_recusar'):
+            from .jornada_acesso import resolver
+            quem,nome=identidade_atendente(request)
+            if conversa.atendente_id and conversa.atendente_id not in (quem,str(request.admin['id'])):
+                return resposta({'erro':'Este atendimento já está com outra pessoa.'},409)
+            try:
+                resolver(conversa,decisao='liberar' if acao=='escola_liberar' else 'recusar',
+                    quem=quem,nome=nome,motivo=request.POST.get('motivo_escola','').strip(),product_id=request.POST.get('produto_escola',''))
+            except ValueError as erro:
+                ctx.update(erro=str(erro),conversa=conversa)
+                return render(request,'admin/atendimento_conversa.html',ctx,status=409)
+            return HttpResponseRedirect(prefixo(request)+'/')
         if acao=='proximo_passo':
             from datetime import datetime
             from .models import HistoricoDoPasso

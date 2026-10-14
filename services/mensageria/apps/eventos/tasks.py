@@ -179,6 +179,17 @@ def processar_envio(envio_id: int, task=None) -> None:
         if envio.canal == "email"
         else nullcontext()
     )
+    if envio.canal == "whatsapp" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado", "acesso_confirmacao", "acesso_recebido"}:
+        from .avisos_acesso import processar_whatsapp
+        processar_whatsapp(envio)
+        return
+    if envio.canal == "email" and envio.tipo in {"acesso_liberado", "acesso_nao_liberado", "acesso_recebido"}:
+        from .avisos_acesso import decisao_vigente
+        if not decisao_vigente(envio):
+            envio.status = "falhou"
+            envio.resultado = "decisão substituída; aviso anterior não enviado"
+            envio.save(update_fields=["status", "resultado", "updated_at"])
+            return
     erro = None
     erro_do_provedor = False
     contar_tentativa = True
@@ -274,6 +285,18 @@ def enviar_notificacao(envio_id: int, task=None) -> None:
     except CapacidadeDoProvedor as exc:
         retries = task.retries if task is not None else 5
         enviar_notificacao.schedule(args=(envio_id,), delay=exc.atraso, retries=retries)
+
+
+@huey.task(retries=5, retry_delay=30)
+def confirmar_whatsapp_acesso(mensagem_id):
+    from .avisos_acesso import confirmar_recebida
+    confirmar_recebida(mensagem_id)
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def retomar_avisos_de_acesso():
+    from .avisos_acesso import retomar_pendentes
+    retomar_pendentes()
 
 
 @huey.periodic_task(crontab(minute="*/5"))

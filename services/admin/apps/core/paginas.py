@@ -60,7 +60,7 @@ from dataclasses import dataclass
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from apps.auditoria.models import Registro
 
@@ -575,12 +575,19 @@ def _carregar(request, site):
     return _escritos_do_rascunho(corpo), corpo.get("base_version") or 0
 
 
-@require_GET
+@require_http_methods(['GET', 'POST'])
 def pagina_de_venda(request):
     """A tela: um campo por espaço, agrupado por seção, na ordem da página."""
     site = _site(request)
     if site is None:
         return _sem_catalogo(request)
+
+    if request.GET.get('banca') == '1':
+        from apps.agentes.banca_painel import painel
+        return painel(request, site)
+    if request.method != 'GET':
+        from django.http import HttpResponseNotAllowed
+        return HttpResponseNotAllowed(['GET'])
 
     lido = _carregar(request, site)
     if lido is None:

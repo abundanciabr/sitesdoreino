@@ -495,6 +495,8 @@ STREAMS = {
 }
 
 STREAMS["eventos.matricula.situacao-alterada"] = ao_matricula_situacao_alterada
+from apps.atendimento.jornada_acesso import encaminhar as encaminhar_acesso
+STREAMS["eventos.escola.suporte-solicitado"] = encaminhar_acesso
 
 
 def tratar(stream: str, envelope: dict):
