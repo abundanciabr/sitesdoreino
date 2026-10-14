@@ -19,6 +19,11 @@ normal. Um menu é enfeite de navegação; derrubar a vitrine porque um item est
 torto seria a troca errada.
 """
 
+from urllib.parse import urlencode
+
+from django.urls import reverse
+
+from apps.i18n.catalogo import t
 from apps.i18n.idiomas import caminho_publico
 
 # A célula que responde por estas rotas. Escrito aqui, uma vez, porque é a
@@ -138,6 +143,31 @@ def _estou_aqui(destino: str, caminho: str) -> bool:
 
 def menu_do_topo(request) -> list:
     """Os itens que ESTA página mostra, prontos para o template."""
+    resolvida = getattr(request, "resolver_match", None)
+    cfg = getattr(request, "i18n", None)
+    idioma = getattr(request, "idioma", None)
+    if (
+        resolvida is not None
+        and resolvida.url_name == "landing"
+        and cfg is not None
+        and idioma
+        and not getattr(request, "ator", None)
+    ):
+        return [
+            {
+                "href": caminho_publico(cfg, idioma, reverse("entrar"))
+                + "?"
+                + urlencode({"next": request.path}),
+                "rotulo": t("sessao.entrar", idioma),
+                "nova_aba": False,
+            },
+            {
+                "href": caminho_publico(cfg, idioma, reverse("cadastro")),
+                "rotulo": t("rodape.link_cadastro", idioma),
+                "nova_aba": False,
+            },
+        ]
+
     site = getattr(request, "site", None) or {}
     menu = site.get("menu") or {}
     if not menu:

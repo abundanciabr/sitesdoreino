@@ -78,7 +78,7 @@
     .progresso .passo { margin: 0; font-size: .875rem; opacity: .8; }
 {% endblock %}
 {% block conteudo %}
-{% include "funil/_sessao.html" %}
+{% if request.ator %}{% include "funil/_sessao.html" %}{% endif %}
 <div class="card">
   <h1>{% t "landing.titulo" %}</h1>
   {% if request.ator %}
