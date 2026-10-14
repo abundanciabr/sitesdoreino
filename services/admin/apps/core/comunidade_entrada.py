@@ -179,6 +179,19 @@ def _forum(request):
         return None
 
 
+@require_GET
+@never_cache
+def alunos_atual(request):
+    """Leitura administrativa do visual vigente dos alunos, sem votar por eles."""
+    _admin(request)
+    from .galeria_comunidade import classificacao
+    return _resposta(render(request, "admin/galeria_publica.html", {
+        "imagens": classificacao(),
+        "aluno": {"nome": "Aluno · visual atual"},
+        "somente_leitura": True,
+    }))
+
+
 def entrada(request):
     _admin(request)
     perfil = _perfil(request)
