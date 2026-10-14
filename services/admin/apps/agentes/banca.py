@@ -23,6 +23,8 @@ Toda objeção deve trazer seção e trecho literal de blocos. Nunca invente cit
 Quando faltar algo, cite o trecho que provocou a dúvida e explique o que não foi encontrado.
 Não afirme ter visto imagens, vídeos, layout ou interação: esta rodada lê texto e preço do catálogo.
 O cético calibrado só formula objeções apoiadas em IDs reais do corpus.
+Mesmo sem objeções, cite em trecho_decisao e secao_decisao o texto que sustenta a decisão de compra.
+Para o calibrado, evidencia_decisao é o ID real da dúvida confrontada; nos outros perfis pode ser vazio.
 Comprar é intenção hipotética do perfil. Não atribua probabilidade de compra, nota ou receita.
 Responda em português simples, sem dados pessoais, com no máximo cinco objeções concretas.'''
 
@@ -86,6 +88,8 @@ def esquema_leitura():
               'evidencia_id': {'type': 'string'}}
     propriedades = {'compra': {'type': 'string', 'enum': ['sim', 'nao', 'indeciso']},
                    'porque': {'type': 'string'}, 'onde_parou': {'type': 'string'},
+                   'secao_decisao': {'type': 'string'}, 'trecho_decisao': {'type': 'string'},
+                   'evidencia_decisao': {'type': 'string'},
                    'objecoes': {'type': 'array', 'maxItems': 5, 'items': {
                        'type': 'object', 'properties': campos, 'required': list(campos), 'additionalProperties': False}}}
     return {'type': 'json_schema', 'name': 'leitura_banca', 'strict': True,
@@ -98,6 +102,10 @@ def validar_leitura(dados, foto, corpus, codigo):
         raise ValueError('Resposta sem decisão simulada e justificativas.')
     textos = blocos(foto['conteudo']['secoes'])
     ids = {i['id'] for i in corpus['itens']}
+    if not dados.get('trecho_decisao', '').strip() or dados['trecho_decisao'] not in textos.get(dados.get('secao_decisao'), ''):
+        raise ValueError('A decisão simulada também precisa citar um trecho real da página.')
+    if codigo == 'calibrado' and dados.get('evidencia_decisao') not in ids:
+        raise ValueError('A decisão calibrada precisa de evidência real.')
     if not isinstance(dados.get('objecoes'), list) or len(dados['objecoes']) > 5:
         raise ValueError('Lista de objeções inválida.')
     for item in dados['objecoes']:
