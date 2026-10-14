@@ -91,7 +91,7 @@ def pedir(site_id, slug, origem, experimento_id, variante, chave, por, modo_test
     return execucao
 
 
-def esquema_leitura():
+def esquema_leitura(secoes=None):
     campos = {'secao': {'type': 'string'}, 'trecho': {'type': 'string'},
               'objecao': {'type': 'string'}, 'faltou': {'type': 'string'},
               'evidencia_id': {'type': 'string'}}
@@ -101,6 +101,9 @@ def esquema_leitura():
                    'evidencia_decisao': {'type': 'string'},
                    'objecoes': {'type': 'array', 'maxItems': 5, 'items': {
                        'type': 'object', 'properties': campos, 'required': list(campos), 'additionalProperties': False}}}
+    if secoes:
+        campos['secao']['enum'] = list(secoes)
+        propriedades['secao_decisao']['enum'] = list(secoes)
     return {'type': 'json_schema', 'name': 'leitura_banca', 'strict': True,
             'schema': {'type': 'object', 'properties': propriedades,
                        'required': list(propriedades), 'additionalProperties': False}}
@@ -113,9 +116,9 @@ def validar_leitura(dados, foto, corpus, codigo):
     def localizar(secao, trecho):
         if trecho and trecho in textos.get(secao, ''):
             return secao
-        # Aceita o nome da seção apenas se o trecho literal identifica um único slot nela.
+        # A citação literal identifica o bloco; títulos visíveis também podem vir na resposta.
         candidatos = [chave for chave, texto in textos.items()
-                      if trecho and trecho in texto and chave.startswith(str(secao) + '.')]
+                      if trecho and trecho in texto]
         return candidatos[0] if len(candidatos) == 1 else secao
     dados['secao_decisao'] = localizar(dados.get('secao_decisao'), dados.get('trecho_decisao'))
     ids = {i['id'] for i in corpus['itens']}
@@ -185,7 +188,7 @@ def executar(execucao):
                 entrada['corpus'] = estado['corpus']
         resposta = modelo.responder(modelo=estado['modelo'], instrucoes=instrucao,
             itens=[{'role': 'user', 'content': json.dumps(entrada, ensure_ascii=False)}],
-            formato=esquema_sintese() if codigo == 'sintese' else esquema_leitura(),
+            formato=esquema_sintese() if codigo == 'sintese' else esquema_leitura(entrada['blocos']),
             max_saida=3000, esforco='medium', execucao=execucao, origem='banca_clientes')
         estado['chamadas'][codigo] = {'texto': anonimizar(resposta.texto) if not resposta.completa else resposta.texto,
             'consumo_id': resposta.consumo.pk, 'resposta_id': resposta.id,
