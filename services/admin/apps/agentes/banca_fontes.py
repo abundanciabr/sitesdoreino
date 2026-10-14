@@ -35,6 +35,21 @@ def anonimizar(texto, nomes=()):
     return texto.strip()[:1200]
 
 
+def registrar(site_id, fonte, texto, referencia, data='', produto=''):
+    if fonte not in {'reembolso', 'suporte', 'quiz', 'comentário do lançamento'}:
+        raise ValueError('Escolha a origem do relato real.')
+    if not 10 <= len(texto.strip()) <= 1200 or not referencia.strip():
+        raise ValueError('Informe o trecho real e uma referência da origem, sem dados pessoais.')
+    if parece_teste(texto) or MENU_AUTOMATICO.search(texto):
+        raise ValueError('Testes e menus automáticos não são evidências de compradores.')
+    registro = {'id': uuid.uuid4().hex[:20], 'fonte': fonte, 'texto': anonimizar(texto),
+                'referencia': anonimizar(referencia)[:200], 'data': data,
+                'produto': anonimizar(produto)[:200], 'idioma': 'pt-br',
+                'tema': 'reembolso' if fonte == 'reembolso' else 'objeção ou pergunta'}
+    return RascunhoDeConfiguracao.objects.create(tipo='banca_evidencia', site_id=str(site_id),
+        alvo=registro['id'], conteudo=registro)
+
+
 def coletar(site_id):
     itens, cobertura = [], []
     def incluir(fonte, referencia, texto, data='', produto='', nomes=()):
@@ -117,6 +132,10 @@ def coletar(site_id):
                           'examinados': len(dados.get('itens', [])), 'limite': 'primeira página; não são comentários de campanha'})
     except Exception as erro:
         cobertura.append({'fonte': 'comentários de aulas', 'estado': 'indisponível', 'motivo': type(erro).__name__})
+    manuais = list(RascunhoDeConfiguracao.objects.filter(tipo='banca_evidencia', site_id=str(site_id)).order_by('-pk')[:250])
+    itens.extend(r.conteudo for r in manuais)
+    cobertura.append({'fonte': 'relatos registrados no painel', 'estado': 'consultada',
+                      'examinados': len(manuais), 'limite': 'Trechos reais informados pela administração; autenticidade depende da origem registrada.'})
     cobertura.append({'fonte': 'reembolsos', 'estado': 'mensagens identificadas nas fontes acima',
                       'examinados': sum(i['tema'] == 'reembolso' for i in itens),
                       'limite': 'não inclui razões de estorno do provedor nem todas as fontes externas'})

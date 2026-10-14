@@ -21,6 +21,16 @@ def corpus():
             'digest': 'corpus1', 'cobertura': [], 'selecao_versao': banca_fontes.VERSAO_SELECAO}
 
 
+@pytest.mark.django_db
+def test_registro_manual_preserva_origem_sem_contato():
+    registro = banca_fontes.registrar('s1', 'reembolso', 'Não consegui terminar; contato pessoa@example.com', 'Ticket 42', '2026-10-14')
+    assert registro.conteudo['referencia'] == 'Ticket 42'
+    assert 'pessoa@example.com' not in registro.conteudo['texto']
+    assert registro.conteudo['tema'] == 'reembolso'
+    with pytest.raises(ValueError):
+        banca_fontes.registrar('s1', 'suporte', 'Teste técnico autorizado: não comprar', 'teste')
+
+
 def leitura(codigo='iniciante'):
     return {'compra': 'indeciso', 'porque': 'Falta detalhe', 'onde_parou': 'Primeiro passo',
             'secao_decisao': 'cubo.headline', 'trecho_decisao': 'Aprenda modelagem 3D',
