@@ -93,7 +93,7 @@ test('checks retomam, salvam ao fechar e falha de salvamento mantém painel e ma
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
 });
 
-test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem trocar de página',async()=>{
+test('compromisso mostra motivo e sonhos e abre a recompensa dentro da Trilha ao receber XP',async()=>{
  const initial=record(); initial.inicio.motivo_sonhos=['pc_gamer'];
  const ui=await page('compromisso',initial,'',false,true);
  assert.equal(ui.byId('compromisso-1').hidden,false);
@@ -106,15 +106,26 @@ test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem t
  assert.equal(ui.calls.at(-1).options.body.get('compromisso_etapa'),'2');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
  assert.equal(ui.byId('compromisso-2').hidden,false);
- const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];saved.conquista_xp=100;ui.setRecord(saved);
+ const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];saved.conquista_xp=5100;saved.conquista_url='/trilha/inicio/conquista/2/?comprovante=teste';ui.setRecord(saved);
  await ui.submit('assumir');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),'sim');
  assert.equal(ui.calls.at(-1).options.body.get('proximo_passo'),undefined);
  assert.equal(ui.calls.at(-1).options.body.get('objetivo'),undefined);
- assert.equal(ui.byId('compromisso-3').hidden,false);
- assert.match(ui.byId('compromisso-xp').textContent,/100 XP/);
- assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
- await ui.close();assert.deepEqual(ui.panelEvents,['fechado']);
+ assert.match(ui.byId('compromisso-xp').textContent,/5.100 XP/);
+ assert.deepEqual(ui.redirects,[]);
+ assert.deepEqual(ui.panelEvents,['/trilha/inicio/conquista/2/?comprovante=teste&embutido=1']);
+});
+
+test('compromisso na página direta abre recompensa somente com crédito novo e avaliação reconhecida',async()=>{
+ for (const [xp,resultado,concluida] of [[5100,'reconhecida',true],[0,'reconhecida',true],[0,'incompleta',false],[5100,'falha',false]]) {
+  const initial=record();initial.inicio.compromisso_etapa=2;
+  const ui=await page('compromisso',initial);
+  const saved=record({conquista_xp:xp,conquista_url:'/trilha/inicio/conquista/2/?comprovante=teste',avaliacao_atual:{ordem:2,resultado,feedback:'Resultado da tentativa.'}});
+  saved.inicio.etapas=[{}, {concluida}];ui.setRecord(saved);
+  await ui.submit('assumir');
+  assert.deepEqual(ui.redirects,xp>0&&concluida?['/trilha/inicio/conquista/2/?comprovante=teste']:[]);
+  if(concluida&&xp===0)assert.equal(ui.byId('compromisso-3').hidden,false);
+ }
 });
 
 test('compromisso retoma a declaração e falha mantém decisão sem confirmação fictícia',async()=>{
