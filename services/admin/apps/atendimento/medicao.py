@@ -25,9 +25,11 @@ def media(valores):
     return round(sum(valores)/len(valores), 2) if valores else None
 
 
-def calcular(sid, inicio, curso=''):
+def calcular(sid, inicio, curso='', fim=None):
     agora = timezone.now()
-    consulta = Conversa.objects.filter(site_id=sid)
+    consulta = Conversa.objects.filter(site_id=sid,canal='site')
+    if fim:
+        consulta = consulta.filter(criada_em__lt=fim)
     if curso:
         consulta = consulta.filter(curso=curso)
     todas = list(consulta.filter(Q(criada_em__gte=inicio)|Q(rodada_iniciada_em__gte=inicio)))
@@ -46,7 +48,7 @@ def calcular(sid, inicio, curso=''):
     confirmadas = inferidas = reaberturas = maduras = retornos = 0
     for c, d, retorno in linhas:
         comeco = parse_datetime(d.get('inicio') or '')
-        if not comeco or comeco < inicio:
+        if not comeco or comeco < inicio or (fim and comeco >= fim):
             continue
         tipo = int(d.get('tipo') or 0)
         g = grupos[tipo]
@@ -54,9 +56,9 @@ def calcular(sid, inicio, curso=''):
         resposta = parse_datetime(d.get('primeira_resposta_em') or '')
         resolvida = parse_datetime(d.get('resolvida_em') or '')
         encerrada = parse_datetime(d.get('encerrada_em') or '')
-        if resposta and resposta >= comeco:
+        if resposta and resposta >= comeco and (not fim or resposta < fim):
             g['respostas'].append((resposta-comeco).total_seconds()/60)
-        if resolvida and resolvida >= comeco:
+        if resolvida and resolvida >= comeco and (not fim or resolvida < fim):
             g['resolvidas'] += 1
             g['resolucoes'].append((resolvida-comeco).total_seconds()/60)
             confirmadas += d.get('resolucao') == 'confirmada'
@@ -76,11 +78,14 @@ def calcular(sid, inicio, curso=''):
     # Duas respostas de 2 min no mesmo pedido representam 4 min por pedido.
     tempos = defaultdict(float)
     for m in Mensagem.objects.filter(conversa__in=consulta, autor='equipe', criada_em__gte=inicio, tempo_humano_seg__isnull=False):
+        if fim and m.criada_em >= fim:
+            continue
         tempos[(m.conversa_id, m.rodada, m.tipo)] += m.tempo_humano_seg / 60
     for (_, _, tipo), minutos in tempos.items():
         grupos[tipo]['humanos'].append(minutos)
     total = sum(g['total'] for g in grupos.values())
     consumos = ConsumoDoAtendimento.objects.filter(conversa__in=consulta, consumo__criado_em__gte=inicio).select_related('consumo')
+    if fim: consumos = consumos.filter(consumo__criado_em__lt=fim)
     custo = sum((c.consumo.custo_estimado_usd for c in consumos), Decimal('0'))
     inicio_medicao = Configuracao.objects.filter(site_id=sid).values_list('medicao_iniciada_em',flat=True).first()
     ativos = alunos_ativos(sid, curso)
@@ -96,4 +101,22 @@ def calcular(sid, inicio, curso=''):
         'custo_usd': custo, 'custo_por_pedido': custo/total if total else None,
         'chamadas': len(consumos), 'custos_desconhecidos': sum(c.consumo.desconhecido for c in consumos),
         'ativos': ativos, 'pedidos_por_100': round(total*100/ativos, 2) if ativos else None,
-        'inicio': inicio_medicao, 'revisao_em': inicio_medicao+timedelta(days=14) if inicio_medicao else None}
+        'inicio': inicio_medicao, 'revisao_em': inicio_medicao+timedelta(days=14) if inicio_medicao else None,
+        'tempo_humano_amostra':sum(len(g['humanos']) for g in grupos.values()),
+        'resposta_amostra':sum(len(g['respostas']) for g in grupos.values()),
+        'satisfacao_amostra':sum(len(g['notas']) for g in grupos.values()),
+        'externos':Conversa.objects.filter(site_id=sid).exclude(canal='site').count()}
+
+
+def coleta_fixa(sid, curso=''):
+    inicio = Configuracao.objects.filter(site_id=sid).values_list('medicao_iniciada_em',flat=True).first()
+    if not inicio:
+        return None
+    fim = inicio + timedelta(days=14)
+    d = calcular(sid, inicio, curso, fim)
+    d['completa'] = timezone.now() >= fim
+    d['conclusao'] = ('A janela inicial terminou; confira as amostras e as resoluções antes de decidir capacidade.'
+        if d['completa'] else 'Coleta em andamento. Ainda não permite concluir capacidade nem ampliar autonomia.')
+    if not d['tempo_humano_amostra'] or not d['confirmadas'] or not d['satisfacao_amostra']:
+        d['conclusao'] += ' Faltam resoluções comprovadas, tempo humano ou satisfação para estimar capacidade.'
+    return d

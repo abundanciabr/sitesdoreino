@@ -309,7 +309,7 @@ def processar_uma():
                 if not disponibilidade(c)['respostas_abertas']]
     with transaction.atomic():
         conversa = Conversa.objects.select_for_update(skip_locked=True).filter(
-            Q(trabalhando_ate__isnull=True)|Q(trabalhando_ate__lt=timezone.now()), processar=True).exclude(site_id__in=fechados).first()
+            Q(trabalhando_ate__isnull=True)|Q(trabalhando_ate__lt=timezone.now()), processar=True, canal='site').exclude(site_id__in=fechados).first()
         if not conversa:
             return False
         conversa.trabalhando_ate = timezone.now()+timedelta(minutes=4)
@@ -365,7 +365,13 @@ def processar_uma():
 def manutencao_avisos():
     from .escala import manutencao
     manutencao()
-    for conversa in Conversa.objects.exclude(estado='encerrado').filter(
+    from .operacao import receber_canais
+    for sid in Configuracao.objects.values_list('site_id',flat=True):
+        try:
+            receber_canais(sid)
+        except Exception:
+            log.error('Suporte: consulta dos canais indisponível; histórico original preservado.')
+    for conversa in Conversa.objects.filter(canal='site').exclude(estado='encerrado').filter(
             Q(encaminhada=True) | Q(mensagens__autor='aluno')).distinct().select_related('assunto').iterator(chunk_size=100):
         avisar(conversa)
 

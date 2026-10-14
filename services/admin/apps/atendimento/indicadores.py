@@ -40,7 +40,7 @@ def desempenho(request):
     sid, ctx = _escopo(request)
     dias, inicio, hoje = _periodo(request)
     curso = request.GET.get('curso', '').strip()[:200]
-    todas = Conversa.objects.filter(site_id=sid)
+    todas = Conversa.objects.filter(site_id=sid,canal='site')
     cursos = list(todas.exclude(curso='').order_by('curso').values_list('curso', flat=True).distinct()[:100])
     if curso:
         todas = todas.filter(curso=curso)
@@ -114,8 +114,9 @@ def desempenho(request):
                max_resposta=max([1]+[i['primeira_resposta_min'] for i in serie if i['primeira_resposta_min'] is not None]),
                nps_estado='Sem dados consolidados para este período',
                indicadores_ressalva='Recebidos e tempos usam o início da rodada no período; conclusões usam a data registrada de encerramento. A espera atual começa na primeira mensagem do aluno ainda sem resposta humana. Notas sem data própria contam só na primeira rodada. Respostas antigas só entram quando a conversa não foi reaberta.')
-    from .medicao import calcular
+    from .medicao import calcular, coleta_fixa
     ctx['escala'] = calcular(sid, inicio, curso)
+    ctx['coleta_fixa'] = coleta_fixa(sid, curso)
     return render(request, 'admin/atendimento_desempenho.html', ctx)
 
 
