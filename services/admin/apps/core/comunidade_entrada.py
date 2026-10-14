@@ -110,6 +110,7 @@ def _configurar(request, erro="", status=200, usuario="", avatar=""):
             "admin/comunidade_perfil.html",
             {
                 "perfil": perfil,
+                "nome": request.POST.get("nome", perfil.nome if perfil else str(_admin(request).get("nome") or "").split(" ")[0]),
                 "usuario": usuario or (perfil.usuario if perfil else ""),
                 "avatar": avatar or (perfil.avatar if perfil else ""),
                 "avatares": [{"id": a, "nome": v[0]} for a, v in AVATARES.items()],
@@ -227,6 +228,9 @@ def salvar_perfil(request):
     usuario = str(request.POST.get("usuario") or "").strip().lstrip("@").lower()
     avatar = str(request.POST.get("avatar") or "")
     existente = _perfil(request)
+    nome = " ".join(str(request.POST.get("nome", existente.nome if existente else str(admin.get("nome") or "").split(" ")[0])).split())
+    if not nome or len(nome) > 120:
+        return _configurar(request, "Informe seu nome na comunidade, com até 120 caracteres.", 400, usuario, avatar)
     if not re.fullmatch(r"[a-z0-9][a-z0-9_.]{0,31}", usuario):
         return _configurar(
             request,
@@ -272,8 +276,6 @@ def salvar_perfil(request):
             usuario,
             avatar,
         )
-    partes = str(admin.get("nome") or "").split()
-    nome = partes[0] if partes and "@" not in partes[0] else "Admin"
     valores = {
         "usuario": usuario,
         "nome": nome[:120],
