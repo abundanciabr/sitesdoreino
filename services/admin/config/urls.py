@@ -8,7 +8,7 @@ from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
-from apps.core import comunidade_entrada
+from apps.core import comunidade_entrada, comunidade_seguidores
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 from apps.core.acompanhamento_alunos import acompanhamento_alunos, acompanhamento_aluno
@@ -385,6 +385,10 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/seguidores", comunidade_seguidores.dados),
+    path("galeria-publica/seguidores/solicitar", comunidade_seguidores.solicitar),
+    path("galeria-publica/seguidores/responder", comunidade_seguidores.responder),
+    path("galeria-publica/seguidores/<str:nome>", comunidade_seguidores.interface),
     path("galeria-publica/perfil", comunidade_entrada.salvar_perfil, name="comunidade_salvar_perfil"),
     path("galeria-publica/tema", comunidade_entrada.salvar_tema, name="comunidade_salvar_tema"),
     path("galeria-publica/disponivel", comunidade_entrada.disponibilidade, name="comunidade_disponibilidade"),

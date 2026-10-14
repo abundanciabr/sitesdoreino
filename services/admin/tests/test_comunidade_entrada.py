@@ -7,6 +7,7 @@ from PIL import Image
 
 from apps.core import comunidade_entrada as comunidade
 from apps.core.comunidade_modelos import PerfilDaComunidade
+from apps.core.comunidade_seguidores import chave as chave_seguidor
 from apps.core.galeria_models import VotoDaGaleria
 
 
@@ -202,8 +203,9 @@ def test_csrf_do_cadastro_atravessa_a_porta_real(admin):
 
 
 def test_diretorio_usa_so_ativos_reais_da_escola_sem_dados_de_contato(
-    admin, monkeypatch
+    settings, monkeypatch
 ):
+    settings.ADMIN_EMAILS = "admin@example.test"
     monkeypatch.setattr(comunidade, "site_de", lambda request: "escola-a")
     linhas = [
         {
@@ -252,7 +254,7 @@ def test_diretorio_usa_so_ativos_reais_da_escola_sem_dados_de_contato(
     request = RequestFactory().get("/galeria-publica", HTTP_HOST="meshcraft.top")
     request.admin = {"id": "admin-real", "email": "admin@example.test"}
     assert comunidade._alunos(request) == [
-        {"nome": "Bruno", "inicial": "B", "perfil": None, "usuario": ""}
+        {"nome": "Bruno", "inicial": "B", "perfil": None, "usuario": "", "seguir_chave": chave_seguidor("meshcraft.top", "bruno@example.test")}
     ]
 
 

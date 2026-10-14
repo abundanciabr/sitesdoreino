@@ -146,7 +146,9 @@ def _alunos(request):
     perfis = {
         p.email: p for p in PerfilDaComunidade.objects.filter(site_host=_host(request))
     }
+    from .comunidade_seguidores import chave
     for email, item in unicos.items():
+        item["seguir_chave"] = chave(_host(request), email)
         perfil = perfis.get(email)
         item["perfil"] = perfil
         item["usuario"] = perfil.usuario if perfil else ""
@@ -207,6 +209,8 @@ def entrada(request):
     if not perfil or request.GET.get("perfil") == "editar":
         return _configurar(request)
     alunos, forum = _alunos(request), _forum(request)
+    from .comunidade_seguidores import decorar
+    decorar(alunos, perfil)
     contexto = {
         "perfil": perfil,
         "temas": TEMAS,
