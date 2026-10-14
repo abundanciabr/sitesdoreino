@@ -8,11 +8,13 @@
   <meta name="description" content="Conheça os nove visuais da comunidade Meshcraft e vote nos seus favoritos.">
   <link rel="icon" href="data:,"><link rel="stylesheet" href="/comunidade/galeria.css">
   <script src="/comunidade/galeria.js" defer></script>
+{% if aluno and not somente_leitura %}<link rel="stylesheet" href="/comunidade/seguidores/interface.css"><script defer src="/comunidade/seguidores/interface.js"></script>{% endif %}
 </head>
 <body data-pode-votar="{% if aluno and not somente_leitura %}sim{% else %}nao{% endif %}">
   {% if somente_leitura %}<aside class="instrucoes" aria-label="Leitura administrativa"><strong>Visual atual dos alunos · leitura administrativa.</strong> A votação continua no ar. Votos e comentários estão desabilitados nesta conferência. <a href="/admin/comunidade/">Voltar ao painel</a></aside>{% endif %}
   <header class="topo"><a class="marca" href="/">M<span>ESHCRAFT</span></a><nav><a href="/forum/comunidade">Minha comunidade</a>{% if aluno %}<span class="nome-aluno">{{ aluno.nome|primeiro_nome }}</span>{% else %}<a class="entrar" href="/login?next=/comunidade">Entrar</a>{% endif %}</nav></header>
   <main>
+    {% if aluno and not somente_leitura %}{% include "admin/_comunidade_seguidores.html" %}{% endif %}
     <section class="introducao"><p class="sobretitulo">A PRÓXIMA CARA DA MESHCRAFT</p><h1>Uma comunidade.<br>Nove possibilidades.</h1><p class="descricao">Explore os modelos e vote nos que você gostaria de usar.<br>Seu olhar ajuda a dar forma à nossa comunidade.</p><div class="instrucoes"><span>♡ Um voto por imagem</span><span>↗ Clique para ampliar</span><span>↕ Mais votadas primeiro</span></div>{% if not aluno %}<p class="convite"><a href="/login?next=/comunidade">Entre com sua conta de aluno</a> para votar e comentar.</p>{% endif %}</section>
     <div class="cabecalho-grade"><h2>Os nove modelos</h2><span id="ordem-votos">Ordenados por votos</span></div>
     <div id="grade" class="grade">

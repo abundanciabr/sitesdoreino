@@ -853,3 +853,4 @@ from .acompanhamento_modelo import RegistroAcompanhamentoAluno  # noqa: E402,F40
 from .galeria_models import VotoDaGaleria, ComentarioDaGaleria
 
 from .comunidade_modelos import PerfilDaComunidade
+from .comunidade_seguidores_modelo import PedidoSeguidor
