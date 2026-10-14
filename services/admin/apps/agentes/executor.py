@@ -168,7 +168,7 @@ def _executar(execucao: Execucao) -> None:
     from . import conhecimento, conversa, panorama, quiz, super_equipe
     from .models import RoboPessoal
 
-    if execucao.tipo not in (Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO, Execucao.Tipo.PROCEDIMENTO) and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
+    if execucao.tipo not in (Execucao.Tipo.BANCA, Execucao.Tipo.SUPER_EQUIPE, Execucao.Tipo.SATISFACAO, Execucao.Tipo.PROCEDIMENTO) and execucao.robo.situacao != RoboPessoal.Situacao.ATIVO:
         terminar(execucao, S.PAUSADA, "O robô está pausado. Volta quando for reativado.")
         return
     if execucao.tipo == Execucao.Tipo.CONVERSA:
@@ -184,6 +184,9 @@ def _executar(execucao: Execucao) -> None:
     elif execucao.tipo == Execucao.Tipo.SATISFACAO:
         from . import satisfacao
         satisfacao.executar(execucao)
+    elif execucao.tipo == Execucao.Tipo.BANCA:
+        from . import banca
+        banca.executar(execucao)
     elif execucao.tipo == Execucao.Tipo.SUPER_EQUIPE:
         super_equipe.executar(execucao)
     elif execucao.tipo == Execucao.Tipo.PROCEDIMENTO:

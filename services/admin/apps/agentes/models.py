@@ -80,6 +80,7 @@ class Execucao(models.Model):
         SATISFACAO = "satisfacao", "Cuidado com a satisfação dos alunos"
         SUPER_EQUIPE = "super_equipe", "Equipe de especialistas técnicos"
         PROCEDIMENTO = "procedimento", "Redação de procedimento em rascunho"
+        BANCA = "banca_clientes", "Banca de clientes simulados"
 
     class Situacao(models.TextChoices):
         NA_FILA = "na_fila", "Na fila"

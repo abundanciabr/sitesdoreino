@@ -1,0 +1,56 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Banca de clientes simulados · Meshcraft{% endblock %}
+{% block corpo %}
+<section class="mesa-corpo">
+<h1>Banca de clientes simulados</h1>
+<p>Seis perspectivas sobre o texto da página e uma síntese de hipóteses. Intenção de compra simulada não mede conversão. Esta ferramenta não aprova páginas.</p>
+<p><a href="{% url 'pagina_de_venda' %}">Página de venda</a> · <a href="{% url 'experimentos' %}">Experimentos</a> · <a href="?banca=1">Nova rodada e histórico</a></p>
+{% if erro %}<p role="alert">{{ erro }}</p>{% endif %}
+{% if recado %}<p role="status">{{ recado }}</p>{% endif %}
+<h2>1. Objeções reais e cético calibrado</h2>
+<form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="coletar"><button>Coletar objeções reais das fontes disponíveis</button></form>
+{% if corpus %}
+<p>Coleta: {{ corpus.coletado_em }} · {{ corpus.itens|length }} itens distintos · assinatura {{ corpus.digest }}.</p>
+<p>{{ corpus.limite }}</p>
+<table><thead><tr><th>Fonte</th><th>Leitura</th><th>Examinados</th><th>Cobertura</th></tr></thead><tbody>
+{% for fonte in corpus.cobertura %}<tr><td>{{ fonte.fonte }}</td><td>{{ fonte.estado }}</td><td>{{ fonte.examinados|default:0 }}</td><td>{{ fonte.limite }} {{ fonte.motivo }}</td></tr>{% endfor %}
+</tbody></table>
+<details><summary>Ver evidências minimizadas utilizadas na calibração</summary>
+{% for item in corpus.itens %}<article><p><b>{{ item.fonte }} · {{ item.tema }}</b> · {{ item.data }} · {{ item.ocorrencias }} ocorrência(s)</p><blockquote>{{ item.texto }}</blockquote><small>Evidência {{ item.id }} · {{ item.produto }}</small></article>{% empty %}<p>Nenhuma objeção identificada nesta amostra. O cético ainda não tem evidências.</p>{% endfor %}
+</details>
+{% else %}<p>A coleta ainda não foi realizada. O cético calibrado não recebe objeções inventadas.</p>{% endif %}
+<h2>2. Perfis para revisão da Lívia</h2>
+<p>Os textos iniciais estão versionados no repositório. Cada edição no painel cria uma revisão preservada; cada rodada guarda a revisão exata utilizada.</p>
+<p><a href="?banca=1&amp;exportar=perfis">Baixar os seis textos da revisão atual</a></p>
+{% for perfil in perfis %}<details><summary>{{ perfil.nome }} · revisão {{ perfil.revisao }}{% if perfil.revisada_por_livia %} · marcada como revisada pela Lívia{% endif %}</summary>
+<form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="perfil"><input type="hidden" name="perfil" value="{{ perfil.codigo }}"><input type="hidden" name="base_digest" value="{{ perfil.digest }}">
+<p><label for="perfil-{{ perfil.codigo }}">Texto do perfil</label></p><textarea id="perfil-{{ perfil.codigo }}" name="texto" rows="8" cols="75" maxlength="6000" required>{{ perfil.texto }}</textarea>
+<p><label><input type="checkbox" name="revisada" value="sim" {% if perfil.revisada_por_livia %}checked{% endif %}> A Lívia revisou este texto</label></p><button>Guardar nova revisão</button></form>
+<p>Assinatura {{ perfil.digest }} · <a href="{{ perfil.repositorio }}">Editar também o texto base no repositório</a></p></details>{% endfor %}
+<h2>3. Atacar uma versão exata</h2>
+<form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="atacar"><input type="hidden" name="chave" value="{{ chave }}">
+<p><label for="slug">Página do catálogo</label> <select id="slug" name="slug" required>{% for pagina in paginas %}<option value="{{ pagina.slug }}">{{ pagina.slug }} · {{ pagina.idioma }} · {{ pagina.tipo }}</option>{% endfor %}</select></p>
+<p><label for="origem">Conteúdo</label> <select id="origem" name="origem"><option value="publicada">Versão publicada</option><option value="rascunho">Rascunho atual</option><option value="variante">Variante de experimento</option></select></p>
+<p><label for="experimento_id">Experimento do catálogo (somente para variante)</label> <select id="experimento_id" name="experimento_id"><option value="">Escolha a página e consulte os experimentos abaixo</option>{% for exp in experimentos %}<option value="{{ exp.id }}">{{ exp.slug }} · {{ exp.id }} · {{ exp.hipotese }}</option>{% endfor %}</select></p>
+<p><label for="variante">Braço da variante</label> <select id="variante" name="variante"><option value="a">a · controle</option><option value="b">b · alteração</option>{% for braco in outros_bracos %}<option value="{{ braco }}">{{ braco }}</option>{% endfor %}</select></p>
+<p>Esta banca usa somente português brasileiro, conforme orientação do mantenedor.</p>
+<p>Não cria tradução nem altera conteúdo. A análise lê textos e preço do catálogo; não avalia imagens, vídeos ou navegação.</p><button {% if not paginas %}disabled{% endif %}>Atacar</button></form>
+{% if trabalho %}
+<h2>Rodada {{ trabalho.pk }} · {{ trabalho.get_situacao_display }}</h2><p>{{ trabalho.etapa_atual }} · {{ trabalho.motivo }}</p><p><a href="?banca=1&amp;rodada={{ trabalho.pk }}">Atualizar andamento</a></p>
+<p>Página {{ trabalho.estado.fotografia.conteudo.slug }} · versão {{ trabalho.estado.fotografia.conteudo.version }} · {{ trabalho.estado.fotografia.origem }} · {{ trabalho.estado.fotografia.variante }}</p>
+<p>Assinatura da página: {{ trabalho.estado.fotografia.assinatura }}</p><p>Modelo: {{ trabalho.estado.modelo }} · perfis: {{ trabalho.estado.perfis_digest }} · corpus: {{ trabalho.estado.corpus.digest }}</p>
+{% for resultado in resultados %}<article><h3>{{ resultado.nome }}</h3>{% if resultado.leitura %}<p>Compra simulada: {{ resultado.leitura.compra }}. {{ resultado.leitura.porque }}</p><p>Onde parou: {{ resultado.leitura.onde_parou }}</p>
+{% for item in resultado.leitura.objecoes %}<blockquote>{{ item.trecho }}</blockquote><p>{{ item.secao }} · {{ item.objecao }}</p><p>Faltou: {{ item.faltou }}</p>{% if item.evidencia_id %}<p>Evidência real: {{ item.evidencia_id }}</p>{% endif %}{% empty %}<p>Nenhuma objeção apontada por este perfil.</p>{% endfor %}{% else %}<p>Leitura ainda não concluída.</p>{% endif %}</article>{% endfor %}
+{% if sintese %}<h3>Síntese e consertos em ordem</h3><p>{{ sintese.resumo }}</p><p>Divergências: {{ sintese.divergencias }}</p><p>Limites: {{ sintese.limites }}</p><ol>{% for item in sintese.consertos %}<li><b>{{ item.titulo }}</b><p>{{ item.porque_priorizar }}</p><p>{{ item.conserto }}</p><p>Hipótese: {{ item.hipotese }} · métrica proposta: {{ item.metrica }}</p><p>Críticas de origem: {{ item.referencias|join:', ' }}</p>
+<form method="post" action="?banca=1&amp;rodada={{ trabalho.pk }}">{% csrf_token %}<input type="hidden" name="acao" value="hipotese"><input type="hidden" name="rodada" value="{{ trabalho.pk }}"><input type="hidden" name="indice" value="{{ forloop.counter0 }}"><button>Guardar hipótese para experimentação</button></form></li>{% endfor %}</ol>{% endif %}
+<details><summary>Chamadas, respostas e consumo registrados</summary>{% for codigo, chamada in trabalho.estado.chamadas.items %}<p>{{ codigo }} · {{ chamada.em }} · consumo {{ chamada.consumo_id }} · US$ {{ chamada.custo_usd }} · resposta {{ chamada.resposta_id }}</p><pre>{{ chamada.texto }}</pre>{% endfor %}</details>
+{% endif %}
+<h2>Histórico por versão</h2>
+<table><thead><tr><th>Rodada</th><th>Página e versão</th><th>Estado</th><th>IA registrada</th></tr></thead><tbody>{% for rodada in historico %}<tr><td><a href="?banca=1&amp;rodada={{ rodada.pk }}">{{ rodada.pk }}</a></td><td>{{ rodada.estado.fotografia.conteudo.slug }} · {{ rodada.estado.fotografia.conteudo.version }} · {{ rodada.estado.fotografia.origem }} · {{ rodada.estado.fotografia.variante }}</td><td>{{ rodada.get_situacao_display }}</td><td>US$ {{ rodada.custo }}</td></tr>{% empty %}<tr><td colspan="4">Nenhuma rodada ainda.</td></tr>{% endfor %}</tbody></table>
+{% if trabalho %}<form method="get"><input type="hidden" name="banca" value="1"><input type="hidden" name="rodada" value="{{ trabalho.pk }}"><label for="comparar">Comparar com rodada anterior</label><select id="comparar" name="comparar">{% for rodada in historico %}{% if rodada.pk != trabalho.pk %}<option value="{{ rodada.pk }}">{{ rodada.pk }} · {{ rodada.estado.fotografia.conteudo.slug }}</option>{% endif %}{% endfor %}</select><button>Comparar</button></form>{% endif %}
+{% if comparacao %}<h3>Comparação {{ anterior.pk }} → {{ trabalho.pk }}</h3><p>{% if comparacao.mesma_banca %}Mesmos perfis, corpus, instruções e modelo.{% else %}Perfis, corpus, instruções ou modelo mudaram; a diferença não pode ser atribuída só à página.{% endif %}</p><p>{{ comparacao.limite }}</p>{% for item in comparacao.texto %}<p><b>{{ item.secao }}</b></p><p>Antes: {{ item.antes }}</p><p>Depois: {{ item.depois }}</p>{% endfor %}<p>Críticas que permaneceram: {{ comparacao.permaneceram }}</p><p>Não reapareceram: {{ comparacao.nao_reapareceram }}</p><p>Surgiram: {{ comparacao.surgiram }}</p>{% endif %}
+<h2>Hipóteses guardadas</h2>{% for h in hipoteses %}<p>{{ h.conteudo.hipotese }} · {{ h.conteudo.metrica }} · rodada {{ h.base.rodada }}</p>{% if h.base.slug == 'oferta' %}<p><a href="{% url 'experimento_novo' %}?banca_hipotese={{ h.pk }}">Preparar experimento com esta hipótese</a></p>{% endif %}{% empty %}<p>Nenhuma hipótese guardada.</p>{% endfor %}
+<h2>Ligação com os experimentos</h2><p>A exigência compara o conteúdo exato de cada braço ao comprovante de seis leituras e síntese. Uma edição exige nova rodada. A banca não aprova nada e não inicia tráfego pago.</p>
+<form method="post" action="?banca=1">{% csrf_token %}<input type="hidden" name="acao" value="exigir"><button>Exigir a banca nas novas ativações de experimentos deste site</button></form>
+</section>
+{% endblock %}
