@@ -46,7 +46,7 @@ CAMINHOS = frozenset(("freelancer", "ugc", "jogo", "aprender"))
 GRAUS = ("I", "II", "III", "IV", "V", "VI", "VII")
 RESULTADOS = {
     1: "Comecei minha jornada de modelagem 3D.",
-    2: "Escolher meu caminho, assumir o compromisso e responder sobre o próximo passo.",
+    2: "Escolher meu caminho e assumir o compromisso.",
     3: "Descrever meu primeiro item e uma ação concreta que realizei nele.",
     4: "Apresentar imagem ou arquivo 3D para análise do meu item.",
 }
