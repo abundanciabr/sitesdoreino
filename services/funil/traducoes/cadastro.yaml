@@ -66,10 +66,34 @@ botao_enviar:
 sucesso:
   # Desde 31/08/2026 o pedido vira uma linha na mesma fila "Aguardando
   # aprovação" que o admin gerencia em /admin/escola/alunos/.
-  _fonte: "2021cf"
-  en: "Done! Your request is awaiting approval. We will reach out on WhatsApp."
-  pt-br: "Pronto! Seu pedido está aguardando aprovação. Vamos entrar em contato pelo WhatsApp."
-  es: "¡Listo! Tu solicitud está esperando aprobación. Te contactaremos por WhatsApp."
+  _fonte: "b1ec75"
+  en: "Your request for a spot has been received and is awaiting review by our team."
+  pt-br: "Seu pedido de vaga foi recebido e está aguardando a análise da nossa equipe."
+  es: "Hemos recibido tu solicitud de un lugar y está esperando la revisión de nuestro equipo."
+
+sucesso_titulo:
+  _fonte: "e270a2"
+  en: "Your request has been sent!"
+  pt-br: "Pedido enviado!"
+  es: "¡Solicitud enviada!"
+
+proximo_passo_titulo:
+  _fonte: "62ee1d"
+  en: "What is the next step?"
+  pt-br: "Qual é o próximo passo?"
+  es: "¿Cuál es el siguiente paso?"
+
+proximo_passo:
+  _fonte: "2be254"
+  en: "Wait for our team to contact you on the WhatsApp number you provided. We will let you know the outcome of the review and guide you through the next steps."
+  pt-br: "Aguarde o contato da nossa equipe pelo WhatsApp que você informou. Vamos avisar o resultado da análise e orientar você sobre os próximos passos."
+  es: "Espera el contacto de nuestro equipo por el número de WhatsApp que indicaste. Te avisaremos el resultado de la revisión y te orientaremos sobre los siguientes pasos."
+
+sem_reenvio:
+  _fonte: "09ebdd"
+  en: "You do not need to submit another request. Keep an eye on your WhatsApp messages."
+  pt-br: "Não é necessário enviar outro pedido. Fique de olho nas mensagens do seu WhatsApp."
+  es: "No necesitas enviar otra solicitud. Mantente pendiente de tus mensajes de WhatsApp."
 
 erro_envio:
   # Falha ao repassar o pedido de entrada à célula alunos (a página responde
