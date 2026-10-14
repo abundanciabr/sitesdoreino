@@ -223,7 +223,12 @@ def _gravar(recebida: Recebida, ligacao, momento, pede_parar,
             campos.append("equipe_confirma")
         conversa.save(update_fields=campos)
         registro = descadastros.registrar(conversa, momento) if pede_parar else None
-        if not historica:
+        from apps.eventos.avisos_acesso import codigo_da_confirmacao
+        confirmacao_escola = recebida.canal == "whatsapp" and codigo_da_confirmacao(recebida.texto)
+        if not historica and confirmacao_escola:
+            from apps.eventos.tasks import confirmar_whatsapp_acesso
+            transaction.on_commit(lambda: confirmar_whatsapp_acesso(str(mensagem.pk)))
+        if not historica and not confirmacao_escola:
             evento = emitir(MENSAGEM_RECEBIDA, _evento(conversa, mensagem), envelope_extra={"ator_id": None})
             transaction.on_commit(relay_apos_commit)
             # A Central vê somente a fala nova já gravada. Savepoints isolam

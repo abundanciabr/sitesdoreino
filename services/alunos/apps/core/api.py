@@ -217,6 +217,11 @@ _CREATE_PRE_ENROLLMENT_OPENAPI = {
                             "type": "string",
                             "minLength": 1,
                         },
+                        "whatsapp_avisos": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Aceite opcional dos avisos sobre o pedido de acesso. Não concede acesso.",
+                        },
                         "whatsapp": {
                             "type": "string",
                             "description": "Com DDD. PII: mora aqui e so a porta do admin o devolve —\nnunca `GET /alunos/{email}/matriculas`, nunca evento. Mesma\ndisciplina que DECISAO-EVO-01 §3 deu ao e-mail, decidida\nnominalmente pelo mantenedor em 27/08/2026.\n",
@@ -691,7 +696,7 @@ def create_pre_enrollment(request):
     payload, erro = _payload_valido(
         request.body,
         obrigatorias={"site_id", "email", "nome_completo", "whatsapp"},
-        opcionais={"comprou_em", "turma"},
+        opcionais={"comprou_em", "turma", "whatsapp_avisos"},
     )
     if erro is not None:
         return erro
@@ -703,6 +708,8 @@ def create_pre_enrollment(request):
             {"detail": "nome_completo e whatsapp são obrigatórios"}, status=422
         )
 
+    if "whatsapp_avisos" in payload and type(payload["whatsapp_avisos"]) is not bool:
+        return JsonResponse({"detail": "whatsapp_avisos deve ser booleano"}, status=422)
     comprou_em = payload.get("comprou_em")
     if comprou_em is not None:
         try:
@@ -719,6 +726,7 @@ def create_pre_enrollment(request):
         whatsapp=whatsapp,
         comprou_em=comprou_em,
         turma=str(payload.get("turma") or "").strip(),
+        whatsapp_avisos=payload.get("whatsapp_avisos") is True,
     )
     if linha is None:
         return JsonResponse(
@@ -1870,3 +1878,96 @@ def update_enrollment(request, id: str):
 # `DELETE /pre-matriculas/{id}` (acima), que so alcanca pedidos RECUSADOS —
 # nunca uma matricula que ja deu acesso. Ver `apagar_recusado` e
 # `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md`.
+
+
+@router.get("/matriculas/{id}/aviso-acesso", operation_id="getAccessNotice")
+def get_access_notice(request, id: str, site_id: str, event_id: str):
+    """Destinatário de uma decisão concreta, somente pela API interna autenticada."""
+    import uuid
+    from apps.matriculas.avisos_acesso import token_de_acesso
+    try:
+        evento = uuid.UUID(event_id)
+        linha = Matricula.objects.filter(pk=id, site_id=site_id, aviso_event_id=evento,
+            order_id__startswith=Matricula.PREFIXO_DA_FILA,
+            status__in=(Matricula.STATUS_ATIVA, Matricula.STATUS_RECUSADA)).first()
+    except (ValueError, TypeError, ValidationError):
+        linha = None
+    if linha is None:
+        return JsonResponse({"detail": "decisão não vigente"}, status=404)
+    return JsonResponse({"site_id": linha.site_id, "matricula_id": str(linha.pk),
+        "event_id": str(linha.aviso_event_id), "status": linha.status,
+        "email": linha.email, "nome": linha.name, "whatsapp": linha.whatsapp,
+        "acesso_consumido": bool(linha.acesso_consumido_em), "motivo": linha.motivo_recusa, "suporte_pendente": bool(linha.suporte_event_id and not linha.suporte_resolvido_em),
+        "link_acesso": ("https://meshcraft.top/entrar/escola/#" + token_de_acesso(linha)) if linha.status == "ativa" else "",
+        "whatsapp_avisos": linha.whatsapp_avisos,
+        "whatsapp_confirmado": linha.whatsapp_confirmado_em is not None,
+        "whatsapp_consentido_em": linha.whatsapp_consentido_em.isoformat()
+            if linha.whatsapp_consentido_em else None})
+
+
+@router.get("/matriculas/{id}/aviso-whatsapp", operation_id="getWhatsAppAccessConfirmation")
+def get_whatsapp_access_confirmation(request, id: str, site_id: str, event_id: str):
+    import uuid
+    from datetime import timedelta
+    try:
+        linha = Matricula.objects.filter(pk=id, site_id=site_id,
+            whatsapp_pedido_id=uuid.UUID(event_id), whatsapp_avisos=True,
+            whatsapp_consentido_em__gte=timezone.now() - timedelta(days=7)).first()
+    except (ValueError, TypeError, ValidationError):
+        linha = None
+    if not linha or linha.whatsapp_confirmado_em:
+        return JsonResponse({"detail": "confirmação não pendente"}, status=404)
+    return JsonResponse({"site_id": linha.site_id, "matricula_id": str(linha.pk),
+        "event_id": str(linha.whatsapp_pedido_id), "whatsapp": linha.whatsapp,
+        "codigo": linha.whatsapp_confirmacao_codigo, "nome": linha.name})
+
+
+def _chave_numero_aviso(valor):
+    import re
+    numero = re.sub(r"\D", "", valor or "")
+    if len(numero) in (10, 11):
+        numero = "55" + numero
+    if numero.startswith("55") and len(numero) in (12, 13) and numero[-8] in "6789":
+        return numero[:4] + numero[-8:]
+    return numero
+
+
+@router.get("/avisos-acesso/por-evento", operation_id="getSchoolNoticeByEvent")
+def get_school_notice_by_event(request, site_id: str, event_id: str, confirmacao: bool = False):
+    import uuid
+    try:
+        evento = uuid.UUID(event_id)
+        filtro = {"whatsapp_pedido_id" if confirmacao else "aviso_event_id": evento}
+        linha = Matricula.objects.filter(site_id=site_id, **filtro).first()
+    except (ValueError, TypeError, ValidationError):
+        linha = None
+    if not linha:
+        return JsonResponse({"detail": "aviso não vigente"}, status=404)
+    if confirmacao:
+        return get_whatsapp_access_confirmation(request, str(linha.pk), site_id, event_id)
+    return get_access_notice(request, str(linha.pk), site_id, event_id)
+
+
+@router.post("/pre-matriculas/confirmar-whatsapp", operation_id="confirmAccessWhatsAppNumber")
+def confirm_access_whatsapp_number(request):
+    from datetime import timedelta
+    from django.db import transaction
+    payload, erro = _payload_valido(request.body,
+        obrigatorias={"site_id", "codigo", "whatsapp"}, opcionais=set())
+    if erro is not None:
+        return erro
+    with transaction.atomic():
+        candidatas = list(Matricula.objects.select_for_update().filter(
+            site_id=str(payload["site_id"]),
+            whatsapp_confirmacao_codigo=str(payload["codigo"]).strip().upper(),
+            whatsapp_avisos=True,
+            whatsapp_consentido_em__gte=timezone.now() - timedelta(days=7))[:2])
+        if (len(candidatas) != 1 or not str(payload["codigo"]).strip()
+                or _chave_numero_aviso(candidatas[0].whatsapp) != _chave_numero_aviso(str(payload["whatsapp"]))):
+            return JsonResponse({"detail": "confirmação não encontrada"}, status=404)
+        linha = candidatas[0]
+        if not linha.whatsapp_confirmado_em:
+            linha.whatsapp_confirmado_em = timezone.now()
+            linha.save(update_fields=["whatsapp_confirmado_em"])
+    return JsonResponse({"confirmado": True, "matricula_id": str(linha.pk),
+        "event_id": str(linha.aviso_event_id) if linha.aviso_event_id else None})

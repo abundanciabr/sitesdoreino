@@ -218,6 +218,23 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
                      placeholder="(96) 99999-0000"
                      value="{{ rascunho.whatsapp|default:'' }}">
             </label>
+            <label class="campo">
+              <span>Confirme seu WhatsApp para receber avisos (opcional)</span>
+              <input name="whatsapp_confirmacao" inputmode="tel" autocomplete="off"
+                     value="{{ rascunho.whatsapp_confirmacao|default:'' }}">
+            </label>
+            <label class="campo">
+              <span><input type="checkbox" name="whatsapp_avisos" value="sim"
+                {% if rascunho.whatsapp_avisos %}checked{% endif %}>
+                Este WhatsApp é meu e autorizo a Meshcraft a enviar avisos sobre
+                meu pedido e a liberação ou não do acesso à escola.</span>
+            </label>
+            <p>Se autorizar os avisos, enviaremos uma mensagem no WhatsApp pedindo
+              sua confirmação. Responda com o código indicado para confirmar que
+              o número é seu. Isso não libera o acesso: a equipe analisa seu pedido.</p>
+            <p>O resultado também será enviado ao seu e-mail. Receber avisos pelo
+              WhatsApp é opcional e não interfere na análise do seu pedido.
+              Você pode cancelar os avisos respondendo PARAR.</p>
             <p class="opcionais">
               Os dois de baixo são opcionais, e servem só para te acharmos mais
               rápido na lista. Não sabe? Deixe em branco, sem problema.

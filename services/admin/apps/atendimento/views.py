@@ -270,6 +270,18 @@ def conversa_admin(request,conversa_id):
         acao=request.POST.get('acao','')
         if conversa.origem_conversa and acao in ('responder', 'robo', 'sugerir', 'avisar'):
             return resposta({'erro':'Este histórico pertence ao canal original. Confira e responda pela caixa do CRM.'},409)
+        if acao in ('escola_liberar', 'escola_recusar'):
+            from .jornada_acesso import resolver
+            quem,nome=identidade_atendente(request)
+            if conversa.atendente_id and conversa.atendente_id not in (quem,str(request.admin['id'])):
+                return resposta({'erro':'Este atendimento já está com outra pessoa.'},409)
+            try:
+                resolver(conversa,decisao='liberar' if acao=='escola_liberar' else 'recusar',
+                    quem=quem,nome=nome,motivo=request.POST.get('motivo_escola','').strip(),product_id=request.POST.get('produto_escola',''))
+            except ValueError as erro:
+                ctx.update(erro=str(erro),conversa=conversa)
+                return render(request,'admin/atendimento_conversa.html',ctx,status=409)
+            return HttpResponseRedirect(prefixo(request)+'/')
         if acao=='proximo_passo':
             from datetime import datetime
             from .models import HistoricoDoPasso

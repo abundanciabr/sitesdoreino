@@ -252,6 +252,7 @@ def entrar_na_fila(
     whatsapp: str,
     comprou_em=None,
     turma: str = "",
+    whatsapp_avisos: bool = False,
 ) -> tuple[Matricula | None, bool]:
     """[FILA] Alguém pede entrada e fica AGUARDANDO decisão humana.
 
@@ -287,6 +288,9 @@ def entrar_na_fila(
     campos = {
         "name": nome_completo,
         "whatsapp": whatsapp,
+        "whatsapp_avisos": whatsapp_avisos is True,
+        "whatsapp_consentido_em": timezone.now() if whatsapp_avisos is True else None,
+        "aviso_event_id": None,
         "comprou_em": comprou_em,
         "turma": turma,
         "status": Matricula.STATUS_AGUARDANDO,
@@ -299,15 +303,31 @@ def entrar_na_fila(
     }
 
     def _atualizar(linha: Matricula) -> Matricula:
+        from datetime import timedelta
+        if linha.suporte_event_id and not linha.suporte_resolvido_em:
+            return linha
         antes = linha.status
+        novo_numero = linha.whatsapp != whatsapp or linha.whatsapp_avisos != whatsapp_avisos
+        consentido_em = linha.whatsapp_consentido_em
+        if (whatsapp_avisos and not linha.whatsapp_confirmado_em and consentido_em
+                and consentido_em < timezone.now() - timedelta(days=7)):
+            novo_numero = True
         for campo, valor in campos.items():
             setattr(linha, campo, valor)
+        if not novo_numero and consentido_em:
+            linha.whatsapp_consentido_em = consentido_em
         linha.save(update_fields=list(campos))
+        if novo_numero or not linha.whatsapp_pedido_id:
+            from .avisos_acesso import preparar_confirmacao
+            preparar_confirmacao(linha)
         # [FATO] Quem foi recusado e reenvia volta para `aguardando`, e isso e
         # uma mudanca de situacao como qualquer outra. Mora AQUI e nao nos dois
         # chamadores (o caminho normal e o de perder a corrida) para nenhum dos
         # dois poder esquecer.
         fato_de_situacao(linha, anterior=antes)
+        if antes != Matricula.STATUS_AGUARDANDO:
+            from .avisos_acesso import preparar_recibo
+            preparar_recibo(linha)
         return linha
 
     with transaction.atomic():
@@ -336,6 +356,10 @@ def entrar_na_fila(
                 # [FATO] Nasceu aguardando: alguem pediu entrada pela sala de
                 # espera. E o caminho dos alunos das turmas anteriores.
                 fato_de_situacao(nova)
+                from .avisos_acesso import preparar_confirmacao
+                preparar_confirmacao(nova)
+                from .avisos_acesso import preparar_recibo
+                preparar_recibo(nova)
             return nova, True
         except IntegrityError:
             # Perdeu a corrida contra outra requisição da mesma pessoa: quem
@@ -381,6 +405,7 @@ def decidir_na_fila(
     destinatario_id: str = "",
     venda_origem: str = "",
     contato_crm_id: str = "",
+    pelo_suporte: bool = False,
 ) -> tuple[Matricula | None, str]:
     """[FILA] Liberar ou recusar quem está na fila.
 
@@ -441,7 +466,14 @@ def decidir_na_fila(
             # a resposta honesta, não um 500.
             return None, "nao-encontrada"
 
-        if linha.status != Matricula.STATUS_AGUARDANDO:
+        if pelo_suporte:
+            if not linha.suporte_event_id:
+                return None, "ja-decidida"
+            if linha.suporte_resolvido_em:
+                return (linha, "ok") if linha.status == ("ativa" if decisao == "liberar" else "recusada") else (None, "ja-decidida")
+            if linha.status != Matricula.STATUS_RECUSADA:
+                return None, "ja-decidida"
+        elif linha.status != Matricula.STATUS_AGUARDANDO:
             return None, "ja-decidida"
 
         liberou = decisao == "liberar"
@@ -479,7 +511,23 @@ def decidir_na_fila(
         # [FATO] SEMPRE, e antes da carta: liberar e recusar sao os dois
         # desfechos da fila, e o livro precisa dos dois. A carta so sai num
         # deles, e so para quem tem identidade da plataforma.
-        fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
+        fato = fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
+        from .eventos import emitir
+        if pelo_suporte:
+            linha.suporte_resolvido_em = timezone.now()
+            fato = emitir("escola.suporte-resolvido", {"site_id": linha.site_id,
+                "matricula_id": str(linha.pk), "situacao_anterior": antes, "situacao_nova": linha.status})
+        elif not liberou:
+            suporte = emitir("escola.suporte-solicitado", {"site_id": linha.site_id, "matricula_id": str(linha.pk)})
+            linha.suporte_event_id = suporte.event_id
+            linha.suporte_resolvido_em = None
+        else:
+            linha.suporte_event_id = None
+            linha.suporte_resolvido_em = None
+        linha.aviso_event_id = fato.event_id if fato else None
+        linha.acesso_consumido_em = None
+        linha.save(update_fields=["aviso_event_id", "suporte_event_id", "suporte_resolvido_em", "acesso_consumido_em"])
+        transaction.on_commit(relay_apos_commit)
 
         if destinatario_id and ganhou_acesso(antes, linha.status):
             carta_de_situacao(
@@ -624,11 +672,11 @@ def situacao_de(email: str) -> dict:
             }
         return {"categoria": CATEGORIA_CADASTRADO, "na_fila": None}
 
-    aguardando = linha.status == Matricula.STATUS_AGUARDANDO
+    aguardando = linha.status == Matricula.STATUS_AGUARDANDO or bool(linha.suporte_event_id and not linha.suporte_resolvido_em)
     return {
         "categoria": CATEGORIA_NA_FILA,
         "na_fila": {
-            "estado": linha.status,
+            "estado": Matricula.STATUS_AGUARDANDO if aguardando else linha.status,
             # `null` depois de decidida: ninguém espera mais, e um número que
             # continuasse subindo seria lido como "meu pedido está parado".
             "esperando_ha_dias": (

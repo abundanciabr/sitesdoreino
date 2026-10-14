@@ -41,3 +41,6 @@ urlpatterns = [
     path("entrar/recuperar/", recuperar_senha, name="recuperar_senha"),
     path("entrar/sair", sair, name="sair"),
 ]
+
+from apps.core.acesso_escola import entrar as entrar_escola, manter
+urlpatterns += [path("entrar/escola/", entrar_escola, name="entrar_escola"), path("entrar/manter/", manter)]
