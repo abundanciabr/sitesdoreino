@@ -219,7 +219,6 @@ def entrada(request):
         "total_alunos": len(alunos) if alunos is not None else None,
         "forum": forum,
         "ranking": (forum or {}).get("ranking", []),
-        "conversas": (forum or {}).get("conversas", []),
         "grupos": (forum or {}).get("grupos", []),
     }
     return _resposta(render(request, "admin/comunidade_apple.html", contexto))
