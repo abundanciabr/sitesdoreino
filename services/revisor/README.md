@@ -12,7 +12,9 @@ mantenedor. Login/matrícula e dez análises por dia pertencem ao produto aprova
 
 Motor de medições, importador Blender isolável, envelope de upload, tabela
 Roblox de 14/10/2026, corpus reproduzível e contrato OpenAPI inicial. Nenhuma
-rota HTTP, banco ou rede foi instalada. O esquema Django e a migração inicial
+rota HTTP ou rede foi instalada. A base e o usuário revisor foram criados na
+VPS em 14/10/2026 após autorização específica; banco vazio, sem migrações.
+O esquema Django e a migração inicial
 já estão preparados, com reserva atômica e idempotência. As páginas, fila persistente,
 adaptador de sessão e narrativa serão a próxima entrega de código; não existe
 serviço utilizável por alunos ainda. Não confundir esse começo com a camada 1
@@ -24,12 +26,14 @@ quinze erros, as explicações e as aulas continuam pendentes da Lívia. Normais
 fornecidas pelo arquivo e unidades/attachments ainda não são certificadas; o
 boletim informa essas lacunas. Artefatos de modelo só existem durante a análise.
 
-## Próximo degrau reservado: banco
+## Banco criado; próximo degrau reservado: rede
 
-Preparar uma base PostgreSQL nova chamada `revisor`, com role própria chamada
-`revisor`, senha gerada e armazenada somente na VPS. Sem grants em outras bases,
-sem cópia de dados de alunos, identidade ou sugestões. Não executar criação
-até receber a palavra do dono, conforme o pedido específico desta célula.
+Base PostgreSQL `revisor` e role própria `revisor` criados na VPS, com senha
+gerada e armazenada somente lá. Sem concessões específicas em outras bases
+ou cópia de dados de alunos, identidade ou sugestões. A base antiga de testes
+tem CONNECT público herdado; sua restrição para o Revisor está na proposta de
+HBA, ainda não aplicada. Não repetir a criação nem declarar rede isolada pronta.
+Proposta: `https://github.com/abundanciabr/sitesdoreino/blob/codex/revisor-rede-20261014/services/revisor/docs/decisoes/20261014-rede-para-autorizacao.md`.
 
 O schema próprio terá projetos e revisões por `site_id` e `actor_id` opacos;
 reserva diária por pessoa/site/data de São Paulo, contador de 0 a 10; unique
@@ -52,13 +56,14 @@ com Django 5.1.4 do ambiente de testes existente. Vinte solicitações simultân
 consumiram exatamente dez vagas; doze retries simultâneos geraram uma revisão
 e uma cobrança de quota. Isso não escolhe Django 5.1.4 para produção: o runtime
 próprio atualizado e seu isolamento ainda serão preparados e comprovados.
-O banco descartável foi encerrado e nenhum banco da VPS foi criado ou migrado.
+O banco descartável foi encerrado. Posteriormente a base vazia foi criada na
+VPS; nenhuma migração foi aplicada nela.
 Testes: Django test runner com `db_cases` e `db_settings`, incluindo a pasta
 tests no PYTHONPATH. A variável REVISOR_TEST_PG_PORT seleciona exclusivamente
 o PostgreSQL descartável em 127.0.0.1; sem ela usa SQLite em memória e pula
 as duas provas de concorrência que exigem lock de linha real.
 
-A criação da base é a autorização pedida, não a autorização de rede. Pares
+A criação da base foi autorizada e concluída, sem autorizar rede. Pares
 HTTP para identidade, alunos e cursos, segredo Django e provedor da narrativa
 serão provisionados em entrega própria após autorização. Não reutilizar
 tokens/credenciais de outros consumidores nem mudar a aplicação congelada.
