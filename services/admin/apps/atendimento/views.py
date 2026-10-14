@@ -253,7 +253,31 @@ def conversa_admin(request,conversa_id):
     recado=''
     if request.method=='POST':
         acao=request.POST.get('acao','')
-        if acao=='sugerir':
+        if conversa.origem_conversa and acao in ('responder', 'robo', 'sugerir', 'avisar'):
+            return resposta({'erro':'Este histórico pertence ao canal original. Confira e responda pela caixa do CRM.'},409)
+        if acao=='proximo_passo':
+            from datetime import datetime
+            from .models import HistoricoDoPasso
+            texto=request.POST.get('proximo_passo','').strip()
+            escolhido=request.POST.get('passo_responsavel','')
+            permitidos={r['id']:r['nome'] for r in responsaveis(request,sid)}
+            try:
+                prazo=datetime.fromisoformat(request.POST['passo_prazo']) if request.POST.get('passo_prazo') else None
+                if prazo and timezone.is_naive(prazo): prazo=timezone.make_aware(prazo)
+                if len(texto)>2000 or (texto and (not prazo or escolhido not in permitidos)): raise ValueError
+                if not texto: prazo=None;escolhido=''
+            except (ValueError, KeyError):
+                return resposta({'erro':'Informe o próximo passo, responsável e prazo interno.'},422)
+            with transaction.atomic():
+                c=Conversa.objects.select_for_update().get(pk=conversa.pk,site_id=sid)
+                if request.POST.get('passo_versao') != str(c.passos.count()):
+                    return resposta({'erro':'O acompanhamento mudou. Reabra a conversa antes de salvar.'},409)
+                c.proximo_passo=texto;c.passo_prazo=prazo;c.passo_responsavel=escolhido
+                c.passo_responsavel_nome=permitidos.get(escolhido,'');c.save()
+                HistoricoDoPasso.objects.create(conversa=c,texto=texto,prazo=prazo,responsavel=escolhido,
+                    responsavel_nome=c.passo_responsavel_nome,por=identidade_atendente(request)[0])
+            return HttpResponseRedirect(prefixo(request)+'/'+str(c.pk)+'/')
+        elif acao=='sugerir':
             if conversa.assunto.modo == 'assistido':
                 from .contexto import preparar
                 sug=preparar(conversa)
@@ -366,7 +390,12 @@ def conversa_admin(request,conversa_id):
       produto_marcado=escolhido or ((conversa.sugestao or {}).get('produto_sugerido') or {}).get('id',''),
       agenda_do_interesse=AgendaDoProduto.objects.filter(site_id=sid,produto_id=escolhido).first() if escolhido else None)
     from .contexto import _jornada_sandbox
-    ctx['jornada_sandbox'] = _jornada_sandbox(conversa)
+    ctx['jornada_sandbox'] = _jornada_sandbox(conversa) if conversa.canal == 'site' else None
+    from .operacao import origem_atual, piloto
+    ctx.update(origem=origem_atual(conversa), piloto=piloto(conversa), passos=conversa.passos.order_by('-pk')[:30],
+        passo_versao=conversa.passos.count(),
+        passo_prazo_local=timezone.localtime(conversa.passo_prazo).strftime('%Y-%m-%dT%H:%M') if conversa.passo_prazo else '')
+    ctx['outros_canais'] = Conversa.objects.filter(site_id=sid,origem_lead=conversa.origem_lead).exclude(pk=conversa.pk) if conversa.origem_lead else []
     return render(request,'admin/atendimento_conversa.html',ctx)
 
 
@@ -413,6 +442,18 @@ def base(request):
     cid=request.GET.get('conversa') or request.POST.get('conversa')
     if cid:
         conversa=get_object_or_404(Conversa,site_id=sid,pk=cid)
+        if request.GET.get('mensagem_canal') and conversa.origem_conversa:
+            from .operacao import origem_atual
+            original=origem_atual(conversa) or {}
+            historico=original.get('mensagens',[])
+            msg=next((m for m in historico if str(m.get('id')) == request.GET['mensagem_canal']
+                and m.get('autor') == 'pessoa' and m.get('direcao') == 'saida'
+                and m.get('estado_envio') in ('aceito','enviado','entregue','lido')),None)
+            if not msg: raise Http404
+            anteriores=historico[:historico.index(msg)]
+            p=next((m for m in reversed(anteriores) if m.get('direcao')=='entrada'),None)
+            pergunta=service.publico((p or {}).get('texto',''),conversa)[:500]
+            texto=service.publico(msg.get('texto',''),conversa);curso=conversa.curso
         if request.GET.get('mensagem'):
             msg=get_object_or_404(Mensagem,conversa=conversa,pk=request.GET['mensagem'],autor='equipe')
             pergunta=service.publico((conversa.mensagens.filter(autor='aluno',pk__lt=msg.pk).last() or msg).texto,conversa)[:500]
@@ -447,6 +488,13 @@ def base(request):
         pergunta=next((p for p in roteiro if p not in conhecidas),f'Que outra dúvida sobre {assunto_guiado.nome} merece uma resposta reutilizável?')
     ctx.update(item=item,itens=consulta[:100],q=q,erro=erro,pergunta=pergunta,resposta_texto=texto,curso=curso,
       conversa=conversa,assunto_guiado=assunto_guiado,salvo=request.GET.get('salvo'))
+    candidatas=[]
+    for m in Mensagem.objects.filter(conversa__site_id=sid,autor='equipe').select_related('conversa').order_by('-pk')[:100]:
+        p=m.conversa.mensagens.filter(autor='aluno',pk__lt=m.pk).last()
+        if p and not Conhecimento.objects.filter(site_id=sid,pergunta=service.publico(p.texto,m.conversa)[:500],curso=m.conversa.curso).exists():
+            candidatas.append({'mensagem':m,'pergunta':service.publico(p.texto,m.conversa)[:500],
+                'resposta':service.publico(m.texto,m.conversa)})
+    ctx['candidatas']=candidatas[:20]
     return render(request,'admin/atendimento_base.html',ctx,status=422 if erro else 200)
 
 

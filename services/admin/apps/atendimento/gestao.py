@@ -44,6 +44,7 @@ def preparar_linhas(consultas):
         c.prioridade_nome = PRIORIDADES.get(c.prioridade,'Normal')
         c.tipo_nome = TIPOS.get(c.tipo, TIPOS[0])
         c.vencido = bool(c.espera_desde and c.estado != 'encerrado' and minutos >= 24*60)
+        c.passo_vencido = bool(c.proximo_passo and c.passo_prazo and c.passo_prazo <= agora and c.estado != 'encerrado')
     return linhas
 
 def contexto_fila(request, sid):

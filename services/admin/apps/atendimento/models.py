@@ -18,6 +18,7 @@ class Configuracao(models.Model):
     ia_ativa = models.BooleanField(default=True)
     autorizacao_id = models.PositiveIntegerField(null=True, blank=True)
     medicao_iniciada_em = models.DateTimeField(null=True, blank=True)
+    canais_entrada_em = models.DateTimeField(null=True, blank=True)
     class Meta:
         db_table = 'atendimento_configuracao'
 
@@ -48,6 +49,14 @@ class Conversa(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     site_id = models.CharField(max_length=100, db_index=True)
     pessoa_id = models.CharField(max_length=100, db_index=True)
+    canal = models.CharField(max_length=20, default='site')
+    origem_conversa = models.CharField(max_length=100, blank=True)
+    origem_lead = models.CharField(max_length=100, blank=True)
+    origem_ultima_mensagem = models.CharField(max_length=100, blank=True)
+    proximo_passo = models.TextField(blank=True)
+    passo_prazo = models.DateTimeField(null=True, blank=True)
+    passo_responsavel = models.CharField(max_length=100, blank=True)
+    passo_responsavel_nome = models.CharField(max_length=160, blank=True)
     nome = models.CharField(max_length=160, blank=True)
     assunto = models.ForeignKey(Assunto, on_delete=models.PROTECT)
     pagina = models.CharField(max_length=500, blank=True)
@@ -172,3 +181,15 @@ class PreviaForum(models.Model):
     publicada_url = models.CharField(max_length=500, blank=True)
     class Meta:
         db_table = 'atendimento_previa_forum'
+
+
+class HistoricoDoPasso(models.Model):
+    conversa = models.ForeignKey(Conversa, on_delete=models.PROTECT, related_name='passos')
+    texto = models.TextField(blank=True)
+    prazo = models.DateTimeField(null=True, blank=True)
+    responsavel = models.CharField(max_length=100, blank=True)
+    responsavel_nome = models.CharField(max_length=160, blank=True)
+    por = models.CharField(max_length=100)
+    criada_em = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = 'atendimento_acompanhamento'

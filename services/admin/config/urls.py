@@ -359,6 +359,8 @@ urlpatterns = [
     path("equipe/atendimento/<uuid:conversa_id>/", suporte.conversa_admin, name="atendimento_conversa_equipe"),
     path("equipe/atendimento/<uuid:conversa_id>/forum/", suporte.previa_forum, name="atendimento_forum_equipe"),
     path("atendimento/decisoes/", suporte_caixa, name="suporte_decisoes"),
+    path("atendimento/operacao/", __import__('apps.atendimento.operacao',fromlist=['painel']).painel, name="suporte_operacao"),
+    path("equipe/atendimento/operacao/", __import__('apps.atendimento.operacao',fromlist=['painel']).painel, name="suporte_operacao_equipe"),
     path("equipe/atendimento/decisoes/", suporte_caixa, name="suporte_decisoes_equipe"),
     path("atendimento/", suporte.fila, name="atendimento"),
     path("atendimento/base/", suporte.base, name="atendimento_base"),

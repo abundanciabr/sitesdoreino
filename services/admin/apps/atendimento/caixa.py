@@ -23,6 +23,8 @@ def impressao(c, texto):
 
 
 def candidato(c, quem):
+    if c.canal != 'site':
+        return None
     if c.estado == 'encerrado' or c.assunto.modo != 'assistido' or c.cor == 'vermelho':
         return None
     if c.atendente_id and c.atendente_id != quem:
@@ -37,7 +39,7 @@ def candidato(c, quem):
 
 
 def consulta_aberta(sid):
-    return Conversa.objects.filter(site_id=sid).exclude(estado='encerrado').filter(assunto__modo='assistido')
+    return Conversa.objects.filter(site_id=sid,canal='site').exclude(estado='encerrado').filter(assunto__modo='assistido')
 
 
 def grupos(sid, quem, pagina=1):

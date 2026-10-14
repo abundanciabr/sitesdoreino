@@ -5,7 +5,7 @@ from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from .models import Conversa, Mensagem, Reabertura, ConsumoDoAtendimento, Aviso, PreviaForum
+from .models import Conversa, Mensagem, Reabertura, ConsumoDoAtendimento, Aviso, PreviaForum, HistoricoDoPasso
 
 
 def executar(request, sid):
@@ -45,7 +45,7 @@ def executar(request, sid):
         if acao == 'apagar_definitivamente':
             if c.trabalhando_ate and c.trabalhando_ate > timezone.now():
                 return resposta({'erro': 'O suporte está processando este pedido. Aguarde terminar e tente novamente.'}, 409)
-            for model in (Aviso, PreviaForum, Reabertura, ConsumoDoAtendimento, Mensagem):
+            for model in (Aviso, PreviaForum, Reabertura, ConsumoDoAtendimento, Mensagem, HistoricoDoPasso):
                 model.objects.filter(conversa=c).delete()
             c.delete()
             return HttpResponseRedirect(destino + '?apagada=1')
