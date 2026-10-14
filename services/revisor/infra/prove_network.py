@@ -27,6 +27,11 @@ print(json.dumps(out))
         assert result.returncode == 0
         data = json.loads(result.stdout)
         report[name+'_network'] = data['allowed'] and not any(v for k,v in data.items() if k != 'allowed')
+    private_probes = [('http_gateway','172.16.20.3',8080),('db_relay','172.16.20.2',5432),('direct_app',config['application_ip'],8000),('direct_postgres',config['postgres_ip'],5432),('internet','1.1.1.1',443),('host','172.16.20.1',22)]
+    private_test = subprocess.run(['docker','run','--rm','-i','--network','meshcraft-revisor','--cap-drop','ALL','--security-opt','no-new-privileges','python:3.12-slim','python','-c',probe],input=json.dumps(private_probes)+'\n',text=True,capture_output=True,timeout=20)
+    assert private_test.returncode==0
+    private_data=json.loads(private_test.stdout)
+    report['private_client_network']=private_data['http_gateway'] and private_data['db_relay'] and not any(private_data[k] for k in ['direct_app','direct_postgres','internet','host'])
     password = json.loads((PRIVATE/'database.json').read_text())['password']
     for label,db,user,pw,expected in [('own_db','revisor','revisor',password,'ok'), ('wrong_password','revisor','revisor','wrong','password authentication failed'), ('other_database','test_praticas_3d_20261006','revisor',password,'pg_hba.conf rejects connection'), ('other_user','revisor','postgres','wrong','pg_hba.conf rejects connection')]:
         args=['docker','run','--rm','-i','--network','meshcraft-revisor','--cap-drop','ALL','--security-opt','no-new-privileges','--entrypoint','sh','postgres:17','-c','IFS= read -r PGPASSWORD; export PGPASSWORD; exec psql -h 172.16.20.2 -U "$1" -d "$2" -XAtc "SELECT current_user,current_database()"','sh',user,db]
@@ -68,6 +73,9 @@ print(json.dumps(out))
     report['link_disclosed']=False
     (Path(config['backup'])/'proof.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2))
+    required = ['http_network', 'db_network', 'private_client_network', 'own_db', 'wrong_password', 'other_database', 'other_user', 'http_denials', 'http_pairs', 'mercadopago_freeze']
+    if not all(report[key] is True for key in required):
+        raise SystemExit(1)
 
 
 if __name__=='__main__':
