@@ -67,8 +67,8 @@ def test_cadeados_seguem_quatro_avaliacoes_reais(client):
     rascunho = post(client, 'inicio-motivo', motivo='ugc', concluir='nao')
     assert rascunho.status_code == 200 and ler(client)['inicio']['etapas'][1]['bloqueada']
     assert post(client, 'inicio-motivo', motivo='ugc').status_code == 200
-    incompleto = post(client, 'inicio-compromisso', proximo_passo='esperar')
-    assert incompleto.json()['inicio']['etapas'][1]['resultado'] == 'incompleta'
+    incompleto = post(client, 'inicio-compromisso', assumir='nao')
+    assert not incompleto.json()['inicio']['etapas'][1]['concluida']
     assert incompleto.json()['atual_ordem'] == 1
     aceito = post(client, 'inicio-compromisso')
     assert aceito.json()['atual_ordem'] == 2

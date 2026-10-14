@@ -61,7 +61,7 @@ def test_visitante_ve_entrar_em_toda_pagina(client, rede, idioma, pagina):
 
     assert resp.status_code == 200, resp.content
     conteudo = resp.content.decode()
-    assert 'class="sessao"' in conteudo
+    assert ('class="sessao"' in conteudo) == (pagina != "/")
     # O link aponta para a porta DESTE site, na forma pública do idioma da
     # página — prefixada em pt-br/es, nua em inglês. Escrever /{idioma}/login à
     # mão aqui daria um link 404 justamente no idioma padrão.

@@ -97,7 +97,16 @@ def test_post_feliz_entra_na_fila_aguardando_aprovacao(client, alunos_ligada, id
         HTTP_HOST=HOST_MESH,
     )
     assert resp.status_code == 200
-    assert escape(t("cadastro.sucesso", idioma)) in resp.content.decode()
+    conteudo = resp.content.decode()
+    assert escape(t("cadastro.sucesso", idioma)) in conteudo
+    assert escape(t("cadastro.sucesso_titulo", idioma)) in conteudo
+    assert escape(t("cadastro.proximo_passo", idioma)) in conteudo
+    assert escape(t("cadastro.sem_reenvio", idioma)) in conteudo
+    assert '<section class="card confirmacao" role="status"' in conteudo
+    assert 'name="email"' not in conteudo
+    assert 'name="senha"' not in conteudo
+    assert f'action="{caminho_mesh(idioma, "/cadastro")}"' not in conteudo
+    assert escape(t("cadastro.tem_conta_google", idioma)) not in conteudo
 
     chamadas = _chamadas_a_pre_matriculas(alunos_ligada)
     assert len(chamadas) == 1
@@ -265,6 +274,8 @@ def test_falha_ao_definir_senha_e_502_mesmo_com_vaga_registrada(client, alunos_l
     conteudo = resp.content.decode()
     assert escape(t("cadastro.erro_envio", "pt-br")) in conteudo
     assert 'value="aluno@exemplo.com"' in conteudo
+    assert 'name="senha"' in conteudo
+    assert '<section class="card confirmacao"' not in conteudo
     # O pedido de vaga TINHA ido — reenviar é seguro (entrar_na_fila é
     # idempotente por e-mail do lado da alunos), então o formulário não
     # some, só a senha não foi gravada.
@@ -294,6 +305,8 @@ def test_alunos_fora_do_ar_e_502_localizado_preservando_o_form(client, alunos_li
     assert escape(t("cadastro.erro_envio", "pt-br")) in conteudo
     assert 'value="aluno@exemplo.com"' in conteudo
     assert 'value="11900000000"' in conteudo
+    assert 'name="senha"' in conteudo
+    assert '<section class="card confirmacao"' not in conteudo
     # A senha nunca é gravada quando o pedido de vaga em si já falhou.
     assert _chamadas_a_definir_senha(alunos_ligada) == []
 

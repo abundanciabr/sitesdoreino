@@ -41,7 +41,7 @@ async function page(step,initial=record(),hash='',wizard=false,embedded=false){
   root.querySelectorAll=selector=>nodes.filter(node=>selector.includes('name="compromisso_checks"')?node.name==='compromisso_checks'&&(!selector.includes(':checked')||node.checked):selector==='[data-compromisso-motivos]'?node.dataset.rotulo:selector==='input[name="motivo_sonhos"]:checked'?node.name==='motivo_sonhos'&&node.checked:selector==='a'?node.tagName==='a':['button','input','textarea','select'].includes(node.tagName));
   if(wizard){['motivo-escolha','motivo-reflexao','motivo-contagem','outro-campo','motivo-escolha-titulo','motivo-reflexao-titulo','motivo-depois-1','motivo-depois-2','motivo-anterior','motivo-sonhos','motivo-sonhos-titulo','motivo-depois-3','sonhos-anterior','sonhos-opcoes'].forEach(id=>add(id));root.querySelector=()=>nodes.find(n=>n.name==='motivo'&&n.value==='outro'&&n.checked)||null;}
   const form=add('form-'+step,'form');form.elements={};
-  const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?['item_nome','item_acao']:step==='compromisso'?['proximo_passo']:['arquivo','aprendi','duvida'];
+  const fields=step==='motivo'?['motivo_pessoal',...(wizard?['motivo_outro']:[])]:step==='plano'?['sonho','objetivo','quando','obstaculo','plano_b','compromisso','apoio']:step==='criacao'?['item_nome','item_acao']:step==='compromisso'?[]:['arquivo','aprendi','duvida'];
   fields.forEach(name=>{const node=add(name,name==='arquivo'?'input':'textarea');node.name=name;form.elements[name]=node;form.append(node);});
   form.reset=()=>Object.values(form.elements).forEach(node=>{node.value='';node.files=[];});
   ['status','conteudo','recarregar','comparacao'].filter(id=>id!=='comparacao').forEach(id=>add(id,id==='recarregar'?'button':'div'));
@@ -93,7 +93,7 @@ test('checks retomam, salvam ao fechar e falha de salvamento mantém painel e ma
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
 });
 
-test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem trocar de página',async()=>{
+test('compromisso mostra motivo e sonhos e abre a recompensa dentro da Trilha ao receber XP',async()=>{
  const initial=record(); initial.inicio.motivo_sonhos=['pc_gamer'];
  const ui=await page('compromisso',initial,'',false,true);
  assert.equal(ui.byId('compromisso-1').hidden,false);
@@ -106,16 +106,26 @@ test('compromisso mostra motivo e sonhos, assume explicitamente e confirma sem t
  assert.equal(ui.calls.at(-1).options.body.get('compromisso_etapa'),'2');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),undefined);
  assert.equal(ui.byId('compromisso-2').hidden,false);
- const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];saved.conquista_xp=100;ui.setRecord(saved);
- ui.form.elements.proximo_passo.value='criar_item';
+ const saved=record();saved.inicio.compromisso_curso_em='2026-10-11T12:00:00Z';saved.inicio.etapas=[{}, {concluida:true}];saved.conquista_xp=5100;saved.conquista_url='/trilha/inicio/conquista/2/?comprovante=teste';ui.setRecord(saved);
  await ui.submit('assumir');
  assert.equal(ui.calls.at(-1).options.body.get('assumir'),'sim');
- assert.equal(ui.calls.at(-1).options.body.get('proximo_passo'),'criar_item');
+ assert.equal(ui.calls.at(-1).options.body.get('proximo_passo'),undefined);
  assert.equal(ui.calls.at(-1).options.body.get('objetivo'),undefined);
- assert.equal(ui.byId('compromisso-3').hidden,false);
- assert.match(ui.byId('compromisso-xp').textContent,/100 XP/);
- assert.deepEqual(ui.redirects,[]);assert.deepEqual(ui.panelEvents,[]);
- await ui.close();assert.deepEqual(ui.panelEvents,['fechado']);
+ assert.match(ui.byId('compromisso-xp').textContent,/5.100 XP/);
+ assert.deepEqual(ui.redirects,[]);
+ assert.deepEqual(ui.panelEvents,['/trilha/inicio/conquista/2/?comprovante=teste&embutido=1']);
+});
+
+test('compromisso na página direta abre recompensa somente com crédito novo e avaliação reconhecida',async()=>{
+ for (const [xp,resultado,concluida] of [[5100,'reconhecida',true],[0,'reconhecida',true],[0,'incompleta',false],[5100,'falha',false]]) {
+  const initial=record();initial.inicio.compromisso_etapa=2;
+  const ui=await page('compromisso',initial);
+  const saved=record({conquista_xp:xp,conquista_url:'/trilha/inicio/conquista/2/?comprovante=teste',avaliacao_atual:{ordem:2,resultado,feedback:'Resultado da tentativa.'}});
+  saved.inicio.etapas=[{}, {concluida}];ui.setRecord(saved);
+  await ui.submit('assumir');
+  assert.deepEqual(ui.redirects,xp>0&&concluida?['/trilha/inicio/conquista/2/?comprovante=teste']:[]);
+  if(concluida&&xp===0)assert.equal(ui.byId('compromisso-3').hidden,false);
+ }
 });
 
 test('compromisso retoma a declaração e falha mantém decisão sem confirmação fictícia',async()=>{

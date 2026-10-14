@@ -6,6 +6,7 @@ from django.db.models import Sum
 from django.http import HttpResponseRedirect, HttpResponse, Http404
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
+from django.db import transaction
 from apps.core.clients import CatalogoClient
 from apps.core.models import RascunhoDeConfiguracao
 from . import banca, banca_fontes
@@ -22,6 +23,13 @@ def painel(request, site):
             if acao == 'coletar':
                 corpus = banca_fontes.coletar(site_id)
                 recado = f"Coleta guardada: {len(corpus.conteudo['itens'])} objeções ou perguntas distintas."
+            elif acao == 'evidencia':
+                if request.POST.get('real') != 'sim':
+                    raise ValueError('Confirme que o trecho veio de uma pessoa real, e não de uma simulação.')
+                banca_fontes.registrar(site_id, request.POST.get('fonte', ''), request.POST.get('texto', ''),
+                    request.POST.get('referencia', ''), request.POST.get('data', '')[:40], request.POST.get('produto', ''))
+                banca_fontes.coletar(site_id)
+                recado = 'Relato minimizado guardado e coleta atualizada. As rodadas antigas mantêm suas evidências.'
             elif acao == 'perfil':
                 codigo = request.POST.get('perfil', '')
                 texto = request.POST.get('texto', '').strip()
@@ -40,7 +48,20 @@ def painel(request, site):
                 trabalho = banca.pedir(site_id, request.POST.get('slug', ''), request.POST.get('origem', 'publicada'),
                     request.POST.get('experimento_id', ''), request.POST.get('variante', ''),
                     request.POST.get('chave', '')[:100] or str(uuid.uuid4()),
-                    request.admin.get('nome', 'Administração'))
+                    request.admin.get('nome', 'Administração'), modo_teste=request.POST.get('modo_teste') == 'sim')
+                return HttpResponseRedirect(request.path + '?' + urlencode({'banca': '1', 'rodada': trabalho.pk}))
+            elif acao == 'retomar':
+                with transaction.atomic():
+                    trabalho = get_object_or_404(Execucao.objects.select_for_update(), pk=request.POST.get('rodada'),
+                        tipo=Execucao.Tipo.BANCA, estado__site_id=site_id)
+                    if trabalho.situacao != Execucao.Situacao.FALHOU:
+                        raise ValueError('A rodada não está com falha para retomar.')
+                    trabalho.situacao = Execucao.Situacao.NA_FILA
+                    trabalho.motivo = 'Retomada das respostas preservadas; sem reenviar chamadas já pagas.'
+                    trabalho.ocupada_ate = None
+                    trabalho.nao_antes_de = None
+                    trabalho.save(update_fields=['situacao', 'motivo', 'ocupada_ate', 'nao_antes_de'])
+                    transaction.on_commit(__import__('apps.agentes.executor', fromlist=['acordar']).acordar)
                 return HttpResponseRedirect(request.path + '?' + urlencode({'banca': '1', 'rodada': trabalho.pk}))
             elif acao == 'exigir':
                 estado, resposta = cliente._falar('POST', f'/sites/{site_id}/banca/exigir')

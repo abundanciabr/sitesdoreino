@@ -1,0 +1,37 @@
+{
+  "id": "acesso-central-ed31-20261014",
+  "entrega": "ed31b0c03f97",
+  "tree_candidata": "a4ef3ca4768f42d7d809981b7852711d88c35901",
+  "commit_login": "f1729e35a8b5d4b24a630d5ecc10bc72cb9aac27",
+  "originais": {
+    "test_categorias_na_home.py": "51342954bec728f1369defb100a55193c1dc8e2784c74c45cf9c6b643ae2d5de",
+    "test_quadrinho_de_progresso.py": "728fe6112c5bd8d7fb362e6cff491a80cae023a967ebc99443797ed9b4540463",
+    "test_sessao_no_site.py": "10669658c60dfbb682393e990cba9a0c19eddb5b427058747f184cb3ef357a39"
+  },
+  "novos": {
+    "test_categorias_na_home.py": "ad24920dcd4bdac8f88f6e830eace592fc8ffa2322e9a48e64ee8cde307d004f",
+    "test_quadrinho_de_progresso.py": "156fcfe676d0c6568a0c33d15ffac747fdbe5358bed72be922f0c5d29d84c9fb",
+    "test_sessao_no_site.py": "16b79eea3af09572a5716dd10a1c40fc6a70dea600118342975213bbfec6f89a",
+    "test_acesso_aluno.py": "04defa0b277272273b0add59415e22fff2f46f53d0a9da0889de67f582ed8224"
+  },
+  "alteracao": "Expectativas do login central; mantém a alteração posterior da home e acrescenta as provas de matrícula, CSRF e não duplicação.",
+  "estado": "instalado",
+  "pacote_sha256": "c44d94b035629296f74367b30e900d9980ef581d1629a127d8769eec31246a85",
+  "compose_sha256": "6e74e1d4ca5ef4fd2c52c61568535e504c3791e384d416fd9e198991168e0ee8",
+  "compose_bytes": 7734,
+  "projeto": "meshcraft-provas-login-ed31-20261014",
+  "testes_locais": {
+    "antes": {
+      "falhas": 8,
+      "aprovados": 122
+    },
+    "depois": {
+      "falhas": 0,
+      "aprovados": 167
+    }
+  },
+  "instalado_em": "2026-10-14T19:40:49-03:00",
+  "backup_vps": "/usr/local/lib/meshcraft-publicador/atual/provas-funil/backup-acesso-central-ed31-20261014",
+  "testes_instalador": 9,
+  "autorizacao": "Ajuste pontual das provas do login confirmado pelo mantenedor em 14/10/2026"
+}

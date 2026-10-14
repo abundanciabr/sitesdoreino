@@ -19,13 +19,14 @@ prova corresponde a uma forma diferente de a entrega dar errado:
 import pytest
 from apps.core import rodape as regras
 from tests.conftest import HOST_A, HOST_MESH, caminho_mesh
+from test_sessao_no_site import COOKIE, logado  # noqa: F401
 
 IDIOMAS = ("en", "pt-br", "es")
 
 # As páginas desta célula, e o que cada uma deve mostrar. Escrita à mão de
 # propósito: é a decisão do mantenedor.
 PAGINAS = {
-    "/": "completo",
+    "/": "enxuto",
     "/cadastro": "enxuto",
     "/login": "enxuto",
 }
@@ -68,17 +69,18 @@ def test_cada_pagina_mostra_a_variante_que_o_mantenedor_escolheu(
     assert f'class="rodape rodape-{variante}"' in _corpo(resposta)
 
 
-def test_o_rodape_completo_tem_marca_links_e_direitos(client, rede):
-    corpo = _corpo(client.get("/pt-br/", HTTP_HOST=HOST_MESH))
+def test_o_rodape_completo_tem_marca_links_e_direitos(client, rede, logado):
+    corpo = _corpo(client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE))
     assert "Meshcraft Academy" in corpo
     assert "Todos os direitos reservados" in corpo
     for rotulo in ("Início", "Fórum", "Documentos"):
         assert f">{rotulo}</a>" in corpo
 
 
-def test_o_rodape_enxuto_perde_os_links_e_guarda_os_direitos(client, rede):
+@pytest.mark.parametrize("pagina", ["/", "/cadastro"])
+def test_o_rodape_enxuto_perde_os_links_e_guarda_os_direitos(client, rede, pagina):
     """A prova é sobre o CORPO, não sobre a tabela: é o corpo que vaza."""
-    corpo = _corpo(client.get("/pt-br/cadastro", HTTP_HOST=HOST_MESH))
+    corpo = _corpo(client.get(caminho_mesh("pt-br", pagina), HTTP_HOST=HOST_MESH))
     assert "Todos os direitos reservados" in corpo
     assert 'class="links"' not in corpo
     assert ">Fórum</a>" not in corpo
@@ -115,11 +117,13 @@ def test_o_rodape_fala_o_idioma_da_pagina(client, rede, idioma):
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_link_de_dentro_leva_o_idioma_e_link_de_fora_nao(client, rede, idioma):
+def test_link_de_dentro_leva_o_idioma_e_link_de_fora_nao(client, rede, idioma, logado):
     """O erro mais traiçoeiro desta casa desde o D1 revisto: o link cru FUNCIONA
     no idioma padrão (a versão que se abre para conferir) e joga quem está em
     `/pt-br/` de volta para o inglês, sem erro nenhum na tela."""
-    corpo = _corpo(client.get(caminho_mesh(idioma, "/"), HTTP_HOST=HOST_MESH))
+    corpo = _corpo(
+        client.get(caminho_mesh(idioma, "/"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+    )
     rodape = corpo.split("<footer", 1)[1].split("</footer>", 1)[0]
     assert f'href="{caminho_mesh(idioma, "/cadastro")}"' not in rodape
     assert "atualizacao" not in rodape

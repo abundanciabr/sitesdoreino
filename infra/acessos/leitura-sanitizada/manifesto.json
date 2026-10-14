@@ -1,0 +1,41 @@
+{
+  "estado": "artefato_gerado_instalacao_conferida_separadamente",
+  "projeto": "meshcraft-leitura-ed31-20261014",
+  "pacote_sha256": "573fc1b9ebcf26a9e703e75ed1039f42ef9d52208fd3f242d62a3cc7c90cc43f",
+  "compose_sha256": {
+    "instalar": "5b8791f6a13113ad809f2ef91785870008a6aee44b76bbc60ef8552e8ad8c874",
+    "leitura": "d203e1f8464f141a1696c1cbf811e98fc2e9cfa152450a8f8451849d0464e8f7"
+  },
+  "compose_bytes": {
+    "instalar": 7348,
+    "leitura": 5921
+  },
+  "arquivos": {
+    "leitura.py": "b7471e54b0c5653762e9cd3fd2d6060127fd9791bb5adb62f1ad0adf7495a2a7",
+    "instalar.py": "6e6069346698959797cf8e4243be4643726906230281b6e47405094938f68965"
+  },
+  "fontes_com_comentarios": {
+    "leitura.py": "c52eb374f42852e3d7592bd1efd326ad165fa29199c94b0e75bb8716b8ebdd1f",
+    "instalar.py": "f73dde12b552e32dbf06cd8128a48237f2b6e6c12c2e124707581fec122cb807"
+  },
+  "imagem": "python@sha256:2055081c860db8c842b663415b795b026e7e5cc63b59c5193fcc9997713ea5b8",
+  "entrega": "ed31b0c03f97",
+  "arquivos_existentes_alterados": [
+    "/usr/local/lib/meshcraft-acessos/robo_comando.py",
+    "/usr/local/lib/meshcraft-acessos/operacao_contexto.py"
+  ],
+  "modulo_novo": "/usr/local/lib/meshcraft-acessos/leitura_sanitizada.py",
+  "backup": "/usr/local/lib/meshcraft-acessos/backup-leitura-DATA-UTC",
+  "servico_novo": "leitura: consulta a cada 30 segundos, sem rede ou portas",
+  "limite_historico": "Lê a tentativa selecionada atual; não monta tentativas legadas sem seletor",
+  "limites": [
+    "Sem console ou shell livre",
+    "Sem socket Docker",
+    "Sem chaves ou credenciais",
+    "Sem bancos ou restauração de bancos",
+    "Sem alteração do publicador ou do Mercado Pago",
+    "Sem reinício de serviços existentes",
+    "Sem alteração dos projetos plataforma e revisor"
+  ],
+  "autorizacao_recebida": "Instalacao restrita pelo Gerenciador Docker e DAC_READ_SEARCH para o leitor, confirmadas pelo mantenedor em 14/10/2026"
+}

@@ -121,4 +121,10 @@ def rodape_do_contexto(request) -> dict:
     variante = variante_da_rota(resolvida.url_name if resolvida else None)
     if variante is None:
         return {}
+    if (
+        resolvida
+        and resolvida.url_name == "landing"
+        and not getattr(request, "ator", None)
+    ):
+        variante = "enxuto"
     return {"rodape": montar(variante, ano=timezone.localdate().year)}

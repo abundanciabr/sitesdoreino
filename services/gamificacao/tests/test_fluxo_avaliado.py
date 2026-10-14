@@ -22,6 +22,7 @@ def conta(monkeypatch):
     monkeypatch.setenv('SITE_ID', SITE)
     monkeypatch.setattr('apps.core.inventario._sessao',
         lambda cookie: {'autenticado': True, 'id': PESSOA})
+    monkeypatch.setattr('apps.core.views.quem_e', lambda request: PESSOA)
 
 
 def ler(client):
@@ -60,15 +61,25 @@ def test_quatro_caminhos_e_compromisso_avaliado(client, motivo):
     assert not JornadaPessoal.objects.exists()
     motivo_enviado = enviar(client, 'inicio-motivo', motivo=motivo, concluir='sim')
     assert motivo_enviado.status_code == 200
-    incompleto = enviar(client, 'inicio-compromisso', assumir='sim', proximo_passo='')
-    assert incompleto.status_code == 200
-    assert incompleto.json()['inicio']['etapas'][1]['resultado'] == 'incompleta'
-    assert incompleto.json()['atual_ordem'] == 1
-    reconhecido = enviar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item')
+    rascunho = enviar(client, 'inicio-compromisso', compromisso_etapa='2')
+    assert rascunho.status_code == 200
+    assert rascunho.json()['atual_ordem'] == 1
+    reconhecido = enviar(client, 'inicio-compromisso', assumir='sim')
     assert reconhecido.status_code == 200
     assert reconhecido.json()['inicio']['etapas'][1]['resultado'] == 'reconhecida'
     assert reconhecido.json()['atual_ordem'] == 2
-    assert len(AvaliacaoDaJornada.objects.filter(ordem=2)) == 2
+    dados = reconhecido.json()
+    assert dados['conquista_xp_tarefa'] == 100
+    assert dados['conquista_xp_faixa'] == 5000
+    assert dados['conquista_xp'] == 5100
+    assert 'comprovante=' in dados['conquista_url']
+    assert PerfilJogador.objects.get(pessoa_id=PESSOA, site_id=SITE).xp_total == 5200
+    recibo = client.get(dados['conquista_url'] + '&embutido=1', HTTP_COOKIE='meshcraft_sessao=A')
+    assert recibo.status_code == 200
+    assert recibo.context['inicio_embutido'] is True
+    assert 'data-xp="5100"' in recibo.content.decode()
+    assert len(AvaliacaoDaJornada.objects.filter(ordem=2)) == 1
+    assert 'proximo_passo_resposta' not in JornadaPessoal.objects.get().inicio
     assert len(LancamentoDeXP.objects.filter(pontos=5000)) == 1
 
 
@@ -150,14 +161,14 @@ def test_tentativa_incompleta_nao_celebra_uma_faixa_anterior(client, monkeypatch
     assert LancamentoDeXP.objects.count() == antes
 
 
-def test_pergunta_incorreta_nao_celebra_amarela_historica(client):
+def test_resposta_antiga_nao_bloqueia_nem_duplica_amarela(client):
     enviar(client, 'inicio-motivo', motivo='ugc', concluir='sim')
     enviar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item')
     resposta = enviar(client, 'inicio-compromisso', assumir='sim', proximo_passo='esperar')
     assert resposta.status_code == 200
     dados = resposta.json()
     assert dados['atual_ordem'] == 2
-    assert dados['avaliacao_atual']['resultado'] == 'incompleta'
-    assert dados['avaliacao_atual']['conquistada'] is False
+    assert dados['avaliacao_atual']['resultado'] == 'reconhecida'
+    assert dados['avaliacao_atual']['conquistada'] is True
     assert dados['conquista_xp'] == 0
-    assert 'conquista_url' not in dados
+    assert LancamentoDeXP.objects.filter(pontos=5000).count() == 1

@@ -9,7 +9,7 @@ from apps.core.models import RascunhoDeConfiguracao
 from . import modelo
 from .models import Execucao, Consumo
 from .banca_assinatura import assinatura, blocos
-from .banca_fontes import ultimo, anonimizar, VERSAO_SELECAO
+from .banca_fontes import ultimo, anonimizar, VERSAO_SELECAO, dados_de_teste
 
 PERFIS = {'iniciante': 'Renda extra e primeiro contato com 3D',
           'curso_inacabado': 'Já comprou curso e não terminou',
@@ -56,13 +56,13 @@ def fotografia(site_id, slug, origem='publicada', experimento_id='', variante=''
     return foto
 
 
-def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
+def pedir(site_id, slug, origem, experimento_id, variante, chave, por, modo_teste=False):
     existente = Execucao.objects.filter(chave_de_repeticao='banca:' + chave).first()
     if existente:
         if existente.tipo != Execucao.Tipo.BANCA or existente.estado.get('site_id') != str(site_id):
             raise ValueError('Identificação de pedido inválida.')
         return existente
-    corpus = ultimo(site_id)
+    corpus = dados_de_teste(site_id) if modo_teste else ultimo(site_id)
     if not corpus or not corpus.conteudo.get('itens'):
         raise ValueError('Colete as objeções reais antes de atacar. Sem fontes, o cético não está calibrado.')
     if corpus.conteudo.get('selecao_versao') != VERSAO_SELECAO:
@@ -71,10 +71,17 @@ def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
     if foto['conteudo']['idioma'] not in {'pt-br', 'pt'}:
         raise ValueError('Esta banca usa somente conteúdo em português brasileiro.')
     perfis = {codigo: perfil_atual(site_id, codigo) for codigo in PERFIS}
+    instrucoes = ORIENTACAO
+    if modo_teste:
+        instrucoes = ORIENTACAO.replace('IDs reais', 'IDs sintéticos de teste').replace('ID real', 'ID sintético de teste')
+        instrucoes += '\nRODADA DE TESTE: todos os itens do corpus são inventados. Nunca os apresente como mensagens reais. Avalie o fluxo e a página, mantendo explícita essa limitação na síntese.'
+        perfis['calibrado']['texto'] = 'Cético em teste funcional, apoiado exclusivamente nas objeções sintéticas identificadas do corpus. Cite seus IDs. Nenhuma delas é evidência real de comprador.'
+        perfis['calibrado']['digest'] = assinatura(perfis['calibrado']['texto'])
     estado = {'site_id': str(site_id), 'fotografia': foto,
+              'modo_teste': bool(modo_teste),
               'corpus': corpus.conteudo, 'perfis': perfis, 'resultados': {}, 'chamadas': {},
               'fluxo': VERSAO, 'perfis_digest': assinatura(perfis), 'modelo': modelo.conexao().modelo_forte,
-              'instrucoes_digest': assinatura(ORIENTACAO), 'instrucoes': ORIENTACAO}
+              'instrucoes_digest': assinatura(instrucoes), 'instrucoes': instrucoes}
     with transaction.atomic():
         execucao, _ = Execucao.objects.get_or_create(chave_de_repeticao='banca:' + chave,
             defaults={'tipo': Execucao.Tipo.BANCA, 'origem': 'banca_clientes', 'pedido_por': por[:200],
@@ -84,7 +91,7 @@ def pedir(site_id, slug, origem, experimento_id, variante, chave, por):
     return execucao
 
 
-def esquema_leitura():
+def esquema_leitura(secoes=None):
     campos = {'secao': {'type': 'string'}, 'trecho': {'type': 'string'},
               'objecao': {'type': 'string'}, 'faltou': {'type': 'string'},
               'evidencia_id': {'type': 'string'}}
@@ -94,6 +101,9 @@ def esquema_leitura():
                    'evidencia_decisao': {'type': 'string'},
                    'objecoes': {'type': 'array', 'maxItems': 5, 'items': {
                        'type': 'object', 'properties': campos, 'required': list(campos), 'additionalProperties': False}}}
+    if secoes:
+        campos['secao']['enum'] = list(secoes)
+        propriedades['secao_decisao']['enum'] = list(secoes)
     return {'type': 'json_schema', 'name': 'leitura_banca', 'strict': True,
             'schema': {'type': 'object', 'properties': propriedades,
                        'required': list(propriedades), 'additionalProperties': False}}
@@ -103,6 +113,14 @@ def validar_leitura(dados, foto, corpus, codigo):
     if dados.get('compra') not in {'sim', 'nao', 'indeciso'} or not dados.get('porque') or not dados.get('onde_parou'):
         raise ValueError('Resposta sem decisão simulada e justificativas.')
     textos = blocos(foto['conteudo']['secoes'])
+    def localizar(secao, trecho):
+        if trecho and trecho in textos.get(secao, ''):
+            return secao
+        # A citação literal identifica o bloco; títulos visíveis também podem vir na resposta.
+        candidatos = [chave for chave, texto in textos.items()
+                      if trecho and trecho in texto]
+        return candidatos[0] if len(candidatos) == 1 else secao
+    dados['secao_decisao'] = localizar(dados.get('secao_decisao'), dados.get('trecho_decisao'))
     ids = {i['id'] for i in corpus['itens']}
     if not dados.get('trecho_decisao', '').strip() or dados['trecho_decisao'] not in textos.get(dados.get('secao_decisao'), ''):
         raise ValueError('A decisão simulada também precisa citar um trecho real da página.')
@@ -112,6 +130,7 @@ def validar_leitura(dados, foto, corpus, codigo):
         raise ValueError('Lista de objeções inválida.')
     for item in dados['objecoes']:
         trecho = item.get('trecho', '')
+        item['secao'] = localizar(item.get('secao'), trecho)
         if not trecho.strip() or trecho not in textos.get(item.get('secao'), ''):
             raise ValueError('Citação não encontrada no conteúdo congelado.')
         if not item.get('objecao') or 'faltou' not in item:
@@ -145,6 +164,15 @@ def executar(execucao):
             terminar(execucao, Execucao.Situacao.FALHOU, 'Chamada paga sem resposta salva. Conferência necessária; nenhuma chamada reenviada.')
             return
         if codigo in estado['chamadas']:
+            if codigo != 'sintese':
+                try:
+                    dados = json.loads(estado['chamadas'][codigo]['texto'])
+                    validar_leitura(dados, estado['fotografia'], estado['corpus'], codigo)
+                    estado['resultados'][codigo] = dados
+                    guardar_estado(execucao)
+                    continue
+                except (ValueError, KeyError, TypeError):
+                    pass
             terminar(execucao, Execucao.Situacao.FALHOU, 'Resposta anterior inválida preservada; crie nova rodada após conferir.')
             return
         batimento(execucao, 'Síntese' if codigo == 'sintese' else PERFIS[codigo], 8 + indice * 12)
@@ -160,7 +188,7 @@ def executar(execucao):
                 entrada['corpus'] = estado['corpus']
         resposta = modelo.responder(modelo=estado['modelo'], instrucoes=instrucao,
             itens=[{'role': 'user', 'content': json.dumps(entrada, ensure_ascii=False)}],
-            formato=esquema_sintese() if codigo == 'sintese' else esquema_leitura(),
+            formato=esquema_sintese() if codigo == 'sintese' else esquema_leitura(entrada['blocos']),
             max_saida=3000, esforco='medium', execucao=execucao, origem='banca_clientes')
         estado['chamadas'][codigo] = {'texto': anonimizar(resposta.texto) if not resposta.completa else resposta.texto,
             'consumo_id': resposta.consumo.pk, 'resposta_id': resposta.id,
@@ -185,6 +213,11 @@ def executar(execucao):
             terminar(execucao, Execucao.Situacao.FALHOU, str(erro))
             return
     foto = estado['fotografia']
+    if estado.get('modo_teste'):
+        estado['registro_catalogo'] = {'situacao': 'teste', 'resposta': 'Rodada sintética preservada no histórico; não é comprovante de calibração real.'}
+        guardar_estado(execucao)
+        terminar(execucao, Execucao.Situacao.CONCLUIDA, 'Teste concluído: seis leituras e síntese com dados sintéticos identificados.')
+        return
     corpo = {'rodada': 'banca:' + str(execucao.pk), 'assinatura': foto['assinatura'],
              'perfis_digest': estado['perfis_digest'], 'corpus_digest': estado['corpus']['digest'],
              'leituras': 6, 'sintese': True, 'origem': foto['origem'],
