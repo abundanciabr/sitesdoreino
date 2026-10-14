@@ -113,7 +113,7 @@ def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste, reaprovei
     entradas = []
     if reaproveitar:
         anterior = leitura()
-        anterior['secao_decisao'] = 'cubo'
+        anterior['secao_decisao'] = 'Título visível do primeiro bloco'
         trabalho.estado['chamadas']['iniciante'] = {'texto': json.dumps(anterior)}
         trabalho.save(update_fields=['estado'])
     def responder(**kwargs):
