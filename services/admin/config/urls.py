@@ -402,6 +402,7 @@ urlpatterns = [
     path("galeria-publica/comentario", galeria_votacao.comentar),
     path("galeria-publica/imagens/<slug:slug>", galeria_votacao.imagem),
     path("galeria-publica/<str:nome>", galeria_votacao.recurso),
+    path("comunidade/percurso/", comunidade_entrada.percurso_aluno, name="comunidade_percurso"),
     path("comunidade/alunos-atual/", comunidade_entrada.alunos_atual, name="comunidade_alunos_atual"),
     path("comunidade/votacao/", galeria_votacao.comentarios_admin, name="galeria_comentarios_admin"),
     path("crm/", crm, name="crm"),
