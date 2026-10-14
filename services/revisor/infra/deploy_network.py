@@ -125,6 +125,7 @@ def prepare():
         suffix = '\nTOKENS_ACEITOS_REVISOR='+tokens[name]+'\n'
         if name == 'identidade':
             suffix += 'TOKENS_COMPLETOS_REVISOR='+tokens[name]+'\n'
+            suffix += 'REVISOR_GATEWAY_IP=172.16.1.251\n'
         tmp = path.with_suffix('.revisor.tmp')
         tmp.write_bytes(original+suffix.encode())
         shutil.copystat(path,tmp)

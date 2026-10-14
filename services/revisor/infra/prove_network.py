@@ -46,8 +46,21 @@ print(json.dumps(out))
     p=subprocess.run(['docker','run','--rm','-i','--network','meshcraft-revisor','--cap-drop','ALL','--security-opt','no-new-privileges','python:3.12-slim','python','-c',http_probe],input=json.dumps({k:http[k] for k in ['site_id','client_token']}),text=True,capture_output=True,timeout=60)
     assert p.returncode==0
     report['http_status']=json.loads(p.stdout)
+    provider_probe='''import json,http.client
+from pathlib import Path
+c=json.loads(Path('/run/revisor/config.json').read_text()); out={}
+for name,path in [('session','/entrar/revisor/sessao/completa'),('enrollment','/alunos/api/alunos/alunos/prova-revisor%40example.invalid/matriculas'),('lessons','/cursos/api/cursos/cursos/prova-revisor-inexistente/aulas?site_id='+c['site_id'])]:
+ h=http.client.HTTPConnection(c['upstream_ip'],8000,timeout=5)
+ h.request('GET',path,headers={'Host':'meshcraft.top','Authorization':'Bearer deliberately-incorrect'})
+ r=h.getresponse(); out[name]=r.status; r.read(); h.close()
+print(json.dumps(out))
+'''
+    invalid=subprocess.run(['docker','exec','meshcraft-revisor-http','python','-c',provider_probe],capture_output=True,text=True,timeout=20)
+    assert invalid.returncode==0
+    report['provider_invalid_token_status']=json.loads(invalid.stdout)
+    report['provider_auth_checked']=all(v==401 for v in report['provider_invalid_token_status'].values())
     report['http_denials']=all(report['http_status'][k]==v for k,v in [('unauthorized',401),('post',405),('arbitrary',403),('connect',405)])
-    report['http_pairs']=report['http_status']['session']==200 and report['http_status'].get('anonymous_session',False) and report['http_status']['enrollment']==404 and report['http_status']['lessons']==404
+    report['http_pairs']=report['provider_auth_checked'] and report['http_status']['session']==200 and report['http_status'].get('anonymous_session',False) and report['http_status']['enrollment']==404 and report['http_status']['lessons']==404
     runpy.run_path(str(OWN/'deploy_network.py'))['freeze']()
     report['mercadopago_freeze']=True
     report['ai_egress']='closed'

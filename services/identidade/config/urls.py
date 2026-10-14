@@ -1,4 +1,5 @@
 from django.urls import path
+from apps.core.revisor_http import revisor_session
 
 from apps.core.views import (
     entrar_google,
@@ -30,6 +31,7 @@ from apps.core.recuperacao import recuperar_senha
 # Os caminhos aqui são LITERAIS (sem SCRIPT_NAME): o prefixo público /entrar é
 # roteado pelo Traefik sem remoção, e o urlconf o declara por extenso.
 urlpatterns = [
+    path("entrar/revisor/sessao/completa", revisor_session),
     path("healthz", healthz),
     path("interno/", api.urls),
     path("entrar", pagina_de_entrada, name="pagina_de_entrada"),
