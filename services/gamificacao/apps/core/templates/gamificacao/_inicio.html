@@ -86,10 +86,6 @@
             <label class="compromisso-check"><input type="checkbox" name="compromisso_checks" value="motivo"><span>Vou transformar o motivo que escolhi em ação até concluir o curso.</span></label>
             <div class="compromisso-motivos" data-compromisso-motivos data-rotulo="O motivo que sustenta minha decisão"></div>
           </div>
-          <p class="compromisso-frase">Meu compromisso é com a minha decisão.</p>
-          <p>Vamos conferir seu motivo, seu compromisso e se você identificou como começar.</p>
-          <label for="inicio-proximo-passo">Qual é meu próximo passo para começar a criar?</label>
-          <select id="inicio-proximo-passo" name="proximo_passo"><option value="">Escolha uma resposta</option><option value="criar_item">Criar um primeiro item simples nas aulas e contar o que fiz</option><option value="esperar">Esperar o tempo passar sem praticar</option><option value="botao">Apenas apertar um botão para conquistar as faixas</option></select>
           <div class="inicio-acoes"><button type="submit" value="assumir">Eu assumo. Vou até o fim. <span aria-hidden="true">→</span></button><button type="button" class="inicio-secundario" id="inicio-compromisso-anterior">Voltar</button></div>
         </div>
         <div class="compromisso-visual"><img src="{% url 'estatico' 'compromisso-caminho.avif' %}" alt="" width="1024" height="683" loading="lazy"><p>Este compromisso fica privado na sua conta.</p></div>
@@ -158,4 +154,4 @@
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=14" defer></script>
+<script src="{% url 'estatico' 'inicio.js' %}?v=15" defer></script>

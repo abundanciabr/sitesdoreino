@@ -64,6 +64,9 @@ def test_compromisso_embutido_tem_duas_acoes_e_confirmacao_privada(client):
     for texto in ('Eu sei por que comecei.', 'Eu vou até o fim.', 'Meu compromisso está assumido.', 'Eu assumo. Vou até o fim.'):
         assert texto in corpo
     assert 'name="objetivo"' not in corpo and 'name="obstaculo"' not in corpo
+    assert 'inicio-proximo-passo' not in corpo
+    assert 'Vamos conferir seu motivo' not in corpo
+    assert 'Meu compromisso é com a minha decisão.' not in corpo
     assert 'private' in resposta['Cache-Control'] and 'no-store' in resposta['Cache-Control']
     assert not JornadaPessoal.objects.get().inicio.get('compromisso_curso_em')
 
