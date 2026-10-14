@@ -159,3 +159,24 @@ def coletar(site_id):
 
 def ultimo(site_id):
     return RascunhoDeConfiguracao.objects.filter(tipo='banca_corpus', site_id=str(site_id)).order_by('-pk').first()
+
+
+def dados_de_teste(site_id):
+    textos = [
+        ('suporte', 'Nunca abri um programa 3D. Preciso de computador potente para começar?'),
+        ('reembolso', 'Comprei outro curso e parei na segunda aula. Como vou conseguir terminar este?'),
+        ('suporte', 'O orçamento está apertado. Além do curso, quanto preciso gastar e o que acontece se não der certo?'),
+        ('comentário do lançamento', 'Como vocês demonstram que ainda existe demanda por itens e que os preços compensam o esforço?'),
+        ('quiz', 'Não entendi os termos técnicos nem qual será o primeiro passo depois da compra.'),
+        ('suporte', 'Tenho pouco tempo. Quanto trabalho preciso fazer antes de poder tentar uma primeira venda?'),
+    ]
+    corpus = {'modo': 'teste_sintetico', 'coletado_em': 'fixture-v1', 'selecao_versao': VERSAO_SELECAO,
+        'itens': [{'id': f'teste-{i+1}', 'fonte': f'{fonte} simulado para teste', 'texto': texto,
+                  'idioma': 'pt-br', 'origem': 'Fixture criada pelo robô, autorizada pelo mantenedor; não é relato de comprador.'}
+                 for i, (fonte, texto) in enumerate(textos)],
+        'cobertura': [{'fonte': 'dados sintéticos de teste', 'estado': 'criada', 'examinados': 6, 'limite': 'Nenhuma mensagem de comprador real.'}],
+        'limite': 'Teste funcional com objeções inventadas. Não calibra clientes reais nem mede conversão.'}
+    corpus['digest'] = assinatura(corpus)
+    registro, _ = RascunhoDeConfiguracao.objects.get_or_create(tipo='banca_corpus_teste',
+        site_id=str(site_id), alvo='fixture-v1', defaults={'conteudo': corpus})
+    return registro

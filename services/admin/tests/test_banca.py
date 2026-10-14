@@ -101,10 +101,14 @@ def test_duplo_clique_preserva_fotografia_e_perfis():
 
 
 @pytest.mark.django_db
-def test_sete_chamadas_independentes_e_sintese_sem_repetir():
+@pytest.mark.parametrize('modo_teste', [False, True])
+def test_sete_chamadas_independentes_e_sintese_sem_repetir(modo_teste):
     RascunhoDeConfiguracao.objects.create(tipo='banca_corpus', site_id='s1', alvo='c1', conteudo=corpus())
     with patch.object(banca, 'fotografia', return_value=foto()), patch.object(banca.modelo, 'conexao', return_value=SimpleNamespace(modelo_forte='teste')):
-        trabalho = banca.pedir('s1', 'oferta', 'publicada', '', '', 'sete', 'Equipe')
+        trabalho = banca.pedir('s1', 'oferta', 'publicada', '', '', 'sete', 'Equipe', modo_teste=modo_teste)
+    if modo_teste:
+        assert banca_fontes.ultimo('s1').conteudo == corpus()
+        assert trabalho.estado['corpus']['modo'] == 'teste_sintetico'
     entradas = []
     def responder(**kwargs):
         entrada = json.loads(kwargs['itens'][0]['content'])
@@ -113,10 +117,14 @@ def test_sete_chamadas_independentes_e_sintese_sem_repetir():
         dados = leitura(codigo) if codigo != 'sintese' else {'resumo': 'Hipóteses', 'divergencias': 'Nenhuma', 'limites': 'Simulação',
             'consertos': [{'titulo': 'Explicar início', 'porque_priorizar': 'Dúvida', 'referencias': ['iniciante:0'],
                           'conserto': 'Explicar', 'hipotese': 'Clareza aumenta entradas', 'metrica': 'checkout_iniciado'}]}
+        if codigo == 'calibrado' and modo_teste:
+            dados['evidencia_decisao'] = 'teste-1'
+            dados['objecoes'][0]['evidencia_id'] = 'teste-1'
         return SimpleNamespace(texto=json.dumps(dados), completa=True, id='resposta',
                                consumo=SimpleNamespace(pk=len(entradas), custo_estimado_usd='0.01'))
-    with patch.object(banca.modelo, 'responder', side_effect=responder), patch.object(banca.CatalogoClient, '_falar', return_value=('ok', {'registrada': True})):
+    with patch.object(banca.modelo, 'responder', side_effect=responder), patch.object(banca.CatalogoClient, '_falar', return_value=('ok', {'registrada': True})) as catalogo:
         executor.rodar_uma('banca-teste')
+        assert catalogo.call_count == (0 if modo_teste else 1)
     trabalho.refresh_from_db()
     assert trabalho.situacao == Execucao.Situacao.CONCLUIDA
     assert len(entradas) == 7

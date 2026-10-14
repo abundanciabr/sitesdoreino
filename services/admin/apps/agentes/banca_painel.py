@@ -47,7 +47,7 @@ def painel(request, site):
                 trabalho = banca.pedir(site_id, request.POST.get('slug', ''), request.POST.get('origem', 'publicada'),
                     request.POST.get('experimento_id', ''), request.POST.get('variante', ''),
                     request.POST.get('chave', '')[:100] or str(uuid.uuid4()),
-                    request.admin.get('nome', 'Administração'))
+                    request.admin.get('nome', 'Administração'), modo_teste=request.POST.get('modo_teste') == 'sim')
                 return HttpResponseRedirect(request.path + '?' + urlencode({'banca': '1', 'rodada': trabalho.pk}))
             elif acao == 'exigir':
                 estado, resposta = cliente._falar('POST', f'/sites/{site_id}/banca/exigir')
