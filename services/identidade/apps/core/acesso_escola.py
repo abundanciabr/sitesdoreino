@@ -10,7 +10,9 @@ PRAZO_SESSAO = 400 * 24 * 60 * 60
 
 def _privada(resposta):
     resposta["Cache-Control"] = "no-store"
-    resposta["Referrer-Policy"] = "no-referrer"
+    # O POST automático precisa conservar a origem para a conferência CSRF.
+    # O segredo fica no fragmento e é removido antes do envio do formulário.
+    resposta["Referrer-Policy"] = "same-origin"
     resposta["X-Robots-Tag"] = "noindex, nofollow"
     return resposta
 

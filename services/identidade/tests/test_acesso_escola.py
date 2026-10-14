@@ -8,6 +8,34 @@ from apps.core.sessao_persistente import SessionStore
 
 from types import SimpleNamespace
 
+def test_formulario_https_preserva_origem_e_csrf(monkeypatch, settings):
+    from pathlib import Path
+    from django.test import Client
+    settings.TEMPLATES = [{**settings.TEMPLATES[0], "DIRS": [Path(__file__).resolve().parents[1] / "templates"]}]
+    settings.ALLOWED_HOSTS = ["meshcraft.top"]
+    chamada = Mock(return_value=Mock(status_code=400))
+    monkeypatch.setattr(acesso.httpx, "post", chamada)
+    cliente = Client(enforce_csrf_checks=True)
+    rota = "/entrar/escola/"
+    pagina = cliente.get(rota, secure=True, HTTP_HOST="meshcraft.top")
+    assert pagina.status_code == 200
+    assert pagina["Referrer-Policy"] == "same-origin"
+    assert pagina["Cache-Control"] == "no-store"
+    dados = {"token": "credencial-ficticia", "csrfmiddlewaretoken": cliente.cookies[settings.CSRF_COOKIE_NAME].value}
+    # Mesmo sem Origin, o Referer HTTPS da própria página é aceito.
+    assert cliente.post(rota, dados, secure=True, HTTP_HOST="meshcraft.top",
+                        HTTP_REFERER="https://meshcraft.top/entrar/escola/").status_code == 400
+    assert chamada.call_count == 1
+    for origem in ("null", "https://outro.example"):
+        assert cliente.post(rota, dados, secure=True, HTTP_HOST="meshcraft.top",
+                            HTTP_ORIGIN=origem).status_code == 403
+    assert cliente.post(rota, {"token": "credencial-ficticia"}, secure=True,
+                        HTTP_HOST="meshcraft.top", HTTP_ORIGIN="https://meshcraft.top").status_code == 403
+    assert chamada.call_count == 1
+    assert cliente.post(rota, dados, secure=True, HTTP_HOST="meshcraft.top",
+                        HTTP_ORIGIN="https://meshcraft.top").status_code == 400
+    assert chamada.call_count == 2
+
 def request():
     req=RequestFactory().post("/entrar/escola/",{"token":"teste"})
     SessionMiddleware(lambda r:None).process_request(req)
