@@ -17,7 +17,9 @@ def test_rotas_retiradas(path):
 def test_telas_restantes_sem_recursos_antigos(monkeypatch):
     monkeypatch.setattr('apps.core.views.quem_e', lambda request: 'aluno')
     monkeypatch.setattr('apps.core.views.site_atual', lambda: 'escola')
-    for url in ['/', '/medalhas']:
+    antiga = Client().get('/')
+    assert antiga.status_code == 302 and antiga['Location'] == '/trilha/'
+    for url in ['/medalhas']:
         response=Client().get(url)
         assert response.status_code == 200
         html=response.content.decode()

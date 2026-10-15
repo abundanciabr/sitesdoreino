@@ -88,7 +88,10 @@ _CAMPO = re.compile(r"\{\{\s*([a-z_]+)\s*\}\}")
 
 
 def configuracao(versao: JornadaVersao) -> dict:
-    return versao.central_config if isinstance(versao.central_config, dict) else {}
+    config = dict(versao.central_config) if isinstance(versao.central_config, dict) else {}
+    if config.get("gatilho") == "gamificacao.nivel-alcancado":
+        config["gatilho"] = "gamificacao.faixa-alcancada"
+    return config
 
 
 def e_central(versao: JornadaVersao) -> bool:
@@ -143,7 +146,8 @@ def inscrever_evento(*, gatilho, site_id, destinatario_id, event_id, contexto=No
         fato = uuid.UUID(str(event_id))
     except (ValueError, TypeError):
         return []
-    candidatas = Jornada.objects.filter(site_id=site_id, gatilho=gatilho, ativa=True,
+    gatilhos = [gatilho, "gamificacao.nivel-alcancado"] if gatilho == "gamificacao.faixa-alcancada" else [gatilho]
+    candidatas = Jornada.objects.filter(site_id=site_id, gatilho__in=gatilhos, ativa=True,
                                          central_entrada_aberta=True, central_pausada=False)
     if jornada_slug:
         candidatas = candidatas.filter(slug=jornada_slug)

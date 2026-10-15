@@ -288,7 +288,7 @@ def encaminhar(envelope: dict) -> None:
         "matricula.ativa", "aula.concluida", "envio.recebido",
         "checkpoint.devolvido", "gamificacao.faixa-alcancada",
         "gamificacao.conquista-concedida", "gamificacao.marco-validado",
-    } and Jornada.objects.filter(site_id=site_id, gatilho=gatilho, ativa=True).exists():
+    } and Jornada.objects.filter(site_id=site_id, gatilho__in=([gatilho, "gamificacao.nivel-alcancado"] if gatilho == "gamificacao.faixa-alcancada" else [gatilho]), ativa=True).exists():
         confirmado = _contexto_do_prontuario(
             site_id=site_id, pessoa_id=destinatario,
             matricula_id=contexto.get("matricula_id", "") if gatilho == "matricula.ativa" else "",
