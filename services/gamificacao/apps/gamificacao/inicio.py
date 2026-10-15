@@ -102,7 +102,7 @@ def salvar_inicio(jornada, dados):
             inicio['motivo_etapa'] = int(dados['motivo_etapa'])
     elif dados['acao'] == 'inicio-compromisso':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
-            raise ValueError('Conclua seu motivo e receba o XP antes de assumir o compromisso.')
+            raise ValueError('Conclua seu motivo antes de assumir o compromisso.')
         if dados.get('compromisso_etapa') in ('1', '2'):
             inicio['compromisso_etapa'] = int(dados['compromisso_etapa'])
         if 'compromisso_checks' in dados:
@@ -123,7 +123,7 @@ def salvar_inicio(jornada, dados):
             inicio['compromisso_etapa'] = 3
     elif dados['acao'] == 'inicio-plano':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[1]['liberada']:
-            raise ValueError('Conclua seu motivo e receba o XP antes de definir o objetivo.')
+            raise ValueError('Conclua seu motivo antes de definir o objetivo.')
         plano = {chave: texto(dados, chave, limite) for chave, limite in (
             ('sonho', 500), ('objetivo', 280), ('quando', 160),
             ('obstaculo', 280), ('plano_b', 280), ('compromisso', 1200),
@@ -143,7 +143,7 @@ def salvar_inicio(jornada, dados):
         inicio.update(plano)
     elif dados['acao'] == 'inicio-item':
         if not etapas_inicio(jornada.pessoa_id, jornada.site_id, jornada)[2]['liberada']:
-            raise ValueError('Assuma seu compromisso e receba o XP antes de criar o item.')
+            raise ValueError('Assuma seu compromisso antes de criar o item.')
         inicio['item_nome'] = texto(dados, 'item_nome', 180)
         inicio['item_acao'] = texto(dados, 'item_acao', 1000)
         if not inicio['item_nome'] or not inicio['item_acao']:
