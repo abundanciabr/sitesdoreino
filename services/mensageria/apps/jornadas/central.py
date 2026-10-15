@@ -24,7 +24,8 @@ MODELOS = (
     ("retorno", "Retorno após inatividade"),
     ("lembretes", "Atividades, entregas e encontros"),
     ("avaliacao", "Avaliação e devolução"),
-    ("conquistas", "Faixas, conquistas e etapas"),
+    ("faixas", "Faixas e graus da Trilha"),
+    ("conquistas", "Reconhecimentos anteriores"),
     ("forum", "Resposta no Fórum"),
     ("operacional", "Avisos operacionais"),
     ("pesquisa", "Pesquisa de satisfação"),
@@ -45,7 +46,9 @@ MODELO_CORPOS = {
     "pesquisa": "Olá! Como está sua experiência de estudo? Sua resposta nos ajuda a melhorar.",
     "campanha": "Olá! Se quiser conhecer outras opções de estudo, podemos orientar você.",
 }
+MODELO_CORPOS["faixas"] = "Parabéns! Você alcançou {{progresso}}. Veja sua Trilha: {{link}}"
 MODELO_GATILHOS = {
+    "faixas": "gamificacao.faixa-alcancada",
     "boas-vindas": "identidade.pessoa-cadastrada",
     "compra": "matricula.ativa",
     "recuperar-acesso": "manual",
@@ -70,7 +73,7 @@ MODELO_ROTEIROS = {
 }
 GATILHOS_TRANSACIONAIS = frozenset({
     "matricula.ativa", "checkpoint.devolvido", "forum.resposta-criada",
-    "gamificacao.nivel-alcancado", "gamificacao.conquista-concedida",
+    "gamificacao.faixa-alcancada", "gamificacao.conquista-concedida",
     "gamificacao.marco-validado",
 })
 

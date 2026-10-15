@@ -26,3 +26,17 @@ def test_aviso_sem_slug_continua_visivel():
     itens,_=pagina_de_avisos(site_id='escola',destinatario_id='aluno',cursor=None,limite=20)
     assert len(itens) == 1
     assert resumo_de_nao_lidos(site_id='escola',destinatario_id='aluno') == 1
+
+
+def test_nivel_antigo_e_preservado_sem_contador_ou_push(monkeypatch):
+    dados = dict(site_id='escola', destinatario_id='aluno', ator_id=None,
+                 assunto='gamificacao.nivel-alcancado', parametros={'nivel':9}, origem_event_id=str(uuid.uuid4()))
+    guardar(**dados)
+    assert Notificacao.objects.count() == 1
+    assert resumo_de_nao_lidos(site_id='escola', destinatario_id='aluno') == 0
+    itens, _ = pagina_de_avisos(site_id='escola', destinatario_id='aluno', cursor=None, limite=20)
+    assert itens == []
+    monkeypatch.setattr('apps.notificacoes.handlers.avisar_os_aparelhos', lambda **kw: pytest.fail('push de nível'))
+    dados.pop('ator_id')
+    ao_notificacao_devida(dados)
+    assert Notificacao.objects.count() == 1

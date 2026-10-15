@@ -516,3 +516,44 @@ faixa_nome_preta:
   en: "Black"
   pt-br: "Preta"
   es: "Negra"
+
+ver_trilha:
+  pt-br: "Ver minha Trilha"
+  en: "View my journey"
+  es: "Ver mi recorrido"
+grau_titulo:
+  pt-br: "Você alcançou um novo grau!"
+  en: "You reached a new degree!"
+  es: "¡Alcanzaste un nuevo grado!"
+faixa_nome_vermelha:
+  pt-br: "Vermelha"
+  en: "Red"
+  es: "Roja"
+faixa_nome_preta_grau_1:
+  pt-br: "Preta · 1º grau"
+  en: "Black · degree 1"
+  es: "Negra · 1º grado"
+faixa_nome_preta_grau_2:
+  pt-br: "Preta · 2º grau"
+  en: "Black · degree 2"
+  es: "Negra · 2º grado"
+faixa_nome_preta_grau_3:
+  pt-br: "Preta · 3º grau"
+  en: "Black · degree 3"
+  es: "Negra · 3º grado"
+faixa_nome_preta_grau_4:
+  pt-br: "Preta · 4º grau"
+  en: "Black · degree 4"
+  es: "Negra · 4º grado"
+faixa_nome_preta_grau_5:
+  pt-br: "Preta · 5º grau"
+  en: "Black · degree 5"
+  es: "Negra · 5º grado"
+faixa_nome_preta_grau_6:
+  pt-br: "Preta · 6º grau"
+  en: "Black · degree 6"
+  es: "Negra · 6º grado"
+faixa_nome_preta_grau_7:
+  pt-br: "Preta · 7º grau"
+  en: "Black · degree 7"
+  es: "Negra · 7º grado"

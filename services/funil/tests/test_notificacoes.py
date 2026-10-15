@@ -111,9 +111,9 @@ def test_subir_de_nivel_tem_cartao_proprio(
     )
 
     corpo = resposta.content.decode()
-    assert "Você subiu de nível" in corpo
-    assert "Agora você está no nível 2." in corpo
-    assert 'href="/conquistas/"' in corpo
+    assert "Você subiu de nível" not in corpo
+    assert "Agora você está no nível 2." not in corpo
+    assert 'href="/conquistas/"' not in corpo
     assert "ainda não sabe mostrar" not in corpo
 
 
@@ -411,3 +411,24 @@ def test_aviso_de_faixa_diz_a_faixa(client, logado, rede, notificacoes_configura
     assert "Você chegou a uma nova faixa" in corpo
     assert "Você chegou à faixa Amarela." in corpo
     assert "medalha" not in corpo
+
+
+@pytest.mark.parametrize("slug,nome,titulo", [
+    ("vermelha", "Vermelha", "Você chegou a uma nova faixa"),
+    ("preta-grau-2", "Preta · 2º grau", "Você alcançou um novo grau!"),
+])
+def test_faixa_atual_e_grau_levam_a_trilha(client, logado, rede, notificacoes_configurada, slug, nome, titulo):
+    _resumo(rede)
+    aviso = _aviso()
+    aviso.update(assunto="gamificacao.conquista-concedida", parametros={"conquista_slug": "trilha-faixa-" + slug, "familia": "carreira"})
+    _lista(rede, aviso)
+    resposta = client.get(caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+    corpo = resposta.content.decode()
+    assert titulo in corpo and nome in corpo
+    assert 'href="/trilha/"' in corpo and "Ver minha Trilha" in corpo
+    assert "Você ganhou uma medalha" not in corpo
+
+def test_referencia_de_robos_aponta_para_trilha(client, rede):
+    corpo = client.get("/llms.txt", HTTP_HOST=HOST_MESH).content.decode()
+    assert "https://meshcraft.top/trilha/" in corpo
+    assert "https://meshcraft.top/conquistas/" not in corpo

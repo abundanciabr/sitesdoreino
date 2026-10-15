@@ -71,9 +71,17 @@ self.addEventListener("push", (evento) => {
     // Conteúdo que não é o nosso JSON: cai no aviso genérico.
     carta = {};
   }
-  const texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
+  let texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
   // O toque leva ao mesmo link do cartão da página; sem link, à lista de avisos.
   const parametros = carta.parametros || {};
+  if (carta.assunto === 'gamificacao.nivel-alcancado') return;
+  const slug = String(parametros.conquista_slug || '');
+  const prefix = slug.startsWith('trilha-faixa-') ? 'trilha-faixa-' : 'faixa-';
+  const belt = slug.slice(prefix.length).replaceAll('-', '_');
+  if (carta.assunto === 'gamificacao.conquista-concedida' && slug.startsWith(prefix) && (AVISOS.faixas || {})[belt]) {
+    texto = {titulo: belt.startsWith('preta_grau_') ? AVISOS.grau_titulo : AVISOS.faixa_titulo,
+      corpo: AVISOS.faixa_corpo + ' ' + AVISOS.faixas[belt] + '.'};
+  }
   const idDaIdeia = String(parametros.suggestion_id || "");
   let caminho = (AVISOS.links || {})[carta.assunto] || AVISOS.caminho;
   if (caminho.includes("{suggestion_id}")) {

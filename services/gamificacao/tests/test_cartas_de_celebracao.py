@@ -1,4 +1,4 @@
-"""A célula ganhou VOZ: ela avisa quem subiu de nível.
+"""Contratos de aviso preservados; progressão é avisada pela avaliação da Trilha.
 
 Até 01/09/2026 a gamificação era MUDA. Ela contava pontos, subia níveis e não
 dizia nada a ninguém — ganhar só acontecia se o aluno resolvesse abrir a tela
@@ -136,19 +136,9 @@ def _no_fio(carta: OutboxEvent) -> dict:
 def test_subir_de_nivel_escreve_a_carta():
     _escada()
     _regra(pontos=10)
-    fato = _evento()
-
-    aplicar(fato, SITE)
-
-    (carta,) = _cartas()
-    assert carta.event == "notificacao.devida"
-    assert carta.payload["assunto"] == ASSUNTO_NIVEL
-    assert carta.payload["destinatario_id"] == ALUNO
-    assert carta.payload["parametros"] == {"nivel": 2, "titulo_slug": "modelador"}
-    # A TRILHA: de qualquer aviso se chega ao acontecimento que o causou. Sem
-    # esta linha o campo existiria e apontaria para a própria carta, e a
-    # promessa "rastreável" morreria na primeira delas.
-    assert carta.payload["origem_event_id"] == fato["event_id"]
+    aplicar(_evento(), SITE)
+    assert PerfilJogador.objects.get().nivel == 2
+    assert _cartas() == []
 
 
 @pytest.mark.django_db(transaction=True)
@@ -182,7 +172,7 @@ def test_perder_xp_nao_gera_carta():
     _escada()
     _regra(pontos=10)
     aplicar(_evento(), SITE)
-    assert len(_cartas()) == 1
+    assert len(_cartas()) == 0
     assert PerfilJogador.objects.get().nivel == 2
 
     # O estorno é linha NOVA no ledger, nunca apagar (lei do modelo).
@@ -201,21 +191,21 @@ def test_perder_xp_nao_gera_carta():
     recalcular(ALUNO, SITE)
 
     assert PerfilJogador.objects.get().nivel == 1
-    assert len(_cartas()) == 1, "descer de nível não pode escrever carta nenhuma"
+    assert len(_cartas()) == 0, "descer de nível não pode escrever carta nenhuma"
 
 
 def test_ganhar_xp_sem_trocar_de_degrau_nao_gera_carta():
     _escada()
     _regra(pontos=10, acoes_cheias_por_dia=0)
     aplicar(_evento(), SITE)
-    assert len(_cartas()) == 1  # a subida para o nível 2
+    assert len(_cartas()) == 0  # a subida para o nível 2
 
     # Mais 10 pontos: 20 no total, e o nível 3 só chega aos 50.
     aplicar(_evento(), SITE)
 
     assert PerfilJogador.objects.get().xp_total == 20
     assert PerfilJogador.objects.get().nivel == 2
-    assert len(_cartas()) == 1, "o aviso é sobre o degrau, não sobre o placar"
+    assert len(_cartas()) == 0, "o aviso é sobre o degrau, não sobre o placar"
 
 
 def test_o_mesmo_fato_reentregue_nao_comemora_duas_vezes():
@@ -233,7 +223,7 @@ def test_o_mesmo_fato_reentregue_nao_comemora_duas_vezes():
     aplicar(fato, SITE)
 
     assert PerfilJogador.objects.get().xp_total == 10
-    assert len(_cartas()) == 1
+    assert len(_cartas()) == 0
 
 
 # ------------------------------------------- 4 e 5. o contrato manda
@@ -277,23 +267,10 @@ def test_assunto_fora_do_contrato_e_recusado_na_origem():
 
 
 def test_a_comemoracao_de_tela_entra_na_forma_que_a_porta_devolve():
-    """A celebração visceral não pode nascer torta.
-
-    A porta de máquina DESCARTA silenciosamente a linha que não casa com o
-    vocabulário fechado (`tipo` + `referencia`), com um aviso só no log. Uma
-    forma errada aqui não quebraria nada: a comemoração simplesmente nunca
-    aconteceria, e ninguém descobriria por quê.
-    """
     _escada()
     _regra(pontos=10)
     aplicar(_evento(), SITE)
-
-    perfil = PerfilJogador.objects.get()
-    devolvidas = _celebracoes(perfil)
-
-    assert len(devolvidas) == 1
-    assert devolvidas[0].tipo == "nivel-alcancado"
-    assert devolvidas[0].referencia == "2"
+    assert _celebracoes(PerfilJogador.objects.get()) == []
 
 
 def test_consertar_um_perfil_divergente_nao_comemora():
@@ -307,7 +284,7 @@ def test_consertar_um_perfil_divergente_nao_comemora():
     _escada()
     _regra(pontos=10)
     aplicar(_evento(), SITE)
-    assert len(_cartas()) == 1
+    assert len(_cartas()) == 0
 
     # A cópia é torcida À MÃO, que é exatamente o cenário que o comando existe
     # para achar: alguém escreveu no perfil por fora do motor.
@@ -316,28 +293,17 @@ def test_consertar_um_perfil_divergente_nao_comemora():
     call_command("reconciliar_perfis", "--consertar")
 
     assert PerfilJogador.objects.get().nivel == 2
-    assert len(_cartas()) == 1, "consertar a cópia não escreve carta"
+    assert len(_cartas()) == 0, "consertar a cópia não escreve carta"
 
 
 def test_consertar_COM_avisar_manda_a_carta_de_quem_subiu():
-    """O dia em que a escada nasce, e só ele (`--avisar`, 02/09/2026).
-
-    Antes de a escola ligar os degraus, `nivel_para` devolve 1 para todo mundo:
-    não há degrau ativo nenhum. No instante em que a escada é ligada, quem já
-    tinha XP passa a estar num degrau que até então não existia. A cópia não
-    atrasou: a régua nasceu depois da altura, e por isso a subida é de HOJE.
-    """
     _escada()
     _regra(pontos=10)
     aplicar(_evento(), SITE)
-    assert len(_cartas()) == 1
-
     PerfilJogador.objects.update(nivel=1, xp_total=0)
-
     call_command("reconciliar_perfis", "--consertar", "--avisar")
-
     assert PerfilJogador.objects.get().nivel == 2
-    assert len(_cartas()) == 2, "quem subiu no dia da escada não foi avisado"
+    assert _cartas() == []
 
 
 def test_avisar_sozinho_e_recusado_em_vez_de_ignorado():
@@ -354,36 +320,21 @@ def test_avisar_sozinho_e_recusado_em_vez_de_ignorado():
 
 
 def test_nenhuma_pii_viaja_na_carta():
-    _escada()
-    _regra(pontos=10)
-    Pessoa.objects.create(id_da_plataforma=ALUNO, email=EMAIL, nome_exibido="Quem Sobe")
-
-    aplicar(_evento(), SITE)
-
-    (carta,) = _cartas()
+    carta = carta_de_celebracao(site_id=SITE, destinatario_id=ALUNO,
+        assunto=ASSUNTO_CONQUISTA, parametros={"conquista_slug":"trilha-faixa-vermelha", "familia":"carreira"})
     no_fio = json.dumps(_no_fio(carta), ensure_ascii=False)
-    assert EMAIL not in no_fio
-    assert "Quem Sobe" not in no_fio
-    # E o `ator_id` é NULO de propósito: ninguém "concede" um nível — quem o
-    # alcançou foi a própria pessoa.
+    assert EMAIL not in no_fio and "Quem Sobe" not in no_fio
     assert carta.envelope_extra == {"ator_id": None}
 
 
 def test_a_carta_sai_com_transaction_on_commit_registrado():
-    """O publish acontece DEPOIS do commit, e é isso que dá o aviso em segundos.
-
-    `captureOnCommitCallbacks` é a única forma honesta de medir isto: dentro de
-    um teste normal o commit nunca chega, e um `on_commit` esquecido passaria
-    despercebido — a carta ficaria na outbox esperando o relay do minuto
-    seguinte, sem nada acusar.
-    """
     from django.test import TestCase
-
-    _escada()
-    _regra(pontos=10)
-
+    from apps.gamificacao.jornada import registrar_avaliacao
+    from apps.gamificacao.models import JornadaPessoal
+    from apps.gamificacao.bonus_faixas import configurar
+    configurar(SITE)
     with TestCase.captureOnCommitCallbacks(execute=False) as callbacks:
         with transaction.atomic():
-            aplicar(_evento(), SITE)
-
-    assert callbacks, "sem on_commit, o aviso só sairia no relay do minuto seguinte"
+            registrar_avaliacao(ALUNO, SITE, 2, "reconhecida", "Compromisso avaliado.", {"chave":"compromisso"})
+    assert callbacks
+    assert _cartas()[0].payload["parametros"]["conquista_slug"] == "trilha-faixa-amarela"

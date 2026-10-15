@@ -375,6 +375,7 @@ async function refreshJourney(){
       ]);
       if(journeyResult.status==='rejected')throw journeyResult.reason;
       const progress=validateProgress(journeyResult.value,context);
+      celebrateJourney(progress, context);
       let activities={disponivel:false,itens:[]};
       if(activityResult.status==='fulfilled'){
         try{activities={disponivel:true,itens:validateActivities(activityResult.value,context)};}catch(error){/* Fonte indisponível não vira atividade presumida. */}
@@ -484,4 +485,28 @@ function openMotivo(opener) {
   motivoDialog.querySelector('.motivo-close').setAttribute('aria-label', compromisso ? 'Fechar meu compromisso' : 'Fechar meus motivos');
   motivoDialog.showModal();
   loadMotivo(opener.getAttribute('href') + '?embutido=1');
+}
+
+function celebrateJourney(progress, context){
+  const host=document.querySelector('#faixa-celebracao');
+  const pending=progress.celebracao;
+  if(!pending||!Number.isInteger(pending.ordem)||pending.ordem<2||pending.ordem>progress.atual_ordem)return;
+  const step=progress.etapas.find(item=>item.ordem===pending.ordem);
+  if(!host||!step||!step.alcancada||host.dataset.ordem===String(step.ordem))return;
+  host.dataset.ordem=String(step.ordem);host.hidden=false;
+  const title=document.createElement('strong');
+  title.textContent=pending.tipo==='grau'?'Você alcançou um novo grau!':'Você mudou de faixa!';
+  const text=document.createElement('p');text.textContent=`Agora você é faixa ${step.nome}.`;
+  const button=document.createElement('button');button.type='button';button.textContent='Entendi';
+  button.onclick=async()=>{
+    button.disabled=true;
+    const body=new FormData();
+    for(const [key,value] of Object.entries({acao:'celebracao-vista',ordem:step.ordem,contexto_pessoa:context.pessoa_id,contexto_site:context.site_id}))body.append(key,value);
+    try{
+      const response=await fetch('/trilha/inventario/api/',{method:'POST',credentials:'same-origin',headers:{'X-CSRFToken':progress.csrf},body});
+      if(!response.ok)throw new Error('Não foi possível confirmar');
+      host.hidden=true;
+    }catch(error){button.disabled=false;button.textContent='Tentar confirmar novamente';}
+  };
+  host.replaceChildren(title,text,button);
 }

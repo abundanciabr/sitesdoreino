@@ -38,6 +38,7 @@ from apps.core.middleware import limpar_cache_de_avisos
 from apps.core.visitante import COOKIE, id_valido
 from apps.core.notificacoes import (
     TIPOS_POR_ASSUNTO,
+    FAIXAS_CONHECIDAS,
     avisos_para_tela,
     buscar_avisos,
     links_para_o_celular,
@@ -888,6 +889,10 @@ def service_worker(request):
         # Página aberta ao tocar na notificação.
         "caminho": url_dos_avisos(),
         "links": links_para_o_celular(),
+        "faixas": {chave: cat.t("notificacoes.faixa_nome_" + chave, idioma) for chave in FAIXAS_CONHECIDAS},
+        "faixa_titulo": cat.t("notificacoes.faixa_titulo", idioma),
+        "grau_titulo": cat.t("notificacoes.grau_titulo", idioma),
+        "faixa_corpo": cat.t("notificacoes.faixa_corpo", idioma),
         "textos": textos,
         "generico": {
             "titulo": cat.t("avisos.js.generico_titulo", idioma),
