@@ -415,6 +415,8 @@ def test_aviso_de_faixa_diz_a_faixa(client, logado, rede, notificacoes_configura
 
 @pytest.mark.parametrize("slug,nome,titulo", [
     ("vermelha", "Vermelha", "Você chegou a uma nova faixa"),
+    ("preta", "Preta", "Você chegou a uma nova faixa"),
+    ("preta-grau-1", "Preta · 1º grau", "Você chegou a uma nova faixa"),
     ("preta-grau-2", "Preta · 2º grau", "Você alcançou um novo grau!"),
 ])
 def test_faixa_atual_e_grau_levam_a_trilha(client, logado, rede, notificacoes_configurada, slug, nome, titulo):

@@ -75,3 +75,9 @@ def test_celebracao_e_ack_preservam_historico_e_outra_ordem(client):
 def test_endereco_antigo_redireciona(client):
     resposta = client.get("/")
     assert resposta.status_code == 302 and resposta["Location"] == "/trilha/"
+
+
+def test_preta_do_caminho_curto_nao_inventa_grau():
+    for ordem in range(2, 8):
+        avaliar(ordem)
+    assert cartas()[-1].payload["parametros"]["conquista_slug"] == "trilha-faixa-preta"

@@ -215,7 +215,7 @@ def encaminhar(envelope: dict) -> None:
             return
         elif assunto == "gamificacao.conquista-concedida" and str(parametros.get("conquista_slug", "")).startswith("trilha-faixa-"):
             slug = str(parametros["conquista_slug"])[len("trilha-faixa-"):]
-            nomes = {"amarela": "Amarela", "azul": "Azul", "vermelha": "Vermelha", "verde": "Verde", "marrom": "Marrom",
+            nomes = {"preta": "Preta", "amarela": "Amarela", "azul": "Azul", "vermelha": "Vermelha", "verde": "Verde", "marrom": "Marrom",
                      **{f"preta-grau-{i}": f"Preta · {i}º grau" for i in range(1, 8)}}
             if slug not in nomes:
                 return

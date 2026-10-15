@@ -239,7 +239,7 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
             faixa = candidato
     return {
         "faixa": faixa,
-        "grau": faixa.startswith("preta_grau_"),
+        "grau": faixa.startswith("preta_grau_") and faixa != "preta_grau_1",
         "id": item["id"],
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),

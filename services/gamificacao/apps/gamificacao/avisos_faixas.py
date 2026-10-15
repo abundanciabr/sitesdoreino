@@ -9,10 +9,11 @@ def avisar(jornada, antes, depois):
     novas = set(range(anterior + 1, atual + 1)) - avisadas
     if not novas:
         return
+    slug = "preta" if max(novas) == 7 and depois.get("caminho") != "freelancer" else SLUGS[max(novas)]
     carta_de_celebracao(
         site_id=jornada.site_id, destinatario_id=jornada.pessoa_id,
         assunto=ASSUNTO_CONQUISTA,
-        parametros={"conquista_slug": "trilha-faixa-" + SLUGS[max(novas)], "familia": "carreira"},
+        parametros={"conquista_slug": "trilha-faixa-" + slug, "familia": "carreira"},
     )
     jornada.declaracoes = {**jornada.declaracoes, "faixas_avisadas": sorted(avisadas | set(range(2, atual + 1)))}
     jornada.save(update_fields=["declaracoes", "atualizada_em"])

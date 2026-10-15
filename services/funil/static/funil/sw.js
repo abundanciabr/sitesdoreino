@@ -79,7 +79,7 @@ self.addEventListener("push", (evento) => {
   const prefix = slug.startsWith('trilha-faixa-') ? 'trilha-faixa-' : 'faixa-';
   const belt = slug.slice(prefix.length).replaceAll('-', '_');
   if (carta.assunto === 'gamificacao.conquista-concedida' && slug.startsWith(prefix) && (AVISOS.faixas || {})[belt]) {
-    texto = {titulo: belt.startsWith('preta_grau_') ? AVISOS.grau_titulo : AVISOS.faixa_titulo,
+    texto = {titulo: belt.startsWith('preta_grau_') && belt !== 'preta_grau_1' ? AVISOS.grau_titulo : AVISOS.faixa_titulo,
       corpo: AVISOS.faixa_corpo + ' ' + AVISOS.faixas[belt] + '.'};
   }
   const idDaIdeia = String(parametros.suggestion_id || "");
