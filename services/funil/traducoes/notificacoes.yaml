@@ -285,9 +285,9 @@ conquista_titulo:
 
 conquista_corpo:
   _fonte: "3ae24f"
-  en: "It is already saved in your achievements."
-  pt-br: "Ela já está guardada nas suas conquistas."
-  es: "Ya está guardada en tus logros."
+  en: "It is already saved in your history."
+  pt-br: "Ela já está guardada no seu histórico."
+  es: "Ya está guardada en tu historial."
 
 marco_titulo:
   _fonte: "a9961a"
