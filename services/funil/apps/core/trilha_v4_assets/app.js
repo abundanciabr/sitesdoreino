@@ -254,7 +254,7 @@ function createProgressPanel(details,options){
     const mark=node('span','checklist-node');mark.setAttribute('aria-hidden','true');if(state==='concluido')mark.innerHTML=icon('check');
     const content=node('div','checklist-copy');
     const heading=node(options.modal?'h3':'h4','',`${options.white?`${index+1}. `:''}${item.titulo}`);
-    const detail=blocked&&options.white?`Disponível após concluir e receber os XP de “${details.itens[index-1]?.titulo||'Meu motivo'}”.`:item.detalhe;
+    const detail=blocked&&options.white?`Disponível após concluir “${details.itens[index-1]?.titulo||'Meu motivo'}”.`:item.detalhe;
     content.append(heading,node('p','',detail));
     if(item.acao&&!blocked){
       const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
@@ -277,7 +277,7 @@ function createProgressPanel(details,options){
   [['concluido','Já fez'],['andamento','Em andamento'],['pendente','Ainda precisa fazer']].forEach(([state,label])=>{
     const item=node('span',state);const mark=node('i','checklist-node');mark.setAttribute('aria-hidden','true');if(state==='concluido')mark.innerHTML=icon('check');item.append(mark,node('span','',label));legend.append(item);
   });panel.append(legend);
-  const note=node('p','progress-note',options.white?'Conclua uma tarefa, receba seus XP e volte à faixa para o próximo passo. Suas respostas e seus arquivos continuam privados.':'Seu progresso acompanha os registros da jornada.');panel.append(note);
+  const note=node('p','progress-note',options.white?'Conclua uma tarefa e volte à faixa para o próximo passo. Suas respostas e seus arquivos continuam privados.':'Seu progresso acompanha os registros da jornada.');panel.append(note);
   if(details.observacao)panel.append(node('p','checklist-observation',details.observacao));
   return panel;
 }
