@@ -1,0 +1,47 @@
+version: '2026-10-14.1'
+verified_on: '2026-10-14'
+sources:
+  mesh: https://create.roblox.com/docs/art/modeling/specifications
+  rigid: https://create.roblox.com/docs/avatar/rigid-accessories/specifications
+  layered: https://create.roblox.com/docs/avatar/layered-accessories/specifications
+  texture: https://create.roblox.com/docs/art/modeling/texture-specifications
+profiles:
+  game:
+    triangle_limit: 20000
+    triangle_scope: mesh
+    texture_limit: 4096
+    single_mesh: false
+    source: mesh
+    dimensions_studs: null
+  rigid:
+    triangle_limit: 4000
+    triangle_scope: asset
+    texture_limit: 2048
+    single_mesh: true
+    source: rigid
+    # Dimensions depend on attachment orientation, subtype and body scale.
+    # No universal box is inferred from a geometry-only export.
+    dimensions_studs: null
+  layered:
+    triangle_limit: 4000
+    triangle_scope: asset
+    texture_limit: 2048
+    single_mesh: true
+    source: layered
+    dimensions_studs: [8, 8, 8]
+    uncovered: [rig, inner_cage, outer_cage]
+rules:
+  open_edges: {severity: blocks, source: mesh}
+  non_manifold: {severity: blocks, source: mesh}
+  winding: {severity: blocks, source: mesh}
+  inverted_component: {severity: blocks, source: mesh}
+  duplicate_faces: {severity: warns, source: mesh}
+  degenerate_faces: {severity: blocks, source: mesh}
+  loose_vertices: {severity: warns, source: mesh}
+  ngons: {severity: warns, source: rigid}
+  multiple_materials: {severity: blocks, source: texture}
+  missing_texture: {severity: blocks, source: texture}
+notes:
+  texture_1024: 'Pending Lívia: pedagogical recommendation, not a universal rejection limit. The general UV section also mentions 1024; its scope must be resolved.'
+  rigid_dimensions: 'Validate the oriented attachment box in Roblox tools; raw world bounding boxes cannot certify it.'
+  geometry: 'Requirements are reported as published specifications, not a guarantee of importer rejection or Marketplace acceptance.'
