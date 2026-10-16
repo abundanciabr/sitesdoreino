@@ -355,7 +355,7 @@ def test_o_toque_no_aviso_da_sugestao_leva_a_pagina_da_ideia(client, rede):
     assert configuracao["links"]["sugestao.status-alterado"] == (
         "/forms/sugestoes/sugestoes/{suggestion_id}"
     )
-    assert configuracao["links"]["gamificacao.nivel-alcancado"] == "/conquistas/"
+    assert configuracao["links"]["gamificacao.nivel-alcancado"] == "/trilha/"
     assert "jornada.passo" not in configuracao["links"]
     sw = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"

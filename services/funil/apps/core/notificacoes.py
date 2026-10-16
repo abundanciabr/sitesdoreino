@@ -26,6 +26,7 @@ ASSUNTO_SUGESTAO = "sugestao.status-alterado"
 ASSUNTO_JORNADA = "jornada.passo"
 # Nomes das 13 faixas (chaves de `notificacoes.faixa_nome_*`).
 FAIXAS_CONHECIDAS = frozenset({
+    "vermelha", *{f"preta_grau_{i}" for i in range(1, 8)},
     "branca", "branca_e_amarela", "amarela", "laranja", "verde", "verde_e_azul",
     "azul", "azul_e_roxa", "roxa", "roxa_e_marrom", "marrom", "marrom_e_preta", "preta",
 })
@@ -106,7 +107,7 @@ def link_do_cartao(tipo: str, sugestao_id: str = "", pedido_id: str = "") -> str
     if tipo == "sugestao":
         return url_da_sugestao(sugestao_id) if sugestao_id else ""
     if tipo in {"nivel", "conquista", "marco", "destaque"}:
-        return url_das_conquistas()
+        return "/trilha/"
     if tipo == "portfolio":
         return url_da_prancheta()
     if tipo.startswith("marketplace_") and pedido_id:
@@ -231,12 +232,14 @@ def aviso_para_tela(item: dict, ideias_dos_avisos=None, passos=None) -> dict:
     # o slug `faixa-<nome>`; só slugs conhecidos viram texto.
     faixa = ""
     slug = _texto(parametros, "conquista_slug")
-    if tipo == "conquista" and slug.startswith("faixa-"):
-        candidato = slug[len("faixa-"):].replace("-", "_")
+    prefixo = "trilha-faixa-" if slug.startswith("trilha-faixa-") else "faixa-"
+    if tipo == "conquista" and slug.startswith(prefixo):
+        candidato = slug[len(prefixo):].replace("-", "_")
         if candidato in FAIXAS_CONHECIDAS:
             faixa = candidato
     return {
         "faixa": faixa,
+        "grau": faixa.startswith("preta_grau_") and faixa != "preta_grau_1",
         "id": item["id"],
         "lido_em": parse_datetime(item["lido_em"]) if item["lido_em"] else None,
         "criado_em": parse_datetime(item["criado_em"]),
@@ -274,6 +277,8 @@ def avisos_para_tela(
     visiveis = []
     acesso_aluno = None
     for item in itens:
+        if item["assunto"] == "gamificacao.nivel-alcancado":
+            continue
         if item["assunto"] in ASSUNTOS_DO_ALUNO:
             if acesso_aluno is None:
                 acesso_aluno = _acesso_aluno_marketplace(destinatario_id)

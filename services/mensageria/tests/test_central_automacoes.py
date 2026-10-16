@@ -371,3 +371,20 @@ def test_teto_do_agente_no_motor_aparece_como_espera_pela_regua(monkeypatch,
     Inscricao.objects.filter(pk=inscricao.pk).update(estado="andando", passo_atual=0,
                                                      proximo_em=momento)
     assert api.listar(None, "s1")["automacoes"][0]["proximos_envios"] == 1
+
+
+def test_automacao_salva_como_faixa_antiga_acompanha_avaliacao_sem_reescrever_historico():
+    jornada, versao, _ = automacao(publicada=False)
+    jornada.gatilho = "gamificacao.nivel-alcancado"
+    jornada.ativa = jornada.central_entrada_aberta = True
+    jornada.save(update_fields=["gatilho", "ativa", "central_entrada_aberta"])
+    versao.central_config = {**versao.central_config, "gatilho":"gamificacao.nivel-alcancado"}
+    versao.save(update_fields=["central_config"])
+    JornadaVersao.objects.filter(pk=versao.pk).update(publicada_em=timezone.now())
+    conversa = Conversa.objects.create(site_id="s1", canal="whatsapp", endereco="5511999999999")
+    assert central.configuracao(versao)["gatilho"] == "gamificacao.faixa-alcancada"
+    inscritas = central.inscrever_evento(gatilho="gamificacao.faixa-alcancada", site_id="s1",
+        destinatario_id="aluno", conversa=conversa, event_id=str(uuid.uuid4()), contexto={"aluno_id":"aluno", "progresso":"Faixa Azul", "link":"https://meshcraft.top/trilha/"})
+    assert len(inscritas) == 1
+    versao.refresh_from_db()
+    assert versao.central_config["gatilho"] == "gamificacao.nivel-alcancado"
