@@ -507,6 +507,8 @@ def registrar_avaliacao(pessoa_id, site_id, ordem, resultado, feedback, evidenci
             "resultado": resultado, "texto": feedback.strip(),
         }, antes)
         if depois["atual"]["ordem"] > antes["atual"]["ordem"]:
+            from .avisos_faixas import avisar
+            avisar(j, antes, depois)
             j.celebracao_pendente = {
                 "ordem": depois["atual"]["ordem"],
                 "tipo": "cor" if depois["atual"]["faixa"] != antes["atual"]["faixa"] else "grau",

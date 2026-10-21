@@ -52,6 +52,8 @@ class TrilhaDoAluno(Schema):
     atual_ordem: int
     caminho: str | None = None
     graus_historicos: list[dict] = []
+    celebracao: dict = Field(default_factory=dict)
+    csrf: str = ""
     etapas: list[EtapaDaTrilha]
     total_cents: int
     meta_cents: int | None
@@ -135,7 +137,10 @@ def get_my_journey(request, response: HttpResponse):
         raise HttpError(503, "Identidade indisponivel") from None
     if sessao.get("autenticado") is not True or not isinstance(sessao.get("id"), str) or not sessao["id"].strip():
         raise HttpError(403, "Sessao invalida")
-    return _projecao(response, sessao["id"], site, incluir_avaliacoes=True)
+    from django.middleware.csrf import get_token
+    resultado = _projecao(response, sessao["id"], site, incluir_avaliacoes=True)
+    resultado.csrf = get_token(request)
+    return resultado
 
 
 def _projecao(response: HttpResponse, pessoa_id: str, site_id: str, *, incluir_avaliacoes=False):
@@ -148,6 +153,7 @@ def _projecao(response: HttpResponse, pessoa_id: str, site_id: str, *, incluir_a
         pessoa_id=pessoa_id,
         site_id=site_id,
         atual_ordem=jornada["atual"]["ordem"],
+        celebracao=jornada.get("celebracao", {}) if incluir_avaliacoes else {},
         caminho=jornada.get("caminho"),
         graus_historicos=jornada.get("graus_historicos", []),
         etapas=[

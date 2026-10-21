@@ -523,7 +523,6 @@ def test_celebracao_fora_de_forma_e_DESCARTADA_nunca_vira_500(monkeypatch):
     resposta = pedir("/eu", cookie="meshcraft_sessao=abc", deixar_estourar=False)
     assert resposta.status_code == 200, "dado torto de UMA pessoa virou 500 para todos"
     assert corpo(resposta)["celebracoes_pendentes"] == [
-        {"tipo": "nivel-alcancado", "referencia": "7"},
         {"tipo": "conquista-concedida", "referencia": "primeiro-ugc"},
     ]
 

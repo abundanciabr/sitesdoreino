@@ -212,7 +212,7 @@ ETAPAS = (
         ),
         "portas": (
             "/forum/",
-            "/conquistas/",
+            "/trilha/",
             "/forms/sugestoes/",
             _admin("economia"),
             # 04/09/2026: o quadro de pontos nasceu depois desta área, e
