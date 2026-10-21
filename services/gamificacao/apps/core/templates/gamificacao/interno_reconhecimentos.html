@@ -13,7 +13,7 @@ Cada frase que um teste procura fica INTEIRA numa linha (`armadilhas/394`).
 {% block titulo %}Reconhecimentos da equipe{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{{ url_da_trilha_atual }}">Trilha</a>
   <a href="{% url 'interno-reconhecimentos' %}" aria-current="page">Reconhecimentos</a>
 {% endblock %}
 

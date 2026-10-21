@@ -16,6 +16,6 @@
     <label for="ciclo-explicacao">Minha explicação</label><textarea id="ciclo-explicacao" name="explicacao" rows="3" maxlength="1000" required></textarea>
     <button type="submit">Avaliar esta etapa</button>
   </form><p id="ciclo-status" role="status" aria-live="polite"></p>
-  <p><a href="{% url 'base' %}">Voltar à minha faixa</a></p>
+  <p><a href="{{ url_da_trilha_atual }}">Voltar à minha faixa</a></p>
 </section><script src="{% url 'estatico' 'ciclo.js' %}" defer></script>
 {% endblock %}

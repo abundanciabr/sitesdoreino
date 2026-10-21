@@ -98,6 +98,7 @@ from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.enderecos_antigos.EnderecosAntigosMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     # A porta desta célula ainda NÃO existe — ela nasce com o `/conquistas` do
@@ -165,6 +166,7 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "apps.core.enderecos_antigos.contexto_da_trilha",
                 # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
                 # É processador de contexto, e não uma inclusão escrita em cada
                 # template, porque "em todas as páginas" não pode depender de

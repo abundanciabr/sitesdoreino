@@ -573,7 +573,8 @@ def test_o_formulario_do_grupo_traz_o_molde_de_pedido_de_ajuda(
     corpo = pedir(client, "area", grupo.slug).content.decode()
     assert 'id="abrir"' in corpo
     assert "Como pedir ajuda ao grupo" in corpo
-    assert "/conquistas/" in corpo
+    assert 'href="/trilha/"' in corpo
+    assert "/conquistas/" not in corpo
 
     comum = Area.objects.create(
         slug="duvidas",

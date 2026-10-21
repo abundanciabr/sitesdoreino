@@ -150,7 +150,7 @@
       <details id="inicio-historico" class="inicio-detalhes" hidden><summary>Meus arquivos já enviados</summary><div id="inicio-versoes" class="inicio-versoes" aria-label="Histórico privado de versões"></div></details>
     </section>
     {% endif %}
-    {% if inicio_etapa > 2 %}<p class="inicio-voltar"><a href="{% url 'base' %}">Sair e retomar depois</a></p>{% endif %}
+    {% if inicio_etapa > 2 %}<p class="inicio-voltar"><a href="{{ url_da_trilha_atual }}">Sair e retomar depois</a></p>{% endif %}
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
