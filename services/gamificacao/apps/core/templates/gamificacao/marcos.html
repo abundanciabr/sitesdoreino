@@ -18,7 +18,7 @@ português, com o botão de mandar de novo ao lado.
 {% block titulo %}Marcos{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{{ url_da_trilha_atual }}">Trilha</a>
   <a href="{% url 'marcos' %}">Marcos reais</a>
 {% endblock %}
 

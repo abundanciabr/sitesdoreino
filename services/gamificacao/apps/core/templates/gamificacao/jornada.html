@@ -42,7 +42,7 @@
   <form method="post" action="{% url 'salvar-jornada' %}" enctype="multipart/form-data">{% csrf_token %}
     <input type="hidden" name="acao" value="meta"><input type="hidden" name="revisao" value="{{ previa.revisao }}">
     <input type="hidden" name="meta" value="{{ previa.meta_input }}"><input type="hidden" name="proposito" value="{{ previa.proposito }}">
-    <button type="submit">Escolher esta meta</button> <a href="{% url 'base' %}">Continuar com a meta atual</a>
+    <button type="submit">Escolher esta meta</button> <a href="{{ url_da_trilha_atual }}">Continuar com a meta atual</a>
   </form>
 </section>{% endif %}
 

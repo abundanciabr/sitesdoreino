@@ -53,7 +53,7 @@ cada tag põe uma linha em branco a mais na página de quem NÃO tem menu — qu
 o estado normal enquanto o par de credenciais com o catálogo não existir.
 {% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">{% block faixa %}
-  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{{ url_da_trilha_atual }}">Trilha</a>
 {% endblock %}</div>
 
 <main>{% block conteudo %}{% endblock %}</main>
@@ -71,7 +71,7 @@ solta, cada uma põe uma linha em branco a mais na página de quem não tem roda
   <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
   <nav class="links" aria-label="Links úteis">
     <a href="{{ rodape.url_do_site }}">Início do site</a>
-    <a href="{% url 'base' %}">Conquistas</a>
+    <a href="{{ url_da_trilha_atual }}">Trilha</a>
     <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
   </nav>{% endif %}{% if rodape.mostra_direitos %}
   <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
