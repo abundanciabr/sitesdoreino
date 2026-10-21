@@ -33,6 +33,9 @@ SLUGS = frozenset(i[0] for i in IMAGENS)
 
 
 def caminho_publico(caminho):
+    from .comunidade_nova import caminho_publico as caminho_novo
+    if caminho_novo(caminho):
+        return True
     if caminho in {'/galeria-publica/alunos', '/galeria-publica/alunos/', '/galeria-publica/alunos/interface.css', '/galeria-publica/alunos/interface.js'} or re.fullmatch(r'/galeria-publica/alunos/foto/[a-f0-9]{64}', caminho):
         return True
     from .comunidade_seguidores import CAMINHOS, caminho_perfil

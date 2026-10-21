@@ -8,6 +8,7 @@ from apps.atendimento import pedidos_prontos as suporte_pedidos
 from apps.core.hotmart import painel as hotmart_painel, webhook as hotmart_webhook, teste_administrativo as hotmart_teste
 from apps.core import galeria_comunidade as galeria_votacao
 from apps.core import galeria_aula1
+from apps.core import comunidade_nova
 from apps.core import comunidade_entrada, comunidade_seguidores, comunidade_alunos
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
@@ -388,6 +389,14 @@ urlpatterns = [
     path("crm/satisfacao/excluir/confirmar/", excluir, name="crm_satisfacao_apagar"),
     path("crm/satisfacao/respondentes/", crm_satisfacao_painel, name="crm_satisfacao_respondentes"),
     path("crm/satisfacao/revisao/salvar/", crm_satisfacao_revisao_salvar, name="crm_satisfacao_revisao_salvar"),
+    path("galeria-publica/nova-20261014", comunidade_nova.pagina, name="comunidade_nova"),
+    path("galeria-publica/nova-20261014/", comunidade_nova.pagina),
+    path("galeria-publica/nova-20261014/perfil", comunidade_nova.salvar_perfil),
+    path("galeria-publica/nova-20261014/tema", comunidade_nova.salvar_tema),
+    path("galeria-publica/nova-20261014/disponivel", comunidade_nova.disponibilidade),
+    path("galeria-publica/nova-20261014/foto/<int:perfil_id>", comunidade_nova.foto),
+    path("galeria-publica/nova-20261014/avatar/<slug:escolha>", comunidade_nova.avatar),
+    path("galeria-publica/nova-20261014/assets/<str:nome>", comunidade_nova.recurso),
     path("galeria-publica/alunos", comunidade_alunos.pagina, name="comunidade_alunos"),
     path("galeria-publica/alunos/", comunidade_alunos.pagina),
     re_path(r"^galeria-publica/alunos/foto/(?P<alvo>[a-f0-9]{64})$", comunidade_alunos.foto),
