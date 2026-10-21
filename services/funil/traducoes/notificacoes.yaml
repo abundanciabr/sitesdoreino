@@ -332,10 +332,10 @@ ver_portfolio:
   es: "Abrir mi portafolio"
 
 ver_conquistas:
-  _fonte: "1c9ce6"
-  en: "See my achievements"
-  pt-br: "Ver minhas conquistas"
-  es: "Ver mis logros"
+  _fonte: "ebdadd"
+  en: "See my learning path"
+  pt-br: "Ver minha Trilha"
+  es: "Ver mi recorrido"
 
 matricula_titulo:
   _fonte: "c7c223"

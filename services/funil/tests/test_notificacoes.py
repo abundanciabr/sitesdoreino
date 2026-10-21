@@ -8,6 +8,21 @@ from test_sessao_no_site import COOKIE, logado
 from tests.conftest import HOST_MESH, NOTIFICACOES, caminho_mesh
 
 
+@pytest.mark.parametrize("configurado", [
+    "", "/conquistas", "/conquistas/", "/conquistas/trilha/",
+    "https://meshcraft.top/conquistas/",
+])
+@pytest.mark.parametrize("tipo", ["nivel", "conquista", "marco", "destaque"])
+def test_destinos_antigos_configurados_levam_a_trilha(monkeypatch, configurado, tipo):
+    monkeypatch.setenv("URL_DAS_CONQUISTAS", configurado)
+    assert notificacoes.link_do_cartao(tipo) == "/trilha/"
+    for assunto in (
+        "gamificacao.nivel-alcancado", "gamificacao.conquista-concedida",
+        "gamificacao.marco-validado", "gamificacao.destaque-da-semana",
+    ):
+        assert notificacoes.links_para_o_celular()[assunto] == "/trilha/"
+
+
 @pytest.fixture
 def notificacoes_configurada(monkeypatch):
     monkeypatch.setenv("NOTIFICACOES_API_URL", NOTIFICACOES)
@@ -113,7 +128,9 @@ def test_subir_de_nivel_tem_cartao_proprio(
     corpo = resposta.content.decode()
     assert "Você subiu de nível" in corpo
     assert "Agora você está no nível 2." in corpo
-    assert 'href="/conquistas/"' in corpo
+    assert 'href="/trilha/"' in corpo
+    assert "Ver minha Trilha" in corpo
+    assert 'href="/conquistas/"' not in corpo
     assert "ainda não sabe mostrar" not in corpo
 
 
