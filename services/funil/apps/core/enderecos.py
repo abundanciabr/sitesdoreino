@@ -19,6 +19,7 @@ pergunta. Estes são endereços públicos, por onde o NAVEGADOR da pessoa caminh
 """
 
 import os
+from urllib.parse import urlsplit
 
 from apps.i18n.idiomas import caminho_publico
 
@@ -56,8 +57,8 @@ ENTRADA_SENHA_PADRAO = "/entrar/senha"
 PRANCHETA_PADRAO = "/portfolio/"
 PRANCHETA_LEGADO = "/pages/"
 
-# As conquistas do aluno (nível, medalhas, marcos), célula `gamificacao`.
-CONQUISTAS_PADRAO = "/conquistas/"
+# A Trilha substituiu a página antiga de conquistas.
+CONQUISTAS_PADRAO = "/trilha/"
 
 
 def _ler(nome: str, padrao: str) -> str:
@@ -82,7 +83,13 @@ def url_da_sugestao(sugestao_id: str) -> str:
 
 
 def url_das_conquistas() -> str:
-    return _ler("URL_DAS_CONQUISTAS", CONQUISTAS_PADRAO)
+    configurado = _ler("URL_DAS_CONQUISTAS", CONQUISTAS_PADRAO)
+    endereco = urlsplit(configurado)
+    if endereco.netloc in {"", "meshcraft.top"} and (
+        endereco.path == "/conquistas" or endereco.path.startswith("/conquistas/")
+    ):
+        return CONQUISTAS_PADRAO
+    return configurado
 
 
 def url_de_entrada() -> str:

@@ -103,7 +103,12 @@ self.addEventListener("push", (evento) => {
 
 self.addEventListener("notificationclick", (evento) => {
   evento.notification.close();
-  const destino = (evento.notification.data && evento.notification.data.caminho) || "/";
+  let destino = (evento.notification.data && evento.notification.data.caminho) || "/";
+  // Avisos já exibidos podem carregar o endereço anterior à atualização.
+  const endereco = new URL(destino, self.location.href);
+  if (endereco.origin === self.location.origin && /^\/conquistas(?:\/|$)/.test(endereco.pathname)) {
+    destino = "/trilha/";
+  }
   evento.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((abas) => {
       // Se o app já está aberto, leva ele ao destino em vez de abrir outra janela.

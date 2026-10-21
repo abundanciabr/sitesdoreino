@@ -107,7 +107,7 @@ def link_do_cartao(tipo: str, sugestao_id: str = "", pedido_id: str = "") -> str
     if tipo == "sugestao":
         return url_da_sugestao(sugestao_id) if sugestao_id else ""
     if tipo in {"nivel", "conquista", "marco", "destaque"}:
-        return "/trilha/"
+        return url_das_conquistas()
     if tipo == "portfolio":
         return url_da_prancheta()
     if tipo.startswith("marketplace_") and pedido_id:

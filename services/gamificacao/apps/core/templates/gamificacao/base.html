@@ -40,7 +40,7 @@ paga.
 {% block titulo %}Conquistas{% endblock %}
 
 {% block faixa %}
-  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{{ url_da_trilha_atual }}">Trilha</a>
 {% endblock %}
 
 {% block conteudo %}
@@ -94,7 +94,7 @@ paga.
     </ul>
   </nav>
   {% else %}
-  <section class="aviso"><h2>Suas conquistas continuam com você</h2><p>Seus trabalhos e avanços anteriores permanecem guardados. As atividades e avaliações das faixas acontecem na Trilha.</p><a class="botao-jornada" href="/trilha/">Ver minha jornada completa</a></section>
+  <section class="aviso"><h2>Suas conquistas continuam com você</h2><p>Seus trabalhos e avanços anteriores permanecem guardados. As atividades e avaliações das faixas acontecem na Trilha.</p><a class="botao-jornada" href="{{ url_da_trilha_atual }}">Ver minha jornada completa</a></section>
   {% endif %}
 {% else %}
   <section class="convite">
