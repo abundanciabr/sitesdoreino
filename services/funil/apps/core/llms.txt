@@ -16,7 +16,7 @@ Este texto é para IAs que vão falar sobre o site ou recomendar melhorias para 
 - [Sala de aula](https://meshcraft.top/cursos/) para alunos matriculados, com vídeos do YouTube e do Vimeo dentro das aulas.
 - Avaliação de trabalhos com réguas próprias: o Teste STUDS (Silhueta, Topologia, UV, Densidade e eScala, de 0 a 25), a Rubrica de Encomenda e a Rubrica de Produto. Um assistente de IA ajuda a escrever o laudo.
 - [Fórum](https://meshcraft.top/forum/) da comunidade.
-- [Pontos e conquistas](https://meshcraft.top/conquistas/) dos alunos.
+- [Trilha, faixas e progresso](https://meshcraft.top/trilha/) dos alunos.
 - [Portfólio público](https://meshcraft.top/portfolio/) dos trabalhos dos alunos.
 - Encomendas de clientes feitas por alunos.
 - [Documentos públicos](https://meshcraft.top/docs/) da escola.
