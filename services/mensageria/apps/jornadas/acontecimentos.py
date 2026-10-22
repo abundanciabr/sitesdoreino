@@ -21,7 +21,7 @@ GATILHOS = (
     {"slug": "aula.concluida", "nome": "Aula concluída"},
     {"slug": "envio.recebido", "nome": "Atividade enviada"},
     {"slug": "checkpoint.devolvido", "nome": "Atividade devolvida"},
-    {"slug": "gamificacao.nivel-alcancado", "nome": "Faixa alcançada"},
+    {"slug": "gamificacao.faixa-alcancada", "nome": "Faixa ou grau alcançado"},
     {"slug": "gamificacao.conquista-concedida", "nome": "Conquista recebida"},
     {"slug": "gamificacao.marco-validado", "nome": "Marco validado"},
     {"slug": "forum.topico-criado", "nome": "Tópico publicado no Fórum"},
@@ -211,6 +211,16 @@ def encaminhar(envelope: dict) -> None:
                 return
             gatilho = "matricula.ativa"
             contexto = {"matricula_id": str(parametros.get("matricula_id") or "")}
+        elif assunto == "gamificacao.nivel-alcancado":
+            return
+        elif assunto == "gamificacao.conquista-concedida" and str(parametros.get("conquista_slug", "")).startswith("trilha-faixa-"):
+            slug = str(parametros["conquista_slug"])[len("trilha-faixa-"):]
+            nomes = {"preta": "Preta", "amarela": "Amarela", "azul": "Azul", "vermelha": "Vermelha", "verde": "Verde", "marrom": "Marrom",
+                     **{f"preta-grau-{i}": f"Preta · {i}º grau" for i in range(1, 8)}}
+            if slug not in nomes:
+                return
+            gatilho = "gamificacao.faixa-alcancada"
+            contexto = {"progresso": "Faixa " + nomes[slug], "link": "https://meshcraft.top/trilha/"}
         elif assunto in {
             "gamificacao.nivel-alcancado", "gamificacao.conquista-concedida",
             "gamificacao.marco-validado",
@@ -276,9 +286,9 @@ def encaminhar(envelope: dict) -> None:
     # identidade sozinho não é prova de que a pessoa é aluna deste site.
     if gatilho in {
         "matricula.ativa", "aula.concluida", "envio.recebido",
-        "checkpoint.devolvido", "gamificacao.nivel-alcancado",
+        "checkpoint.devolvido", "gamificacao.faixa-alcancada",
         "gamificacao.conquista-concedida", "gamificacao.marco-validado",
-    } and Jornada.objects.filter(site_id=site_id, gatilho=gatilho, ativa=True).exists():
+    } and Jornada.objects.filter(site_id=site_id, gatilho__in=([gatilho, "gamificacao.nivel-alcancado"] if gatilho == "gamificacao.faixa-alcancada" else [gatilho]), ativa=True).exists():
         confirmado = _contexto_do_prontuario(
             site_id=site_id, pessoa_id=destinatario,
             matricula_id=contexto.get("matricula_id", "") if gatilho == "matricula.ativa" else "",

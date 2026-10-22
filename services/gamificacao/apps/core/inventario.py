@@ -82,6 +82,13 @@ def inventario(request):
             if request.POST.get('contexto_pessoa', pessoa) != pessoa or request.POST.get('contexto_site', site) != site:
                 raise HttpError(403, 'Sua sessão mudou. Reabra o inventário antes de continuar.')
             acao = request.POST.get('acao')
+            if acao == 'celebracao-vista':
+                with transaction.atomic():
+                    j = JornadaPessoal.objects.select_for_update().filter(pessoa_id=pessoa, site_id=site).first()
+                    if j and str((j.celebracao_pendente or {}).get('ordem')) == request.POST.get('ordem'):
+                        j.celebracao_pendente = {}
+                        j.save(update_fields=['celebracao_pendente'])
+                return _privada(JsonResponse({'vista': True}))
             permitidas = ('anexo', 'meta', 'recebimento', 'correcao', 'inicio-motivo', 'inicio-plano', 'inicio-compromisso', 'inicio-item', 'inicio-envio', 'ciclo-avaliar')
             if acao not in permitidas:
                 raise ValueError('A conquista exige a avaliação desta etapa. Abra a atividade para continuar.')

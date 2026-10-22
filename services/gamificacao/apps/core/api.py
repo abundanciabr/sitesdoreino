@@ -479,7 +479,7 @@ def _celebracoes(perfil) -> list[CelebracaoPendente]:
             continue
         tipo = item.get("tipo")
         referencia = item.get("referencia")
-        if tipo == "marco-validado" or (isinstance(referencia, str) and referencia in SLUGS_RETIRADOS):
+        if tipo in {"marco-validado", "nivel-alcancado"} or (isinstance(referencia, str) and referencia in SLUGS_RETIRADOS):
             continue
         if tipo not in TIPOS_DE_CELEBRACAO or not isinstance(referencia, str):
             logger.warning(

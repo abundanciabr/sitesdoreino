@@ -39,16 +39,8 @@ construção do banco"). Mexer nele é decisão do mantenedor, não de um motor.
 Enquanto ela não vier, o campo `cristais` das regras fica sem efeito, e este
 parágrafo é onde a próxima sessão descobre por quê.
 
-**Emite UMA carta de celebração: a de nível alcançado** (degrau 9, TAR-061). As
-outras três da Sessão B — medalha, marco validado e destaque da semana — só
-podem sair quando os fatos que as justificam existirem: nada nesta célula
-concede medalha, valida marco ou destaca obra ainda (degraus 12 e 19). A porta
-por onde elas sairão já está aberta e provada contra o contrato
-(`cartas.carta_de_celebracao`); falta o fato, não o caminho.
-
-**E a carta só sai para CIMA.** Nível que cai — estorno, moderação, correção da
-equipe — não gera aviso nenhum: é lei da célula, e o guarda que a prova está em
-`tests/test_cartas_de_celebracao.py`.
+Avisos de faixas e graus são emitidos pela avaliação da Trilha.
+O recálculo de XP preserva os níveis internos, sem anunciar mudança de faixa.
 """
 
 from __future__ import annotations
@@ -61,7 +53,6 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 
 from . import criterios
-from .cartas import carta_de_nivel
 from .models import (
     LancamentoDeXP,
     MovimentoDeCristais,
@@ -364,7 +355,6 @@ def recalcular(
             or 0
         )
 
-        nivel_anterior = perfil.nivel
         perfil.xp_total = max(0, total)
         perfil.nivel = nivel_para(perfil.xp_total, site_id)
         # `max(0, ...)` pela mesma razão do XP: a coluna é positiva no banco, e um
@@ -378,10 +368,6 @@ def recalcular(
         # razão é de produto, não de código: notificação de culpa está na lista
         # das mecânicas proibidas. Quem perde XP
         # perdeu por estorno ou moderação, e já vai saber pelo caminho certo.
-        subiu = perfil.nivel > nivel_anterior
-        if celebrar and subiu:
-            _comemorar_o_nivel(perfil, origem_event_id)
-            campos.append("celebracoes_pendentes")
 
         perfil.save(update_fields=campos)
 
@@ -405,51 +391,7 @@ def recalcular(
                 origem_event_id=origem_event_id or "",
             )
 
-        if celebrar and subiu:
-            # DEPOIS do commit, nunca antes: é o que dá o aviso em segundos sem
-            # furar a outbox. Falhar aqui deixa a carta pendente para o relay
-            # periódico — nunca desfaz o XP.
-            transaction.on_commit(relay_apos_commit)
     return perfil
-
-
-def _comemorar_o_nivel(perfil: PerfilJogador, origem_event_id: str | None) -> None:
-    """As duas metades da comemoração, escritas juntas.
-
-    **A tela e o sininho não são a mesma coisa, e as duas precisam existir.** A
-    celebração visceral aparece em tela cheia para quem está com o site aberto,
-    uma vez só; a carta alcança quem não está. Uma sem a outra deixa metade dos
-    alunos sem saber que subiu.
-
-    O estado da celebração mora no MODELO e não na sessão — esta célula não
-    assina sessão, e o caminho curto `request.session[...]`
-    deslogaria a plataforma inteira sem erro em lugar nenhum.
-
-    A forma de cada item é a que a porta de máquina já congelou em
-    `apps/core/api.py` (`tipo` do vocabulário fechado + `referencia` string).
-    Escrever outra forma aqui não estouraria nada: a porta DESCARTA a linha
-    torta com um aviso no log, e a comemoração simplesmente não aconteceria.
-    """
-    degrau = NivelDefinicao.objects.filter(
-        site_id=perfil.site_id, nivel=perfil.nivel
-    ).first()
-
-    pendente = {"tipo": "nivel-alcancado", "referencia": str(perfil.nivel)}
-    pendentes = list(perfil.celebracoes_pendentes or [])
-    # Sem o `not in`, descer e voltar ao mesmo degrau (estorno seguido de
-    # crédito) empilharia a mesma comemoração duas vezes, e a pessoa veria a
-    # mesma tela cheia duas vezes seguidas.
-    if pendente not in pendentes:
-        pendentes.append(pendente)
-    perfil.celebracoes_pendentes = pendentes
-
-    carta_de_nivel(
-        site_id=perfil.site_id,
-        destinatario_id=perfil.pessoa_id,
-        nivel=perfil.nivel,
-        titulo=degrau.titulo if degrau else "",
-        origem_event_id=origem_event_id,
-    )
 
 
 def nivel_para(xp: int, site_id: str) -> int:

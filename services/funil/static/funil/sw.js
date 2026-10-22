@@ -71,9 +71,17 @@ self.addEventListener("push", (evento) => {
     // Conteúdo que não é o nosso JSON: cai no aviso genérico.
     carta = {};
   }
-  const texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
+  let texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
   // O toque leva ao mesmo link do cartão da página; sem link, à lista de avisos.
   const parametros = carta.parametros || {};
+  if (carta.assunto === 'gamificacao.nivel-alcancado') return;
+  const slug = String(parametros.conquista_slug || '');
+  const prefix = slug.startsWith('trilha-faixa-') ? 'trilha-faixa-' : 'faixa-';
+  const belt = slug.slice(prefix.length).replaceAll('-', '_');
+  if (carta.assunto === 'gamificacao.conquista-concedida' && slug.startsWith(prefix) && (AVISOS.faixas || {})[belt]) {
+    texto = {titulo: belt.startsWith('preta_grau_') && belt !== 'preta_grau_1' ? AVISOS.grau_titulo : AVISOS.faixa_titulo,
+      corpo: AVISOS.faixa_corpo + ' ' + AVISOS.faixas[belt] + '.'};
+  }
   const idDaIdeia = String(parametros.suggestion_id || "");
   let caminho = (AVISOS.links || {})[carta.assunto] || AVISOS.caminho;
   if (caminho.includes("{suggestion_id}")) {
@@ -95,7 +103,12 @@ self.addEventListener("push", (evento) => {
 
 self.addEventListener("notificationclick", (evento) => {
   evento.notification.close();
-  const destino = (evento.notification.data && evento.notification.data.caminho) || "/";
+  let destino = (evento.notification.data && evento.notification.data.caminho) || "/";
+  // Avisos já exibidos podem carregar o endereço anterior à atualização.
+  const endereco = new URL(destino, self.location.href);
+  if (endereco.origin === self.location.origin && /^\/conquistas(?:\/|$)/.test(endereco.pathname)) {
+    destino = "/trilha/";
+  }
   evento.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((abas) => {
       // Se o app já está aberto, leva ele ao destino em vez de abrir outra janela.

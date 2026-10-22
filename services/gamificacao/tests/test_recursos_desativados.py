@@ -17,7 +17,9 @@ def test_rotas_retiradas(path):
 def test_telas_restantes_sem_recursos_antigos(monkeypatch):
     monkeypatch.setattr('apps.core.views.quem_e', lambda request: 'aluno')
     monkeypatch.setattr('apps.core.views.site_atual', lambda: 'escola')
-    for url in ['/', '/medalhas']:
+    antiga = Client().get('/')
+    assert antiga.status_code == 302 and antiga['Location'] == '/trilha/'
+    for url in ['/medalhas']:
         response=Client().get(url)
         assert response.status_code == 200
         html=response.content.decode()
@@ -61,7 +63,7 @@ def test_medalha_restante_sem_tipo_no_criterio_continua_visivel():
 def test_celebracoes_preservadas_mas_antigas_ocultas():
     perfil=PerfilJogador(celebracoes_pendentes=[{'tipo':'marco-validado','referencia':'primeiro-cliente'}, {'tipo':'conquista-concedida','referencia':'dez-forjas'}, {'tipo':'nivel-alcancado','referencia':'3'}])
     result=_celebracoes(perfil)
-    assert [r.referencia for r in result] == ['3']
+    assert result == []
     assert len(perfil.celebracoes_pendentes) == 3
 
 def test_migracao_desliga_definicoes_sem_apagar_registros():

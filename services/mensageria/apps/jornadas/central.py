@@ -24,7 +24,8 @@ MODELOS = (
     ("retorno", "Retorno após inatividade"),
     ("lembretes", "Atividades, entregas e encontros"),
     ("avaliacao", "Avaliação e devolução"),
-    ("conquistas", "Faixas, conquistas e etapas"),
+    ("faixas", "Faixas e graus da Trilha"),
+    ("conquistas", "Reconhecimentos anteriores"),
     ("forum", "Resposta no Fórum"),
     ("operacional", "Avisos operacionais"),
     ("pesquisa", "Pesquisa de satisfação"),
@@ -45,7 +46,9 @@ MODELO_CORPOS = {
     "pesquisa": "Olá! Como está sua experiência de estudo? Sua resposta nos ajuda a melhorar.",
     "campanha": "Olá! Se quiser conhecer outras opções de estudo, podemos orientar você.",
 }
+MODELO_CORPOS["faixas"] = "Parabéns! Você alcançou {{progresso}}. Veja sua Trilha: {{link}}"
 MODELO_GATILHOS = {
+    "faixas": "gamificacao.faixa-alcancada",
     "boas-vindas": "identidade.pessoa-cadastrada",
     "compra": "matricula.ativa",
     "recuperar-acesso": "manual",
@@ -70,7 +73,7 @@ MODELO_ROTEIROS = {
 }
 GATILHOS_TRANSACIONAIS = frozenset({
     "matricula.ativa", "checkpoint.devolvido", "forum.resposta-criada",
-    "gamificacao.nivel-alcancado", "gamificacao.conquista-concedida",
+    "gamificacao.faixa-alcancada", "gamificacao.conquista-concedida",
     "gamificacao.marco-validado",
 })
 
@@ -85,7 +88,10 @@ _CAMPO = re.compile(r"\{\{\s*([a-z_]+)\s*\}\}")
 
 
 def configuracao(versao: JornadaVersao) -> dict:
-    return versao.central_config if isinstance(versao.central_config, dict) else {}
+    config = dict(versao.central_config) if isinstance(versao.central_config, dict) else {}
+    if config.get("gatilho") == "gamificacao.nivel-alcancado":
+        config["gatilho"] = "gamificacao.faixa-alcancada"
+    return config
 
 
 def e_central(versao: JornadaVersao) -> bool:
@@ -140,7 +146,8 @@ def inscrever_evento(*, gatilho, site_id, destinatario_id, event_id, contexto=No
         fato = uuid.UUID(str(event_id))
     except (ValueError, TypeError):
         return []
-    candidatas = Jornada.objects.filter(site_id=site_id, gatilho=gatilho, ativa=True,
+    gatilhos = [gatilho, "gamificacao.nivel-alcancado"] if gatilho == "gamificacao.faixa-alcancada" else [gatilho]
+    candidatas = Jornada.objects.filter(site_id=site_id, gatilho__in=gatilhos, ativa=True,
                                          central_entrada_aberta=True, central_pausada=False)
     if jornada_slug:
         candidatas = candidatas.filter(slug=jornada_slug)
