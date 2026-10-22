@@ -185,7 +185,7 @@ AREAS = (
         "conquistas",
         "Os pontos e as medalhas",
         "A gamificação da escola: o que o aluno ganha, e o que ele já conquistou.",
-        ("/conquistas",),
+        ("/conquistas", "/trilha"),
     ),
     (
         "forum",

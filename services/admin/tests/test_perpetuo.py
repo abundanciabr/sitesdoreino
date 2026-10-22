@@ -22,6 +22,8 @@ O que estes guardas protegem:
 
 import json
 import re
+from contextvars import ContextVar
+from threading import Barrier
 
 import httpx
 import pytest
@@ -31,6 +33,30 @@ from django.urls import reverse, set_script_prefix
 from django.utils.html import escape
 
 from apps.core import perpetuo
+
+
+def test_consultas_paralelas_preservam_contexto_e_nao_o_compartilham(monkeypatch):
+    modulo = ContextVar("modulo_da_requisicao", default=None)
+    encontro = Barrier(3)
+
+    def ler(valor):
+        assert modulo.get() == "admin"
+        modulo.set(valor)
+        encontro.wait(timeout=5)
+        assert modulo.get() == valor
+        return valor
+
+    monkeypatch.setattr(perpetuo.MensageriaClient, "jornadas", lambda self, site: ler("mensagens"))
+    monkeypatch.setattr(perpetuo.AlunosClient, "fila", lambda self, status: ler("alunos"))
+    monkeypatch.setattr(perpetuo.GamificacaoClient, "quadro", lambda self: ler("pontos"))
+    token = modulo.set("admin")
+    try:
+        assert perpetuo._perguntar_a_todas("site") == {
+            "aquecer": "mensagens", "decidir": "alunos", "entregar": "pontos",
+        }
+        assert modulo.get() == "admin"
+    finally:
+        modulo.reset(token)
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
