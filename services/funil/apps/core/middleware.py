@@ -539,6 +539,8 @@ class AtorDaRequisicao:
 # link e o domínio de quem clica não precisa estar cadastrado; também não ganha
 # cookie nem redirect de barra final (`/r/<token>/` é 404).
 CAMINHOS_SEM_SITE = (
+    "/favicon.ico",
+    "/apple-touch-icon.png",
     "/api/hotmart/webhooks",
     "/healthz",
     "/static/",
