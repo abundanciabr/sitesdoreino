@@ -70,6 +70,6 @@ def test_painel_explicita_escopo_parcial_sem_inventar_conversao(monkeypatch):
     assert 'autores distintos' in html and 'matrículas distintas' in html
     assert 'não são uma coorte' in html and 'evidência parcial' in html
     assert 'primeiro acesso geral permanece sem cobertura completa' in html
-    assert 'usaram o link' in html
+    assert 'usou o link' in html
     assert perpetuo._medir(leitura)['estado']=='girando'
     assert perpetuo._medir()['estado']=='nao-respondeu'
