@@ -277,8 +277,6 @@ def avisos_para_tela(
     visiveis = []
     acesso_aluno = None
     for item in itens:
-        if item["assunto"] == "gamificacao.nivel-alcancado":
-            continue
         if item["assunto"] in ASSUNTOS_DO_ALUNO:
             if acesso_aluno is None:
                 acesso_aluno = _acesso_aluno_marketplace(destinatario_id)

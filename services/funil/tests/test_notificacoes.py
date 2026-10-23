@@ -126,8 +126,10 @@ def test_subir_de_nivel_tem_cartao_proprio(
     )
 
     corpo = resposta.content.decode()
-    assert "Você subiu de nível" not in corpo
-    assert "Agora você está no nível 2." not in corpo
+    assert "Você subiu de nível" in corpo
+    assert "Agora você está no nível 2." in corpo
+    assert 'href="/trilha/"' in corpo
+    assert "Ver minha Trilha" in corpo
     assert 'href="/conquistas/"' not in corpo
     assert "ainda não sabe mostrar" not in corpo
 
