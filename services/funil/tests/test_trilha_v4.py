@@ -112,7 +112,7 @@ def test_endereco_direto_sem_barra_e_outro_host(client, rede):
     assert client.get("/trilha/", HTTP_HOST=HOST_A).status_code == 404
 
 
-@pytest.mark.parametrize("caminho", ["/", "/sitemap.xml", "/llms.txt"])
+@pytest.mark.parametrize("caminho", ["/", "/sitemap.xml"])
 def test_endereco_nao_divulgado_no_site(client, rede, caminho):
     resposta = client.get(caminho, HTTP_HOST=HOST_MESH, follow=True)
     assert resposta.status_code == 200

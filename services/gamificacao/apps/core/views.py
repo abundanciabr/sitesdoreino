@@ -112,45 +112,8 @@ def healthz(request):
 @never_cache
 @require_GET
 def base(request):
-    """A Base: onde o aluno vê em que degrau está.
-
-    **Visitante não leva erro.** Ele vê a mesma página, com um convite para
-    entrar no lugar dos números. Um 403 aqui seria a escola dizendo "isto não é
-    para você" a quem ainda vai se matricular; um 500 seria pior, porque a
-    página existiria e pareceria quebrada.
-
-    **Sem `SITE_ID` no env, também não quebra.** `site_atual()` devolve `None`,
-    grita no log, e esta tela trata como visitante. É a mesma falha ABERTA que o
-    contrato exige da porta de máquina, pela mesma razão: página sem selo, nunca
-    página quebrada. E é por ser uma falha silenciosa que
-    `infra/provisionar-gamificacao.sh` se recusa a terminar sem esse campo.
-    """
-    pessoa_id = quem_e(request)
-    site = site_atual()
-    # Os dois endereços de fora saem do `settings`, nunca do template: eles são
-    # de outras células e `{% url %}` não os conhece.
-    de_fora = {
-        "url_de_entrada": settings.URL_DE_ENTRADA,
-        "url_da_capa": settings.URL_DA_CAPA,
-    }
-
-    if not pessoa_id or not site:
-        return render(request, "gamificacao/base.html", {"entrou": False, **de_fora})
-
-    perfil = perfil_de(pessoa_id, site)
-    resposta = render(
-        request,
-        "gamificacao/base.html",
-        {
-            "entrou": True,
-            "escada": escada_de(perfil),
-            "jornada_admin": e_admin(request, pessoa_id),
-            **de_fora,
-        },
-    )
-    from .trilha_pessoal import _privada
-    _privada(resposta)
-    return resposta
+    """Mantém os endereços antigos levando à Trilha atual."""
+    return HttpResponseRedirect("/trilha/")
 
 
 @never_cache

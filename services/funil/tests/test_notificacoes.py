@@ -13,7 +13,7 @@ from tests.conftest import HOST_MESH, NOTIFICACOES, caminho_mesh
     "https://meshcraft.top/conquistas/",
 ])
 @pytest.mark.parametrize("tipo", ["nivel", "conquista", "marco", "destaque"])
-def test_destinos_antigos_configurados_levam_a_trilha(monkeypatch, configurado, tipo):
+def test_endereco_antigo_configurado_nao_reaparece_nos_cartoes_ou_push(monkeypatch, configurado, tipo):
     monkeypatch.setenv("URL_DAS_CONQUISTAS", configurado)
     assert notificacoes.link_do_cartao(tipo) == "/trilha/"
     for assunto in (
@@ -428,3 +428,26 @@ def test_aviso_de_faixa_diz_a_faixa(client, logado, rede, notificacoes_configura
     assert "Você chegou a uma nova faixa" in corpo
     assert "Você chegou à faixa Amarela." in corpo
     assert "medalha" not in corpo
+
+
+@pytest.mark.parametrize("slug,nome,titulo", [
+    ("vermelha", "Vermelha", "Você chegou a uma nova faixa"),
+    ("preta", "Preta", "Você chegou a uma nova faixa"),
+    ("preta-grau-1", "Preta · 1º grau", "Você chegou a uma nova faixa"),
+    ("preta-grau-2", "Preta · 2º grau", "Você alcançou um novo grau!"),
+])
+def test_faixa_atual_e_grau_levam_a_trilha(client, logado, rede, notificacoes_configurada, slug, nome, titulo):
+    _resumo(rede)
+    aviso = _aviso()
+    aviso.update(assunto="gamificacao.conquista-concedida", parametros={"conquista_slug": "trilha-faixa-" + slug, "familia": "carreira"})
+    _lista(rede, aviso)
+    resposta = client.get(caminho_mesh("pt-br", "/notificacoes"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+    corpo = resposta.content.decode()
+    assert titulo in corpo and nome in corpo
+    assert 'href="/trilha/"' in corpo and "Ver minha Trilha" in corpo
+    assert "Você ganhou uma medalha" not in corpo
+
+def test_referencia_de_robos_aponta_para_trilha(client, rede):
+    corpo = client.get("/llms.txt", HTTP_HOST=HOST_MESH).content.decode()
+    assert "https://meshcraft.top/trilha/" in corpo
+    assert "https://meshcraft.top/conquistas/" not in corpo

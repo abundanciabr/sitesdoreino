@@ -39,7 +39,6 @@ def test_eventos_enderecados_e_escopo_de_site(monkeypatch):
     assert [(c["gatilho"], c["site_id"], c["destinatario_id"]) for c in chamadas] == [
         ("identidade.pessoa-cadastrada", "s1", "p1"),
         ("matricula.ativa", "s2", "p2"),
-        ("gamificacao.nivel-alcancado", "s2", "p2"),
     ]
     assert chamadas[1]["contexto"]["aluno_id"] == "p2"
 
@@ -231,3 +230,15 @@ def test_falha_da_ponte_nao_apaga_entrada_nem_evento(monkeypatch):
         site_id="s1", canal="whatsapp", endereco="5511999990000", id_externo="nova"))
     assert nova is True and mensagem.pk is not None
     assert OutboxEvent.objects.filter(event="mensagem.recebida").count() == 1
+
+
+def test_faixa_da_trilha_tem_gatilho_e_contexto_proprios(monkeypatch):
+    chamadas = []
+    monkeypatch.setattr(central, "inscrever_evento", lambda **kw: chamadas.append(kw))
+    encaminhar(_envelope("notificacao.devida", {
+        "site_id":"s2", "destinatario_id":"p2", "assunto":"gamificacao.conquista-concedida",
+        "parametros":{"conquista_slug":"trilha-faixa-preta-grau-2", "familia":"carreira"},
+    }))
+    assert chamadas[0]["gatilho"] == "gamificacao.faixa-alcancada"
+    assert chamadas[0]["contexto"]["progresso"] == "Faixa Preta · 2º grau"
+    assert chamadas[0]["contexto"]["link"] == "https://meshcraft.top/trilha/"

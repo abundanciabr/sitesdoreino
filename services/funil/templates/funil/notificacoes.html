@@ -67,7 +67,7 @@
               <h2>{% t "notificacoes.nivel_titulo" %}</h2>
               {% if aviso.nivel %}<p>{% t "notificacoes.nivel_corpo" nivel=aviso.nivel %}</p>{% else %}<p>{% t "notificacoes.nivel_corpo_sem_numero" %}</p>{% endif %}
             {% elif aviso.tipo == "conquista" and aviso.faixa %}
-              <h2>{% t "notificacoes.faixa_titulo" %}</h2>
+              <h2>{% if aviso.grau %}{% t "notificacoes.grau_titulo" %}{% else %}{% t "notificacoes.faixa_titulo" %}{% endif %}</h2>
               <p>{% t "notificacoes.faixa_corpo" %} {% t "notificacoes.faixa_nome_"|add:aviso.faixa %}.</p>
             {% elif aviso.tipo == "matricula" %}
               <h2>{% t "notificacoes.matricula_titulo" %}</h2>
@@ -81,7 +81,7 @@
             {% elif aviso.link and aviso.tipo|slice:':12' == 'marketplace_' %}
               <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_pedido" %}</a></p>
             {% elif aviso.link and aviso.tipo != "sugestao" %}
-              <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_conquistas" %}</a></p>
+              <p><a class="notificacao-link" href="{{ aviso.link }}">{% t "notificacoes.ver_trilha" %}</a></p>
             {% endif %}
             {% if not aviso.lido_em %}
               <form method="post" action="{% url_i18n 'marcar_notificacao_lida' aviso_id=aviso.id %}">
