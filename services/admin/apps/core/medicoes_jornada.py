@@ -1,5 +1,6 @@
 """Leituras existentes da jornada, com escopo e cobertura explícitos."""
 import datetime as dt
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 from contextvars import copy_context
 
@@ -93,7 +94,7 @@ class LinksDaJornada(AlunosClient):
                 if data is not None and data.tzinfo is None:
                     return MedicaoClient.NAO_RESPONDEU, None
                 corpo[campo] = data
-            sem_cobertura = corpo['inicio_coleta'] is None or corpo['inicio_coleta'].astimezone(dt.timezone(dt.timedelta(hours=-3))).date() > ate
+            sem_cobertura = corpo['inicio_coleta'] is None or corpo['inicio_coleta'].astimezone(ZoneInfo('America/Sao_Paulo')).date() > ate
             if ((n is None) != sem_cobertura or (coorte is None) != sem_cobertura
                     or (n == 0 and (corpo['primeiro_observado'] or corpo['ultimo_observado']))
                     or (n and (not corpo['primeiro_observado'] or not corpo['ultimo_observado']

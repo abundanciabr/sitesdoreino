@@ -67,3 +67,21 @@ def test_painel_agrupa_identidade_sem_preencher_passado(sessao,settings):
 
     passado=c.get('/api/alunos/jornada-acesso/medicoes?site_id=escola&de=2020-01-01&ate=2020-01-02').json()
     assert passado['observadas_periodo'] is None and passado['autenticadas'] is None and passado['primeiro_observado'] is None
+
+
+@pytest.mark.parametrize('corpo',[
+    {'autenticado':False}, {'autenticado':True,'id':'id-opaco'},
+    {'autenticado':True,'email':'sintetico@example.test'},
+    {'autenticado':True,'id':'id-opaco','email':'sintetico@example.test'},
+])
+def test_cliente_reconfere_cookie_e_exige_id_e_email(corpo,monkeypatch):
+    import respx
+    from apps.core.clients import IdentidadeClient
+    monkeypatch.setenv('IDENTIDADE_API_URL','http://identidade.test')
+    monkeypatch.setenv('IDENTIDADE_API_TOKEN','par-sintetico')
+    with respx.mock as mock:
+        rota=mock.get('http://identidade.test/sessao/completa').respond(200,json=corpo)
+        resposta=IdentidadeClient().sessao_completa('meshcraft_sessao=opaco')
+        assert (resposta is not None)==bool(corpo.get('autenticado') and corpo.get('id') and corpo.get('email'))
+        assert rota.calls.last.request.headers['Cookie']=='meshcraft_sessao=opaco'
+        assert rota.calls.last.request.headers['Authorization']=='Bearer par-sintetico'
