@@ -81,14 +81,14 @@ def test_nova_coleta_explicita_zero_e_datas_sem_inventar_historico(monkeypatch):
     monkeypatch.setenv('ALUNOS_API_TOKEN','par')
     corpo={'site_id':'escola','de':DE.isoformat(),'ate':ATE.isoformat(),
         'liberadas':3,'com_link':2,'usaram_link':1,'inicio_coleta':'2026-10-23T18:00:00-03:00',
-        'autenticadas':0,'primeiro_observado':None,'ultimo_observado':None}
+        'autenticadas':0,'observadas_periodo':0,'primeiro_observado':None,'ultimo_observado':None}
     rota=respx.get('http://alunos.test/jornada-acesso/medicoes').respond(200,json=corpo)
     estado,leitura=m.LinksDaJornada().ler('escola',DE,ATE)
     assert estado=='ok' and leitura['autenticadas']==0
     html=render_to_string('admin/perpetuo.html',{'medicoes_jornada':{'links_estado':estado,'links':leitura}})
     assert '0</strong> pessoas' in html and 'Coleta disponível desde' in html
     assert 'não são reconstituídos' in html and 'inclusive sessões já abertas' in html
-    ruim={**corpo,'autenticadas':1,'primeiro_observado':'2026-10-22T18:00:00-03:00',
+    ruim={**corpo,'autenticadas':1,'observadas_periodo':1,'primeiro_observado':'2026-10-22T18:00:00-03:00',
         'ultimo_observado':'2026-10-23T18:00:00-03:00'}
     rota.respond(200,json=ruim)
     assert m.LinksDaJornada().ler('escola',DE,ATE)==('nao-respondeu',None)

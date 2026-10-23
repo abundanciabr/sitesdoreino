@@ -57,12 +57,15 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
     {% if medicoes_jornada.links.autenticadas == None %}
     <p>Este período é anterior à coleta; o primeiro acesso autenticado está sem cobertura.</p>
     {% else %}
-    <p><strong>{{ medicoes_jornada.links.autenticadas }}</strong> pessoa{{ medicoes_jornada.links.autenticadas|pluralize }}
+    <p><strong>{{ medicoes_jornada.links.observadas_periodo }}</strong> pessoa{{ medicoes_jornada.links.observadas_periodo|pluralize }}
+      com primeira observação de acesso autenticado no período após a liberação da fila,
+      incluindo pessoas liberadas antes desta janela.</p>
+    <p>Dessas, <strong>{{ medicoes_jornada.links.autenticadas }}</strong> pessoa{{ medicoes_jornada.links.autenticadas|pluralize }}
       liberada{{ medicoes_jornada.links.autenticadas|pluralize }} da fila no período com primeiro acesso autenticado observado
       após a liberação, até o fim do período.</p>
     {% endif %}
     <p>Coleta disponível desde <strong>{{ medicoes_jornada.links.inicio_coleta|date:"d/m/Y H:i:s" }}</strong> (São Paulo).
-      {% if medicoes_jornada.links.primeiro_observado %}Primeira observação desta janela: {{ medicoes_jornada.links.primeiro_observado|date:"d/m/Y H:i:s" }};
+      {% if medicoes_jornada.links.primeiro_observado %}Primeira observação nesta janela: {{ medicoes_jornada.links.primeiro_observado|date:"d/m/Y H:i:s" }};
       última: {{ medicoes_jornada.links.ultimo_observado|date:"d/m/Y H:i:s" }}.{% endif %}</p>
     <p>A coleta cobre páginas HTML abertas com sessão válida no funil (incluindo a Trilha), cursos, fórum e Caixa,
       inclusive sessões já abertas. A escola reconfere a identidade e a matrícula ativa; testes, simulações,

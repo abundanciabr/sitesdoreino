@@ -78,7 +78,10 @@ class LinksDaJornada(AlunosClient):
         if not corpo['usaram_link'] <= corpo['com_link'] <= corpo['liberadas']:
             return MedicaoClient.NAO_RESPONDEU, None
         if 'inicio_coleta' in corpo:
-            n = corpo.get('autenticadas')
+            n = corpo.get('observadas_periodo')
+            coorte = corpo.get('autenticadas')
+            if (coorte is not None and not _inteiro(coorte)) or (n is not None and coorte is not None and coorte > n):
+                return MedicaoClient.NAO_RESPONDEU, None
             if n is not None and not _inteiro(n):
                 return MedicaoClient.NAO_RESPONDEU, None
             for campo in ('inicio_coleta', 'primeiro_observado', 'ultimo_observado'):
@@ -91,7 +94,7 @@ class LinksDaJornada(AlunosClient):
                     return MedicaoClient.NAO_RESPONDEU, None
                 corpo[campo] = data
             sem_cobertura = corpo['inicio_coleta'] is None or corpo['inicio_coleta'].astimezone(dt.timezone(dt.timedelta(hours=-3))).date() > ate
-            if ((n is None) != sem_cobertura
+            if ((n is None) != sem_cobertura or (coorte is None) != sem_cobertura
                     or (n == 0 and (corpo['primeiro_observado'] or corpo['ultimo_observado']))
                     or (n and (not corpo['primeiro_observado'] or not corpo['ultimo_observado']
                         or corpo['primeiro_observado'] < corpo['inicio_coleta']

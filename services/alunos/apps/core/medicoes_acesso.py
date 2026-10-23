@@ -21,6 +21,7 @@ class MedicoesDoAcesso(Schema):
     usaram_link: int
     inicio_coleta: dt.datetime | None
     autenticadas: int | None
+    observadas_periodo: int | None
     primeiro_observado: dt.datetime | None
     ultimo_observado: dt.datetime | None
 
@@ -47,8 +48,12 @@ def medir(request, site_id: str, de: dt.date, ate: dt.date):
         matricula__order_id__startswith='pre:',
         liberada_em__gte=inicio, liberada_em__lt=fim, observado_em__lt=fim,
     )
-    cobertura = observados.aggregate(primeiro_observado=Min('observado_em'), ultimo_observado=Max('observado_em'))
+    no_periodo = AcessoAutenticado.objects.filter(
+        matricula__site_id=site_id, matricula__em_teste=False,
+        matricula__order_id__startswith='pre:', observado_em__gte=inicio, observado_em__lt=fim)
+    cobertura = no_periodo.aggregate(primeiro_observado=Min('observado_em'), ultimo_observado=Max('observado_em'))
     return {'inicio_coleta': inicio_coleta,
+            'observadas_periodo': no_periodo.values('pessoa_id').distinct().count() if inicio_coleta and inicio_coleta < fim else None,
             'autenticadas': observados.values('pessoa_id').distinct().count() if inicio_coleta and inicio_coleta < fim else None,
             **cobertura, 'site_id': site_id, 'de': de, 'ate': ate, 'liberadas': pessoas(linhas),
             'com_link': pessoas(com_link), 'usaram_link': pessoas(usados)}
