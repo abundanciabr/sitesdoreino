@@ -5,6 +5,7 @@ import httpx
 
 logger = logging.getLogger(__name__)
 ORIGEM = 'sugestoes'
+_DIAGNOSTICOS = set()
 
 class PrimeiroAcesso:
     def __init__(self, get_response):
@@ -12,15 +13,28 @@ class PrimeiroAcesso:
 
     def __call__(self, request):
         resposta = self.get_response(request)
+        if request.method == 'GET' and resposta.get('Content-Type', '').startswith('text/html'):
+            # Só enumera condições de captura. Nunca guarda identidade, cookie ou caminho.
+            destino = request.headers.get('Sec-Fetch-Dest', 'ausente')
+            destino = destino if destino in ('document', 'iframe', 'empty', 'ausente') else 'recurso'
+            condicoes = (bool(request.COOKIES.get('meshcraft_sessao')),
+                         bool(request.COOKIES.get('meshcraft_ver_como')),
+                         'prefetch' in (request.headers.get('Purpose', '') + request.headers.get('Sec-Purpose', '')).lower(), destino)
+            if condicoes not in _DIAGNOSTICOS:
+                _DIAGNOSTICOS.add(condicoes)
+                logger.warning('primeiro acesso: condições sessão=%s simulação=%s pré-carga=%s destino=%s', *condicoes)
         if (request.method != 'GET' or not 200 <= resposta.status_code < 300
                 or resposta.get('Content-Type', '').split(';')[0] != 'text/html'
                 or not request.COOKIES.get('meshcraft_sessao')
                 or request.COOKIES.get('meshcraft_ver_como')
                 or 'prefetch' in (request.headers.get('Purpose', '') + request.headers.get('Sec-Purpose', '')).lower()
-                or request.headers.get('Sec-Fetch-Dest', 'document') != 'document'):
+                or request.headers.get('X-Requested-With', '').lower() == 'xmlhttprequest'):
             return resposta
         site = getattr(request, 'site', None)
         site_id = site.get('id') if isinstance(site, dict) else os.environ.get('SITE_ID', '')
+        if not site_id:
+            from .menu import _site
+            site_id = _site(request.get_host().split(':')[0].lower()).get('id')
         base = (os.environ.get('ALUNOS_API_URL') or '').rstrip('/')
         token = os.environ.get('ALUNOS_API_TOKEN', '')
         if not (site_id and base and token):
