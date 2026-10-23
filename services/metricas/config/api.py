@@ -3,6 +3,7 @@ from ninja import NinjaAPI
 
 from apps.core.auth import bearerAuth
 from apps.fatos.api import router as fatos_router
+from apps.fatos.jornada_api import router as jornada_router
 
 # O ENDEREÇO, e a escolha entre os dois formatos que a casa usa.
 #
@@ -70,5 +71,6 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", fatos_router)
+api.add_router("", jornada_router)
 from apps.fatos.memoria_contato import router as memoria_contato_router
 api.add_router("", memoria_contato_router)

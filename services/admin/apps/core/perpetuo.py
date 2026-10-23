@@ -89,7 +89,6 @@ from .placar import site_de
 # placar já usa para chamar a fila de gargalo. Dois números diferentes para a
 # mesma ideia fariam esta tela dizer "girando" enquanto a outra diz "entupida".
 from .restricao import DIAS_DE_ESPERA_QUE_VIRAM_GARGALO
-from .restricao import ETAPAS as PASSAGENS_DO_FUNIL
 
 
 def _admin(nome: str) -> dict:
@@ -362,34 +361,17 @@ def _entregar(quadro: "list | None") -> dict:
     )
 
 
-def _medir() -> dict:
-    """Peça 6: de quantas passagens do funil a casa sabe o número?
-
-    ESTA É A ÚNICA PEÇA QUE NÃO PERGUNTA NADA A NINGUÉM, e é de propósito. O
-    que ela mede não é um estado que muda de minuto a minuto: é quantas
-    passagens do funil TÊM FONTE, um fato que só muda quando alguém constrói a
-    fonte que falta. Quem já declara isso, uma por uma e com o motivo, é o
-    `ETAPAS` de `restricao.py`, que a tela do placar usa. Ler de lá é o que
-    impede as duas telas de discordarem sobre o que a casa sabe medir.
-    """
-    com_fonte = sum(1 for p in PASSAGENS_DO_FUNIL if p.get("fonte"))
-    total = len(PASSAGENS_DO_FUNIL)
-    if com_fonte == total:
-        return _veredito(
-            GIRANDO,
-            f"As {total} passagens do funil têm de onde tirar número.",
-        )
-    if com_fonte == 0:
-        return _veredito(
-            PARADA,
-            f"Nenhuma das {total} passagens do funil tem de onde tirar número.",
-        )
-    return _veredito(
-        PARADA,
-        f"De {total} passagens do funil, a casa sabe medir {com_fonte}. As "
-        f"outras {total - com_fonte} esperam a parte que guarda a história dos "
-        "números, e ela não está ligada.",
-    )
+def _medir(medicoes=None) -> dict:
+    if not medicoes or medicoes.get('fatos_estado') != 'ok':
+        return _veredito(NAO_RESPONDEU,
+            'Não consegui consultar os fatos da jornada. Ausência de resposta não significa zero; confira as leituras abaixo.')
+    if not any(l.get('quantidade') is not None for l in medicoes.get('linhas', [])):
+        return _veredito(PARADA, 'A medição respondeu, mas ainda não recebeu fatos dessas leituras. Nenhum zero foi estimado.')
+    if medicoes.get('links_estado') != 'ok':
+        return _veredito(NAO_RESPONDEU, 'Os fatos da jornada foram consultados, mas não consegui consultar o uso dos links de acesso.')
+    return _veredito(GIRANDO,
+        'A jornada tem leituras de cadastros, pedidos, liberações e fórum. '
+        'A entrada tem cobertura parcial pelo uso do link; os volumes não são taxas de conversão por pessoa.')
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +410,7 @@ def _perguntar_a_todas(site_id: "str | None") -> dict:
         }
 
 
-def vereditos(site_id: "str | None") -> dict:
+def vereditos(site_id: "str | None", medicoes=None) -> dict:
     """O veredito de cada peça, pela chave dela em `ETAPAS`.
 
     As peças com `sem_fonte_porque` não aparecem aqui: o que elas mostram é o
@@ -440,7 +422,7 @@ def vereditos(site_id: "str | None") -> dict:
         "aquecer": _aquecer(respostas["aquecer"]),
         "decidir": _decidir(respostas["decidir"]),
         "entregar": _entregar(respostas["entregar"]),
-        "medir": _medir(),
+        "medir": _medir(medicoes),
     }
 
 
@@ -522,6 +504,8 @@ def perpetuo(request):
     from .governanca import contar_alunos
     from django.utils import timezone
     site_id = site_de(request)
+    from .medicoes_jornada import ler
+    medicoes = ler(site_id, timezone.localdate())
     alunos_2027 = contar_alunos(AlunosClient().alunos() if site_id else None, site_id, timezone.localdate())
     return render(
         request,
@@ -529,7 +513,8 @@ def perpetuo(request):
         {
             "admin": request.admin,
             "alunos_2027": alunos_2027,
-            "etapas": etapas_com_portas(mapa, vereditos(site_id)),
+            "etapas": etapas_com_portas(mapa, vereditos(site_id, medicoes)),
+            "medicoes_jornada": medicoes,
             "mapa_ausente": mapa is None,
         },
     )

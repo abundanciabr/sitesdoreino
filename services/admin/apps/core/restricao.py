@@ -77,7 +77,7 @@ ETAPAS = (
         "chave": "entrada",
         "nome": "cadastrou → pediu entrada",
         "fonte": None,
-        "sem_fonte_porque": "a admin não conta cadastros: a célula identidade ainda não tem porta de contagem (plano, degrau 7).",
+        "sem_fonte_porque": "Cadastros e pedidos têm volumes observados no painel de lançamentos, mas não uma ligação histórica por pessoa que permita afirmar esta conversão.",
     },
     {
         "chave": "liberacao",
@@ -89,13 +89,13 @@ ETAPAS = (
         "chave": "primeira-entrada",
         "nome": "foi liberada → entrou pela primeira vez",
         "fonte": None,
-        "sem_fonte_porque": "a plataforma não guarda o último acesso de ninguém; nasce quando a célula de medição receber o evento de entrada (plano, degrau 7).",
+        "sem_fonte_porque": "O painel de lançamentos conta o uso do link após a liberação. Outros logins e sessões já abertas não têm registro de primeiro acesso nessa fonte.",
     },
     {
         "chave": "forum",
         "nome": "entrou → escreveu no fórum",
         "fonte": None,
-        "sem_fonte_porque": "a admin não lê o fórum; a célula de medição vai receber forum.topico-criado (plano, degrau 7).",
+        "sem_fonte_porque": "O painel de lançamentos lê autores distintos dos fatos de tópicos e mensagens. Isso não identifica a conversão desde o primeiro acesso, que não tem cobertura completa.",
     },
 )
 
