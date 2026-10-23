@@ -42,6 +42,8 @@ from apps.core.views import (
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
 # PLANO-I18N) decapa /en|pt-br|es de path_info ANTES da resolução de URL.
 urlpatterns = [
+    path("favicon.ico", servir_estatico, {"path": "funil/pwa/icone-192.png"}),
+    path("apple-touch-icon.png", servir_estatico, {"path": "funil/pwa/icone-192.png"}),
     path('api/hotmart/webhooks', hotmart_webhook, name='hotmart_webhook'),
     path('api/hotmart/webhooks/', hotmart_webhook),
     path('ferramentas/diagnostico-de-texturas/', diagnostico_texturas_gateway, name='diagnostico_texturas'),
