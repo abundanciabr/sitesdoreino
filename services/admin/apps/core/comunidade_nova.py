@@ -13,11 +13,12 @@ from .comunidade_modelos import PerfilDaComunidade
 from .placar import site_de
 from .porta import _emails_autorizados
 
-BASE = "/comunidade/nova-20261014"
-INTERNO = "/galeria-publica/nova-20261014"
+BASE = "/comunidade"
+INTERNO = "/galeria-publica"
 
 
 def caminho_publico(caminho):
+    caminho = caminho.replace("/galeria-publica/nova-20261014", INTERNO, 1)
     if caminho == INTERNO or caminho == INTERNO + "/":
         return True
     partes = caminho.removeprefix(INTERNO + "/").split("/")
@@ -159,3 +160,13 @@ def recurso(request, nome):
     if nome == "comunidade.css":
         conteudo = conteudo.replace(b"/comunidade/assets/", (BASE + "/assets/").encode())
     return entrada._resposta(HttpResponse(conteudo, content_type=tipo))
+
+
+@require_GET
+@never_cache
+def endereco_anterior(request):
+    destino = BASE
+    consulta = request.META.get("QUERY_STRING", "")
+    if consulta:
+        destino += "?" + consulta
+    return entrada._resposta(HttpResponseRedirect(destino))

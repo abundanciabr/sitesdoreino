@@ -130,7 +130,7 @@ def test_menu_sem_grupos_e_botoes_sem_emails(rede):
     assert 'Notificações · seguidores' in pagina
     assert "bia@example.test" not in pagina
     voto = rede["bia"].get("/galeria-publica").content.decode()
-    assert "Notificações · seguidores" in voto and "Os nove modelos" in voto
+    assert "Seu primeiro acesso" in voto and "Os nove modelos" not in voto
     pedir(rede)
     assert "example.test" not in rede["bia"].get(BASE).content.decode()
 
@@ -227,8 +227,8 @@ def test_alunos_interface_disponivel_sem_admin_e_erros_reais(rede, monkeypatch):
     assert not PedidoSeguidor.objects.exists()
 
 
-def test_alunos_votacao_tem_navegacao_e_perfil_volta_a_lista(rede):
-    html = rede["bia"].get("/galeria-publica").content.decode()
+def test_comunidade_tem_navegacao_e_perfil_volta_a_lista(rede):
+    html = rede["ana"].get("/galeria-publica").content.decode()
     assert 'href="/comunidade/alunos"' in html and 'href="/forum/"' in html
     html = rede["caio"].get("/galeria-publica/pessoas/" + alvo()).content.decode()
     assert 'href="/comunidade/alunos"' in html and "Voltar aos alunos" in html
