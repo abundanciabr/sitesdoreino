@@ -5,8 +5,8 @@ from apps.core import comunidade_entrada
 from apps.core.comunidade_modelos import PerfilDaComunidade
 from apps.core.galeria_models import VotoDaGaleria
 
-BASE='/galeria-publica/nova-20261014'
-PUBLICO='/comunidade/nova-20261014'
+BASE='/galeria-publica'
+PUBLICO='/comunidade'
 
 @pytest.fixture
 def aluno(monkeypatch,settings):
@@ -65,7 +65,7 @@ def test_aluno_pode_configurar_e_persistir_perfil_real_sem_poderes_admin(aluno):
     assert 'NOME PRIVADO SEM PERFIL' not in corpo
     assert 'Nome privado Ana' not in corpo
     assert 'example.test' not in corpo
-    assert aluno.get('/galeria-publica/assets/comunidade.css').status_code == 404
+    assert aluno.get('/galeria-publica/assets/comunidade.css').status_code == 200
 
 
 def test_nove_temas_persistem_sem_alterar_outro_perfil(aluno):
@@ -131,7 +131,6 @@ def test_recursos_publicos_da_nova_pagina_nao_abrem_arquivos_administrativos():
     c=Client(HTTP_HOST='meshcraft.top')
     for url in ['/assets/comunidade.css','/assets/comunidade.js','/assets/hero.png','/avatar/azul']:
         assert c.get(BASE+url).status_code == 200
-    assert b'/comunidade/assets/' not in c.get(BASE+'/assets/comunidade.css').content
     assert (PUBLICO+'/assets/hero.png').encode() in c.get(BASE+'/assets/comunidade.css').content
     assert c.get(BASE+'/assets/percurso.html').status_code == 404
     assert c.get(BASE+'/assets/politica.json').status_code == 404
@@ -164,12 +163,12 @@ def test_csrf_real_do_perfil_aluno(aluno):
     assert c.post(BASE+'/perfil',{'usuario':'ana','avatar':'azul'},HTTP_X_CSRFTOKEN=token,HTTP_REFERER='https://meshcraft.top'+PUBLICO,secure=True).status_code == 302
 
 
-def test_endereco_novo_nao_e_divulgado_na_votacao_atual(aluno,monkeypatch):
+def test_entrada_definitiva_preserva_votos_existentes(aluno,monkeypatch):
     VotoDaGaleria.objects.create(pessoa_id='aluno-real',imagem='apple')
     monkeypatch.setattr('apps.core.galeria_comunidade.aluno',lambda request:{'id':'ana','nome':'Ana','email':'ana@example.test'})
     corpo=aluno.get('/galeria-publica').content.decode()
-    assert corpo.count('class="modelo"') == 9
-    assert PUBLICO not in corpo
+    assert 'Seu primeiro acesso' in corpo
+    assert '/comunidade/nova-20261014' not in corpo
     assert VotoDaGaleria.objects.count() == 1
 
 
@@ -208,7 +207,7 @@ def test_perfil_novo_preserva_busca_seguidores_e_nome_editavel(aluno, monkeypatc
     assert 'Ver perfil' in busca and 'data-seguir="' not in busca
     assert 'Seguindo' in aluno.get('/galeria-publica/pessoas/'+alvo).content.decode()
     for rota in ['/galeria-publica', '/galeria-publica/alunos', '/galeria-publica/pessoas/'+alvo]:
-        assert PUBLICO not in bia.get(rota).content.decode()
+        assert "/comunidade/nova-20261014" not in bia.get(rota).content.decode()
 
 
 def test_nova_pagina_preserva_forum_separado_e_nao_embute_diretorio(aluno, monkeypatch):
@@ -220,3 +219,11 @@ def test_nova_pagina_preserva_forum_separado_e_nao_embute_diretorio(aluno, monke
     assert '/admin/' not in corpo and '/cursos/comunidade/pratica' not in corpo
     assert 'data-seguir="' not in corpo
     assert 'href="#grupos"' not in corpo
+
+
+def test_endereco_anterior_redireciona_preservando_edicao():
+    c = Client(HTTP_HOST='meshcraft.top')
+    for sufixo in ['', '/']:
+        resposta = c.get('/galeria-publica/nova-20261014'+sufixo+'?perfil=editar')
+        assert resposta.status_code == 302
+        assert resposta.url == '/comunidade?perfil=editar'
