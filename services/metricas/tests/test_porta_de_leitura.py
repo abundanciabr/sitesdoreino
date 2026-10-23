@@ -122,7 +122,7 @@ def operacoes_da_porta() -> list[tuple[str, str]]:
 
 def test_o_schema_vivo_tem_as_nove_operacoes():
     """Se este número mudar, o teste de 401 abaixo mudou de escopo junto."""
-    assert len(operacoes_da_porta()) == 9  # a nona: countTrackedLinks (links rastreados)
+    assert len(operacoes_da_porta()) == 11  # inclui CRM e leitura agregada da jornada
 
 
 @pytest.mark.parametrize("metodo,caminho", operacoes_da_porta())

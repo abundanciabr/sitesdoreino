@@ -376,22 +376,13 @@ def test_peca_sem_fonte_diz_o_motivo_e_nao_inventa_numero(monkeypatch):
             assert etapa["veredito"]["frase"] == etapa["sem_fonte_porque"]
 
 
-def test_a_peca_de_medir_le_do_placar_em_vez_de_contar_sozinha():
-    """Quantas passagens do funil têm fonte é um fato que já mora em
-    `restricao.ETAPAS`, e é de lá que esta peça o lê.
-
-    Uma contagem própria aqui divergiria da tela do placar no dia em que uma
-    fonte nova nascesse, e o mantenedor leria a que abrisse primeiro sem saber
-    que a outra discorda.
-    """
-    from apps.core.restricao import ETAPAS as PASSAGENS
-
-    com_fonte = sum(1 for p in PASSAGENS if p.get("fonte"))
-    frase = perpetuo._medir()["frase"]
-    assert str(len(PASSAGENS)) in frase and str(com_fonte) in frase, (
-        f"a frase precisa citar os números do placar ({com_fonte} de "
-        f"{len(PASSAGENS)}), e disse: {frase}"
-    )
+def test_medir_depende_da_resposta_real_e_nao_de_catalogo_estatico():
+    assert perpetuo._medir()['estado'] == perpetuo.NAO_RESPONDEU
+    sem_fatos = {'fatos_estado':'ok', 'links_estado':'ok', 'linhas':[{'quantidade':None}]}
+    assert perpetuo._medir(sem_fatos)['estado'] == perpetuo.PARADA
+    com_zero = {**sem_fatos, 'linhas':[{'quantidade':0}]}
+    assert perpetuo._medir(com_zero)['estado'] == perpetuo.GIRANDO
+    assert 'parcial' in perpetuo._medir(com_zero)['frase']
 
 
 def _sem_rede(monkeypatch, respostas=None):
