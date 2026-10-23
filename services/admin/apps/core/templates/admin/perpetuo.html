@@ -36,7 +36,7 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
     <p>Estas são leituras da operação da escola. Cadastros, matrículas e autores são unidades diferentes;
       os volumes abaixo não são uma coorte nem uma taxa de conversão entre etapas. Não comprovam vendas.</p>
     {% if medicoes_jornada.fatos_estado == "ok" %}
-    <table>
+    <table class="tabela-do-resultado">
       <thead><tr><th>Leitura</th><th>No período</th><th>Unidade</th><th>Fatos disponíveis desde</th><th>Último fato</th></tr></thead>
       <tbody>
       {% for linha in medicoes_jornada.linhas %}
@@ -54,9 +54,10 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
     {% endif %}
     <h3>Liberação → primeiro acesso: evidência parcial</h3>
     {% if medicoes_jornada.links_estado == "ok" %}
-    <p><strong>{{ medicoes_jornada.links.usaram_link }}</strong> pessoas usaram o link de acesso
-      entre <strong>{{ medicoes_jornada.links.com_link }}</strong> pessoas liberadas com link no período.
-      No mesmo recorte, {{ medicoes_jornada.links.liberadas }} pessoas foram liberadas da fila.</p>
+    <p><strong>{{ medicoes_jornada.links.usaram_link }}</strong> pessoa{{ medicoes_jornada.links.usaram_link|pluralize }}
+      {{ medicoes_jornada.links.usaram_link|pluralize:"usou,usaram" }} o link de acesso
+      entre <strong>{{ medicoes_jornada.links.com_link }}</strong> pessoa{{ medicoes_jornada.links.com_link|pluralize }} liberada{{ medicoes_jornada.links.com_link|pluralize }} com link no período.
+      Nos registros da escola, {{ medicoes_jornada.links.liberadas }} pessoas foram liberadas da fila no mesmo período.</p>
     {% else %}
     <p role="status">Não consegui consultar o uso dos links de acesso. Isso não significa que ninguém entrou.</p>
     {% endif %}
@@ -65,7 +66,9 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
       Entradas por outros caminhos e sessões já abertas não ficam registradas nessa fonte.
       Portanto, o primeiro acesso geral permanece sem cobertura completa; não foi reconstruído pelo cadastro ou pela compra.</p>
     <p>Participação no fórum conta quem escreveu um tópico ou mensagem no período, sem presumir quando entrou na escola.
-      Não há ligação histórica completa entre os mesmos indivíduos nas três passagens.</p>
+      Não há ligação histórica completa entre os mesmos indivíduos nas três passagens.
+      O livro de fatos conta matrículas por evento; a escola conta pessoas pelos registros de liberação.
+      Essas fontes não foram conciliadas e seus totais podem diferir.</p>
   </section>
 
   {% if mapa_ausente %}
