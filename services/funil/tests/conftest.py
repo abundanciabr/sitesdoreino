@@ -164,6 +164,7 @@ def ambiente(monkeypatch):
 def rede():
     """Catálogo e leads como os contratos descrevem."""
     with respx.mock(assert_all_called=False) as mock:
+        mock.post(f"{ALUNOS}/jornada-acesso/observar").respond(204)
         mock.get(f"{CATALOGO}/sites/by-host/{HOST_A}").mock(
             return_value=httpx.Response(200, json=SITE_A)
         )

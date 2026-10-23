@@ -107,3 +107,23 @@ class IdentidadeClient:
         # `id: null` é RESPOSTA — "não conheço esta pessoa", que é o caso comum
         # de quem foi cadastrado à mão e ainda não entrou com o Google.
         return (corpo.get("id") or "").strip() or None
+
+
+    def sessao_completa(self, cookie):
+        config = self._configuracao()
+        if not config or not cookie:
+            return None
+        base, token = config
+        try:
+            with http() as cliente:
+                resposta = cliente.get(base + '/sessao/completa',
+                    headers={'Authorization': 'Bearer ' + token, 'Cookie': cookie},
+                    timeout=self.TIMEOUT)
+                corpo = resposta.json() if resposta.status_code == 200 else None
+        except (httpx.HTTPError, ValueError):
+            return None
+        if (not isinstance(corpo, dict) or corpo.get('autenticado') is not True
+                or not isinstance(corpo.get('id'), str) or not corpo['id']
+                or not isinstance(corpo.get('email'), str) or not corpo['email'].strip()):
+            return None
+        return corpo

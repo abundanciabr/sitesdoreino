@@ -89,7 +89,7 @@ ETAPAS = (
         "chave": "primeira-entrada",
         "nome": "foi liberada → entrou pela primeira vez",
         "fonte": None,
-        "sem_fonte_porque": "O painel de lançamentos conta o uso do link após a liberação. Outros logins e sessões já abertas não têm registro de primeiro acesso nessa fonte.",
+        "sem_fonte_porque": "O painel lê o uso do link e registra o primeiro acesso autenticado observado desde a implantação, nas páginas cobertas. Não há reconstrução do histórico anterior.",
     },
     {
         "chave": "forum",
