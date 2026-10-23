@@ -25,7 +25,7 @@ def test_pagina_real_cookie_opaco_e_falha_aberta(monkeypatch):
  ('GET',200,'application/json','meshcraft_sessao=x',{}),('GET',200,'text/html','',{}),
  ('GET',200,'text/html','meshcraft_sessao=x; meshcraft_ver_como=aluno',{}),
  ('GET',200,'text/html','meshcraft_sessao=x',{'HTTP_SEC_PURPOSE':'prefetch'}),
- ('GET',200,'text/html','meshcraft_sessao=x',{'HTTP_SEC_FETCH_DEST':'empty'})])
+ ('GET',200,'text/html','meshcraft_sessao=x',{'HTTP_X_REQUESTED_WITH':'XMLHttpRequest'})])
 @respx.mock
 def test_nao_conta_simulacao_recurso_erro_precarregamento(metodo,status,tipo,cookie,headers,monkeypatch):
     for k,v in {'ALUNOS_API_URL':'http://alunos.test','ALUNOS_API_TOKEN':'par','SITE_ID':'escola'}.items():monkeypatch.setenv(k,v)
@@ -33,3 +33,25 @@ def test_nao_conta_simulacao_recurso_erro_precarregamento(metodo,status,tipo,coo
     req=RequestFactory().generic(metodo,'/pagina',HTTP_COOKIE=cookie,**headers)
     assert PrimeiroAcesso(lambda r:resposta)(req) is resposta
     assert not respx.calls
+
+
+@respx.mock
+@pytest.mark.parametrize('destino',['document','iframe','empty'])
+def test_documento_html_do_navegador_embutido_tambem_e_acesso(destino,monkeypatch):
+    for k,v in {'ALUNOS_API_URL':'http://alunos.test','ALUNOS_API_TOKEN':'par','SITE_ID':'escola'}.items():monkeypatch.setenv(k,v)
+    rota=respx.post('http://alunos.test/jornada-acesso/observar').respond(204)
+    req=RequestFactory().get('/pagina',HTTP_COOKIE='meshcraft_sessao=opaco',HTTP_SEC_FETCH_DEST=destino)
+    assert PrimeiroAcesso(lambda r:HttpResponse('pagina'))(req).status_code==200
+    assert rota.call_count==1
+
+
+@respx.mock
+def test_caixa_resolve_site_pelo_catalogo_que_ja_alimenta_menu(monkeypatch):
+    monkeypatch.delenv('SITE_ID',raising=False)
+    monkeypatch.setenv('ALUNOS_API_URL','http://alunos.test');monkeypatch.setenv('ALUNOS_API_TOKEN','par')
+    from apps.core import menu
+    monkeypatch.setattr(menu,'_site',lambda host:{'id':'escola'} if host=='escola.test' else {})
+    rota=respx.post('http://alunos.test/jornada-acesso/observar').respond(204)
+    req=RequestFactory().get('/pagina',HTTP_HOST='escola.test',HTTP_COOKIE='meshcraft_sessao=opaco')
+    assert PrimeiroAcesso(lambda r:HttpResponse('pagina'))(req).status_code==200
+    assert rota.call_count==1
