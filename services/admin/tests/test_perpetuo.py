@@ -382,7 +382,7 @@ def test_medir_depende_da_resposta_real_e_nao_de_catalogo_estatico():
     assert perpetuo._medir(sem_fatos)['estado'] == perpetuo.PARADA
     com_zero = {**sem_fatos, 'linhas':[{'quantidade':0}]}
     assert perpetuo._medir(com_zero)['estado'] == perpetuo.GIRANDO
-    assert 'parcial' in perpetuo._medir(com_zero)['frase']
+    assert 'desde o início da coleta' in perpetuo._medir(com_zero)['frase']
 
 
 def _sem_rede(monkeypatch, respostas=None):

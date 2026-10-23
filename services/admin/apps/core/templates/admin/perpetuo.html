@@ -52,7 +52,28 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
       {% elif medicoes_jornada.fatos_estado == "sem-site" %}Não consegui identificar o site para consultar os fatos.
       {% else %}A medição não respondeu ou devolveu uma leitura incompleta.{% endif %} Nenhum zero foi estimado.</p>
     {% endif %}
-    <h3>Liberação → primeiro acesso: evidência parcial</h3>
+    <h3>Liberação → primeiro acesso autenticado observado</h3>
+    {% if medicoes_jornada.links_estado == "ok" and medicoes_jornada.links.inicio_coleta %}
+    {% if medicoes_jornada.links.autenticadas == None %}
+    <p>Este período é anterior à coleta; o primeiro acesso autenticado está sem cobertura.</p>
+    {% else %}
+    <p><strong>{{ medicoes_jornada.links.autenticadas }}</strong> pessoa{{ medicoes_jornada.links.autenticadas|pluralize }}
+      liberada{{ medicoes_jornada.links.autenticadas|pluralize }} da fila no período com primeiro acesso autenticado observado
+      após a liberação, até o fim do período.</p>
+    {% endif %}
+    <p>Coleta disponível desde <strong>{{ medicoes_jornada.links.inicio_coleta|date:"d/m/Y H:i:s" }}</strong> (São Paulo).
+      {% if medicoes_jornada.links.primeiro_observado %}Primeira observação desta janela: {{ medicoes_jornada.links.primeiro_observado|date:"d/m/Y H:i:s" }};
+      última: {{ medicoes_jornada.links.ultimo_observado|date:"d/m/Y H:i:s" }}.{% endif %}</p>
+    <p>A coleta cobre páginas HTML abertas com sessão válida no funil (incluindo a Trilha), cursos, fórum e Caixa,
+      inclusive sessões já abertas. A escola reconfere a identidade e a matrícula ativa; testes, simulações,
+      pré-carregamentos e respostas de erro não contam.
+      Cada liberação guarda uma única primeira observação. A contagem agrupa pessoas por identidade,
+      sem somar seus vários cursos. Outros serviços e acessos anteriores ao início da coleta não são reconstituídos.
+      Zero significa nenhuma observação registrada nesta cobertura, nunca que ninguém acessou antes.</p>
+    {% else %}
+    <p role="status">A coleta de acesso autenticado ainda não pôde ser confirmada. Não foi estimado um zero.</p>
+    {% endif %}
+    <h4>Uso do link de entrada: evidência parcial histórica</h4>
     {% if medicoes_jornada.links_estado == "ok" %}
     <p><strong>{{ medicoes_jornada.links.usaram_link }}</strong> pessoa{{ medicoes_jornada.links.usaram_link|pluralize }}
       {{ medicoes_jornada.links.usaram_link|pluralize:"usou,usaram" }} o link de acesso
@@ -63,8 +84,8 @@ vermelho precisa ler o estado. Guarda: tests/test_perpetuo.py.
     {% endif %}
     <p>Fonte: registros de liberação e consumo do link na escola, sem matrículas de teste.
       A janela agrupa as liberações; o uso é conferido após a liberação e até o fim do período.
-      Entradas por outros caminhos e sessões já abertas não ficam registradas nessa fonte.
-      Portanto, o primeiro acesso geral permanece sem cobertura completa; não foi reconstruído pelo cadastro ou pela compra.</p>
+      O uso do link continua separado da nova coleta autenticada; ele não prova a primeira visita geral.
+      O histórico de primeiro acesso não foi reconstruído pelo cadastro ou pela compra.</p>
     <p>Participação no fórum conta quem escreveu um tópico ou mensagem no período, sem presumir quando entrou na escola.
       Não há ligação histórica completa entre os mesmos indivíduos nas três passagens.
       O livro de fatos conta matrículas por evento; a escola conta pessoas pelos registros de liberação.

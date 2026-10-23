@@ -371,7 +371,7 @@ def _medir(medicoes=None) -> dict:
         return _veredito(NAO_RESPONDEU, 'Os fatos da jornada foram consultados, mas não consegui consultar o uso dos links de acesso.')
     return _veredito(GIRANDO,
         'A jornada tem leituras de cadastros, pedidos, liberações e fórum. '
-        'A entrada tem cobertura parcial pelo uso do link; os volumes não são taxas de conversão por pessoa.')
+        'A entrada distingue uso do link e acessos autenticados observados desde o início da coleta; os volumes não são taxas de conversão por pessoa.')
 
 
 # ---------------------------------------------------------------------------

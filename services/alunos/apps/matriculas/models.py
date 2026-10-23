@@ -386,3 +386,20 @@ class Turma(models.Model):
                 fields=["site_id", "slug"], name="turma_site_slug_unico"
             )
         ]
+
+
+class CoberturaDoAcesso(models.Model):
+    """Início real da disponibilidade do registro; não reconstitui visitas."""
+    inicio = models.DateTimeField(auto_now_add=True)
+
+
+class AcessoAutenticado(models.Model):
+    matricula = models.ForeignKey(Matricula, on_delete=models.PROTECT)
+    pessoa_id = models.CharField(max_length=128)
+    liberada_em = models.DateTimeField()
+    observado_em = models.DateTimeField(auto_now_add=True)
+    origem = models.CharField(max_length=16)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=['matricula', 'liberada_em'], name='primeiro_acesso_por_liberacao')]

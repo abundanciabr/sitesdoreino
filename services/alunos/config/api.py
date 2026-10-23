@@ -22,3 +22,6 @@ from apps.core.jornada_acesso import router as jornada_router
 api.add_router("", jornada_router)
 from apps.core.medicoes_acesso import router as medicoes_router
 api.add_router("", medicoes_router)
+
+from apps.core.registrar_acesso import router as acesso_observado_router
+api.add_router('', acesso_observado_router)
