@@ -66,6 +66,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 
 from django.shortcuts import render
 from django.urls import reverse
@@ -415,9 +416,11 @@ def _perguntar_a_todas(site_id: "str | None") -> dict:
         return MensageriaClient().jornadas(site_id)
 
     with ThreadPoolExecutor(max_workers=3) as equipe:
-        jornadas = equipe.submit(sequencias)
-        fila = equipe.submit(AlunosClient().fila, "aguardando")
-        quadro = equipe.submit(GamificacaoClient().quadro)
+        # Cada consulta recebe sua própria cópia: o contexto escolhe o módulo
+        # e suas configurações na aplicação unificada e não atravessa threads.
+        jornadas = equipe.submit(copy_context().run, sequencias)
+        fila = equipe.submit(copy_context().run, AlunosClient().fila, "aguardando")
+        quadro = equipe.submit(copy_context().run, GamificacaoClient().quadro)
         return {
             "aquecer": jornadas.result(),
             "decidir": fila.result(),

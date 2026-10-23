@@ -113,6 +113,15 @@
     },
     {
       "celula": "funil",
+      "rota": "trilha/",
+      "endereco": "/trilha/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Sua Trilha",
+      "descricao": "As atividades, faixas e o progresso registrado na jornada do aluno."
+    },
+    {
+      "celula": "funil",
       "rota": "series-flp-gpt",
       "endereco": "/series-flp-gpt",
       "alcance": "publico",
