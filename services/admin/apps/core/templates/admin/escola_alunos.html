@@ -119,6 +119,57 @@
     <a href="{% url 'escola_turmas' %}">Libere todo mundo de uma vez &rarr;</a>
   </p>
 
+  {% if esperando and not nao_consigo_perguntar %}
+  <div class="cartao" id="exportar-espera">
+    <button class="sim" type="button" id="gerar-lista-espera" aria-expanded="false" aria-controls="painel-lista-espera">Gerar lista dos alunos aguardando liberação</button>
+    <p class="nota">{% if peneirando %}A lista inclui somente os alunos da fila que correspondem aos filtros atuais.{% else %}A lista inclui todos os alunos aguardando liberação.{% endif %}</p>
+    <div id="painel-lista-espera" hidden>
+      <label for="lista-espera"><b>Lista dos alunos aguardando liberação ({{ esperando|length }})</b></label>
+      <textarea id="lista-espera" readonly rows="14" style="width:100%;box-sizing:border-box;margin:12px 0" spellcheck="false"></textarea>
+      <button class="sim" type="button" id="copiar-lista-espera">Copiar lista</button>
+      <p class="nota" id="recado-lista-espera" role="status" aria-live="polite"></p>
+    </div>
+    <div id="dados-lista-espera" hidden>
+      {% for pessoa in esperando %}
+      <span data-nome="{{ pessoa.nome_completo|default_if_none:'' }}" data-whatsapp="{{ pessoa.whatsapp|default_if_none:'' }}" data-turma="{{ pessoa.turma|default_if_none:'' }}"
+            data-origem="{% if pessoa.origem_indisponivel %}Consulta indisponível no CRM{% elif pessoa.origem_identificada %}{{ pessoa.origem_identificada.origem_rotulo }}{% else %}Origem não identificada{% endif %}"
+            data-espera="{% if pessoa.esperando_ha_dias == 0 %}Pediu hoje{% elif pessoa.esperando_ha_dias is None %}Não informado{% else %}{{ pessoa.esperando_ha_dias }} dia{{ pessoa.esperando_ha_dias|pluralize }}{% endif %}"></span>
+      {% endfor %}
+    </div>
+  </div>
+  <script>
+  (() => {
+    const gerar = document.getElementById('gerar-lista-espera');
+    const painel = document.getElementById('painel-lista-espera');
+    const lista = document.getElementById('lista-espera');
+    const recado = document.getElementById('recado-lista-espera');
+    const limpar = valor => (valor || '').replace(/\s+/g, ' ').trim() || 'Não informado';
+    gerar.addEventListener('click', () => {
+      const alunos = Array.from(document.querySelectorAll('#dados-lista-espera [data-nome]'));
+      lista.value = 'Alunos aguardando liberação (' + alunos.length + ')\n\n' + alunos.map((aluno, i) => {
+        const d = aluno.dataset;
+        return (i + 1) + '. ' + limpar(d.nome) + '\nWhatsApp: ' + limpar(d.whatsapp) +
+          '\nTurma: ' + limpar(d.turma) + '\nOrigem: ' + limpar(d.origem) +
+          '\nTempo de espera: ' + limpar(d.espera);
+      }).join('\n\n');
+      painel.hidden = false;
+      gerar.setAttribute('aria-expanded', 'true');
+      recado.textContent = 'Lista gerada. Você pode copiar todos os dados pelo botão abaixo.';
+      lista.focus();
+    });
+    document.getElementById('copiar-lista-espera').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(lista.value);
+        recado.textContent = 'Lista copiada!';
+      } catch (_) {
+        lista.focus();
+        lista.select();
+        recado.textContent = 'Não foi possível copiar automaticamente. A lista está selecionada: use Ctrl+C ou a opção Copiar do celular.';
+      }
+    });
+  })();
+  </script>
+  {% endif %}
   {% if peneirando and esperando %}
   <p class="nota">Mostrando {{ esperando|length }} de {{ total_esperando }} na fila.</p>
   {% endif %}
