@@ -3,7 +3,7 @@
 .mc-cerimonia{--mc-accent:#ffd447;position:fixed;inset:0;width:100%;max-width:none;height:100%;height:100dvh;max-height:none;padding:0;margin:0;border:0;background:#03110d;color:#fff9dc;font-family:Nunito,system-ui,-apple-system,sans-serif;overflow:auto;overscroll-behavior:contain;text-align:center;color-scheme:dark}
 .mc-cerimonia::backdrop{background:#020b08}
 .mc-cerimonia *{box-sizing:border-box}
-.mc-screen{--mc-accent:#ffd447;position:relative;isolation:isolate;min-height:100%;overflow:hidden;padding:25px 24px 20px;background:linear-gradient(180deg,#02100ddd 0%,#02100d40 43%,#02100dcc 100%),url('cerimonia/santuario.webp') center 62%/cover no-repeat}
+.mc-screen{--mc-accent:#ffd447;position:relative;isolation:isolate;min-height:100%;overflow:hidden;padding:25px 24px 20px;background:linear-gradient(180deg,#02100ddd 0%,#02100d40 43%,#02100dcc 100%),url('faixa_cerimonia-santuario.webp') center 62%/cover no-repeat}
 .mc-screen::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(ellipse at 50% 51%,color-mix(in srgb,var(--mc-accent) 16%,transparent),transparent 56%)}
 .mc-brand{position:relative;z-index:2;margin:0 40px 18px;letter-spacing:.3em;font-size:13px;font-weight:900;color:#f6f3df}
 .mc-close{position:absolute;right:18px;top:14px;z-index:4;border:1px solid #ffffff40;border-radius:50%;background:#041b16a6;color:#f8f5e8;width:42px;height:42px;font:26px/1 system-ui;cursor:pointer}
@@ -59,7 +59,7 @@
 @media(max-height:660px){.mc-brand{margin-bottom:12px}.mc-body{min-height:calc(100dvh - 95px)}.mc-art{height:220px;min-height:190px}.mc-title{font-size:32px}.mc-subtitle{margin-top:7px;font-size:14px}.mc-reward{padding:12px;margin:4px 0 12px}.mc-reward strong{font-size:30px}.mc-screen[data-act="2"] .mc-art{height:290px;min-height:250px}}
 @media(prefers-reduced-motion:reduce){.mc-cerimonia *,.mc-cerimonia *::before,.mc-cerimonia *::after{animation:none!important;transition:none!important}.mc-belt-before,.mc-particles{display:none}.mc-belt-reveal{opacity:1}}
 /* Ato 1 do recibo: somente os pontos da atividade, com o mesmo cenário. */
-body:has(>.celebracao){background:#03110d url('cerimonia/santuario.webp') center/cover fixed;color:#fff9de}
+body:has(>.celebracao){background:#03110d url('faixa_cerimonia-santuario.webp') center/cover fixed;color:#fff9de}
 body:has(>.celebracao)>.marca,body:has(>.celebracao)>footer{color:#e4e9d6}
 body:has(>.celebracao)>.celebracao{max-width:650px;padding-top:16px}
 body:has(>.celebracao) .mensagem{color:#c9decf}
@@ -70,6 +70,6 @@ body:has(>.celebracao) .pontos{color:#b6f69a}
 body:has(>.celebracao) .recompensa-rotulo{color:#d3e6cf}
 body:has(>.celebracao) .voltar-faixa{background:linear-gradient(#ffe780,#f9cb39);border-color:#ead17e;border-bottom-color:#a37a1f;color:#102414}
 /* O recibo embutido mantém a mesma direção visual do ato da tarefa. */
-.motivo-recibo{background:#03110d url('cerimonia/santuario.webp') center/cover!important;color:#fff9de!important;padding:24px 0!important}
+.motivo-recibo{background:#03110d url('faixa_cerimonia-santuario.webp') center/cover!important;color:#fff9de!important;padding:24px 0!important}
 .motivo-recibo .celebracao{max-width:650px;margin:auto}.motivo-recibo h1{color:#fff9de}.motivo-recibo .mensagem{color:#c9decf}.motivo-recibo .sobretitulo{color:#b6f69a}.motivo-recibo .recompensa{background:#10251ee8;border-color:#74ad79}.motivo-recibo .pontos{color:#b6f69a}.motivo-recibo .recompensa-rotulo{color:#d3e6cf}.motivo-recibo .voltar-faixa{background:linear-gradient(#ffe780,#f9cb39);border-color:#ead17e;border-bottom-color:#a37a1f;color:#102414}
 
