@@ -40,13 +40,32 @@ test('celular preserva medalha e nao reapresenta nivel antigo',async()=>{
 });
 test('celebracao so e confirmada por gesto e manda a propria identidade',async()=>{
   const source=fs.readFileSync(root+'services/funil/apps/core/trilha_v4_assets/app.js','utf8');
-  const host={dataset:{},hidden:true,replaceChildren(...children){this.children=children;}};
-  let call;
-  const context=vm.createContext({FormData,document:{querySelector:()=>host,createElement:()=>({})},fetch:async(url,options)=>{call={url,options};return {ok:true};}});
+  const ceremony=fs.readFileSync(root+'services/gamificacao/static/faixa_cerimonia.js','utf8');
+  class Element {
+    constructor(tag){this.tag=tag;this.dataset={};this.children=[];this.events={};this.style={setProperty(){}};this.classList={add(){},remove(){}};this.isConnected=true;this._text='';}
+    set textContent(v){this._text=v;} get textContent(){return this._text+this.children.map(n=>n.textContent).join(' ');}
+    get childNodes(){return this.children;}
+    append(...n){this.children.push(...n);} replaceChildren(...n){this.children=n;}
+    setAttribute(){} addEventListener(k,fn){this.events[k]=fn;} focus(){} showModal(){this.open=true;}
+    close(){this.open=false;} remove(){this.isConnected=false;}
+  }
+  const body=new Element('body'),timers=[];let call;
+  const context=vm.createContext({URL,FormData,Event,
+    window:{addEventListener(){},dispatchEvent(){},matchMedia:()=>({matches:true})},
+    refreshJourney(){},setTimeout:fn=>(timers.push(fn),timers.length),clearTimeout(){},
+    document:{body,documentElement:new Element('html'),activeElement:new Element('a'),
+      currentScript:{src:'https://meshcraft.top/trilha/faixas-static/faixa_cerimonia.js'},querySelector:()=>null,createElement:t=>new Element(t)},
+    fetch:async(url,options)=>{call={url,options};return {ok:true};}});
+  vm.runInContext(ceremony,context);
   vm.runInContext(source.slice(source.indexOf('\nfunction celebrateJourney')),context);
-  const progress={atual_ordem:4,celebracao:{ordem:4,tipo:'cor'},csrf:'csrf-teste',etapas:[{ordem:4,nome:'Vermelha',alcancada:true}]};
+  const progress={pessoa_id:'aluna',site_id:'mesh',atual_ordem:4,celebracao:{ordem:4,tipo:'cor',bonus_xp:5000},csrf:'csrf-teste',etapas:[{ordem:4,nome:'Vermelha',alcancada:true}]};
   context.celebrateJourney(progress,{pessoa_id:'aluna',site_id:'mesh'});
-  assert.equal(call,undefined);assert.equal(host.hidden,false);assert.match(host.children[1].textContent,/Vermelha/);
-  await host.children[2].onclick();assert.equal(host.hidden,true);assert.equal(call.url,'/trilha/inventario/api/');
-  assert.equal(call.options.body.get('contexto_pessoa'),'aluna');assert.equal(call.options.headers['X-CSRFToken'],'csrf-teste');
+  const all=(n=body)=>[n,...n.children.flatMap(c=>all(c))];
+  const click=async text=>{const button=all().find(n=>n.tag==='button'&&n.textContent.includes(text));assert.ok(button);await button.events.click({target:button});};
+  assert.equal(call,undefined);
+  await click('VER MINHA CONQUISTA');timers.at(-1)();assert.match(body.textContent,/VERMELHA/);
+  assert.equal(call,undefined);
+  await click('CONTINUAR MINHA JORNADA');
+  assert.equal(call.url,'/trilha/inventario/api/');assert.equal(call.options.body.get('contexto_pessoa'),'aluna');
+  assert.equal(call.options.body.get('ordem'),'4');assert.equal(call.options.headers['X-CSRFToken'],'csrf-teste');
 });

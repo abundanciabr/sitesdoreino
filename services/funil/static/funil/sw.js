@@ -34,6 +34,12 @@ self.addEventListener("fetch", (evento) => {
   if (pedido.method !== "GET" || pedido.mode !== "navigate") {
     return;
   }
+  // O admin precisa mostrar a resposta real (403, login ou falha de rede).
+  // Uma cópia da home nunca representa o estado de uma página administrativa.
+  const caminho = new URL(pedido.url).pathname;
+  if (caminho === "/admin" || caminho.startsWith("/admin/")) {
+    return;
+  }
   evento.respondWith(
     fetch(pedido)
       .then((resposta) => {
