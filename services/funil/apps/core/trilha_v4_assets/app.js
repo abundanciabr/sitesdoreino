@@ -320,7 +320,12 @@ function sandboxEvaluationPanel(evaluations){
       try{
         const action=safeAction({rotulo:'Abrir trabalho no Sandbox',url:item.url});
         const link=node('a','sandbox-evaluation-link',action.rotulo);
-        link.href=action.url;record.append(link);
+        link.href=action.url;
+        if(nativeTaskUrl(action.url))link.addEventListener('click',event=>{
+          if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button>0)return;
+          event.preventDefault();openMotivo(link);
+        });
+        record.append(link);
       }catch(error){/* Endereço inválido não vira link; a avaliação continua visível. */}
     }
     list.append(record);
