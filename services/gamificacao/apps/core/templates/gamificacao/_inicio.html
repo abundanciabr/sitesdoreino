@@ -154,4 +154,4 @@
   </div>
   <noscript><p>Ative o JavaScript para abrir e salvar esta etapa. Seus registros já salvos continuam na sua conta.</p></noscript>
 </section>
-<script src="{% url 'estatico' 'inicio.js' %}?v=16" defer></script>
+{% if not trilha_modal %}<script src="{% url 'estatico' 'inicio.js' %}?v=17" defer></script>{% endif %}

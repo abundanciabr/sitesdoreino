@@ -1,0 +1,1 @@
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">{% if jornada_erro %}<p role="alert">{{ jornada_erro }}</p>{% endif %}{% if entrou %}{% include "gamificacao/jornada.html" %}{% endif %}

@@ -1,21 +1,3 @@
 {% extends "gamificacao/trilha_moldura.html" %}
 {% block titulo %}Minha criação · Próxima faixa{% endblock %}
-{% block conteudo %}
-<section class="inicio" id="ciclo-criacao" data-api="{% url 'inventario' %}" data-ordem="{{ ordem }}">
-  <p class="inicio-selo">Meu primeiro ciclo · {{ faixas.caminho }}</p>
-  <h1>{{ faixas.proxima.nome|default:'Preta' }} · Minha criação</h1>
-  {% if ordem == 5 %}<p>Mude a cor de uma parte de {{ item_nome }} e salve. Vamos comparar imagens da mesma parte na versão anterior e na atual.</p>
-  {% elif ordem == 6 %}<p>Aumente uma proporção de {{ item_nome }} em relação à versão anterior e salve. Apresente imagens das duas versões para conferir o aumento e observar a diferença.</p>
-  {% else %}<p>Apresente a imagem final de {{ item_nome }} e explique {% if faixas.caminho == 'aprender' %}uma mudança que realizou desde o começo{% elif faixas.caminho == 'jogo' %}onde pretende usar o objeto no seu jogo{% else %}o uso que imagina para seu acessório{% endif %}. A IA verificará se é possível identificar o item e compreender sua explicação.</p><p>A faixa preta reconhece seu primeiro ciclo de criação.</p>{% endif %}
-  <p>Você pode continuar a prática nas <a href="{{ url_cursos }}">aulas</a> ou apresentar aqui as versões de um trabalho realizado fora do site.</p>
-  <form id="ciclo-form" enctype="multipart/form-data">
-    <input name="item_nome" type="hidden" value="{{ item_nome }}">
-    {% if ordem < 7 %}<label for="ciclo-parte">Parte que alterei</label><input id="ciclo-parte" name="parte" maxlength="180" required><label for="ciclo-anterior">Versão anterior do mesmo item</label><input id="ciclo-anterior" name="arquivo_anterior" type="file" accept=".png,.jpg,.jpeg,.webp" required>{% endif %}
-    {% if ordem == 7 and faixas.caminho == 'aprender' %}<label for="ciclo-anterior">Imagem do começo (opcional)</label><input id="ciclo-anterior" name="arquivo_anterior" type="file" accept=".png,.jpg,.jpeg,.webp" aria-describedby="ciclo-comparacao"><p id="ciclo-comparacao">Compare a mesma criação nas duas imagens. Se não escolher uma imagem do começo, usaremos a primeira imagem guardada no seu inventário.</p>{% endif %}
-    <label for="ciclo-arquivo">{% if ordem == 7 %}Imagem final{% else %}Versão atual salva{% endif %}</label><input id="ciclo-arquivo" name="arquivo" type="file" accept=".png,.jpg,.jpeg,.webp" required>
-    <label for="ciclo-explicacao">Minha explicação</label><textarea id="ciclo-explicacao" name="explicacao" rows="3" maxlength="1000" required></textarea>
-    <button type="submit">Avaliar esta etapa</button>
-  </form><p id="ciclo-status" role="status" aria-live="polite"></p>
-  <p><a href="{{ url_da_trilha_atual }}">Voltar à minha faixa</a></p>
-</section><script src="{% url 'estatico' 'ciclo.js' %}" defer></script>
-{% endblock %}
+{% block conteudo %}{% include "gamificacao/_ciclo_modal.html" %}<script src="{% url 'estatico' 'ciclo.js' %}?v=2" defer></script>{% endblock %}

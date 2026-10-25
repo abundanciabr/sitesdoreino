@@ -62,6 +62,7 @@ urlpatterns = [
     path("trilha/inventario.js", trilha_v4, {"arquivo": "inventario.js"}, name="inventario_js"),
     path("trilha/", trilha_v4, name="trilha_v4"),
     path("trilha/style.css", trilha_v4, {"arquivo": "style.css"}, name="trilha_v4_css"),
+    path("trilha/trabalho.js", trilha_v4, {"arquivo": "trabalho.js"}, name="trilha_trabalho_js"),
     path("trilha/app.js", trilha_v4, {"arquivo": "app.js"}, name="trilha_v4_js"),
     path("healthz", healthz),
     path("sitemap.xml", sitemap_xml, name="sitemap_xml"),  # rota de máquina (D6)

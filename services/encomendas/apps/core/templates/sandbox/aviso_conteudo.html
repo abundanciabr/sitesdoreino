@@ -1,0 +1,1 @@
+<div class="card"><h1>{{ titulo }}</h1><p role="alert">{{ texto }}</p>{% if trabalho %}<a class="btn secondary" href="{% url 'sandbox_trabalho' trabalho.pk %}">Voltar ao trabalho</a>{% else %}<a class="btn secondary" href="{% url 'sandbox_catalogo' %}">Voltar aos projetos</a>{% endif %}</div>

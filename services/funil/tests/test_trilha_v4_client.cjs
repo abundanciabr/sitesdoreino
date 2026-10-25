@@ -295,3 +295,29 @@ test('painel da Trilha carrega a mesma versão do cliente declarada no formulár
   const version=template.match(/'inicio\.js' %}\?v=(\d+)/)[1];
   assert.ok(source.includes('/trilha/faixas-static/inicio.js?v='+version));
 });
+
+
+test('atividades de todos os caminhos abrem o mesmo modal nativo sem navegar', async()=>{
+  const r=await load({ok:true,status:200,json:async()=>withChecklist()});
+  r.context.URL=URL;r.context.window.location.origin='https://meshcraft.top';
+  const expected=['/trilha/inicio/motivo/','/trilha/inicio/objetivo/','/trilha/inicio/item/','/trilha/inicio/envio/','/trilha/ciclo/','/trilha/recebimentos/#minha-meta','/trilha/recebimentos/#recebimentos','/trilha/sandbox/','/trilha/fila/','/encomendas/sandbox/trabalhos/00000000-0000-0000-0000-000000000001/','/encomendas/cliente/trabalhos/00000000-0000-0000-0000-000000000001/'];
+  mountPanel(r.context);
+  let opened;r.context.openMotivo=action=>{opened=action.href;};
+  const create=r.context.document.createElement;
+  r.context.document.createElement=tag=>{const node=create(tag);node.events={};node.addEventListener=(type,fn)=>node.events[type]=fn;return node;};
+  for(const url of expected){
+    const panel=r.context.createProgressPanel({disponivel:true,itens:[{titulo:'Atividade',estado:'pendente',detalhe:'Realizar',acao:{rotulo:'Abrir',url}}],observacao:''},{name:'Atual',number:'02',next:'Próxima'});
+    const link=descendants(panel).find(n=>n.tag==='a');let prevented=false;
+    assert.ok(link.events.click,url);
+    link.events.click({preventDefault(){prevented=true;},button:0});
+    assert.equal(prevented,true);assert.equal(opened,url);
+  }
+  assert.doesNotMatch(source,/DOMParser|createElement\(['"]iframe/);
+});
+
+test('transporte modal não aceita checkout, admin ou origem externa',async()=>{
+ const r=await load({ok:true,status:200,json:async()=>withChecklist()});r.context.URL=URL;r.context.window.location.origin='https://meshcraft.top';
+ for(const url of ['https://outra.example/trilha/ciclo/','/checkout/','/admin/','javascript:alert(1)','//outra.example/trilha/ciclo/','/encomendas/cliente/carteira/'])assert.equal(r.context.nativeTaskUrl(url),null);
+ assert.equal(r.context.nativeTaskUrl('/trilha/fila/'),'https://meshcraft.top/encomendas/cliente/');
+ assert.equal(r.context.nativeTaskUrl('/trilha/sandbox/'),'https://meshcraft.top/encomendas/sandbox/');
+});

@@ -120,3 +120,25 @@ def test_matricula_externa_legitima_sem_consumo_aulas(monkeypatch, plataforma):
     assert telas_sandbox._aluno_atual(None, "aluno", "escola-a")
     assert not telas_sandbox._aluno_atual(None, "aluno", "outra-escola")
 
+
+
+@pytest.mark.django_db
+def test_sandbox_no_modal_usa_formularios_nativos_e_mesmas_permissoes(client, contexto, projeto):
+    cabecalho = {"HTTP_X_TRILHA_PAINEL": "1"}
+    resposta = client.get(reverse("sandbox_catalogo"), **cabecalho)
+    assert resposta.status_code == 200
+    dados = resposta.json()
+    assert dados["controlador"] == "encomendas"
+    for proibido in ("<!doctype", "<html", "<body", "<iframe", "<script"):
+        assert proibido not in dados["html"].lower()
+    confirmar = client.get(reverse("sandbox_confirmar", args=[projeto.pk]), **cabecalho)
+    assert confirmar.status_code == 200 and '<form' in confirmar.json()["html"]
+    assert ParticipacaoSandbox.objects.count() == 0
+    resposta = client.post(reverse("sandbox_aceitar", args=[projeto.pk]),
+        {"aceito_termos": "sim", "prazo_horas": "48"}, follow=True, **cabecalho)
+    assert resposta.status_code == 200
+    assert 'Adicionar arquivo privado' in resposta.json()["html"]
+    assert '<script' not in resposta.json()["html"]
+    participacao = ParticipacaoSandbox.objects.get()
+    contexto["id"] = "outra-conta"
+    assert client.get(reverse("sandbox_trabalho", args=[participacao.pk]), **cabecalho).status_code == 404

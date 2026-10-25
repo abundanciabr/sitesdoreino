@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponseRedirect
-from django.shortcuts import render
+from .painel_trilha import render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.debug import sensitive_post_parameters

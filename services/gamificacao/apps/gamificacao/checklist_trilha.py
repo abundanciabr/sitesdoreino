@@ -129,11 +129,13 @@ def montar_checklists(pessoa_id, site_id, jornada):
                 _item(ordem, "Escolher minha meta pessoal",
                       "concluido" if jornada["meta_escolhida"] else "pendente",
                       "Meta escolhida." if jornada["meta_escolhida"] else "Escolha uma meta para medir os graus.",
+                      {"rotulo": "Revisar minha meta" if jornada["meta_escolhida"] else "Escolher minha meta", "url": "/trilha/recebimentos/#minha-meta"},
                       sufixo="meta"),
                 _item(ordem, f"Alcançar {str(percentual).replace('.', ',')}% da meta",
                       "concluido" if alcancada else "andamento" if total_conferido else "pendente",
                       feedback or (f"{_dinheiro(total_conferido)} vinculados a trabalhos, de {_dinheiro(limite)} necessários."
                                    if limite is not None else "O limite depende da meta escolhida."),
+                      {"rotulo": "Registrar ou conferir recebimentos", "url": "/trilha/recebimentos/#recebimentos"},
                       bloqueado=bloqueado),
             ]
         resultado[ordem] = {"itens": itens, "observacao": observacao}
