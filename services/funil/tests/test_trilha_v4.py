@@ -12,6 +12,16 @@ from conftest import HOST_A, HOST_MESH, SITE_MESH
 COOKIE = "meshcraft_sessao=opaco-de-teste"
 
 
+def test_demonstracao_das_faixas_abre_sem_conta_e_sem_dados_de_alunos(client, rede):
+    resposta = client.get('/trilha/celebracao/', HTTP_HOST=HOST_MESH)
+    assert resposta.status_code == 200
+    corpo = resposta.content.decode()
+    assert 'não usa contas de alunos nem concede XP' in corpo
+    assert corpo.count('<option') == 12
+    assert 'noindex' in resposta['X-Robots-Tag']
+    assert client.get('/trilha/celebracao/', HTTP_HOST=HOST_A).status_code == 404
+
+
 @pytest.fixture
 def conta(rede):
     rede["get_session"].respond(200, json={"autenticado": True, "id": "aluna-a", "nome_exibido": "Ana Silva", "papel": "aluno"})

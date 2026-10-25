@@ -1,6 +1,15 @@
 'use strict';
 window.iniciarConquista = (scope = document, host = {}) => {
-  if (host.close) scope.querySelector('.voltar-faixa').addEventListener('click', event => { event.preventDefault(); host.close(); });
+  const link = scope.querySelector('.voltar-faixa');
+  if (link) link.addEventListener('click', event => {
+    const raw = scope.querySelector('#cerimonia-faixa-data');
+    let progress; try { progress = JSON.parse(raw?.textContent || 'null'); } catch (_) {}
+    if (progress?.celebracao?.ordem && window.MeshcraftFaixas) {
+      event.preventDefault();
+      window.MeshcraftFaixas.celebrar(progress, progress, {revelar: true,
+        concluir: () => host.close ? host.close() : window.location.assign(link.href)});
+    } else if (host.close) { event.preventDefault(); host.close(); }
+  });
   const number = scope.getElementById('xp-numero');
   if (!number || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const total = Number(number.dataset.xp);

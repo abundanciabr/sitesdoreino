@@ -26,6 +26,30 @@ def avaliar(ordem, resultado="reconhecida", chave=None):
 def cartas():
     return list(OutboxEvent.objects.filter(payload__assunto="gamificacao.conquista-concedida"))
 
+
+def test_cerimonias_preservam_faixas_sucessivas_e_confirmam_uma_por_vez(client):
+    from apps.gamificacao.models import LancamentoDeXP
+    avaliar(2)
+    avaliar(3)
+    antes = list(LancamentoDeXP.objects.values_list('id', 'pontos'))
+    pendente = situacao(P, SITE)['celebracao']
+    assert [p['ordem'] for p in pendente['fila']] == [2, 3]
+    assert [p['bonus_xp'] for p in pendente['fila']] == [5000, 10000]
+    for ordem in (2, 3):
+        assert client.post('/trilha/inventario/api/', {'acao':'celebracao-vista',
+            'ordem':ordem}, HTTP_COOKIE='meshcraft_sessao=teste').status_code == 200
+        if ordem == 2:
+            assert situacao(P, SITE)['celebracao']['ordem'] == 3
+    assert situacao(P, SITE)['celebracao'] == {}
+    assert list(LancamentoDeXP.objects.values_list('id', 'pontos')) == antes
+
+
+def test_reconhecimento_simultaneo_enfileira_cada_marco_sem_duplicacao():
+    avaliar(3)
+    avaliar(2)
+    avaliar(2, chave='repeticao')
+    assert [p['ordem'] for p in situacao(P, SITE)['celebracao']['fila']] == [2, 3]
+
 def test_avaliacao_emite_faixa_unica_e_repeticao_preserva_xp():
     avaliar(2)
     perfil = PerfilJogador.objects.get(pessoa_id=P, site_id=SITE)
@@ -60,7 +84,7 @@ def test_rollback_nao_deixa_carta_nem_xp():
 def test_celebracao_e_ack_preservam_historico_e_outra_ordem(client):
     avaliar(2)
     dados = _projecao(HttpResponse(), P, SITE, incluir_avaliacoes=True)
-    assert dados.celebracao == {"ordem":2, "tipo":"cor"}
+    assert dados.celebracao == {"ordem":2, "tipo":"cor", "bonus_xp":5000}
     assert _projecao(HttpResponse(), P, SITE).celebracao == {}
     historico = RegistroDaJornada.objects.count()
     url = "/trilha/inventario/api/"

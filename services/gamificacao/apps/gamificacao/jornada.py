@@ -13,6 +13,7 @@ from django.db import transaction
 from django.utils import timezone
 from .bonus_faixas import PONTOS, SLUGS
 from .historico_reinicio import marcos_anteriores
+from .cerimonias import para_tela as cerimonia_para_tela
 
 from .models import (
     AnexoDaJornada,
@@ -351,7 +352,7 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
         "percentual": min(100, total_conferido * 100 // (meta or 10000)),
         "falta": reais(falta),
         "chave": str(uuid.uuid4()),
-        "celebracao": jornada.celebracao_pendente if jornada else {},
+        "celebracao": cerimonia_para_tela(jornada),
         "proxima_url": proxima_url,
         "proxima_acao": proxima_acao,
     }
@@ -509,10 +510,8 @@ def registrar_avaliacao(pessoa_id, site_id, ordem, resultado, feedback, evidenci
         if depois["atual"]["ordem"] > antes["atual"]["ordem"]:
             from .avisos_faixas import avisar
             avisar(j, antes, depois)
-            j.celebracao_pendente = {
-                "ordem": depois["atual"]["ordem"],
-                "tipo": "cor" if depois["atual"]["faixa"] != antes["atual"]["faixa"] else "grau",
-            }
+            from .cerimonias import acrescentar
+            acrescentar(j, antes, depois)
             j.save(update_fields=["celebracao_pendente", "atualizada_em"])
         return depois
 

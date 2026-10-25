@@ -8,6 +8,8 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Ateliê — Trilha de {{ trilha.aluno.nome }}</title>
   <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ request.previa_trilha_url|default:'/trilha/' }}faixas-static/faixa_cerimonia.css?v=1">
+  <script src="{{ request.previa_trilha_url|default:'/trilha/' }}faixas-static/faixa_cerimonia.js?v=1" defer></script>
   {% if request.previa_trilha_url %}<link rel="stylesheet" href="{{ request.previa_trilha_url }}style.css">
   <script src="{{ request.previa_trilha_url }}app.js?v=imagens20261013v2" defer></script>{% else %}<link rel="stylesheet" href="{% url 'trilha_v4_css' %}">
   <script src="{% url 'trilha_v4_js' %}" defer></script>{% endif %}

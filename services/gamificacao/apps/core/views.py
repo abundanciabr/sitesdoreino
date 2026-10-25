@@ -202,6 +202,14 @@ def inicio_conquista(request, etapa):
                         conquista_xp_faixa=xp_faixa,
                         conquista_ja_recebida=credito is None,
                         conquista_sem_credito=credito is None and not ja_pago)
+        from django.middleware.csrf import get_token
+        contexto['cerimonia_faixa'] = {
+            'pessoa_id': pessoa_id, 'site_id': site, 'csrf': get_token(request),
+            'atual_ordem': faixas['atual']['ordem'],
+            'celebracao': faixas.get('celebracao', {}),
+            'etapas': [{k: p[k] for k in ('ordem', 'nome', 'alcancada', 'conquista')}
+                       for p in faixas['lista']],
+        }
     from .trilha_pessoal import _privada
     return _privada(render(request, "gamificacao/inicio_conquista.html", contexto))
 
