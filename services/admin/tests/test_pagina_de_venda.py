@@ -442,7 +442,7 @@ def test_publicar_deixa_linha_de_auditoria_com_a_versao():
 # ---------------------------------------------------------------------------
 @respx.mock
 def test_sem_cracha_a_tela_nao_abre():
-    assert Client().get(reverse("pagina_de_venda")).status_code in (302, 404)
+    assert Client().get(reverse("pagina_de_venda")).status_code in (302, 403)
 
 
 @respx.mock
@@ -452,8 +452,8 @@ def test_sem_cracha_nenhum_gesto_escreve():
     publicar = respx.post(PUBLICAR).mock(return_value=httpx.Response(200, json={}))
     assert Client().post(
         reverse("pagina_de_venda_salvar"), {"cubo.headline": "Invasor"}
-    ).status_code in (302, 404)
-    assert Client().post(reverse("pagina_de_venda_publicar")).status_code in (302, 404)
+    ).status_code in (302, 403)
+    assert Client().post(reverse("pagina_de_venda_publicar")).status_code in (302, 403)
     assert not gravar.called
     assert not publicar.called
 

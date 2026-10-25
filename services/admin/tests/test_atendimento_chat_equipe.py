@@ -75,7 +75,7 @@ def test_widget_e_arquivos_apenas_com_acesso_da_equipe(acesso, monkeypatch):
         assert b''.join(r.streaming_content)
     assert c.get('/equipe/atendimento/chat/arquivo/views.py').status_code == 404
     assert c.get('/equipe/atendimento/chat/arquivo/../views.py').status_code == 404
-    assert c.get('/atendimento/configuracao/').status_code == 404
+    assert c.get('/atendimento/configuracao/').status_code == 403
     c.cookies.clear()
     monkeypatch.setattr(views.IdentidadeClient, 'sessao_completa', lambda *a: {'autenticado': False})
     assert c.get('/equipe/atendimento/chat/').status_code != 200

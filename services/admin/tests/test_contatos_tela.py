@@ -425,7 +425,7 @@ def test_sessao_fora_da_lista_recebe_404_e_a_leads_nem_e_perguntada(nome, args):
 
     r = cliente.get(reverse(nome, args=args))
 
-    assert r.status_code == 404
+    assert r.status_code == 403
     assert "Ana Souza" not in r.content.decode()
     assert not rota.called
 

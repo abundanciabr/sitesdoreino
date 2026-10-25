@@ -31,7 +31,7 @@ def test_telas_e_print_fechados_para_aluno_e_anonimo(monkeypatch):
     for nome, args in [('ganhos_previa',[]),('ganhos_previa_detalhe',[1]),('ganhos_previa_print',[1])]:
         url = reverse(nome,args=args)
         assert Client().get(url).status_code == 302
-        assert cliente('aluno@example.invalid').get(url).status_code == 404
+        assert cliente('aluno@example.invalid').get(url).status_code == 403
 
 
 @respx.mock

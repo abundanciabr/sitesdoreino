@@ -78,8 +78,8 @@ def test_comentarios_so_admin_com_crm_e_texto_escapado(monkeypatch, settings):
     assert 'a%2Bcurso%40example.invalid' in texto
     assert '&lt;script&gt;' in texto and '<script>roubar' not in texto
     monkeypatch.setattr('apps.core.porta.IdentidadeClient.sessao_completa', lambda self, cookie: {'autenticado':True,'id':'a','email':'a@example.invalid','nome_exibido':'Aluno'})
-    assert cliente.get('/comunidade/votacao/').status_code == 404
-    assert cliente.get('/comunidade/').status_code == 404
+    assert cliente.get('/comunidade/votacao/').status_code == 403
+    assert cliente.get('/comunidade/').status_code == 403
 
 
 def test_csrf_da_galeria_no_caminho_certo_e_post_protegido(participante):

@@ -175,8 +175,8 @@ def test_saques_exclusivos_admin_e_sem_formulario_para_pagos():
         return_value=httpx.Response(200, json={"slug": "paula", "pessoa_id": "pessoa-1"})
     )
     cliente = _entrar("paula@exemplo.com")
-    assert cliente.get(reverse("saques_fila")).status_code == 404
-    assert cliente.post(reverse("saque_fila_pago", args=[saque_id]), {}).status_code == 404
+    assert cliente.get(reverse("saques_fila")).status_code == 403
+    assert cliente.post(reverse("saque_fila_pago", args=[saque_id]), {}).status_code == 403
 
 
 @respx.mock

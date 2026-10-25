@@ -167,10 +167,10 @@ def test_falha_de_publicacao_mantem_previa_e_acao_de_corrigir():
 @respx.mock
 def test_sem_sessao_nao_edita_nem_publica_conversas():
     cliente = Client()
-    assert cliente.get(reverse("forum_topicos")).status_code in (302, 404)
+    assert cliente.get(reverse("forum_topicos")).status_code in (302, 403)
     assert cliente.post(
         reverse("forum_topico_publicar", kwargs={"rascunho_id": RASCUNHO_ID})
-    ).status_code in (302, 404)
+    ).status_code in (302, 403)
 
 
 @pytest.mark.parametrize("novo", [True, False])

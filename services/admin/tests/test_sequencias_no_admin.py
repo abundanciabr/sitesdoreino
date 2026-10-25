@@ -837,7 +837,7 @@ def test_quem_a_porta_recusa_nao_ve_sequencia_nenhuma():
     cliente = _com_cookie()
 
     assert cliente.get(reverse("escola_jornadas")).status_code == 200
-    assert cliente.get(reverse("escola_jornadas")).status_code == 404
+    assert cliente.get(reverse("escola_jornadas")).status_code == 403
 
 
 @pytest.mark.django_db

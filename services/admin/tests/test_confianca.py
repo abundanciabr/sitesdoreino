@@ -506,5 +506,5 @@ def test_quem_a_porta_recusa_nao_ve_a_confianca():
     c = Client()
     c.defaults["HTTP_COOKIE"] = COOKIE
 
-    assert c.get(reverse("confianca")).status_code == 404
-    assert c.get(reverse("confianca_quebrado", args=[7])).status_code == 404
+    assert c.get(reverse("confianca")).status_code == 403
+    assert c.get(reverse("confianca_quebrado", args=[7])).status_code == 403

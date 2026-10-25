@@ -656,7 +656,7 @@ def test_a_tela_marca_atualiza_e_procura(settings):
     assert "resultado=atualizado" in dono.post(reverse("conhecimento_comercial"), {"acao": "atualizar"})["Location"]
 
     _pessoa("Lívia", LIVIA)
-    assert _cliente(LIVIA, "Lívia").get(reverse("conhecimento_comercial")).status_code == 404
+    assert _cliente(LIVIA, "Lívia").get(reverse("conhecimento_comercial")).status_code == 403
 
 
 # ------------------------------------------- achados da segunda revisão

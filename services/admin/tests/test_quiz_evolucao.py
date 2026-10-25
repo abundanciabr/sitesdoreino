@@ -237,4 +237,4 @@ def test_leitura_indisponivel_mostra_erro_em_vez_de_quebrar():
 @respx.mock
 def test_evolucao_requer_sessao_admin():
     resposta = Client().get(reverse("quiz_evolucao", kwargs={"slug": "campanha"}))
-    assert resposta.status_code in (302, 404)
+    assert resposta.status_code in (302, 403)

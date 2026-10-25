@@ -71,7 +71,7 @@ def test_conta_fora_da_equipe_nao_abre_a_vista(monkeypatch):
         "apps.core.comunidade.PendenciasClient.resumo",
         lambda self, fonte, site: ResumoDePendencias(0),
     )
-    assert cliente("fora@exemplo.com").get(reverse("comunidade_da_equipe")).status_code == 404
+    assert cliente("fora@exemplo.com").get(reverse("comunidade_da_equipe")).status_code == 403
 
 
 @respx.mock
@@ -81,4 +81,4 @@ def test_endereco_do_admin_abre_para_mantenedor_e_fecha_para_equipe(monkeypatch)
         lambda self, fonte, site: ResumoDePendencias(0),
     )
     assert cliente("dono@exemplo.com").get(reverse("comunidade_admin")).status_code == 200
-    assert cliente().get(reverse("comunidade_admin")).status_code == 404
+    assert cliente().get(reverse("comunidade_admin")).status_code == 403

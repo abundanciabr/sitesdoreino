@@ -149,7 +149,7 @@ def test_sem_sessao_a_central_manda_para_o_login():
 def test_para_quem_nao_e_da_casa_a_central_nao_existe():
     """404, e não 403: para um estranho, o bastidor não existe."""
     _alunos_responde()
-    assert _dentro(DE_FORA).get(TELA).status_code == 404
+    assert _dentro(DE_FORA).get(TELA).status_code == 403
 
 
 # ---------------------------------------------------------------------------

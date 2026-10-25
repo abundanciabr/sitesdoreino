@@ -525,14 +525,14 @@ def test_sem_cracha_nada_abre_e_nada_escreve():
     criar = respx.post(EXPERIMENTOS).mock(return_value=httpx.Response(201, json={}))
     iniciar = _iniciar().mock(return_value=httpx.Response(200, json={}))
     fora = Client()
-    assert fora.get(reverse("experimentos")).status_code in (302, 404)
+    assert fora.get(reverse("experimentos")).status_code in (302, 403)
     assert fora.post(reverse("experimento_novo"), _formulario()).status_code in (
         302,
-        404,
+        403,
     )
     assert fora.post(
         reverse("experimento_iniciar", args=[ID_RASCUNHO])
-    ).status_code in (302, 404)
+    ).status_code in (302, 403)
     assert not (criar.called or iniciar.called)
 
 

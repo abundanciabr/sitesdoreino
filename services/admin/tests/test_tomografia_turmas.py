@@ -86,8 +86,8 @@ def test_admin_importa_e_le_ultima_versao_privada_sem_criar_tarefa():
 @respx.mock
 def test_aluno_nao_le_nem_importa():
     cliente = _cliente("aluno@exemplo.com")
-    assert cliente.get(reverse(URL)).status_code == 404
-    assert cliente.post(reverse(URL), {"arquivo": _arquivo(_dados_exemplo())}).status_code == 404
+    assert cliente.get(reverse(URL)).status_code == 403
+    assert cliente.post(reverse(URL), {"arquivo": _arquivo(_dados_exemplo())}).status_code == 403
     assert not Entrega.objects.filter(tipo=tomografia_turmas.TIPO).exists()
 
 
@@ -134,7 +134,7 @@ def test_entrega_generica_da_tomografia_nao_abre_para_equipe():
     )
     request = RequestFactory().get(f"/equipe/robo/entregas/{entrega.pk}")
     request.admin = {"nome": "Pessoa da equipe", "email": membro.email, "equipe_apenas": True}
-    assert entrega_detalhe(request, entrega.pk).status_code == 404
+    assert entrega_detalhe(request, entrega.pk).status_code == 403
 
 
 @respx.mock

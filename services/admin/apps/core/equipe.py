@@ -255,8 +255,8 @@ def _aplicar(tarefa: Tarefa, dados: dict, membros, objetivos, quem: str) -> None
 
 
 def _nao_existe(request):
-    """A mesma resposta da porta para quem não é administrador: 404."""
-    return render(request, "admin/404.html", status=404)
+    """Acesso negado sem mostrar dados administrativos."""
+    return render(request, "admin/acesso_restrito.html", status=403)
 
 
 # ---------------------------------------------------------------- as telas

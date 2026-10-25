@@ -118,9 +118,9 @@ def test_sem_cookie_vai_para_a_entrada_da_equipe():
 
 
 @respx.mock
-def test_quem_nao_e_da_casa_recebe_404():
+def test_quem_nao_e_da_casa_recebe_403():
     resposta = _cliente(DE_FORA).get(reverse(PAINEL))
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     assert "Equipe" not in _texto(resposta)
 
 
@@ -130,21 +130,21 @@ def test_quem_e_da_equipe_entra_so_no_painel():
     cliente = _cliente(LIVIA, nome="Lívia")
     assert cliente.get(reverse(PAINEL)).status_code == 200
     assert cliente.get(reverse("tarefa_nova")).status_code == 200
-    assert cliente.get(reverse("escola")).status_code == 404
-    assert cliente.get(reverse("visao_geral")).status_code == 404
-    assert cliente.get(reverse("pendencias")).status_code == 404
+    assert cliente.get(reverse("escola")).status_code == 403
+    assert cliente.get(reverse("visao_geral")).status_code == 403
+    assert cliente.get(reverse("pendencias")).status_code == 403
 
 
 @respx.mock
 def test_quem_e_da_equipe_nao_decide_quem_e_da_equipe():
     _livia()
     cliente = _cliente(LIVIA, nome="Lívia")
-    assert cliente.get(reverse("pessoas_da_equipe")).status_code == 404
+    assert cliente.get(reverse("pessoas_da_equipe")).status_code == 403
     resposta = cliente.post(
         reverse("pessoas_da_equipe_associar"),
         {"pessoa": MembroDaEquipe.objects.get(nome="Ryan").id, "email": DE_FORA},
     )
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     assert MembroDaEquipe.objects.get(nome="Ryan").email == ""
 
 
@@ -164,7 +164,7 @@ def test_conta_desativada_nao_entra():
     pessoa = _livia()
     pessoa.ativo = False
     pessoa.save()
-    assert _cliente(LIVIA).get(reverse(PAINEL)).status_code == 404
+    assert _cliente(LIVIA).get(reverse(PAINEL)).status_code == 403
 
 
 @respx.mock
@@ -428,7 +428,7 @@ def test_o_administrador_associa_uma_conta_e_a_pessoa_passa_a_entrar():
     # O dublê da identidade responde pela ÚLTIMA sessão registrada, então cada
     # troca de pessoa é um `_cliente()` novo.
     livia = MembroDaEquipe.objects.get(nome="Lívia")
-    assert _cliente(LIVIA).get(reverse(PAINEL)).status_code == 404
+    assert _cliente(LIVIA).get(reverse(PAINEL)).status_code == 403
 
     cliente = _cliente()
     html = _texto(cliente.get(reverse("pessoas_da_equipe")))
@@ -487,13 +487,13 @@ def test_quem_nao_e_da_casa_nao_alcanca_as_telas_novas():
         ("semana_da_equipe", []),
         ("tarefa_ver", [tarefa.id]),
     ):
-        assert cliente.get(reverse(rota, args=args)).status_code == 404, rota
+        assert cliente.get(reverse(rota, args=args)).status_code == 403, rota
     for rota, args, dados in (
         ("tarefa_compromisso", [tarefa.id], {"acao": "marcar"}),
         ("tarefa_comentar", [tarefa.id], {"texto": "TESTE intruso"}),
         ("objetivo_ativo", [objetivo.id], {"ativo": "0"}),
     ):
-        assert cliente.post(reverse(rota, args=args), dados).status_code == 404, rota
+        assert cliente.post(reverse(rota, args=args), dados).status_code == 403, rota
     assert not Compromisso.objects.exists()
     assert not Comentario.objects.exists()
     objetivo.refresh_from_db()
@@ -1026,7 +1026,7 @@ def test_numero_do_placar_desconhecido_nao_salva():
 def test_quem_nao_e_da_casa_nao_ve_o_placar_da_equipe(monkeypatch):
     monkeypatch.setattr(placar, "montar_o_placar", _montagem_falsa("ganhando", 30))
     resposta = _cliente(DE_FORA).get(reverse("placar_da_equipe"))
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     assert "MCI" not in _texto(resposta)
 
 
