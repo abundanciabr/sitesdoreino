@@ -485,9 +485,12 @@ async function loadMotivo(destination, submission) {
     motivoController?.destroy?.();motivoController=null;motivoDirty=false;
     const base=document.createElement('style');
     base.textContent=':host{display:block;color:#172b48;font:16px/1.6 system-ui,sans-serif}*{box-sizing:border-box}.trilha-modal{padding:20px;min-width:0}.trilha-modal img{max-width:100%}.trilha-modal input:not([type=checkbox]):not([type=radio]),.trilha-modal textarea,.trilha-modal select{max-width:100%}.trilha-modal .page-main{margin:0}.trilha-modal .celebracao{margin-top:0}.motivo-recibo{--papel:#f8faf5;--escuro:#253923;--cinza:#667363;--verde:#58ae17;color:var(--escuro);background:var(--papel)}.painel-status{padding:10px;color:#9b2424;white-space:pre-wrap}.discard-question{position:sticky;top:0;z-index:20;background:#fff4d9;border:1px solid #b79d62;border-radius:12px;padding:16px;margin:10px}.discard-question button{margin:6px;padding:10px;border-radius:8px;cursor:pointer}';
+    // Os painéis usam a mesma superfície clara do modal da faixa branca,
+    // mesmo quando o sistema do aluno prefere o tema escuro.
+    base.textContent += '.trilha-modal{color-scheme:light;--borda:#d9e3f1;--caixa:#fff}.trilha-modal .inicio{--inicio-texto:#172b48;--inicio-acento:#306bec;--inicio-suave:#edf3ff;color:#172b48}.trilha-modal .inicio :is(p,label,legend,h1,h2,h3){color:#172b48}.trilha-modal .inicio :is(input:not([type=radio]):not([type=checkbox]),textarea,select){color:#172b48;background:#fff;border-color:#cbdaf0;color-scheme:light}.trilha-modal .inicio :is(input,textarea)::placeholder{color:#65758a}.trilha-modal .inicio .inicio-painel{background:#fff;border-color:#d9e3f1}.trilha-modal .inicio .inicio-nota,.trilha-modal .inicio .inicio-privado,.trilha-modal .inicio-painel>p{color:#526781}.trilha-modal #ciclo-criacao>h1{font-size:clamp(1.7rem,4vw,2.3rem);line-height:1.2;margin:.5rem 0 1rem}.trilha-modal #ciclo-criacao>p{margin:.8rem 0}.trilha-modal #ciclo-form{margin-top:1.5rem}';
     template.content.querySelectorAll('style').forEach(style=>{style.textContent=style.textContent.replace(/:root\b/g,':host');});
     const wrapper=document.createElement('div');wrapper.className='trilha-modal '+(component.controlador==='inicio'?'inicio-embutido':'');
-    wrapper.append(template.content);motivoScope.replaceChildren(base,wrapper);
+    wrapper.append(template.content);motivoScope.replaceChildren(wrapper,base);
     motivoUrl=nativeTaskUrl(response.url)||url;
     const host={close:()=>motivoDialog.close(),navigate:loadMotivo,confirmDiscard,scrollTop:()=>{motivoContent.scrollTop=0;}};
     if(component.controlador==='inicio')motivoController=window.iniciarJornada(motivoScope,host);
