@@ -37,7 +37,7 @@ def test_aluno_professor_e_visitante_nao_abrem_visual_admin(monkeypatch,settings
     monkeypatch.setattr('apps.core.clients.IdentidadeClient.sessao_completa',lambda self,cookie:{
         'autenticado':bool(email), 'id':'pessoa', 'email':email, 'nome_exibido':'Pessoa', 'papel':'admin'})
     resposta=Client(HTTP_COOKIE='meshcraft_sessao=teste').get('/comunidade/alunos-atual/')
-    assert resposta.status_code in (302,403,403)
+    assert resposta.status_code in (302,403,404)
     assert 'Visual atual dos alunos' not in resposta.content.decode()
 
 
@@ -64,4 +64,4 @@ def test_percurso_e_assets_nao_abrem_para_aluno(monkeypatch,settings):
         'autenticado':True,'id':'aluno','email':'aluno@example.test'})
     cliente=Client(HTTP_COOKIE='meshcraft_sessao=teste')
     for url in ['/comunidade/percurso/','/galeria-publica/assets/percurso.js','/galeria-publica/assets/percurso.css']:
-        assert cliente.get(url).status_code in (302,403,403)
+        assert cliente.get(url).status_code in (302,403,404)

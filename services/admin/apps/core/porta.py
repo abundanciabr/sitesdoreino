@@ -247,7 +247,15 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
-        return self._responder(request)
+        resposta = self._responder(request)
+        # A recusa já ocorreu: muda apenas o aviso, sem executar a página.
+        # Credenciais de máquina inválidas e recursos privados de clientes
+        # conservam suas respostas próprias.
+        if (getattr(resposta, "admin_conta_sem_permissao", False)
+                and not conta_do_robo.apresentou(request)
+                and not _sob_clientes_da_fila(request.path_info)):
+            return self._acesso_restrito()
+        return resposta
 
     def _responder(self, request):
         # Recuperação pública autorizada: somente esta rota, sem conceder acesso ao admin.
@@ -391,7 +399,7 @@ class PortaAdministrativa:
                 sessao.get("id") or "?",
                 request.path_info,
             )
-            return self._acesso_restrito()
+            return self._nao_existe()
 
         # A partir daqui a pessoa está dentro. O que as páginas recebem é o
         # necessário para exibição — nunca um objeto de permissão: quem decide
@@ -465,9 +473,11 @@ class PortaAdministrativa:
         )
 
     def _nao_existe(self):
-        return self._com_seguranca(
+        resposta = self._com_seguranca(
             HttpResponseNotFound(render_to_string("admin/404.html"))
         )
+        resposta.admin_conta_sem_permissao = True
+        return resposta
 
     def _indisponivel(self):
         resposta = HttpResponse(render_to_string("admin/503.html"), status=503)
