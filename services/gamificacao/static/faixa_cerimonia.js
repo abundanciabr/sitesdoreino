@@ -24,7 +24,7 @@
   function belt(ordem, cls) {
     const i = Math.min(6, Math.max(0, ordem - 1));
     const image = node('img', 'mc-belt ' + cls);
-    image.src = assetRoot + 'cerimonia/faixa.png'; image.alt = ''; image.width = 720; image.height = 720;
+    image.src = assetRoot + 'faixa_cerimonia-faixa.png'; image.alt = ''; image.width = 720; image.height = 720;
     image.style.filter = filtros[i]; image.setAttribute('aria-hidden', 'true');
     return image;
   }
