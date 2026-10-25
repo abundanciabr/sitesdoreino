@@ -464,7 +464,8 @@ async function loadMotivo(destination, submission) {
   try {
     const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'X-Trilha-Painel':'1'},...submission});
     if([401,403].includes(response.status)){motivoScope.replaceChildren();throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');}
-    const component=await response.json();
+    let component;
+    try { component=await response.json(); } catch { throw new Error("Não foi possível abrir ou salvar agora. Suas respostas continuam no formulário; confira antes de tentar novamente."); }
     if(component.componente!=='trilha'||typeof component.html!=='string')throw new Error('Não foi possível abrir esta atividade. Seus registros continuam guardados.');
     if(currentLoad!==motivoLoad||!motivoDialog.open)return;
     const template=document.createElement('template');template.innerHTML=component.html;
@@ -517,7 +518,7 @@ async function submitTask(event) {
     if((form.method||'get').toLowerCase()==='get'){
       const url=new URL(destination);for(const [key,value]of body)url.searchParams.set(key,value);await loadMotivo(url.href);
     }else await loadMotivo(destination,{method:'POST',body});
-  }catch(error){const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=error.message;motivoScope.prepend(p);}
+  }catch(error){if([401,403].includes(error.status))motivoScope.replaceChildren();const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=error.message;motivoScope.prepend(p);}
   finally{motivoBusy=false;controls.forEach((c,i)=>c.disabled=disabled[i]);}
 }
 function openMotivo(opener) {
