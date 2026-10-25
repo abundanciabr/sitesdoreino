@@ -127,7 +127,7 @@ def _gravado(rota) -> dict:
 @respx.mock
 def test_sem_cracha_a_tela_do_menu_nao_abre():
     resp = Client().get(reverse("menu_do_topo"))
-    assert resp.status_code in (302, 404)
+    assert resp.status_code in (302, 403)
 
 
 @respx.mock
@@ -136,7 +136,7 @@ def test_sem_cracha_nenhum_gesto_escreve():
     aqui mudaria o site inteiro para todo visitante."""
     gravar = _catalogo()
     resp = Client().post(reverse("menu_criar_versao"), {"nome": "Invasor"})
-    assert resp.status_code in (302, 404)
+    assert resp.status_code in (302, 403)
     assert not gravar.called
 
 

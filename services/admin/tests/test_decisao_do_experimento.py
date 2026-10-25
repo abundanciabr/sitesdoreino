@@ -460,7 +460,7 @@ def test_sem_cracha_nenhum_gesto_escreve():
         reverse("decidir_experimento", args=[EXP_ID]),
         {"decisao": "promover", "variante": "b"},
     )
-    assert r.status_code in (302, 404)
+    assert r.status_code in (302, 403)
     assert not publicar.called
     assert not encerrar.called
 

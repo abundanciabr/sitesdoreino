@@ -9,6 +9,8 @@
 .mc-close{position:absolute;right:18px;top:14px;z-index:4;border:1px solid #ffffff40;border-radius:50%;background:#041b16a6;color:#f8f5e8;width:42px;height:42px;font:26px/1 system-ui;cursor:pointer}
 .mc-body{position:relative;max-width:650px;margin:0 auto;min-height:calc(100dvh - 115px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:5px 0 18px}
 .mc-eyebrow{margin:0 0 12px;color:var(--mc-accent);font-size:11px;font-weight:900;letter-spacing:.2em;line-height:1.7}
+.mc-cerimonia .mc-title{font-family:Nunito,"Arial Black",system-ui,sans-serif}
+.mc-screen[data-act="3"] .mc-title{color:var(--mc-accent)}
 .mc-title{margin:0;max-width:100%;font-size:clamp(32px,5.8vw,66px);line-height:1.03;letter-spacing:-.035em;font-weight:1000;color:#fff9de;text-wrap:balance;text-shadow:0 3px 0 #7c5c222e,0 6px 24px #0009;outline:none;overflow-wrap:anywhere}
 .mc-subtitle{margin:13px 0 0;font-size:clamp(15px,2.1vw,20px);font-weight:800;line-height:1.45;color:#fff2b7}
 .mc-art{position:relative;display:grid;place-items:center;width:min(100%,480px);height:clamp(220px,36dvh,390px);margin:6px auto;flex-shrink:0}

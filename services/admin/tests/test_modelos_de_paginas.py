@@ -37,9 +37,9 @@ def test_sem_cracha_editor_e_gestos_nao_acedem_ao_catalogo():
     gravar = respx.put(RASCUNHO).mock(return_value=httpx.Response(200, json={}))
     publicar = respx.post(PUBLICAR).mock(return_value=httpx.Response(200, json={}))
 
-    assert Client().get(reverse("modelo_flp_editar")).status_code in (302, 404)
-    assert Client().post(reverse("modelo_flp_salvar")).status_code in (302, 404)
-    assert Client().post(reverse("modelo_flp_publicar")).status_code in (302, 404)
+    assert Client().get(reverse("modelo_flp_editar")).status_code in (302, 403)
+    assert Client().post(reverse("modelo_flp_salvar")).status_code in (302, 403)
+    assert Client().post(reverse("modelo_flp_publicar")).status_code in (302, 403)
     assert not gravar.called and not publicar.called
 
 

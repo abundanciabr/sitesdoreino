@@ -298,7 +298,7 @@ def test_quem_nao_e_administrador_nao_entra():
     # 404, e não 403: a porta desta área ESCONDE a existência das telas de
     # quem não pode vê-las (`test_poderes.py`).
     r = _dentro("estranho@exemplo.com").get(reverse("escola_turmas"))
-    assert r.status_code == 404
+    assert r.status_code == 403
 
 
 @respx.mock

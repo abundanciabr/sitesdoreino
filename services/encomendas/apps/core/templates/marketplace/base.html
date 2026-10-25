@@ -17,4 +17,10 @@
 {% elif papel == 'aluno' %}<a href="{% url 'marketplace_fila' %}">Minha fila</a><a href="{% url 'marketplace_fila' %}#trabalhos">Meus trabalhos</a><a href="{% url 'marketplace_fila' %}#recebimentos">Recebimentos</a>
 {% else %}<a href="{% url 'marketplace_cliente' %}#meus-pedidos">Meus pedidos</a><a class="active" href="{% url 'marketplace_cliente' %}">＋ Novo pedido</a><a href="{% url 'marketplace_cliente' %}#exemplos">Exemplos</a><a href="{% url 'marketplace_cliente' %}#ajuda">Ajuda</a><span class="nav-foot">{% if pode_operar %}Cliente autorizado{% else %}Fila do Dólar{% endif %}</span>{% endif %}
 </aside><main>{% if recado %}<div class="recado" role="status">{{ recado }}</div>{% endif %}{% block body %}{% endblock %}</main></div>
+
+{% if papel == 'aluno' %}
+<span data-faixa-acompanhar hidden></span>
+<link rel="stylesheet" href="/trilha/faixas-static/faixa_cerimonia.css?v=1">
+<script src="/trilha/faixas-static/faixa_cerimonia.js?v=1" defer></script>
+{% endif %}
 </body></html>

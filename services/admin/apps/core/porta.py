@@ -7,7 +7,7 @@ implementa, e cada linha tem teste-guarda em
 | Situação                          | Site público (`funil`) | Aqui                  |
 |-----------------------------------|------------------------|-----------------------|
 | `identidade` fora do ar           | abre, mostra "Entrar"  | **503, não abre**     |
-| sessão válida, e-mail fora da lista | —                    | **404**, não 403      |
+| sessão válida, e-mail fora da lista | —                    | **403**, acesso restrito      |
 | sem sessão                        | —                      | 302 para o login      |
 
 **Por que o inverso é o certo, e não excesso de zelo:** o invariante
@@ -22,8 +22,7 @@ mandar a pessoa para a porta que provavelmente também está fora do ar — e a
 Um 503 nomeado diz o que está acontecendo; um 302 para uma tela quebrada
 esconde.
 
-**Por que 404 e não 403 para quem não está na lista:** para quem não é da
-casa, `/admin` não existe. É decisão registrada na lei (§2), não improviso.
+Sessões conectadas sem permissão recebem 403 com aviso de acesso restrito.
 """
 
 import base64
@@ -248,7 +247,15 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
-        return self._responder(request)
+        resposta = self._responder(request)
+        # A recusa já ocorreu: muda apenas o aviso, sem executar a página.
+        # Credenciais de máquina inválidas e recursos privados de clientes
+        # conservam suas respostas próprias.
+        if (getattr(resposta, "admin_conta_sem_permissao", False)
+                and not conta_do_robo.apresentou(request)
+                and not _sob_clientes_da_fila(request.path_info)):
+            return self._acesso_restrito()
+        return resposta
 
     def _responder(self, request):
         # Recuperação pública autorizada: somente esta rota, sem conceder acesso ao admin.
@@ -454,16 +461,23 @@ class PortaAdministrativa:
             # Quem é da equipe e chegou sem acesso neste navegador vai para a
             # entrada DA EQUIPE: e-mail e senha, ou a conta Google.
             destino = (
-                f"{reverse('entrar_na_equipe')}?next={quote(request.path, safe='/')}"
+                f"{reverse('entrar_na_equipe')}?next={quote(request.get_full_path(), safe='/')}"
             )
         else:
-            destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
+            destino = f"{settings.URL_DE_ENTRADA}?next={quote(request.get_full_path(), safe='/')}"
         return self._com_seguranca(HttpResponseRedirect(destino))
 
-    def _nao_existe(self):
+    def _acesso_restrito(self):
         return self._com_seguranca(
+            HttpResponse(render_to_string("admin/acesso_restrito.html"), status=403)
+        )
+
+    def _nao_existe(self):
+        resposta = self._com_seguranca(
             HttpResponseNotFound(render_to_string("admin/404.html"))
         )
+        resposta.admin_conta_sem_permissao = True
+        return resposta
 
     def _indisponivel(self):
         resposta = HttpResponse(render_to_string("admin/503.html"), status=503)

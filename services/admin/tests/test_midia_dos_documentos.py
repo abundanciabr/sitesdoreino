@@ -392,7 +392,7 @@ def test_visitante_e_aluno_nao_leem_midia_privada_no_editor(documento, settings)
         "autenticado": True, "id": "aluno-1", "nome_exibido": "Aluno",
         "email": "aluno@exemplo.com",
     }))
-    assert _porta_da_midia(guardada)(_pedido_asgi_de_midia(endereco, COOKIE)).status_code == 404
+    assert _porta_da_midia(guardada)(_pedido_asgi_de_midia(endereco, COOKIE)).status_code == 403
 
 
 def test_midia_publica_continua_anonima_e_privada_nao_vaza(documento, settings, monkeypatch):

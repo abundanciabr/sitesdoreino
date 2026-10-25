@@ -272,7 +272,7 @@ def test_quem_nao_e_admin_nao_promove_ninguem():
     r = _dentro("estranho@exemplo.com").post(
         reverse("escola_admin_promover"), {"email": OUTRO}
     )
-    assert r.status_code == 404
+    assert r.status_code == 403
     assert Administrador.objects.count() == 0
 
 
@@ -477,7 +477,7 @@ def test_remover_aluno_exige_admin(monkeypatch):
     def inesperada(self):
         pytest.fail("Não deveria consultar matrículas sem autorização")
     monkeypatch.setattr(AlunosClient, "alunos", inesperada)
-    assert _dentro("aluno@exemplo.com").post(reverse("escola_aluno_remover"), {"alvo": "7"}).status_code == 404
+    assert _dentro("aluno@exemplo.com").post(reverse("escola_aluno_remover"), {"alvo": "7"}).status_code == 403
 
 
 def _lista_para_remocao(monkeypatch):

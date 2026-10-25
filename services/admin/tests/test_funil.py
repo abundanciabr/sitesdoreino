@@ -420,7 +420,7 @@ def test_sem_sessao_vai_para_o_login():
 def test_sessao_fora_da_equipe_recebe_404():
     cliente = _dentro("estranho@exemplo.com")
 
-    assert cliente.get(reverse("funil")).status_code == 404
+    assert cliente.get(reverse("funil")).status_code == 403
 
 
 @respx.mock

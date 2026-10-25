@@ -252,7 +252,7 @@ def test_sem_sessao_a_lista_vai_para_o_login():
 
 @respx.mock
 def test_fora_da_lista_de_administradores_recebe_404():
-    assert _dentro("estranho@exemplo.com").get(TELA).status_code == 404
+    assert _dentro("estranho@exemplo.com").get(TELA).status_code == 403
 
 
 @respx.mock
@@ -591,7 +591,7 @@ def test_sem_sessao_o_gesto_de_apagar_vai_para_o_login():
 def test_fora_da_lista_de_administradores_nao_apaga():
     assert (
         _dentro("estranho@exemplo.com").post(GESTO_APAGAR, {"alvo": "7"}).status_code
-        == 404
+        == 403
     )
 
 

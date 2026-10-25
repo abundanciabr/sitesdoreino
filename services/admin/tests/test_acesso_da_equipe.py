@@ -253,10 +253,10 @@ def test_link_vencido_cancelado_ou_de_quem_saiu_nao_conecta():
 def test_o_aparelho_so_abre_o_painel_e_nao_a_gestao_de_pessoas():
     ryan = _ryan()
     navegador = _conectado(ryan)
-    assert navegador.get(reverse("pessoas_da_equipe")).status_code == 404
-    assert navegador.get(reverse("ficha_da_pessoa", args=[ryan.id])).status_code == 404
+    assert navegador.get(reverse("pessoas_da_equipe")).status_code == 403
+    assert navegador.get(reverse("ficha_da_pessoa", args=[ryan.id])).status_code == 403
     gerou = navegador.post(reverse("ficha_gerar_link", args=[ryan.id]))
-    assert gerou.status_code == 404
+    assert gerou.status_code == 403
     # Fora de `/equipe/` o aparelho não vale nada: sem sessão, vai ao login.
     _sem_sessao()
     assert navegador.get(reverse("escola"))["Location"].startswith("/entrar/google")
@@ -434,7 +434,7 @@ def test_email_escrito_pela_pessoa_so_abre_o_google_depois_de_conferido():
     _sessao(EMAIL_DO_RYAN, "Ryan")
     pelo_google = Client()
     pelo_google.defaults["HTTP_COOKIE"] = COOKIE
-    assert pelo_google.get(reverse(PAINEL)).status_code == 404
+    assert pelo_google.get(reverse(PAINEL)).status_code == 403
 
     ficha = _texto(_dono().get(reverse("ficha_da_pessoa", args=[ryan.id])))
     assert "ainda não conferido" in ficha

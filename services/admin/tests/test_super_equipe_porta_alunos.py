@@ -24,5 +24,5 @@ def test_sessao_reconhecida_de_aluno_ou_professor_nao_abre_admin(settings, monke
         }))
     cliente = Client(HTTP_COOKIE='meshcraft_sessao=sessao-isolada-sem-credencial-real')
     resposta = cliente.get(caminho)
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     assert 'Fontes compartilhadas' not in resposta.content.decode()

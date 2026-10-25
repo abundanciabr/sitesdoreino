@@ -44,7 +44,7 @@ def entrar(email="dono@example.com"):
 @respx.mock
 def test_porta_administrativa_preservada(rota):
     assert Client().get(rota).status_code == 302
-    assert entrar("aluno@example.com").get(rota).status_code == 404
+    assert entrar("aluno@example.com").get(rota).status_code == 403
     cliente = entrar()
     assert cliente.get(rota).status_code == 200
     assert cliente.post(rota).status_code == 405

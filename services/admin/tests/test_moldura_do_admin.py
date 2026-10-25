@@ -113,7 +113,7 @@ def test_quem_a_porta_recusa_nao_ve_o_menu_do_bastidor():
     de `admin/base.html` achando que é decoração, é aqui que fica vermelho.
     """
     resposta = _cliente(DE_FORA).get(reverse("escola"))
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     html = _texto(resposta)
     assert 'class="menu-do-admin"' not in html
     assert 'class="rodape-do-admin"' not in html

@@ -55,7 +55,7 @@ def test_alunos_e_professores_nao_recebem_previa_nem_arquivos(papel, nome):
         200, json=sessao("outra@exemplo.com", papel)))
     url = reverse("feed_previa_asset", args=[nome]) if nome else reverse("feed_previa")
     r = cliente().get(url)
-    assert r.status_code == 404
+    assert r.status_code == 403
     assert b"Minha primeira" not in r.content
 
 

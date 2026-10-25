@@ -187,7 +187,7 @@ def test_porta_real_com_identidades_simuladas(settings, monkeypatch, papel, form
         mock.get("http://identidade:8000/interno/sessao/completa").mock(return_value=httpx.Response(200, json={
             "autenticado": True, "id": "ensaio", "nome_exibido": "Ensaio", "email": f"{papel}@ensaio.invalid", "papel": papel}))
         resposta = cliente.get("/super-equipe/percurso-comercial/", {"formato": formato})
-    assert resposta.status_code == (302 if papel == "anonimo" else 200 if papel == "admin" else 404)
+    assert resposta.status_code == (302 if papel == "anonimo" else 200 if papel == "admin" else 403)
     if papel != "admin":
         fonte.assert_not_called()
         assert b"AGREGADO_PRIVADO" not in resposta.content

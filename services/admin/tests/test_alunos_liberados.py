@@ -223,7 +223,7 @@ def test_sem_sessao_vai_para_o_login():
 def test_fora_da_lista_de_administradores_recebe_404():
     assert (
         _dentro("estranho@exemplo.com").get("/escola/alunos/liberados").status_code
-        == 404
+        == 403
     )
 
 
