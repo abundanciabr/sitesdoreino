@@ -811,7 +811,7 @@ def escola_alunos(request):
     esperando_na_tela = [dict(p, origem_identificada=(origens or {}).get(str(p.get("id"))),
                              origem_indisponivel=origens is None) for p in (esperando_na_tela or [])] if esperando_na_tela is not None else None
 
-    return render(
+    resposta = render(
         request,
         "admin/escola_alunos.html",
         {
@@ -873,7 +873,9 @@ def escola_alunos(request):
             "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
-
+    resposta["Content-Security-Policy"] = documento_em_pagina.csp_da_pagina(resposta)
+    resposta["Cache-Control"] = "no-store"
+    return resposta
 
 def agrupar_alunos(alunos: list[dict] | None) -> list[dict] | None:
     """Mostra uma ficha por pessoa, reunindo as matrículas dela."""
