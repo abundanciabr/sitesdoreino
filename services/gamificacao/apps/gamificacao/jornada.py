@@ -239,6 +239,16 @@ def situacao(pessoa_id, site_id, *, meta_simulada=None):
             recentes[avaliacao["ordem"]] = avaliacao
             if avaliacao["resultado"] == "reconhecida":
                 reconhecidas.setdefault(avaliacao["ordem"], avaliacao["criada_em"])
+    # Uma retirada administrativa supera fontes antigas, sem apagar nenhuma delas.
+    from .gestao_trilha import cortes
+    for ordem, retirada_em in cortes(pessoa_id, site_id, caminho).items():
+        novas = [a for a in historicas if a["ordem"] == ordem
+                 and a["resultado"] == "reconhecida" and a["criada_em"] > retirada_em
+                 and a["caminho"] in ("comum", caminho)]
+        if novas:
+            reconhecidas[ordem] = novas[-1]["criada_em"]
+        else:
+            reconhecidas.pop(ordem, None)
     recebimentos = list(
         RecebimentoDeclarado.objects.filter(
             pessoa_id=pessoa_id, site_id=site_id, fora_da_progressao=False,

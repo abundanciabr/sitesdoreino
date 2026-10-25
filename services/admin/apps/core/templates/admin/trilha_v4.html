@@ -25,6 +25,7 @@
     <button class="resume" id="resume">Faixa atual <svg aria-hidden="true"><use href="#arrow"/></svg></button>
   </header>
   <main id="top">
+    <p style="padding:1rem 4vw"><a href="{% url 'gestao_trilha' %}?aluno={{ trilha.aluno.id|urlencode }}">Gerenciamento da Trilha/faixas deste aluno</a></p>
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow"><span class="tiny-line"></span> A JORNADA DO CRIADOR</p>

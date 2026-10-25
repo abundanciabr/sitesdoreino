@@ -60,3 +60,5 @@ api.add_router("", gamificacao_router)
 api.add_router("", trilha_router)
 api.add_router("", medalhas_router)
 api.add_router("", ganhos_admin_router)
+from apps.core.gestao_trilha_api import router as gestao_trilha_router
+api.add_router("", gestao_trilha_router)
