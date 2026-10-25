@@ -170,7 +170,7 @@ def test_rota_nova_sem_sessao_vai_para_o_login(caminho):
 @pytest.mark.parametrize("caminho", ["/escola/", "/escola/alunos/"])
 def test_rota_nova_fora_da_lista_recebe_404(caminho):
     """Para quem não é da casa, a escola não existe — como o resto da área."""
-    assert _dentro("estranho@exemplo.com").get(caminho).status_code == 404
+    assert _dentro("estranho@exemplo.com").get(caminho).status_code == 403
 
 
 # ------------------------------------------------------------- a navegação

@@ -111,8 +111,8 @@ def test_admin_da_tabela_tem_acesso(rede, settings):
 @pytest.mark.parametrize("email", ["aluno@exemplo.com", "equipe@exemplo.com"])
 def test_nao_admin_nao_le_nem_modera(rede, email):
     client = dentro(rede, email)
-    assert client.get(url()).status_code == 404
-    assert client.post(mutacao(), {"visibilidade": "publico"}).status_code == 404
+    assert client.get(url()).status_code == 403
+    assert client.post(mutacao(), {"visibilidade": "publico"}).status_code == 403
     assert not any(str(c.request.url).startswith(CURSOS) for c in rede.calls)
 
 

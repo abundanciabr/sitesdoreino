@@ -130,9 +130,9 @@ def test_porta_redireciona_visitante_e_recusa_aluno_professor_e_equipe(porta):
     with respx.mock:
         for papel in ("aluno", "professor", "equipe"):
             cliente = _cliente_com_sessao("fora@example.test", papel)
-            assert cliente.get("/trilha/").status_code == 404
-            assert cliente.get("/trilha/style.css").status_code == 404
-            assert cliente.get("/trilha/app.js").status_code == 404
+            assert cliente.get("/trilha/").status_code == 403
+            assert cliente.get("/trilha/style.css").status_code == 403
+            assert cliente.get("/trilha/app.js").status_code == 403
 
 
 def test_porta_aceita_admin_e_protege_ativos(porta):

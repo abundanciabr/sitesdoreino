@@ -7,7 +7,7 @@ implementa, e cada linha tem teste-guarda em
 | Situação                          | Site público (`funil`) | Aqui                  |
 |-----------------------------------|------------------------|-----------------------|
 | `identidade` fora do ar           | abre, mostra "Entrar"  | **503, não abre**     |
-| sessão válida, e-mail fora da lista | —                    | **404**, não 403      |
+| sessão válida, e-mail fora da lista | —                    | **403**, acesso restrito      |
 | sem sessão                        | —                      | 302 para o login      |
 
 **Por que o inverso é o certo, e não excesso de zelo:** o invariante
@@ -22,8 +22,7 @@ mandar a pessoa para a porta que provavelmente também está fora do ar — e a
 Um 503 nomeado diz o que está acontecendo; um 302 para uma tela quebrada
 esconde.
 
-**Por que 404 e não 403 para quem não está na lista:** para quem não é da
-casa, `/admin` não existe. É decisão registrada na lei (§2), não improviso.
+Sessões conectadas sem permissão recebem 403 com aviso de acesso restrito.
 """
 
 import base64
@@ -392,7 +391,7 @@ class PortaAdministrativa:
                 sessao.get("id") or "?",
                 request.path_info,
             )
-            return self._nao_existe()
+            return self._acesso_restrito()
 
         # A partir daqui a pessoa está dentro. O que as páginas recebem é o
         # necessário para exibição — nunca um objeto de permissão: quem decide
@@ -454,11 +453,16 @@ class PortaAdministrativa:
             # Quem é da equipe e chegou sem acesso neste navegador vai para a
             # entrada DA EQUIPE: e-mail e senha, ou a conta Google.
             destino = (
-                f"{reverse('entrar_na_equipe')}?next={quote(request.path, safe='/')}"
+                f"{reverse('entrar_na_equipe')}?next={quote(request.get_full_path(), safe='/')}"
             )
         else:
-            destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
+            destino = f"{settings.URL_DE_ENTRADA}?next={quote(request.get_full_path(), safe='/')}"
         return self._com_seguranca(HttpResponseRedirect(destino))
+
+    def _acesso_restrito(self):
+        return self._com_seguranca(
+            HttpResponse(render_to_string("admin/acesso_restrito.html"), status=403)
+        )
 
     def _nao_existe(self):
         return self._com_seguranca(

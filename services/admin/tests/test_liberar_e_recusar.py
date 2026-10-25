@@ -320,7 +320,7 @@ def test_decidir_sem_csrf_e_recusado():
 @respx.mock
 def test_quem_nao_esta_na_lista_nao_decide_nada():
     r = _decidir(_dentro("estranho@exemplo.com"))
-    assert r.status_code == 404
+    assert r.status_code == 403
     assert Registro.objects.count() == 0
 
 

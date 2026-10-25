@@ -6,7 +6,7 @@ inteira — **uma linha de tabela, um teste** — mais a lista de caminhos isent
 | Situação                            | Esperado aqui      | Site público (`funil`) |
 |-------------------------------------|--------------------|------------------------|
 | `identidade` fora do ar             | **503**            | abre, mostra "Entrar"  |
-| sessão válida, e-mail fora da lista | **404** (não 403)  | —                      |
+| sessão válida, e-mail fora da lista | **403**, acesso restrito  | —                      |
 | sem sessão                          | 302 para o login   | —                      |
 
 **Por que cada caso precisa de teste próprio, e não de um "testa a porta":** os
@@ -117,13 +117,16 @@ def test_env_ausente_fecha_sem_derrubar_o_container(monkeypatch):
 
 
 @respx.mock
-def test_sessao_valida_fora_da_lista_recebe_404_e_nao_403():
-    """Para quem não é da casa, `/admin` não existe."""
+def test_sessao_valida_fora_da_lista_recebe_403_com_aviso():
+    """Conta reconhecida sem autorização recebe um aviso claro."""
     respx.get(SESSAO).mock(
         return_value=httpx.Response(200, json=_pessoa("estranho@exemplo.com"))
     )
     r = _com_cookie().get("/")
-    assert r.status_code == 404, r.content
+    assert r.status_code == 403, r.content
+    assert "Acesso restrito a administradores" in r.content.decode()
+    assert "Seções da administração" not in r.content.decode()
+    assert r["Cache-Control"] == "no-store"
 
 
 @respx.mock
@@ -138,7 +141,7 @@ def test_papel_staff_nao_autoriza_nada():
     respx.get(SESSAO).mock(
         return_value=httpx.Response(200, json=_pessoa("staff@exemplo.com", "staff"))
     )
-    assert _com_cookie().get("/").status_code == 404
+    assert _com_cookie().get("/").status_code == 403
 
 
 @respx.mock
@@ -148,7 +151,7 @@ def test_lista_vazia_fecha_para_todo_mundo(settings):
     respx.get(SESSAO).mock(
         return_value=httpx.Response(200, json=_pessoa("dono@exemplo.com"))
     )
-    assert _com_cookie().get("/").status_code == 404
+    assert _com_cookie().get("/").status_code == 403
 
 
 # --------------------------------------------------------------- linha 3 da tabela
@@ -308,3 +311,27 @@ def test_a_recusa_tambem_nao_fica_guardada():
     trancariam o dono para fora depois que o acesso dele fosse consertado.
     """
     assert Client().get("/")["Cache-Control"] == "no-store"
+
+
+@respx.mock
+@pytest.mark.parametrize("metodo", ["get", "post"])
+def test_recusa_nao_executa_a_pagina_nem_concede_cracha(metodo):
+    from django.http import HttpResponse
+    from django.test import RequestFactory
+    from apps.core.porta import PortaAdministrativa
+    from unittest.mock import Mock
+    respx.get(SESSAO).respond(200, json=_pessoa("aluno@exemplo.com"))
+    request = getattr(RequestFactory(), metodo)("/crm/conversas/", HTTP_COOKIE=COOKIE)
+    pagina = Mock(return_value=HttpResponse("CONTEUDO_PRIVADO"))
+    resposta = PortaAdministrativa(pagina)(request)
+    assert resposta.status_code == 403
+    assert b"CONTEUDO_PRIVADO" not in resposta.content
+    assert not hasattr(request, "admin")
+    pagina.assert_not_called()
+
+
+def test_login_preserva_filtro_da_pagina_administrativa():
+    from urllib.parse import parse_qs, urlsplit
+    resposta = Client().get("/crm/conversas/?canal=whatsapp&estado=pessoa", SCRIPT_NAME="/admin")
+    assert resposta.status_code == 302
+    assert parse_qs(urlsplit(resposta["Location"]).query)["next"] == ["/admin/crm/conversas/?canal=whatsapp&estado=pessoa"]

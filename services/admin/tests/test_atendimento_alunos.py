@@ -156,9 +156,9 @@ def test_equipe_atende_sem_abrir_configuracao_ou_outro_admin(escola,monkeypatch)
     c=Client();c.cookies['meshcraft_sessao']='sessao-testada-pelo-servico'
     assert c.get('/equipe/atendimento/').status_code==200
     assert c.get('/equipe/atendimento/base/').status_code==200
-    assert c.get('/atendimento/configuracao/').status_code==404
-    assert c.get('/atendimento/').status_code==404
-    assert c.get('/escola/').status_code==404
+    assert c.get('/atendimento/configuracao/').status_code==403
+    assert c.get('/atendimento/').status_code==403
+    assert c.get('/escola/').status_code==403
     monkeypatch.setattr(porta,'_e_da_equipe',lambda email:False)
-    assert c.get('/atendimento/').status_code==404
-    assert c.get('/equipe/atendimento/').status_code==404
+    assert c.get('/atendimento/').status_code==403
+    assert c.get('/equipe/atendimento/').status_code==403

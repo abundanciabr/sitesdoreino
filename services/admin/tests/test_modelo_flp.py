@@ -37,7 +37,7 @@ def entrar(email="dono@example.com"):
 @respx.mock
 def test_porta_preservada(rota):
     assert Client().get(rota).status_code == 302
-    assert entrar("aluno@example.com").get(rota).status_code == 404
+    assert entrar("aluno@example.com").get(rota).status_code == 403
     cliente = entrar()
     assert cliente.get(rota).status_code == 200
     respx.get(SESSAO).mock(side_effect=httpx.ConnectError("indisponível"))

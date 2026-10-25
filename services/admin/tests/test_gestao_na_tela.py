@@ -361,7 +361,7 @@ def test_salvar_sem_csrf_e_recusado():
 @respx.mock
 def test_quem_nao_esta_na_lista_nao_salva_nada():
     r = _salvar(_dentro("estranho@exemplo.com"), status="encerrada")
-    assert r.status_code == 404
+    assert r.status_code == 403
     assert Registro.objects.count() == 0
 
 

@@ -158,8 +158,8 @@ def test_sem_cracha_nao_alcanca_editor_nem_publicacao():
     publicacao = Client().post(
         reverse("conteudo_publicar", kwargs={"tipo": "forum", "slug": "novo"})
     )
-    assert pagina.status_code in (302, 404)
-    assert publicacao.status_code in (302, 404)
+    assert pagina.status_code in (302, 403)
+    assert publicacao.status_code in (302, 403)
 
 
 @pytest.mark.parametrize(
@@ -377,7 +377,7 @@ def test_painel_privado_filtra_contagens_e_gera_links_sem_dados_pessoais():
 @respx.mock
 def test_painel_de_campanhas_requer_sessao_admin():
     resposta = Client().get(reverse("quiz_campanhas", kwargs={"slug": "campanha"}))
-    assert resposta.status_code in (302, 404)
+    assert resposta.status_code in (302, 403)
 
 
 @pytest.mark.parametrize("tipo,base,enviado", [

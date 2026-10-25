@@ -347,4 +347,4 @@ def test_o_prontuario_exige_cracha_como_todo_o_resto():
     c = Client()
     c.defaults["HTTP_COOKIE"] = COOKIE
 
-    assert _abrir_prontuario(c).status_code in (302, 403, 404)
+    assert _abrir_prontuario(c).status_code in (302, 403, 403)

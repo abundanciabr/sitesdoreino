@@ -177,7 +177,7 @@ def test_conta_sem_pessoa_ve_explicacao_e_nao_um_robo():
 @respx.mock
 def test_a_conexao_e_so_do_administrador():
     _pessoa("Lívia", LIVIA)
-    assert _cliente(LIVIA, "Lívia").get(reverse("robos_admin")).status_code == 404
+    assert _cliente(LIVIA, "Lívia").get(reverse("robos_admin")).status_code == 403
     assert _cliente(DONO, "Dono").get(reverse("robos_admin")).status_code == 200
 
 
@@ -920,7 +920,7 @@ def test_simulacao_o_robo_nao_consulta_mapa_privado_sem_poder():
 def test_a_tela_do_mapa_e_so_do_administrador():
     _pessoa("Lívia", LIVIA)
     with respx.mock:
-        assert _cliente(LIVIA, "Lívia").get(reverse("mapa_de_conhecimento")).status_code == 404
+        assert _cliente(LIVIA, "Lívia").get(reverse("mapa_de_conhecimento")).status_code == 403
     with respx.mock:
         dono = _cliente(DONO, "Dono")
         assert dono.get(reverse("robos_admin")).status_code == 200

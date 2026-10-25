@@ -1050,7 +1050,7 @@ def test_quem_nao_esta_na_lista_nao_ve_o_editor():
 
     resposta = _dentro(DE_FORA).get(reverse("escola_aulas", kwargs={"curso": CURSO}))
 
-    assert resposta.status_code == 404
+    assert resposta.status_code == 403
     assert porta.call_count == 0
 
 
