@@ -50,6 +50,7 @@ def _dados(request, pessoa, site):
     from apps.gamificacao.inicio import para_tela
     return {
         'pessoa_id': pessoa, 'site_id': site, 'csrf': get_token(request),
+        'celebracao': jornada.get('celebracao', {}),
         'revisao': jornada['revisao'], 'atual_ordem': jornada['atual']['ordem'],
         'meta_cents': jornada['meta_cents'], 'proposito': jornada['proposito'],
         'chave': jornada['chave'], 'total': jornada['total'],
@@ -85,8 +86,8 @@ def inventario(request):
             if acao == 'celebracao-vista':
                 with transaction.atomic():
                     j = JornadaPessoal.objects.select_for_update().filter(pessoa_id=pessoa, site_id=site).first()
-                    if j and str((j.celebracao_pendente or {}).get('ordem')) == request.POST.get('ordem'):
-                        j.celebracao_pendente = {}
+                    from apps.gamificacao.cerimonias import confirmar
+                    if j and confirmar(j, request.POST.get('ordem')):
                         j.save(update_fields=['celebracao_pendente'])
                 return _privada(JsonResponse({'vista': True}))
             permitidas = ('anexo', 'meta', 'recebimento', 'correcao', 'inicio-motivo', 'inicio-plano', 'inicio-compromisso', 'inicio-item', 'inicio-envio', 'ciclo-avaliar')

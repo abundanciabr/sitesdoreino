@@ -55,6 +55,15 @@ def _sessao(cookie):
 
 @never_cache
 @require_safe
+def celebracao_faixas(request):
+    """Demonstração sem contas nem escritas, entregue apenas pelo endereço direto."""
+    if request.get_host().split(":")[0].lower() != "meshcraft.top":
+        raise Http404
+    return _privada(render(request, "funil/celebracao_faixas.html"))
+
+
+@never_cache
+@require_safe
 def trilha_v4(request, arquivo="index.html"):
     if request.get_host().split(":")[0].lower() != "meshcraft.top":
         raise Http404

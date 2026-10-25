@@ -4,8 +4,10 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block titulo %}Minha Trilha{% endblock %} | Meshcraft Academy</title>
 <link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+<link rel="stylesheet" href="{% url 'estatico' 'faixa_cerimonia.css' %}?v=1">
+<script src="{% url 'estatico' 'faixa_cerimonia.js' %}?v=1" defer></script>
 </head>
-<body>
+<body {% block acompanhar_faixas %}{% endblock %}>
 <div class="faixa">{% block faixa %}<a href="{{ url_da_trilha_atual }}">← Voltar à minha Trilha</a>{% endblock %}</div>
 <main>{% block conteudo %}{% endblock %}</main>
 </body>

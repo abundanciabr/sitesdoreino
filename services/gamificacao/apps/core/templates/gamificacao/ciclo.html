@@ -1,3 +1,4 @@
 {% extends "gamificacao/trilha_moldura.html" %}
 {% block titulo %}Minha criação · Próxima faixa{% endblock %}
+{% block acompanhar_faixas %}data-faixa-acompanhar{% endblock %}
 {% block conteudo %}{% include "gamificacao/_ciclo_modal.html" %}<script src="{% url 'estatico' 'ciclo.js' %}?v=2" defer></script>{% endblock %}

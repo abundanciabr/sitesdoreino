@@ -413,7 +413,7 @@ async function refreshJourney(){
 function loadJourney(){return refreshJourney();}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshJourney();});
 window.addEventListener('focus',()=>{if(!document.hidden)refreshJourney();});
-setInterval(()=>{if(!document.hidden&&document.querySelector('#detail-dialog').open)refreshJourney();},30000);
+setInterval(()=>{if(!document.hidden)refreshJourney();},30000);
 loadJourney();
 
 let motivoDialog, motivoContent, motivoScope, motivoController, motivoOpener, motivoLoad = 0;
@@ -468,12 +468,12 @@ async function loadMotivo(destination, submission) {
     if(component.componente!=='trilha'||typeof component.html!=='string')throw new Error('Não foi possível abrir esta atividade. Seus registros continuam guardados.');
     if(currentLoad!==motivoLoad||!motivoDialog.open)return;
     const template=document.createElement('template');template.innerHTML=component.html;
-    if(template.content.querySelector('iframe,object,embed,script')||/<!doctype|<html[ >]|<body[ >]/i.test(component.html))throw new Error('O conteúdo desta atividade está indisponível.');
+    if(template.content.querySelector('iframe,object,embed,script:not([type="application/json"])')||/<!doctype|<html[ >]|<body[ >]/i.test(component.html))throw new Error('O conteúdo desta atividade está indisponível.');
     if(!response.ok){
       const error=template.content.querySelector('[role=alert],.jornada-erro');
       throw new Error(error?.textContent||'Confira os campos antes de enviar novamente. Suas respostas continuam no formulário.');
     }
-    const scripts={inicio:'/trilha/faixas-static/inicio.js?v=17',conquista:'/trilha/faixas-static/inicio_conquista.js?v=3',ciclo:'/trilha/faixas-static/ciclo.js?v=2',encomendas:'/trilha/trabalho.js?v=1'};
+    const scripts={inicio:'/trilha/faixas-static/inicio.js?v=17',conquista:'/trilha/faixas-static/inicio_conquista.js?v=4',ciclo:'/trilha/faixas-static/ciclo.js?v=2',encomendas:'/trilha/trabalho.js?v=1'};
     if(scripts[component.controlador])await loadMotivoScript(scripts[component.controlador]);
     if(currentLoad!==motivoLoad||!motivoDialog.open)return;
     motivoController?.destroy?.();motivoController=null;motivoDirty=false;
@@ -562,25 +562,8 @@ function openMotivo(opener) {
 }
 
 function celebrateJourney(progress, context){
-  const host=document.querySelector('#faixa-celebracao');
-  const pending=progress.celebracao;
-  if(!pending||!Number.isInteger(pending.ordem)||pending.ordem<2||pending.ordem>progress.atual_ordem)return;
-  const step=progress.etapas.find(item=>item.ordem===pending.ordem);
-  if(!host||!step||!step.alcancada||host.dataset.ordem===String(step.ordem))return;
-  host.dataset.ordem=String(step.ordem);host.hidden=false;
-  const title=document.createElement('strong');
-  title.textContent=pending.tipo==='grau'?'Você alcançou um novo grau!':'Você mudou de faixa!';
-  const text=document.createElement('p');text.textContent=`Agora você é faixa ${step.nome}.`;
-  const button=document.createElement('button');button.type='button';button.textContent='Entendi';
-  button.onclick=async()=>{
-    button.disabled=true;
-    const body=new FormData();
-    for(const [key,value] of Object.entries({acao:'celebracao-vista',ordem:step.ordem,contexto_pessoa:context.pessoa_id,contexto_site:context.site_id}))body.append(key,value);
-    try{
-      const response=await fetch('/trilha/inventario/api/',{method:'POST',credentials:'same-origin',headers:{'X-CSRFToken':progress.csrf},body});
-      if(!response.ok)throw new Error('Não foi possível confirmar');
-      host.hidden=true;
-    }catch(error){button.disabled=false;button.textContent='Tentar confirmar novamente';}
-  };
-  host.replaceChildren(title,text,button);
+  // O recibo da tarefa conduz a esta mesma cerimônia após seu próprio ato.
+  if (document.querySelector('.motivo-dialog[open]')) return;
+  window.MeshcraftFaixas?.celebrar(progress, context);
 }
+window.addEventListener('meshcraft:faixa-vista', refreshJourney);

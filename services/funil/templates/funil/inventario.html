@@ -3,6 +3,8 @@
 <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#f7f9fc">
 <title>Meu inventário — Meshcraft</title><link rel="icon" href="data:,">
 <link rel="stylesheet" href="{% url 'trilha_v4_css' %}"><link rel="stylesheet" href="{% url 'inventario_css' %}">
+<link rel="stylesheet" href="{{ request.previa_trilha_url|default:'/trilha/' }}faixas-static/faixa_cerimonia.css?v=1">
+<script src="{{ request.previa_trilha_url|default:'/trilha/' }}faixas-static/faixa_cerimonia.js?v=1" defer></script>
 <script src="{% url 'inventario_js' %}" defer></script></head>
 <body>{% if request.previa_trilha_url %}<div role="status" style="background:#1f4060;color:white;padding:10px 16px;text-align:center;font:700 14px system-ui,sans-serif">Prévia administrativa — progresso separado</div>{% endif %}{{ trilha|json_script:"trilha-data" }}
 <svg class="svg-library" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">

@@ -1,5 +1,10 @@
 <link rel="stylesheet" href="{% url 'estatico' 'praticas-3d/motor.css' %}">
 {{ pratica3d|json_script:'config-pratica-3d' }}
+{% if pratica3d.ordem_faixa and not pratica3d.preview %}
+<span data-faixa-acompanhar hidden></span>
+<link rel="stylesheet" href="/trilha/faixas-static/faixa_cerimonia.css?v=1">
+<script src="/trilha/faixas-static/faixa_cerimonia.js?v=1" defer></script>
+{% endif %}
 <section class="pratica-3d" aria-label="Sua prática 3D" data-pratica-3d>
   <div hidden>{% csrf_token %}</div>
   <header><p class="rotulo">Dia {{ pratica3d.dia }} · Base preparada · Personalização sua</p><h2>{{ pratica3d.configuracao.titulo }}</h2><p>{{ pratica3d.configuracao.objetivo }}</p>{% if pratica3d.conferencia %}<p class="miudo"><strong>Antes de começar:</strong> {{ pratica3d.conferencia }}</p>{% endif %}<p class="miudo">{% if pratica3d.preview %}Prévia da equipe: as escolhas ficam somente nesta tela. Nenhuma aula ou projeto do aluno é alterado.{% else %}A base foi preparada no Blender. Você personaliza aqui no navegador, sem instalar nada. Salvar guarda o item só na sua conta.{% endif %}</p></header>

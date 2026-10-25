@@ -29,6 +29,20 @@ def guardar(client, acao, **dados):
     return client.post(url, {"acao": acao, "revisao": revisao, **dados}, HTTP_COOKIE="meshcraft_sessao=A")
 
 
+def test_tarefa_exibe_apenas_seu_xp_e_entrega_faixa_para_cerimonia_separada(client):
+    from apps.gamificacao.bonus_faixas import configurar
+    configurar(SITE)
+    guardar(client, 'inicio-motivo', motivo='ugc')
+    premio = guardar(client, 'inicio-compromisso', assumir='sim', proximo_passo='criar_item').json()
+    resposta = client.get(premio['conquista_url'])
+    corpo = resposta.content.decode()
+    assert 'data-xp="100"' in corpo
+    assert 'data-xp="5100"' not in corpo
+    assert 'XP DA TAREFA' in corpo and 'Ver minha conquista' in corpo
+    assert '100 XP da tarefa + 5000' not in corpo
+    assert resposta.context['cerimonia_faixa']['celebracao']['bonus_xp'] == 5000
+
+
 @pytest.mark.parametrize("ordem,nome", enumerate(ETAPAS, start=1))
 def test_cada_etapa_tem_rota_pagina_e_formulario_proprios(client, ordem, nome):
     if ordem > 1:

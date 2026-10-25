@@ -4,7 +4,7 @@ from django.views.generic import RedirectView
 from apps.core.diagnostico_texturas_gateway import diagnostico_texturas_gateway
 
 from apps.core.links import redirecionar_link
-from apps.core.trilha_v4 import trilha_v4
+from apps.core.trilha_v4 import trilha_v4, celebracao_faixas
 from apps.core.trilha_previa_gateway import trilha_previa_gateway
 from apps.core.trilha_faixas import trilha_faixas
 from apps.core.modelo_flp import (
@@ -60,6 +60,7 @@ urlpatterns = [
     path("trilha/inventario/", trilha_v4, {"arquivo": "inventario.html"}, name="inventario_aluno"),
     path("trilha/inventario.css", trilha_v4, {"arquivo": "inventario.css"}, name="inventario_css"),
     path("trilha/inventario.js", trilha_v4, {"arquivo": "inventario.js"}, name="inventario_js"),
+    path("trilha/celebracao/", celebracao_faixas, name="celebracao_faixas"),
     path("trilha/", trilha_v4, name="trilha_v4"),
     path("trilha/style.css", trilha_v4, {"arquivo": "style.css"}, name="trilha_v4_css"),
     path("trilha/trabalho.js", trilha_v4, {"arquivo": "trabalho.js"}, name="trilha_trabalho_js"),

@@ -74,8 +74,8 @@ def test_lista_mostra_canal_estado_ultimo_recado_e_pede_o_site_do_host():
     r = dentro().get(reverse("crm_conversas"), {"estado": "pessoa", "canal": "whatsapp"})
     html = r.content.decode()
     assert r.status_code == 200
-    assert "Quero saber o preço" in html and "WhatsApp" in html and "Com o agente" in html
-    assert 'conv-selo">Com o agente' in html and 'conv-selo espera">Aguardando resposta' in html
+    assert "Quero saber o preço" in html and "WhatsApp" in html and "Agente de IA ligado" in html
+    assert 'conv-selo">Agente de IA ligado' in html and 'conv-selo espera">Aguardando resposta' in html
     assert reverse("crm_conversa", args=[CONVERSA]) in html
     params = rota.calls.last.request.url.params
     assert params["site_id"] == "site-do-host" and params["estado"] == "pessoa" and params["canal"] == "whatsapp"
@@ -146,7 +146,7 @@ def test_conversa_mostra_dois_sentidos_midia_transcricao_e_ligacoes():
     assert "<h1>Ana</h1>" in html and "Ana Souza" not in html and "Quanto custa?" in html and "Custa R$ 97." in html and "Entregue" in html
     assert "Áudio" in html and "Transcrição: Posso pagar no Pix?" in html
     assert reverse("contato", args=[LEAD]) in html and reverse("crm_oportunidade", args=[OPORTUNIDADE]) in html
-    assert "24 horas" in html and "Assumir a conversa" in html
+    assert "24 horas" in html and "Desligar agente de IA" in html
 
 
 @respx.mock
@@ -457,7 +457,7 @@ def test_responder_com_a_devolucao_falhando_manda_usar_o_botao():
     respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/assumir").respond(200, json=conversa(estado="pessoa"))
     respx.post(MENSAGERIA + f"/conversas/{CONVERSA}/devolver").mock(side_effect=httpx.ConnectError("fora"))
     html = enviar_resposta().content.decode()
-    assert "Devolver ao agente" in html and "não conseguimos devolver a conversa ao agente" in html
+    assert "Ligar agente de IA" in html and "não conseguimos devolver a conversa ao agente" in html
 
 
 @respx.mock

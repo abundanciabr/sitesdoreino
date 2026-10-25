@@ -24,7 +24,10 @@ window.iniciarCiclo = (scope = document, host = {}) => {
     busy = true; form.querySelector('button').disabled = true; status.textContent = 'Avaliando o material apresentado…';
     try { data = await request(body); dirty = false; const result = data.avaliacao_atual;
       status.textContent = result?.feedback || 'Material guardado. A avaliação continua pendente.';
-      if (result?.conquistada) status.textContent += ` Faixa ${data.faixa_nome} conquistada.${result.bonus_xp ? ` +${result.bonus_xp.toLocaleString('pt-BR')} XP.` : ' Os bônus já recebidos ficam preservados.'}`;
+      if (result?.conquistada) {
+        status.textContent += ' Sua realização foi reconhecida.';
+        window.MeshcraftFaixas?.celebrar(data, data, {tarefa:{titulo:'Sua criação evoluiu.',feedback:result.feedback}});
+      }
     } catch (error) { status.textContent = error.message; try { data = await request(); } catch (_) {} }
     finally { busy = false; form.querySelector('button').disabled = false; }
   });
