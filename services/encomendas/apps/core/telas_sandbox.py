@@ -12,7 +12,7 @@ from urllib.parse import quote
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.shortcuts import render
+from .painel_trilha import render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST

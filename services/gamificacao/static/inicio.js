@@ -70,6 +70,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
     if (forms.motivo) return leaveMotivo();
     if (busy) return;
     if (forms.compromisso && dirty.has(forms.compromisso.id) && !await save(forms.compromisso, 'inicio-compromisso', {compromisso_etapa: String(Math.min(compromissoStep, 2))})) return;
+    if (embedded && dirty.size && !forms.compromisso && host.confirmDiscard && !await host.confirmDiscard()) return;
     if (embedded) host.close();
     else navigate(root.dataset.conquistas || '/trilha/');
   }
@@ -383,6 +384,7 @@ window.iniciarJornada = (scope = document, host = {}) => {
     if (busy) return;
     showMotivoStep(2, true); dirty.add(forms.motivo.id);
   });
+  if (embedded) root.querySelectorAll('a').forEach(link => { if(link.getAttribute?.('href') === root.dataset.conquistas) link.addEventListener('click', event => {event.preventDefault();leaveInicio();}); });
   $('recarregar').addEventListener('click', open);
   window.addEventListener('beforeunload', event => { if (dirty.size) { event.preventDefault(); event.returnValue = ''; } }, {signal: lifecycle.signal});
   window.addEventListener('pageshow', event => { if (event.persisted) open(); }, {signal: lifecycle.signal});

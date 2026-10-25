@@ -77,7 +77,16 @@ def test_quatro_caminhos_e_compromisso_avaliado(client, motivo):
     recibo = client.get(dados['conquista_url'] + '&embutido=1', HTTP_COOKIE='meshcraft_sessao=A')
     assert recibo.status_code == 200
     assert recibo.context['inicio_embutido'] is True
-    assert 'data-xp="5100"' in recibo.content.decode()
+    # A tarefa e a faixa agora têm comemorações separadas, sem alterar o total.
+    assert 'data-xp="100"' in recibo.content.decode()
+    assert recibo.context['conquista_xp_faixa'] == 5000
+    painel = client.get(dados['conquista_url'], HTTP_COOKIE='meshcraft_sessao=A', HTTP_X_TRILHA_PAINEL='1')
+    assert painel.status_code == 200
+    componente = painel.json()
+    assert componente['controlador'] == 'conquista'
+    assert 'cerimonia-faixa-data' in componente['html']
+    assert 'type="application/json"' in componente['html']
+    assert '<html' not in componente['html'] and '<iframe' not in componente['html']
     assert len(AvaliacaoDaJornada.objects.filter(ordem=2)) == 1
     assert 'proximo_passo_resposta' not in JornadaPessoal.objects.get().inicio
     assert len(LancamentoDeXP.objects.filter(pontos=5000)) == 1

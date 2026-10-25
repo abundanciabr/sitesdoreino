@@ -2,7 +2,7 @@
 
 from django.conf import settings
 from django.http import Http404, HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
+from apps.core.painel_trilha import render
 from django.urls import path, re_path, reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods, require_safe

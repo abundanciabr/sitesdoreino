@@ -1,0 +1,21 @@
+<link rel="stylesheet" href="{% url 'estatico' 'inicio_conquista.css' %}?v=1"><link rel="stylesheet" href="{% url 'estatico' 'faixa_cerimonia.css' %}?v=1"><div class="motivo-recibo {% if conquista_ja_recebida %}revisita{% endif %}"><main class="celebracao" aria-labelledby="titulo-conquista">
+    {{ cerimonia_faixa|json_script:"cerimonia-faixa-data" }}
+    <div class="confetes" aria-hidden="true">{% for n in '123456789012' %}<i style="--i:{{ forloop.counter }}"></i>{% endfor %}</div>
+    <div class="emblema" aria-hidden="true">
+      <div class="orbita orbita-1"></div><div class="orbita orbita-2"></div>
+      <span class="brilho brilho-1">✦</span><span class="brilho brilho-2">✦</span><span class="brilho brilho-3">✧</span>
+      <div class="mc-task-check">✓</div>
+    </div>
+    <p class="sobretitulo">{{ inicio_titulo }} · Concluído</p>
+    <h1 id="titulo-conquista">{% if conquista_ja_recebida %}Seu progresso continua aqui.{% elif inicio_etapa == 1 %}Você encontrou seu motivo!{% elif inicio_etapa == 2 %}Um compromisso com você!{% elif inicio_etapa == 3 %}Sua ideia ganhou forma!{% else %}Sua criação virou conquista!{% endif %}</h1>
+    <p class="mensagem">{% if conquista_sem_credito %}Sua tarefa foi salva e faz parte do seu progresso.{% elif conquista_ja_recebida %}Sua tarefa está atualizada e os XP anteriores continuam com você.{% elif inicio_etapa == 1 %}Agora seu começo tem uma razão que é sua.{% elif inicio_etapa == 2 %}Um passo possível. No seu tempo, do seu jeito.{% elif inicio_etapa == 3 %}Você transformou uma ideia em algo que existe.{% else %}Seu trabalho está guardado. Este começo faz parte da sua história.{% endif %}</p>
+    {% if avaliacao_feedback %}<p class="mensagem">{{ avaliacao_feedback }}</p>{% endif %}
+    <section class="recompensa" aria-label="Recompensa desta tarefa">
+      <span class="recompensa-icone" aria-hidden="true">✦</span>
+      <div><p class="recompensa-rotulo">{% if conquista_sem_credito %}TAREFA CONCLUÍDA{% elif conquista_ja_recebida %}RECOMPENSA JÁ RECEBIDA{% else %}XP DA TAREFA{% endif %}</p>
+      <p class="pontos" aria-live="polite">{% if conquista_sem_credito %}<span>Progresso salvo</span>{% elif conquista_ja_recebida %}<span>XP preservados</span>{% elif conquista_xp_tarefa %}<span aria-label="{{ conquista_xp_tarefa }} XP da tarefa recebidos">+<span id="xp-numero" data-xp="{{ conquista_xp_tarefa }}">{{ conquista_xp_tarefa }}</span><span class="unidade"> XP</span></span>{% else %}<span>Realização reconhecida</span>{% endif %}</p></div>
+      <span class="credito-confirmado" aria-hidden="true">✓</span>
+    </section>
+    <a class="voltar-faixa" href="{{ url_da_trilha_atual }}">{% if cerimonia_faixa.celebracao %}Ver minha conquista{% else %}Voltar à minha faixa{% endif %} <span aria-hidden="true">→</span></a>
+    <p class="ritmo">Comemore este passo. Você escolhe quando continuar.</p>
+  </main></div>

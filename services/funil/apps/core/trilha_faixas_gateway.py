@@ -32,7 +32,7 @@ def destino_publico(destino):
 def _segura(resposta):
     resposta["Cache-Control"] = "private, no-store"
     resposta["X-Robots-Tag"] = "noindex, nofollow"
-    patch_vary_headers(resposta, ("Cookie",))
+    patch_vary_headers(resposta, ("Cookie", "X-Trilha-Painel"))
     return resposta
 
 
@@ -55,6 +55,7 @@ def _entrada(request, corpo):
         ("Origin", "HTTP_ORIGIN"), ("Referer", "HTTP_REFERER"),
         ("X-CSRFToken", "HTTP_X_CSRFTOKEN"),
         ("X-Requested-With", "HTTP_X_REQUESTED_WITH"),
+        ("X-Trilha-Painel", "HTTP_X_TRILHA_PAINEL"),
     ):
         if request.META.get(origem):
             headers[destino] = request.META[origem]

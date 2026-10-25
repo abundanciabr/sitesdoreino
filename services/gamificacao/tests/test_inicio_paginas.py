@@ -89,7 +89,9 @@ def test_visitante_encontra_convite_sem_dados_privados(client, monkeypatch):
     assert guardar(client, "inicio-motivo", motivo="ugc").status_code == 200
     assert guardar(client, "inicio-plano", sonho="SONHO-PRIVADO-ALFA", objetivo="OBJETIVO-PRIVADO-ALFA").status_code == 200
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: None)
-    for nome in ("base", *ETAPAS):
+    antiga = client.get(reverse("base"))
+    assert antiga.status_code == 302 and antiga["Location"] == "/trilha/"
+    for nome in ETAPAS:
         r = client.get(reverse(nome))
         corpo = r.content.decode()
         assert r.status_code == 200 and "Entrar na escola" in corpo
@@ -140,11 +142,15 @@ def test_paginas_nao_perdem_registro_e_respeitam_pessoa_e_site(client, monkeypat
     assert client.get(reverse("inventario"), HTTP_COOKIE="meshcraft_sessao=A").json()["inicio"]["objetivo"] == "Minha peça"
 
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: "outro-aluno")
-    for nome in ("base", *ETAPAS):
+    antiga = client.get(reverse("base"))
+    assert antiga.status_code == 302 and antiga["Location"] == "/trilha/"
+    for nome in ETAPAS:
         assert "Sonho reservado" not in client.get(reverse(nome)).content.decode()
     monkeypatch.setattr("apps.core.views.quem_e", lambda request: P)
     monkeypatch.setenv("SITE_ID", "outro-site")
-    for nome in ("base", *ETAPAS):
+    antiga = client.get(reverse("base"))
+    assert antiga.status_code == 302 and antiga["Location"] == "/trilha/"
+    for nome in ETAPAS:
         assert "Sonho reservado" not in client.get(reverse(nome)).content.decode()
     assert JornadaPessoal.objects.filter(pessoa_id=P, site_id=SITE).count() == 1
 
@@ -185,3 +191,56 @@ def test_motivo_embutido_tem_tres_etapas_sem_saida_antiga_e_comprovante_no_mesmo
     assert comprovante.context['conquista_xp'] == 100
     assert 'data-embutido="sim"' in comprovante.content.decode()
     assert client.get(reverse('inicio-conquista', args=[1]) + '?embutido=1').context['conquista_xp'] == 0
+
+
+@pytest.mark.parametrize("ordem,nome", enumerate(ETAPAS, start=1))
+def test_etapas_no_modal_devolvem_so_componente_nativo(client, ordem, nome):
+    if ordem > 1:
+        guardar(client, "inicio-motivo", motivo="ugc")
+    if ordem > 2:
+        guardar(client, "inicio-compromisso", assumir="sim", proximo_passo="criar_item")
+    if ordem > 3:
+        guardar(client, "inicio-item", item_nome="Minha peça", item_acao="Modelei a forma")
+    antes = list(JornadaPessoal.objects.values())
+    resposta = client.get(reverse(nome), HTTP_X_TRILHA_PAINEL="1")
+    assert resposta.status_code == 200
+    dados = resposta.json()
+    assert dados["componente"] == "trilha" and dados["controlador"] == "inicio"
+    assert 'id="inicio-jornada"' in dados["html"]
+    for proibido in ("<!doctype", "<html", "<body", "<iframe", "<script"):
+        assert proibido not in dados["html"].lower()
+    assert "X-Trilha-Painel" in resposta["Vary"]
+    assert "no-store" in resposta["Cache-Control"]
+    assert list(JornadaPessoal.objects.values()) == antes
+
+
+@pytest.mark.parametrize("caminho", ("ugc", "jogo", "aprender"))
+@pytest.mark.parametrize("ordem", (5, 6, 7))
+def test_todas_as_etapas_do_ciclo_sao_componentes(client, monkeypatch, caminho, ordem):
+    from apps.gamificacao.models import Pessoa
+    Pessoa.objects.get_or_create(id_da_plataforma=P, defaults={"email": "aluna@example.test", "nome_exibido": "Aluna"})
+    JornadaPessoal.objects.create(pessoa_id=P, site_id=SITE, inicio={"item_nome": "Minha peça"})
+    monkeypatch.setattr("apps.gamificacao.jornada.situacao", lambda *args: {
+        "caminho": caminho, "proxima": {"ordem": ordem, "nome": "Próxima faixa"}})
+    resposta = client.get(reverse("ciclo"), HTTP_X_TRILHA_PAINEL="1")
+    assert resposta.status_code == 200
+    dados = resposta.json()
+    assert dados["controlador"] == "ciclo"
+    assert 'id="ciclo-form"' in dados["html"]
+    assert '<iframe' not in dados["html"] and '<html' not in dados["html"]
+    assert '<script' not in dados["html"]
+
+
+def test_modal_nao_entrega_formulario_privado_ao_visitante(client, monkeypatch):
+    monkeypatch.setattr("apps.core.views.quem_e", lambda request: None)
+    resposta = client.get(reverse("inicio-motivo"), HTTP_X_TRILHA_PAINEL="1")
+    assert resposta.status_code == 403 and "html" not in resposta.json()
+
+
+def test_recebimentos_e_erros_de_meta_permanecem_componentes(client):
+    resposta = client.get(reverse("recebimentos"), HTTP_X_TRILHA_PAINEL="1")
+    assert resposta.status_code == 200 and resposta.json()["controlador"] == "formularios"
+    erro = client.post(reverse("recebimentos"), {"acao": "preview-meta", "meta": "0"}, HTTP_X_TRILHA_PAINEL="1")
+    assert erro.status_code == 400
+    assert 'role="alert"' in erro.json()["html"]
+    assert '<html' not in erro.json()["html"]

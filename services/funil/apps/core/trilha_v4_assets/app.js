@@ -259,7 +259,7 @@ function createProgressPanel(details,options){
     if(item.acao&&!blocked){
       const action=node('a',state==='concluido'?'checklist-review':'primary checklist-action',state==='concluido'?'Revisar':item.acao.rotulo);
       action.href=item.acao.url;
-      if (['/trilha/inicio/motivo/', '/trilha/inicio/objetivo/'].includes(item.acao.url)) {
+      if (nativeTaskUrl(item.acao.url)) {
         if (state !== 'concluido' && item.acao.url === '/trilha/inicio/motivo/') action.textContent = 'Definir meus motivos';
         action.addEventListener('click', event => {
           if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
@@ -320,7 +320,12 @@ function sandboxEvaluationPanel(evaluations){
       try{
         const action=safeAction({rotulo:'Abrir trabalho no Sandbox',url:item.url});
         const link=node('a','sandbox-evaluation-link',action.rotulo);
-        link.href=action.url;record.append(link);
+        link.href=action.url;
+        if(nativeTaskUrl(action.url))link.addEventListener('click',event=>{
+          if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button>0)return;
+          event.preventDefault();openMotivo(link);
+        });
+        record.append(link);
       }catch(error){/* Endereço inválido não vira link; a avaliação continua visível. */}
     }
     list.append(record);
@@ -427,35 +432,99 @@ function loadMotivoScript(src) {
   }));
   return motivoScripts.get(src);
 }
-async function loadMotivo(url) {
-  const currentLoad = ++motivoLoad;
-  motivoController?.destroy(); motivoController = null;
-  const loading = document.createElement('p'); loading.textContent = 'Abrindo sua etapa…'; loading.setAttribute('role', 'status');
-  motivoScope.replaceChildren(loading); motivoContent.setAttribute('aria-busy', 'true');
+function nativeTaskUrl(value) {
   try {
-    const response = await fetch(url, {credentials: 'same-origin', cache: 'no-store'});
-    if (!response.ok) throw new Error('Não foi possível abrir agora. Tente novamente.');
-    const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-    const form = page.querySelector('#inicio-jornada'), receipt = page.querySelector('.celebracao');
-    if (!form && !receipt) throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');
-    await loadMotivoScript(form ? '/trilha/faixas-static/inicio.js?v=16' : '/trilha/faixas-static/inicio_conquista.js?v=4');
-    if (currentLoad !== motivoLoad || !motivoDialog.open) return;
-    const styles = Array.from(page.querySelectorAll('link[rel="stylesheet"]')).filter(link => new URL(link.getAttribute('href'), window.location.origin).pathname.startsWith('/trilha/faixas-static/'));
-    const base = document.createElement('style');
-    base.textContent = ':host{display:block;color:#172b48;font:16px/1.6 system-ui,sans-serif} .motivo-recibo{--papel:#f8faf5;--escuro:#253923;--cinza:#667363;--verde:#58ae17;color:var(--escuro);background:var(--papel);min-height:100%;padding:16px 0;font-family:Nunito,system-ui,sans-serif} .motivo-recibo .celebracao{margin-top:0}@media(prefers-color-scheme:dark){.motivo-recibo{--papel:#151e19;--escuro:#f2f7ec;--cinza:#afbaaa}}';
-    const wrapper = document.createElement('div'); wrapper.className = form ? 'inicio-embutido' : 'motivo-recibo ' + page.body.className;
-    wrapper.append(form || receipt);
-    motivoScope.replaceChildren(base, ...styles, wrapper);
-    const host = {close: () => motivoDialog.close(), navigate: loadMotivo, scrollTop: () => { motivoContent.scrollTop = 0; }};
-    if (form) motivoController = window.iniciarJornada(motivoScope, host);
-    else window.iniciarConquista(motivoScope, host);
-    motivoContent.scrollTop = 0;
-  } catch (error) {
-    if (currentLoad !== motivoLoad || !motivoDialog.open) return;
-    const message = document.createElement('p'); message.textContent = error.message; message.setAttribute('role', 'alert');
-    const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = 'Tentar novamente'; retry.addEventListener('click', () => loadMotivo(url));
-    motivoScope.replaceChildren(message, retry);
-  } finally { if (currentLoad === motivoLoad) motivoContent.removeAttribute('aria-busy'); }
+    const url = new URL(value, window.location.origin);
+    if(url.origin !== window.location.origin || url.username || url.password || /[\\\s]/.test(value) || url.pathname.includes('..')) return null;
+    if(url.pathname === '/trilha/sandbox/') url.pathname = '/encomendas/sandbox/';
+    if(url.pathname === '/trilha/fila/') url.pathname = '/encomendas/cliente/';
+    if(!(/^\/trilha\/(?:inicio\/(?:motivo|objetivo|item|envio)\/|inicio\/conquista\/[1-4]\/|ciclo\/|recebimentos\/)$/.test(url.pathname)
+      || /^\/encomendas\/sandbox\/(?:$|projetos\/[^/]+\/(?:confirmar|aceitar)\/|trabalhos\/[^/]+\/(?:$|(?:arquivo|mensagem|entregar)\/|analise\/[^/]+\/repetir\/))$/.test(url.pathname)
+      || /^\/encomendas\/cliente\/(?:$|trabalhos\/[^/]+\/(?:$|(?:confirmar|aceitar|arquivo|mensagem|orientar|entregar)\/))$/.test(url.pathname))) return null;
+    return url.href;
+  } catch { return null; }
+}
+let motivoUrl, motivoBusy = false, motivoDirty = false;
+async function confirmDiscard() {
+  if(motivoScope.querySelector('.discard-question')) return false;
+  return new Promise(resolve => {
+    const box=document.createElement('section');box.className='discard-question';box.setAttribute('role','alert');
+    const text=document.createElement('p');text.textContent='Há respostas ou arquivos ainda não enviados. Quer continuar editando?';
+    const stay=document.createElement('button');stay.type='button';stay.textContent='Continuar editando';
+    const leave=document.createElement('button');leave.type='button';leave.textContent='Fechar sem salvar';
+    const done=value=>{box.remove();resolve(value);};
+    stay.onclick=()=>done(false);leave.onclick=()=>done(true);box.append(text,stay,leave);motivoScope.prepend(box);stay.focus();
+  });
+}
+async function loadMotivo(destination, submission) {
+  const url=nativeTaskUrl(destination);
+  if(!url) {
+    if(new URL(destination,window.location.origin).pathname === '/trilha/') { motivoDialog.close();return; }
+    throw new Error('Esta atividade não está disponível neste painel.');
+  }
+  const currentLoad=++motivoLoad;
+  if(!submission){motivoController?.destroy?.();motivoController=null;}
+  motivoContent.setAttribute('aria-busy','true');
+  if(!submission){const loading=document.createElement('p');loading.textContent='Abrindo sua etapa…';loading.setAttribute('role','status');motivoScope.replaceChildren(loading);}
+  try {
+    const response=await fetch(url,{credentials:'same-origin',cache:'no-store',headers:{'X-Trilha-Painel':'1'},...submission});
+    if([401,403].includes(response.status)){motivoScope.replaceChildren();throw new Error('Sua sessão pode ter expirado. Entre novamente na sua conta para continuar.');}
+    let component;
+    try { component=await response.json(); } catch { throw new Error("Não foi possível abrir ou salvar agora. Suas respostas continuam no formulário; confira antes de tentar novamente."); }
+    if(component.componente!=='trilha'||typeof component.html!=='string')throw new Error('Não foi possível abrir esta atividade. Seus registros continuam guardados.');
+    if(currentLoad!==motivoLoad||!motivoDialog.open)return;
+    const template=document.createElement('template');template.innerHTML=component.html;
+    if(template.content.querySelector('iframe,object,embed,script:not([type="application/json"])')||/<!doctype|<html[ >]|<body[ >]/i.test(component.html))throw new Error('O conteúdo desta atividade está indisponível.');
+    if(!response.ok){
+      const error=template.content.querySelector('[role=alert],.jornada-erro');
+      throw new Error(error?.textContent||'Confira os campos antes de enviar novamente. Suas respostas continuam no formulário.');
+    }
+    const scripts={inicio:'/trilha/faixas-static/inicio.js?v=17',conquista:'/trilha/faixas-static/inicio_conquista.js?v=4',ciclo:'/trilha/faixas-static/ciclo.js?v=2',encomendas:'/trilha/trabalho.js?v=1'};
+    if(scripts[component.controlador])await loadMotivoScript(scripts[component.controlador]);
+    if(currentLoad!==motivoLoad||!motivoDialog.open)return;
+    motivoController?.destroy?.();motivoController=null;motivoDirty=false;
+    const base=document.createElement('style');
+    base.textContent=':host{display:block;color:#172b48;font:16px/1.6 system-ui,sans-serif}*{box-sizing:border-box}.trilha-modal{padding:20px;min-width:0}.trilha-modal img{max-width:100%}.trilha-modal input:not([type=checkbox]):not([type=radio]),.trilha-modal textarea,.trilha-modal select{max-width:100%}.trilha-modal .page-main{margin:0}.trilha-modal .celebracao{margin-top:0}.motivo-recibo{--papel:#f8faf5;--escuro:#253923;--cinza:#667363;--verde:#58ae17;color:var(--escuro);background:var(--papel)}.painel-status{padding:10px;color:#9b2424;white-space:pre-wrap}.discard-question{position:sticky;top:0;z-index:20;background:#fff4d9;border:1px solid #b79d62;border-radius:12px;padding:16px;margin:10px}.discard-question button{margin:6px;padding:10px;border-radius:8px;cursor:pointer}';
+    template.content.querySelectorAll('style').forEach(style=>{style.textContent=style.textContent.replace(/:root\b/g,':host');});
+    const wrapper=document.createElement('div');wrapper.className='trilha-modal '+(component.controlador==='inicio'?'inicio-embutido':'');
+    wrapper.append(template.content);motivoScope.replaceChildren(base,wrapper);
+    motivoUrl=nativeTaskUrl(response.url)||url;
+    const host={close:()=>motivoDialog.close(),navigate:loadMotivo,confirmDiscard,scrollTop:()=>{motivoContent.scrollTop=0;}};
+    if(component.controlador==='inicio')motivoController=window.iniciarJornada(motivoScope,host);
+    else if(component.controlador==='conquista')window.iniciarConquista(motivoScope,host);
+    else if(component.controlador==='ciclo')motivoController=window.iniciarCiclo(motivoScope,host);
+    else if(component.controlador==='encomendas')motivoController=window.iniciarTrabalhoTrilha(motivoScope,host);
+    motivoContent.scrollTop=0;
+    const hash=new URL(url).hash;
+    if(hash)motivoScope.getElementById(hash.slice(1))?.scrollIntoView({block:'start'});
+    refreshJourney();
+  } catch(error) {
+    if(currentLoad!==motivoLoad||!motivoDialog.open)return;
+    let status=motivoScope.querySelector('.painel-status');
+    if(!status){status=document.createElement('p');status.className='painel-status';status.setAttribute('role','alert');motivoScope.prepend(status);}
+    status.textContent=error.message;
+    if(!submission){const retry=document.createElement('button');retry.type='button';retry.textContent='Tentar novamente';retry.onclick=()=>loadMotivo(url);status.append(retry);}
+  } finally {if(currentLoad===motivoLoad)motivoContent.removeAttribute('aria-busy');}
+}
+async function submitTask(event) {
+  if(event.defaultPrevented || event.target.closest('#inicio-jornada,#ciclo-criacao'))return;
+  const form=event.target;if(form.tagName!=='FORM')return;
+  const destination=nativeTaskUrl(form.getAttribute('action')||motivoUrl);
+  if(!destination)return;
+  event.preventDefault();if(motivoBusy||!form.reportValidity())return;
+  const body=new FormData(form);
+  if(event.submitter?.name)body.set(event.submitter.name,event.submitter.value);
+  motivoBusy=true;
+  const controls=Array.from(form.querySelectorAll('button,input,textarea,select'));const disabled=controls.map(c=>c.disabled);controls.forEach(c=>c.disabled=true);
+  try{
+    const context=JSON.parse(document.querySelector('#trilha-data').textContent);
+    const identity=await requestJson('/trilha/minha-trilha/');
+    if(identity.pessoa_id!==context.pessoa_id||identity.site_id!==context.site_id){motivoScope.replaceChildren();throw new Error('Sua conta mudou. Reabra a Trilha com a conta em que começou.');}
+    if((form.method||'get').toLowerCase()==='get'){
+      const url=new URL(destination);for(const [key,value]of body)url.searchParams.set(key,value);await loadMotivo(url.href);
+    }else await loadMotivo(destination,{method:'POST',body});
+  }catch(error){if([401,403].includes(error.status))motivoScope.replaceChildren();const p=document.createElement('p');p.setAttribute('role','alert');p.textContent=error.message;motivoScope.prepend(p);}
+  finally{motivoBusy=false;controls.forEach((c,i)=>c.disabled=disabled[i]);}
 }
 function openMotivo(opener) {
   if (!motivoDialog) {
@@ -465,26 +534,37 @@ function openMotivo(opener) {
     close.textContent = '×'; close.setAttribute('aria-label', 'Fechar meus motivos');
     motivoContent = document.createElement('div'); motivoContent.className = 'motivo-content';
     motivoScope = motivoContent.attachShadow({mode: 'open'});
-    const requestClose = () => motivoController ? motivoController.close() : motivoDialog.close();
+    const requestClose = async () => { if(motivoBusy)return; if(motivoController?.close)return motivoController.close(); if(motivoDirty&&!await confirmDiscard())return; motivoDialog.close(); };
     close.addEventListener('click', requestClose);
     motivoDialog.addEventListener('cancel', event => { event.preventDefault(); requestClose(); });
     motivoDialog.addEventListener('close', () => {
-      motivoLoad++; motivoController?.destroy(); motivoController = null; motivoScope.replaceChildren();
+      motivoLoad++; motivoController?.destroy?.(); motivoController = null; motivoScope.replaceChildren();
       const inDetails = document.querySelector('#detail-dialog').open;
       refreshJourney().then(() => {
-        const panel = document.querySelector(inDetails ? '#dialog-panel' : '#panel-1');
+        const panel = document.querySelector(inDetails ? '#dialog-panel' : '#timeline');
         (panel?.querySelector(`a[href="${motivoOpener?.getAttribute('href')}"]`) || motivoOpener)?.focus({preventScroll: true});
       });
+    });
+    motivoScope.addEventListener('input',()=>{motivoDirty=true;});
+    motivoScope.addEventListener('submit',submitTask);
+    motivoScope.addEventListener('click',async event=>{
+      const link=event.target.closest('a');if(!link||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||event.button>0||link.hasAttribute('download'))return;
+      const href=link.getAttribute('href');if(!href)return;
+      if(href.startsWith('#')){event.preventDefault();motivoScope.getElementById(href.slice(1))?.scrollIntoView({block:'start'});return;}
+      const destination=nativeTaskUrl(href);
+      if(new URL(href,window.location.origin).pathname==='/trilha/'){event.preventDefault();requestClose();return;}
+      if(destination){event.preventDefault();if(motivoBusy)return;if(motivoDirty&&!await confirmDiscard())return;loadMotivo(destination);}
+      else {link.target='_blank';link.rel='noopener';}
     });
     motivoDialog.append(close, motivoContent); document.body.append(motivoDialog);
   }
   motivoOpener = opener;
   const compromisso = opener.getAttribute('href') === '/trilha/inicio/objetivo/';
   motivoDialog.classList.toggle('compromisso-dialog', compromisso);
-  motivoDialog.setAttribute('aria-label', compromisso ? 'Meu compromisso' : 'Definir meus motivos');
-  motivoDialog.querySelector('.motivo-close').setAttribute('aria-label', compromisso ? 'Fechar meu compromisso' : 'Fechar meus motivos');
+  motivoDialog.setAttribute('aria-label', compromisso ? 'Meu compromisso' : (opener.textContent?.trim() || 'Minha atividade'));
+  motivoDialog.querySelector('.motivo-close').setAttribute('aria-label', 'Fechar atividade');
   motivoDialog.showModal();
-  loadMotivo(opener.getAttribute('href') + '?embutido=1');
+  loadMotivo(opener.getAttribute('href'));
 }
 
 function celebrateJourney(progress, context){

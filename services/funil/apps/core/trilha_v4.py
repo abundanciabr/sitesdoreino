@@ -67,7 +67,7 @@ def celebracao_faixas(request):
 def trilha_v4(request, arquivo="index.html"):
     if request.get_host().split(":")[0].lower() != "meshcraft.top":
         raise Http404
-    if arquivo not in {"index.html", "style.css", "app.js", "inventario.html", "inventario.css", "inventario.js"}:
+    if arquivo not in {"index.html", "style.css", "app.js", "inventario.html", "inventario.css", "inventario.js", "trabalho.js"}:
         raise Http404
     destino = "/trilha/inventario/" if arquivo.startswith("inventario") else "/trilha/"
     cookie = request.META.get("HTTP_COOKIE", "")

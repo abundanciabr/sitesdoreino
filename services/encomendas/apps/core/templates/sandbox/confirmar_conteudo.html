@@ -1,0 +1,25 @@
+{% load sandbox_moeda catalogo_visual %}
+<style>.prazo-opcoes label{display:flex;align-items:center;gap:10px;border:1px solid #cbdfe5;border-radius:10px;padding:14px;margin-top:10px;cursor:pointer}.prazo-opcoes input[type=radio]{display:inline-block;width:auto;padding:0;margin:0;accent-color:#009c9f}.prazo-opcoes label:has(input:checked){background:#e5f7f6;border-color:#009c9f}input[type=checkbox]{accent-color:#009c9f}</style>
+<h1>É este o projeto que você quer fazer?</h1>
+<p class="lead">Confira o combinado, escolha seu prazo e aceite os termos para começar.</p>
+<div class="split"><section class="card"><h2>{{ projeto.titulo }}</h2>{% if projeto.do_curso %}<div class="course-preview">{% visual_projeto projeto.slug projeto.titulo %}</div>{% endif %}<p class="preserve">{{ projeto.briefing }}</p>
+<h3>O que você deverá entregar</h3><ul>{% for item in projeto.entregaveis %}<li>{{ item }}</li>{% endfor %}</ul>
+<h3>Critérios de aprovação</h3><p class="preserve">{{ projeto.criterios }}</p>
+<h3>Referências</h3>{% for item in projeto.referencias %}<p>{{ item }}</p>{% endfor %}
+<p><strong>Ajustes:</strong> {% if projeto.ajustes_previstos != None %}{{ projeto.ajustes_previstos }} pedidos previstos{% else %}A escola pode orientar correções na avaliação, sem quantidade definida.{% endif %}</p>
+<p><strong>Conclusão:</strong> faixa Verde e 20.000 XP após a análise reconhecer o trabalho no Sandbox, uma vez por aluno.</p></section>
+<section class="card"><h2>Simulação para aprender</h2><div class="notice"><strong>Sem dinheiro, cobrança ou pagamento.</strong><p class="preserve">{{ termos_simulacao }}</p></div>
+{% if trabalho_ativo %}<p>Você já tem um projeto em andamento.</p><a class="btn" href="{% url 'sandbox_trabalho' trabalho_ativo.pk %}">Continuar meu trabalho</a>
+{% elif aluno_atual %}
+<form method="post" action="{% url 'sandbox_aceitar' projeto.pk %}">{% csrf_token %}
+{% if projeto.livre %}<label>Item escolhido<input name="item_livre" required maxlength="200" placeholder="O que você quer modelar?"></label><label>Descrição e referência<textarea name="descricao_livre" required placeholder="Descreva o objeto e a referência escolhida."></textarea></label>{% endif %}
+<fieldset class="prazo-opcoes" style="border:0;padding:0"><legend><strong>Escolha seu prazo de entrega</strong></legend>
+<label><input type="radio" name="prazo_horas" value="24" required> 24 horas</label>
+<label><input type="radio" name="prazo_horas" value="48" required> 48 horas</label>
+<label><input type="radio" name="prazo_horas" value="72" required> 72 horas · prazo máximo</label></fieldset>
+<p class="tiny">A contagem começa ao confirmar abaixo. Voltar agora não inicia o trabalho nem o prazo.</p>
+<label style="margin-top:20px"><input type="checkbox" name="aceito_termos" value="sim" required> Li e aceito os termos desta simulação exclusivamente educacional, sem qualquer pagamento ou envolvimento financeiro, o briefing e o prazo escolhido.</label>
+<div class="actions"><button>Confirmar e iniciar minha tarefa</button></div></form>
+{% elif papel == 'equipe' %}<p>Esta é a confirmação exibida ao aluno. Para iniciar, ele precisa entrar com a própria conta.</p>
+{% else %}<p>Entre com sua conta de aluno para iniciar o projeto.</p>{% endif %}
+<p style="margin-top:20px"><a class="btn secondary" href="{% url 'sandbox_catalogo' %}?categoria={{ projeto.categoria }}">Voltar e escolher outro item</a></p></section></div>

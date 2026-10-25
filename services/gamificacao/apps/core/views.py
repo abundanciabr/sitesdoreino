@@ -31,7 +31,7 @@ from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponseRedirect, JsonResponse
 from django.http import HttpResponse
 import io
-from django.shortcuts import render
+from .painel_trilha import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.cache import never_cache
