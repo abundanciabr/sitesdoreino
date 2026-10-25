@@ -125,7 +125,7 @@
     <p class="nota">{% if peneirando %}A lista inclui somente os alunos da fila que correspondem aos filtros atuais.{% else %}A lista inclui todos os alunos aguardando liberação.{% endif %}</p>
     <div id="painel-lista-espera" hidden>
       <label for="lista-espera"><b>Lista dos alunos aguardando liberação ({{ esperando|length }})</b></label>
-      <textarea id="lista-espera" readonly rows="14" style="width:100%;box-sizing:border-box;margin:12px 0" spellcheck="false"></textarea>
+      <textarea id="lista-espera" readonly rows="14"  spellcheck="false"></textarea>
       <button class="sim" type="button" id="copiar-lista-espera">Copiar lista</button>
       <p class="nota" id="recado-lista-espera" role="status" aria-live="polite"></p>
     </div>
@@ -137,6 +137,7 @@
       {% endfor %}
     </div>
   </div>
+  <style>#lista-espera { width: 100%; box-sizing: border-box; margin: 12px 0; }</style>
   <script>
   (() => {
     const gerar = document.getElementById('gerar-lista-espera');
