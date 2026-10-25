@@ -1,5 +1,6 @@
 {% extends "gamificacao/trilha_moldura.html" %}
 {% block titulo %}Minha criação · Próxima faixa{% endblock %}
+{% block acompanhar_faixas %}data-faixa-acompanhar{% endblock %}
 {% block conteudo %}
 <section class="inicio" id="ciclo-criacao" data-api="{% url 'inventario' %}" data-ordem="{{ ordem }}">
   <p class="inicio-selo">Meu primeiro ciclo · {{ faixas.caminho }}</p>

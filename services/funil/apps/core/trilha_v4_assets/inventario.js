@@ -25,6 +25,7 @@ function fileList(target,passo){
   });
 }
 function render(){
+  if (!data.conquista_url) window.MeshcraftFaixas?.celebrar(data, context);
   q('#inventory-content').hidden=false;
   if(selectedOrder===null)selectedOrder=location.hash==='#primeiro-item'&&data.etapas[2].alcancada?3:data.atual_ordem;
   else if(selectedOrder===previousCurrent||!data.etapas.some(e=>e.ordem===selectedOrder&&e.alcancada))selectedOrder=data.atual_ordem;
