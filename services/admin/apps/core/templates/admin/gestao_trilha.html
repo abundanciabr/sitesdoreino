@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Gerenciamento da Trilha/faixas{% endblock %}
+{% block corpo %}<div class="envolucro">
+<a class="volta" href="{% url 'trilha_v4' %}">← Trilha dos alunos</a>
+<h1>Gerenciamento da Trilha/faixas</h1>
+<p class="subtitulo">Remova uma conquista do progresso atual de um aluno, preservando seus arquivos, avaliações, histórico e XP.</p>
+{% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
+{% if removida %}<p role="status">Remoção concluída. O progresso abaixo já está atualizado.</p>{% endif %}
+{% if aluno %}
+<h2>{{ nome }}</h2><a href="{% url 'gestao_trilha' %}">Escolher outro aluno</a>
+{% if trilha %}<p>Faixa atual: <strong>{{ trilha.atual }}</strong></p>
+<p>Ao remover uma etapa, a progressão recua até a etapa anterior. As posteriores ficam aguardando a reconquista da etapa removida. Remover a faixa preta retira o reconhecimento atual de todos os seus graus. A branca representa o início da jornada.</p>
+<p>Uma nova avaliação reconhecida permite reconquistar a etapa. O bônus de XP não é pago novamente.</p>
+<form method="post">{% csrf_token %}<input type="hidden" name="aluno" value="{{ aluno }}"><input type="hidden" name="revisao" value="{{ trilha.revisao }}">
+<div class="campo"><label for="ordem">Conquista a remover</label><select id="ordem" name="ordem" required><option value="">Selecione uma conquista</option>{% for etapa in trilha.etapas %}{% if etapa.alcancada and etapa.ordem > 1 %}<option value="{{ etapa.ordem }}">Etapa {{ etapa.ordem }} — {{ etapa.nome }}</option>{% endif %}{% endfor %}</select></div>
+<div class="campo"><label for="tipo">Remoção</label><select id="tipo" name="tipo"><option value="etapa">Remover esta etapa</option><option value="faixa">Remover esta faixa inteira</option></select></div>
+<button type="submit" class="sim">Remover do progresso do aluno</button></form>
+<h2>Etapas do caminho</h2><div class="cartoes">{% for etapa in trilha.etapas %}<div class="cartao">{{ etapa.ordem }} — {{ etapa.nome }}: {% if etapa.alcancada %}Conquistada{% else %}Aguardando conquista{% endif %}</div>{% endfor %}</div>
+<h2>Histórico de remoções</h2>{% for registro in trilha.historico %}<p>{{ registro.quando }} — {{ registro.tipo }} removida na etapa {{ registro.ordem }} (registro {{ registro.id }}).</p>{% empty %}<p>Nenhuma remoção registrada.</p>{% endfor %}
+{% endif %}
+{% else %}<form method="get" class="peneira"><div class="campo"><label for="q">Buscar aluno pelo nome</label><input id="q" name="q" type="search" value="{{ q }}"></div><button class="sim">Buscar</button></form>
+<div class="cartoes">{% for item in alunos %}<div class="cartao"><a href="{{ item.url }}">{{ item.nome }}</a></div>{% empty %}<p>Nenhum aluno encontrado.</p>{% endfor %}</div>{% endif %}
+</div>{% endblock %}
