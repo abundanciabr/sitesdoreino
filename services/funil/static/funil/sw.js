@@ -1,5 +1,5 @@
 // static/funil/sw.js — service worker do app instalado, servido em `/sw.js`.
-// Guarda a página inicial para abrir sem rede; navegação vai à rede e cai na cópia se falhar.
+// Guarda apenas a página inicial para abrir no próprio endereço sem rede.
 
 const CACHE = "meshcraft-inicio-v1";
 // A página inicial vem de `?inicio=` no endereço do registro.
@@ -34,10 +34,11 @@ self.addEventListener("fetch", (evento) => {
   if (pedido.method !== "GET" || pedido.mode !== "navigate") {
     return;
   }
-  // O admin precisa mostrar a resposta real (403, login ou falha de rede).
-  // Uma cópia da home nunca representa o estado de uma página administrativa.
+  // Cada página precisa mostrar a própria resposta e os próprios redirecionamentos.
+  // A cópia offline da home só é válida no endereço exato da própria home.
   const caminho = new URL(pedido.url).pathname;
-  if (caminho === "/admin" || caminho.startsWith("/admin/")) {
+  const enderecoInicio = new URL(INICIO, self.location.origin).href;
+  if (pedido.url !== enderecoInicio || caminho === "/admin" || caminho.startsWith("/admin/")) {
     return;
   }
   evento.respondWith(
@@ -51,7 +52,7 @@ self.addEventListener("fetch", (evento) => {
       })
       .catch(async () => {
         const cache = await caches.open(CACHE);
-        const guardada = (await cache.match(pedido)) || (await cache.match(INICIO));
+        const guardada = await cache.match(pedido);
         if (guardada) {
           return guardada;
         }
