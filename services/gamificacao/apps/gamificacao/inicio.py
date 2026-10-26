@@ -157,13 +157,20 @@ def salvar_inicio(jornada, dados):
     jornada.save(update_fields=['inicio', 'apoio', 'revisao', 'atualizada_em'])
     if dados['acao'] == 'inicio-compromisso' and dados.get('assumir') == 'sim':
         from .jornada import registrar_avaliacao
+        from .gestao_trilha import cortes
         correto = inicio.get('motivo') in {m[0] for m in MOTIVOS} and bool(inicio.get('compromisso_curso_em'))
+        evidencia = {'tipo': 'exercicio-compromisso', 'motivo': inicio.get('motivo'),
+                     'compromisso_em': inicio.get('compromisso_curso_em')}
+        retirada_em = cortes(jornada.pessoa_id, jornada.site_id, inicio.get('motivo')).get(2)
+        if retirada_em:
+            # A nova confirmação é uma tentativa após a retirada. Repetir a
+            # mesma confirmação continua idempotente, sem recriar o bônus.
+            evidencia['retirada_admin_em'] = retirada_em.isoformat()
         registrar_avaliacao(jornada.pessoa_id, jornada.site_id, 2,
             'reconhecida' if correto else 'incompleta',
             'Você definiu seu motivo e assumiu seu compromisso.' if correto else
             'Seu compromisso está guardado. Confira seu motivo para continuar.',
-            {'tipo': 'exercicio-compromisso', 'motivo': inicio.get('motivo'),
-             'compromisso_em': inicio.get('compromisso_curso_em')})
+            evidencia)
         jornada.refresh_from_db()
     if dados['acao'] == 'inicio-motivo' and inicio.get('motivo') == 'freelancer' and not inicio.get('motivo_rascunho'):
         from .jornada import reconciliar_recebimentos
