@@ -50,6 +50,7 @@ def _matriculas():
 
 
 def _alunos(linhas, q):
+    q = q.strip().casefold()
     # A lista agrupa cursos da mesma pessoa na mesma escola, sem apagar as
     # matrículas disponíveis: qualquer id do grupo continua sendo resolvível.
     grupos = {}
@@ -60,13 +61,13 @@ def _alunos(linhas, q):
         if not matricula_id or not email or not site_id:
             continue
         chave = (site_id, email)
-        grupo = grupos.setdefault(chave, {"nome": "", "site_id": site_id, "ids": []})
+        grupo = grupos.setdefault(chave, {"nome": "", "email": email, "site_id": site_id, "ids": []})
         grupo["nome"] = grupo["nome"] or _texto(linha.get("nome_completo"), 200)
         grupo["ids"].append(matricula_id)
     itens = []
     for grupo in grupos.values():
         nome = grupo["nome"] or "Aluno sem nome cadastrado"
-        if q and q not in " ".join((grupo["nome"], grupo["site_id"])).casefold():
+        if q and q not in " ".join((grupo["nome"], grupo["email"], grupo["site_id"])).casefold():
             continue
         itens.append({"nome": nome, "site_id": grupo["site_id"],
                       "url": reverse("trilha_v4") + "?" + urlencode({"aluno": grupo["ids"][0]}),

@@ -18,6 +18,6 @@
 <h2>Etapas do caminho</h2><div class="cartoes">{% for etapa in trilha.etapas %}<div class="cartao">{{ etapa.ordem }} — {{ etapa.nome }}: {% if etapa.alcancada %}Conquistada{% else %}Aguardando conquista{% endif %}</div>{% endfor %}</div>
 <h2>Histórico de remoções</h2>{% for registro in trilha.historico %}<p>{{ registro.quando }} — {{ registro.tipo }} removida na etapa {{ registro.ordem }} (registro {{ registro.id }}).</p>{% empty %}<p>Nenhuma remoção registrada.</p>{% endfor %}
 {% endif %}
-{% else %}<form method="get" class="peneira"><div class="campo"><label for="q">Buscar aluno pelo nome</label><input id="q" name="q" type="search" value="{{ q }}"></div><button class="sim">Buscar</button></form>
+{% else %}<form method="get" class="peneira"><div class="campo"><label for="q">Buscar aluno por nome ou e-mail</label><input id="q" name="q" type="search" value="{{ q }}"></div><button class="sim">Buscar</button></form>
 <div class="cartoes">{% for item in alunos %}<div class="cartao"><a href="{{ item.url }}">{{ item.nome }}</a></div>{% empty %}<p>Nenhum aluno encontrado.</p>{% endfor %}</div>{% endif %}
 </div>{% endblock %}

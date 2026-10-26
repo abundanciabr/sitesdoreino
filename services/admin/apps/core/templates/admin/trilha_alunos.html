@@ -8,7 +8,7 @@
   <p><a href="{% url 'gestao_trilha' %}">Gerenciamento da Trilha/faixas</a></p>
   <p class="subtitulo">Escolha um aluno para ver o progresso registrado no site.</p>
   <form class="peneira" method="get" action="{% url 'trilha_v4' %}">
-    <div class="campo"><label for="trilha-q">Buscar aluno pelo nome</label><input id="trilha-q" type="search" name="q" value="{{ q }}" maxlength="120"></div>
+    <div class="campo"><label for="trilha-q">Buscar aluno por nome ou e-mail</label><input id="trilha-q" type="search" name="q" value="{{ q }}" maxlength="120"></div>
     <button class="sim" type="submit">Buscar</button>
   </form>
   {% if erro %}<p class="aviso" role="alert">{{ erro }}</p>{% endif %}
