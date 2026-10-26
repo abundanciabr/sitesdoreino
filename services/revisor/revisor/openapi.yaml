@@ -1,0 +1,182 @@
+openapi: 3.1.0
+info:
+  title: Meshcraft Revisor de Modelos 3D
+  version: 1.0.0
+  description: 'Frozen design contract. HTTP endpoints are not installed yet. Only model inspector, no tutor/add-on/portfolio.'
+servers:
+  - url: https://meshcraft.top/ferramentas/revisor-de-modelos-3d
+security:
+  - SiteSession: []
+paths:
+  /api/v1/reviews/:
+    post:
+      operationId: createReview
+      description: 'Active enrollment checked by HTTP. Daily quota 10 per person/site in America/Sao_Paulo. No admin allowlist. Reject type/size before parsing. File deleted after analysis. Valid CSRF token also required.'
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: {type: string, minLength: 16, maxLength: 128}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [file, item_type, profile, project]
+              properties:
+                file: {type: string, format: binary, description: 'FBX or GLB only, at most 50000000 bytes.'}
+                item_type: {type: string, enum: [accessory, clothing, weapon, vehicle, scene]}
+                profile: {type: string, enum: [game, rigid, layered]}
+                project: {type: string, format: uuid}
+                studs_per_unit: {type: number, exclusiveMinimum: 0, maximum: 10000, description: 'Declared Studio import conversion. Missing means dimensions in studs are unverifiable.'}
+      responses:
+        '202': {$ref: '#/components/responses/ReviewResponse'}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '409': {$ref: '#/components/responses/Error'}
+        '413': {$ref: '#/components/responses/Error'}
+        '415': {$ref: '#/components/responses/Error'}
+        '429': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+    get:
+      operationId: listReviews
+      description: 'Only the current person/site. Cursor-based history. No model download endpoint.'
+      parameters:
+        - {in: query, name: cursor, schema: {type: string, maxLength: 128}}
+        - {in: query, name: limit, schema: {type: integer, minimum: 1, maximum: 50, default: 20}}
+      responses:
+        '200':
+          description: Own revisions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/Review'}}
+                  next_cursor: {type: [string, 'null']}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/reviews/{review_id}/:
+    get:
+      operationId: getReview
+      description: 'Recheck session/enrollment and ownership on every request. UUID knowledge is not authorization.'
+      parameters:
+        - {in: path, name: review_id, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {$ref: '#/components/responses/ReviewResponse'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '404': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/profiles/:
+    get:
+      operationId: listProfiles
+      responses:
+        '200':
+          description: Versioned applicable limits and coverage
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [version, verified_on, profiles]
+                properties:
+                  version: {type: string}
+                  verified_on: {type: string, format: date}
+                  profiles: {type: object}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+  /api/v1/projects/:
+    post:
+      operationId: createProject
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: {type: string, minLength: 1, maxLength: 120}
+      responses:
+        '201':
+          description: Own project created
+          content:
+            application/json:
+              schema: {type: object, required: [id, name], properties: {id: {type: string, format: uuid}, name: {type: string}}}
+        '400': {$ref: '#/components/responses/Error'}
+        '401': {$ref: '#/components/responses/Error'}
+        '403': {$ref: '#/components/responses/Error'}
+        '503': {$ref: '#/components/responses/Error'}
+components:
+  securitySchemes:
+    SiteSession:
+      type: apiKey
+      in: cookie
+      name: meshcraft_sessao
+      description: 'Opaque session forwarded to identity over the contracted HTTP pair; never decoded here.'
+  responses:
+    ReviewResponse:
+      description: Own review and immutable measured report when available
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Review'}
+    Error:
+      description: 'Typed error, no raw parser/HTTP exception. Invalid file itself ends as unreadable, not HTTP 500.'
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [code]
+            properties:
+              code: {type: string, enum: [invalid_request, login_required, enrollment_required, unavailable, not_found, idempotency_conflict, too_large, unsupported_type, daily_quota, queue_full]}
+  schemas:
+    Review:
+      type: object
+      additionalProperties: false
+      required: [id, project, state, created_at, narration_state, report]
+      properties:
+        id: {type: string, format: uuid}
+        project: {type: string, format: uuid}
+        state: {type: string, enum: [received, queued, analyzing, completed, unreadable, technical_failure]}
+        created_at: {type: string, format: date-time}
+        narration_state: {type: string, enum: [pending, complete, fallback, unavailable]}
+        report:
+          oneOf:
+            - {$ref: '#/components/schemas/Report'}
+            - {type: 'null'}
+    Report:
+      type: object
+      required: [engine_version, rules_version, profile, grade, coverage_complete, checks, findings, metrics, triangles, pedagogy]
+      properties:
+        engine_version: {type: string}
+        rules_version: {type: string}
+        profile: {type: string, enum: [game, rigid, layered]}
+        grade: {type: string, enum: [ready, almost, needs_work]}
+        coverage_complete: {type: boolean}
+        triangles: {type: integer, minimum: 0}
+        pedagogy: {type: string, enum: [pending_livia, approved]}
+        checks: {type: array, items: {$ref: '#/components/schemas/Check'}}
+        findings: {type: array, items: {$ref: '#/components/schemas/Check'}}
+        metrics: {type: array, items: {type: object}}
+    Check:
+      type: object
+      additionalProperties: false
+      required: [code, mesh, state, severity, count, evidence, source, lesson, pedagogy]
+      properties:
+        code: {type: string}
+        mesh: {type: [integer, 'null'], minimum: 0}
+        state: {type: string, enum: [pass, fail, unverifiable, not_applicable]}
+        severity: {type: [string, 'null'], enum: [blocks, warns, tip, null]}
+        count: {type: [integer, 'null'], minimum: 0}
+        evidence: {type: object}
+        source: {type: string, format: uri}
+        lesson: {type: [string, 'null'], format: uri}
+        pedagogy: {type: string, enum: [pending_livia, approved]}
