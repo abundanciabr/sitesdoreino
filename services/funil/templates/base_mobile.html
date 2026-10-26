@@ -62,11 +62,7 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
 
        `z-index` porque ela passa POR CIMA do conteudo ao rolar; sem ele, um
        cartao com fundo proprio passaria na frente dela. {% endcomment %}
-    .barra-do-site { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid #e4e4e7; }
-    .menu-topo { display: flex; gap: .25rem; overflow-x: auto; width: 100%; max-width: 32rem; margin: 0 auto; padding: .5rem 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    .menu-topo::-webkit-scrollbar { display: none; }
-    .menu-topo a { flex: 0 0 auto; padding: .5rem .75rem; border-radius: .5rem; color: #1a1a1a; text-decoration: none; font-size: .95rem; font-weight: 600; white-space: nowrap; }
-    .menu-topo a:hover, .menu-topo a:focus { background: #ececef; }{% endif %}{% if request.i18n_seo %}
+{% include "funil/_menu_topo_estilo.html" %}{% endif %}{% if request.i18n_seo %}
     .instalar { border: 1px solid #bbf7d0; background: #f0fdf4; }
     .instalar-titulo { margin: 0 0 .25rem; font-weight: 600; }
     .instalar-porque { margin: 0 0 .75rem; font-size: .9rem; color: #3f3f46; }
@@ -94,7 +90,7 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
   {% block head_extra %}{% endblock %}
 </head>
 <body>{% if itens_do_menu %}
-  <div class="barra-do-site"><nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+  {% include "funil/_menu_topo.html" %}{% endif %}
   <div class="wrap">
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
     {% include "funil/_instalar_o_app.html" %}{% endif %}{% if avisos_no_celular %}
