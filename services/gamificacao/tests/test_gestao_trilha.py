@@ -56,3 +56,33 @@ def test_faixa_preta_retira_todos_graus_e_isola_outro_aluno(aluna):
     assert situacao(p.pk,"teste")["atual"]["ordem"] == 6
     assert cortes("outra-pessoa","teste","aprender") == {}
     assert cortes(p.pk,"outro-site","aprender") == {}
+
+
+@pytest.mark.parametrize('caminho', ['freelancer', 'ugc', 'jogo', 'aprender'])
+def test_reconquistar_amarela_pelo_formulario_real_apos_remocao(client, monkeypatch, caminho):
+    p = Pessoa.objects.create(id_da_plataforma='teste-reconquista', email='reconquista@example.test')
+    configurar('teste')
+    j = JornadaPessoal.objects.create(pessoa=p, site_id='teste', inicio={'motivo':caminho})
+    monkeypatch.setenv('SITE_ID','teste')
+    monkeypatch.setattr('apps.core.inventario._sessao', lambda cookie: {'autenticado':True,'id':p.pk})
+    url='/trilha/inventario/api/'
+    resposta=client.post(url, {'acao':'inicio-compromisso','assumir':'sim','revisao':j.revisao}, HTTP_COOKIE='meshcraft_sessao=teste')
+    assert resposta.status_code == 200
+    assert situacao(p.pk,'teste')['atual']['ordem'] == 2
+    xp_antes = list(LancamentoDeXP.objects.order_by('pk').values())
+    j.refresh_from_db()
+    remover(p.pk,'teste',2,'faixa','admin',j.revisao)
+    assert situacao(p.pk,'teste')['atual']['ordem'] == 1
+    resposta=client.get(url, HTTP_COOKIE='meshcraft_sessao=teste')
+    revisao=resposta.json()['revisao']
+    resposta=client.post(url, {'acao':'inicio-compromisso','assumir':'sim','revisao':revisao}, HTTP_COOKIE='meshcraft_sessao=teste')
+    assert resposta.status_code == 200
+    assert resposta.json()['atual_ordem'] == 2
+    assert resposta.json()['avaliacao_atual']['conquistada'] is True
+    assert list(LancamentoDeXP.objects.order_by('pk').values()) == xp_antes
+    quantidade = AvaliacaoDaJornada.objects.count()
+    resposta=client.post(url, {'acao':'inicio-compromisso','assumir':'sim','revisao':resposta.json()['revisao']}, HTTP_COOKIE='meshcraft_sessao=teste')
+    assert resposta.status_code == 200
+    assert resposta.json()['atual_ordem'] == 2
+    assert AvaliacaoDaJornada.objects.count() == quantidade
+    assert list(LancamentoDeXP.objects.order_by('pk').values()) == xp_antes
