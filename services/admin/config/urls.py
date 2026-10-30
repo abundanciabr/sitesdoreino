@@ -1,3 +1,4 @@
+from apps.core.equipe_administradores import tornar_administrador
 from apps.core.acesso_sem_senha import previa as previa_acesso_sem_senha
 from apps.core.nps import crm_satisfacao_revisao_salvar
 from apps.core.medalhas import painel as medalhas_painel, previa as medalhas_previa
@@ -600,6 +601,7 @@ urlpatterns = [
         conectar_meu_celular,
         name="conectar_meu_celular",
     ),
+    path("equipe/pessoas/<int:id>/administrador", tornar_administrador, name="equipe_tornar_administrador"),
     path("equipe/pessoas", pessoas_da_equipe, name="pessoas_da_equipe"),
     path("equipe/pessoas/<int:id>", ficha_da_pessoa, name="ficha_da_pessoa"),
     path("equipe/pessoas/<int:id>/link", ficha_gerar_link, name="ficha_gerar_link"),

@@ -1,0 +1,11 @@
+{% if pessoa.administrador %}
+<p class="nota"><b>Administrador do site</b> &middot; Entre com a conta Google do e-mail conferido para abrir a administração.</p>
+{% elif pessoa.pode_promover %}
+<form method="post" action="{% url 'equipe_tornar_administrador' pessoa.id %}">
+  {% csrf_token %}
+  <p class="nota">Concede acesso completo ao painel administrativo com a conta Google de {{ pessoa.email }}.</p>
+  <button class="botao-pequeno" type="submit">Tornar administrador</button>
+</form>
+{% else %}
+<p class="nota">Acesso de equipe. Para tornar administrador, o mantenedor deve salvar e conferir o e-mail na ficha de uma pessoa ativa.</p>
+{% endif %}

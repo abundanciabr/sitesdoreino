@@ -109,6 +109,7 @@ RESULTADOS = {
     "concluida": "Tarefa concluída.",
     "reaberta": "Tarefa reaberta: voltou para A fazer.",
     "situacao_desconhecida": "Não conheço essa situação. Nada mudou.",
+    "administrador_promovido": "Permissão concedida. A pessoa já pode entrar na administração com a conta Google do e-mail conferido.",
     "associada": "Conta associada.",
     "desassociada": "Conta desassociada.",
     "email_invalido": "Esse e-mail não parece um e-mail. Nada mudou.",
@@ -859,18 +860,20 @@ def pessoas_da_equipe(request):
     """Quem é da equipe, e com que conta cada pessoa entra. Só do administrador."""
     if request.admin.get("equipe_apenas"):
         return _nao_existe(request)
+    from .equipe_administradores import marcar_pessoas
+
     return render(
         request,
         "admin/equipe_pessoas.html",
         {
             "admin": request.admin,
-            "pessoas": list(
+            "pessoas": marcar_pessoas(request, list(
                 MembroDaEquipe.objects.annotate(
                     n_aparelhos=Count(
                         "aparelhos", filter=Q(aparelhos__desconectado_em__isnull=True)
                     )
                 )
-            ),
+            )),
             "resultado": RESULTADOS.get(request.GET.get("resultado") or ""),
         },
     )
