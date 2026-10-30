@@ -14,7 +14,7 @@
     <b>Para alguém entrar, abra a ficha da pessoa e gere o link de acesso dela.</b>
     O aparelho que abrir o link fica conectado àquela pessoa e cai direto nas
     tarefas dela, sem e-mail nem senha. Quem entra assim enxerga só o painel
-    da equipe, e nada mais desta área.
+    da equipe. Ao tornar a pessoa administradora, a conta Google do e-mail conferido passa a abrir toda a administração.
   </p>
 
   <div class="pessoas">
@@ -28,6 +28,7 @@
           &middot; {% if pessoa.email %}{{ pessoa.email }}{% if pessoa.email_a_conferir %} (a conferir){% endif %}{% else %}sem e-mail{% endif %}
         </span>
       </div>
+      <div>{% include "admin/_equipe_administrador.html" %}</div>
       <a class="botao-pequeno" href="{% url 'ficha_da_pessoa' pessoa.id %}">Abrir ficha</a>
     </div>
     {% endfor %}

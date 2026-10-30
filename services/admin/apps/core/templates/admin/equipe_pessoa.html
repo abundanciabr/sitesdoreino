@@ -11,6 +11,11 @@
   {% endif %}
 
   <section class="ficha-bloco">
+    <h2>Administração do site</h2>
+    {% include "admin/_equipe_administrador.html" %}
+  </section>
+
+  <section class="ficha-bloco">
     <h2>Link de acesso</h2>
     {% if pessoa.ativo %}
     <p class="nota-da-ficha">Gere um link e mande para {{ pessoa.nome }}. Ao abrir, o aparelho fica conectado a {{ pessoa.nome }} e cai direto nas tarefas de {{ pessoa.nome }}, sem e-mail nem senha.</p>

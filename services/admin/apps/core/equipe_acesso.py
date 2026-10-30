@@ -515,6 +515,8 @@ def ficha_da_pessoa(request, id: int):
     if not _so_administrador(request):
         return _nao_existe(request)
     pessoa = get_object_or_404(MembroDaEquipe, pk=id)
+    from .equipe_administradores import marcar_pessoas
+    marcar_pessoas(request, [pessoa])
     agora = timezone.now()
     return render(
         request,
