@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Busca{% if busca_consulta %}: {{ busca_consulta }}{% endif %}{% endblock %}
+{% block corpo %}
+<main class="envolucro busca-resultados">
+  {% if busca_indisponivel %}
+    <h1>Não foi possível carregar a busca</h1>
+    <p class="subtitulo">Tente pesquisar novamente em instantes.</p>
+  {% elif busca_consulta %}
+    <h1>Resultados para “{{ busca_consulta }}”</h1>
+    <p class="subtitulo">{{ total_resultados }} página{{ total_resultados|pluralize }} encontrada{{ total_resultados|pluralize }}</p>
+    {% for pagina in resultados %}
+    <article class="busca-resultado">
+      <div class="busca-endereco">meshcraft.top{{ pagina.endereco }}</div>
+      <h2><a href="{{ pagina.endereco }}">{{ pagina.titulo }}</a></h2>
+      <p>{{ pagina.descricao|truncatewords:40 }}</p>
+    </article>
+    {% empty %}
+    <p>Nenhuma página corresponde à sua pesquisa. Tente um nome mais curto, outro assunto ou parte do endereço.</p>
+    {% endfor %}
+    {% if resultados.has_other_pages %}
+    <nav class="busca-paginacao" aria-label="Páginas dos resultados">
+      {% if resultados.has_previous %}<a href="?q={{ busca_consulta|urlencode }}&amp;pagina={{ resultados.previous_page_number }}">← Anterior</a>{% endif %}
+      <span>Página {{ resultados.number }} de {{ resultados.paginator.num_pages }}</span>
+      {% if resultados.has_next %}<a href="?q={{ busca_consulta|urlencode }}&amp;pagina={{ resultados.next_page_number }}">Próxima →</a>{% endif %}
+    </nav>
+    {% endif %}
+  {% else %}
+    <h1>O que você procura?</h1>
+    <p class="subtitulo">Digite o nome de uma página, um assunto ou parte do endereço na busca acima.</p>
+  {% endif %}
+</main>
+{% endblock %}
