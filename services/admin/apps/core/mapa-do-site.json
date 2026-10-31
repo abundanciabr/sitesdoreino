@@ -30,6 +30,33 @@
   "enderecos": [
     {
       "celula": "admin",
+      "rota": "busca/",
+      "endereco": "/admin/busca/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Pesquisar páginas do site e do sistema",
+      "descricao": "Resultados da pesquisa por nome, assunto ou endereço, com links diretos para abrir as páginas."
+    },
+    {
+      "celula": "admin",
+      "rota": "busca/sugestoes/",
+      "endereco": "/admin/busca/sugestoes/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Sugestões da busca administrativa",
+      "descricao": "Entrega as sugestões de páginas enquanto o administrador digita. Exige sessão administrativa."
+    },
+    {
+      "celula": "admin",
+      "rota": "busca/script.js",
+      "endereco": "/admin/busca/script.js",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Interação da barra de busca",
+      "descricao": "Apresenta sugestões e permite selecioná-las com o teclado na área administrativa."
+    },
+    {
+      "celula": "admin",
       "rota": "modelos-de-paginas/flp-0",
       "endereco": "/admin/modelos-de-paginas/flp-0",
       "alcance": "publico",

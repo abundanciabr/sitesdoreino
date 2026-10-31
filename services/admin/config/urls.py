@@ -80,6 +80,7 @@ from apps.core.livro import (
     textos_enviar,
 )
 from apps.core.mapa_do_site import mapa_do_site
+from apps.core.busca_paginas import busca_paginas, busca_sugestoes, busca_script
 from apps.core.economia import (
     economia,
     economia_mudar,
@@ -530,6 +531,9 @@ urlpatterns = [
     # por la trocaria o 401 do contrato por um 302 para a tela de login.
     path("interno/", api.urls),
     path("mapa/", mapa_do_site, name="mapa_do_site"),
+    path("busca/", busca_paginas, name="busca_paginas"),
+    path("busca/sugestoes/", busca_sugestoes, name="busca_sugestoes"),
+    path("busca/script.js", busca_script, name="busca_script"),
     path("pendencias/", pendencias, name="pendencias"),
     # O PAINEL DA EQUIPE (01/10/2026). É o único trecho desta área aberto a quem
     # não é administrador: a porta deixa quem é da equipe passar SÓ aqui

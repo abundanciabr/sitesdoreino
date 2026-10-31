@@ -89,11 +89,28 @@ primeira versão deste arquivo, e o teste pegou.
     }
     .busca-do-admin { padding: 12px 20px 16px; background: var(--painel); border-bottom: 1px solid var(--linha); }
     .busca-do-admin label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
-    .busca-do-admin .campos { display: flex; gap: 8px; max-width: 980px; }
+    .busca-do-admin .campos { display: flex; gap: 8px; max-width: 980px; position: relative; }
     .busca-do-admin input { min-width: 0; flex: 1; width: 100%; padding: 10px 12px; font: inherit; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; }
     .busca-do-admin input::placeholder { color: var(--texto-2); opacity: 1; }
     .busca-do-admin button { padding: 10px 16px; font: inherit; font-weight: 600; color: var(--texto); background: var(--fundo); border: 1px solid var(--azul); border-radius: 8px; cursor: pointer; }
     .busca-do-admin input:focus-visible, .busca-do-admin button:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+    .busca-sugestoes { position: absolute; z-index: 100; top: calc(100% + 6px); left: 0; right: 0; background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; box-shadow: 0 16px 40px #0008; max-height: min(65vh, 560px); overflow-y: auto; }
+    .busca-sugestoes[hidden], .busca-ver-todos[hidden] { display: none; }
+    .busca-sugestoes ul { list-style: none; padding: 4px; margin: 0; }
+    .busca-sugestoes a { display: block; padding: 10px 12px; text-decoration: none; border-radius: 7px; overflow-wrap: anywhere; }
+    .busca-sugestoes a:hover, .busca-sugestoes a:focus, .busca-sugestoes a[aria-selected="true"] { background: var(--fundo); outline: 1px solid var(--azul); }
+    .busca-sugestoes strong { display: block; font-size: 15px; }
+    .busca-sugestoes span { display: block; color: var(--texto-2); font-size: 12px; }
+    .busca-status { font-size: 12px; color: var(--texto-2); margin: 8px 16px; }
+    .busca-sugestoes .busca-ver-todos { border-top: 1px solid var(--linha); border-radius: 0; padding: 12px 16px; }
+    .busca-resultados { max-width: 980px; }
+    .busca-resultado { max-width: 780px; margin: 0 0 28px; }
+    .busca-endereco { color: var(--texto-2); font-size: 13px; overflow-wrap: anywhere; }
+    .busca-resultado h2 { font-size: 20px; line-height: 1.4; font-weight: 500; margin: 2px 0 5px; }
+    .busca-resultado h2 a { text-decoration: none; }
+    .busca-resultado h2 a:hover { text-decoration: underline; }
+    .busca-resultado p { color: var(--texto-2); font-size: 14px; margin: 0; line-height: 1.65; }
+    .busca-paginacao { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-top: 32px; }
     .rodape-do-admin {
       max-width: 980px; margin: 56px auto 0; padding: 16px 20px 40px;
       border-top: 1px solid var(--linha);
@@ -1064,13 +1081,21 @@ várias o texto vaza para a tela (`armadilhas/087`).
 As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da
 `armadilhas/033`: solta, cada uma põe um espaço a mais entre os botões.
 {% endcomment %}{% block navegacao_admin %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if forloop.first %} class="fora"{% elif secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>{% endblock %}
-<form class="busca-do-admin" role="search" aria-label="Buscar páginas do site e do sistema" method="get" action="{% url 'mapa_do_site' %}">
+{% if not admin.equipe_apenas %}
+<form class="busca-do-admin" role="search" aria-label="Buscar páginas do site e do sistema" method="get" action="{% url 'busca_paginas' %}" data-sugestoes="{% url 'busca_sugestoes' %}">
   <label for="busca-paginas-admin">Pesquisar em todo o site e sistema</label>
   <div class="campos">
-    <input id="busca-paginas-admin" type="search" name="q" value="{{ procurado }}" placeholder="Nome da página, assunto ou endereço" aria-label="Nome da página, assunto ou endereço">
+    <input id="busca-paginas-admin" type="search" name="q" value="{{ busca_consulta }}" maxlength="200" placeholder="Nome da página, assunto ou endereço" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="busca-lista-paginas" autocomplete="off" aria-describedby="busca-status">
     <button type="submit">Buscar</button>
+    <div class="busca-sugestoes" hidden>
+      <p id="busca-status" class="busca-status" role="status" aria-live="polite"></p>
+      <ul id="busca-lista-paginas" role="listbox" aria-label="Sugestões de páginas"></ul>
+      <a class="busca-ver-todos" href="{% url 'busca_paginas' %}" hidden>Ver todos os resultados →</a>
+    </div>
   </div>
 </form>
+<script defer src="{% url 'busca_script' %}"></script>
+{% endif %}
 {% endif %}
 {% if governanca %}<aside style="padding:12px 24px;border-bottom:1px solid var(--linha);font-size:13px;line-height:1.6" aria-label="Direção da gestão"><a href="{% url 'perpetuo' %}"><strong>Motor perpétuo · {{ governanca.meta_texto }} alunos até 2027</strong></a> · Lançamentos semanais em ciclos de 12 semanas · Primeiro ciclo: {{ governanca.low_texto }} vendas low + {{ governanca.mid_texto }} mid.</aside>{% endif %}
 {% block corpo %}{% endblock %}
