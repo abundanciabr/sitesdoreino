@@ -260,8 +260,8 @@ REGRAS_DO_FUNIL = (
     "o dia e a versão são os da primeira abertura (fuso America/Sao_Paulo).",
     "Cada etapa conta sessões distintas. Abandono na etapa só vale para quem não "
     "concluiu e não viu nenhuma etapa depois dela; atualizar a página não conta como abandono.",
-    "Quem concluiu conta como tendo visto e respondido todas as perguntas, mesmo se o "
-    "navegador não registrou alguma etapa: o envio só é aceito com todas respondidas.",
+    "Conclusão comprova as perguntas respondidas: todas no fluxo linear e somente as "
+    "do caminho escolhido no fluxo ramificado. Perguntas puladas não contam como abandono.",
     "Tráfego de teste (src=teste, cpg começando com teste ou utm de teste) fica fora das taxas.",
     "Conclusões sem abertura registrada ficam de fora do funil e são contadas à parte.",
     "Saída real é clique para o checkout; saída de demonstração é clique na oferta ainda sem checkout.",
@@ -357,11 +357,12 @@ def coletar_sessoes(quiz, inicio=None, fim=None):
     for submissao in (
         Submission.objects.filter(quiz=quiz, site_id=quiz.site_id)
         .select_related("version")
-        .only("id", "session_id", "created_at", "utm", "context", "version__key")
+        .only("id", "session_id", "created_at", "utm", "context", "answers", "version__key")
     ):
         sessao = todas.get(submissao.session_id) if submissao.session_id else None
         if sessao is not None and sessao["versao"] == submissao.version.key:
             sessao["concluiu"] = True
+            sessao["respondidas"] = set(submissao.answers)
         elif no_periodo(_dia(submissao.created_at)):
             if sessao is not None:
                 sem_correspondencia += 1
@@ -393,7 +394,7 @@ def etapas_das_versoes(quiz):
     return resultado
 
 
-def funil_de_versao(versao, sessoes, etapas_conhecidas):
+def funil_de_versao(versao, sessoes, etapas_conhecidas, ramificado=False):
     reais = [s for s in sessoes if not s["teste"]]
     testes = [s for s in sessoes if s["teste"]]
     etapas = [e for e in etapas_conhecidas if e[0] != ETAPA_LEAD]
@@ -409,11 +410,10 @@ def funil_de_versao(versao, sessoes, etapas_conhecidas):
     etapas += [(e, f"Etapa fora da versão atual ({e})") for e in desconhecidas]
     etapas.append((ETAPA_LEAD, "Cadastro e envio"))
     indice = {etapa: i for i, (etapa, _) in enumerate(etapas)}
-    # O envio só é aceito com todas as perguntas respondidas: quem concluiu
-    # passou por cada uma, mesmo quando o navegador não registrou a etapa.
-    viu = {s["id"]: s["viu"] | conhecidas if s["concluiu"] else s["viu"] for s in reais}
+    # No fluxo ramificado, concluir comprova somente as perguntas do caminho.
+    viu = {s["id"]: s["viu"] | (s.get("respondidas", set()) if ramificado else conhecidas) if s["concluiu"] else s["viu"] for s in reais}
     clicou = {
-        s["id"]: s["clicou"] | conhecidas if s["concluiu"] else s["clicou"] for s in reais
+        s["id"]: s["clicou"] | (s.get("respondidas", set()) if ramificado else conhecidas) if s["concluiu"] else s["clicou"] for s in reais
     }
 
     ate = {}
@@ -435,6 +435,8 @@ def funil_de_versao(versao, sessoes, etapas_conhecidas):
         )
         if e_lead:
             avancaram = None
+        elif ramificado:
+            avancaram = sum(1 for s in reais if etapa in clicou[s["id"]])
         elif i < ultima_pergunta:
             avancaram = sum(1 for s in reais if etapas[i + 1][0] in viu[s["id"]])
         else:
@@ -491,6 +493,8 @@ def funil_de_versao(versao, sessoes, etapas_conhecidas):
 
 
 def funis_por_versao(quiz, sessoes, conhecidas=None):
+    from .ramificacao import tem_ramificacao
+    ramificadas = {v.key for v in quiz.versions.all() if tem_ramificacao(v)}
     conhecidas = etapas_das_versoes(quiz) if conhecidas is None else conhecidas
     versoes = sorted(set(conhecidas) | {s["versao"] for s in sessoes})
     funis = []
@@ -499,7 +503,7 @@ def funis_por_versao(quiz, sessoes, conhecidas=None):
             versao, (False, [(ETAPA_LEAD, "Cadastro e envio")])
         )
         funil = funil_de_versao(
-            versao, [s for s in sessoes if s["versao"] == versao], etapas
+            versao, [s for s in sessoes if s["versao"] == versao], etapas, ramificado=versao in ramificadas
         )
         funil["ativa"] = ativa
         funil["cadastrada"] = versao in conhecidas

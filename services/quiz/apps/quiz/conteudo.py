@@ -11,6 +11,7 @@ from django.http import Http404
 from apps.core.middleware import CAMINHOS_SEM_SITE
 from apps.quiz.experiencias import resolver_experiencia
 from apps.quiz.models import Option, Question, Quiz, QuizVersion, ResultBand
+from apps.quiz.ramificacao import conferir_caminhos
 
 
 FORMATO = "quiz-low-ticket/2"
@@ -226,6 +227,7 @@ def conferir_documento(dados):
             _unicos(opcoes, "id", f"{pbase}.opcoes")
             alcancaveis = {s + o["pontos"] for s in alcancaveis for o in opcoes}
         _unicos(perguntas, "id", f"{base}.perguntas")
+        alcancaveis = conferir_caminhos(versao)
         faixas = _lista(versao.get("faixas"), f"{base}.faixas", maximo=100)
         for j, faixa in enumerate(faixas):
             fbase = f"{base}.faixas[{j}]"
