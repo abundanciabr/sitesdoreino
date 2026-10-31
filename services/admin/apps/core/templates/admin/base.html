@@ -87,6 +87,13 @@ primeira versão deste arquivo, e o teste pegou.
         border-right: 0; border-radius: 8px;
       }
     }
+    .busca-do-admin { padding: 12px 20px 16px; background: var(--painel); border-bottom: 1px solid var(--linha); }
+    .busca-do-admin label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+    .busca-do-admin .campos { display: flex; gap: 8px; max-width: 980px; }
+    .busca-do-admin input { min-width: 0; flex: 1; width: 100%; padding: 10px 12px; font: inherit; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; }
+    .busca-do-admin input::placeholder { color: var(--texto-2); opacity: 1; }
+    .busca-do-admin button { padding: 10px 16px; font: inherit; font-weight: 600; color: var(--texto); background: var(--fundo); border: 1px solid var(--azul); border-radius: 8px; cursor: pointer; }
+    .busca-do-admin input:focus-visible, .busca-do-admin button:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
     .rodape-do-admin {
       max-width: 980px; margin: 56px auto 0; padding: 16px 20px 40px;
       border-top: 1px solid var(--linha);
@@ -1057,6 +1064,13 @@ várias o texto vaza para a tela (`armadilhas/087`).
 As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da
 `armadilhas/033`: solta, cada uma põe um espaço a mais entre os botões.
 {% endcomment %}{% block navegacao_admin %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if forloop.first %} class="fora"{% elif secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>{% endblock %}
+<form class="busca-do-admin" role="search" aria-label="Buscar páginas do site e do sistema" method="get" action="{% url 'mapa_do_site' %}">
+  <label for="busca-paginas-admin">Pesquisar em todo o site e sistema</label>
+  <div class="campos">
+    <input id="busca-paginas-admin" type="search" name="q" value="{{ procurado }}" placeholder="Nome da página, assunto ou endereço" aria-label="Nome da página, assunto ou endereço">
+    <button type="submit">Buscar</button>
+  </div>
+</form>
 {% endif %}
 {% if governanca %}<aside style="padding:12px 24px;border-bottom:1px solid var(--linha);font-size:13px;line-height:1.6" aria-label="Direção da gestão"><a href="{% url 'perpetuo' %}"><strong>Motor perpétuo · {{ governanca.meta_texto }} alunos até 2027</strong></a> · Lançamentos semanais em ciclos de 12 semanas · Primeiro ciclo: {{ governanca.low_texto }} vendas low + {{ governanca.mid_texto }} mid.</aside>{% endif %}
 {% block corpo %}{% endblock %}
