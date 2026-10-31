@@ -15,6 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .conteudo import conferir_documento
 from .editor import FORMATO_DIRECIONADO, _authorized, _error
 from .experiencias import calcular, resolver_experiencia
+from .ramificacao import caminho_documento
 
 LIMITE_CORPO = 2_000_000
 
@@ -66,7 +67,8 @@ def _pontuar(versao, respostas):
     if not isinstance(respostas, dict):
         raise ValueError("respostas: precisa ser objeto pergunta -> opção")
     total = 0
-    for numero, pergunta in enumerate(versao["perguntas"], start=1):
+    caminho, _ = caminho_documento(versao, respostas)
+    for numero, pergunta in enumerate(caminho, start=1):
         escolhida = respostas.get(pergunta["id"])
         if escolhida is None:
             raise ValueError(f"respostas: responda a pergunta {numero}")
@@ -144,7 +146,7 @@ def previa(request, slug):
                     "id": pergunta["id"],
                     "texto": pergunta["texto"],
                     "opcoes": [
-                        {"id": o["id"], "texto": o["texto"]} for o in pergunta["opcoes"]
+                        {"id": o["id"], "texto": o["texto"], "proxima": o.get("proxima", "")} for o in pergunta["opcoes"]
                     ],
                 }
                 for pergunta in versao["perguntas"]

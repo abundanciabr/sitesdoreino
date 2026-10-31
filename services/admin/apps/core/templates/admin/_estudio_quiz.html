@@ -286,22 +286,38 @@ documento é preservado e a conexão é feita depois.
     return caixa;
   }
   function limites(v) {
-    var mn = 0, mx = 0;
-    v.perguntas.forEach(function (p) {
-      var pts = (p.opcoes || []).map(function (o) { return Number(o.pontos) || 0; });
-      if (pts.length) { mn += Math.min.apply(null, pts); mx += Math.max.apply(null, pts); }
-    });
-    return [mn, mx];
+    var somas = {'$resultado': [0, 0]};
+    for (var i = v.perguntas.length - 1; i >= 0; i--) {
+      var p = v.perguntas[i], mn = Infinity, mx = -Infinity;
+      (p.opcoes || []).forEach(function (o) {
+        var alvo = o.proxima || (v.perguntas[i + 1] || {}).id || '$resultado';
+        var s = somas[alvo]; if (!s) return;
+        var pts = Number(o.pontos) || 0; mn = Math.min(mn, pts + s[0]); mx = Math.max(mx, pts + s[1]);
+      });
+      somas[p.id] = isFinite(mn) ? [mn, mx] : [0, 0];
+    }
+    return (v.perguntas[0] && somas[v.perguntas[0].id]) || [0, 0];
   }
   function secaoPerguntas(v) {
     var l = limites(v);
     var f = h('fieldset', {}, h('legend', {}, 'Perguntas e pontos'),
       h('p', { class: 'nota' }, 'Pontuação possível nesta versão: de ' + l[0] + ' a ' + l[1] + '. As faixas precisam cobrir todos os valores.'));
+    f.appendChild(h('p', {class:'nota'}, 'Em cada alternativa, escolha a próxima pergunta. Seguir a ordem mantém o fluxo atual; Encerrar as perguntas segue para o contato e o resultado. Perguntas puladas não contam pontos.'));
     v.perguntas.forEach(function (p, i) {
       var c = h('fieldset', {}, h('legend', {}, 'Pergunta ' + (i + 1)),
         h('div', { class: 'linha' }, campo('Texto da pergunta', p, 'texto'), campo('Identificador', p, 'id'), barra(v.perguntas, i)));
       p.opcoes.forEach(function (o, j) {
-        c.appendChild(h('div', { class: 'linha' }, campo('Opção ' + (j + 1), o, 'texto'), campo('Pontos', o, 'pontos', { tipo: 'number' }), campo('Identificador', o, 'id'), barra(p.opcoes, j)));
+        var destino = h('select', { 'aria-label': 'Depois da opção ' + (j + 1) + ' da pergunta ' + (i + 1), onchange: function () {
+          if (destino.value) o.proxima = destino.value; else delete o.proxima;
+          sync();
+        } });
+        destino.appendChild(h('option', {value: '', selected: !o.proxima}, 'Seguir a ordem'));
+        v.perguntas.slice(i + 1).forEach(function (alvo) {
+          destino.appendChild(h('option', {value: alvo.id, selected: o.proxima === alvo.id}, alvo.texto || alvo.id));
+        });
+        destino.appendChild(h('option', {value: '$resultado', selected: o.proxima === '$resultado'}, 'Encerrar as perguntas'));
+        if (o.proxima && !Array.from(destino.options).some(function (x) { return x.value === o.proxima; })) destino.appendChild(h('option', {value:o.proxima,selected:true}, 'Destino não disponível: ' + o.proxima));
+        c.appendChild(h('div', { class: 'linha' }, campo('Opção ' + (j + 1), o, 'texto'), campo('Pontos', o, 'pontos', { tipo: 'number' }), campo('Identificador', o, 'id'), h('label', {}, 'Próxima pergunta', destino), barra(p.opcoes, j)));
       });
       c.appendChild(botao('+ Opção', function () { p.opcoes.push({ id: proximoId('o', p.opcoes), texto: '', pontos: 0 }); }));
       f.appendChild(c);
@@ -491,14 +507,36 @@ documento é preservado e a conexão é feita depois.
       corpo.appendChild(cx);
     }
     var radios = {};
+    var blocos = {};
     d.perguntas.forEach(function (p, n) {
       var bloco = h('fieldset', {}, h('legend', {}, (n + 1) + '. ' + p.texto));
       p.opcoes.forEach(function (o) {
         var r = h('input', { type: 'radio', name: 'previa_' + p.id, value: o.id, checked: respostas && respostas[p.id] === o.id });
         bloco.appendChild(h('label', { class: 'opcao' }, r, ' ' + o.texto));
       });
-      radios[p.id] = bloco; corpo.appendChild(bloco);
+      radios[p.id] = bloco; blocos[p.id] = bloco; corpo.appendChild(bloco);
     });
+    function atualizarRamo() {
+      var visitadas = {}, i = 0;
+      while (i < d.perguntas.length) {
+        var p = d.perguntas[i]; visitadas[p.id] = true;
+        var marcada = radios[p.id].querySelector('input:checked');
+        if (!marcada) break;
+        var o = p.opcoes.filter(function (x) { return x.id === marcada.value; })[0];
+        if (o.proxima === '$resultado') break;
+        i = o.proxima ? d.perguntas.findIndex(function (x) { return x.id === o.proxima; }) : i + 1;
+        if (i < 0) break;
+      }
+      var ramificado = d.perguntas.some(function (p) { return p.opcoes.some(function (o) { return !!o.proxima; }); });
+      if (!ramificado) return;
+      d.perguntas.forEach(function (p) {
+        blocos[p.id].hidden = !visitadas[p.id];
+        Array.from(radios[p.id].querySelectorAll('input')).forEach(function (r) { r.disabled = !visitadas[p.id]; if (!visitadas[p.id]) r.checked = false; });
+      });
+      var anterior = document.getElementById('previa-resultado'); if (anterior) anterior.textContent = '';
+    }
+    d.perguntas.forEach(function (p) { radios[p.id].addEventListener('change', atualizarRamo); });
+    atualizarRamo();
     corpo.appendChild(h('button', { type: 'button', onclick: function () {
       var r = {}, v = {};
       d.perguntas.forEach(function (p) { var m = radios[p.id].querySelector('input:checked'); if (m) r[p.id] = m.value; });

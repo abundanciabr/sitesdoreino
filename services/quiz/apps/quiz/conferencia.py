@@ -16,6 +16,7 @@ from django.utils.html import escape
 from .direcionadas import destino_com_parametros, parametros_de_entrada
 from .editor import _authorized, _error
 from .experiencias import calcular, resolver_experiencia
+from .ramificacao import preparar
 from .painel_campanhas import _host_https, _ia_ligada, _montar_links, _quiz_privado
 
 LIMITE_SOMAS = 5000
@@ -44,19 +45,24 @@ def _curto(texto, limite=90):
 
 def _somas_possiveis(perguntas):
     """Cada soma de pontos possível e um caminho de respostas que chega nela."""
-    caminhos = {0: ()}
-    for pergunta in perguntas:
+    por_id = {str(q.id): i for i, q in enumerate(perguntas)}
+    resultados = {}
+    for i in range(len(perguntas) - 1, -1, -1):
+        pergunta = perguntas[i]
         opcoes = list(pergunta.options.all())
         if not opcoes:
             return None
         proximos = {}
-        for soma, caminho in caminhos.items():
-            for opcao in opcoes:
-                proximos.setdefault(soma + opcao.points, caminho + ((pergunta, opcao),))
-        caminhos = proximos
-        if len(caminhos) > LIMITE_SOMAS:
+        for opcao in opcoes:
+            destino = getattr(pergunta, "destinos_quiz", {}).get(str(opcao.id), "")
+            j = por_id[destino] if destino else i + 1
+            restantes = {0: ()} if destino is None or j >= len(perguntas) else resultados[j]
+            for soma, caminho in restantes.items():
+                proximos.setdefault(soma + opcao.points, ((pergunta, opcao),) + caminho)
+        resultados[i] = proximos
+        if len(proximos) > LIMITE_SOMAS:
             return None
-    return caminhos
+    return resultados.get(0, {0: ()})
 
 
 def _exemplo(soma, caminho):
@@ -99,7 +105,7 @@ def _conferir_versao(versao):
         else {}
     )
     problemas, avisos = [], []
-    perguntas = list(versao.questions.prefetch_related("options").order_by("order"))
+    perguntas = preparar(versao)
     caminhos = _somas_possiveis(perguntas)
     if not perguntas:
         problemas.append("A versão não tem perguntas.")

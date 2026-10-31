@@ -25,6 +25,7 @@ from .models import (
     TelemetryEvent,
 )
 from . import consentimento
+from .ramificacao import tem_ramificacao
 from .respostas import emitir_quiz_completado, travar_sessao
 from .comprador import gravar_cookie
 from .direcionadas import (
@@ -284,6 +285,10 @@ def formulario(request, slug):
         from .conversa import formulario_ai
 
         return formulario_ai(request, quiz, versao, entrada)
+    if quiz.directed and tem_ramificacao(versao):
+        from .ramificadas import formulario_ramificado
+
+        return formulario_ramificado(request, quiz, versao, entrada)
     questions = versao.questions.prefetch_related("options")
 
     if request.method != "POST":
@@ -297,6 +302,10 @@ def formulario(request, slug):
             return _ir_ao_resultado(request, quiz, entrada, concluida)
         return _render_formulario(request, quiz, versao, questions, entrada)
 
+    return _concluir_formulario(request, quiz, versao, questions, entrada)
+
+
+def _concluir_formulario(request, quiz, versao, questions, entrada):
     email = request.POST.get("email", "").strip()
     if not email:
         return _render_formulario(

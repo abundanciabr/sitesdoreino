@@ -31,6 +31,7 @@ from django.utils import timezone
 
 from .direcionadas import url_da_experiencia
 from .experiencias import resolver_experiencia
+from .ramificacao import preparar, percurso, tem_ramificacao
 from .models import Submission, TelemetryEvent
 from . import consentimento
 from .respostas import emitir_quiz_completado
@@ -193,14 +194,11 @@ def _turnos_da_pessoa(estado) -> int:
 # Perguntas, prompt e chamada ao modelo
 # ---------------------------------------------------------------------------
 def _perguntas(versao):
-    return list(versao.questions.prefetch_related("options"))
+    return preparar(versao)
 
 
 def _corrente(perguntas, estado):
-    for pergunta in perguntas:
-        if str(pergunta.id) not in estado["r"]:
-            return pergunta
-    return None
+    return percurso(perguntas, estado["r"])[1]
 
 
 def _abertura(versao, perguntas) -> str:
@@ -318,6 +316,8 @@ def _render(
             "estado_token": _token(estado),
             "completo": completo,
             "fallback": bool(estado["fb"]),
+            "ramificado": tem_ramificacao(versao),
+            "pergunta_ramo": _corrente(perguntas, estado),
             "erro": erro,
             "campo_com_erro": campo_com_erro,
             "opcoes_selecionadas": selecionadas,
@@ -401,6 +401,17 @@ def _processar(request, quiz, versao, entrada, perguntas):
         )
     if request.POST.get("acao") == "concluir":
         return _concluir(request, quiz, versao, entrada, perguntas, estado)
+    if request.POST.get("acao") == "opcao" and estado["fb"] and tem_ramificacao(versao):
+        atual = _corrente(perguntas, estado)
+        valor = request.POST.get("opcao", "")
+        if atual is None or not valor.isdecimal() or _opcao_valida(atual, int(valor)) is None:
+            raise Http404("opção inválida para esta pergunta")
+        estado["r"][str(atual.id)] = int(valor)
+        _registrar(quiz, entrada, "click_option", valor, {"question_id": str(atual.id)})
+        seguinte = _corrente(perguntas, estado)
+        if seguinte:
+            _registrar(quiz, entrada, "view_question", seguinte.id)
+        return _render(request, quiz, versao, entrada, estado, perguntas)
     return _mensagem(request, quiz, versao, entrada, perguntas, estado)
 
 
@@ -445,6 +456,9 @@ def _mensagem(request, quiz, versao, entrada, perguntas, estado):
         estado["r"][str(corrente.id)] = opcao.id
         _registrar(quiz, entrada, "click_option", opcao.id, {"question_id": str(corrente.id)})
         seguinte = _corrente(perguntas, estado)
+        if tem_ramificacao(versao):
+            # O modelo interpreta a resposta; o servidor determina e apresenta a próxima pergunta.
+            fala = seguinte.text if seguinte is not None else "Obrigado! Suas respostas estão prontas."
         if seguinte is not None:
             _registrar(quiz, entrada, "view_question", seguinte.id)
     estado["t"].append(["u", mensagem])
@@ -459,7 +473,7 @@ def _concluir(request, quiz, versao, entrada, perguntas, estado):
         )
 
     # Perguntas fixas (fallback): as opções vêm do formulário, validadas aqui.
-    for pergunta in perguntas:
+    for pergunta in (percurso(perguntas, estado["r"])[0] if tem_ramificacao(versao) else perguntas):
         if str(pergunta.id) in estado["r"]:
             continue
         valor = request.POST.get(f"pergunta_{pergunta.id}")
@@ -492,7 +506,7 @@ def _concluir(request, quiz, versao, entrada, perguntas, estado):
     # opções, faixa pelo intervalo. O modelo não participa desta conta.
     score = 0
     respostas = {}
-    for pergunta in perguntas:
+    for pergunta in percurso(perguntas, estado["r"])[0]:
         opcao = next(
             o for o in pergunta.options.all() if o.id == estado["r"][str(pergunta.id)]
         )
