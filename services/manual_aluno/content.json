@@ -1,0 +1,131 @@
+{
+  "welcome": "<p>Bem-vindo à Meshcraft!</p>\n<p>A Meshcraft existe para que você aprenda 3D e desenvolva capacidade real de ganhar dinheiro no ecossistema do Roblox, quando quiser. Essa capacidade se constrói com aprendizagem e prática; sua primeira criação não é promessa de renda fácil ou garantida.</p>\n<p>Este manual ajuda você a entender onde está, o que fazer agora e como acompanhar suas conquistas.</p>",
+  "states": "<p><strong>1. Falta realizar</strong></p>\n<blockquote>\n<p>Sua próxima atividade está indicada na Trilha. Leia o que ela pede, consulte as aulas que ajudam e realize o trabalho solicitado. Depois, registre ou envie o resultado conforme a orientação da atividade.</p>\n</blockquote>\n<p><strong>2. Aguardando análise</strong></p>\n<blockquote>\n<p>Sua entrega foi recebida e aguarda a avaliação ou conferência desta etapa. Acompanhe o resultado na Trilha. Enviar é uma parte do processo: a próxima faixa e seu bônus de XP chegam quando a realização é reconhecida.</p>\n</blockquote>\n<p><strong>3. Precisa de ajuste</strong></p>\n<blockquote>\n<p>A avaliação identificou algo que ainda precisa ser ajustado para reconhecer esta atividade. Leia o retorno, veja o que faltou e siga a orientação da Trilha para corrigir ou complementar seu trabalho.</p>\n</blockquote>\n<p><strong>4. Análise não pôde ser concluída</strong></p>\n<blockquote>\n<p>Não foi possível concluir a análise do seu material. <strong>Isso não significa que seu trabalho foi reprovado.</strong> Consulte a mensagem disponível para entender o que não pôde ser examinado. Se houver uma orientação para corrigir o envio, siga essa indicação. Se o problema continuar ou não estiver claro, procure o suporte.</p>\n</blockquote>\n<p><strong>5. Realização reconhecida</strong></p>\n<blockquote>\n<p>Sua atividade foi avaliada e a realização pedida foi reconhecida. Confira a faixa ou o grau conquistado e o bônus de XP correspondente. Depois, veja sua próxima atividade ou as orientações para continuar após concluir este percurso.</p>\n</blockquote>\n<p><strong>A faixa e o bônus correspondente são concedidos somente com a realização reconhecida, respeitando a sequência da Trilha. Cada bônus de conquista é recebido uma única vez.</strong></p>",
+  "steps": [
+    {
+      "number": 1,
+      "title": "Defina aonde quer chegar",
+      "variants": {},
+      "body": "<p><em>Da branca para a amarela.</em></p>\n<p><strong>Por que este passo existe</strong></p>\n<p>Ter um objetivo ajuda você a entender para que está aprendendo e qual será seu próximo movimento.</p>\n<p><strong>O que fazer</strong></p>\n<p>Em Meu motivo, escolha um dos quatro caminhos. Assuma o compromisso solicitado e responda à pergunta simples sobre o próximo passo.</p>\n<p>Se essas atividades já estiverem concluídas, consulte a escolha registrada e continue pela atividade atual indicada na Trilha.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Use a orientação da própria atividade para conhecer os caminhos e entender como começar.</p>\n<p><strong>O que entregar</strong></p>\n<p>O motivo escolhido, o compromisso assumido e a resposta correta à pergunta simples apresentada na atividade.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa amarela, com bônus único de <strong>5.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>O site confere essas atividades e reconhece a realização. Você passa a ver a amarela conquistada e a orientação para sua primeira criação.</p>"
+    },
+    {
+      "number": 2,
+      "title": "Crie seu primeiro item",
+      "variants": {},
+      "body": "<p><em>Da amarela para a azul.</em></p>\n<p><strong>Por que este passo existe</strong></p>\n<p>Sua primeira criação transforma o estudo em prática. Contar o que fez ajuda a reconhecer uma ação concreta que você já conseguiu realizar.</p>\n<p><strong>O que fazer</strong></p>\n<p>Siga as orientações da Trilha, crie seu primeiro item e conte qual foi ele e o que você fez nele.</p>\n<p>Pode ser uma peça, um acessório ou um objeto relacionado ao seu objetivo. O exemplo serve para ajudar a começar; não substitui a instrução da atividade.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Procure, entre as aulas às quais você tem acesso, a orientação para começar a modelar e realizar a ação necessária à sua primeira criação.</p>\n<p><strong>O que entregar</strong></p>\n<p>Um relato dizendo <strong>qual item você criou e uma ação concreta que realizou nele</strong>.</p>\n<p>Por exemplo: “Criei uma caixa e ajustei a altura para deixá-la mais baixa.”</p>\n<p>A imagem é opcional nesta etapa.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa azul, com bônus único de <strong>10.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>A inteligência artificial avalia o relato e reconhece a realização pedida. A azul aparece como conquistada, e a próxima atividade orienta você a mostrar seu material.</p>"
+    },
+    {
+      "number": 3,
+      "title": "Mostre sua criação e entenda o retorno",
+      "variants": {},
+      "body": "<p><em>Da azul para a vermelha.</em></p>\n<p><strong>Por que este passo existe</strong></p>\n<p>Mostrar o material permite receber uma avaliação sobre o que pode ser observado no seu trabalho.</p>\n<p><strong>O que fazer</strong></p>\n<p>Abra a atividade na Trilha e confira as orientações de envio. Prepare uma imagem ou um arquivo 3D compatível que permita examinar sua criação.</p>\n<p>Depois do envio, acompanhe a análise e leia o retorno.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Consulte as orientações disponíveis sobre como apresentar seu trabalho e preparar o tipo de material aceito pela atividade.</p>\n<p><strong>O que entregar</strong></p>\n<p>Uma imagem ou um arquivo 3D compatível, conforme solicitado na atividade.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa vermelha, com bônus único de <strong>15.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>O material precisa ser efetivamente examinado pela inteligência artificial, com retorno sobre o que foi possível verificar, e a realização precisa ser reconhecida.</p>\n<p>Se o arquivo não puder ser examinado ou ocorrer uma falha técnica, isso não equivale a uma avaliação concluída do seu trabalho.</p>"
+    },
+    {
+      "number": 4,
+      "title": "Pratique a próxima habilidade do seu caminho",
+      "variants": {
+        "freelancer": {
+          "title": "Pratique com um briefing",
+          "body": "<p><strong>Por que existe:</strong> praticar uma tarefa com uma descrição do que precisa ser feito ajuda você a trabalhar a partir de um pedido.</p>\n<p><strong>O que fazer:</strong> realize a prática do <strong>Sandbox</strong>, o ambiente de prática educacional da Meshcraft. Leia o briefing — a descrição do trabalho — e os critérios da tarefa.</p>\n<p><strong>Aulas que ajudam:</strong> consulte as aulas acessíveis que expliquem as técnicas necessárias à tarefa escolhida. </p>\n<p><strong>O que entregar:</strong> o trabalho solicitado no briefing, conforme as instruções da atividade.</p>\n<p><strong>Conquista e XP:</strong> faixa verde, com bônus único de <strong>20.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a análise automática do Sandbox examina o trabalho conforme o briefing e os critérios e reconhece a realização. Se discordar do resultado, procure o suporte.</p>"
+        },
+        "ugc": {
+          "title": "Mude a cor de uma parte do acessório",
+          "body": "<p><strong>Por que existe:</strong> experimentar uma cor ajuda você a perceber como uma mudança altera a aparência do acessório.</p>\n<p><strong>O que fazer:</strong> altere a cor de uma parte do acessório e salve a mudança conforme a atividade.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre mudança de cor na ferramenta usada na prática. </p>\n<p><strong>O que entregar:</strong> a alteração de cor salva ou o material solicitado pela atividade para demonstrá-la.</p>\n<p><strong>Conquista e XP:</strong> faixa verde, com bônus único de <strong>20.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere a mudança realizada e reconhece a atividade.</p>"
+        },
+        "jogo": {
+          "title": "Mude a cor pensando no cenário",
+          "body": "<p><strong>Por que existe:</strong> a cor ajuda a relacionar o objeto com a aparência do cenário que você imagina.</p>\n<p><strong>O que fazer:</strong> altere a cor do objeto pensando no cenário e salve a mudança conforme a atividade.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre mudança de cor na ferramenta usada na prática. </p>\n<p><strong>O que entregar:</strong> a mudança de cor salva ou o material solicitado pela atividade para demonstrá-la.</p>\n<p><strong>Conquista e XP:</strong> faixa verde, com bônus único de <strong>20.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere a mudança realizada e reconhece a atividade.</p>"
+        },
+        "aprender": {
+          "title": "Experimente uma mudança de cor",
+          "body": "<p><strong>Por que existe:</strong> modificar uma criação ajuda você a observar o efeito de uma escolha e aprender com o resultado.</p>\n<p><strong>O que fazer:</strong> experimente uma mudança de cor e salve o resultado conforme a atividade.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre mudança de cor na ferramenta usada na prática. </p>\n<p><strong>O que entregar:</strong> a mudança de cor salva ou o material solicitado pela atividade para demonstrá-la.</p>\n<p><strong>Conquista e XP:</strong> faixa verde, com bônus único de <strong>20.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere a mudança realizada e reconhece a atividade.</p>"
+        }
+      },
+      "lead": "<p><em>Da vermelha para a verde.</em></p>"
+    },
+    {
+      "number": 5,
+      "title": "Avance com uma entrega concreta",
+      "variants": {
+        "freelancer": {
+          "title": "Entregue um trabalho da Fila do Dólar",
+          "body": "<p><strong>Por que existe:</strong> esta etapa acompanha uma entrega para um cliente real.</p>\n<p><strong>O que fazer:</strong> siga a atividade da <strong>Fila do Dólar</strong>, que envolve trabalhos reais, e realize o trabalho conforme o pedido do cliente.</p>\n<p><strong>Aulas que ajudam:</strong> consulte as aulas acessíveis relacionadas às necessidades desse trabalho. </p>\n<p><strong>O que entregar:</strong> o trabalho real solicitado na Fila do Dólar, conforme as instruções da atividade.</p>\n<p><strong>Conquista e XP:</strong> faixa marrom, com bônus único de <strong>25.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> o trabalho precisa ser aceito pelo cliente real e essa realização precisa ser reconhecida na Trilha. O envio sozinho não concede a faixa.</p>"
+        },
+        "ugc": {
+          "title": "Altere a proporção e compare",
+          "body": "<p><strong>Por que existe:</strong> comparar versões ajuda você a perceber como a proporção muda a aparência do acessório.</p>\n<p><strong>O que fazer:</strong> realize a alteração de proporção solicitada e compare as versões.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre proporção e transformação do objeto. </p>\n<p><strong>O que entregar:</strong> a alteração e a comparação solicitadas pela atividade, usando a forma de registro indicada nela.</p>\n<p><strong>Conquista e XP:</strong> faixa marrom, com bônus único de <strong>25.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere a alteração e a comparação e reconhece a realização.</p>"
+        },
+        "jogo": {
+          "title": "Ajuste a proporção do objeto",
+          "body": "<p><strong>Por que existe:</strong> observar a proporção ajuda você a entender a aparência do objeto que pretende usar no jogo.</p>\n<p><strong>O que fazer:</strong> ajuste a proporção solicitada e registre o resultado conforme a atividade.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre proporção e transformação do objeto. </p>\n<p><strong>O que entregar:</strong> o resultado da alteração, registrado da maneira solicitada.</p>\n<p><strong>Conquista e XP:</strong> faixa marrom, com bônus único de <strong>25.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere o ajuste registrado e reconhece a realização.</p>"
+        },
+        "aprender": {
+          "title": "Mude a proporção e observe",
+          "body": "<p><strong>Por que existe:</strong> uma pequena alteração permite perceber como a forma muda e ampliar seu controle sobre a criação.</p>\n<p><strong>O que fazer:</strong> realize a pequena alteração de proporção solicitada e observe a diferença.</p>\n<p><strong>Aulas que ajudam:</strong> consulte a orientação sobre proporção e transformação do objeto. </p>\n<p><strong>O que entregar:</strong> a alteração e o registro solicitado pela atividade para mostrar o resultado.</p>\n<p><strong>Conquista e XP:</strong> faixa marrom, com bônus único de <strong>25.000 XP</strong>.</p>\n<p><strong>Como saber que avançou:</strong> a avaliação correspondente confere a alteração realizada e reconhece a atividade.</p>"
+        }
+      },
+      "lead": "<p><em>Da verde para a marrom.</em></p>"
+    },
+    {
+      "number": 6,
+      "title": "Reconheça seu resultado e continue",
+      "variants": {
+        "freelancer": {
+          "title": "Acompanhe seu primeiro recebimento e sua meta",
+          "body": "<p><strong>Por que existe</strong></p>\n<p>Esta etapa reconhece seu primeiro recebimento por modelagem 3D e permite acompanhar os próximos marcos da sua meta pessoal.</p>\n<p><strong>O que fazer</strong></p>\n<p>Siga a orientação da Trilha para registrar o recebimento e relacioná-lo ao trabalho e ao valor correspondente.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Consulte as orientações disponíveis sobre registro de trabalhos e recebimentos.</p>\n<p><strong>O que entregar</strong></p>\n<p>O registro solicitado para conferir seu primeiro recebimento por modelagem 3D, vinculado ao trabalho e ao valor.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa preta, correspondente ao <strong>1º grau</strong>, com bônus único de <strong>30.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>O primeiro recebimento precisa ser conferido e reconhecido na Trilha. A conferência do material apresentado não deve ser confundida com autenticação bancária.</p>\n<p><strong>Depois do primeiro recebimento</strong></p>\n<p>Seu acompanhamento continua mostrando:</p>\n<p>Os próximos graus acompanham estes percentuais da sua meta:</p>\n<table>\n<thead>\n<tr>\n<th>Próxima conquista</th>\n<th style=\"text-align: right;\">Percentual da meta pessoal</th>\n<th style=\"text-align: right;\">Bônus único</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>2º grau</td>\n<td style=\"text-align: right;\">5%</td>\n<td style=\"text-align: right;\">40.000 XP</td>\n</tr>\n<tr>\n<td>3º grau</td>\n<td style=\"text-align: right;\">10%</td>\n<td style=\"text-align: right;\">50.000 XP</td>\n</tr>\n<tr>\n<td>4º grau</td>\n<td style=\"text-align: right;\">25%</td>\n<td style=\"text-align: right;\">75.000 XP</td>\n</tr>\n<tr>\n<td>5º grau</td>\n<td style=\"text-align: right;\">37,5%</td>\n<td style=\"text-align: right;\">100.000 XP</td>\n</tr>\n<tr>\n<td>6º grau</td>\n<td style=\"text-align: right;\">50%</td>\n<td style=\"text-align: right;\">150.000 XP</td>\n</tr>\n<tr>\n<td>7º grau</td>\n<td style=\"text-align: right;\">100%</td>\n<td style=\"text-align: right;\">200.000 XP</td>\n</tr>\n</tbody>\n</table>\n<p>A participação na Fila do Dólar acontece uma vez nesse percurso. Os recebimentos seguintes são acompanhados a partir dos seus trabalhos próprios, conforme as orientações da Trilha.</p>\n<p>Para registrar um novo recebimento, abra a atividade correspondente, siga as instruções apresentadas e acompanhe a conferência. Os marcos são reconhecidos em sequência, sem repetir o bônus de uma conquista já recebida.</p>\n<p>Esse acompanhamento não promete disponibilidade de trabalhos, renda ou prazo para atingir a meta.</p>"
+        },
+        "ugc": {
+          "title": "Apresente seu acessório",
+          "body": "<p><strong>Por que existe</strong></p>\n<p>Apresentar o resultado ajuda você a reunir o que criou e explicar a ideia do acessório.</p>\n<p><strong>O que fazer</strong></p>\n<p>Prepare a imagem final, dê um nome ao acessório e explique o uso que imaginou para ele.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Consulte as orientações acessíveis para mostrar sua criação com clareza. </p>\n<p><strong>O que entregar</strong></p>\n<p>A imagem final, o nome e a explicação do uso imaginado do acessório.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa preta, com bônus único de <strong>30.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>A avaliação da apresentação reconhece a realização pedida, e a preta aparece como conquistada.</p>\n<p>Você concluiu seu primeiro ciclo de criação neste caminho. Isso não significa, por si só, domínio profissional, publicação do item UGC ou conclusão de todas as aulas. Continue estudando e praticando de acordo com seu objetivo.</p>"
+        },
+        "jogo": {
+          "title": "Apresente o objeto e seu lugar no jogo",
+          "body": "<p><strong>Por que existe</strong></p>\n<p>Apresentar o objeto e explicar seu uso ajuda a relacionar sua criação com o jogo que você imagina.</p>\n<p><strong>O que fazer</strong></p>\n<p>Prepare a imagem final e explique onde o objeto será usado no jogo.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Consulte as orientações acessíveis para apresentar sua criação com clareza. </p>\n<p><strong>O que entregar</strong></p>\n<p>A imagem final e a explicação de onde o objeto será usado.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa preta, com bônus único de <strong>30.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>A avaliação da apresentação reconhece a realização pedida, e a preta aparece como conquistada.</p>\n<p>Você concluiu seu primeiro ciclo de criação neste caminho. Isso não significa, por si só, domínio profissional, jogo pronto ou conclusão de todas as aulas. Continue desenvolvendo suas criações e estudando conforme seu objetivo.</p>"
+        },
+        "aprender": {
+          "title": "Apresente o resultado e uma mudança",
+          "body": "<p><strong>Por que existe</strong></p>\n<p>Olhar para o começo e para o resultado ajuda você a reconhecer algo que aprendeu durante a prática.</p>\n<p><strong>O que fazer</strong></p>\n<p>Apresente seu resultado final e explique uma mudança que realizou desde o começo.</p>\n<p><strong>Aulas que ajudam</strong></p>\n<p>Reveja, entre as aulas acessíveis, a orientação relacionada à mudança que você fez. </p>\n<p><strong>O que entregar</strong></p>\n<p>A apresentação final e a explicação de uma mudança realizada desde o começo, conforme a atividade.</p>\n<p><strong>Conquista e XP</strong></p>\n<p>Faixa preta, com bônus único de <strong>30.000 XP</strong>.</p>\n<p><strong>Como saber que avançou</strong></p>\n<p>A avaliação da apresentação reconhece a realização pedida, e a preta aparece como conquistada.</p>\n<p>Você concluiu seu primeiro ciclo de criação neste caminho. Isso não significa domínio profissional nem conclusão de todas as aulas. Use o que aprendeu como ponto de partida para continuar estudando e criando.</p>"
+        }
+      },
+      "lead": "<p><em>Da marrom para a preta, com continuação pelos graus no caminho de clientes.</em></p>"
+    }
+  ],
+  "faq": [
+    {
+      "title": "Como organizar meus estudos?",
+      "body": "<p>Comece pela atividade atual da Trilha. Entenda o que ela pede e consulte as aulas que ajudam a realizá-la.</p>\n<p>Uma forma de estudar é assistir à explicação, praticar a ação e voltar ao trecho da aula quando surgir uma dúvida. Isso é uma sugestão de estudo, não uma exigência adicional para conquistar a faixa.</p>\n<p>As aulas disponíveis dependem do seu acesso aos cursos. Escolher um objetivo na Trilha não libera automaticamente todos os cursos relacionados a ele.</p>"
+    },
+    {
+      "title": "Como revisar e melhorar meu trabalho?",
+      "body": "<p>Compare seu resultado com o que a atividade pede. Observe o que já conseguiu realizar e o que ainda precisa ajustar.</p>\n<p>Use o retorno da avaliação para orientar a próxima tentativa. Os exemplos ajudam a entender a atividade, mas não acrescentam requisitos.</p>\n<p>Revisar faz parte da aprendizagem. Isso não cria uma aprovação manual geral da escola. No Sandbox, vale o resultado da análise automática; em caso de discordância, procure o suporte. Na etapa da Fila do Dólar, o aceite do cliente real faz parte da realização prevista.</p>"
+    },
+    {
+      "title": "Como preparar uma entrega?",
+      "body": "<p>Abra a atividade e confira o que deve ser enviado ou registrado. Algumas etapas pedem texto; outras, imagem, arquivo 3D ou uma alteração salva na prática.</p>\n<p>Se houver envio de arquivo, confira os formatos e limites indicados na própria atividade. Verifique se selecionou o material que deseja apresentar e se ele permite observar o que foi solicitado.</p>\n<p>Na etapa do relato para a azul, a imagem é opcional. Nas demais, siga a orientação específica.</p>"
+    },
+    {
+      "title": "Como entender o retorno da análise?",
+      "body": "<p>Leia o retorno procurando distinguir três coisas:</p>\n<ul>\n<li><strong>O que foi encontrado:</strong> aquilo que a análise conseguiu observar no material.</li>\n<li><strong>O que faltou:</strong> uma parte da realização pedida que não foi identificada ou demonstrada.</li>\n<li><strong>O que não pôde ser conferido:</strong> algo que a análise não conseguiu examinar com o material ou nas condições disponíveis.</li>\n</ul>\n<p>“O que faltou” precisa estar relacionado ao pedido da atividade. “Não pôde ser conferido” indica uma limitação da análise e não deve ser tratado automaticamente como um erro no seu trabalho.</p>\n<p>Depois, confira a situação da atividade para saber se a realização foi reconhecida, se precisa de ajuste ou se a análise não pôde ser concluída.</p>"
+    },
+    {
+      "title": "Enviei. Já conquistei a próxima faixa?",
+      "body": "<p>O envio confirma uma etapa do processo. A faixa e seu bônus de XP chegam quando a avaliação ou conferência termina e reconhece a realização prevista.</p>\n<p>Enquanto aparecer <strong>Aguardando análise</strong>, acompanhe o resultado na Trilha. Este manual não estabelece prazo de conclusão da análise.</p>"
+    },
+    {
+      "title": "O que fazer se a análise não conseguir examinar meu material?",
+      "body": "<p>Leia a mensagem apresentada e veja se há uma orientação específica sobre o arquivo ou o envio.</p>\n<p>Se a orientação permitir corrigir o problema, siga o procedimento indicado. Se a mensagem não explicar como continuar ou se o problema persistir, procure o suporte.</p>\n<p>Uma falha técnica ou um material não examinado não significam que seu trabalho foi reprovado.</p>"
+    },
+    {
+      "title": "Como pedir ajuda ou discordar de uma avaliação?",
+      "body": "<p>Procure o suporte da Meshcraft. Informe qual atividade está realizando, explique a dúvida e inclua a mensagem apresentada na tela. Quando possível, indique o endereço da atividade para facilitar a localização.</p>\n<p>Se discordar da avaliação, explique qual parte do resultado não corresponde ao que você entregou.</p>"
+    },
+    {
+      "title": "Concluir a Trilha é o mesmo que terminar o curso?",
+      "body": "<p>São realizações diferentes:</p>\n<ul>\n<li><strong>Concluir a Trilha</strong> significa alcançar os marcos previstos no seu caminho.</li>\n<li><strong>Assistir às aulas</strong> acompanha seu estudo dos conteúdos disponíveis no curso.</li>\n<li><strong>Alcançar seu objetivo</strong> depende de como você aplica e desenvolve o que aprendeu.</li>\n</ul>\n<p>Nos caminhos UGC, Visual do jogo e Aprender modelagem, a preta reconhece o primeiro ciclo de criação. No caminho de clientes, a progressão continua pelos graus da preta, conforme os recebimentos reconhecidos e a meta pessoal.</p>"
+    },
+    {
+      "title": "Onde continuo?",
+      "body": "<p>Consulte sua próxima atividade na Trilha: <code>https://meshcraft.top/trilha/</code>.</p>\n<p>Se o seu primeiro ciclo já estiver concluído, continue estudando as aulas disponíveis e praticando de acordo com o objetivo que escolheu.</p>"
+    }
+  ]
+}
