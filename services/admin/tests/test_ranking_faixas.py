@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+from contextvars import ContextVar
 
 import pytest
 from django.core.cache import cache
@@ -107,3 +108,23 @@ def test_post_nao_altera_progressao():
     r = RequestFactory().post("/escola/ranking-faixas/")
     r.admin = {"id": "admin"}
     assert tela.ranking_faixas(r).status_code == 405
+
+
+def test_consultas_paralelas_preservam_contexto_da_celula(monkeypatch):
+    celula = ContextVar("ranking_celula", default="ausente")
+    token = celula.set("admin")
+    monkeypatch.setattr(tela.AlunosClient, "alunos", lambda self, status:
+                        [matricula("Ana", 1), matricula("Bia", 2)])
+    observados = []
+    def consultar(chave):
+        observados.append(celula.get())
+        return {"estado": "ok", "ordem": 1, "faixa": "branca",
+                "nome_faixa": "Branca", "cor": "#ffffff"}
+    monkeypatch.setattr(tela, "_consultar", consultar)
+    try:
+        resposta = tela.ranking_faixas(pedido())
+        assert observados == ["admin", "admin"]
+        assert "Faixa indisponível" not in resposta.content.decode()
+        assert celula.get() == "admin"
+    finally:
+        celula.reset(token)
