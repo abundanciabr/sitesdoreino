@@ -37,6 +37,7 @@ def build(source):
                 part = pieces[j+2].strip(' \n-')
                 # The dynamic progress card supplies these actual values.
                 part = re.sub(r'> \*\*Seu grau atual:.*?(?=Os próximos graus)', '', part, flags=re.S)
+                part = part.replace('Seu acompanhamento continua mostrando:', 'Confira seu grau, sua meta pessoal, seu progresso reconhecido e o próximo marco no quadro do início deste manual.')
                 step['variants'][key] = {'title': pieces[j+1], 'body': html(part)}
         result['steps'].append(step)
     faq = re.split(r'\*\*(.*?\?)\*\*', blocks[2])
