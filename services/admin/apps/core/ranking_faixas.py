@@ -1,5 +1,6 @@
 """Ranking administrativo pela faixa atual reconhecida na Trilha; só leitura."""
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from hashlib import sha256
 import re
 import unicodedata
@@ -75,7 +76,10 @@ def ranking_faixas(request):
     # As consultas existentes têm timeout próprio. Limite fixo de concorrência;
     # o resultado confirmado é reaproveitado por apenas um minuto.
     with ThreadPoolExecutor(max_workers=12) as executor:
-        estados = list(executor.map(_consultar, chaves))
+        # O runtime escolhe as configurações de cada célula por ContextVar.
+        # Cada tarefa recebe uma cópia própria do contexto da requisição.
+        consultas = [executor.submit(copy_context().run, _consultar, chave) for chave in chaves]
+        estados = [consulta.result() for consulta in consultas]
     linhas = [dict(grupos[chave], **estado) for chave, estado in zip(chaves, estados)]
     linhas.sort(key=lambda a: (-a.get("ordem", 0), _normalizar(a["nome"] or a["email"]),
                                a["site_id"], a["email"]))
