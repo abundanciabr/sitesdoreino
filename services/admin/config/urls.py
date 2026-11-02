@@ -98,6 +98,7 @@ from apps.core.comentarios_aulas import (
 )
 from apps.core.cursos import escola_curso_alterar, escola_curso_criar, escola_cursos
 from apps.core.escola_pontos import escola_pontos
+from apps.core.ranking_faixas import ranking_faixas
 from apps.core.parametros_da_fila import (
     parametros_da_fila,
     parametros_da_fila_mudar,
@@ -1400,6 +1401,7 @@ urlpatterns = [
     # quem parou?" — a gamificacao e a matricula sao duas celulas diferentes,
     # e esta tela e o unico lugar que cruza as duas.
     path("escola/pontos/", escola_pontos, name="escola_pontos"),
+    path("escola/ranking-faixas/", ranking_faixas, name="ranking_faixas"),
     path("escola/admin/promover", escola_admin_promover, name="escola_admin_promover"),
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
