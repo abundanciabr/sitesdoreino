@@ -1,0 +1,53 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Ranking por faixas{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
+  <h1>Ranking por faixas</h1>
+  <p class="subtitulo">Da preta até a branca, pela faixa atual reconhecida na Trilha. Graus maiores da preta vêm primeiro. Na mesma faixa e grau, os alunos compartilham a posição e aparecem em ordem alfabética.</p>
+  {% if fonte_indisponivel %}
+  <p class="aviso" role="alert">Não foi possível consultar os alunos agora. Recarregue a página para tentar novamente.</p>
+  {% else %}
+  <p>{{ total }} aluno{{ total|pluralize }} com matrícula ativa. Cada pessoa aparece uma vez por escola, mesmo com vários cursos. As faixas podem levar até um minuto para atualizar.</p>
+  <div class="cartoes" aria-label="Alunos por faixa">
+    {% for item in contagens %}<div class="cartao"><div class="rotulo">{{ item.nome }}</div><div class="valor">{{ item.total }}</div></div>{% endfor %}
+  </div>
+  {% if indisponiveis %}<p class="aviso" role="alert">Não foi possível confirmar a faixa de {{ indisponiveis }} aluno{{ indisponiveis|pluralize }}. Eles aparecem ao final, sem posição no ranking. Recarregue para tentar novamente.</p>{% endif %}
+  {% if sem_conta %}<p class="aviso">{{ sem_conta }} aluno{{ sem_conta|pluralize }} ainda sem conta vinculada à Trilha; aparecem ao final, sem faixa confirmada.</p>{% endif %}
+  <form method="get" class="espaco-20" role="search">
+    <label for="ranking-busca">Buscar aluno</label>
+    <input id="ranking-busca" name="q" value="{{ q }}" placeholder="Nome ou e-mail" type="search">
+    <label for="ranking-faixa">Faixa</label>
+    <select id="ranking-faixa" name="faixa">
+      <option value="">Todas as faixas</option>
+      {% for item in contagens %}<option value="{{ item.slug }}"{% if faixa == item.slug %} selected{% endif %}>{{ item.nome }} ({{ item.total }})</option>{% endfor %}
+      <option value="sem_faixa"{% if faixa == 'sem_faixa' %} selected{% endif %}>Sem faixa confirmada</option>
+    </select>
+    <button class="botao" type="submit">Filtrar</button>
+    <a href="{% url 'ranking_faixas' %}">Limpar filtros</a>
+  </form>
+  <p>{{ total_filtrado }} aluno{{ total_filtrado|pluralize }} nesta seleção.</p>
+  <div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;text-align:left">
+    <caption class="subtitulo">Classificação dos alunos por faixa</caption>
+    <thead><tr><th scope="col">Posição</th><th scope="col">Aluno</th><th scope="col">Faixa atual</th><th scope="col">Trilha</th></tr></thead>
+    <tbody>
+    {% for aluno in pagina %}
+    <tr style="border-bottom:1px solid var(--linha)">
+      <td style="padding:14px 8px">{% if aluno.posicao %}{{ aluno.posicao }}º{% else %}—{% endif %}</td>
+      <td style="padding:14px 8px"><strong>{{ aluno.nome|default:'Aluno sem nome cadastrado' }}</strong><br><small>{{ aluno.email }}</small></td>
+      <td style="padding:14px 8px">{% if aluno.estado == 'ok' %}<span aria-hidden="true" style="display:inline-block;width:32px;height:12px;border:1px solid #888;border-radius:3px;background:{{ aluno.cor }}"></span> {{ aluno.nome_faixa }}{% elif aluno.estado == 'sem_conta' %}Sem conta vinculada{% else %}Faixa indisponível{% endif %}</td>
+      <td style="padding:14px 8px"><a href="{{ aluno.url }}">Ver Trilha</a></td>
+    </tr>
+    {% empty %}<tr><td colspan="4" style="padding:20px">Nenhum aluno encontrado nesta seleção.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if pagina.has_other_pages %}<nav aria-label="Páginas do ranking" class="espaco-20">
+    {% if pagina.has_previous %}<a href="?{{ parametros }}&amp;pagina={{ pagina.previous_page_number }}">&larr; Anterior</a>{% endif %}
+    <span>Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a href="?{{ parametros }}&amp;pagina={{ pagina.next_page_number }}">Próxima &rarr;</a>{% endif %}
+  </nav>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}
