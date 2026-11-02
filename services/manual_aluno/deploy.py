@@ -49,7 +49,9 @@ def main():
                 'backup': str(backup), 'previous_manual_route': False, 'database_changes': False,
                 'sha256': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in code.iterdir() if p.is_file()}}
     (backup / 'registro.json').write_text(json.dumps(metadata, indent=2))
+    env_stat = os.stat(mounts['/run/plataforma-env'])
     command = ['docker', 'create', '--name', NAME, '--restart', 'unless-stopped', '--network', 'interna',
+               '--user', f'{env_stat.st_uid}:{env_stat.st_gid}',
                '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--memory', '512m', '--cpus', '1',
                '--tmpfs', '/tmp:rw,nosuid,noexec,size=32m', '-e', 'APLICACAO_ENV_DIR=/run/plataforma-env',
                '-e', 'PYTHONDONTWRITEBYTECODE=1', '-e', 'PYTHONUNBUFFERED=1',
