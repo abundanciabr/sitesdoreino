@@ -110,3 +110,39 @@ def test_whatsapp_nao_envia_quando_matricula_nao_autoriza(ambiente, monkeypatch)
     resposta = a.recuperar(req({"acao": "enviar", "canal": "whatsapp", "contato": "(15) 99999-9122"}))
     assert resposta.status_code == 302
     assert pedir.call_count == 2
+
+
+
+def test_whatsapp_monta_numero_brasileiro_com_ddd_e_celular(ambiente, monkeypatch):
+    pedir = Mock(side_effect=[{"encontrado": False}, {"encontrado": False}])
+    monkeypatch.setattr(a, "_pedir", pedir)
+    resposta = a.recuperar(req({
+        "acao": "enviar", "canal": "whatsapp", "ddd": "15", "celular": "9 9999-9122",
+    }))
+    assert resposta.status_code == 302
+    assert pedir.call_args_list[0].kwargs["dados"]["contato"] == "5515999999122"
+    assert pedir.call_args_list[1].kwargs["dados"]["telefone"] == "5515999999122"
+
+
+def test_whatsapp_com_ddd_incompleto_nao_consulta_cadastro(ambiente, monkeypatch):
+    pedir = Mock()
+    monkeypatch.setattr(a, "_pedir", pedir)
+    resposta = a.recuperar(req({
+        "acao": "enviar", "canal": "whatsapp", "ddd": "1", "celular": "9 9999-9122",
+    }))
+    assert resposta.status_code == 200
+    assert "Informe o DDD" in resposta.content.decode()
+    assert not pedir.called
+
+
+def test_politica_da_recuperacao_autoriza_so_o_script_da_mascara(ambiente):
+    import base64
+    import hashlib
+    import re
+
+    resposta = PortaAdministrativa(a.recuperar)(req())
+    script = re.search(rb"<script>(.*?)</script>", resposta.content, re.S).group(1)
+    hash_esperado = base64.b64encode(hashlib.sha256(script).digest()).decode()
+    politica = resposta["Content-Security-Policy"]
+    assert f"script-src 'self' 'sha256-{hash_esperado}';" in politica
+    assert "unsafe-inline" not in politica

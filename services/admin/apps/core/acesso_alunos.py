@@ -1,6 +1,7 @@
 """Recuperação pública, por solicitação do aluno, sem sessão administrativa."""
 import hashlib
 import hmac
+import re
 import secrets
 import uuid
 import redis
@@ -37,7 +38,7 @@ def _limitar(request, contato):
     except redis.RedisError:
         raise Indisponivel("O envio está temporariamente indisponível. Tente novamente em alguns minutos.") from None
 
-@sensitive_post_parameters("codigo", "contato")
+@sensitive_post_parameters("codigo", "contato", "ddd", "celular")
 @require_http_methods(["GET", "POST"])
 def recuperar(request):
     if request.get_host().split(":")[0].lower() not in {"meshcraft.top","www.meshcraft.top"}: raise Http404
@@ -48,7 +49,14 @@ def recuperar(request):
             acao = request.POST.get("acao")
             if acao == "enviar":
                 canal = request.POST.get("canal", "")
+                contexto["canal"] = canal
                 contato = request.POST.get("contato", "").strip().lower()
+                if canal == "whatsapp" and ("ddd" in request.POST or "celular" in request.POST):
+                    ddd = request.POST.get("ddd", "").strip()
+                    celular = re.sub(r"[^0-9]", "", request.POST.get("celular", ""))
+                    if not re.fullmatch(r"[1-9][0-9]", ddd) or not re.fullmatch(r"9[0-9]{8}", celular):
+                        raise Indisponivel("Informe o DDD com dois dígitos e um celular com nove dígitos.")
+                    contato = "55" + ddd + celular
                 if canal not in {"email","whatsapp"} or not contato or len(contato)>254:
                     raise Indisponivel("Informe o e-mail ou WhatsApp usado no seu cadastro.")
                 _limitar(request, contato)
