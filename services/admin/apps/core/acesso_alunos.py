@@ -14,7 +14,7 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
 from .clients import AlunosClient, CatalogoClient, IdentidadeClient, LeadsClient, MensageriaClient
 from .acesso_sem_senha import _pedir, Indisponivel, COOKIE
-from .porta import _emails_autorizados
+from .porta import PortaAdministrativa, _emails_autorizados
 
 PEDIDO_COOKIE = "meshcraft_acesso_pedido"
 SALT = "recuperacao-aluno-v1"
@@ -94,4 +94,12 @@ def recuperar(request):
             raise Indisponivel("Ação não reconhecida.")
     except Indisponivel as erro:
         contexto["erro"] = str(erro)
-    return render(request,TEMPLATE,contexto)
+    resposta = render(request, TEMPLATE, contexto)
+    PortaAdministrativa(lambda _: resposta)._com_seguranca(resposta)
+    # Autoriza apenas o script estático da máscara deste formulário.
+    resposta["Content-Security-Policy"] = resposta["Content-Security-Policy"].replace(
+        "script-src 'self';",
+        "script-src 'self' 'sha256-hADSJieCA25hPK/UH2364AoPAIkmu7+iXSeCfTRnR6c=';",
+        1,
+    )
+    return resposta
