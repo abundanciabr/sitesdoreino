@@ -1,0 +1,2 @@
+Entrega de teste inofensiva da Fase 5 da migracao (VPS 2066196, https://meshcraft.org/).
+Criada em 2026-11-03 pelo canal normal de entregas; nao altera nenhuma funcionalidade.
