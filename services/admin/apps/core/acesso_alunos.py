@@ -72,7 +72,7 @@ def recuperar(request):
             if acao == "confirmar":
                 if not pedido: raise Indisponivel("Seu pedido expirou. Solicite um novo código.")
                 resultado = _pedir(IdentidadeClient(),"/acesso-alunos/confirmar",dados={"site_id":pedido["site_id"],"desafio":pedido["desafio"],"vinculo":pedido["vinculo"],"codigo":request.POST.get("codigo","").strip()})
-                resposta = HttpResponseRedirect("/cursos/")
+                resposta = HttpResponseRedirect("/")
                 resposta.set_cookie(COOKIE,resultado["sessao"],max_age=resultado["max_age"],httponly=True,secure=True,samesite="Lax",path="/")
                 resposta.delete_cookie(PEDIDO_COOKIE,path="/admin/recuperar-acesso/",samesite="Lax")
                 return resposta
