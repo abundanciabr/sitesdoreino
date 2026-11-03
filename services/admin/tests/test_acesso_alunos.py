@@ -45,12 +45,12 @@ def test_contato_ausente_nao_cria_nem_envia(ambiente,monkeypatch):
     r=a.recuperar(req({"acao":"enviar","canal":"email","contato":"ausente@escola.test"}))
     assert r.status_code==302 and pedir.call_count==1
 
-def test_codigo_repassa_sessao_e_vai_cursos(ambiente,monkeypatch):
+def test_codigo_repassa_sessao_e_vai_home(ambiente,monkeypatch):
     monkeypatch.setattr(a,"_pedir",Mock(return_value={"sessao":"da-identidade","max_age":1200}))
     request=req({"acao":"confirmar","codigo":"123456"})
     request.COOKIES[a.PEDIDO_COOKIE]=signing.dumps({"site_id":"s","desafio":"d","vinculo":"A"*43,"canal":"email"},salt=a.SALT)
     r=a.recuperar(request)
-    assert r.status_code==302 and r.url=="/cursos/"
+    assert r.status_code==302 and r.url=="/"
     assert r.cookies[a.COOKIE].value=="da-identidade" and r.cookies[a.COOKIE]["secure"]
     assert r.cookies[a.PEDIDO_COOKIE]["max-age"]==0
 
