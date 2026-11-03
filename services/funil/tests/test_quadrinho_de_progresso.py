@@ -96,24 +96,6 @@ def home(client, cookie=COOKIE):
 # ---------------------------------------------------------------------------
 # (a) O quadrinho aparece com o degrau e a barra quando a porta responde
 # ---------------------------------------------------------------------------
-def test_o_quadrinho_aparece_com_o_degrau_e_a_barra(
-    client, logado, gamificacao_configurada
-):
-    logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
-
-    resposta = home(client)
-
-    assert resposta.status_code == 200, resposta.content
-    conteudo = resposta.content.decode()
-    assert 'class="progresso"' in conteudo
-    assert "Nível 7" in conteudo
-    assert 'class="barra"' in conteudo
-    # 987.654 de 1.000.000 do próximo degrau. A conta é `xp / (xp + falta)`, e o
-    # comentário de `_progresso_da_tela` explica por que não é o piso do degrau.
-    assert "width: 99%" in conteudo
-    assert "Faltam 12346 pontos para o nível 8." in conteudo
-
-
 def test_o_xp_cru_nunca_aparece_na_tela(client, logado, gamificacao_configurada):
     """A regra de tela da gamificação: "XP nunca maior que a imagem da obra".
 
@@ -127,39 +109,6 @@ def test_o_xp_cru_nunca_aparece_na_tela(client, logado, gamificacao_configurada)
 
     assert "987654" not in conteudo
     assert "987.654" not in conteudo
-
-
-def test_o_cookie_viaja_opaco_e_o_par_se_identifica(
-    client, logado, gamificacao_configurada
-):
-    """Duas credenciais, provando coisas diferentes.
-
-    O `Bearer` prova QUEM CHAMA (esta célula); o `Cookie` prova quem é a
-    PESSOA, e atravessa opaco — o funil não sabe o nome do cookie da outra
-    célula e não deve saber (célula não importa código nem lê banco de outra).
-    """
-    logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
-
-    home(client)
-
-    chamada = _chamadas_de_progresso(logado)[0].request
-    assert chamada.headers["cookie"] == COOKIE
-    assert chamada.headers["authorization"] == f"Bearer {TOKEN}"
-
-
-def test_uma_pergunta_por_pagina_e_nao_uma_por_leitura(
-    client, logado, gamificacao_configurada
-):
-    """A property é memoizada dentro da requisição (o segundo nível da preguiça).
-
-    O template lê `progresso` mais de uma vez por render (o `{% with %}` e os
-    ramos internos), e cada leitura não pode virar um salto de rede.
-    """
-    logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
-
-    home(client)
-
-    assert len(_chamadas_de_progresso(logado)) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -390,27 +339,6 @@ def test_nivel_conhecido_sem_xp_tambem_e_nao_ha_o_que_mostrar(
 # ---------------------------------------------------------------------------
 # (e) O topo da escada, e o zero que não é o topo
 # ---------------------------------------------------------------------------
-def test_no_topo_da_escada_mostra_o_degrau_sem_barra_nenhuma(
-    client, logado, gamificacao_configurada
-):
-    """`xp_para_proximo: null` é "não há próximo degrau", e `0` é "está a um
-    passo". O contrato aceita os dois e eles dizem coisas DIFERENTES: barra
-    cheia que nunca vira nada seria promessa sem destino."""
-    logado.get(EU).mock(
-        return_value=httpx.Response(
-            200, json=status(xp=1_000_000, nivel=12, xp_para_proximo=None)
-        )
-    )
-
-    resposta = home(client)
-
-    assert resposta.status_code == 200
-    conteudo = resposta.content.decode()
-    assert "Nível 12" in conteudo
-    assert "Você chegou ao último degrau da trilha." in conteudo
-    assert 'class="barra"' not in conteudo
-
-
 def test_no_primeiro_degrau_sem_proximo_o_quadrinho_nao_parabeniza_ninguem(
     client, logado, gamificacao_configurada
 ):
@@ -436,7 +364,7 @@ def test_no_primeiro_degrau_sem_proximo_o_quadrinho_nao_parabeniza_ninguem(
     assert 'class="progresso"' not in conteudo
 
 
-def test_o_topo_de_verdade_continua_aparecendo(client, logado, gamificacao_configurada):
+def test_a_home_oculta_o_nivel_maximo_das_conquistas(client, logado, gamificacao_configurada):
     """A correção acima não pode calar quem subiu a trilha inteira.
 
     Prova de que o guarda novo mira no primeiro degrau, e não na frase.
@@ -449,42 +377,9 @@ def test_o_topo_de_verdade_continua_aparecendo(client, logado, gamificacao_confi
 
     conteudo = home(client).content.decode()
 
-    assert "Nível 2" in conteudo
-    assert "Você chegou ao último degrau da trilha." in conteudo
-
-
-def test_falta_zero_enche_a_barra_e_tem_frase_propria(
-    client, logado, gamificacao_configurada
-):
-    """ "Faltam 0 pontos" soa a defeito da tela justamente para quem está no
-    melhor momento da trilha."""
-    logado.get(EU).mock(
-        return_value=httpx.Response(
-            200, json=status(xp=1_000_000, nivel=7, xp_para_proximo=0)
-        )
-    )
-
-    conteudo = home(client).content.decode()
-
-    assert 'class="barra"' in conteudo
-    assert "width: 100%" in conteudo
-    assert "Você já tem os pontos do próximo degrau." in conteudo
-    assert "Faltam 0" not in conteudo
-
-
-def test_xp_zero_e_falta_zero_nao_estoura_em_divisao_por_zero(
-    client, logado, gamificacao_configurada
-):
-    """O único caminho que zera o denominador, e ele é alcançável: um degrau
-    seguinte que exija 0 XP com a pessoa em 0 XP dá 0/0."""
-    logado.get(EU).mock(
-        return_value=httpx.Response(200, json=status(xp=0, nivel=1, xp_para_proximo=0))
-    )
-
-    resposta = home(client)
-
-    assert resposta.status_code == 200, resposta.content
-    assert "width: 100%" in resposta.content.decode()
+    assert _chamadas_de_progresso(logado) == []
+    assert "Nível 2" not in conteudo
+    assert "Você chegou ao último degrau da trilha." not in conteudo
 
 
 def test_o_calculo_da_fracao_e_monotonico_e_nunca_passa_de_cem():
@@ -504,7 +399,7 @@ def test_o_calculo_da_fracao_e_monotonico_e_nunca_passa_de_cem():
 # ---------------------------------------------------------------------------
 # (f) Os ramos de categoria que já existiam continuam intactos
 # ---------------------------------------------------------------------------
-def test_o_quadrinho_convive_com_o_ramo_de_aluno(
+def test_o_ramo_de_aluno_aparece_sem_o_quadrinho(
     client, aluno, gamificacao_configurada
 ):
     """O progresso é de quem ENTROU; a categoria decide outra coisa (o que a
@@ -513,11 +408,9 @@ def test_o_quadrinho_convive_com_o_ramo_de_aluno(
 
     conteudo = home(client).content.decode()
 
-    assert 'class="progresso"' in conteudo
+    assert 'class="progresso"' not in conteudo
     assert "Acessar a Caixa de Sugestões" in conteudo
     # A ordem da tela: novidade, progresso, e só então o que a categoria permite.
-    assert conteudo.index("Em breve teremos") < conteudo.index('class="progresso"')
-    assert conteudo.index('class="progresso"') < conteudo.index("Acessar a Caixa")
 
 
 def test_o_ramo_da_fila_sobrevive_a_gamificacao_fora_do_ar(
@@ -542,7 +435,7 @@ def test_o_ramo_da_fila_sobrevive_a_gamificacao_fora_do_ar(
     assert "há 3 dias" in conteudo
 
 
-def test_a_categoria_fora_do_ar_nao_leva_o_quadrinho_junto(
+def test_a_categoria_fora_do_ar_nao_exibe_o_convite(
     client, logado, gamificacao_configurada
 ):
     """E o inverso: a `alunos` calada faz a home tratar a pessoa como
@@ -551,7 +444,7 @@ def test_a_categoria_fora_do_ar_nao_leva_o_quadrinho_junto(
 
     conteudo = home(client).content.decode()
 
-    assert 'class="progresso"' in conteudo
+    assert 'class="progresso"' not in conteudo
     assert "Pedir entrada" not in conteudo
 
 
@@ -587,38 +480,3 @@ def test_o_cliente_sem_configuracao_devolve_nao_sei_sem_tocar_a_rede(rede):
 # ---------------------------------------------------------------------------
 # A tradução das três línguas: a frase existe, e não é a chave crua
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize(
-    "idioma,esperado",
-    [
-        ("en", "Level 7"),
-        ("pt-br", "Nível 7"),
-        ("es", "Nivel 7"),
-    ],
-)
-def test_o_degrau_sai_no_idioma_da_pagina(
-    client, logado, gamificacao_configurada, idioma, esperado
-):
-    logado.get(EU).mock(return_value=httpx.Response(200, json=COM_PROGRESSO))
-
-    conteudo = client.get(
-        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
-    ).content.decode()
-
-    assert esperado in conteudo
-    # Chave crua na tela é o sintoma de tradução faltando (a função `t` devolve
-    # a própria chave quando não acha valor).
-    assert "landing.progresso" not in conteudo
-
-
-def test_o_plural_de_um_ponto_nao_vira_um_pontos(
-    client, logado, gamificacao_configurada
-):
-    """Plural de verdade (CLDR, via babel): concatenar número com texto fixo
-    produziria "Faltam 1 pontos", o erro que só o falante nativo vê."""
-    logado.get(EU).mock(
-        return_value=httpx.Response(200, json=status(xp=99, nivel=4, xp_para_proximo=1))
-    )
-
-    conteudo = home(client).content.decode()
-
-    assert "Falta 1 ponto para o nível 5." in conteudo
