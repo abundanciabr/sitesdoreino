@@ -260,7 +260,11 @@ class PortaAdministrativa:
     def _responder(self, request):
         # Recuperação pública autorizada: somente esta rota, sem conceder acesso ao admin.
         if request.path_info == "/recuperar-acesso/":
-            return self._com_seguranca(self.get_response(request))
+            # Hash do script estático no template acesso_alunos.html.
+            return self._com_seguranca(
+                self.get_response(request),
+                script_hash="'sha256-hADSJieCA25hPK/UH2364AoPAIkmu7+iXSeCfTRnR6c='",
+            )
         from .galeria_comunidade import caminho_publico
         if caminho_publico(request.path_info):
             return self._com_seguranca(self.get_response(request))
@@ -487,7 +491,7 @@ class PortaAdministrativa:
         resposta["Cache-Control"] = "no-store"
         return self._com_seguranca(resposta)
 
-    def _com_seguranca(self, resposta):
+    def _com_seguranca(self, resposta, *, script_hash=""):
         """CSP em TODA resposta desta célula, inclusive nas de recusa.
 
         `frame-ancestors 'self'` e **nunca `'none'`**: `'none'` proíbe
@@ -504,9 +508,10 @@ class PortaAdministrativa:
 
         **`style-src` leva o HASH do estilo da casa** — ver `hashes_de_estilo`.
         """
+        scripts = " " + script_hash if script_hash else ""
         resposta.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; "
+            f"default-src 'self'; script-src 'self'{scripts}; "
             f"style-src 'self'{self.hashes_de_estilo(resposta)}; "
             "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
             "form-action 'self'; frame-ancestors 'self'",
