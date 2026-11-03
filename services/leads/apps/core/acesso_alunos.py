@@ -28,5 +28,6 @@ def resolver(request, dados: Consulta):
         site |= Q(site_id__iexact="Meshcraft")
     registros = ContatoDeAcesso.objects.filter(site, **filtro)
     emails = list(registros.values_list("email", flat=True).distinct()[:2])
-    if len(emails) != 1: return {"encontrado":False}
+    if len(emails) != 1:
+        return {"encontrado": False, **({"ambiguo": True} if dados.canal == "whatsapp" and emails else {})}
     return {"encontrado":True, "email":emails[0], "destino":valor}
