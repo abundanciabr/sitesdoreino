@@ -13,6 +13,8 @@ class RotinaProcedimentos(models.Model):
     executor_em = models.DateTimeField(null=True)
     fontes = models.JSONField(default=dict)
     erro = models.CharField(max_length=300, blank=True)
+    class Meta:
+        db_table = 'agentes_rotinaprocedimentos'
 
 
 class AgrupamentoProcedimento(models.Model):
@@ -29,6 +31,8 @@ class AgrupamentoProcedimento(models.Model):
     assinatura_redigida = models.CharField(max_length=64, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
+    class Meta:
+        db_table = 'agentes_agrupamentoprocedimento'
 
 
 class CasoProcedimento(models.Model):
@@ -47,6 +51,7 @@ class CasoProcedimento(models.Model):
     referencia = models.URLField(max_length=500)
     ativa = models.BooleanField(default=True)
     class Meta:
+        db_table = 'agentes_casoprocedimento'
         constraints = [models.UniqueConstraint(fields=['rotina', 'fonte', 'chave'], name='procedimento_caso_unico')]
 
 
@@ -59,3 +64,5 @@ class RedacaoProcedimento(models.Model):
     texto = models.TextField(blank=True)
     respostas = models.JSONField(default=dict)
     criada_em = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = 'agentes_redacaoprocedimento'
