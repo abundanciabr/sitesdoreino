@@ -11,7 +11,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_http_methods
-from .clients import CatalogoClient, IdentidadeClient, LeadsClient, MensageriaClient
+from .clients import AlunosClient, CatalogoClient, IdentidadeClient, LeadsClient, MensageriaClient
 from .acesso_sem_senha import _pedir, Indisponivel, COOKIE
 from .porta import _emails_autorizados
 
@@ -56,9 +56,16 @@ def recuperar(request):
                 if not site: raise Indisponivel("Não foi possível conferir o site. Tente novamente em alguns minutos.")
                 site_id = str(site["id"])
                 ficha = _pedir(LeadsClient(),"/acesso-alunos/resolver",dados={"site_id":site_id,"canal":canal,"contato":contato})
+                if canal == "whatsapp":
+                    if ficha.get("ambiguo") or ficha.get("email", "").strip().lower() in _emails_autorizados():
+                        ficha = {"encontrado": False}
+                    else:
+                        ficha = _pedir(AlunosClient(), "/acesso-alunos/resolver-whatsapp", dados={
+                            "site_id": site_id, "telefone": contato, "email_da_ficha": ficha.get("email", ""),
+                        })
                 # O navegador recebe o mesmo estado para contatos ausentes ou ambíguos.
                 pedido = {"site_id":site_id,"desafio":str(uuid.uuid4()),"vinculo":secrets.token_urlsafe(32),"canal":canal}
-                elegivel = ficha.get("encontrado") and not (canal=="whatsapp" and ficha.get("email","").lower() in _emails_autorizados())
+                elegivel = ficha.get("encontrado") and not (canal=="whatsapp" and ficha.get("email","").strip().lower() in _emails_autorizados())
                 if elegivel:
                     d = _pedir(IdentidadeClient(),"/acesso-alunos/preparar",dados={"site_id":site_id,"email":ficha["email"],"canal":canal,"destino":ficha["destino"],"vinculo":pedido["vinculo"]})
                     if d.get("encontrado"):

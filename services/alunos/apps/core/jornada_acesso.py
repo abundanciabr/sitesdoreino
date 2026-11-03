@@ -3,6 +3,8 @@ import hmac
 import os
 import re
 from django.db import transaction
+from django.db.models import CharField, Func, Q, Value
+from django.db.models.functions import Lower, Trim
 from django.http import JsonResponse
 from django.utils import timezone
 from ninja import Router, Schema
@@ -33,6 +35,54 @@ def suporte(request, site_id: str, event_id: str):
     linha = Matricula.objects.filter(site_id=site_id, suporte_event_id=event_id).first()
     if not linha: raise HttpError(404, "encaminhamento substituído")
     return {**contato(linha), "event_id": str(linha.suporte_event_id)}
+
+class ConsultaRecuperacaoWhatsApp(Schema):
+    site_id: str
+    telefone: str
+    email_da_ficha: str = ""
+
+
+@router.post("/acesso-alunos/resolver-whatsapp", include_in_schema=False)
+def resolver_whatsapp(request, dados: ConsultaRecuperacaoWhatsApp):
+    if not request.auth or request.auth != os.environ.get("TOKENS_ACEITOS_ADMIN"):
+        raise HttpError(403, "somente a recuperação de acesso pode consultar")
+    numero = re.sub(r"[^0-9]", "", dados.telefone)
+    if len(numero) in (10, 11):
+        numero = "55" + numero
+    ausente = {"encontrado": False}
+    if not dados.site_id or len(dados.site_id) > 64 or not re.fullmatch(r"[1-9][0-9]{9,14}", numero):
+        return ausente
+
+    site = Q(site_id=dados.site_id)
+    if dados.site_id == "cc06b8c3-043b-4c06-92c5-5ea624e00586":
+        site |= Q(site_id__iexact="Meshcraft")
+    matriculas = Matricula.objects.filter(site, em_teste=False)
+    telefones = [numero]
+    if numero.startswith("55") and len(numero) in (12, 13):
+        telefones.append(numero[2:])
+    com_numero = matriculas.annotate(
+        telefone_limpo=Func("whatsapp", Value("[^0-9]"), Value(""), Value("g"),
+                           function="regexp_replace", output_field=CharField()),
+        email_normalizado=Lower(Trim("email")),
+    ).filter(telefone_limpo__in=telefones)
+    emails = set(com_numero.values_list("email_normalizado", flat=True).distinct()[:2])
+    email_da_ficha = dados.email_da_ficha.strip().lower()
+    if email_da_ficha:
+        emails.add(email_da_ficha)
+    if len(emails) != 1:
+        return ausente
+    email = emails.pop()
+    if not email:
+        return ausente
+
+    # A ficha legada pode completar uma matrícula sem telefone. Um telefone
+    # diferente na matrícula ativa nunca é substituído pelo telefone da ficha.
+    ativas = matriculas.filter(email__iexact=email, status=Matricula.STATUS_ATIVA)
+    if not com_numero.filter(email_normalizado=email, status=Matricula.STATUS_ATIVA).exists():
+        if not email_da_ficha or com_numero.exists() or not ativas.exists() or ativas.exclude(whatsapp="").exists():
+            return ausente
+    return {"encontrado": True, "email": email, "destino": numero}
+
 
 class Resolver(Schema):
     site_id: str

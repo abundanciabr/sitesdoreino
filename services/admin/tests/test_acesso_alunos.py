@@ -85,3 +85,28 @@ def test_whatsapp_administrativo_nao_usa_crm(ambiente,monkeypatch):
     monkeypatch.setattr(a,"_pedir",pedir)
     r=a.recuperar(req({"acao":"enviar","canal":"whatsapp","contato":"5511999999999"}))
     assert r.status_code==302 and pedir.call_count==1
+
+
+def test_whatsapp_busca_matricula_sem_ficha(ambiente, monkeypatch):
+    pedir = Mock(side_effect=[
+        {"encontrado": False},
+        {"encontrado": True, "email": "aluna@escola.test", "destino": "5515999999122"},
+        {"encontrado": True, "desafio": "desafio", "codigo": "123456", "destino": "5515999999122"},
+        {"estado": "aceito"},
+    ])
+    monkeypatch.setattr(a, "_pedir", pedir)
+    resposta = a.recuperar(req({"acao": "enviar", "canal": "whatsapp", "contato": "(15) 99999-9122"}))
+    assert resposta.status_code == 302
+    assert pedir.call_args_list[1].args[1] == "/acesso-alunos/resolver-whatsapp"
+    assert pedir.call_args_list[-1].kwargs["dados"]["canal"] == "whatsapp"
+
+
+def test_whatsapp_nao_envia_quando_matricula_nao_autoriza(ambiente, monkeypatch):
+    pedir = Mock(side_effect=[
+        {"encontrado": True, "email": "aluna@escola.test", "destino": "5515999999122"},
+        {"encontrado": False},
+    ])
+    monkeypatch.setattr(a, "_pedir", pedir)
+    resposta = a.recuperar(req({"acao": "enviar", "canal": "whatsapp", "contato": "(15) 99999-9122"}))
+    assert resposta.status_code == 302
+    assert pedir.call_count == 2
