@@ -231,7 +231,19 @@ def sair(request):
     if not _mesma_origem(request):
         return HttpResponseForbidden("origem não confere")
     ses.encerrar_sessao(request)
-    return HttpResponseRedirect(destino_seguro(request.POST.get("next")))
+    destino = destino_seguro(request.POST.get("next"))
+    if "application/json" in request.headers.get("Accept", ""):
+        resposta = JsonResponse({"saiu": True, "destino": destino})
+    else:
+        resposta = HttpResponseRedirect(destino)
+    # Expire both the host-only cookie and cookies inherited from the migration.
+    from django.conf import settings
+    for dominio in (None, request.get_host().split(":")[0]):
+        resposta.delete_cookie(settings.SESSION_COOKIE_NAME, path="/", domain=dominio,
+                               samesite=settings.SESSION_COOKIE_SAMESITE)
+    resposta["Cache-Control"] = "no-store, max-age=0"
+    resposta["Clear-Site-Data"] = '"cookies", "cache"'
+    return resposta
 
 
 @csrf_exempt
