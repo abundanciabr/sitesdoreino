@@ -2053,6 +2053,8 @@ def escola_admin_remover(request):
         alvo=email,
         defaults={"conteudo": {"ativo": False}, "base": {"ativo": atual}},
     )
+    if request.POST.get("aplicar") == "1":
+        return escola_admin_publicar(request)
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=rascunho")
 
 
