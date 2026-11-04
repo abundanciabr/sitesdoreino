@@ -517,7 +517,12 @@
           <form method="post" action="{% url 'escola_admin_remover' %}">
             {% csrf_token %}
             <input type="hidden" name="email" value="{{ pessoa.email }}">
+            {% if pode_publicar_permissoes %}
+            <input type="hidden" name="aplicar" value="1">
+            <button class="nao" type="submit">Remover de administrador e manter como aluno</button>
+            {% else %}
             <button class="nao" type="submit">Preparar remoção</button>
+            {% endif %}
           </form>
           {% endif %}
         {% else %}

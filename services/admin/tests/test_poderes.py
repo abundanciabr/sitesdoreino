@@ -223,6 +223,52 @@ def test_remover_tira_o_cracha_e_deixa_rastro():
     assert Registro.objects.get().acao == Registro.DESPROMOVER
 
 
+@respx.mock
+def test_remover_admin_na_ficha_preserva_os_dados_do_aluno():
+    Administrador.objects.create(email=OUTRO)
+    cliente = _dentro()
+    for _ in range(2):
+        resposta = cliente.post(
+            reverse("escola_admin_remover"), {"email": OUTRO, "aplicar": "1"}
+        )
+        assert resposta["Location"].endswith("?resultado=publicado")
+    assert OUTRO not in _emails_autorizados()
+    assert Administrador.objects.filter(email=OUTRO, ativo=False).count() == 1
+    assert not AlunoRemovidoDaLista.objects.exists()
+    assert not RascunhoDeConfiguracao.objects.filter(tipo="permissao", alvo=OUTRO).exists()
+    assert Registro.objects.filter(acao=Registro.DESPROMOVER, alvo=OUTRO).count() == 2
+    assert all(str(chamada.request.url).startswith(BASE) for chamada in respx.calls)
+
+
+@pytest.mark.parametrize("robo", [False, True])
+def test_remover_admin_na_ficha_exige_mantenedor(robo):
+    from django.test import RequestFactory
+    from apps.core.views import escola_admin_remover
+
+    Administrador.objects.create(email=OUTRO)
+    request = RequestFactory().post(
+        reverse("escola_admin_remover"), {"email": OUTRO, "aplicar": "1"}
+    )
+    request.admin = {"email": DONO if robo else "editor@exemplo.com", "robo": robo}
+    assert escola_admin_remover(request).status_code == 403
+    assert OUTRO in _emails_autorizados()
+    assert Registro.objects.count() == 0
+
+
+@pytest.mark.parametrize("mantenedor", [False, True])
+def test_ficha_oferece_remocao_imediata_somente_ao_mantenedor(mantenedor):
+    from django.template.loader import render_to_string
+
+    html = render_to_string("admin/escola_alunos.html", {
+        "alunos": [{"id": ALVO, "email": OUTRO}],
+        "administradores": [OUTRO],
+        "admins_do_servidor": [DONO],
+        "pode_publicar_permissoes": mantenedor,
+    })
+    assert ("Remover de administrador e manter como aluno" in html) == mantenedor
+    assert ("Preparar remoção" in html) != mantenedor
+
+
 @pytest.mark.django_db
 @respx.mock
 def test_o_env_e_o_chao_e_o_botao_nao_o_alcanca():
